@@ -16,10 +16,11 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZSendList(notice,list,nitems)
+Code_t ZSendList(notice,list,nitems,cert)
 	ZNotice_t	*notice;
 	char		*list[];
 	int		nitems;
+	int		cert;
 {
 	Code_t retval;
 	char *buffer;
@@ -30,7 +31,8 @@ Code_t ZSendList(notice,list,nitems)
 		return (ENOMEM);
 
 	if ((retval = ZFormatNoticeList(notice,list,nitems,buffer,
-					Z_MAXPKTLEN,&len)) != ZERR_NONE) {
+					Z_MAXPKTLEN,&len,cert))
+	    != ZERR_NONE) {
 		free(buffer);
 		return (retval);
 	}
