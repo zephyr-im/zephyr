@@ -22,7 +22,7 @@ static char rcsid_zlocate_c[] = "$Id$";
 int numusers=0, numleft=0, parallel=0, oneline=0;
 char *whoami;
 
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 void
 #endif
 timeout(sig)
