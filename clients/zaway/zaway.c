@@ -143,6 +143,7 @@ int main(argc,argv)
 
 		if (strcmp(notice.z_sender,ZGetSender()) == 0 ||
 		    strcmp(notice.z_opcode,"PING") == 0 ||
+		    strcmp(notice.z_opcode,"AUTO") == 0 ||
 		    strcmp(notice.z_message,"Automated reply:") == 0) {
 		     ZFreeNotice(&notice);
 		     continue;
