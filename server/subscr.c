@@ -448,26 +448,32 @@ ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
 {
-	ZNotice_t notice2;
 	ZClient_t *client;
 	register ZSubscr_t *subs;
 	Code_t retval;
 	ZNotice_t reply;
 	ZPacket_t reppacket;
-	struct sockaddr_in who2;
+	struct sockaddr_in send_to_who;
 	register int i;
 	int packlen, found = 0, count, initfound, temp, zerofound;
-	u_short newport;
 	char **answer = (char **) NULL;
 	char buf[64];
 
 	/* Note that the following code is an incredible crock! */
 	
+	/* We cannot send multiple packets as acknowledgements to the client,
+	   since the hostmanager will ignore the later packets.  So we need
+	   to send directly to the client. */
+
 	/* Make our own copy so we can send directly back to the client */
 	/* RSF 11/07/87 */
 	
-	who2 = *who;
-	who2.sin_port = notice->z_port;  /* Return port */
+	send_to_who = *who;
+	send_to_who.sin_port = notice->z_port;  /* Return port */
+
+	/* the message field of the notice contains the port number
+	 of the client for which the sender desires the subscription
+	 list.  The port field is the port of the sender. */
 
 	if ((retval = ZReadAscii(notice->z_message,notice->z_message_len,
 				 (unsigned char *)&temp,sizeof(u_short)))
@@ -478,11 +484,13 @@ struct sockaddr_in *who;
 		return;
 	}
 
+	/* re-use the reply notice struct; it's reinitialized below */
+
 	/* Blech blech blech */
-	notice2 = *notice;
-	notice2.z_port = *((u_short *)&temp);
+	reply = *notice;
+	reply.z_port = *((u_short *)&temp);
 	
-	client = client_which_client(who, &notice2);
+	client = client_which_client(who, &reply);
 	
 	if (client && client->zct_subs) {
 
@@ -524,7 +532,7 @@ struct sockaddr_in *who;
 	reply.z_authent_len = 0; /* save some space */
 	reply.z_auth = 0;
 
-	if ((retval = ZSetDestAddr(&who2)) != ZERR_NONE) {
+	if ((retval = ZSetDestAddr(&send_to_who)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "subscr_sendlist set addr: %s",
 		       error_message(retval));
 		xfree(answer);
