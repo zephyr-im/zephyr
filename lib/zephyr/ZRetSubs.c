@@ -7,22 +7,22 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZRetrieveSubscriptions_c[] = "$Header$";
-#endif lint
+static char rcsid_ZRetrieveSubscriptions_c[] =
+    "$Zephyr: /mit/zephyr/src/lib/RCS/ZRetrieveSubscriptions.c,v 1.20 90/12/20 03:14:12 raeburn Exp $";
+#endif
 
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
-#ifdef _AIX
-#include <sys/select.h>
-#endif
+
+static Code_t Z_RetSubs ();
 
 Code_t ZRetrieveSubscriptions(port,nsubs)
 	u_short port;
@@ -67,20 +67,16 @@ static Code_t Z_RetSubs(notice, nsubs, auth_routine)
 	int *nsubs;
 	int (*auth_routine)();
 {
-	int retval,nrecv,gimmeack;
 	register int i;
+	int retval,nrecv,gimmeack;
 	ZNotice_t retnotice;
 	char *ptr,*end,*ptr2;
-	fd_set read, setup;
-	int nfds;
-	struct timeval tv;
-	int gotone;
 
 	retval = ZFlushSubscriptions();
 
 	if (retval != ZERR_NONE && retval != ZERR_NOSUBSCRIPTIONS)
 		return (retval);
-	
+
 	if (ZGetFD() < 0)
 		if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
 			return (retval);
@@ -100,37 +96,13 @@ static Code_t Z_RetSubs(notice, nsubs, auth_routine)
 	gimmeack = 0;
 	__subscriptions_list = (ZSubscription_t *) 0;
 
-	FD_ZERO(&setup);
-	FD_SET(ZGetFD(), &setup);
-	nfds = ZGetFD() + 1;
-
 	while (!nrecv || !gimmeack) {
-		tv.tv_sec = 0;
-		tv.tv_usec = 500000;
-		for (i=0;i<SRV_TIMEOUT*2;i++) { /* 30 secs in 1/2 sec
-						  intervals */
-			gotone = 0;
-			read = setup;
-			if (select(nfds, &read, (fd_set *) 0,
-				   (fd_set *) 0, &tv) < 0)
-				return (errno);
-			if (FD_ISSET(ZGetFD(), &read))
-			    i--;	/* make sure we time out the
-					   full 30 secs */
-			retval = ZCheckIfNotice(&retnotice,
-						(struct sockaddr_in *)0,
-						ZCompareMultiUIDPred,
-						(char *)&notice->z_multiuid);
-			if (retval == ZERR_NONE) {
-				gotone = 1;
-				break;
-			}
-			if (retval != ZERR_NONOTICE)
-				return(retval);
-		}
-		
-		if (!gotone)
-			return(ETIMEDOUT);
+		retval = Z_WaitForNotice (&retnotice, ZCompareMultiUIDPred,
+					  &notice->z_multiuid, SRV_TIMEOUT);
+		if (retval == ZERR_NONOTICE)
+		  return ETIMEDOUT;
+		else if (retval != ZERR_NONE)
+		  return retval;
 
 		if (retnotice.z_kind == SERVNAK) {
 			ZFreeNotice(&retnotice);
