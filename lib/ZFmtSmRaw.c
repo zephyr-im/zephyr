@@ -28,8 +28,8 @@ Code_t ZFormatSmallRawNotice(notice, buffer, ret_len)
     Code_t retval;
     int hdrlen;
     
-    if ((retval = Z_FormatRawHeader(notice, buffer, Z_MAXHEADERLEN, &hdrlen))
-	!= ZERR_NONE)
+    if ((retval = Z_FormatRawHeader(notice, buffer, Z_MAXHEADERLEN,
+				    &hdrlen, (char **) 0)) != ZERR_NONE)
 	return (retval);
 
     *ret_len = hdrlen+notice->z_message_len;
