@@ -29,6 +29,13 @@ static char rcsid_acl_s_c[] = "$Header$";
  *	ZAccess_t accesstype;
  */
 
+/*
+ * Each restricted class has two ACL's associated with it, one
+ * governing subscriptions and one governing transmission.
+ * This module provides the 'glue' between the standard Athena ACL
+ * routines and the support needed by the Zephyr server.
+ */
+
 #include "zserver.h"
 #include <sys/param.h>
 
