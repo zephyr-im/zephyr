@@ -28,7 +28,6 @@ static char rcsid_server_s_c[] = "$Header$";
  *
  * void server_init()
  *
- *
  * void server_shutdown()
  *
  * void server_timo(which)
@@ -83,7 +82,7 @@ int timo_up = TIMO_UP;
 int timo_tardy = TIMO_TARDY;
 int timo_dead = TIMO_DEAD;
 
-int srv_rexmit_secs = REXMIT_SECS;
+long srv_rexmit_secs = REXMIT_SECS;
 
 /*
  * Initialize the array of servers.  The `limbo' server goes in the first
@@ -251,7 +250,7 @@ struct sockaddr_in *who;
 
 	if (notice->z_kind == SERVACK) {
 		srv_nack_cancel(notice, who);
-		srv_responded(notice, who);
+		srv_responded(who);
 		return;
 	}
 	/* XXX set up a who for the real origin */
@@ -390,7 +389,7 @@ server_hello(which, auth)
 ZServerDesc_t *which;
 int auth;
 {
-	send_msg(&which->zs_addr, ADMIN_HELLO, 0);
+	send_msg(&which->zs_addr, ADMIN_HELLO, auth);
 	(which->zs_numsent)++;
 	return;
 }
@@ -413,9 +412,9 @@ ZServerDesc_t *server;
 	zdbug((LOG_DEBUG, "ADMIN received"));
 
 	if (!strcmp(opcode, ADMIN_HELLO)) {
-		hello_respond(who, ADJUST);
+		hello_respond(who, ADJUST, auth);
 	} else if (!strcmp(opcode, ADMIN_IMHERE)) {
-		srv_responded(notice, who);
+		srv_responded(who);
 	} else if (!strcmp(opcode, ADMIN_SHUTDOWN)) {
 		zdbug((LOG_DEBUG, "server shutdown"));
 		/* we need to transfer all of its hosts to limbo */
@@ -449,6 +448,7 @@ ZServerDesc_t *server;
  * previously unknown server
  */
 
+/*ARGSUSED*/
 void
 server_adispatch(notice, auth, who, server)
 ZNotice_t *notice;
@@ -466,7 +466,7 @@ ZServerDesc_t *server;
 		syslog(LOG_INFO, "new server %s, %d",
 		       inet_ntoa(who->sin_addr),
 		       ntohs(who->sin_port));
-		hello_respond(who, DONT_ADJUST);
+		hello_respond(who, DONT_ADJUST, auth);
 	}
 	return;
 }
@@ -550,13 +550,14 @@ struct in_addr *addr;
  */
 
 static void
-hello_respond(who, adj)
+hello_respond(who, adj, auth)
 struct sockaddr_in *who;
 int adj;
+int auth;
 {
 	register ZServerDesc_t *which;
 
-	send_msg(who, ADMIN_IMHERE, 0);
+	send_msg(who, ADMIN_IMHERE, auth);
 	if (adj != ADJUST)
 		return;
 
@@ -609,12 +610,10 @@ struct sockaddr_in *who;
  * appropriately.
  */
 static void
-srv_responded(notice, who)
-ZNotice_t *notice;
+srv_responded(who)
 struct sockaddr_in *who;
 {
 	register ZServerDesc_t *which = server_which_server(who);
-	int retval;
 
 	if (!which) {
 		syslog(LOG_ERR, "hello input from non-server?!");
@@ -661,7 +660,7 @@ server_shutdown()
 
 	/* don't tell limbo to go away, start at 1*/
 	for (i = 1; i < nservers; i++) {
-		send_msg(&otherservers[i].zs_addr, ADMIN_SHUTDOWN, 0);
+		send_msg(&otherservers[i].zs_addr, ADMIN_SHUTDOWN, 1);
 	}
 	return;
 }
@@ -698,6 +697,9 @@ int auth;
 
 	packlen = sizeof(pack);
 	
+	/* XXX for now, we don't do authentication */
+	auth = 0;
+
 	if ((retval = ZFormatNotice(pnotice, pack, packlen, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "snd_msg format: %s", error_message(retval));
 		return;
@@ -717,6 +719,7 @@ int auth;
 /*
  * Forward the notice to the other servers
  */
+/*ARGSUSED*/
 void
 server_forward(notice, auth, who)
 ZNotice_t *notice;
@@ -809,8 +812,7 @@ struct sockaddr_in *who;
 	     nacked != srv_nacklist;
 	     nacked = nacked->q_forw)
 		if (&otherservers[nacked->na_srv_idx] == which)
-			if (ZCompareUID((caddr_t) &nacked->na_uid,
-				  (caddr_t) &notice->z_uid)) {
+			if (ZCompareUID(&nacked->na_uid, &notice->z_uid)) {
 				timer_reset(nacked->na_timer);
 				xfree(nacked->na_packet);
 				xremque(nacked);

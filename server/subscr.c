@@ -49,6 +49,8 @@ static char rcsid_subscr_s_c[] = "$Header$";
  *	ZNotice_t *notice;
  *	struct sockaddr_in *who;
  *
+ * void subscr_send_subs(client)
+ *	ZClient_t *client;
  */
 
 #include "zserver.h"
@@ -103,7 +105,7 @@ ZNotice_t *notice;
 		     subs2 != who->zct_subs;
 		     subs2 = subs2->q_forw) {
 			/* for each existing subscription */
-			if (subscr_equiv(subs, subs2, notice)) /* duplicate? */
+			if (subscr_equiv(subs, subs2)) /* duplicate? */
 				goto duplicate;
 		}
 
@@ -168,7 +170,7 @@ ZNotice_t *notice;
 		     subs2 != who->zct_subs;)
 			/* for each existing subscription */
 			/* is this what we are canceling? */
-			if (subscr_equiv(subs4, subs2, notice)) { 
+			if (subscr_equiv(subs4, subs2)) { 
 				/* go back, since remque will change things */
 				subs3 = subs2->q_back;
 				xremque(subs2);
@@ -468,16 +470,15 @@ ZClient_t *client;
 	register int i = 0;
 	register ZSubscr_t *sub;
 	char buf[512], buf2[512], *lyst[7 * NUM_FIELDS];
-	int retval;
 	int num = 1;
 
 	zdbug((LOG_DEBUG, "send_subs"));
-	sprintf(buf2, "%d",ntohs(client->zct_sin.sin_port));
+	(void) sprintf(buf2, "%d",ntohs(client->zct_sin.sin_port));
 
 	lyst[0] = buf2;
 
-	if ((retval = ZMakeAscii(buf, sizeof(buf), client->zct_cblock,
-				 sizeof(C_Block))) != ZERR_NONE)
+	if (ZMakeAscii(buf, sizeof(buf), client->zct_cblock,
+				 sizeof(C_Block)) != ZERR_NONE)
 		lyst[++num] = buf;
 
 	bdump_send_list_tcp(SERVACK, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
@@ -543,7 +544,6 @@ register ZClient_t *client;
 ZAcl_t *acl;
 {
 	register ZSubscr_t *subs;
-	char *reresult;
 
 	if (client->zct_subs == NULLZST) {
 		syslog(LOG_WARNING, "cl_match w/ no subs");
@@ -616,9 +616,8 @@ register ZSubscr_t *subs;
  */
 
 static int
-subscr_equiv(s1, s2, notice)
+subscr_equiv(s1, s2)
 register ZSubscr_t *s1, *s2;
-register ZNotice_t *notice;
 {
 	if (strcmp(s1->zst_class,s2->zst_class))
 		return(0);
