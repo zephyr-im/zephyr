@@ -3,14 +3,14 @@ installed Zephyr on all the relevant machines and file servers in your
 environment.  To learn how to configure, build, and install Zephyr,
 read the file INSTALL.
 
-To set up a Zephyr service, follow these steps:
+To set up Zephyr service at a site, follow these steps:
 
 1. Choose the machines you wish to have act as Zephyr servers at your
 site.  Expect the server to be CPU-efficient but to consume a bit more
-memory than it has to (at MIT, with around a thousand concurrent
-users, the Zephyr server's data size is 40MB).  If you have a lot of
-users, the server should have enough memory so that the process swaps
-rarely if at all.
+memory than you might expect (at MIT, with around a thousand
+simultaneous users, the Zephyr server's data size is 40MB).  If you
+have a lot of users, the server should have enough memory so that the
+process doesn't swap.
 
 2a. If you configured Zephyr with Hesiod support, make sure your
 Hesiod realm has a "zephyr.sloc" entry containing a record for each
@@ -26,9 +26,9 @@ If such a record is found, the host manager will resolve
 2b. If you configured Zephyr without Hesiod support, and you have
 multiple Zephyr servers, each server should have a file "server.list"
 in the configuration directory (which is /etc/athena/zephyr if you
-built with --enable-athena, or /usr/local/etc/zephyr if you installed
-Zephyr in /usr/local and didn't use --enable-athena).  This file
-should contain a list of the servers, one per line.
+configured with --enable-athena, or /usr/local/etc/zephyr if you
+installed Zephyr in /usr/local and didn't use --enable-athena).  This
+file should contain a list of the servers, one per line.
 
 3. If you configured Zephyr with Kerberos 4 support, make a service
 key "zephyr.zephyr@<your realm>" and install a srvtab for that service
@@ -36,10 +36,10 @@ as "srvtab" in the configuration directory of each of your zephyr
 servers.
 
 4. Start zephyrd from the system binary directory (/usr/athena/etc if
-you built with --enable-athena, /usr/local/sbin if you installed in
-/usr/local and didn't use --enable-athena).  zephyrd logs as service
-"local6"; watch the syslogs for error messages.  Arrange for zephyrd
-to be run at boot time on your server machines.
+you configured with --enable-athena, /usr/local/sbin if you installed
+in /usr/local and didn't use --enable-athena).  zephyrd logs as
+service "local6"; watch the syslogs for error messages.  Arrange for
+zephyrd to be run at boot time on your server machines.
 
 5. Each client machine should run zhm (the Zephyr Host Manager) from
 the local system binary directory (/etc/athena for --enable-athena,
