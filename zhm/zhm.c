@@ -13,7 +13,7 @@
 
 #include "zhm.h"
 
-static char rcsid_hm_c[] = "$Header$";
+static char rcsid_hm_c[] = "$Id$";
 
 #include <ctype.h>
 #include <signal.h>
@@ -331,7 +331,6 @@ void init_hm()
 	     }
      }
      cli_sin = ZGetDestAddr();
-     cli_sin.sin_port = sp->s_port;
   
      /* Open the server socket */
   
