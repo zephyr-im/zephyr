@@ -43,6 +43,9 @@ static const char rcsid_zephyr_c[] = "$Id$";
 extern int zwgc_debug;
 #endif /* DEBUG */
 
+static int zephyr_inited = 0;
+static unsigned short zephyr_port = 0;
+    
 /*
  *  Internal Routine:
  *
@@ -66,6 +69,25 @@ static string get_zwgc_port_number_filename()
     else {
 	sprintf(buffer, "/tmp/wg.%d", getuid());
 	return(buffer);
+    }
+}
+
+/*
+ *  Write out the port number to the wg file.
+ */
+
+void write_wgfile()
+{
+    char *name = get_zwgc_port_number_filename();
+    FILE *port_file;
+
+    port_file = fopen(name, "w");
+    if (port_file) {
+	fprintf(port_file, "%d\n", zephyr_port);
+	fclose(port_file);
+    } else {
+	fprintf(stderr, "zwgc: error while opening %s for writing: ", name);
+	perror("");
     }
 }
 
@@ -98,8 +120,6 @@ static void handle_zephyr_input(notice_handler)
     }
 }
 
-static int zephyr_inited = 0;
-    
 /*
  *
  */
@@ -107,7 +127,6 @@ static int zephyr_inited = 0;
 void zephyr_init(notice_handler)
      void (*notice_handler)();
 {
-    unsigned short port = 0;           /* Use any old port */
     char *temp;
     char *exposure;
     char *tty = NULL;
@@ -117,14 +136,13 @@ void zephyr_init(notice_handler)
      * Initialize zephyr.  If error, print error message & exit.
      */
     FATAL_TRAP( ZInitialize(), "while initializing Zephyr" );
-    FATAL_TRAP( ZOpenPort(&port), "while opening Zephyr port" );
+    FATAL_TRAP( ZOpenPort(&zephyr_port), "while opening Zephyr port" );
 
     /*
      * Save away our port number in a special place so that zctl and
      * other clients can send us control messages: <<<>>>
      */
     temp = get_zwgc_port_number_filename();
-    errno = 0;
     port_file = fopen(temp, "r");
     if (port_file) {
 	fprintf(stderr, "zwgc: windowgram file already exists.  If you are\n");
@@ -132,14 +150,7 @@ void zephyr_init(notice_handler)
 	fprintf(stderr, "zwgc: and try again.\n");
 	exit(1);
     }
-    port_file = fopen(temp, "w");
-    if (port_file) {
-	fprintf(port_file, "%d\n", port);
-	fclose(port_file);
-    } else {
-	fprintf(stderr, "zwgc: error while opening %s for writing: ", temp);
-	perror("");
-    }
+    write_wgfile();
 
     /* Set hostname and tty for locations.  If we support X, use the
      * display string for the default tty name. */

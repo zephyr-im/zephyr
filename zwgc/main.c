@@ -461,6 +461,12 @@ static RETSIGTYPE signal_child()
   errno = old_errno;
 }
 
+/* rewrite the wgfile in case it has gone away */
+static RETSIGTYPE signal_usr1()
+{
+    write_wgfile();
+}
+
 static void setup_signals(dofork)
      int dofork;
 {
@@ -493,6 +499,9 @@ static void setup_signals(dofork)
     sa.sa_handler = signal_child;
     sigaction(SIGCHLD, &sa, (struct sigaction *)0);
 
+    sa.sa_handler = signal_usr1;
+    sigaction(SIGUSR1, &sa, (struct sigaction *)0);
+
 #else /* !POSIX */
     if (dofork) {
 	/* Ignore keyboard signals if forking.  Bad things will happen. */
@@ -510,6 +519,7 @@ static void setup_signals(dofork)
     signal(SIGHUP, signal_exit);
     signal(SIGCHLD, signal_child);
     signal(SIGPIPE, SIG_IGN);		/* so that Xlib gets an error */
+    signal(SIGUSR1, signal_usr1);
 #endif
 }
 
