@@ -1,14 +1,35 @@
-/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#	Copyright 1988,1991 Massachusetts Institute of Technology.
 /**/#
 /**/#	For copying and distribution information, see the file
 /**/#	"mit-copyright.h". 
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Header$
+/**/#	$Zephyr: Imakefile,v 1.3 89/05/30 17:26:29 jtkohl Exp $
 /**/#
 SRCDIR= ${SRCTOP}/include/zephyr
 HDRS= acl.h mit-copyright.h zephyr.h zephyr_conf.h zephyr_internal.h zsyslog.h
 CODE= ${HDRS} Imakefile
 
-all::
+all:: zephyr_paths.h
+
+depend:: zephyr_paths.h
+
+#ifdef KERBEROS
+HaveKerberos=yes
+#endif
+
+#ifdef HESIOD
+HaveHesiod=yes
+#endif
+
+#define export_as(var,name)	name=$(var) ; export name
+#define export_var(var)		export_as(var,var)
+
+zephyr_paths.h: $(BUILDTOP)/config/config.Imakefile
+	@ export_var(ETCATHDIR) ; \
+	export_as (ACLDIR,LIBDIR) ; \
+	export_var(CLIENTDIR) ; \
+	export_var(HaveKerberos) ; \
+	export_var(HaveHesiod) ; \
+	$(SRCTOP)/tools/makepaths > zephyr_paths.h
