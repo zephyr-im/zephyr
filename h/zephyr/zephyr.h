@@ -20,65 +20,80 @@
 
 #include <errno.h>
 #include <sys/types.h>
+#ifndef IPPROTO_MAX	/* Make sure not already included */
 #include <netinet/in.h>
+#endif
 #include <sys/time.h>
 #include <stdio.h>
+#ifdef KERBEROS
 #include <krb.h>
+#endif
 
 #define ZVERSIONHDR	"ZEPH"
 #define ZVERSIONMAJOR	0
-#define ZVERSIONMINOR	1
+#define ZVERSIONMINOR	2
 
 /* Types */
 
-	/* Maximum packet length */
-#define Z_MAXPKTLEN	        1024
+	/* Maximum size packet we can send */
+#define Z_MAXPKTLEN		1024
 
 	/* Packet */
 typedef char ZPacket_t[Z_MAXPKTLEN];
 
+	/* Maximum size for a notice header */
+#define Z_MAXHEADERLEN		800
+
+	/* Maximum number of unknown fields in ZNotice_t */
+#define Z_MAXOTHERFIELDS	10
+
 	/* Packet type */
 typedef enum { UNSAFE, UNACKED, ACKED, HMACK, HMCTL, SERVACK, SERVNAK,
-		       CLIENTACK, STAT } ZNotice_Kind_t;
+		   CLIENTACK, STAT } ZNotice_Kind_t;
 
 	/* Unique ID format */
 typedef struct _ZUnique_Id_t {
-	struct	in_addr zuid_addr;
-	struct	timeval	tv;
+    struct	in_addr zuid_addr;
+    struct	timeval	tv;
 } ZUnique_Id_t;
 
 	/* Checksum */
 typedef u_long ZChecksum_t;
 
-#define ZNUMFIELDS	15
+#define ZNUMFIELDS	17
 
 	/* Notice definition */
 typedef struct _ZNotice_t {
-	char		*z_version;
-	ZNotice_Kind_t	z_kind;
-	ZUnique_Id_t	z_uid;
+    char		*z_packet;
+    char		*z_version;
+    ZNotice_Kind_t	z_kind;
+    ZUnique_Id_t	z_uid;
 #define z_sender_addr	z_uid.zuid_addr
-	struct		timeval z_time;
-	u_short		z_port;
-	int		z_auth;
-	int		z_authent_len;
-	char		*z_ascii_authent;
-	char		*z_class;
-	char		*z_class_inst;
-	char		*z_opcode;
-	char		*z_sender;
-	char		*z_recipient;
-	char		*z_default_format;
-	ZChecksum_t	z_checksum;
-	caddr_t		z_message;
-	int		z_message_len;
+    struct		timeval z_time;
+    u_short		z_port;
+    int			z_auth;
+    int			z_authent_len;
+    char		*z_ascii_authent;
+    char		*z_class;
+    char		*z_class_inst;
+    char		*z_opcode;
+    char		*z_sender;
+    char		*z_recipient;
+    char		*z_default_format;
+    char		*z_multinotice;
+    ZUnique_Id_t	z_multiuid;
+    ZChecksum_t		z_checksum;
+    int			z_num_other_fields;
+    char		*z_other_fields[Z_MAXOTHERFIELDS];
+    caddr_t		z_message;
+    int			z_message_len;
 } ZNotice_t;
 
 	/* Subscription structure */
-typedef struct _ZSubscription_t {
-	char		*recipient;
-	char		*class;
-	char		*classinst;
+typedef struct _ZSubscriptions_t {
+    char	*recipient;
+    char	*class;
+    char	*classinst;
 } ZSubscription_t;
 
 	/* Function return code */
@@ -86,9 +101,9 @@ typedef int Code_t;
 
 	/* Locations structure */
 typedef struct _ZLocations_t {
-	char		*host;
-	char		*time;
-	char		*tty;
+    char	*host;
+    char	*time;
+    char	*tty;
 } ZLocations_t;
 
 	/* Socket file descriptor */
@@ -103,8 +118,10 @@ extern struct sockaddr_in __HM_addr;
 	/* Kerberos error table base */
 extern int krb_err_base;
 
+#ifdef KERBEROS
 	/* Session key for last parsed packet - server only */
 extern C_Block __Zephyr_session;
+#endif
 
 	/* ZCompareUIDPred definition */
 extern int ZCompareUIDPred();
@@ -116,8 +133,8 @@ extern int ZCompareUIDPred();
 #define ZGetFD() (__Zephyr_fd)
 
 	/* ZQLength macro */
-extern int __Q_Length;
-#define ZQLength() (__Q_Length)
+extern int __Q_CompleteLength;
+#define ZQLength() (__Q_CompleteLength)
 
 	/* ZGetDestAddr() macro */
 #define ZGetDestAddr() (__HM_addr)
@@ -127,13 +144,13 @@ extern char __Zephyr_realm[];
 #define ZGetRealm() (__Zephyr_realm)
 
 	/* Maximum queue length */
-#define Z_MAXQLEN		30
+#define Z_MAXQLEN 		30
 
 	/* UNIX error codes */
 extern int errno;
 
 	/* Random declarations */
-extern char *ZGetSender(),*ZGetVariable();
+extern char *ZGetSender(), *ZGetVariable();
 
 	/* Successful function return */
 #define ZERR_NONE		0
