@@ -98,6 +98,7 @@ static SIGNAL_RETURN_TYPE bye P((int sig)), dbug_on P((int)),
 					dbug_off P((int));
 static SIGNAL_RETURN_TYPE dump_db P((int)), reset P((int)), reap P((int));
 static SIGNAL_RETURN_TYPE dump_strings P((int));
+static void read_from_dump P((char *dumpfile));
 #ifndef DEBUG
 static void detach P((void));
 #endif /* DEBUG */
@@ -132,6 +133,7 @@ u_long npackets;			/* number of packets processed */
 long uptime;				/* when we started operations */
 static int nofork;
 struct in_addr my_addr;
+char *bdump_version = "1";
 
 int
 main(argc, argv)
@@ -141,6 +143,8 @@ main(argc, argv)
 	int nfound;			/* #fildes ready on select */
 	fd_set readable;
 	struct timeval *tvp;
+	int init_from_dump = 0;
+	char *dumpfile;
 #ifdef _POSIX_SOURCE
 	struct sigaction action;
     /* Set up sigaction structure */
@@ -161,7 +165,7 @@ main(argc, argv)
 
 	/* process arguments */
 	
-	while ((optchar = getopt(argc, argv, "dsn")) != EOF) {
+	while ((optchar = getopt(argc, argv, "dsnv:f:")) != EOF) {
 		switch(optchar) {
 		case 'd':
 			zdebug = 1;
@@ -173,6 +177,13 @@ main(argc, argv)
 #endif
 		case 'n':
 			nofork = 1;
+			break;
+		case 'v':
+			bdump_version = optarg;
+			break;
+		case 'f':
+			init_from_dump = 0;
+			dumpfile = optarg;
 			break;
 		case '?':
 		default:
@@ -220,6 +231,9 @@ main(argc, argv)
 
 	if (initialize())
 		exit(1);
+
+	if (init_from_dump)
+	  read_from_dump(dumpfile);
 
 	/* Seed random number set.  */
 	srandom (getpid () ^ time (0));
@@ -415,8 +429,8 @@ initialize()
 	matchall_sub.q_forw = &matchall_sub;
 	matchall_sub.q_back = &matchall_sub;
 	matchall_sub.zst_dest.classname = wildcard_class;
-	matchall_sub.zst_dest.inst = empty;
-	matchall_sub.zst_dest.recip = empty;
+	matchall_sub.zst_dest.inst = dup_zstring(empty);
+	matchall_sub.zst_dest.recip = dup_zstring(empty);
 
 	set_ZDestination_hash(&matchall_sub.zst_dest);
 	/* restrict certain classes */
@@ -490,9 +504,9 @@ static void
 usage()
 {
 #ifdef DEBUG
-	fprintf(stderr,"Usage: %s [-d] [-s] [-n]\n",programname);
+	fprintf(stderr,"Usage: %s [-d] [-s] [-n] [-f dumpfile]\n",programname);
 #else
-	fprintf(stderr,"Usage: %s [-d] [-n]\n",programname);
+	fprintf(stderr,"Usage: %s [-d] [-n] [-f dumpfile]\n",programname);
 #endif /* DEBUG */
 	exit(2);
 }
@@ -595,7 +609,7 @@ dump_db(int sig)
 static SIGNAL_RETURN_TYPE
 reset(int sig)
 {
-#if 0
+#if 1
 	zdbug((LOG_DEBUG,"reset()"));
 #endif
 	doreset = 1;
@@ -672,3 +686,10 @@ detach()
 	(void) close(i);
 }
 #endif
+
+static void
+read_from_dump(dumpfile)
+     char *dumpfile;
+{
+  return;
+}
