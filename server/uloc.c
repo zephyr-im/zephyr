@@ -39,8 +39,7 @@ static char rcsid_uloc_s_c[] = "$Header$";
  * void uloc_hflush(addr)
  *	struct in_addr *addr;
  *
- * void uloc_send_locations(server, host)
- *	ZServerDesc_t *server;
+ * void uloc_send_locations(host)
  *	ZHostList_t *host;
  */
 
@@ -268,6 +267,7 @@ ZHostList_t *host;
 	register int i;
 	register struct in_addr *haddr = &host->zh_addr.sin_addr;
 	char *lyst[NUM_FIELDS];
+	Code_t retval;
 
 	for (i = 0, loc = locations; i < num_locs; i++, loc++) {
 		if (loc->zlt_addr.s_addr != haddr->s_addr)
@@ -279,10 +279,18 @@ ZHostList_t *host;
 #else
 		lyst[1] = loc->zlt_time;
 #endif notdef
-		bdump_send_list_tcp(ACKED, bdump_sin.sin_port, LOGIN_CLASS,
-			      loc->zlt_user,
-			      (loc->zlt_visible == VISIBLE) ? LOGIN_USER_LOGIN : LOGIN_QUIET_LOGIN,
-			      myname, "", lyst, NUM_FIELDS);
+
+		if ((retval = bdump_send_list_tcp(ACKED, bdump_sin.sin_port,
+						  LOGIN_CLASS, loc->zlt_user,
+						  (loc->zlt_visible == VISIBLE)
+						  ? LOGIN_USER_LOGIN
+						  : LOGIN_QUIET_LOGIN,
+						  myname, "", lyst,
+						  NUM_FIELDS)) != ZERR_NONE) {
+			syslog(LOG_ERR, "uloc_send_locs: %s",
+			       error_message(retval));
+			return;
+		}
 	}
 	return;
 }
