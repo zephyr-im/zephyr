@@ -47,7 +47,7 @@ void send_message()
 	  XtCallActionProc(toplevel, "CloseSend", NULL, NULL, 0);
 
      if (defs.clear_on_send)
-	  XTCallActionProc(toplevel, "ClearEditor", NULL, NULL, 0);
+	  XtCallActionProc(toplevel, "ClearEditor", NULL, NULL, 0);
 }
 
 void edit_set_title(dest)
