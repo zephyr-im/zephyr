@@ -7,10 +7,21 @@
 /**/#	$Author$
 /**/#	$Header$
 /**/#
+
+#if defined(DO_SYSLOG) && defined(SYSLOG_COMPAT42)
+SYSLOG_LIB= ../clients/syslogd/syslog.o
+#else
+SYSLOG_LIB=
+#endif
+
 SRCS= zhm.c zhm_server.c zhm_client.c queue.c
-LIBS= ${COMERR_LIB} ${ZEPHYR_LIB} ${KRB_LIB} ${HES_LIB}
+LIBS= ${SYSLOG_LIB} ${COMERR_LIB} ${ZEPHYR_LIB} ${KRB_LIB} ${HES_LIB}
 LINTLIBS= ${COMERR_LINTLIB} ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${HES_LINTLIB}
 OBJS= zhm.o zhm_server.o zhm_client.o queue.o
+HDRS= zhm.h
+
+SRCDIR= ${SRCTOP}/zhm
+CODE= ${HDRS} ${SRCS} Imakefile
 
 normal_obj_rule()
 
