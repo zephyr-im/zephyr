@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_exec_c[] = "$Id$";
+static const char rcsid_exec_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -33,10 +35,6 @@ static char rcsid_exec_c[] = "$Id$";
 #include "port.h"
 #include "variables.h"
 #include "notice.h"
-
-#if !defined(__STDC__) && !defined(const)
-#define const
-#endif
 
 static int exec_subtree(), exec_fields();
 
@@ -371,6 +369,7 @@ static struct _Opstuff {
     { exec_noop },                         /* substitute */
     { exec_noop },                         /* protect */
     { exec_noop },                         /* verbatim */
+    { exec_noop },                         /* stylestrip */
     { exec_noop },                         /* getenv */
     { exec_noop },                         /* upcase */
     { exec_noop },                         /* downcase */

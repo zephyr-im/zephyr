@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_standard_ports_c[] = "$Id$";
+static const char rcsid_standard_ports_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -24,22 +26,20 @@ static char rcsid_standard_ports_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
 #include "new_memory.h"
 #include "port.h"
 #include "variables.h"
 #include "error.h"
+#include "main.h"
 #include <zephyr/zephyr.h>
 
-#ifndef ZWGCPATH
-#define ZWGCPATH "/usr/etc/zwgc"
-#endif
-
 extern string tty_filter();
-extern char *X_driver();
-
-extern int X_driver_init();
 extern int tty_filter_init();
+
+#ifndef X_DISPLAY_MISSING
+extern char *X_driver();
+extern int X_driver_init();
+#endif
 
 extern void usage();
 
@@ -128,8 +128,12 @@ static struct standard_port_info {
     char *(*function)();
     int setup_arg;
 } standard_port_info_table[] = {
+#ifndef X_DISPLAY_MISSING
 { "X",            DEFAULT_OK, X_driver_init,      OUTPUT_PROC, X_driver, 0},
 { "tty",          DEFAULT_NOTOK, tty_filter_init, OUTPUT_PROC, tty_driver,  0},
+#else
+{ "tty",          DEFAULT_OK, tty_filter_init, OUTPUT_PROC, tty_driver,  0},
+#endif
 { "plain",        DEFAULT_NOTOK, tty_filter_init, OUTPUT_PROC, plain_driver, 0},
 { "stdout",       DEFAULT_NOTOK, NULL,            OUTPUT_DESC, NULL, 1},
 { "stderr",       DEFAULT_NOTOK, NULL,            OUTPUT_DESC, NULL, 2},
@@ -281,7 +285,7 @@ void init_standard_ports(pargc, argv)
 	    if (fallback == -1)		/* complain, since indeterminate */
 		ERROR2(
 "To receive Zephyrgrams, (type `%s -ttymode').\n",
-		      ZWGCPATH);
+		      progname);
 	    exit(1);
 	}
     } else

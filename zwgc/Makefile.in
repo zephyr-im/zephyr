@@ -1,0 +1,140 @@
+SHELL = /bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+datadir=@datadir@
+confdir=@confdir@
+sbindir=@sbindir@
+lsbindir=@lsbindir@
+
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
+bindir=${exec_prefix}/bin
+
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+BUILDTOP=../..
+VPATH=@srcdir@
+CC=@CC@
+YACC=@YACC@
+INSTALL=@INSTALL@
+INSTANTIATE=${srcdir}/instantiate
+
+DEBUG=-O
+CFLAGS=${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
+	-I${BUILDTOP}/h -I${srcdir} -I. @X_CFLAGS@ @CPPFLAGS@
+YFLAGS=-d
+LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @X_LIBS@ @LDFLAGS@
+LIBS=-lzephyr @LIBS@ -lcom_err @X_PRE_LIBS@ @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
+     @TLIB@ @RLIB@
+
+OBJS=	port_dictionary.o pointer_dictionary.o unsigned_long_dictionary.o \
+	string_dictionary.o int_dictionary.o string_dictionary_aux.o \
+	parser.o lexer.o node.o exec.o buffer.o main.o zephyr.o X_driver.o \
+	substitute.o port.o xshow.o mux.o eval.o subscriptions.o notice.o \
+	xcut.o regexp.o character_class.o text_operations.o file.o error.o \
+	variables.o formatter.o X_fonts.o X_gram.o tty_filter.o \
+	standard_ports.o xselect.o xmark.o xrevstack.o xerror.o \
+	new_string.o new_memory.o
+
+all: zwgc
+
+zwgc: ${OBJS} ${BUILDTOP}/lib/zephyr/libzephyr.a @ETDEP@
+	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+
+port_dictionary.c port_dictionary.h: dictionary.c dictionary.h
+	${INSTANTIATE} ${srcdir} dictionary port port.h
+
+pointer_dictionary.c pointer_dictionary.h: dictionary.c dictionary.h
+	${INSTANTIATE} ${srcdir} dictionary pointer pointer.h
+
+unsigned_long_dictionary.c unsigned_long_dictionary.h: dictionary.c \
+							dictionary.h
+	${INSTANTIATE} ${srcdir} dictionary unsigned_long unsigned_long.h
+
+string_dictionary.c string_dictionary.h: dictionary.c dictionary.h
+	${INSTANTIATE} ${srcdir} dictionary string new_string.h
+
+int_dictionary.c int_dictionary.h: dictionary.c dictionary.h
+	${INSTANTIATE} ${srcdir} dictionary int
+
+char_stack.h: stack.h
+	${INSTANTIATE} ${srcdir} stack char
+
+string_stack.h: stack.h
+	${INSTANTIATE} ${srcdir} stack string
+
+xmode_stack.h: stack.h
+	${INSTANTIATE} ${srcdir} stack xmode
+
+check:
+
+install: zwgc
+	${INSTALL} -m 755 -s zwgc ${DESTDIR}${bindir}
+	${INSTALL} -m 644 ${srcdir}/zwgc.1 ${DESTDIR}${mandir}/man1
+	${INSTALL} -m 644 ${srcdir}/zwgc.desc ${DESTDIR}${datadir}
+	${INSTALL} -m 644 ${srcdir}/zwgc_resources ${DESTDIR}${datadir}
+	${INSTALL} -m 644 zephyr.vars ${DESTDIR}${confdir}
+
+clean:
+	rm -f ${OBJS} zwgc port_dictionary.[ch] pointer_dictionary.[ch]
+	rm -f unsigned_long_dictionary.[ch] string_dictionary.[ch]
+	rm -f int_dictionary.[ch] char_stack.h string_stack.h xmode_stack.h
+
+${OBJS}: ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
+zephyr.o: ${BUILDTOP}/h/zephyr/zephyr.h ${BUILDTOP}/h/zephyr/zephyr_err.h
+
+port_dictionary.o: port.h string_stack.h new_string.h new_memory.h
+pointer_dictionary.o: pointer.h new_string.h new_memory.h
+unsigned_long_dictionary.o: new_string.h new_memory.h
+string_dictionary.o: new_string.h new_memory.h
+int_dictionary.o: new_string.h new_memory.h
+X_driver.o: X_driver.h new_memory.h formatter.h mux.h variables.h error.h
+X_driver.o: X_gram.h xselect.h unsigned_long_dictionary.h
+X_fonts.o: X_fonts.h new_memory.h new_string.h error.h pointer_dictionary.h
+X_fonts.o: zwgc.h
+X_gram.o: X_gram.h xmark.h zwgc.h X_driver.h X_fonts.h error.h new_string.h
+X_gram.o: xrevstack.h xerror.h xselect.h
+browser.o: zwgc.h
+buffer.o: new_memory.h buffer.h
+character_class.o: character_class.h
+display.o: new_memory.h new_string.h variables.h display.h
+eval.o: new_memory.h node.h eval.h substitute.h port.h buffer.h regexp.h
+eval.o: text_operations.h zwgc.h variables.h
+exec.o: new_memory.h exec.h eval.h node.h buffer.h port.h variables.h notice.h
+file.o: new_memory.h new_string.h error.h
+formatter.o: new_memory.h char_stack.h string_dictionary.h formatter.h
+formatter.o: text_operations.h
+lexer.o: new_memory.h new_string.h int_dictionary.h lexer.h parser.h y.tab.h
+main.o: new_memory.h zwgc.h parser.h node.h exec.h zephyr.h notice.h
+main.o: subscriptions.h file.h mux.h port.h variables.h main.h
+mux.o: mux.h error.h zwgc.h pointer.h
+new_memory.o: new_memory.h int_dictionary.h
+new_string.o: new_memory.h
+node.o: new_memory.h node.h
+notice.o: new_memory.h error.h variables.h notice.h
+port.o: new_string.h port_dictionary.h port.h notice.h variables.h
+regexp.o: regexp.h
+standard_ports.o: new_memory.h port.h variables.h error.h main.h
+string_dictionary_aux.o: new_memory.h string_dictionary.h
+subscriptions.o: new_memory.h new_string.h int_dictionary.h zwgc.h
+subscriptions.o: subscriptions.h error.h file.h main.h
+substitute.o: new_memory.h lexer.h substitute.h
+text_operations.o: new_memory.h text_operations.h char_stack.h
+tty_filter.o: new_memory.h new_string.h string_dictionary_aux.h formatter.h
+tty_filter.o: zwgc.h error.h
+variables.o: new_memory.h notice.h string_dictionary_aux.h variables.h
+xcut.o: new_memory.h new_string.h X_gram.h zwgc.h xselect.h xmark.h error.h
+xcut.o: xrevstack.h
+xerror.o: mux.h
+xmark.o: X_gram.h X_fonts.h xmark.h new_string.h
+xrevstack.o: X_gram.h zwgc.h
+xselect.o: new_string.h xselect.h
+xshow.o: pointer_dictionary.h new_memory.h formatter.h variables.h zwgc.h
+xshow.o: X_fonts.h X_gram.h xmode_stack.h
+zephyr.o: new_string.h zephyr.h error.h mux.h subscriptions.h variables.h
+zephyr.o: pointer.h X_driver.h
+
+.PHONY: all check install clean
+

@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xcut_c[] = "$Id$";
+static const char rcsid_xcut_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -24,13 +26,13 @@ static char rcsid_xcut_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
+#ifndef X_DISPLAY_MISSING
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include <sys/time.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "X_gram.h"
-#include <stdio.h>
 #include "zwgc.h"
 #include "xselect.h"
 #include "xmark.h"
@@ -362,3 +364,6 @@ void xcut(dpy,event,desc_context)
 
     XFlush(dpy);
 }
+
+#endif
+

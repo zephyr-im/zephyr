@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_character_class_c[] = "$Id$";
+static const char rcsid_character_class_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>

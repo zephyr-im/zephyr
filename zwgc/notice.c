@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_notice_c[] = "$Id$";
+static const char rcsid_notice_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -308,7 +310,7 @@ char *decode_notice(notice)
      * Convert host notice sent from to ascii:
      */
     if (notice->z_sender_addr.s_addr) {
-	fromhost = gethostbyaddr(&(notice->z_sender_addr),
+	fromhost = gethostbyaddr((char *) &(notice->z_sender_addr),
 				 sizeof(struct in_addr), AF_INET);
 	var_set_variable("fromhost", fromhost ? fromhost->h_name :
 			 inet_ntoa(notice->z_sender_addr));

@@ -19,6 +19,10 @@ static char rcsid_hm_server_c[] = "$Header$";
 #endif /* SABER */
 #endif /* lint */
 
+static void boot_timeout __P((void *));
+
+static Timer *boot_timer = NULL;
+
 int serv_loop = 0;
 extern u_short cli_port;
 extern struct sockaddr_in serv_sin, from;
@@ -59,8 +63,7 @@ char *op;
 	  Zperr(ret);
 	  com_err("hm", ret, "sending startup notice");
      }
-     timeout_type = BOOTING;
-     (void)alarm(SERV_TIMEOUT);
+     boot_timer = timer_set_rel(SERV_TIMEOUT, boot_timeout, NULL);
 }
 
 /* Argument is whether we are detaching or really going down */
@@ -165,121 +168,130 @@ char *sugg_serv;
 server_manager(notice)
 ZNotice_t *notice;
 {
-     if (memcmp((char *)&serv_sin.sin_addr, (char *)&from.sin_addr, 4) ||
-	 (serv_sin.sin_port != from.sin_port)) {
-	  syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
-     } else {
-	  /* This is our server, handle the notice */
-	  booting = 0;
-	  DPR ("A notice came in from the server.\n");
-	  nserv++;
-	  switch(notice->z_kind) {
-	  case HMCTL:
-	       hm_control(notice);
-	       break;
-	  case SERVNAK:
-	  case SERVACK:
-	       send_back(notice);
-	       break;
-	  default:
-	       syslog (LOG_INFO, "Bad notice kind!?");
-	       break;
-	  }
-     }
+    if (memcmp((char *)&serv_sin.sin_addr, (char *)&from.sin_addr, 4) ||
+	(serv_sin.sin_port != from.sin_port)) {
+	syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
+    } else {
+	/* This is our server, handle the notice */
+	if (boot_timer) {
+	    timer_reset(boot_timer);
+	    boot_timer = NULL;
+	}
+	DPR ("A notice came in from the server.\n");
+	nserv++;
+	switch(notice->z_kind) {
+	case HMCTL:
+	    hm_control(notice);
+	    break;
+	case SERVNAK:
+	case SERVACK:
+	    send_back(notice);
+	    break;
+	default:
+	    syslog (LOG_INFO, "Bad notice kind!?");
+	    break;
+	}
+    }
 }
 
 hm_control(notice)
 ZNotice_t *notice;
 {
-     Code_t ret;
-     struct hostent *hp;
-     char suggested_server[64];
-     unsigned long addr;
+    Code_t ret;
+    struct hostent *hp;
+    char suggested_server[64];
+    unsigned long addr;
      
-     DPR("Control message!\n");
-     if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN)) {
-	  if (notice->z_message_len) {
-	       addr = inet_addr(notice->z_message);
-	       if ((hp = gethostbyaddr((char *)&addr, sizeof(addr),
-				       AF_INET)) != NULL) {
-		    (void)strcpy(suggested_server, hp->h_name);
-		    new_server(suggested_server);
-	       } else
-		    new_server((char *)NULL);
-	  }
-	  else
-	       new_server((char *)NULL);
-     } else if (!strcmp(notice->z_opcode, SERVER_PING)) {
-	  if (no_server)
-	       (void)alarm(0);
-	  notice->z_kind = HMACK;
-	  if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
-	       Zperr(ret);
-	       com_err("hm", ret, "setting destination");
-	  }
-	  if ((ret = send_outgoing(notice)) != ZERR_NONE) {
-	       Zperr(ret);
-	       com_err("hm", ret, "sending ACK");
-	  }
-	  if (no_server) {
-	       no_server = 0;
-	       retransmit_queue(&serv_sin);
-	  }
-     } else
-	  syslog (LOG_INFO, "Bad control message.");
+    DPR("Control message!\n");
+    if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN)) {
+	if (notice->z_message_len) {
+	    addr = inet_addr(notice->z_message);
+	    hp = gethostbyaddr((char *) &addr, sizeof(addr), AF_INET);
+	    if (hp != NULL) {
+		strcpy(suggested_server, hp->h_name);
+		new_server(suggested_server);
+	    } else {
+		new_server(NULL);
+	    }
+	} else {
+	    new_server((char *)NULL);
+	}
+    } else if (!strcmp(notice->z_opcode, SERVER_PING)) {
+	notice->z_kind = HMACK;
+	if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
+	    Zperr(ret);
+	    com_err("hm", ret, "setting destination");
+	}
+	if ((ret = send_outgoing(notice)) != ZERR_NONE) {
+	    Zperr(ret);
+	    com_err("hm", ret, "sending ACK");
+	}
+	if (no_server) {
+	    no_server = 0;
+	    retransmit_queue(&serv_sin);
+	}
+    } else {
+	syslog (LOG_INFO, "Bad control message.");
+    }
 }
 
 send_back(notice)
 ZNotice_t *notice;
 {
-     ZNotice_Kind_t kind;
-     struct sockaddr_in repl;
-     Code_t ret;
+    ZNotice_Kind_t kind;
+    struct sockaddr_in repl;
+    Code_t ret;
   
-     if (no_server)
-	  (void)alarm(0);
-     if (!strcmp(notice->z_opcode, HM_BOOT) ||
-	 !strcmp(notice->z_opcode, HM_ATTACH)) {
-	  /* ignore message, just an ack from boot, but exit if we
-	   * are rebooting.
-	   */
-	  if (rebootflag)
-	       die_gracefully();
-     } else {
-	  if (remove_notice_from_queue(notice, &kind,
-				       &repl) != ZERR_NONE) {
-	       syslog (LOG_INFO, "Hey! This packet isn't in my queue!");
-	  } else {
-	       /* check if client wants an ACK, and send it */
-	       if (kind == ACKED) {
-		    DPR2 ("Client ACK port: %u\n", ntohs(repl.sin_port));
-		    if ((ret = ZSetDestAddr(&repl)) != ZERR_NONE) {
-			 Zperr(ret);
-			 com_err("hm", ret, "setting destination");
-		    }
-		    if ((ret = send_outgoing(notice)) != ZERR_NONE) {
-			 Zperr(ret);
-			 com_err("hm", ret, "sending ACK");
-		    }
-	       }
-	  }
-     }
-     if (no_server) {
-	  no_server = 0;
-	  retransmit_queue(&serv_sin);
-     }
+    if (!strcmp(notice->z_opcode, HM_BOOT) ||
+	!strcmp(notice->z_opcode, HM_ATTACH)) {
+	/* ignore message, just an ack from boot, but exit if we
+	 * are rebooting.
+	 */
+	if (rebootflag)
+	    die_gracefully();
+    } else {
+	if (remove_notice_from_queue(notice, &kind, &repl) != ZERR_NONE) {
+	    syslog (LOG_INFO, "Hey! This packet isn't in my queue!");
+	} else {
+	    /* check if client wants an ACK, and send it */
+	    if (kind == ACKED) {
+		DPR2 ("Client ACK port: %u\n", ntohs(repl.sin_port));
+		if ((ret = ZSetDestAddr(&repl)) != ZERR_NONE) {
+		    Zperr(ret);
+		    com_err("hm", ret, "setting destination");
+		}
+		if ((ret = send_outgoing(notice)) != ZERR_NONE) {
+		    Zperr(ret);
+		    com_err("hm", ret, "sending ACK");
+		}
+	    }
+	}
+    }
+    if (no_server) {
+	no_server = 0;
+	retransmit_queue(&serv_sin);
+    }
 }
 
 new_server(sugg_serv)
 char *sugg_serv;
 {
-     no_server = 1;
-     syslog (LOG_INFO, "Server went down, finding new server.");
-     send_flush_notice(HM_DETACH);
-     find_next_server(sugg_serv);
-     if (booting) {
-	  send_boot_notice(HM_BOOT);
-	  deactivated = 0;
-     } else
-	  send_boot_notice(HM_ATTACH);
+    no_server = 1;
+    syslog (LOG_INFO, "Server went down, finding new server.");
+    send_flush_notice(HM_DETACH);
+    find_next_server(sugg_serv);
+    if (booting) {
+	send_boot_notice(HM_BOOT);
+	deactivated = 0;
+    } else {
+	send_boot_notice(HM_ATTACH);
+    }
+    disable_queue_retransmits();
 }
+
+static void boot_timeout(arg)
+void *arg;
+{
+    new_server(NULL);
+}
+

@@ -12,15 +12,18 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xrevstack_c[] = "$Id$";
+static const char rcsid_xrevstack_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
 
-#ifdef REVSTACK
+#ifndef X_DISPLAY_MISSING
+
+#ifndef TRUEREVSTACK
 #include "X_gram.h"
-#include <stdio.h>
 
 x_gram *bottom_gram = NULL;
 x_gram *unlinked = NULL;
@@ -260,3 +263,6 @@ x_gram *gram;
 }
 
 #endif /* TRUEREVSTACK */
+
+#endif /* X_DISPLAY_MISSING */
+

@@ -15,14 +15,23 @@
  */
 
 #include <zephyr/mit-copyright.h>
-#include <zephyr/zephyr.h>
-#include <zephyr/zsyslog.h>
+#include <internal.h>
 #include <sys/socket.h>
-#include <sys/param.h>
-#include <netdb.h>
-#ifdef lint
-#include <sys/uio.h>			/* make lint shut up */
-#endif /* lint */
+#include <sys/time.h>
+#include "timer.h"
+
+/* These macros are for insertion into and deletion from a singly-linked list
+ * with back pointers to the previous element's next pointer.  In order to
+ * make these macros act like expressions, they use the comma operator for
+ * sequenced evaluations of assignment, and "a && b" for "evaluate assignment
+ * b if expression a is true". */
+#define LIST_INSERT(head, elem) \
+	((elem)->next = *(head), \
+	 (*head) && ((*(head))->prev_p = &(elem)->next), \
+	 (*head) = (elem), (elem)->prev_p = (head))
+#define LIST_DELETE(elem) \
+	(*(elem)->prev_p = (elem)->next, \
+	 (elem)->next && ((elem)->next->prev_p = (elem)->prev_p))
 
 #ifdef DEBUG
 #define DPR(a) fprintf(stderr, a); fflush(stderr)
@@ -36,86 +45,63 @@
 
 #define ever (;;)
 
-#define SERV_TIMEOUT 20
+#define SERV_TIMEOUT 5
 #define BOOTING 1
 #define NOTICES 2
 
-extern Code_t send_outgoing();
-extern void init_queue(), retransmit_queue();
+/* main.c */
+void die_gracefully __P((void));
+
+/* zhm_client.c */
+void transmission_tower __P((ZNotice_t *, char *, int));
+Code_t send_outgoing __P((ZNotice_t *));
+
+/* queue.c */
+void init_queue __P((void));
+Code_t add_notice_to_queue __P((ZNotice_t *, char *, struct sockaddr_in *,
+				int));
+Code_t remove_notice_from_queue __P((ZNotice_t *, ZNotice_Kind_t *,
+				     struct sockaddr_in *));
+void retransmit_queue __P((struct sockaddr_in *));
+void disable_queue_retransmits __P((void));
+int queue_len __P((void));
+
+struct sockaddr_in serv_sin;
 extern int rexmit_times[];
 
 #ifdef vax
-#define MACHINE "vax"
 #define use_etext
-#define ok
 #endif /* vax */
 
 #ifdef ibm032
-#define MACHINE "rt"
 #define adjust_size(size)	size -= 0x10000000
-#define ok
 #endif /* ibm032 */
 
-#ifdef NeXT
-#define MACHINE "NeXT"
-#define ok
-#endif /* NeXT */
-
-#ifdef sun
-#ifdef SUN2_ARCH
-#define MACHINE "sun2"
-#define ok
-#endif /* SUN2_ARCH */
-
-#ifdef SUN3_ARCH
-#define MACHINE "sun3"
-#define ok
-#endif /* SUN3_ARCH */
-
-#if defined (SUN4_ARCH) || defined (sparc)
-#define MACHINE "sun4"
+#if defined(sun) && (defined (SUN4_ARCH) || defined (sparc))
 #define use_etext
-#define ok
-#endif /* SUN4_ARCH */
-
-#ifndef ok
-#if defined (m68k)
-#define MACHINE "sun (unknown 68k)"
-#else
-#define MACHINE "sun (unknown)"
 #endif
-#define ok
-#endif /* ! ok */
-#endif /* sun */
 
 #ifdef _AIX
 #ifdef i386
-#define	MACHINE	"ps2"
 #define adjust_size(size)	size -= 0x400000
 #endif
 #ifdef _IBMR2
-#define	MACHINE "IBM RISC/6000"
 #define	adjust_size(size)	size -= 0x20000000
 #endif
-#define	ok
 #endif
 
-#if defined(ultrix) && defined(mips)
-#define MACHINE "decmips"
+#if (defined(ultrix) || defined(sgi)) && defined(mips)
 #define adjust_size(size)	size -= 0x10000000
-#define ok
-#endif /* ultrix && mips */
+#endif /* (ultrix || sgi) && mips */
 
+#if defined(__alpha)
+#define adjust_size(size)	size -= 0x140000000
+#endif /* alpha */
 
 #ifdef use_etext
 extern int etext;
 #define adjust_size(size)	size -= (unsigned int) &etext;
 #undef use_etext
 #endif
-
-#ifndef ok
-#define MACHINE "unknown"
-#endif
-#undef ok
 
 #endif

@@ -12,13 +12,14 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_node_c[] = "$Id$";
+static const char rcsid_node_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
 
-#include <stdio.h>
 #include "new_memory.h"
 #include "node.h"
 
@@ -267,6 +268,7 @@ static string how_to_print[] = {
     "substitute(%1)",
     "protect(%1)",
     "verbatim(%1)",
+    "stylestrip(%1)",
     "getenv(%1)",
     "upcase(%1)",
     "downcase(%1)",

@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_port_c[] = "$Id$";
+static const char rcsid_port_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -24,40 +26,11 @@ static char rcsid_port_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
-#include <fcntl.h>
 #include "new_string.h"
 #include "port_dictionary.h"
 #include "port.h"
 #include "notice.h"
 #include "variables.h"
-
-/*
- * <<<>>>
- */
-
-#if defined(SUNOS) || defined(vax)
-extern int errno, sys_nerr;
-extern char *sys_errlist[];
-
-string perror_to_string(errno)
-     int errno;
-{
-    if (errno>=0 && errno<sys_nerr)
-      return(sys_errlist[errno]);
-
-    /* <<<>>> */
-    return("illegal error number returned in errno!");
-}
-#else
-#include <errno.h>
-
-string perror_to_string(errno)
-     int errno;
-{
-     return(strerror(errno));
-}
-#endif
 
 /****************************************************************************/
 /*                                                                          */
@@ -369,7 +342,7 @@ static string get_file(p, error_p)
     errno = 0;
     if (!fgets(buffer, 9999, p->data.file.input_connector)) {
 	if (errno)
-	  *error_p = perror_to_string(errno);
+	  *error_p = strerror(errno);
 	else
 	  *error_p = "Attempt to read past end of file";
 
@@ -393,7 +366,7 @@ static char *put_file(p, text, length)
     fflush(p->data.file.output_connector);
 
     if (errno)
-      return(perror_to_string(errno));
+      return(strerror(errno));
 
     return(NULL);
 }
@@ -408,7 +381,7 @@ static char *close_file_input(p)
     }
 
     if (errno)
-      return(perror_to_string(errno));
+      return(strerror(errno));
 
     return(NULL);
 }
@@ -423,7 +396,7 @@ static char *close_file_output(p)
     }
 
     if (errno)
-      return(perror_to_string(errno));
+      return(strerror(errno));
 
     return(NULL);
 }
@@ -518,7 +491,7 @@ void create_file_append_port(name, filename)
     out = fopen(filename, "a");
     (void) umask(oumask);
     if (out == NULL) {
-	var_set_variable("error", perror_to_string(errno));
+	var_set_variable("error", strerror(errno));
 	return;
     }
 
@@ -534,7 +507,7 @@ void create_file_input_port(name, filename)
     errno = 0;
     in = fopen(filename, "r");
     if (in == NULL) {
-	var_set_variable("error", perror_to_string(errno));
+	var_set_variable("error", strerror(errno));
 	return;
     }
 
@@ -554,7 +527,7 @@ void create_file_output_port(name, filename)
     out = fopen(filename, "w");
     (void) umask(oumask);
     if (out == NULL) {
-	var_set_variable("error", perror_to_string(errno));
+	var_set_variable("error", strerror(errno));
 	return;
     }
 

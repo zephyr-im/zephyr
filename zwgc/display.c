@@ -24,7 +24,7 @@ static char rcsid_display_c[] = "$Header$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
+#include <sysdep.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "variables.h"
@@ -34,13 +34,16 @@ static char rcsid_display_c[] = "$Header$";
  * driver_table - <<<>>>
  */
 
-extern void X_driver();
 extern void tty_driver();
 extern void plain_driver();
 extern void raw_driver();
 
-extern int X_driver_init();
 extern int tty_driver_init();
+
+#ifndef X_DISPLAY_MISSING
+extern int X_driver_init();
+extern void X_driver();
+#endif
 
 static struct driver_info {
     string driver_name;
@@ -48,7 +51,9 @@ static struct driver_info {
     int    (*driver_init)();
     void   (*driver_reset)();
 } driver_table[] = {
+#ifndef X_DISPLAY_MISSING
     {"X",     X_driver,     X_driver_init,   X_driver_reset},
+#endif
     {"tty",   tty_driver,   tty_driver_init, NULL},
     {"plain", plain_driver, NULL,            NULL},
     {"raw",   raw_driver,   NULL,            NULL},

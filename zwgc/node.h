@@ -40,52 +40,53 @@
 #define  SUBSTITUTE_OPCODE              12
 #define  PROTECT_OPCODE                 13
 #define  VERBATIM_OPCODE                14
-#define  GETENV_OPCODE                  15
-#define  UPCASE_OPCODE                  16
-#define  DOWNCASE_OPCODE                17
-#define  ZVAR_OPCODE                    18
-#define  GET_OPCODE                     19
+#define  STYLESTRIP_OPCODE              15
+#define  GETENV_OPCODE                  16
+#define  UPCASE_OPCODE                  17
+#define  DOWNCASE_OPCODE                18
+#define  ZVAR_OPCODE                    19
+#define  GET_OPCODE                     20
 
-#define  LANY_OPCODE                    20
-#define  RANY_OPCODE                    21
-#define  LBREAK_OPCODE                  22
-#define  RBREAK_OPCODE                  23
-#define  LSPAN_OPCODE                   24
-#define  RSPAN_OPCODE                   25
+#define  LANY_OPCODE                    21
+#define  RANY_OPCODE                    22
+#define  LBREAK_OPCODE                  23
+#define  RBREAK_OPCODE                  24
+#define  LSPAN_OPCODE                   25
+#define  RSPAN_OPCODE                   26
 
-#define  LAST_EXPR_OPCODE               25
+#define  LAST_EXPR_OPCODE               26
 
-#define  NOOP_OPCODE                    26
-#define  SET_OPCODE                     27
-#define  FIELDS_OPCODE                  28
+#define  NOOP_OPCODE                    27
+#define  SET_OPCODE                     28
+#define  FIELDS_OPCODE                  29
 
-#define  PRINT_OPCODE                   29
-#define  CLEARBUF_OPCODE                30
+#define  PRINT_OPCODE                   30
+#define  CLEARBUF_OPCODE                31
 
-#define  APPENDPORT_OPCODE              31
-#define  EXECPORT_OPCODE                32
-#define  INPUTPORT_OPCODE               33
-#define  OUTPUTPORT_OPCODE              34
-#define  PUT_OPCODE                     35
-#define  CLOSEINPUT_OPCODE              36
-#define  CLOSEOUTPUT_OPCODE             37
-#define  CLOSEPORT_OPCODE               38
+#define  APPENDPORT_OPCODE              32
+#define  EXECPORT_OPCODE                33
+#define  INPUTPORT_OPCODE               34
+#define  OUTPUTPORT_OPCODE              35
+#define  PUT_OPCODE                     36
+#define  CLOSEINPUT_OPCODE              37
+#define  CLOSEOUTPUT_OPCODE             38
+#define  CLOSEPORT_OPCODE               39
 
-#define  EXEC_OPCODE                    39
+#define  EXEC_OPCODE                    40
 
-#define  IF_STMT_OPCODE                 40
-#define  CASE_OPCODE                    41
-#define  WHILE_OPCODE                   42
-#define  BREAK_OPCODE                   43
-#define  EXIT_OPCODE                    44
+#define  IF_STMT_OPCODE                 41
+#define  CASE_OPCODE                    42
+#define  WHILE_OPCODE                   43
+#define  BREAK_OPCODE                   44
+#define  EXIT_OPCODE                    45
 
-#define  IF_OPCODE                      45
-#define  ELSEIF_OPCODE                  46
-#define  ELSE_OPCODE                    47
-#define  MATCHLIST_OPCODE               48
-#define  DEFAULT_OPCODE                 49
+#define  IF_OPCODE                      46
+#define  ELSEIF_OPCODE                  47
+#define  ELSE_OPCODE                    48
+#define  MATCHLIST_OPCODE               49
+#define  DEFAULT_OPCODE                 50
 
-#define  NUMBER_OF_OPCODES              50
+#define  NUMBER_OF_OPCODES              51
 
 typedef struct _Node {
     int opcode;                              /* Read-only */

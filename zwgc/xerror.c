@@ -12,14 +12,17 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xerror_c[] = "$Id$";
+static const char rcsid_xerror_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
 
+#ifndef X_DISPLAY_MISSING
+
 #include <X11/Xlib.h>
-#include <stdio.h>
 #include "mux.h"
 
 int xerror_happened;
@@ -46,3 +49,6 @@ void end_xerror_trap(dpy)
    XSync(dpy,False);
    XSetErrorHandler(NULL);
 }
+
+#endif
+

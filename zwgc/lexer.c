@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_lexer_c[] = "$Id$";
+static const char rcsid_lexer_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -24,7 +26,6 @@ static char rcsid_lexer_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "int_dictionary.h"
@@ -158,6 +159,7 @@ static struct keyword_info keywords[] =   {
 		   { "rspan", RSPAN },
 		   { "set", SET },
 		   { "show", SHOW },
+		   { "stylestrip", STYLESTRIP },
 		   { "substitute", SUBSTITUTE },
 		   { "then", THEN },
 		   { "upcase", UPCASE },

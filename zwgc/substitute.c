@@ -18,6 +18,7 @@ static char rcsid_substitute_c[] = "$Id$";
 
 #include <zephyr/mit-copyright.h>
 
+#include <sysdep.h>
 #include "new_memory.h"
 #include "lexer.h"
 #include "substitute.h"

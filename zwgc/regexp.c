@@ -12,19 +12,19 @@
  *      "mit-copyright.h".
  */
 
-#if (!defined(lint) && !defined(SABER))
-static char rcsid_regexp_c[] = "$Id$";
-#endif
+#include <sysdep.h>
 
-#include <stdio.h>
-#include "regexp.h"
+#if (!defined(lint) && !defined(SABER))
+static const char rcsid_regexp_c[] = "$Id$";
+#endif
 
 #ifdef SOLARIS
 #include <libgen.h>
 #endif
 
-#ifdef POSIX_REGEXP
-#include <sys/types.h>
+#include "regexp.h"
+
+#ifdef HAVE_REGCOMP
 #include <regex.h>
 
 int ed_regexp_match_p(test_string, pattern)
@@ -35,13 +35,14 @@ int ed_regexp_match_p(test_string, pattern)
     int retval;
     char errbuf[512];
 
-    if (retval = regcomp(&RE, pattern, REG_EXTENDED|REG_NOSUB)) {
+    retval = regcomp(&RE, pattern, REG_NOSUB);
+    if (retval != 0) {
 	regerror(retval, &RE, errbuf, sizeof(errbuf));
 	fprintf(stderr,"%s in regcomp %s\n",errbuf,pattern);
 	return(0);
     }
     retval = regexec(&RE, test_string, 0, NULL, 0);
-    if (retval  && retval != REG_NOMATCH) {
+    if (retval != 0 && retval != REG_NOMATCH) {
 	regerror(retval, &RE, errbuf, sizeof(errbuf));
 	fprintf(stderr,"%s in regexec %s\n",errbuf,pattern);
 	regfree(&RE);
@@ -52,8 +53,8 @@ int ed_regexp_match_p(test_string, pattern)
 }
 
 #else
-extern char *re_comp();
-extern int re_exec();
+char *re_comp();
+int re_exec();
 
 int ed_regexp_match_p(test_string, pattern)
      string test_string;
@@ -75,12 +76,11 @@ int ed_regexp_match_p(test_string, pattern)
 }
 #endif
 
-/*
- * This is for AUX.
- * It is a wrapper around the C library regexp functions.
- */
+#if !defined(HAVE_RE_COMP) && !defined(HAVE_REGCOMP)
 
-#if defined(_AUX_SOURCE) || defined(SOLARIS)
+#ifdef HAVE_LIBGEN_H
+#include <libgen.h>
+#endif
 
 static char *re;
 

@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_eval_c[] = "$Id$";
+static const char rcsid_eval_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -139,6 +141,7 @@ string eval_expr(expr)
       case SUBSTITUTE_OPCODE:
       case PROTECT_OPCODE:
       case VERBATIM_OPCODE:
+      case STYLESTRIP_OPCODE:
       case GETENV_OPCODE:
       case UPCASE_OPCODE:
       case DOWNCASE_OPCODE:
@@ -161,6 +164,9 @@ string eval_expr(expr)
 
 	  case VERBATIM_OPCODE:
 	    return(verbatim(first,0));
+
+	  case STYLESTRIP_OPCODE:
+	    return(stylestrip(first));
 
 	  case GETENV_OPCODE:
 	    result = getenv(first);

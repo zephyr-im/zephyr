@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_zephyr_c[] = "$Id$";
+static const char rcsid_zephyr_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -24,7 +26,6 @@ static char rcsid_zephyr_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
 #include <zephyr/zephyr.h>
 #include <sys/socket.h>
 #include "new_string.h"
@@ -34,41 +35,13 @@ static char rcsid_zephyr_c[] = "$Id$";
 #include "subscriptions.h"
 #include "variables.h"
 #include "pointer.h"
+#ifndef X_DISPLAY_MISSING
+#include "X_driver.h"
+#endif
 
 #ifdef DEBUG
 extern int zwgc_debug;
 #endif /* DEBUG */
-
-/*
- *  Internal Routine:
- *
- *    char *parse_exposure_level(string text)
- *        Effects: Compares text to each of the standard zephyr
- *                 exposure levels ignoring case.  If it matches,
- *                 returns the corresponding magic constant for
- *                 use with ZSetLocation.  (i.e., returns EXPOSE_OPSTAFF
- *                 for "opstaff", etc.)  If it does not match, returns
- *                 NULL.
- */
-
-static char *parse_exposure_level(text)
-     string text;
-{
-    if (!strcasecmp(text, EXPOSE_NONE))
-      return (EXPOSE_NONE);
-    else if (!strcasecmp(text, EXPOSE_OPSTAFF))
-      return (EXPOSE_OPSTAFF);
-    else if (!strcasecmp(text, EXPOSE_REALMVIS))
-      return (EXPOSE_REALMVIS);
-    else if (!strcasecmp(text, EXPOSE_REALMANN))
-      return (EXPOSE_REALMANN);
-    else if (!strcasecmp(text, EXPOSE_NETVIS))
-      return (EXPOSE_NETVIS);
-    else if (!strcasecmp(text, EXPOSE_NETANN))
-      return (EXPOSE_NETANN);
-    else
-      return(NULL);
-}
 
 /*
  *  Internal Routine:
@@ -136,6 +109,7 @@ void zephyr_init(notice_handler)
     unsigned short port = 0;           /* Use any old port */
     char *temp;
     char *exposure;
+    char *tty = NULL;
     FILE *port_file;
 
     /*
@@ -150,7 +124,14 @@ void zephyr_init(notice_handler)
      */
     temp = get_zwgc_port_number_filename();
     errno = 0;
-    port_file = fopen(temp, "w+");
+    port_file = fopen(temp, "r");
+    if (port_file) {
+	fprintf(stderr, "zwgc: windowgram file already exists.  If you are\n");
+	fprintf(stderr, "zwgc: not already running zwgc, delete %s\n", temp);
+	fprintf(stderr, "zwgc: and try again.\n");
+	exit(1);
+    }
+    port_file = fopen(temp, "w");
     if (port_file) {
 	fprintf(port_file, "%d\n", port);
 	fclose(port_file);
@@ -158,6 +139,15 @@ void zephyr_init(notice_handler)
 	fprintf(stderr, "zwgc: error while opening %s for writing: ", temp);
 	perror("");
     }
+
+    /* Set hostname and tty for locations.  If we support X, use the
+     * display string for the tty name. */
+#ifndef X_DISPLAY_MISSING
+    if (dpy)
+	tty = DisplayString(dpy);
+#endif
+    error_code = ZInitLocationInfo(NULL, tty);
+    TRAP( error_code, "while initializing location information" );
 
     /*
      * Retrieve the user's desired exposure level (from the zephyr variable
@@ -167,7 +157,7 @@ void zephyr_init(notice_handler)
      * EXPOSE_NONE.
      */
     if (temp = ZGetVariable("exposure")) {
-	if (!(exposure = parse_exposure_level(temp))) {
+	if (!(exposure = ZParseExposureLevel(temp))) {
 	    ERROR2("invalid exposure level %s, using exposure level none instead.\n", temp);
 	    exposure = EXPOSE_NONE;
 	}

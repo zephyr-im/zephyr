@@ -12,13 +12,16 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xshow_c[] = "$Id$";
+static const char rcsid_xshow_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
 
-#include <stdio.h>
+#ifndef X_DISPLAY_MISSING
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xresource.h>
@@ -572,3 +575,6 @@ void x_get_input(dpy)
 	xhandleevent(dpy, event.xany.window, &event);
     }
 }
+
+#endif /* X_DISPLAY_MISSING */
+
