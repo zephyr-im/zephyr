@@ -25,7 +25,9 @@ static char rcsid_zmailnotify_c[] =
 #include <pwd.h>
 #include <errno.h>
 #include <netdb.h>
+#ifdef Z_HaveHesiod
 #include <hesiod.h>
+#endif
 #include <string.h>
 
 #ifdef KPOP
@@ -412,7 +414,7 @@ char *host;
 
     sp = getservbyname (svc_name, "tcp");
     if (sp == 0) {
-	(void) sprintf (Errmsg, "%s/tcp: unknown service");
+	(void) sprintf (Errmsg, "%s/tcp: unknown service", svc_name);
 	return NOTOK;
     }
     sin.sin_family = hp->h_addrtype;
