@@ -16,6 +16,7 @@
 #include <zephyr/zephyr.h>
 #include <netdb.h>
 #include <string.h>
+#include <sys/param.h>			/* for MAXHOSTNAMELEN */
 
 #ifndef lint
 static char rcsid_zpopnotify_c[] = "$Header$";
@@ -33,7 +34,7 @@ main(argc,argv)
 	ZNotice_t notice;
 	struct hostent *hent;
 	int retval;
-	char *whoami,*ptr,myhost[BUFSIZ],mysender[BUFSIZ];
+	char *whoami,*ptr,myhost[MAXHOSTNAMELEN],mysender[BUFSIZ];
 	char *lines[2];
 	
 	whoami = argv[0];
@@ -54,23 +55,27 @@ main(argc,argv)
 	else
 		ptr = argv[1];
 
-	if (gethostname(myhost,BUFSIZ) == -1) {
+	if (gethostname(myhost,MAXHOSTNAMELEN) == -1) {
 		com_err(whoami,errno,"Can't get hostname");
 		exit(1);
 	}
+	myhost[MAXHOSTNAMELEN-1] = '\0';
 
 	if (!(hent = gethostbyname(myhost))) {
 		com_err(whoami,errno,"Can't get canonical hostname");
 		exit(1);
 	}
 
-	(void) strcpy(myhost,hent->h_name);
+	(void) strncpy(myhost,hent->h_name,MAXHOSTNAMELEN);
+	myhost[MAXHOSTNAMELEN-1] = '\0';
+
 	lines[0] = myhost;
 	lines[1] = "You have new mail.";
 	
 	(void) strcpy(mysender,"pop@");
 	(void) strcat(mysender,ZGetRealm());
 
+	(void) bzero((char *)&notice, sizeof(notice));
 	notice.z_kind = UNSAFE;
 	notice.z_class = MAIL_CLASS;
 	notice.z_class_inst = MAIL_INSTANCE;
