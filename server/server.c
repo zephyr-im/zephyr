@@ -3,7 +3,8 @@
  *
  *	Created by:	John T. Kohl
  *
- *	$Id$
+ *	$Source$
+ *	$Author$
  *
  *	Copyright (c) 1987, 1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
@@ -419,6 +420,13 @@ srv_states[] = {
     "SERV_DEAD",
     "SERV_STARTING"
 };
+static char *
+rlm_states[] = {
+    "REALM_UP",
+    "REALM_TARDY",
+    "REALM_DEAD",
+    "REALM_STARTING"
+};
 
 /* 
  * A server timout has expired.  If enough hello's have been unanswered,
@@ -639,6 +647,8 @@ server_kill_clt(client)
 
     pnotice = &notice;
 
+    memset (&notice, 0, sizeof(notice));
+ 
     pnotice->z_kind = ACKED;
 
     pnotice->z_port = srv_addr.sin_port;
@@ -872,10 +882,9 @@ send_stats(who)
     char **responses;
     int num_resp;
     char *vers, *pkts, *upt;
+    Realm *realm;
 
-#if defined(OLD_COMPAT) || defined(NEW_COMPAT)
     int extrafields = 0;
-#endif /* OLD_ or NEW_COMPAT */
 #define	NUM_FIXED 3			/* 3 fixed fields, plus server info */
 					/* well, not really...but for
 					   backward compatibility, we gotta
@@ -901,12 +910,9 @@ send_stats(who)
     if (new_compat_count_subscr)
 	extrafields++;
 #endif /* NEW_COMPAT */
-#if defined(OLD_COMPAT) || defined(NEW_COMPAT)
+    extrafields += nrealms;
     responses = (char **) malloc((NUM_FIXED + nservers + extrafields) *
 				 sizeof(char *));
-#else
-    responses = (char **) malloc((NUM_FIXED + nservers) * sizeof(char *));
-#endif /* OLD_ or NEW_COMPAT */
     responses[0] = vers;
     responses[1] = pkts;
     responses[2] = upt;
@@ -944,6 +950,12 @@ send_stats(who)
 	responses[num_resp++] = strsave(buf);
     }
 #endif /* NEW_COMPAT */
+    for (realm = otherrealms, i = 0; i < nrealms ; i++, realm++) {
+      sprintf(buf, "%s(%s)/%s", realm->name, 
+	      inet_ntoa((realm->addrs[realm->idx]).sin_addr),
+	      rlm_states[(int) realm->state]);
+      responses[num_resp++] = strsave(buf);
+    }
 
     send_msg_list(who, ADMIN_STATUS, responses, num_resp, 0);
 
@@ -1251,6 +1263,8 @@ send_msg(who, opcode, auth)
 
     pnotice = &notice;
 
+    memset (&notice, 0, sizeof(notice));
+
     pnotice->z_kind = ACKED;
 
     pnotice->z_port = srv_addr.sin_port;
@@ -1306,6 +1320,8 @@ send_msg_list(who, opcode, lyst, num, auth)
     int packlen;
     Code_t retval;
     Unacked *nacked;
+
+    memset (&notice, 0, sizeof(notice));
 
     notice.z_kind = UNSAFE;
     notice.z_port = srv_addr.sin_port;
