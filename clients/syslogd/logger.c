@@ -98,7 +98,7 @@ main(argc, argv)
 				if (!--argc)
 					break;
 			} else {
-				_BCOPY(*argv++, p, len);
+				(void) memcpy(p, *argv++, len);
 				p += len;
 				if (!--argc)
 					break;
