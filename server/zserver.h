@@ -57,7 +57,6 @@
  */
 
 typedef struct _ZDestination {
-    unsigned long hash_value;
     ZSTRING *classname;
     ZSTRING *inst;
     ZSTRING *recip;
@@ -86,6 +85,10 @@ typedef struct _ZClient_t {
 	long	last_msg;		/* last message sent to this client */
 	long	last_check;		/* actually, last time the other
 					   server was asked to check... */
+	int	last_send;		/* The send counter value for the
+					 * last packet sent to the client,
+					 * used to prevent duplicates.  See
+					 * sendit() in dispatch.c. */
 } ZClient_t;
 
 typedef struct _ZClientList_t {
@@ -94,13 +97,13 @@ typedef struct _ZClientList_t {
 	struct _ZClient_t	*zclt_client;
 } ZClientList_t;
 
-typedef struct _ZClass_t {
-	struct _ZClass_t *q_forw;
-	struct _ZClass_t *q_back;
+typedef struct _ZTriplet_t {
+	struct _ZTriplet_t *q_forw;
+	struct _ZTriplet_t *q_back;
 	ZDestination zct_dest;
 	ZAcl_t	*zct_acl;
 	ZClientList_t	*zct_clientlist;
-} ZClass_t;
+} ZTriplet_t;
 
 typedef struct _ZHostList_t {
 	struct _ZHostList_t *q_forw;
@@ -190,11 +193,11 @@ extern Code_t bdump_send_list_tcp P((ZNotice_Kind_t kind, int port,
 				  char **lyst, int num));
 
 /* found in class.c */
-extern Code_t class_register P((ZClient_t *client, ZSubscr_t *subs));
-extern Code_t class_deregister P((ZClient_t *client, ZSubscr_t *subs));
+extern Code_t triplet_register P((ZClient_t *client, ZDestination *dest));
+extern Code_t triplet_deregister P((ZClient_t *client, ZDestination *dest));
 extern Code_t class_restrict P((char *z_class, ZAcl_t *acl));
 extern Code_t class_setup_restricted P((char *z_class, ZAcl_t *acl));
-extern ZClientList_t *class_lookup P((ZSubscr_t *subs));
+extern ZClientList_t *triplet_lookup P((ZDestination *dest));
 extern ZAcl_t *class_get_acl P((ZSTRING *z_class));
 extern void class_free P((ZClientList_t *lyst));
 extern ZSTRING *class_control, *class_admin, *class_hm;
@@ -202,6 +205,7 @@ extern ZSTRING *class_ulogin, *class_ulocate;
 extern void set_ZDestination_hash P((ZDestination *zd));
 extern int ZDest_eq P((ZDestination *zd1, ZDestination *zd2));
 extern int order_dest_strings P((ZDestination *zd1, ZDestination *zd2));
+extern void class_dump_subs P((register FILE *fp));
 
 /* found in client.c */
 extern Code_t client_register P((ZNotice_t *notice, struct sockaddr_in *who,
@@ -216,6 +220,7 @@ extern ZClient_t *client_which_client P((struct sockaddr_in *who,
 /* found in common.c */
 extern char *strsave P((Zconst char *str));
 extern unsigned long hash  P((Zconst char *));
+extern void subscr_quote P((char *p, FILE *fp));
 
 /* found in dispatch.c */
 extern void handle_packet P((void));
@@ -281,7 +286,6 @@ extern Code_t server_adispatch P((ZNotice_t *notice, int auth,
 extern Code_t subscr_cancel P((struct sockaddr_in *sin, ZNotice_t *notice));
 extern Code_t subscr_subscribe P((ZClient_t *who, ZNotice_t *notice)),
     subscr_send_subs P((ZClient_t *client, char *vers));;
-extern ZClientList_t *subscr_match_list P((ZNotice_t *notice));
 extern void subscr_free_list P((ZClientList_t *list)),
     subscr_cancel_client P((register ZClient_t *client)),
     subscr_sendlist P((ZNotice_t *notice, int auth, struct sockaddr_in *who));
@@ -343,8 +347,6 @@ extern int nservers;			/* number of other servers*/
 /* found in subscr.c */
 extern ZSTRING *empty;
 extern ZSTRING *wildcard_instance;
-extern ZSTRING *wildcard_class;
-extern ZSubscr_t matchall_sub;
 
 extern struct in_addr my_addr;	/* my inet address */
 
@@ -369,7 +371,7 @@ extern struct in_addr my_addr;	/* my inet address */
 #define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
 #define	ADMIN_ME	"MY_STATE"	/* Class inst: please send my info */
 
-#define	NULLZCT		((ZClass_t *) 0)
+#define	NULLZT		((ZTriplet_t *) 0)
 #define	NULLZCNT	((ZClient_t *) 0)
 #define	NULLZCLT	((ZClientList_t *) 0)
 #define	NULLZST		((ZSubscr_t *) 0)
@@ -397,8 +399,6 @@ extern struct in_addr my_addr;	/* my inet address */
 #define START_CRITICAL_CODE
 #define END_CRITICAL_CODE
 
-/* the magic class to match all packets */
-#define	MATCHALL_CLASS	"zmatch_all"
 /* the instance that matches all instances */
 #define	WILDCARD_INSTANCE	"*"
 
