@@ -294,7 +294,7 @@ main(argc, argv)
 	(void) signal(SIGTERM, bye);
 #endif /* _POSIX_SOURCE */
 #endif /* DEBUG */
-	syslog(LOG_INFO, "Ready for action");
+	syslog(LOG_NOTICE, "Ready for action");
 #ifdef _POSIX_SOURCE
 	action.sa_handler = dbug_on;
 	sigaction(SIGUSR1, &action, NULL);
@@ -544,7 +544,7 @@ bye(sig)
 #ifdef KERBEROS
 	(void) dest_tkt();
 #endif
-	syslog(LOG_INFO, "goodbye (sig %d)",sig);
+	syslog(LOG_NOTICE, "goodbye (sig %d)",sig);
 	exit(0);
 	/*NOTREACHED*/
 }
