@@ -167,7 +167,7 @@ main(argc, argv)
 	  case 'n':
 	    nofork = 1;
 	    break;
-	  case 'r':
+	  case 'k':
 #ifdef ZEPHYR_USES_KERBEROS
 	    strncpy(my_realm, optarg, REALM_SZ);
 #endif
@@ -499,6 +499,7 @@ bye(sig)
     int sig;
 {
     server_shutdown();		/* tell other servers */
+    hostm_shutdown();		/* tell our hosts */
 #ifdef ZEPHYR_USES_KERBEROS
     dest_tkt();
 #endif

@@ -28,6 +28,7 @@ static const char rcsid_dispatch_c[] =
 					  (uid).zuid_addr.s_addr ^ \
 					  (uid).tv.tv_sec ^ \
 					  (uid).tv.tv_usec) % NACKTAB_HASHSIZE)
+#define HOSTS_SIZE_INIT			256
 
 #ifdef DEBUG
 Zconst char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
@@ -71,6 +72,8 @@ int rexmit_times[] = REXMIT_TIMES;
 static void nack_cancel __P((ZNotice_t *, struct sockaddr_in *));
 static void dispatch __P((ZNotice_t *, int, struct sockaddr_in *, int));
 static int send_to_dest __P((ZNotice_t *, int, Destination *dest, int));
+static void hostm_deathgram __P((struct sockaddr_in *, ZServerDest_t *));
+static void hm_recipient __P((void);
 
 Statistic interserver_notices = {0, "inter-server notices"};
 Statistic hm_packets = {0, "hostmanager packets"};
@@ -85,6 +88,8 @@ Statistic locate_notices = {0, "locate notices"};
 Statistic admin_notices = {0, "admin notices"};
 
 static Unacked *nacktab[NACKTAB_HASHSIZE];
+static struct in_addr *hosts;
+static int hosts_size = 0, num_hosts = 0;
 
 static void
 dump_stats (arg)
@@ -815,6 +820,7 @@ hostm_dispatch(notice, auth, who, server)
     Server *owner;
     char *opcode = notice->z_opcode;
     Code_t retval;
+    int i, remove = 0;
 
 #if 0
     zdbug((LOG_DEBUG,"hm_disp"));
@@ -839,9 +845,43 @@ hostm_dispatch(notice, auth, who, server)
 	if (server == me_server) {
 	    server_forward(notice, auth, who);
 	    ack(notice, who);
+	    for (i = 0; i < num_hosts; i++) {
+		if (hosts[i].s_addr == who->sin_addr.s_addr)
+		    break;
+	    }
+	    if (i == num_hosts) {
+		if (hosts_size == 0) {
+		    hosts = (struct in_addr *) malloc(HOSTS_SIZE_INIT *
+						  sizeof(struct in_addr));
+		    if (!hosts)
+			return ENOMEM;
+		    hosts_size = HOSTS_SIZE_INIT;
+		} else if (num_hosts == hosts_size) {
+		    hosts = (struct in_addr *) realloc(hosts, hosts_size * 2 *
+						       sizeof(struct in_addr));
+		    if (!hosts)
+			return ENOMEM;
+		    hosts_size *= 2;
+		}
+		hosts[num_hosts++] = who->sin_addr;
+	    }
+	} else {
+	    remove = 1;
 	}
-    } else if (strcmp(opcode, HM_DETACH) != 0) {
+    } else if (strcmp(opcode, HM_DETACH) == 0) {
+	remove = 1;
+    } else {
 	syslog(LOG_WARNING, "hm_dispatch: unknown opcode %s", opcode);
+    }
+
+    if (remove) {
+	for (i = 0; i < num_hosts; i++) {
+	    if (hosts[i].s_addr == who->sin_addr.s_addr) {
+		memmove(&hosts[i], &hosts[i + 1], num_hosts - (i + 1));
+		num_hosts--;
+		break;
+	    }
+	}
     }
     return ZERR_NONE;
 }
@@ -996,4 +1036,87 @@ control_dispatch(notice, auth, who, server)
     return ZERR_NONE;
 }
 
+void
+hostm_shutdown()
+{
+    int i, s, newserver;
+    struct sockaddr_in sin;
+
+    for (i = 0; i < nservers; i++) {
+	if (i != me_server_idx && otherservers[i].state == SERV_UP)
+	    break;
+    }
+    newserver = (i < nservers);
+    for (i = 0; i < num_hosts; i++) {
+	sin.sin_addr = hosts[i];
+	sin.sin_port = hm_port;
+	if (newserver) {
+	    while (1) {
+		s = (random() % (nservers - 1)) + 1;
+		if (otherservers[s].state == SERV_UP)
+		    break;
+	    }
+	    hostm_deathgram(&sin, &otherservers[s]);
+	} else {
+	    hostm_deathgram(&sin, NULL);
+	}
+    }
+}
+
+static void
+hostm_deathgram(sin, server)
+    struct sockaddr_in *sin;
+    ZServerDesc_t *server;
+{
+    Code_t retval;
+    int shutlen;
+    ZNotice_t shutnotice;
+    char *shutpack;
+
+    shutnotice.z_kind = HMCTL;
+    shutnotice.z_port = sock_sin.sin_port; /* we are sending it */
+    shutnotice.z_class = HM_CTL_CLASS;
+    shutnotice.z_class_inst = HM_CTL_SERVER;
+    shutnotice.z_opcode = SERVER_SHUTDOWN;
+    shutnotice.z_sender = HM_CTL_SERVER;
+    shutnotice.z_recipient = hm_recipient();
+    shutnotice.z_default_format = "";
+    shutnotice.z_num_other_fields = 0;
+    shutnotice.z_message = (server) ? server->addr : NULL;
+    shutnotice.z_message_len = (server) ? strlen(server->addr) + 1 : 0;
+
+    retval = ZFormatNotice(&shutnotice, &shutpack, &shutlen, ZNOAUTH);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_ERR, "hm_shut format: %s",error_message(retval));
+	return;
+    }
+    retval = ZSetDestAddr(sin);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_WARNING, "hm_shut set addr: %s", error_message(retval));
+	free(shutpack);
+	return;
+    }
+    retval = ZSendPacket(shutpack, shutlen, 0);
+    if (retval != ZERR_NONE)
+	syslog(LOG_WARNING, "hm_shut xmit: %s", error_message(retval));
+    free(shutpack);
+}
+
+static char *
+hm_recipient()
+{
+    static char *recipient;
+    char *realm;
+
+    if (recipient)
+	return recipient;
+
+    realm = ZGetRealm();
+    if (!realm)
+	realm = "???";
+    recipient = (char *) xmalloc (strlen (realm) + 4);
+    strcpy (recipient, "hm@");
+    strcat (recipient, realm);
+    return recipient;
+}
 

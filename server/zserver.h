@@ -191,6 +191,7 @@ Code_t hostm_dispatch __P((ZNotice_t *notice, int auth,
 Code_t control_dispatch __P((ZNotice_t *notice, int auth,
 			     struct sockaddr_in *who, Server *server));
 Code_t xmit_frag __P((ZNotice_t *notice, char *buf, int len, int waitforack));
+void hostm_shutdown __P((void));
 
 /* found in kstuff.c */
 #ifdef ZEPHYR_USES_KERBEROS
