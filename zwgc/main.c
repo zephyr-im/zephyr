@@ -402,19 +402,8 @@ static void setup_signals(dofork)
     sa.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &sa, (struct sigaction *)0);
 
-#ifdef SOLARIS
-    sa.sa_handler = SIG_IGN;
-    sa.sa_flags = SA_NOCLDSTOP;
-#else
     sa.sa_handler = signal_child;
-#endif
     sigaction(SIGCHLD, &sa, (struct sigaction *)0);
-
-#ifdef _AIX
-    sa.sa_flags = SA_FULLDUMP;
-    sa.sa_handler = SIG_DFL;
-    sigaction(SIGSEGV, &sa, (struct sigaction *)0);
-#endif
 
 #else /* !POSIX */
     if (dofork) {
