@@ -27,7 +27,7 @@
 
 #define ZVERSIONHDR	"ZEPH"
 #define ZVERSIONMAJOR	0
-#define ZVERSIONMINOR	0
+#define ZVERSIONMINOR	1
 
 /* Types */
 
