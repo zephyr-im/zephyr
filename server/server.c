@@ -14,10 +14,13 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
+#ifndef SABER
 static char rcsid_server_s_c[] = "$Header$";
+#endif SABER
 #endif lint
 
 #include "zserver.h"
+#include <sys/socket.h>			/* for AF_INET */
 
 /*
  * Server manager.  Deal with  traffic to and from other servers.
@@ -34,8 +37,8 @@ static char rcsid_server_s_c[] = "$Header$";
  *	ZNotice_t *notice;
  *	struct sockaddr_in *who;
  *
- * ZServerDesc_t *server_owner(who)
- *	struct sockaddl_in *who;
+ * void server_recover(client)
+ *	ZClient_t *client;
  *
  */
 
@@ -50,10 +53,15 @@ static void server_hello(), server_flush(), admin_handle();
  * happening here. 
  */
 
+int timo_up = TIMO_UP;
+int timo_tardy = TIMO_TARDY;
+int timo_dead = TIMO_DEAD;
+
 void
 server_timo(which)
 ZServerDesc_t *which;
 {
+	zdbug2("srv_timo: %s", inet_ntoa(which->zs_addr.sin_addr));
 	/* change state and reset if appropriate */
 	switch(which->zs_state) {
 	case SERV_DEAD:			/* leave him dead */
@@ -62,7 +70,7 @@ ZServerDesc_t *which;
 	case SERV_UP:			/* he's now tardy */
 		which->zs_state = SERV_TARDY;
 		which->zs_numsent = 0;
-		which->zs_timeout = TIMO_TARDY;
+		which->zs_timeout = timo_tardy;
 		break;
 	case SERV_TARDY:
 	case SERV_STARTING:
@@ -72,7 +80,7 @@ ZServerDesc_t *which;
 			/* he hasn't answered, assume DEAD */
 			which->zs_state = SERV_DEAD;
 			which->zs_numsent = 0;
-			which->zs_timeout = TIMO_DEAD;
+			which->zs_timeout = timo_dead;
 			server_flush(which);
 		}
 		break;
@@ -104,9 +112,11 @@ struct sockaddr_in *who;
 	else if (class_is_control(notice)) {
 		/* XXX set up a who for the real origin */
 		newwho.sin_family = AF_INET;
-		bcopy (&notice->z_sender_addr, &newwho.sin_addr, sizeof (struct in_addr));
+/* XXX wait till robby fixes this
+		newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
+*/
 		newwho.sin_port = notice->z_port;
-		control_handle(notice, auth, &newwho);
+		control_dispatch(notice, auth, &newwho);
 	} else
 		/* shouldn't come from another server */
 		syslog(LOG_WARNING, "srv_disp: pkt cls %s",notice->z_class);
@@ -121,34 +131,26 @@ struct sockaddr_in *who;
 	return(1);
 }
 
-ZServerDesc_t *
-server_owner(who)
-struct sockaddr_in *who;
+void
+server_recover(client)
+ZClient_t *client;
 {
-	register ZServerDesc_t *servs;
-	register int i;
-	register ZHostList_t *hlt;
+	ZHostList_t *host;
 
-	for (i = 0, servs = otherservers; i < nservers; i++, servs++ )
-		/* for each server */
-		for (hlt = servs->zs_hosts->q_forw;
-		     hlt != servs->zs_hosts;
-		     hlt = hlt->q_forw)
-			/* for each host */
-			if (!bcmp(&hlt->zh_addr, &who->sin_addr, sizeof(struct in_addr)))
-				return(servs);
-	/* unowned */
-	return(NULLZSDT);
+	zdbug1("server recover");
+	/* XXX */
+	if ((host = hostm_find_host(&client->zct_sin.sin_addr)) != NULLZHLT)
+		client_deregister(client, host);
+	else
+		syslog(LOG_ERR, "srv_recover: no host for client");
+	return;
 }
-	
 /* flush all data associated with the server which */
 static void
 server_flush(which)
 register ZServerDesc_t *which;
 {
 	register ZHostList_t *hst;
-	register ZClientList_t *clist = NULLZCLT, *clt;
-	register int status;
 
 	if (which->zs_hosts == NULLZHLT) /* no data to flush */
 		return;
@@ -157,24 +159,9 @@ register ZServerDesc_t *which;
 	     hst != which->zs_hosts;
 	     hst = which->zs_hosts->q_forw) {
 		/* for each host, flush all data */
-
-		remque(hst);		/* unlink */
-		hst->q_forw = hst->q_back = hst; /* clean up */
-
-		if ((status = subscr_cancel_host(&hst->zh_addr, which)) != ZERR_NONE)
-			syslog(LOG_WARNING, "srv_flush: host cancel %s: %s",
-			       inet_ntoa(hst->zh_addr),
-			       error_message());
-
-		clist = hst->zh_clients;
-
-		for (clt = clist->q_forw; clt != clist; clt = clt->q_forw)
-			/* client_deregister frees this client */
-			if ((status = client_deregister(clt)) != ZERR_NONE)
-				syslog(LOG_WARNING, "srv_flush: bad deregister: %s",
-				       error_message(status));
-
+		hostm_flush(hst, which);
 	}
+
 }
 
 /* send a hello to which, updating the count of hello's sent */
@@ -186,31 +173,26 @@ ZServerDesc_t *which;
 	ZNotice_t hellonotice;
 	register ZNotice_t *phelonotice; /* speed hack */
 	ZPacket_t hellopack;
-	int packlen, tolen;
+	int packlen;
 	Code_t retval;
 
 	phelonotice = &hellonotice;
 
 	phelonotice->z_kind = ACKED;
 
-	phelonotice->z_checksum[0] = 0;	/* filled in by the library */
-	phelonotice->z_checksum[1] = 0;
-
-	phelonotice->z_uid.zuid_addr = my_addr;
-	phelonotice->z_uid.tv.tv_sec = NOW;
-	phelonotice->z_uid.tv.tv_usec = 0;
 	phelonotice->z_port = sock_sin.sin_port;
 	phelonotice->z_class = ZEPHYR_ADMIN_CLASS;
-	phelonotice->z_class_inst = NULL;
+	phelonotice->z_class_inst = "RUthere";
 	phelonotice->z_opcode = "HELLO";
 	phelonotice->z_sender = myname;	/* myname is the hostname */
-	phelonotice->z_recipient = NULL;
+	phelonotice->z_recipient = "you";
 	phelonotice->z_message = (caddr_t) NULL;
 	phelonotice->z_message_len = 0;
 
 	packlen = sizeof(hellopack);
 	
-	if ((retval = ZFormatNotice(phelonotice, hellopack, packlen, &packlen)) != ZERR_NONE) {
+	/* hello's are not authenticated (overhead not needed) */
+	if ((retval = ZFormatNotice(phelonotice, hellopack, packlen, &packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "hello format: %s", error_message(retval));
 		return;
 	}
