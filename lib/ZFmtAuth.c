@@ -28,7 +28,7 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
     C_Block session;
 {
     ZNotice_t newnotice;
-    char *ptr
+    char *ptr;
     int retval, hdrlen;
 
     newnotice = *notice;
