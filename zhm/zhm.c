@@ -20,9 +20,9 @@ static char rcsid_hm_c[] = "$Header$";
 #include <sys/ioctl.h>
 #include <sys/file.h>
 
-#ifdef hesiod
+#ifdef HESIOD
 #include <hesiod.h>
-#endif hesiod
+#endif HESIOD
 
 int hmdebug = 0, rebootflag = 0, errflg = 0, dieflag = 0, oldpid;
 int no_server = 1, nservchang = 0, nserv = 0, nclt = 0;
@@ -92,7 +92,7 @@ char *argv[];
 	  }
      }
 
-#ifdef hesiod
+#ifdef HESIOD
      if (*prim_serv == NULL) {
 	  if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
 	       printf("No hesiod information available.\n");
@@ -128,7 +128,7 @@ char *argv[];
 		    break;
 	       }
 	  }
-#endif hesiod
+#endif HESIOD
 	  
 	  if (zcluster == NULL) {
 	       if ((zcluster = malloc(strlen("zephyr")+1)) != NULL)
@@ -242,25 +242,25 @@ void init_hm()
      (void)ZSetServerState(1);	/* Aargh!!! */
      init_queue();
 
-#ifdef hesiod
+#ifdef HESIOD
      if ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
 	  syslog(LOG_ERR, "No servers or no hesiod");
-#endif hesiod
+#endif HESIOD
 	  serv_list = (char **)malloc(2 * sizeof(char *));
 	  serv_list[0] = (char *)malloc(MAXHOSTNAMELEN);
 	  (void)strcpy(serv_list[0], prim_serv);
 	  serv_list[1] = "";
 	  if (*prim_serv == NULL) {
-#ifdef hesiod
+#ifdef HESIOD
 	       printf("No hesiod, no valid server found, exiting.\n");
 #else
 	       printf("No valid primary server found, exiting.\n");
-#endif hesiod	       
+#endif HESIOD	       
 	       exit(ZERR_SERVNAK);
 	  }
-#ifdef hesiod
+#ifdef HESIOD
      }
-#endif hesiod
+#endif HESIOD
      
      cur_serv_list = serv_list;
      if (*prim_serv == NULL)
