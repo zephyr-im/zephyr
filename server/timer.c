@@ -99,7 +99,7 @@ timer timer_set_rel (time_rel, proc, arg)
      void *arg;
 {
 	timer new_t;
-	right_now = NOW;
+	right_now = t_local.tv_sec;
 	new_t = (timer) xmalloc(TIMER_SIZE);
 	if (new_t == NULL) return(NULL);
 	ALARM_TIME(new_t) = time_rel + right_now;
@@ -246,7 +246,7 @@ timer_process()
 	void * queue_arg;
 	int valid = 0;
 
-	right_now = NOW;
+	right_now = t_local.tv_sec;
 	t=ALARM_NEXT(timers);
 	/* note that in the case that there are no timers, the ALARM_TIME
 	   is set to 0L, which is what the main loop expects as the
