@@ -48,7 +48,7 @@ int internal_border_width = 2;
 unsigned long default_fgcolor;
 unsigned long default_bgcolor;
 unsigned long default_bordercolor;
-long ttl = 0;
+long ttl = 500;
 static int reset_saver;
 static int border_width = 1;
 static int cursor_code = XC_sailboat;
