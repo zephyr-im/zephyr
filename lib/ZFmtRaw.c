@@ -13,15 +13,13 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZFormatRawNotice_c[] = "$Header$";
-#endif lint
-
-#include <zephyr/mit-copyright.h>
+static char rcsid_ZFormatRawNotice_c[] = "$Id$";
+#endif
 
 #include <zephyr/zephyr_internal.h>
 
 Code_t ZFormatRawNotice(notice, buffer, ret_len)
-    ZNotice_t *notice;
+    register ZNotice_t *notice;
     char **buffer;
     int *ret_len;
 {
@@ -35,6 +33,7 @@ Code_t ZFormatRawNotice(notice, buffer, ret_len)
 
     *ret_len = hdrlen+notice->z_message_len;
 
+    /* *ret_len is never 0, don't have to worry about malloc(0) */
     if (!(*buffer = malloc((unsigned) *ret_len)))
 	return (ENOMEM);
 
