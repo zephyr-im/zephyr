@@ -18,8 +18,6 @@ static char rcsid_xrevstack_c[] = "$Id$";
 
 #include <zephyr/mit-copyright.h>
 
-#define REVSTACK
-
 #ifdef REVSTACK
 #include "X_gram.h"
 #include <stdio.h>
