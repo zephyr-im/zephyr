@@ -18,6 +18,7 @@ static char rcsid_kstuff_c[] = "$Header$";
 #endif lint
 
 #include "zserver.h"
+#include <zephyr/krb_err.h>
 
 #include <ctype.h>
 #include <netdb.h>
@@ -85,7 +86,7 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
  * SendKerberosData
  * 
  * create and transmit a ticket over the file descriptor for service.host
- * return Kerberos failure codes if appropriate, or KSUCCESS if we
+ * return failure codes if appropriate, or 0 if we
  * get the ticket and write it to the file descriptor
  */
 
@@ -103,25 +104,25 @@ char *service, *host;			/* service name, foreign host */
 
     rem = krb_get_lrealm(krb_realm,1);
     if (rem != KSUCCESS)
-      return(rem);
+	return rem + ERROR_TABLE_BASE_krb;
 
     rem = krb_mk_req( ticket, service, host, krb_realm, (u_long)0 );
     if (rem != KSUCCESS)
-      return(rem);
+	return rem + ERROR_TABLE_BASE_krb;
 
     (void) sprintf(p,"%d ",ticket->length);
     if ((written = write(fd, p, strlen(p))) != strlen(p))
 	    if (written < 0)
-		    return(written);
+		    return errno;
 	    else
 		    return(ZSRV_PKSHORT);
     if ((written = write(fd, (caddr_t) (ticket->dat), ticket->length)) != ticket->length)
 	    if (written < 0)
-		    return(written);
+		    return errno;
 	    else
 		    return(ZSRV_PKSHORT);
-	    
-    return(rem);
+
+    return 0;
 }
 
 static char tkt_file[] = ZEPHYR_TKFILE;
