@@ -14,7 +14,7 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
-static char rcsid_uloc_c[] = "$Header$";
+static char rcsid_uloc_c[] = "$Id$";
 #endif lint
 
 #include "zserver.h"
@@ -895,7 +895,7 @@ static int
 ul_equiv(l1, l2)
 register ZLocation_t *l1, *l2;
 {
-	if (strcmp(l1->zlt_machine, l2->zlt_machine))
+	if (strcasecmp(l1->zlt_machine, l2->zlt_machine))
 		return(0);
 	if (strcmp(l1->zlt_tty, l2->zlt_tty))
 		return(0);
@@ -1099,7 +1099,7 @@ exposure_type exposure;
 	       !strcmp(locations[idx].zlt_user, loc2.zlt_user)) {
 
 		/* change exposure and owner for each loc on that host */
-		if (!strcmp(locations[idx].zlt_machine, loc2.zlt_machine)) {
+		if (!strcasecmp(locations[idx].zlt_machine, loc2.zlt_machine)) {
 			notfound = 0;
 			locations[idx].zlt_exposure = exposure;
 			locations[idx].zlt_port = notice->z_port;
