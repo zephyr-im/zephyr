@@ -49,7 +49,7 @@ CDEFS_SS = -I$(D_UTIL)
 #define SsLibs $(D_SS)/libss.a
 #endif
 
-ZPIDDIR = /etc/athena
+ZPIDDIR = /var/athena
 ZETCDIR = $(ATHCONFDIR)/zephyr
 ZLIBDIR = $(ATHLIBDIR)/zephyr
 ZINCDIR = $(ATHINCDIR)/zephyr
