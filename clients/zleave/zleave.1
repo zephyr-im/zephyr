@@ -61,15 +61,13 @@ set.  The process id is stored in the file /tmp/zleave.\fIuid\fR, where
 .PP
 If the
 .I -m
-argument is specified, the next argument is taken to be a message that
-is sent to the user as the second field of every Zephyr message sent
-by
-.I zleave 
-(The first field is a sentence describing how much time remains until
-the appointed hour.).
-If you want a multiple-word message, you normally must quote it with
+argument is specified, the next argument
+is appended to the standard message 
+(a sentence describing how much time remains until the appointed hour)
+sent at appropriate times.
+If you want to append a multiple-word message, you normally must quote it with
 double quotes (") (This is necessary for users of
-.IR csh(1)
+.IR csh (1)
 and
 .IR sh (1).)
 .PP
