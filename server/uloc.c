@@ -1028,7 +1028,7 @@ ulogin_flush_user(ZNotice_t *notice)
 	/* skip over (and delete) matches */
 	j = i + num_match;
 	while (i < j)
-	    delete locations[i];
+	    delete locations[i++];
 
 	/* copy the rest */
 	while (i < num_locs) {
@@ -1241,11 +1241,13 @@ void
 uloc_dump_locs(register FILE *fp)
 {
 	register int i;
-	char buf[BUFSIZ], *bufp = buf;
-	const char *cp;
+	char buf[BUFSIZ*3];
+	static char *bufp;
+	static const char *cp;
 
 	/* delay using stdio so that we can run FAST! */
 	for (i = 0; i < num_locs; i++) {
+		bufp = buf;
 #define cpy(str) do{cp=(str);while(*cp){*bufp++=*cp++;}}while(0)
 		cpy (locations[i]->zlt_user.value ());
 		*bufp++ = '/';
