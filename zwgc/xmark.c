@@ -173,6 +173,12 @@ void xmarkExpose(dpy,w,gram,b1,p1,b2,p2)
       swap(p1,p2);
    }
 
+#if defined(_IBMR2) && !defined(__GNUC__) && defined(RS6000_OPT_BUG)
+   /* A version of the AIX 3.1 RS/6000 C compiler needs this to prevent
+      a core dump in the loop below. */
+   &b1;
+#endif
+
    expose.type=Expose;
    expose.display=dpy;
    expose.window=w;
