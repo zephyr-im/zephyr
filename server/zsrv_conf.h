@@ -19,11 +19,13 @@
 /* Magic path names */
 #ifndef HESIOD
 #define SERVER_LIST_FILE	"/usr/athena/lib/zephyr/server.list"
-#endif /* !HESIOD */
+#endif
 
 /* ACL's for pre-registered classes */
 /* Directory containing acls and other info */
-#define	ZEPHYR_ACL_DIR		"/usr/athena/lib/zephyr/"
+#ifndef ZEPHYR_ACL_DIR
+#define	ZEPHYR_ACL_DIR		"/usr/athena/lib/zephyr/acl/"
+#endif
 /* name of the class registry */
 #define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
 
@@ -32,10 +34,9 @@
 #define	ZEPHYR_TKFILE		"/usr/athena/lib/zephyr/ztkts"
 
 /* Pathname of Kerberos srvtab file.
-   WARNING: lib/ZCheckAuthentication.c needs to have a corresponding
-   definition!  */
+ * WARNING: lib/ZCkAuth.c needs to have a corresponding definition! */
 #define SERVER_SRVTAB		"/usr/athena/lib/zephyr/srvtab"
-#endif
+#endif /* KERBEROS */
 
 /* default subscription file */
 #define	DEFAULT_SUBS_FILE	"/usr/athena/lib/zephyr/default.subscriptions"
