@@ -180,18 +180,20 @@ dnl ----- Kerberos 4 -----
 AC_DEFUN(ATHENA_KRB4_CHECK,
 [if test "$krb4" != yes; then
 	CPPFLAGS="$CPPFLAGS -I$krb4/include"
-	LDFLAGS="$LDFLAGS -L$krb4/lib"
-fi
-AC_CHECK_LIB(krb, krb_rd_req, [KRB4_LIBS="-lkrb -ldes"],
-	[if test "$krb4" != yes; then
+	if test -d "$krb4/include/kerberosIV"; then
 		CPPFLAGS="$CPPFLAGS -I$krb4/include/kerberosIV"
-	else
-		CPPFLAGS="$CPPFLAGS -I/usr/include/kerberosIV"
 	fi
-	AC_CHECK_LIB(krb4, krb_rd_req,
-		     [KRB4_LIBS="-lkrb4 -ldes425 -lkrb5 -lcrypto -lcom_err"],
-		     [AC_MSG_ERROR(Kerberos 4 libraries not found)],
-		     -ldes425 -lkrb5 -lcrypto -lcom_err)], -ldes)])
+	LDFLAGS="$LDFLAGS -L$krb4/lib"
+elif test -d /usr/include/kerberosIV; then
+	CPPFLAGS="$CPPFLAGS -I/usr/include/kerberosIV"
+fi
+AC_CHECK_LIB(krb4, krb_rd_req,
+	     [KRB4_LIBS="-lkrb4 -ldes425 -lkrb5 -lcrypto -lcom_err"],
+	     [AC_CHECK_LIB(krb, krb_rd_req,
+			   [KRB4_LIBS="-lkrb -ldes"],
+			   [AC_MSG_ERROR(Kerberos 4 libraries not found)],
+			   -ldes)],
+	     -ldes425 -lkrb5 -lcrypto -lcom_err)])
 
 AC_DEFUN(ATHENA_KRB4,
 [AC_ARG_WITH(krb4,
