@@ -19,9 +19,7 @@ static char rcsid_formatter_c[] = "$Id$";
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
 
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
+#include <sysdep.h>
 #include "new_memory.h"
 #include "char_stack.h"
 #include "string_dictionary.h"

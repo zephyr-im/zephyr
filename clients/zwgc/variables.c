@@ -24,8 +24,7 @@ static char rcsid_variables_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
-#include <ctype.h>
+#include <sysdep.h>
 #include "new_memory.h"
 #include "notice.h"
 #include "string_dictionary_aux.h"

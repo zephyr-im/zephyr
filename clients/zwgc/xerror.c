@@ -18,8 +18,11 @@ static char rcsid_xerror_c[] = "$Id$";
 
 #include <zephyr/mit-copyright.h>
 
+#include <sysdep.h>
+
+#ifndef X_DISPLAY_MISSING
+
 #include <X11/Xlib.h>
-#include <stdio.h>
 #include "mux.h"
 
 int xerror_happened;
@@ -46,3 +49,6 @@ void end_xerror_trap(dpy)
    XSync(dpy,False);
    XSetErrorHandler(NULL);
 }
+
+#endif
+

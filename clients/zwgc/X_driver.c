@@ -24,7 +24,10 @@ static char rcsid_X_driver_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
+#include <sysdep.h>
+
+#ifndef X_DISPLAY_MISSING
+
 #include "X_driver.h"
 #include <X11/Xresource.h>
 #include "new_memory.h"
@@ -49,14 +52,6 @@ Display *dpy = NULL;
 /*                  Code to deal with getting X resources:                  */
 /*                                                                          */
 /****************************************************************************/
-
-/*
- *
- */
-
-#ifndef  APPDEFDATABASE
-#define  APPDEFDATABASE "/usr/athena/lib/zephyr/zwgc_resources"
-#endif
 
 /*
  *
@@ -248,6 +243,7 @@ int open_display_and_load_resources(pargc, argv)
 {
     XrmDatabase temp_db1, temp_db2, temp_db3;
     char *filename, *res, *xdef;
+    char dbasename[128];
     extern char *getenv();
 
     /* Initialize X resource manager: */
@@ -269,7 +265,8 @@ int open_display_and_load_resources(pargc, argv)
       return(1);
 
     /* Read in our application-specific resources: */
-    temp_db1 = XrmGetFileDatabase(APPDEFDATABASE);
+    sprintf(dbasename, "%s/zwgc_resources", DATADIR);
+    temp_db1 = XrmGetFileDatabase(dbasename);
 
     /*
      * Get resources from the just opened display:
@@ -408,3 +405,6 @@ char *X_driver(text)
     free_desc(desc);
     return(NULL);
 }
+
+#endif /* X_DISPLAY_MISSING */
+

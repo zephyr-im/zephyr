@@ -24,6 +24,7 @@ static char rcsid_exec_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include "new_memory.h"
 #include "exec.h"
@@ -33,10 +34,6 @@ static char rcsid_exec_c[] = "$Id$";
 #include "port.h"
 #include "variables.h"
 #include "notice.h"
-
-#if !defined(__STDC__) && !defined(const)
-#define const
-#endif
 
 static int exec_subtree(), exec_fields();
 

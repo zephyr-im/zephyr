@@ -18,7 +18,7 @@ static char rcsid_node_c[] = "$Id$";
 
 #include <zephyr/mit-copyright.h>
 
-#include <stdio.h>
+#include <sysdep.h>
 #include "new_memory.h"
 #include "node.h"
 

@@ -22,12 +22,7 @@ static char rcsid_mux_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/file.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <stdio.h>
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include "mux.h"
 #include "error.h"
@@ -201,7 +196,7 @@ static int check_tty()
 
     if (tty < 0) return 0;
 
-#if defined(POSIX) || defined(SUNOS)
+#if defined(_POSIX_VERSION)
     result = ( ((pgrp = tcgetpgrp(tty)) < 0)      ? 0 : 1 );
 #else
     result = ( (ioctl(tty, TIOCGPGRP, &pgrp) < 0) ? 0 : 1 );

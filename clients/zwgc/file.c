@@ -18,9 +18,7 @@ static char rcsid_file_c[] = "$Id$";
 
 #include <zephyr/mit-copyright.h>
 
-#include <errno.h>
-#include <sys/types.h>
-#include <stdio.h>
+#include <sysdep.h>
 #include <pwd.h>
 #include "new_memory.h"
 #include "new_string.h"

@@ -24,7 +24,7 @@ static char rcsid_zephyr_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include <sys/socket.h>
 #include "new_string.h"

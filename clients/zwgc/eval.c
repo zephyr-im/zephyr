@@ -24,6 +24,7 @@ static char rcsid_eval_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include "new_memory.h"
 #include "node.h"

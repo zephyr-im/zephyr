@@ -24,6 +24,7 @@ static char rcsid_notice_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include <netdb.h>
 #include <sys/socket.h>
@@ -308,7 +309,7 @@ char *decode_notice(notice)
      * Convert host notice sent from to ascii:
      */
     if (notice->z_sender_addr.s_addr) {
-	fromhost = gethostbyaddr(&(notice->z_sender_addr),
+	fromhost = gethostbyaddr((char *) &(notice->z_sender_addr),
 				 sizeof(struct in_addr), AF_INET);
 	var_set_variable("fromhost", fromhost ? fromhost->h_name :
 			 inet_ntoa(notice->z_sender_addr));

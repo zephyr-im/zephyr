@@ -17,6 +17,7 @@ static char rcsid_text_operations_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
+#include <sysdep.h>
 
 #include "new_memory.h"
 #include "text_operations.h"

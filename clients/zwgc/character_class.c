@@ -16,6 +16,7 @@
 static char rcsid_character_class_c[] = "$Id$";
 #endif
 
+#include <sysdep.h>
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
 #include "character_class.h"

@@ -18,6 +18,10 @@ static char rcsid_X_gram_c[] = "$Id$";
 
 #include <zephyr/mit-copyright.h>
 
+#include <sysdep.h>
+
+#ifndef X_DISPLAY_MISSING
+
 #include "X_gram.h"
 #include "xmark.h"
 #include <X11/Xutil.h>
@@ -478,3 +482,6 @@ void x_gram_expose(dpy,w,gram,event)
       XDestroyRegion(region);
    }
 }
+
+#endif /* X_DISPLAY_MISSING */
+

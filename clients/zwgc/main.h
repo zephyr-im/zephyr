@@ -19,6 +19,7 @@
 #ifndef main_MODULE
 #define main_MODULE
 
+extern char *progname;
 extern char *subscriptions_filename_override;
 
 /*
@@ -34,10 +35,11 @@ extern void usage();
 
 #define USRDESC ".zwgc.desc"
 
-/* DEFDESC points to where the system default description is stored */
+/* DEFDESC points to a file (relative to the data directory) which has the
+ * system default description file */
 
 #ifndef DEFDESC
-#define DEFDESC "/usr/athena/lib/zephyr/zwgc.desc"
+#define DEFDESC "zwgc.desc"
 #endif
 
 #endif

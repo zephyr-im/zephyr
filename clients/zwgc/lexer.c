@@ -24,7 +24,7 @@ static char rcsid_lexer_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
+#include <sysdep.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "int_dictionary.h"
