@@ -165,7 +165,7 @@ clean:
 
 # 'make depend' code
 depend: $(CFILES) ss_err.h
-	makedepend $(CFLAGS) $(CFILES) 
+	touch Make.depend; makedepend -fMake.depend $(CFLAGS) $(CFILES) 
 
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
