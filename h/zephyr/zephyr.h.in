@@ -278,6 +278,12 @@ void ZSetDebug ZP((void (*)(ZCONST char *, va_list, void *), void *));
 /* Control codes sent to a server */
 #define ZEPHYR_CTL_CLASS	"ZEPHYR_CTL"	/* Class */
 
+#define ZEPHYR_CTL_REALM	"REALM"		/* Inst: From realm */
+#define REALM_ADD_SUBSCRIBE	"ADD_SUBSCRIBE"	/* Opcode: Add subs */
+#define REALM_REQ_SUBSCRIBE	"REQ_SUBSCRIBE"	/* Opcode: Request subs */
+#define REALM_SUBSCRIBE		"RLM_SUBSCRIBE"	/* Opcode: Subscribe realm */
+#define REALM_UNSUBSCRIBE	"RLM_UNSUBSCRIBE" /* Opcode: Unsub realm */
+
 #define ZEPHYR_CTL_CLIENT	"CLIENT"	/* Inst: From client */
 #define CLIENT_SUBSCRIBE	"SUBSCRIBE"	/* Opcode: Subscribe */
 #define CLIENT_SUBSCRIBE_NODEFS	"SUBSCRIBE_NODEFS"	/* Opcode: Subscribe */
