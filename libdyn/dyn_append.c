@@ -31,7 +31,8 @@ int DynAppend(obj, els, num)
 	       return ret;
      }
 
-     bcopy(els, obj->array + obj->num_el*obj->el_size, obj->el_size*num);
+     (void) memmove(obj->array + obj->num_el*obj->el_size, els,
+		    obj->el_size*num);
 
      obj->num_el += num;
 
