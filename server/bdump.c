@@ -840,7 +840,8 @@ ZServerDesc_t *server;
 			if ((retval = client_register(&notice,
 						      &current_who,
 						      &client,
-						      server)) != ZERR_NONE) {
+						      server,
+						      0)) != ZERR_NONE) {
 				syslog(LOG_ERR,"brl register failed: %s",
 				       error_message(retval));
 				return(retval);
