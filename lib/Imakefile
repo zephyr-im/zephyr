@@ -15,9 +15,20 @@ LINTLIBS= ${KRB_LINTLIB} ${DES_LINTLIB} ${COMERR_LINTLIB}
 all:: libzephyr.a
 
 #ifdef KERBEROS
-KERR_O= krb_err.o
-KERR_ET=krb_err.et
+K_O= krb_err.o	ZFormatAuthenticNotice.o
+K_ET=krb_err.et
+K_C=		ZFormatAuthenticNotice.c
 make_error_table(krb_err)
+#endif
+
+#ifdef STRCASE
+STRCASE_O=strcasecmp.o
+STRCASE_C=strcasecmp.c
+#endif
+
+#if defined (HaveGcc) && defined (sparc)
+INET_NTOA_O=inet_ntoa.o
+INET_NTOA_C=inet_ntoa.c
 #endif
 
 RSRCS= ${SRCS} ${HDRS} ${KERR_ET} zephyr_err.et
@@ -27,7 +38,7 @@ HDRS= \
 	../include/zephyr/zephyr_conf.h \
 	../include/zephyr/zephyr_internal.h
 
-SRCS=	\
+SRCS=	$(K_C) $(STRCASE_C) $(INET_NTOA_C) \
 	ZCheckAuthentication.c \
 	ZCheckIfNotice.c \
 	ZClosePort.c \
@@ -35,7 +46,6 @@ SRCS=	\
 	ZCompareUIDPred.c \
 	ZFlushLocations.c \
 	ZFlushSubscriptions.c \
-	ZFormatAuthenticNotice.c \
 	ZFormatNotice.c \
 	ZFormatNoticeList.c \
 	ZFormatRawNotice.c \
@@ -76,11 +86,9 @@ SRCS=	\
 	ZVariables.c \
 	ZWaitForNotice.c \
 	Zinternal.c \
-	acl_files.c \
-	strcasecmp.c
+	acl_files.c
 
-OLIST=	\
-	${KERR_O} \
+OLIST=	${K_O} ${STRCASE_O} ${INET_NTOA_O} \
 	zephyr_err.o \
 	ZCheckAuthentication.o \
 	ZCheckIfNotice.o \
@@ -89,7 +97,6 @@ OLIST=	\
 	ZCompareUIDPred.o \
 	ZFlushLocations.o \
 	ZFlushSubscriptions.o \
-	ZFormatAuthenticNotice.o \
 	ZFormatNotice.o \
 	ZFormatNoticeList.o \
 	ZFormatRawNotice.o \
@@ -132,7 +139,7 @@ OLIST=	\
 	Zinternal.o \
 	acl_files.o
 
-OTHERSRCS= zephyr_err.et ${KERR_ET}
+OTHERSRCS= zephyr_err.et ${K_ET}
 SRCDIR= ${SRCTOP}/lib
 CODE= ${SRCS} ${OTHERSRCS} Imakefile
 
