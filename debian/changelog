@@ -14,8 +14,9 @@ zephyr (2.1.20000421.SNAPSHOT-9) unstable; urgency=low
   * fix build dependencies
   * make config files in /etc/zephyr not installed executable
   * cleanup debhelper examples
+  * actually build position-independent shared libraries
 
- -- Karl Ramm <kcr@debian.org>  Sun,  1 Apr 2001 01:34:22 -0500
+ -- Karl Ramm <kcr@1TS.ORG>  Tue,  3 Apr 2001 01:16:56 -0400
 
 zephyr (2.1.20000421.SNAPSHOT-8) unstable; urgency=low
 
