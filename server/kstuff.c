@@ -63,44 +63,45 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
      char *service; /* service principal desired */
      char *srvtab; /* file to get keys from */
 {
-	char p[20];
-	KTEXT_ST ticket;	/* will get Kerberos ticket from client */
-	int i;
-	char instance[INST_SZ];
+    char p[20];
+    KTEXT_ST ticket;		/* will get Kerberos ticket from client */
+    int i;
+    char instance[INST_SZ];
 
-	/*
-	 * Get the Kerberos ticket.  The first few characters, terminated
-	 * by a blank, should give us a length; then get than many chars
-	 * which will be the ticket proper.
-	 */
-	for (i=0; i<20; i++) {
-		if (read(fd, &p[i], 1) != 1) {
-			syslog(LOG_WARNING,"bad read tkt len");
-			return(KFAILURE);
-		}
-		if (p[i] == ' ') {
-		    p[i] = '\0';
-		    break;
-		}
-	}
-	ticket.length = atoi(p);
-	if ((i==20) || (ticket.length<=0) || (ticket.length>MAX_KTXT_LEN)) {
-		syslog(LOG_WARNING,"bad tkt len %d",ticket.length);
+    /*
+     * Get the Kerberos ticket.  The first few characters, terminated
+     * by a blank, should give us a length; then get than many chars
+     * which will be the ticket proper.
+     */
+    for (i=0; i<20; i++) {
+	if (read(fd, &p[i], 1) != 1) {
+	    syslog(LOG_WARNING,"bad read tkt len");
 	    return(KFAILURE);
 	}
-	for (i=0; i<ticket.length; i++) {
-	    if (read(fd, (caddr_t) &(ticket.dat[i]), 1) != 1) {
-		syslog(LOG_WARNING,"bad tkt read");
-		return(KFAILURE);
-	    }
+	if (p[i] == ' ') {
+	    p[i] = '\0';
+	    break;
 	}
-	/*
-	 * now have the ticket.  use it to get the authenticated
-	 * data from Kerberos.
-	 */
-	(void) strcpy(instance,"*");	/* let Kerberos fill it in */
+    }
+    ticket.length = atoi(p);
+    if ((i==20) || (ticket.length<=0) || (ticket.length>MAX_KTXT_LEN)) {
+	syslog(LOG_WARNING,"bad tkt len %d",ticket.length);
+	return(KFAILURE);
+    }
+    for (i=0; i<ticket.length; i++) {
+	if (read(fd, (caddr_t) &(ticket.dat[i]), 1) != 1) {
+	    syslog(LOG_WARNING,"bad tkt read");
+	    return(KFAILURE);
+	}
+    }
+    /*
+     * now have the ticket.  use it to get the authenticated
+     * data from Kerberos.
+     */
+    (void) strcpy(instance,"*");		/* let Kerberos fill it in */
 
-	return(krb_rd_req(&ticket,service,instance,haddr,kdata, srvtab ? srvtab : ""));
+    return(krb_rd_req(&ticket, service, instance, haddr.s_addr,
+		      kdata, srvtab ? srvtab : ""));
 }
 
 /*
@@ -168,14 +169,14 @@ static void
 ae_expire(ae)
      struct AuthEnt *ae;
 {
-  if (ae->data) {
-    xfree((void *) ae->data);
-    ae->data = 0;
-  }
-  ae->len = 0;
-  ae->expire_time = 0;
-  free_zstring(ae->principal);
-  ae->principal= 0;
+    if (ae->data) {
+	xfree((void *) ae->data);
+	ae->data = 0;
+    }
+    ae->len = 0;
+    ae->expire_time = 0;
+    free_zstring(ae->principal);
+    ae->principal= 0;
 }
 
 static int
