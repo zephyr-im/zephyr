@@ -30,8 +30,8 @@
 #define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
 #define	DEFAULT_SUBS_FILE	"default.subscriptions"
 
-#define REXMIT_TIMES { 2, 2, 4, 4, 8, 8, 16, 16, 32, 32, -1 }
-#define NUM_REXMIT_TIMES 10
+#define REXMIT_TIMES { 2, 2, 4, 4, 8, 8, 16, 32, 64, 128, 256, 512, -1 }
+#define NUM_REXMIT_TIMES 12
 
 /* hostmanager defines */
 #define	LOSE_TIMO	(60)		/* time during which a losing host
