@@ -104,7 +104,6 @@ fd_set interesting;			/* the file descrips we are listening
 					   to right now */
 int nfildes;				/* number to look at in select() */
 struct sockaddr_in sock_sin;		/* address of the socket */
-struct sockaddr_in bdump_sin;		/* addr of brain dump socket */
 struct timeval nexthost_tv;		/* time till next timeout for select */
 
 ZNotAcked_t *nacklist;			/* list of packets waiting for ack's */
@@ -113,14 +112,15 @@ u_short hm_port;			/* the port # of the host manager */
 
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
-int zdebug = 0;
+int zdebug;
 #ifdef DEBUG
-int zalone = 0;
+int zalone;
 #endif DEBUG
-u_long npackets = 0;			/* number of packets processed */
+u_long npackets;			/* number of packets processed */
 long uptime;				/* when we started operations */
 static int nofork;
 
+int
 main(int argc, char **argv)
 {
 	int nfound;			/* #fildes ready on select */
@@ -204,6 +204,9 @@ main(int argc, char **argv)
 	if (initialize())
 		exit(1);
 
+	/* Seed random number set.  */
+	srandom (getpid () ^ time (0));
+
 #ifndef __SABER__
 	/* chdir to somewhere where a core dump will survive */
 	if (chdir("/usr/tmp") != 0)
@@ -224,7 +227,7 @@ main(int argc, char **argv)
 #ifdef DEBUG
 	/* DBX catches sigterm and does the wrong thing with sigint,
 	   so we provide another hook */
-	(void) signal(SIGALRM, bye);	
+	(void) signal(SIGALRM, bye);
 
 	(void) signal(SIGTERM, bye);
 #ifdef SignalIgnore
@@ -461,6 +464,8 @@ dump_strings (int sig) {
     ZString::print (fp);
     if (fclose (fp) == EOF)
 	syslog (LOG_ERR, "error writing strings dump file");
+    else
+	syslog (LOG_INFO, "dump done");
     oerrno = errno;
     SIG_RETURN;
 }
@@ -583,6 +588,8 @@ detach(void)
 }
 #endif
 
+#if 0 /* Not useful now that strings in string table are sorted by
+         hash value rather than entry time.  */
 static /*const*/ ZString popular_ZStrings[] = {
     "filsrv",
     "",
@@ -627,3 +634,4 @@ static /*const*/ ZString popular_ZStrings[] = {
     "athena.mit.edu:contrib.watchmaker",
     "testers.athena.mit.edu:x11r4",
 };
+#endif
