@@ -7,6 +7,7 @@
 #include "ss_internal.h"
 #include <signal.h>
 #include <setjmp.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 
 #ifdef lint     /* "lint returns a value which is sometimes ignored" */
