@@ -40,14 +40,14 @@ int ZCheckAuthentication(notice, from)
     CREDENTIALS cred;
 
     if (!notice->z_auth)
-	return (0);
+	return (ZAUTH_NO);
 	
     if (__Zephyr_server) {
 	if (ZReadAscii(notice->z_ascii_authent, 
 		       strlen(notice->z_ascii_authent)+1, 
 		       (unsigned char *)authent.dat, 
 		       notice->z_authent_len) == ZERR_BADFIELD) {
-	    return (0);
+	    return (ZAUTH_NO);
 	}
 	authent.length = notice->z_authent_len;
 	result = krb_rd_req(&authent, SERVER_SERVICE, 
@@ -59,15 +59,15 @@ int ZCheckAuthentication(notice, from)
 		(void) sprintf(srcprincipal, "%s%s%s@%s", dat.pname, 
 			       dat.pinst[0]?".":"", dat.pinst, dat.prealm);
 		if (strcmp(srcprincipal, notice->z_sender))
-			return (0);
-		return(1);
+			return (ZAUTH_NO);
+		return(ZAUTH_YES);
 	} else
-		return (-1);		/* didn't decode correctly */
+		return (ZAUTH_FAILED);	/* didn't decode correctly */
     }
 
     if (result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
 			      __Zephyr_realm, &cred))
-	return (0);
+	return (ZAUTH_NO);
 
     our_checksum = (ZChecksum_t)quad_cksum(notice->z_packet, NULL, 
 					   notice->z_default_format+
@@ -75,9 +75,9 @@ int ZCheckAuthentication(notice, from)
 					   notice->z_packet, 0, cred.session);
 
     /* if mismatched checksum, then the packet was corrupted */
-    return ((our_checksum == notice->z_checksum) ? 0 : -1);
+    return ((our_checksum == notice->z_checksum) ? ZAUTH_YES : ZAUTH_FAILED);
 
 #else
-    return (notice->z_auth ? 1 : 0);
+    return (notice->z_auth ? ZAUTH_YES : ZAUTH_NO);
 #endif
 } 
