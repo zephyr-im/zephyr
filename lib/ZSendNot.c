@@ -24,6 +24,14 @@ Code_t ZSendNotice(notice, cert_routine)
     ZNotice_t *notice;
     int (*cert_routine)();
 {
+    return(ZSrvSendNotice(notice, cert_routine, Z_XmitFragment));
+}
+
+Code_t ZSrvSendNotice(notice, cert_routine, send_routine)
+    ZNotice_t *notice;
+    int (*cert_routine)();
+    int (*send_routine)();
+{    
     Code_t retval;
     ZNotice_t newnotice;
     char *buffer;
@@ -36,7 +44,7 @@ Code_t ZSendNotice(notice, cert_routine)
     if ((retval = ZParseNotice(buffer, len, &newnotice)) != ZERR_NONE)
 	return (retval);
     
-    retval = Z_SendFragmentedNotice(&newnotice, len);
+    retval = Z_SendFragmentedNotice(&newnotice, len, send_routine);
 
     free(buffer);
 
