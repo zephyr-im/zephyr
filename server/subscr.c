@@ -80,6 +80,7 @@ static int subscr_equiv(), clt_unique();
 static void free_subscriptions(), free_sub();
 static char **subscr_marshal_subs();
 static Code_t subscr_subscribe_real();
+static ZSubscr_t *subscr_copy_def_subs();
 
 static int defaults_read = 0;		/* set to 1 if the default subs
 					   are in memory */
@@ -120,19 +121,20 @@ ZNotice_t *notice;
 	if (!(subs = extract_subscriptions(notice)))
 		return(ZERR_NONE);	/* no subscr -> no error */
 
-	return(subscr_subscribe_real(who, subs));
+	return(subscr_subscribe_real(who, subs, notice));
 }
 
 static Code_t
-subscr_subscribe_real(who, newsubs)
+subscr_subscribe_real(who, newsubs, notice)
 ZClient_t *who;
 register ZSubscr_t *newsubs;
+ZNotice_t *notice;
 {
 	int relation;
 	int omask;
 	Code_t retval;
 	ZAcl_t *acl;
-	register ZSubscr_t *subs2, *subs3;
+	register ZSubscr_t *subs2, *subs3, *subs;
 
 	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 	for (subs = newsubs->q_forw;
@@ -238,7 +240,7 @@ ZClient_t *who;
 	}
 
 	subs = subscr_copy_def_subs(who->zct_principal);
-	return(subscr_subscribe_real(who, subs));
+	return(subscr_subscribe_real(who, subs, &default_notice));
 }
 
 void
@@ -256,7 +258,7 @@ char *person;
 	int fd;
 	struct stat statbuf;
 	char *def_sub_area;
-	register char *cp, *cp1;
+	register char *cp;
 	ZSubscr_t *subs;
 	register ZSubscr_t *subs2;
 
@@ -264,21 +266,21 @@ char *person;
 		fd = open(DEFAULT_SUBS_FILE, O_RDONLY, 0666);
 		if (fd < 0) {
 			syslog(LOG_ERR, "can't open %s:%m", DEFAULT_SUBS_FILE);
-			return(errno);
+			return((ZSubscr_t *)0);
 		}
 		retval = fstat(fd, &statbuf);
 		if (retval < 0) {
 			syslog(LOG_ERR, "fstat failure on %s:%m",
 			       DEFAULT_SUBS_FILE);
 			(void) close(fd);
-			return(errno);
+			return((ZSubscr_t *)0);
 		}
 		if (!(def_sub_area = xmalloc(statbuf.st_size + 1))) {
 			syslog(LOG_ERR, "no mem copy_def_subs");
 			(void) close(fd);
-			return(ENOMEM);
+			return((ZSubscr_t *)0);
 		}
-		retval = read(fd, def_sub_area, statbuf.st_size);
+		retval = read(fd, def_sub_area, (int) statbuf.st_size);
 		/*
 		  "Upon successful completion, read and readv return the number
 		  of bytes actually read and placed in the buffer.  The system
@@ -291,7 +293,7 @@ char *person;
 		if (retval != statbuf.st_size) {
 			syslog(LOG_ERR, "short read in copy_def_subs");
 			(void) close(fd);
-			return(ZSRV_LEN);
+			return((ZSubscr_t *)0);
 		}
 
 		(void) close(fd);
@@ -313,10 +315,13 @@ char *person;
 		     cp++)
 			if ((*cp == '\n') || (*cp == ','))
 				*cp = '\0';
-		def_notice.z_message = def_sub_area;
-		def_notice.z_message_len = statbuf.st_size + 1;
+		default_notice.z_message = def_sub_area;
+		default_notice.z_message_len = statbuf.st_size + 1;
+		/* these are needed later for access_check() */
+		default_notice.z_sender = person;
+		default_notice.z_auth = 1;
 	}
-	subs = extract_subscriptions(&def_notice);
+	subs = extract_subscriptions(&default_notice);
 	/* replace any non-* recipients with "person" */
 
 	for (subs2 = subs->q_forw; subs2 != subs; subs2 = subs2->q_forw)
@@ -788,8 +793,6 @@ struct sockaddr_in *who;
 	if ((retval = ZSetDestAddr(&send_to_who)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "new_old_subscr_sendlist set addr: %s",
 		       error_message(retval));
-		if (answer)
-			xfree(answer);
 		return;
 	}
 
@@ -851,7 +854,7 @@ struct sockaddr_in *who;
 	register ZSubscr_t *subs;
 	Code_t retval;
 	ZNotice_t reply;
-	ZPacket_t reppacket;
+	char *reppacket;
 	int packlen, i, found = 0;
 	char **answer = (char **) NULL;
 
@@ -895,14 +898,12 @@ struct sockaddr_in *who;
 	reply.z_authent_len = 0; /* save some space */
 	reply.z_auth = 0;
 
-	packlen = sizeof(reppacket);
 
 	/* if it's too long, chop off one at a time till it fits */
 	while ((retval = ZFormatRawNoticeList(&reply,
 					      answer,
 					      found * NUM_FIELDS,
-					      reppacket,
-					      packlen,
+					      &reppacket,
 					      &packlen)) == ZERR_PKTLEN) {
 		found--;
 		reply.z_opcode = OLD_CLIENT_INCOMPSUBS;
