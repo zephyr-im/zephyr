@@ -29,7 +29,7 @@
 
 #ifdef KERBEROS
 /* name of file to hold the tickets for keys to exchange with other servers */
-#define	ZEPHYR_TKFILE		"/usr/athena/lib/zephy/ztkts"
+#define	ZEPHYR_TKFILE		"/usr/athena/lib/zephyr/ztkts"
 
 /* Pathname of Kerberos srvtab file.
    WARNING: lib/ZCheckAuthentication.c needs to have a corresponding
