@@ -140,14 +140,14 @@ main(argc, argv)
     extern int optind;
 
 #ifndef ZEPHYR_USES_HESIOD
-    sprintf(list_file, "%s/%s", CONFDIR, SERVER_LIST_FILE);
+    sprintf(list_file, "%s/%s", SYSCONFDIR, SERVER_LIST_FILE);
 #endif
 #ifdef ZEPHYR_USES_KERBEROS
-    sprintf(srvtab_file, "%s/%s", CONFDIR, ZEPHYR_SRVTAB);
-    sprintf(tkt_file, "%s/%s", CONFDIR, ZEPHYR_TKFILE);
+    sprintf(srvtab_file, "%s/%s", SYSCONFDIR, ZEPHYR_SRVTAB);
+    sprintf(tkt_file, "%s/%s", SYSCONFDIR, ZEPHYR_TKFILE);
 #endif
-    sprintf(acl_dir, "%s/%s", CONFDIR, ZEPHYR_ACL_DIR);
-    sprintf(subs_file, "%s/%s", CONFDIR, DEFAULT_SUBS_FILE);
+    sprintf(acl_dir, "%s/%s", SYSCONFDIR, ZEPHYR_ACL_DIR);
+    sprintf(subs_file, "%s/%s", SYSCONFDIR, DEFAULT_SUBS_FILE);
 
     /* set name */
     programname = strrchr(argv[0],'/');
