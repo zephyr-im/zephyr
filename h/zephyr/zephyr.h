@@ -184,6 +184,7 @@ extern int ZMakeAuthentication();
 
 #define ZEPHYR_CTL_CLIENT	"CLIENT"	/* Inst: From client */
 #define CLIENT_SUBSCRIBE	"SUBSCRIBE"	/* Opcode: Subscribe */
+#define CLIENT_SUBSCRIBE_NODEFS	"SUBSCRIBE_NODEFS"	/* Opcode: Subscribe */
 #define CLIENT_UNSUBSCRIBE	"UNSUBSCRIBE"	/* Opcode: Unsubsubscribe */
 #define CLIENT_CANCELSUB	"CLEARSUB"	/* Opcode: Clear all subs */
 #define CLIENT_GIMMESUBS	"GIMME"		/* Opcode: Give me subs */
