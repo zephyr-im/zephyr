@@ -11,14 +11,14 @@ SRCDIR= ${SRCTOP}/include/zephyr
 HDRS= acl.h mit-copyright.h zephyr.h zephyr_conf.h zephyr_internal.h zsyslog.h
 CODE= ${HDRS} Imakefile
 
-all:: zephyr_paths.h
+all depend:: zephyr_paths.h
 
-depend:: zephyr_paths.h
+clean::
+	$(RM) zephyr_paths.h
 
 #ifdef KERBEROS
 HaveKerberos=yes
 #endif
-
 #ifdef HESIOD
 HaveHesiod=yes
 #endif
@@ -26,10 +26,10 @@ HaveHesiod=yes
 #define export_as(var,name)	name=$(var) ; export name
 #define export_var(var)		export_as(var,var)
 
-zephyr_paths.h: $(BUILDTOP)/config/config.Imakefile
-	@ export_var(ETCATHDIR) ; \
-	export_as (ACLDIR,LIBDIR) ; \
-	export_var(CLIENTDIR) ; \
+zephyr_paths.h:
+	@ export_as(ATHETCDIR,ETCATHDIR) ; \
+	export_as(ZLIBDIR,LIBDIR) ; \
+	export_as(ATHBINDIR,CLIENTDIR) ; \
 	export_var(HaveKerberos) ; \
 	export_var(HaveHesiod) ; \
-	$(BUILDTOP)/tools/makepaths > zephyr_paths.h
+	$(PTOP)/tools/makepaths > zephyr_paths.h
