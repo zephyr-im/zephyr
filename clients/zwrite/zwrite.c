@@ -227,7 +227,7 @@ main(argc, argv)
     if (!nocheck && nrecips)
 	send_off(&notice, 0);
 	
-    if (quiet)
+    if (quiet || !nrecips)
 	notice.z_kind = UNACKED;	/* change for real sending */
 
     if (!msgarg && isatty(0))
