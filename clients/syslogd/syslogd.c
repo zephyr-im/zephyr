@@ -58,6 +58,11 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #include <sys/types.h>
 #include <time.h>
 #endif
+#ifdef _IBMR2
+#include <sys/select.h>
+#include <sys/types.h>
+#include <spc.h>	/* For support of the SRC system */
+#endif
 #include <utmp.h>
 #include <ctype.h>
 #include <strings.h>
@@ -83,7 +88,7 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 
 #include <zephyr/zephyr.h>
 
-#ifdef ultrix
+#if defined(ultrix) || defined(_POSIX_SOURCE)
 #define sighandler_type void
 #else
 #define sighandler_type int
@@ -262,12 +267,23 @@ main(argc, argv)
 	struct sockaddr_un sunx, fromunix;
 	struct sockaddr_in sin, frominet;
 	FILE *fp;
+#ifdef _POSIX_SOURCE
+	struct sigaction action;
+#endif
+#ifdef _AIX
+	int using_src = 1;
+	struct sockaddr srcsockaddr, fromsrc;
+	struct srcreq srcreq;
+	void handle_src();
+	int addrlen, src_fd;
+#endif
+
 #ifdef COMPAT42
 	char line[BUFSIZ + 1];
 #else
 	char line[MSG_BSIZE + 1];
 #endif /* COMPAT42 */
-	extern sighandler_type die(), domark(), reapchild();
+	extern sighandler_type die(), domark(), reapchild(), init(), endtty();
 
 	while (--argc > 0) {
 		p = *++argv;
@@ -298,8 +314,27 @@ main(argc, argv)
 		}
 	}
 
+#ifdef _AIX
+	addrlen = sizeof(struct sockaddr);
+	if (getsockname(0, &srcsockaddr, &addrlen) < 0) {
+	  using_src = 0;
+	  fprintf(stderr,"%s: Error in getsockname: %s; continuing without SRC support",
+		  argv[0], sys_errlist[errno]);
+	}
+	if (using_src && ((src_fd = dup(0)) < 0)) {
+	  using_src = 0;
+	  fprintf(stderr,"%s: Error in dup: %s; continuing without SRC support",
+		  argv[0], sys_errlist[errno]);
+	}
+#endif /* _AIX */
+
 	if (!Debug) {
+/* Don't fork if using SRC; SRC will think the program exited */
+#ifdef _AIX
+		if (!using_src && fork())
+#else
 		if (fork())
+#endif /* _AIX */
 			exit(0);
 		for (i = 0; i < 10; i++)
 			(void) close(i);
@@ -325,6 +360,20 @@ main(argc, argv)
 	}
 	else
 		LocalDomain = "";
+#ifdef _POSIX_SOURCE
+	action.sa_flags = 0;
+	sigemptyset(&action.sa_mask);
+
+	action.sa_handler = Debug ? die : SIG_IGN;
+	sigaction(SIGTERM, &action, NULL);
+	sigaction(SIGINT, &action, NULL);
+
+	action.sa_handler = reapchild;
+	sigaction(SIGCHLD, &action, NULL);
+
+	action.sa_handler = domark;
+	sigaction(SIGALRM, &action, NULL);
+#else
 	(void) signal(SIGTERM, die);
 #ifdef ultrix
 	if (Debug) {
@@ -340,6 +389,7 @@ main(argc, argv)
 #endif /* !ultrix */
 	(void) signal(SIGCHLD, reapchild);
 	(void) signal(SIGALRM, domark);
+#endif /* _POSIX_SOURCE */
 	(void) alarm(TIMERINTVL);
 	(void) unlink(LogName);
 
@@ -411,11 +461,20 @@ main(argc, argv)
 	(void) ZInitialize ();
 
 	init();
+#ifdef _POSIX_SOURCE
+	action.sa_handler = init;
+	sigaction(SIGHUP, &action, NULL);
+#else
 	(void) signal(SIGHUP, init);
+#endif
 
 	for (;;) {
 		int nfds, readfds = FDMASK(funix) | inetm | klogm;
 
+#ifdef _AIX
+		if (using_src)
+		  readfds |= FDMASK(src_fd);
+#endif
 		errno = 0;
 		dprintf("readfds = %#x\n", readfds);
 		nfds = select(20, (fd_set *) &readfds, (fd_set *) NULL,
@@ -460,6 +519,21 @@ main(argc, argv)
 			} else if (i < 0 && errno != EINTR)
 				logerror("recvfrom inet");
 		} 
+#ifdef _AIX
+		dprintf("%d %d %d\n", using_src, readfds, FDMASK(src_fd));
+		if (using_src && (readfds & (FDMASK(src_fd)))) {
+		  dprintf("got a src packet\n");
+		  len = sizeof(fromsrc);
+		  i = recvfrom(src_fd, &srcreq, sizeof(srcreq), 0, &fromsrc,
+			      &len);
+		  dprintf("finished recvfrom, %d\n",i);
+		}
+/*		  if (i > 0) {
+		    handle_src(srcreq);
+		  } else if (i < 0 && errno != EINTR)
+		    logerror("recvfrom src");
+		} */
+#endif /* _AIX */
 	}
 }
 
@@ -835,6 +909,7 @@ fprintlog(f, flags, msg, fac, prilev)
 
 jmp_buf ttybuf;
 
+sighandler_type
 endtty()
 {
 	longjmp(ttybuf, 1);
@@ -858,6 +933,9 @@ wallmsg(f, iov)
 	struct utmp ut;
 	static char p[6+sizeof(ut.ut_line)] = "/dev/";
 	char greetings[200];
+#ifdef _POSIX_SOURCE
+	struct sigaction action;
+#endif
 
 	if (reenter++)
 		return;
@@ -874,10 +952,25 @@ wallmsg(f, iov)
 	 * and doing notty().
 	 */
 	if (fork() == 0) {
+#ifdef _POSIX_SOURCE
+	  action.sa_flags = 0;
+	  sigemptyset(&action.sa_mask);
+
+	  action.sa_handler = SIG_DFL;
+	  sigaction(SIGTERM, &action, NULL);
+
+	  alarm(0);
+	  action.sa_handler = endtty;
+	  sigaction(SIGALRM, &action, NULL);
+
+	  action.sa_handler = SIG_IGN;
+	  sigaction(SIGTTOU, &action, NULL);
+#else
 		(void) signal(SIGTERM, SIG_DFL);
 		(void) alarm(0);
 		(void) signal(SIGALRM, endtty);
 		(void) signal(SIGTTOU, SIG_IGN);
+#endif
 		(void) sigsetmask(0);
 		(void) sprintf(greetings,
 		    "\r\n\7Message from syslogd@%s at %.24s ...\r\n",
@@ -939,7 +1032,11 @@ wallmsg(f, iov)
 sighandler_type
 reapchild()
 {
+#ifdef _POSIX_SOURCE
+  pid_t status;
+#else
 	union wait status;
+#endif
 
 	while (wait3(&status, WNOHANG, (struct rusage *) NULL) > 0)
 		;
@@ -1043,6 +1140,7 @@ die(sig)
  *  INIT -- Initialize syslogd from configuration table
  */
 
+sighandler_type
 init()
 {
 	register int i;
@@ -1342,3 +1440,75 @@ decode(name, codetab)
 
 	return (-1);
 }
+
+#ifdef _AIX
+/* Routines for handling the SRC (System Resource Controller) system */
+
+void
+handle_src(packet)
+     struct srcreq packet;
+{
+  void send_src_reply();
+
+  dprintf("handling packet");
+  switch(packet.subreq.action) {
+  case START:
+    dprintf("was start");
+    send_src_reply(packet, SRC_SUBMSG, 
+		   "ERROR: syslogd does not support START requests",
+		   sizeof(struct srcrep));
+    break;
+  case STOP:
+    dprintf("was stop");
+    if (packet.subreq.object == SUBSYSTEM) {
+      send_src_reply(packet, SRC_OK, "", sizeof(struct srcrep));
+      die(0);
+    } else {
+      send_src_reply(packet, SRC_SUBMSG, 
+		   "ERROR: syslogd does not support subsystem STOP requests",
+		   sizeof(struct srcrep));
+    }
+    break;
+  case STATUS:
+    send_src_reply(packet, SRC_SUBMSG, 
+		   "ERROR: syslogd does not support STATUS requests",
+		   sizeof(struct srcrep));
+    break;
+  case TRACE:
+    send_src_reply(packet, SRC_SUBMSG, 
+		   "ERROR: syslogd does not support TRACE requests",
+		   sizeof(struct srcrep));
+    break;
+  case REFRESH:
+    if (packet.subreq.object == SUBSYSTEM) {
+      init();
+      send_src_reply(packet, SRC_OK, "", sizeof(struct srcrep));
+    } else {
+      send_src_reply(packet, SRC_SUBMSG, 
+	   "ERROR: syslogd does not support subsystem REFRESH requests",
+	   sizeof(struct srcrep));
+    }
+    break;
+  }
+}
+
+void
+send_src_reply(orig_packet,rtncode,packet,len)
+     struct srcreq orig_packet;
+     int rtncode;
+     char *packet;
+     int len;
+{
+  struct srcrep reply;
+  ushort cont = END;
+
+  reply.svrreply.rtncode = rtncode;
+  strcpy(reply.svrreply.objname, "syslogd");
+  reply.svrreply.objtext[0] = '\0';
+  reply.svrreply.objname[0] = '\0';
+  bcopy(packet,reply.svrreply.rtnmsg,len);
+
+  srcsrpy(srcrrqs(&orig_packet), (char *)&reply, len, cont);
+}
+
+#endif /* _AIX */
