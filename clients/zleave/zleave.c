@@ -67,7 +67,7 @@ char **argv;
 	FILE *fp;
 	struct tm *nv;
 	int atoi();
-	int port;
+	short port;
 	ZSubscription_t sub;
 	
 	if (ZInitialize() != ZERR_NONE) {
