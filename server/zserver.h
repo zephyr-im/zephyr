@@ -90,6 +90,10 @@ struct _Destlist {
     struct _Destlist	*next, **prev_p;
 };
 
+typedef struct _galaxy_info {
+    Z_GalaxyConfig galaxy_config;
+} galaxy_info;
+
 enum _Realm_state {
     REALM_UP,				/* Realm is up */
     REALM_TARDY,			/* Realm due for a hello XXX */
@@ -245,7 +249,7 @@ void handle_packet __P((void));
 void clt_ack __P((ZNotice_t *notice, struct sockaddr_in *who, Sent_type sent));
 void nack_release __P((Client *client));
 void sendit __P((ZNotice_t *notice, int auth, struct sockaddr_in *who,
-		 int external));
+		 int external, int local_dest));
 void rexmit __P((void *));
 void xmit __P((ZNotice_t *notice, struct sockaddr_in *dest, int auth,
 	       Client *client));
@@ -269,8 +273,10 @@ void sweep_ticket_hash_table __P((void *));
 Sched *check_key_sched_cache __P((des_cblock key));
 void add_to_key_sched_cache __P((des_cblock key, Sched *sched));
 int krb_set_key __P((char *key, int cvt));
-/* int krb_rd_req __P((KTEXT authent, char *service, char *instance,
-		    unsigned KRB_INT32 from_addr, AUTH_DAT *ad, char *fn)); */
+#if 0
+int krb_rd_req __P((KTEXT authent, char *service, char *instance,
+		    unsigned KRB_INT32 from_addr, AUTH_DAT *ad, char *fn));
+#endif
 int krb_find_ticket __P((KTEXT authent, KTEXT ticket));
 int krb_get_lrealm __P((char *r, int n));
 #endif
@@ -320,7 +326,7 @@ Code_t uloc_send_locations __P((void));
 
 /* found in realm.c */
 int realm_sender_in_realm __P((char *realm, char *sender));
-int realm_bound_for_realm __P((char *realm, char *recip));
+int realm_bound_for_my_galaxy __P((char *recip));
 Realm *realm_which_realm __P((struct sockaddr_in *who));
 Realm *realm_get_realm_by_name __P((char *name));
 Realm *realm_get_realm_by_pid __P((int));
@@ -353,15 +359,16 @@ extern fd_set interesting;		/* the file descrips we are listening
 					 to right now */
 extern int nfds;			/* number to look at in select() */
 extern int zdebug;
+extern galaxy_info *galaxy_list;	/* list of all galaxies' servers */
+extern int ngalaxies;
 extern char myname[];			/* domain name of this host */
-extern char list_file[];
 #ifdef HAVE_KRB4
 extern char srvtab_file[];
-extern char my_realm[];
+extern char my_krealm[];
 #endif
 extern char acl_dir[];
 extern char subs_file[];
-extern const char version[];
+extern char localconf_file[];
 extern u_long npackets;			/* num of packets processed */
 extern time_t uptime;			/* time we started */
 extern struct in_addr my_addr;
@@ -377,6 +384,7 @@ extern Statistic i_s_ctls, i_s_logins, i_s_admins, i_s_locates;
 extern int rexmit_times[];
 
 /* found in server.c */
+extern char my_galaxy[];		/* local galaxy of this zserver */
 extern Server *otherservers;		/* array of servers */
 extern int me_server_idx;		/* me (in the array of servers) */
 extern int nservers;			/* number of other servers*/

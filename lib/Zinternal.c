@@ -15,6 +15,8 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <utmp.h>
+#include <unistd.h>
+#include <netdb.h>
 
 #ifndef lint
 static const char rcsid_Zinternal_c[] =
@@ -28,13 +30,11 @@ extern char *inet_ntoa ();
 int __Zephyr_fd = -1;
 int __Zephyr_open;
 int __Zephyr_port = -1;
-struct in_addr __My_addr;
 int __Q_CompleteLength;
 int __Q_Size;
 struct _Z_InputQ *__Q_Head, *__Q_Tail;
 struct sockaddr_in __HM_addr;
 struct sockaddr_in __HM_addr_real;
-int __HM_set;
 int __Zephyr_server;
 ZLocations_t *__locate_list;
 int __locate_num;
@@ -44,10 +44,9 @@ int __subscriptions_num;
 int __subscriptions_next;
 int Z_discarded_packets = 0;
 
-#ifdef HAVE_KRB4
-C_Block __Zephyr_session;
-#endif
-char __Zephyr_realm[REALM_SZ];
+Z_GalaxyList *__galaxy_list;
+int __ngalaxies;
+int __default_galaxy;
 
 #ifdef Z_DEBUG
 void (*__Z_debug_print) __P((const char *fmt, va_list args, void *closure));
@@ -223,7 +222,7 @@ Code_t Z_ReadWait()
     ZNotice_t notice;
     ZPacket_t packet;
     struct sockaddr_in olddest, from;
-    int from_len, packet_len, zvlen, part, partof;
+    int i, j, from_len, packet_len, zvlen, part, partof;
     char *slash;
     Code_t retval;
     fd_set fds;
@@ -290,8 +289,20 @@ Code_t Z_ReadWait()
 	if (find_or_insert_uid(&notice.z_uid, notice.z_kind))
 	    return(ZERR_NONE);
 
-	/* Check authentication on the notice. */
-	notice.z_checked_auth = ZCheckAuthentication(&notice, &from);
+	notice.z_dest_galaxy = "unknown-galaxy";
+
+	for (i=0; i<__ngalaxies; i++)
+	    for (j=0; j<__galaxy_list[i].galaxy_config.nservers; j++)
+		if (from.sin_addr.s_addr ==
+		    __galaxy_list[i].galaxy_config.server_list[j].addr.s_addr) {
+		    notice.z_dest_galaxy = __galaxy_list[i].galaxy_config.galaxy;
+		    break;
+		}
+
+	if ((notice.z_kind != HMACK) && (notice.z_kind != SERVACK)) {
+	   /* Check authentication on the notice. */
+	   notice.z_checked_auth = ZCheckAuthentication(&notice, &from);
+	}
     }
 
 
@@ -594,6 +605,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     static char version[BUFSIZ]; /* default init should be all \0 */
     struct sockaddr_in name;
     int namelen = sizeof(name);
+    int i, j;
 
     if (!notice->z_sender)
 	notice->z_sender = ZGetSender();
@@ -615,15 +627,18 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     (void) Z_gettimeofday(&notice->z_uid.tv, (struct timezone *)0);
     notice->z_uid.tv.tv_sec = htonl((u_long) notice->z_uid.tv.tv_sec);
     notice->z_uid.tv.tv_usec = htonl((u_long) notice->z_uid.tv.tv_usec);
-    
-    (void) memcpy(&notice->z_uid.zuid_addr, &__My_addr, sizeof(__My_addr));
+
+    for (i=0; i<__ngalaxies; i++)
+	if (notice->z_dest_galaxy == 0 ||
+	    strcmp(__galaxy_list[i].galaxy_config.galaxy,
+		   notice->z_dest_galaxy) == 0) {
+	    memcpy(&notice->z_uid.zuid_addr,
+		   &__galaxy_list[i].galaxy_config.server_list[0].my_addr.s_addr,
+		   sizeof(struct in_addr));
+	    break;
+	}
 
     notice->z_multiuid = notice->z_uid;
-
-    if (!version[0])
-	    (void) sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR,
-			   ZVERSIONMINOR);
-    notice->z_version = version;
 
     return Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine);
 }
@@ -640,20 +655,25 @@ Code_t Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
 	notice->z_authent_len = 0;
 	notice->z_ascii_authent = "";
 	notice->z_checksum = 0;
-	return (Z_FormatRawHeader(notice, buffer, buffer_len,
-				  len, NULL, NULL));
+	return (Z_FormatRawHeader(notice, buffer, buffer_len, len,
+				  NULL, NULL, NULL, NULL));
     }
     
     return ((*cert_routine)(notice, buffer, buffer_len, len));
 } 
 	
-Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
+Code_t Z_FormatRawHeader(notice, buffer, buffer_len, hdr_len,
+			 cksum_start, cksum_len, cstart, cend)
     ZNotice_t *notice;
     char *buffer;
     int buffer_len;
-    int *len;
+    int *hdr_len;
+    char **cksum_start;
+    int *cksum_len;
     char **cstart, **cend;
 {
+    static char version_galaxy[BUFSIZ]; /* default init should be all \0 */
+    static char version_nogalaxy[BUFSIZ]; /* default init should be all \0 */
     char newrecip[BUFSIZ];
     char *ptr, *end;
     int i;
@@ -676,13 +696,36 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     ptr = buffer;
     end = buffer+buffer_len;
 
-    if (buffer_len < strlen(notice->z_version)+1)
+    if (notice->z_dest_galaxy &&
+	*notice->z_dest_galaxy) {
+	if (ZGetRhs(notice->z_dest_galaxy) == NULL)
+	    return(ZERR_GALAXYUNKNOWN);
+
+	if (!version_galaxy[0])
+	    (void) sprintf(version_galaxy, "%s%d.%d", ZVERSIONHDR,
+			   ZVERSIONMAJOR, ZVERSIONMINOR_GALAXY);
+
+	if (Z_AddField(&ptr, version_galaxy, end))
+	    return (ZERR_HEADERLEN);
+
+	if (Z_AddField(&ptr, notice->z_dest_galaxy, end))
+	    return (ZERR_HEADERLEN);
+    }
+
+    if (cksum_start)
+	*cksum_start = ptr;
+
+    if (!version_nogalaxy[0])
+	(void) sprintf(version_nogalaxy, "%s%d.%d", ZVERSIONHDR,
+		       ZVERSIONMAJOR, ZVERSIONMINOR_NOGALAXY);
+
+    notice->z_version = version_nogalaxy;
+
+    if (Z_AddField(&ptr, version_nogalaxy, end))
 	return (ZERR_HEADERLEN);
 
-    (void) strcpy(ptr, notice->z_version);
-    ptr += strlen(ptr)+1;
-
-    if (ZMakeAscii32(ptr, end-ptr, Z_NUMFIELDS + notice->z_num_other_fields)
+    if (ZMakeAscii32(ptr, end-ptr,
+		     Z_NUMFIELDS + notice->z_num_other_fields)
 	== ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
@@ -723,10 +766,8 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	    return (ZERR_HEADERLEN);
     }
     else {
-	if (strlen(notice->z_recipient) + strlen(__Zephyr_realm) + 2 >
-	    sizeof(newrecip))
-	    return (ZERR_HEADERLEN);
-	(void) sprintf(newrecip, "%s@%s", notice->z_recipient, __Zephyr_realm);
+	(void) sprintf(newrecip, "%s@%s", notice->z_recipient,
+		       ZGetRhs(notice->z_dest_galaxy));
 	if (Z_AddField(&ptr, newrecip, end))
 	    return (ZERR_HEADERLEN);
     }		
@@ -754,8 +795,11 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	if (Z_AddField(&ptr, notice->z_other_fields[i], end))
 	    return (ZERR_HEADERLEN);
     
-    *len = ptr-buffer;
-	
+    if (cksum_len)
+	*cksum_len = ptr-*cksum_start;
+
+    *hdr_len = ptr-buffer;
+
     return (ZERR_NONE);
 }
 
@@ -864,7 +908,7 @@ Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
     ZNotice_t partnotice;
     ZPacket_t buffer;
     char multi[64];
-    int offset, hdrsize, fragsize, ret_len, message_len, waitforack;
+    int i, offset, hdrsize, fragsize, ret_len, message_len, waitforack;
     Code_t retval;
     
     hdrsize = len-notice->z_message_len;
@@ -887,8 +931,16 @@ Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
 		htonl((u_long) partnotice.z_uid.tv.tv_sec);
 	    partnotice.z_uid.tv.tv_usec =
 		htonl((u_long) partnotice.z_uid.tv.tv_usec);
-	    (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr, 
-			  sizeof(__My_addr));
+
+	    for (i=0; i<__ngalaxies; i++)
+		if (notice->z_dest_galaxy == 0 ||
+		    strcmp(__galaxy_list[i].galaxy_config.galaxy,
+			   notice->z_dest_galaxy) == 0) {
+		    memcpy((char *)&partnotice.z_uid.zuid_addr,
+			   &__galaxy_list[i].galaxy_config.server_list[0].my_addr.s_addr,
+			   sizeof(struct in_addr));
+		    break;
+		}
 	}
 	message_len = min(notice->z_message_len-offset, fragsize);
 	partnotice.z_message = notice->z_message+offset;
@@ -908,6 +960,364 @@ Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
     }
 
     return (ZERR_NONE);
+}
+
+void Z_SourceAddr(peer_addr, my_addr)
+     struct in_addr *peer_addr, *my_addr;
+{
+    int s;
+    struct sockaddr_in s_in;
+    socklen_t sinsize;
+    struct hostent *hent;
+    char hostname[1024];
+
+    my_addr->s_addr = INADDR_NONE;
+
+    if (peer_addr->s_addr != INADDR_NONE) {
+	/* Try to get the local interface address by connecting a UDP
+	 * socket to the server address and getting the local address.
+	 * Some broken operating systems (e.g. Solaris 2.0-2.5) yield
+	 * INADDR_ANY (zero), so we have to check for that. */
+	s = socket(AF_INET, SOCK_DGRAM, 0);
+	if (s != -1) {
+	    memset(&s_in, 0, sizeof(s_in));
+	    s_in.sin_family = AF_INET;
+	    memcpy(&s_in.sin_addr, peer_addr, sizeof(*peer_addr));
+	    s_in.sin_port = HM_SRV_SVC_FALLBACK;
+	    sinsize = sizeof(s_in);
+	    if (connect(s, (struct sockaddr *) &s_in, sizeof(s_in)) == 0
+		&& getsockname(s, (struct sockaddr *) &s_in, &sinsize) == 0
+		&& s_in.sin_addr.s_addr != 0)
+		memcpy(my_addr, &s_in.sin_addr, sizeof(*my_addr));
+	    close(s);
+	}
+    }
+
+    if (my_addr->s_addr == INADDR_NONE) {
+	/* We couldn't figure out the local interface address by the
+	 * above method.  Try by resolving the local hostname.  (This
+	 * is a pretty broken thing to do) */
+	if (gethostname(hostname, sizeof(hostname)) == 0) {
+	    hent = gethostbyname(hostname);
+	    if (hent && hent->h_addrtype == AF_INET)
+		memcpy(my_addr, hent->h_addr, sizeof(*my_addr));
+	}
+    }
+
+    /* If the above methods failed, zero out my_addr so things will
+     * sort of kind of work. */
+    if (my_addr->s_addr == INADDR_NONE)
+	my_addr->s_addr = 0;
+}
+    
+Code_t Z_ParseGalaxyConfig(str, gc)
+     char *str;
+     Z_GalaxyConfig *gc;
+{
+    char *ptra, *ptrb;
+    struct hostent *hp;
+    enum { CLUSTER, SLOC, HOSTLIST } listtype;
+    int hostcount;
+    struct in_addr *my_addr, *serv_addr;
+#ifdef HAVE_HESIOD
+    char **hes_serv_list;
+#endif
+
+    gc->galaxy = NULL;
+
+    /* skip whitespace, check for eol or comment */
+
+    ptra = str;
+    while (*ptra && isspace(*ptra)) ptra++;
+
+    if (*ptra == '\0' || *ptra == '#') {
+       /* no galaxy is ok, it's a blank line */
+       return(ZERR_NONE);
+    }
+
+    /* scan the galaxy */
+
+    ptrb = ptra;
+    while(*ptrb && !isspace(*ptrb) && *ptrb != '#') ptrb++;
+
+    if ((gc->galaxy = (char *) malloc(ptrb - ptra + 1)) == NULL)
+	return(ENOMEM);
+
+    strncpy(gc->galaxy, ptra, ptrb - ptra);
+    gc->galaxy[ptrb - ptra] = '\0';
+
+    /* skip whitespace, check for eol or comment */
+
+    ptra = ptrb;
+    while (*ptra && isspace(*ptra)) ptra++;
+
+    if (*ptra == '\0' || *ptra == '#') {
+	free(gc->galaxy);
+	return(ZERR_BADCONFGALAXY);
+    }
+
+    /* scan the type */
+
+    ptrb = ptra;
+    while(*ptrb && !isspace(*ptrb) && *ptrb != '#') ptrb++;
+
+#ifdef HAVE_HESIOD
+    if (strncasecmp("hes-cluster", ptra, ptrb - ptra) == 0) {
+	listtype = CLUSTER;
+    } else if (strncasecmp("hes-sloc", ptra, ptrb - ptra) == 0) {
+	listtype = SLOC;
+    } else
+#endif
+	if (strncasecmp("hostlist", ptra, ptrb - ptra) == 0) {
+	    listtype = HOSTLIST;
+	} else {
+	    free(gc->galaxy);
+	    return(ZERR_BADCONF);
+	}
+
+#ifdef HAVE_HESIOD
+    if (listtype == CLUSTER || listtype == SLOC) {
+	char *zcluster;
+
+	if (listtype == CLUSTER) {
+	    char hostname[1024];
+
+	    if (gethostname(hostname, sizeof(hostname)) != 0) {
+		zcluster = 0;
+	    } else {
+		char **clust_info, **cpp;
+
+		if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
+		    zcluster = 0;
+		} else {
+		    for (cpp = clust_info; *cpp; cpp++) {
+			if (strncasecmp("ZCLUSTER", *cpp, 9) == 0) {
+			    register char *c;
+		
+			    if ((c = strchr(*cpp, ' ')) == 0) {
+				for (cpp = clust_info; *cpp; cpp++)
+				    free(*cpp);
+				return(ZERR_BADCONFGALAXY);
+			    } else {
+				if ((zcluster =
+				     malloc((unsigned)(strlen(c+1)+1)))
+				    != NULL) {
+				    strcpy(zcluster, c+1);
+				} else {
+				    for (cpp = clust_info; *cpp; cpp++)
+					free(*cpp);
+				    return(ENOMEM);
+				}
+			    }
+			    break;
+			}
+		    }
+		    for (cpp = clust_info; *cpp; cpp++)
+			free(*cpp);
+		    if (zcluster == NULL) {
+			if ((zcluster =
+			     malloc((unsigned)(strlen("zephyr")+1))) != NULL)
+			    strcpy(zcluster, "zephyr");
+			else
+			    return(ENOMEM);
+		    }
+		}
+	    }
+	} else {
+	    /* skip whitespace, check for eol or comment */
+
+	    ptra = ptrb;
+	    while (*ptra && isspace(*ptra)) ptra++;
+
+	    if (*ptra == '\0' || *ptra == '#') {
+		free(gc->galaxy);
+		return(ZERR_BADCONFGALAXY);
+	    }
+
+	    /* scan for the service name for the sloc lookup */
+
+	    ptrb = ptra;
+	    while(*ptrb && !isspace(*ptrb) && *ptrb != '#') ptrb++;
+
+	    if ((zcluster = (char *) malloc(ptrb - ptra + 1)) == NULL) {
+		free(gc->galaxy);
+		return(ENOMEM);
+	    }
+
+	    strncpy(zcluster, ptra, ptrb - ptra);
+	    zcluster[ptrb - ptra] = '\0';
+
+	    /* skip whitespace, check for eol or comment */
+
+	    ptra = ptrb;
+	    while (*ptra && isspace(*ptra)) ptra++;
+
+	    if (*ptra != '\0' && *ptra != '#') {
+		free(zcluster);
+		free(gc->galaxy);
+		return(ZERR_BADCONF);
+	    }
+	}
+
+	/* get the server list from hesiod */
+	
+	if (((hes_serv_list = hes_resolve(zcluster, "sloc")) == NULL) ||
+	    (hes_serv_list[0] == NULL)) {
+	    syslog(LOG_ERR, "No hesiod for galaxy %s (%s sloc)",
+		   gc->galaxy, zcluster);
+	    free(zcluster);
+	    free(gc->galaxy);
+	    /* treat this as an empty line, since other lines may succeed */
+	    gc->galaxy = NULL;
+	    return(ZERR_NONE);
+	}
+
+	free(zcluster);
+    }
+#endif
+
+    /* scan hosts */
+
+    gc->server_list = NULL;
+    gc->nservers = 0;
+    hostcount = 0;
+
+    while (1) {
+	if (gc->server_list) {
+	    gc->server_list = (Z_SrvNameAddr *)
+		realloc(gc->server_list,
+			sizeof(Z_SrvNameAddr)*(gc->nservers+1));
+	} else {
+	    gc->server_list = (Z_SrvNameAddr *)
+		malloc(sizeof(Z_SrvNameAddr));
+	}
+
+	if (gc->server_list == NULL) {
+	    free(gc->galaxy);
+	    return(ENOMEM);
+	}
+
+#ifdef HAVE_HESIOD
+	if (listtype == CLUSTER || listtype == SLOC) {
+	    if (*hes_serv_list == NULL)
+		break;
+
+	    /* this is clean, but only because hesiod memory management
+	       is gross */
+	    gc->server_list[gc->nservers].name = *hes_serv_list;
+	    hes_serv_list++;
+	} else
+#endif
+	    if (listtype == HOSTLIST) {
+		/* skip whitespace, check for eol or comment */
+
+		ptra = ptrb;
+		while (*ptra && isspace(*ptra)) ptra++;
+
+		if (*ptra == '\0' || *ptra == '#') {
+		    /* end of server list */
+		    break;
+		}
+
+		/* scan a hostname */
+
+		ptrb = ptra;
+		while(*ptrb && !isspace(*ptrb) && *ptrb != '#') ptrb++;
+
+		if ((gc->server_list[gc->nservers].name =
+		     (char *) malloc(ptrb - ptra + 1))
+		    == NULL) {
+		    free(gc->server_list);
+		    free(gc->galaxy);
+		    return(ENOMEM);
+		}
+
+		strncpy(gc->server_list[gc->nservers].name, ptra, ptrb - ptra);
+		gc->server_list[gc->nservers].name[ptrb - ptra] = '\0';
+	    }
+
+	hostcount++;
+
+	/* now, take the hesiod or hostlist hostname, and resolve it */
+
+	if ((hp = gethostbyname(gc->server_list[gc->nservers].name)) == NULL) {
+	    /* if the address lookup fails authoritatively from a
+	       hostlist, return an error.  Otherwise, syslog.  This
+	       could cause a syslog from a client, but only if a
+	       lookup which succeeded from zhm earlier fails now.
+	       This isn't perfect, but will do. */
+
+	    if (h_errno != TRY_AGAIN && listtype == HOSTLIST) {
+		free(gc->server_list);
+		free(gc->galaxy);
+		return(ZERR_BADCONFHOST);
+	    } else {
+		syslog(LOG_ERR, "Lookup for server %s for galaxy %s failed, continuing",
+		       gc->server_list[gc->nservers].name, gc->galaxy);
+
+		/* in an ideal world, when we need to find a new
+		   server, or when we receive a packet from a server
+		   we don't know, we would redo the lookup, but this
+		   takes a long time, and blocks.  So for now, we'll
+		   only do this when we reread the config info. */
+
+		continue;
+	    }
+	}
+
+	/* XXX this isn't quite right for multihomed servers. In that
+           case, we should add an entry to server_list for each unique
+	   address */
+
+	serv_addr = &gc->server_list[gc->nservers].addr;
+
+	if (hp->h_length < sizeof(*serv_addr)) {
+	    syslog(LOG_ERR, "Lookup for server %s for galaxy %s failed (h_length < %d), continuing",
+		   gc->server_list[gc->nservers].name, gc->galaxy,
+		   sizeof(*serv_addr));;
+	    continue;
+	}
+
+	memcpy((char *) serv_addr, hp->h_addr, sizeof(*serv_addr));
+
+	my_addr = &gc->server_list[gc->nservers].my_addr;
+
+	Z_SourceAddr(serv_addr, my_addr);
+
+	gc->nservers++;
+    }
+
+    if (gc->nservers == 0) {
+	if (hostcount) {
+	    /* this means the net was losing.  skip this galaxy, because
+	       another one might be ok. */
+
+	    free(gc->server_list);
+	    free(gc->galaxy);
+	    gc->galaxy = NULL;
+	    return(ZERR_NONE);
+	} else {
+	    /* this means that a hostlist was empty */
+
+	    return(ZERR_BADCONFGALAXY);
+	}
+    }
+
+    return(ZERR_NONE);
+}
+
+Code_t Z_FreeGalaxyConfig(gc)
+     Z_GalaxyConfig *gc;
+{
+    int i;
+
+    for (i=0; i<gc->nservers; i++)
+	free(gc->server_list[i].name);
+	
+    free(gc->server_list);
+    free(gc->galaxy);
+
+    return(ZERR_NONE);
 }
 
 /*ARGSUSED*/
@@ -976,9 +1386,6 @@ int ZQLength () { return __Q_CompleteLength; }
 
 #undef ZGetDestAddr
 struct sockaddr_in ZGetDestAddr () { return __HM_addr; }
-
-#undef ZGetRealm
-Zconst char * ZGetRealm () { return __Zephyr_realm; }
 
 #undef ZSetDebug
 void ZSetDebug(proc, arg)

@@ -177,7 +177,7 @@ as the information used to determine this hostname is not guaranteed to
 be correct (even for authentic messages).
 .TP
 .B fullsender
-The notice sender's name, including the zephyr realm name.
+The notice sender's name, including the kerberos realm name.
 .TP
 .B instance
 The instance of the current notice.
@@ -209,8 +209,8 @@ The recipient for the current notice.  If the notice is a multicast
 (sent to several people), the recipient is set to ``*''.
 .TP
 .B sender
-Usually a shortened version of fullsender.  If the realm of the sender
-is equal to the realm of the recipient,
+Usually a shortened version of fullsender.  If the kerberos realm of
+the sender is equal to the kerberos realm of the zephyr servers, 
 .I sender
 omits the realm name.
 .TP

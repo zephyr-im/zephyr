@@ -26,6 +26,7 @@
 #define HM_SVC_FALLBACK		htons((unsigned short) 2104)
 #define HM_SRV_SVC_FALLBACK	htons((unsigned short) 2105)
 
+#define ZAUTH_CKSUM_FAILED	(-2) /* Used only by server. */
 #define ZAUTH_UNSET		(-3) /* Internal to client library. */
 #define Z_MAXFRAGS		500	/* Max number of packet fragments */
 #define Z_MAXNOTICESIZE		400000	/* Max size of incoming notice */
@@ -58,11 +59,35 @@ struct _Z_InputQ {
     char		*msg;
 };
 
+typedef struct _Z_SrvNameAddr {
+   char *name;
+   struct in_addr addr;
+   struct in_addr my_addr;
+} Z_SrvNameAddr;
+
+typedef struct _Z_GalaxyConfig {
+   char *galaxy;
+   Z_SrvNameAddr *server_list;
+   int nservers;
+} Z_GalaxyConfig;
+
+typedef struct _Z_GalaxyList {
+   Z_GalaxyConfig galaxy_config;
+#ifdef HAVE_KRB4
+   char krealm[REALM_SZ];
+   long last_authent_time;
+   KTEXT_ST last_authent;
+#endif
+} Z_GalaxyList;
+
 extern struct _Z_InputQ *__Q_Head, *__Q_Tail;
 
 extern int __Zephyr_open;	/* 0 if FD opened, 1 otherwise */
-extern int __HM_set;		/* 0 if dest addr set, 1 otherwise */
 extern int __Zephyr_server;	/* 0 if normal client, 1 if server or zhm */
+
+extern Z_GalaxyList *__galaxy_list;
+extern int __ngalaxies;
+extern int __default_galaxy;
 
 extern ZLocations_t *__locate_list;
 extern int __locate_num;
@@ -85,10 +110,13 @@ Code_t Z_AddNoticeToEntry __P((struct _Z_InputQ*, ZNotice_t*, int));
 Code_t Z_FormatAuthHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
 Code_t Z_FormatHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
 Code_t Z_FormatRawHeader __P((ZNotice_t *, char*, int,
-			      int*, char **, char **));
+			      int*, char **, int*, char **, char **));
+void Z_SourceAddr __P((struct in_addr *, struct in_addr *));
+Code_t Z_FreeGalaxyConfig(Z_GalaxyConfig *);
+Code_t Z_ParseGalaxyConfig(char *, Z_GalaxyConfig *);
 Code_t Z_ReadEnqueue __P((void));
 Code_t Z_ReadWait __P((void));
-Code_t Z_SendLocation __P((char*, char*, Z_AuthProc, char*));
+Code_t Z_SendLocation __P((char *, char*, char*, Z_AuthProc, char*));
 Code_t Z_SendFragmentedNotice __P((ZNotice_t *notice, int len,
 				   Z_AuthProc cert_func,
 				   Z_SendProc send_func));

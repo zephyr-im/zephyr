@@ -16,15 +16,17 @@
 
 /* Path names are relative to CONFDIR, except for the class registry. */
 
-#define SERVER_LIST_FILE	"server.list"
-#define REALM_LIST_FILE		"realm.list"
+#define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
+
+#define	ZEPHYR_ACL_DIR		"acl/"
+#define	DEFAULT_SUBS_FILE	"default.subscriptions"
+#define GALAXY_FILE		"galaxy.list"
+#define LOCALCONF_FILE		"zephyrd.conf"
+
 #ifdef HAVE_KRB4
 #define ZEPHYR_SRVTAB		"srvtab"
 #define ZEPHYR_TKFILE		"ztkts"
 #endif
-#define	ZEPHYR_ACL_DIR		"acl/"
-#define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
-#define	DEFAULT_SUBS_FILE	"default.subscriptions"
 
 #define REXMIT_TIMES { 2, 2, 4, 4, 8, 8, 16, 32, 64, 128, 256, 512, -1 }
 #define NUM_REXMIT_TIMES 12

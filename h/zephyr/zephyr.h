@@ -42,7 +42,8 @@
 
 #define ZVERSIONHDR	"ZEPH"
 #define ZVERSIONMAJOR	0
-#define ZVERSIONMINOR	2
+#define ZVERSIONMINOR_NOGALAXY	2
+#define ZVERSIONMINOR_GALAXY	3
 
 #define Z_MAXPKTLEN		1024
 #define Z_MAXHEADERLEN		800
@@ -98,6 +99,7 @@ typedef struct _ZNotice_t {
     char		*z_multinotice;
     ZUnique_Id_t	z_multiuid;
     ZChecksum_t		z_checksum;
+    char		*z_dest_galaxy;
     int			z_num_other_fields;
     char		*z_other_fields[Z_MAXOTHERFIELDS];
     caddr_t		z_message;
@@ -140,8 +142,12 @@ int ZCompareMultiUIDPred ZP((ZNotice_t *, void *));
 typedef Code_t (*Z_AuthProc) ZP((ZNotice_t*, char *, int, int *));
 Code_t ZMakeAuthentication ZP((ZNotice_t*, char *,int, int*));
 
+char *ZGetDefaultGalaxy ZP((void));
+char *ZGetRhs ZP((char *));
 char *ZGetSender ZP((void));
 char *ZGetVariable ZP((char *));
+Code_t ZGetGalaxyCount ZP((int *));
+Code_t ZGetGalaxyName ZP((int, char **));
 Code_t ZSetVariable ZP((char *var, char *value));
 Code_t ZUnsetVariable ZP((char *var));
 int ZGetWGPort ZP((void));
@@ -161,9 +167,10 @@ Code_t ZFormatNotice ZP((ZNotice_t*, char**, int*, Z_AuthProc));
 Code_t ZFormatSmallNotice ZP((ZNotice_t*, ZPacket_t, int*, Z_AuthProc));
 Code_t ZFormatRawNoticeList ZP((ZNotice_t *notice, char *list[], int nitems,
 				char **buffer, int *ret_len));
-Code_t ZLocateUser ZP((char *, int *, Z_AuthProc));
-Code_t ZRequestLocations ZP((char *, ZAsyncLocateData_t *,
+Code_t ZLocateUser ZP((char *, char *, int *, Z_AuthProc));
+Code_t ZRequestLocations ZP((char *, char *, ZAsyncLocateData_t *,
 			     ZNotice_Kind_t, Z_AuthProc));
+Code_t ZGetLocations ZP((ZLocations_t *, int *));
 Code_t ZhmStat ZP((struct in_addr *, ZNotice_t *));
 Code_t ZInitialize ZP((void));
 Code_t ZSetServerState ZP((int));
@@ -178,13 +185,15 @@ Code_t ZMakeAscii16 ZP((char *, int, unsigned int));
 Code_t ZReceivePacket ZP((ZPacket_t, int*, struct sockaddr_in*));
 Code_t ZCheckAuthentication ZP((ZNotice_t*, struct sockaddr_in*));
 Code_t ZInitLocationInfo ZP((char *hostname, char *tty));
-Code_t ZSetLocation ZP((char *exposure));
-Code_t ZUnsetLocation ZP((void));
-Code_t ZFlushMyLocations ZP((void));
+Code_t ZSetLocation ZP((char *, char *exposure));
+Code_t ZUnsetLocation ZP((char *));
+Code_t ZFlushMyLocations ZP((char *));
 char *ZParseExposureLevel ZP((char *text));
 Code_t ZFormatRawNotice ZP((ZNotice_t *, char**, int *));
-Code_t ZRetrieveSubscriptions ZP((unsigned short, int*));
+Code_t ZRetrieveSubscriptions ZP((char *, unsigned short, int*));
+Code_t ZRetrieveDefaultSubscriptions ZP((char *, int *));
 Code_t ZOpenPort ZP((unsigned short *port));
+int ZGetPort ZP((void));
 Code_t ZClosePort ZP((void));
 Code_t ZFlushLocations ZP((void));
 Code_t ZFlushSubscriptions ZP((void));
@@ -202,13 +211,13 @@ Code_t ZPeekPacket ZP((char **buffer, int *ret_len,
 Code_t ZPeekNotice ZP((ZNotice_t *notice, struct sockaddr_in *from));
 Code_t ZIfNotice ZP((ZNotice_t *notice, struct sockaddr_in *from,
 		     int (*predicate) ZP((ZNotice_t *, void *)), void *args));
-Code_t ZSubscribeTo ZP((ZSubscription_t *sublist, int nitems,
+Code_t ZSubscribeTo ZP((char *, ZSubscription_t *sublist, int nitems,
 			unsigned int port));
-Code_t ZSubscribeToSansDefaults ZP((ZSubscription_t *sublist, int nitems,
-				    unsigned int port));
-Code_t ZUnsubscribeTo ZP((ZSubscription_t *sublist, int nitems,
+Code_t ZSubscribeToSansDefaults ZP((char *, ZSubscription_t *sublist,
+				    int nitems, unsigned int port));
+Code_t ZUnsubscribeTo ZP((char *, ZSubscription_t *sublist, int nitems,
 			  unsigned int port));
-Code_t ZCancelSubscriptions ZP((unsigned int port));
+Code_t ZCancelSubscriptions ZP((char *, unsigned int port));
 int ZPending ZP((void));
 Code_t ZReceiveNotice ZP((ZNotice_t *notice, struct sockaddr_in *from));
 #ifdef Z_DEBUG
@@ -224,12 +233,9 @@ void Z_debug ZP((ZCONST char *, ...));
 extern int __Zephyr_fd;
 extern int __Q_CompleteLength;
 extern struct sockaddr_in __HM_addr;
-extern char __Zephyr_realm[];
 #define ZGetFD()	__Zephyr_fd
 #define ZQLength()	__Q_CompleteLength
 #define ZGetDestAddr()	__HM_addr
-#define ZGetRealm()	__Zephyr_realm
-
 
 #ifdef Z_DEBUG
 void ZSetDebug ZP((void (*)(ZCONST char *, va_list, void *), void *));
