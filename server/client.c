@@ -69,6 +69,10 @@ client_register(ZNotice_t *notice, struct sockaddr_in *who, register ZClient_t *
 		abort();
 	}
 
+	zdbug ((LOG_DEBUG, "client_register: adding %s at %s/%d",
+		notice->z_sender, inet_ntoa (who->sin_addr),
+		ntohs (notice->z_port)));
+
 	if (!notice->z_port) {
 	    /* must be a non-zero port # */
 	    return(ZSRV_BADSUBPORT);
