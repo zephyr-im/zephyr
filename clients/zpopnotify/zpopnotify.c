@@ -78,8 +78,9 @@ main(argc,argv)
 	    notice.z_opcode = "";
 	    notice.z_sender = mysender;
 	    notice.z_default_format = "From Post Office $1:\n$2";
-	
-	    notice.z_recipient = (char *)rindex(argv[1],'/');
+
+	    /* in case it's a mailbox name (pathname), strip to username */
+	    notice.z_recipient = (char *)rindex(argv[i],'/');
 	    if (notice.z_recipient)
 		notice.z_recipient++;
 	    else
