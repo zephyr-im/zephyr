@@ -66,7 +66,9 @@ DEFINES = $(XDEFS) -DX11 -I$(BINC) \
 	$(CDEFS_KRB) $(CDEFS_HES) $(CDEFS_ET) $(CDEFS_SS) \
 	$(MACHDEFS)
 
+#ifndef _AIX /* AIX ANSI CcCmd doesn't want to compile compile_et output. */
 AnsiCC()
+#endif
 
 /* 
  * Supplemental rules
