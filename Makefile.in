@@ -41,7 +41,8 @@ install:
 	${ENSUREDIR} ${DESTDIR}${mandir}/man8 755
 	${INSTALL} -m 644 ${srcdir}/h/zephyr/mit-copyright.h \
 		${DESTDIR}${includedir}/zephyr
-	${INSTALL} -m 644 h/zephyr/zephyr.h ${DESTDIR}${includedir}/zephyr
+	${INSTALL} -m 644 ${srcdir}/h/zephyr/zephyr.h \
+		${DESTDIR}${includedir}/zephyr
 	${INSTALL} -m 644 h/zephyr/zephyr_err.h ${DESTDIR}${includedir}/zephyr
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
