@@ -89,6 +89,7 @@ struct _Realm {
     int idx;				/* which server we are connected to */
     Destlist *subs;
     Client *client;
+    long tkt_try;
 };
 
 struct _Realmname {
@@ -303,6 +304,7 @@ Code_t uloc_send_locations __P((void));
 Realm *realm_which_realm __P((struct sockaddr_in *who));
 Realm *realm_get_realm_by_name __P((char *name));
 void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, Realm *, int);
+char *realm_expand_realm(char *);
 void realm_init __P((void));
 Code_t ZCheckRealmAuthentication __P((ZNotice_t *, struct sockaddr_in *,
 				      char *));
