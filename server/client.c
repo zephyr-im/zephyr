@@ -28,9 +28,10 @@ static char rcsid_client_s_c[] = "$Header$";
  *	ZClient_t **client; (RETURN)
  *	ZServerDesc_t *server;
  *
- * Code_t client_deregister(client, host)
+ * Code_t client_deregister(client, host, flush)
  *	ZClient_t *client;
  *	ZHostList_t *host;
+ *	int flush;
  *
  * ZClient_t *client_which_client(who, notice)
  *	struct sockaddr_in *who;
@@ -115,9 +116,10 @@ ZServerDesc_t *server;
  */
 
 void
-client_deregister(client, host)
+client_deregister(client, host, flush)
 ZClient_t *client;
 ZHostList_t *host;
+int flush;
 {
 	ZClientList_t *clients;
 
@@ -127,8 +129,9 @@ ZHostList_t *host;
 	/* release subscriptions */
 	(void) subscr_cancel_client(client);
 
-	/* release locations */
-	(void) uloc_flush_client(&client->zct_sin);
+	if (flush)
+		/* release locations if this is a punted client */
+		(void) uloc_flush_client(&client->zct_sin);
 
 	/* unthread and release this client */
 
