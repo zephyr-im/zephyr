@@ -28,7 +28,7 @@ typedef struct _desctype {
 #define DT_NL	4	/* Newline.		*/
     
     char *str;		/* Name of environment, string to be displayed.	*/
-    short int len;	/* Length of string/environment name for
+    int len;		/* Length of string/environment name for
 			   ENV, STR, END.  Undefined for EOF */
 } desctype;
 
