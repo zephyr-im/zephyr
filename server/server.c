@@ -92,10 +92,8 @@ static Code_t server_register();
 #endif
 
 static struct in_addr *get_server_addrs __P((int *number));
-#ifndef HAVE_HESIOD
 static char **get_server_list __P((char *file));
 static void free_server_list __P((char **list));
-#endif
 
 static Unacked *srv_nacktab[SRV_NACKTAB_HASHSIZE];
 Server *otherservers;		/* points to an array of the known
@@ -981,22 +979,21 @@ get_server_addrs(number)
     int *number; /* RETURN */
 {
     int i;
-    char **server_hosts;
+    char **server_hosts = NULL;
+    char **server_hosts_free = NULL;
     char **cpp;
     struct in_addr *addrs;
     struct in_addr *addr;
     struct hostent *hp;
 
-#ifdef HAVE_HESIOD
-    /* get the names from Hesiod */
-    server_hosts = hes_resolve("zephyr","sloc");
-    if (!server_hosts)
-	return NULL;
-#else
     server_hosts = get_server_list(list_file);
+    server_hosts_free = server_hosts;
+#ifdef HAVE_HESIOD
+    if (!server_hosts)
+      server_hosts = hes_resolve("zephyr","sloc");
+#endif
     if (!server_hosts)
 	return NULL;
-#endif
     /* count up */
     i = 0;
     for (cpp = server_hosts; *cpp; cpp++)
@@ -1015,13 +1012,10 @@ get_server_addrs(number)
 	}
     }
     *number = i;
-#ifndef HAVE_HESIOD
-    free_server_list(server_hosts);
-#endif
+    if (server_hosts_free)
+      free_server_list(server_hosts_free);
     return addrs;
 }
-
-#ifndef HAVE_HESIOD
 
 static int nhosts = 0;
 
@@ -1090,7 +1084,6 @@ free_server_list(list)
     free(orig_list);
     return;
 }
-#endif
 
 /*
  * initialize the server structure for address addr, and set a timer

@@ -9,8 +9,11 @@ zephyr (2.1.20010518.SNAPSHOT-7) unstable; urgency=low
     <slaps self on forehead>  closes: #110486
   * Add Russian translation for zephyr-server.  closes: #136936
   * Add Russian translation for zephyr-clients.  closes: #138326
+  * Hack the server so that it still checks the server.list file even when
+    built with Hesiod.
+  * Build with hesiod.  closes: #99011
 
- -- 
+ -- Karl Ramm <kcr@debian.org>  Sun, 26 May 2002 17:05:03 -0400
 
 zephyr (2.1.20010518.SNAPSHOT-6) unstable; urgency=low
 
