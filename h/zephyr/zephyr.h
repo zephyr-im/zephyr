@@ -133,7 +133,7 @@ extern char __Zephyr_realm[];
 extern int errno;
 
 	/* Random declarations */
-extern char *ZGetSender();
+extern char *ZGetSender(),*ZGetVariable();
 
 	/* Successful function return */
 #define ZERR_NONE		0
@@ -150,6 +150,9 @@ extern char *ZGetSender();
 extern int ZMakeAuthentication();
 #define ZAUTH ZMakeAuthentication
 #define ZNOAUTH (int (*)())0
+
+	/* General filenames */
+#define DEFAULT_VARS_FILE	"/etc/athena/zephyr.vars"
 
 	/* Packet strings */
 
@@ -198,8 +201,11 @@ extern int ZMakeAuthentication();
 
 /* Class Instance is principal of user who is logging in or logging out */
 
-#define LOGIN_USER_LOGIN	"USER_LOGIN"	/* Opcode: Normal User login */
-#define LOGIN_QUIET_LOGIN	"QUIET_LOGIN"	/* Opcode: Quiet login */
+#define EXPOSE_OPSTAFF		"OPSTAFF"	/* Opcode: Opstaff visible */
+#define EXPOSE_REALMVIS		"REALM_VISIBLE"	/* Opcode: Realm visible */
+#define EXPOSE_REALMANN		"REALM_ANNOUNCE"/* Opcode: Realm announced */
+#define EXPOSE_NETVIS		"NET_VISIBLE"	/* Opcode: Net visible */
+#define EXPOSE_NETANN		"NET_ANNOUNCE"	/* Opcode: Net announced */
 #define LOGIN_USER_LOGOUT	"USER_LOGOUT"	/* Opcode: User logout */
 #define	LOGIN_USER_FLUSH	"USER_FLUSH"	/* Opcode: flush all locs */
 
@@ -212,5 +218,13 @@ extern int ZMakeAuthentication();
 /* Class Instance is principal of user to locate */
 
 #define LOCATE_LOCATE		"LOCATE"	/* Opcode: Locate user */
+
+	/* WG_CTL class messages */
+#define WG_CTL_CLASS		"WG_CTL"	/* Class */
+
+#define WG_CTL_USER		"USER"		/* Inst: User request */
+#define USER_REREAD		"REREAD"	/* Opcode: Reread desc file */
+#define USER_SHUTDOWN		"SHUTDOWN"	/* Opcode: Go catatonic */
+#define USER_STARTUP		"STARTUP"	/* Opcode: Come out of it */
 
 #endif !__ZEPHYR_H__
