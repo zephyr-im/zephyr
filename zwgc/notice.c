@@ -290,7 +290,12 @@ char *decode_notice(notice)
      * has the format "01:03:52" while $date has the format
      * "Sun Sep 16 1973".
      */
-    time = ctime(&(notice->z_time.tv_sec));
+    {
+      /* the fields of struct timeval might not be the right type to pass
+	 to ctime, so use a temporary */
+      time_t sec = notice->z_time.tv_sec;
+      time = ctime(&sec);
+    }
     time_string = string_CreateFromData(time+11,8);
     var_set_variable_then_free_value("time", time_string);
     date_string = string_Concat(notyear=string_CreateFromData(time,11),
