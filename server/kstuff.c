@@ -174,41 +174,9 @@ ZCheckRealmAuthentication(notice, from, realm)
     }
     authent.length = notice->z_authent_len;
 
-    /* Copy the ticket out of the authentication data. */
-    if (krb_find_ticket(&authent, &ticket) != RD_AP_OK)
-        return ZAUTH_FAILED;
-
     (void) sprintf(rlmprincipal, "%s.%s@%s", SERVER_SERVICE,
                    SERVER_INSTANCE, realm);
 
-    /* Try to do a fast check against the cryptographic checksum. */
-    if (find_session_key(&ticket, session_key, srcprincipal) >= 0) {
-        if (strcmp(srcprincipal, rlmprincipal) != 0)
-            return ZAUTH_FAILED;
-        if (notice->z_time.tv_sec - NOW > CLOCK_SKEW)
-            return ZAUTH_FAILED;
-        checksum = compute_rlm_checksum(notice, session_key);
-
-        /* If checksum matches, packet is authentic.  If not, we might
-         * have an outdated session key, so keep going the slow way.
-         */
-        if (checksum == notice->z_checksum) {
-          (void) memcpy((char *)__Zephyr_session, (char *)session_key, 
-                        sizeof(C_Block)); /* For control_dispatch() */
-          return ZAUTH_YES;
-        }
-
-        /* Try again. This way we can switch to the same checksums
-         * that the rest of Zephyr uses at a future date, but for now 
-         * we need to be compatible */
-        checksum = compute_checksum(notice, session_key);
-        if (checksum == notice->z_checksum) {
-	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
-	    return ZAUTH_YES;
-        }
-    }
-
-    /* We don't have the session key cached; do it the long way. */
     result = krb_rd_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
                         from->sin_addr.s_addr, &dat, srvtab_file);
     if (result == RD_AP_OK) {
@@ -233,11 +201,6 @@ ZCheckRealmAuthentication(notice, from, realm)
 #endif
         return ZAUTH_FAILED;
     }
-
-    /* Record the session key, expiry time, and source principal in the
-     * hash table, so we can do a fast check next time. */
-    add_session_key(&ticket, dat.session, srcprincipal,
-                    (time_t)(dat.time_sec + dat.life * 5 * 60));
 
     return ZAUTH_YES;
 
@@ -275,28 +238,6 @@ ZCheckAuthentication(notice, from)
     }
     authent.length = notice->z_authent_len;
 
-    /* Copy the ticket out of the authentication data. */
-    if (krb_find_ticket(&authent, &ticket) != RD_AP_OK)
-	return ZAUTH_FAILED;
-
-    /* Try to do a fast check against the cryptographic checksum. */
-    if (find_session_key(&ticket, session_key, srcprincipal) >= 0) {
-	if (strcmp(srcprincipal, notice->z_sender) != 0)
-	    return ZAUTH_FAILED;
-	if (notice->z_time.tv_sec - NOW > CLOCK_SKEW)
-	    return ZAUTH_FAILED;
-	checksum = compute_checksum(notice, session_key);
-
-        /* If checksum matches, packet is authentic.  If not, we might
-	 * have an outdated session key, so keep going the slow way.
-	 */
-	if (checksum == notice->z_checksum) {
-	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
-	    return ZAUTH_YES;
-	}
-    }
-
-    /* We don't have the session key cached; do it the long way. */
     result = krb_rd_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
 			from->sin_addr.s_addr, &dat, srvtab_file);
     if (result == RD_AP_OK) {
@@ -317,11 +258,6 @@ ZCheckAuthentication(notice, from)
 #endif
     if (checksum != notice->z_checksum)
 	return ZAUTH_FAILED;
-
-    /* Record the session key, expiry time, and source principal in the
-     * hash table, so we can do a fast check next time. */
-    add_session_key(&ticket, dat.session, srcprincipal,
-		    (time_t)(dat.time_sec + dat.life * 5 * 60));
 
     return ZAUTH_YES;
 

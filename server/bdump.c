@@ -725,13 +725,7 @@ get_tgt()
 		   krb_get_err_text(retval));
 	    return 1;
 	}
-	s = (Sched *) check_key_sched_cache(serv_key);
-	if (s) {
-	    serv_ksched = *s;
-	} else {
-	    des_key_sched(serv_key, serv_ksched.s);
-	    add_to_key_sched_cache(serv_key, &serv_ksched);
-	}
+	des_key_sched(serv_key, serv_ksched.s);
 #endif /* !NOENCRYPTION */
     }
     return(0);
