@@ -112,11 +112,21 @@ Selected messages are forwarded to the
 on the named host.
 .IP \(bu 3n
 A comma separated list of users.
-Selected messages are written to those users
-if they are logged in.
+Selected messages are written (using the Zephyr notification system)
+to those users if they have subscribed to "syslog" class notices with 
+instance equal the hostname of the machine that syslogd in running on.
 .IP \(bu 3n
 An asterisk.
-Selected messages are written to all logged-in users.
+Selected messages are written (using Zephyr) to all users who have subscribed
+to the "syslog" class notices with 
+instance equal the hostname of the machine that syslogd in running on.
+(This is the Zephyr equivalent of a wall.)
+.IP \(bu 3n
+An "!" followed comma separated list of local users.  The local users
+will be notified by examining /etc/utmp to obtain their terminal and writing
+to it.
+.IP \(bu 3n
+"!*" Will write to the ttys of all users found in /etc/utmp.
 .PP
 Blank lines and lines beginning with `#' are ignored.
 .PP
@@ -181,4 +191,5 @@ it should be sent a terminate signal (e.g. kill \`cat /etc/syslog.pid\`).
 .fi
 .SH SEE ALSO
 logger(1),
-syslog(3)
+syslog(3),
+zephyr(1)
