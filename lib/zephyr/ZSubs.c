@@ -76,6 +76,7 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     ZNotice_t notice;
     char header[Z_MAXHEADERLEN];
     char **list;
+    char *recip;
     int hdrlen;
     int size_avail = Z_MAXPKTLEN-Z_FRAGFUDGE; /* space avail for data,
 						 adjusted below */
@@ -117,11 +118,12 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     for (i=0;i<nitems;i++) {
 	list[i*3] = sublist[i].zsub_class;
 	list[i*3+1] = sublist[i].zsub_classinst;
-	if (sublist[i].zsub_recipient && *sublist[i].zsub_recipient &&
-	    *sublist[i].zsub_recipient != '*')
-	    list[i*3+2] = ZGetSender();
-	else
-	    list[i*3+2] = "";
+	recip = sublist[i].zsub_recipient;
+	if (recip && *recip == '*')
+	    recip++;
+	if (!recip || (*recip != 0 && *recip != '@'))
+	    recip = ZGetSender();
+	list[i*3+2] = recip;
     }
 
     start = -1;
