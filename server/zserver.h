@@ -25,6 +25,7 @@
 #include <arpa/inet.h>
 #include <zephyr/acl.h>
 #include <sys/file.h>
+#include <fcntl.h>
 
 #include <zephyr/zsyslog.h>
 
@@ -368,9 +369,6 @@ extern struct in_addr my_addr;	/* my inet address */
 #define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
 #define	ADMIN_ME	"MY_STATE"	/* Class inst: please send my info */
 
-#define ZSRV_SERVICE	"zephyr"
-#define ZSRV_INSTANCE	"zephyr"
-
 #define	NULLZCT		((ZClass_t *) 0)
 #define	NULLZCNT	((ZClient_t *) 0)
 #define	NULLZCLT	((ZClientList_t *) 0)
@@ -403,6 +401,15 @@ extern struct in_addr my_addr;	/* my inet address */
 
 /* SERVER_SRVTAB is defined in zephyr.h */
 #define	ZEPHYR_SRVTAB	SERVER_SRVTAB
+
+#ifdef KERBEROS
+#ifndef NOENCRYPTION
+/* Kerberos shouldn't stick us with array types... */
+typedef struct {
+    des_key_schedule s;
+} Sched;
+#endif
+#endif
 
 /* debugging macros */
 #ifdef DEBUG
