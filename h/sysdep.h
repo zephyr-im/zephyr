@@ -173,10 +173,6 @@ ZEPHYR_INT32 gethostid();
 # endif
 #endif
 
-#ifdef HAVE_SYS_UIO_H
-# include <sys/uio.h>
-#endif
-
 #ifdef HAVE_SYS_UTSNAME_H
 # include <sys/utsname.h>
 #endif
