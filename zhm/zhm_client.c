@@ -79,7 +79,7 @@ transmission_tower(notice, packet, pak_len)
 	      (void)alarm(tleft);
 	    else {
 		  timeout_type = NOTICES;
-		  (void)alarm(NOTICE_TIMEOUT);
+		  (void)alarm(rexmit_times[0]);
 	    }
       }
       (void)add_notice_to_queue(notice, packet, &gsin, pak_len);

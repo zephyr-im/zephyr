@@ -37,6 +37,8 @@ typedef struct _qelem Qelem;
 
 Qelem hm_queue = { &hm_queue, &hm_queue, NULL }, *is_in_queue();
 
+int rexmit_times[] = { 2, 2, 4, 4, 8, -1 };
+
 extern long time();
 extern int timeout_type;
 
@@ -67,7 +69,7 @@ int len;
      if (!is_in_queue(notice)) {
 	  elem = (Qelem *)malloc(sizeof(Qelem));
 	  entry = (Queue *)malloc(sizeof(Queue));
-	  entry->timeout = time((time_t *)0) + NOTICE_TIMEOUT;
+	  entry->timeout = time((time_t *)0) + rexmit_times[0];
 	  entry->retries = 0;
 	  entry->z_packet = (char *)malloc(Z_MAXPKTLEN);
 	  (void) memcpy(entry->z_packet, packet, Z_MAXPKTLEN);
@@ -145,12 +147,12 @@ struct sockaddr_in *sin;
 		    Zperr (ret);
 		    com_err("queue", ret, "sending raw notice");
 	       }
-	       srch->q_data->timeout = NOTICE_TIMEOUT;
+	       srch->q_data->timeout = time(0) + rexmit_times[0];
 	       srch->q_data->retries = 0;
 	       srch = srch->q_forw;
 	  } while (srch != &hm_queue);
 	  timeout_type = NOTICES;
-	  (void)alarm(NOTICE_TIMEOUT);
+	  (void)alarm(rexmit_times[0]);
      }
 }
 
@@ -231,7 +233,8 @@ struct sockaddr_in *sin;
 	  syslog (LOG_INFO, "No notices, shouldn't have happened!");
      } else do {
 	  if (srch->q_data->timeout <= time((time_t *)0)) {
-	       if (++(srch->q_data->retries) > MAXRETRIES) {
+	       srch->q_data->retries++;
+	       if (rexmit_times[srch->q_data->retries] == -1) {
 		    new_server((char *)NULL);
 		    break;
 	       } else {
@@ -254,11 +257,12 @@ struct sockaddr_in *sin;
 			 Zperr(ret);
 			 com_err("queue", ret, "sending raw notice");
 		    }
-		    srch->q_data->timeout = time((time_t *)0) + NOTICE_TIMEOUT;
+		    srch->q_data->timeout = time((time_t *)0) +
+			rexmit_times[srch->q_data->retries];
 		    srch = srch->q_forw;
 	       }
 	  }
      } while (srch != &hm_queue);
      timeout_type = NOTICES;
-     (void)alarm(NOTICE_TIMEOUT);
+     (void)alarm(rexmit_times[0]);
 }
