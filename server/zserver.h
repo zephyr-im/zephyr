@@ -256,6 +256,8 @@ extern char *pktypes[];			/* names of the packet types */
 #define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
 #define	ADMIN_ME	"MY_STATE"	/* Class inst: please send my info */
 
+#define	LOGIN_USER_LOGIN "USER_LOGIN"	/* Opcode: a user login */
+
 #define	NULLZCT		((ZClass_t *) 0)
 #define	NULLZCNT	((ZClient_t *) 0)
 #define	NULLZCLT	((ZClientList_t *) 0)
