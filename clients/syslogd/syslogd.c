@@ -658,7 +658,9 @@ logmsg(pri, msg, from, flags)
 			break;
 			
  	        case F_ZEPHYR:
-			(void) sprintf(line, "%.15s %s", iov[0].iov_base,
+			(void) sprintf(line, "%.15s (%s) %s",
+				       iov[0].iov_base,
+				       iov[2].iov_base,
 				       iov[4].iov_base);
 			(void) sprintf(pri_fac_str, "%s.%s", 
 				       FacNames[fac].c_name,
