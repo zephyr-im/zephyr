@@ -14,13 +14,6 @@
 #include <internal.h>
 #include <sys/socket.h>
 
-static int outoftime = 0;
-
-static RETSIGTYPE timeout()
-{
-	outoftime = 1;
-}
-
 Code_t ZhmStat(hostaddr, notice)
     struct in_addr *hostaddr;
     ZNotice_t *notice;
@@ -29,9 +22,8 @@ Code_t ZhmStat(hostaddr, notice)
     struct sockaddr_in sin;
     ZNotice_t req;
     Code_t code;
-#ifdef _POSIX_VERSION
-    struct sigaction sa;
-#endif
+    struct timeval tv;
+    fd_set readers;
 
     (void) memset((char *)&sin, 0, sizeof(struct sockaddr_in));
 
@@ -62,27 +54,20 @@ Code_t ZhmStat(hostaddr, notice)
     if ((code = ZSendNotice(&req, ZNOAUTH)) != ZERR_NONE)
 	return(code);
 
-#ifdef _POSIX_VERSION
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sa.sa_handler = timeout;
-    (void) sigaction(SIGALRM, &sa, (struct sigaction *)0);
-#else
-    (void) signal(SIGALRM,timeout);
-#endif
-
-    outoftime = 0;
-    (void) alarm(10);
-
-    if (((code = ZReceiveNotice(notice, (struct sockaddr_in *) 0))
-	 != ZERR_NONE) &&
-	code != EINTR)
-	return(code);
-
-    (void) alarm(0);
-
-    if (outoftime)
+    /* Wait up to ten seconds for a response. */
+    FD_ZERO(&readers);
+    FD_SET(ZGetFD(), &readers);
+    tv.tv_sec = 10;
+    tv.tv_usec = 0;
+    code = select(ZGetFD() + 1, &readers, NULL, NULL, &tv);
+    if (code < 0 && errno != EINTR)
+	return(errno);
+    if (code == 0 || (code < 0 && errno == EINTR) || ZPending() == 0)
 	return(ZERR_HMDEAD);
+
+    code = ZReceiveNotice(notice, (struct sockaddr_in *) 0);
+    if (code != EINTR)
+	return(code);
 
     return(ZERR_NONE);
 }
