@@ -27,6 +27,7 @@ static char rcsid_ZCheckAuthentication_c[] =
    If it doesn't look authentic, return 0
 
    When not using Kerberos, return (looks-authentic-p)
+   Only used by clients; the server uses its own routine.
  */
 int ZCheckAuthentication(notice, from)
     ZNotice_t *notice;
@@ -40,36 +41,13 @@ int ZCheckAuthentication(notice, from)
     ZChecksum_t our_checksum;
     CREDENTIALS cred;
 
+    /* If the value is already known, return it. */
+    if (notice->z_checked_auth != ZAUTH_UNSET)
+	return (notice->z_checked_auth);
+
     if (!notice->z_auth)
 	return (ZAUTH_NO);
 	
-    if (__Zephyr_server) {
-	/* XXX: This routine needs to know where the server ticket
-	   file is! */
-	if (notice->z_authent_len <= 0)	/* bogus length */
-	    return(ZAUTH_FAILED);
-	if (ZReadAscii(notice->z_ascii_authent, 
-		       strlen(notice->z_ascii_authent)+1, 
-		       (unsigned char *)authent.dat, 
-		       notice->z_authent_len) == ZERR_BADFIELD) {
-	    return (ZAUTH_FAILED);
-	}
-	authent.length = notice->z_authent_len;
-	result = krb_rd_req(&authent, SERVER_SERVICE, 
-			    SERVER_INSTANCE, from->sin_addr.s_addr, 
-			    &dat, SERVER_SRVTAB);
-	if (result == RD_AP_OK) {
-		(void) memcpy((char *)__Zephyr_session, (char *)dat.session, 
-			       sizeof(C_Block));
-		(void) sprintf(srcprincipal, "%s%s%s@%s", dat.pname, 
-			       dat.pinst[0]?".":"", dat.pinst, dat.prealm);
-		if (strcmp(srcprincipal, notice->z_sender))
-			return (ZAUTH_FAILED);
-		return(ZAUTH_YES);
-	} else
-		return (ZAUTH_FAILED);	/* didn't decode correctly */
-    }
-
     if (result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
 			      __Zephyr_realm, &cred))
 	return (ZAUTH_NO);
