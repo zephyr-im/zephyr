@@ -27,6 +27,8 @@ extern char *malloc();
 
 /* common routines for the server */
 
+/* copy the string into newly allocated area */
+
 char *
 strsave(sp)
 char *sp;
@@ -40,5 +42,3 @@ char *sp;
     (void) strcpy(ret,sp);
     return(ret);
 }
-
-/* some sort of syslog interface */
