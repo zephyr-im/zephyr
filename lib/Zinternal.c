@@ -142,7 +142,7 @@ struct _Z_InputQ *Z_SearchQueue(uid, kind)
 	if (ZCompareUID(uid, &qptr->uid) && qptr->kind == kind)
 	    return (qptr);
 	next = qptr->next;
-	if (qptr->timep+Z_NOTICETIMELIMIT > tv.tv_sec)
+	if (qptr->timep && (qptr->timep+Z_NOTICETIMELIMIT < tv.tv_sec))
 	    (void) Z_RemQueue(qptr);
 	qptr = next;
     }
@@ -167,7 +167,10 @@ Code_t Z_ReadWait()
     int from_len, packet_len, part, partof;
     char *slash;
     Code_t retval;
-    static ZUnique_Id_t old_uids[Z_FILTERDEPTH];
+    static struct _filter {
+	ZUnique_Id_t	uid;
+	ZNotice_Kind_t	kind;
+    } old_uids[Z_FILTERDEPTH];
     static int filter_idx = -1;
     register int i;
 
@@ -189,17 +192,6 @@ Code_t Z_ReadWait()
     if ((retval = ZParseNotice(packet, packet_len, &notice)) != ZERR_NONE)
 	return (retval);
 
-    if (filter_idx == -1) {
-	    for (i = 0; i < Z_FILTERDEPTH; i++)
-		    bzero((char *) &old_uids[i], sizeof(Z_Unique_Id_t));
-	    filter_idx = 0;
-    } else {
-	    for (i = 0; i < Z_FILTERDEPTH; i++)
-		    if (ZCompareUID(&notice.z_multiuid, &old_uids[i]))
-			    return(ZERR_NONE);
-	    old_uids[filter_idx++] = notice.z_multiuid;
-    }
-
     /*
      * If we're not a server and the notice is of an appropriate kind,
      * send back a CLIENTACK to whoever sent it to say we got it.
@@ -207,16 +199,33 @@ Code_t Z_ReadWait()
     if (!__Zephyr_server) {
 	if (notice.z_kind != HMACK && notice.z_kind != SERVACK &&
 	    notice.z_kind != SERVNAK) {
-	    notice.z_kind = CLIENTACK;
-	    notice.z_message_len = 0;
+	    ZNotice_t tmpnotice;
+
+	    tmpnotice = notice;
+	    tmpnotice.z_kind = CLIENTACK;
+	    tmpnotice.z_message_len = 0;
 	    olddest = __HM_addr;
 	    __HM_addr = from;
-	    if ((retval = ZSendRawNotice(&notice)) != ZERR_NONE)
+	    if ((retval = ZSendRawNotice(&tmpnotice)) != ZERR_NONE)
 		return (retval);
 	    __HM_addr = olddest;
-	} 
+	}
+	if (filter_idx == -1) {
+	    bzero((char *) old_uids,
+		  Z_FILTERDEPTH*(sizeof(struct _filter)));
+	    old_uids[0].uid = notice.z_uid;
+	    old_uids[0].kind = notice.z_kind;
+	    filter_idx = 1;
+	} else {
+	    for (i = 0; i < Z_FILTERDEPTH; i++)
+		    if (ZCompareUID(&notice.z_uid, &old_uids[i].uid) &&
+			(notice.z_kind == old_uids[i].kind))
+			    return(ZERR_NONE);
+	    old_uids[filter_idx].uid = notice.z_uid;
+	    old_uids[filter_idx++].kind = notice.z_kind;
+	    filter_idx %= Z_FILTERDEPTH;
+	}
     }
-
     /*
      * Parse apart the z_multinotice field - if the field is blank for
      * some reason, assume this packet stands by itself.
@@ -263,7 +272,7 @@ Code_t Z_ReadWait()
      * We'll have to creata a new entry...make sure the queue isn't
      * going to get too big.
      */
-    if (__Q_Size+partof > Z_MAXQUEUESIZE)
+    if (__Q_Size+(__Zephyr_server ? notice.z_message_len : partof) > Z_MAXQUEUESIZE)
 	return (ZERR_NONE);
 
     /*
@@ -294,20 +303,13 @@ Code_t Z_ReadWait()
     qptr->kind = notice.z_kind;
     
     /*
-     * We know how long the message is going to be (this is better
-     * than IP fragmentation...), so go ahead and allocate it all.
-     */
-    if (!(qptr->msg = malloc(partof)))
-	return (ENOMEM);
-    qptr->msg_len = partof;
-    __Q_Size += partof;
-
-    /*
      * If this is the first part of the notice, we take the header
      * from it.  We only take it if this is the first fragment so that
      * the Unique ID's will be predictable.
+     *
+     * If a Zephyr Server, we always take the header.
      */
-    if (part == 0) {
+    if (__Zephyr_server || part == 0) {
 	qptr->header_len = packet_len-notice.z_message_len;
 	qptr->header = malloc(packet_len-notice.z_message_len);
 	bcopy(packet, qptr->header, qptr->header_len);
@@ -318,10 +320,15 @@ Code_t Z_ReadWait()
      * hole list.
      * If we are a Zephyr server, all notices are treated as complete.
      */
-    if (__Zephyr_Server || (part == 0 && notice.z_message_len == partof)) {
+    if (__Zephyr_server || (part == 0 && notice.z_message_len == partof)) {
 	__Q_CompleteLength++;
 	qptr->holelist = NULL;
 	qptr->complete = 1;
+	/* allocate a msg buf for this piece */
+	if (!(qptr->msg = malloc(notice.z_message_len)))
+		return(ENOMEM);
+	qptr->msg_len = notice.z_message_len;
+	__Q_Size += notice.z_message_len;
 	bcopy(notice.z_message, qptr->msg, notice.z_message_len);
 	qptr->packet_len = qptr->header_len+qptr->msg_len;
 	if (!(qptr->packet = malloc(qptr->packet_len)))
@@ -330,6 +337,16 @@ Code_t Z_ReadWait()
 	bcopy(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
 	return (ZERR_NONE);
     }
+
+    /*
+     * We know how long the message is going to be (this is better
+     * than IP fragmentation...), so go ahead and allocate it all.
+     */
+    if (!(qptr->msg = malloc(partof)))
+	return (ENOMEM);
+    qptr->msg_len = partof;
+    __Q_Size += partof;
+
     /*
      * Well, it's a fragmented notice...allocate a hole list and
      * initialize it to the full packet size.  Then insert the
@@ -364,6 +381,9 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part, partof)
 
     hole = qptr->holelist;
     lasthole = NULL;
+
+    /* copy in the message body */
+    (void) bcopy(notice->z_message, qptr->msg+part, notice->z_message_len);
 
     /* Search for a hole that overlaps with the current fragment */
     while (hole) {
@@ -440,6 +460,7 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part, partof)
 	if (!qptr->complete)
 	    __Q_CompleteLength++;
 	qptr->complete = 1;
+	qptr->timep = 0;		/* don't time out anymore */
 	qptr->packet_len = qptr->header_len+qptr->msg_len;
 	if (!(qptr->packet = malloc(qptr->packet_len)))
 	    return (ENOMEM);
@@ -458,6 +479,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     int (*cert_routine)();
 {
     Code_t retval;
+    char version[BUFSIZ];
 	
     if (!notice->z_sender)
 	notice->z_sender = ZGetSender();
@@ -467,31 +489,39 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     (void) gettimeofday(&notice->z_uid.tv, (struct timezone *)0);
     notice->z_uid.tv.tv_sec = htonl(notice->z_uid.tv.tv_sec);
     notice->z_uid.tv.tv_usec = htonl(notice->z_uid.tv.tv_usec);
-    bcopy(&notice->z_uid, &notice->z_multiuid, sizeof(ZUnique_Id_t));
     
     if ((retval = Z_GetMyAddr()) != ZERR_NONE)
 	return (retval);
 
     bcopy(__My_addr, (char *)&notice->z_uid.zuid_addr, __My_length);
 
+    bcopy(&notice->z_uid, &notice->z_multiuid, sizeof(ZUnique_Id_t));
+
+    sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR, ZVERSIONMINOR);
+    notice->z_version = (char *)malloc((unsigned)strlen(version)+1);
+    if (!notice->z_version)
+	    return(ENOMEM);
+    (void) strcpy(notice->z_version, version);
     if (!cert_routine) {
 	notice->z_auth = 0;
 	notice->z_authent_len = 0;
 	notice->z_ascii_authent = "";
-	return (Z_FormatRawHeader(notice, buffer, buffer_len, len));
+	return (Z_FormatRawHeader(notice, buffer, buffer_len,
+				  len, (char **) 0));
     }
     
-    return ((cert_routine)(notice, buffer, buffer_len, len));
+    return ((*cert_routine)(notice, buffer, buffer_len, len));
 } 
 	
-Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len)
+Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
     ZNotice_t *notice;
     char *buffer;
     int buffer_len;
     int *len;
+    char **sumend_ptr;
 {
     unsigned int temp;
-    char newrecip[BUFSIZ], version[BUFSIZ];
+    char newrecip[BUFSIZ];
     char *ptr, *end;
     int i;
 
@@ -502,11 +532,10 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len)
     ptr = buffer;
     end = buffer+buffer_len;
 
-    sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR, ZVERSIONMINOR);
-    if (buffer_len < strlen(version)+1)
+    if (buffer_len < strlen(notice->z_version)+1)
 	return (ZERR_HEADERLEN);
 
-    strcpy(ptr, version);
+    strcpy(ptr, notice->z_version);
     ptr += strlen(ptr)+1;
 
     temp = htonl(ZNUMFIELDS+notice->z_num_other_fields);
@@ -564,6 +593,10 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len)
     }		
     if (Z_AddField(&ptr, notice->z_default_format, end))
 	return (ZERR_HEADERLEN);
+
+    /* copy back the end pointer location for crypto checksum */
+    if (sumend_ptr)
+	*sumend_ptr = ptr;
 
     temp = htonl(notice->z_checksum);
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
@@ -762,7 +795,7 @@ Code_t Z_SendFragmentedNotice(notice, len, func)
 	    free(buffer);
 	    return (retval);
 	}
-	if ((retval = (*func)(notice, buffer, ret_len, waitforack)) !=
+	if ((retval = (*func)(&partnotice, buffer, ret_len, waitforack)) !=
 	    ZERR_NONE) {
 	    free(buffer);
 	    return (retval);
@@ -778,7 +811,7 @@ Code_t Z_SendFragmentedNotice(notice, len, func)
 /*ARGSUSED*/
 Code_t Z_XmitFragment(notice, buf, len, wait)
 ZNotice_t *notice;
-char *buf
+char *buf;
 int len;
 int wait;
 {
