@@ -27,11 +27,6 @@ main(argc,argv)
 	char *whoami,bfr[BUFSIZ],user[BUFSIZ];
 	ZLocations_t locations[1];
 	
-	if ((retval = ZInitialize()) != ZERR_NONE) {
-		com_err(whoami,retval,"while initializing");
-		exit(1);
-	} 
-
 	whoami = argv[0];
 
 	if (argc < 2) {
@@ -39,6 +34,11 @@ main(argc,argv)
 		exit(1);
 	}
 	
+	if ((retval = ZInitialize()) != ZERR_NONE) {
+		com_err(whoami,retval,"while initializing");
+		exit(1);
+	} 
+
 	argv++;
 	argc--;
 
