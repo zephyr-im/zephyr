@@ -144,6 +144,7 @@ extern ZClientList_t *class_lookup();
 extern ZAcl_t *class_get_acl();
 extern int class_is_control(), class_is_admin(), class_is_hm();
 extern int class_is_ulogin(), class_is_uloc();
+extern void class_free();
 
 /* found in client_s.c */
 extern Code_t client_register();
@@ -176,6 +177,7 @@ extern void subscr_free_list(), subscr_cancel_client(), subscr_sendlist();
 
 /* found in uloc_s.c */
 extern void ulogin_dispatch(), ulocate_dispatch(), uloc_hflush();
+extern void uloc_flush_client();
 extern Code_t uloc_send_locations();
 
 /* found in zctl.c */
@@ -285,6 +287,8 @@ extern char *pktypes[];			/* names of the packet types */
 
 /* the magic class to match all packets */
 #define	MATCHALL_CLASS	"zmatch_all"
+/* the instance that matches all instances */
+#define	WILDCARD_INSTANCE	"*"
 
 /* ACL's for pre-registered classes */
 #define	ZEPHYR_ACL_DIR	"/usr/athena/lib/zephyr/"
