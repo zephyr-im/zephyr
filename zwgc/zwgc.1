@@ -389,12 +389,15 @@ notice.  If there are more variables than fields, the extra
 variables are left empty.
 .TP
 exec exprlist
-Executes a program without any input or output.
+Executes a program without any input or output.  A command named by
+\fIexprlist\fR is executed.  Each expression is used as an argument to
+the program; the first expression names the program (it may be either an
+absolute pathname, or a program name; the user's PATH is searched to
+find simple program names).
 .TP
 execport expr1 exprlist
 Creates a port called \fIexpr1\fR.  A command named by \fIexprlist\fR
-is executed (each expression is used as an argument to the program; the
-first expression names the program).
+is executed, as described above for \fBexec\fR.
 All output to the port is sent to the standard input
 of the process.  Reading from the port will return the standard output
 of the process.
