@@ -12,12 +12,12 @@
  *      "mit-copyright.h".
  */
 
+#if !defined(SABER) && (defined(DEBUG) || defined(MEMORY_DEBUG))
+
 #if (!defined(lint) && !defined(SABER))
 static char rcsid_new_memory_c[] = "$Id$";
 #endif
 
-/* This entire module goes out the window in saber */
-#ifndef SABER
 /*
  * memory - module wrapping debugging code around normal malloc/free/etc.
  *          routines.
