@@ -425,8 +425,20 @@ void create_port_from_files(name, input, output)
 {
     port *p = create_named_port(name);
 
+#if !defined(ibm032)
     p->get = input ? get_file : NULL;
     p->put = output ? put_file : NULL;
+#else
+    /* RT compiler (hc2.1y) bug workaround */
+    if (input)
+        p->get = get_file;
+    else
+        p->get = NULL;
+    if (output)
+        p->put = put_file;
+    else
+        p->put = NULL;
+#endif
     p->close_input = close_file_input;
     p->close_output = close_file_output;
     p->status = 0;
