@@ -12,12 +12,12 @@
  */
 
 #include <zephyr/zephyr.h>
-#include "../../server/zserver.h"
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
+#include "zserver.h"
 
 #ifndef lint
 #ifndef SABER
