@@ -15,27 +15,26 @@
 #ifndef DES_DEFS
 #define DES_DEFS
 
-/* This header file has been modified for the Zephyr source tree, and is not
- * suitable for use outside the Zephyr source tree because it relies on
- * <sysdep.h> to determine what a 32-bit type is. */
-
-#include "mit-copyright.h"
-#include <sysdep.h>
-
+/* These have to come before <krb.h>, which is included by <sysdep.h>. */
+typedef unsigned char des_cblock[8];	/* crypto-block size */
+#define C_Block des_cblock
 #define KRB_INT32 ZEPHYR_INT32
 #define KRB_UINT32 unsigned ZEPHYR_INT32
 #define int32 ZEPHYR_INT32
 #define u_int32 unsigned ZEPHYR_INT32
 
-typedef unsigned char des_cblock[8];	/* crypto-block size */
+/* This header file has been modified for the Zephyr source tree, and is not
+ * suitable for use outside the Zephyr source tree because it relies on
+ * <sysdep.h> to determine what a 32-bit type is. */
+#include <sysdep.h>
+#include "mit-copyright.h"
+
 /* Key schedule */
 typedef struct des_ks_struct { union { long pad; des_cblock _;} __; } des_key_schedule[16];
 
 #define DES_KEY_SZ 	(sizeof(des_cblock))
 #define DES_ENCRYPT	1
 #define DES_DECRYPT	0
-
-#define C_Block des_cblock
 
 int des_cbc_encrypt __P((des_cblock, des_cblock, long, des_key_schedule,
 			 des_cblock, int));
