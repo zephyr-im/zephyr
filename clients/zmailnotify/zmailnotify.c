@@ -117,7 +117,7 @@ main(argc, argv)
 	exit(1);
     }
 
-    lock = fopen(lockfile,"w");
+    lock = fopen(lockfile,"r+");
 #ifdef POSIX
     if (lock) {
 	struct flock fl;
