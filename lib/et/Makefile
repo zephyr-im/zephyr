@@ -1,0 +1,201 @@
+#
+# Makefile for error-table routines
+#
+# Copyright 1987, 1989 MIT Student Information Processing Board
+# For copyright info, see mit-sipb-copyright.h.
+#
+#	$Header$
+#	$Locker$
+#
+
+CFLAGS=	-O
+LINTFLAGS= -uhvpb
+LINTFILES= error_message.c et_name.c init_et.c com_err.c # perror.c
+LIBOBJS= error_message.o et_name.o init_et.o com_err.o # perror.o
+
+BINDIR=/usr/athena
+INCDIR=/usr/include
+LIBDIR=/usr/athena/lib
+DOCDIR=/usr/doc/athena
+DESTDIR=
+
+FILES=	Makefile et_name.c error_message.c compile_et.c \
+		error_table.y et_lex.lex.l init_et.c \
+		com_err.c com_err.h \
+		error_table.h mit-sipb-copyright.h \
+		test.c test1.et test2.et \
+		compiler.h internal.h \
+		com_err.texinfo texinfo.tex
+CFILES=	compile_et.c error_table.c error_message.c et_name.c \
+	init_et.c com_err.c
+
+#
+# what to build...
+#
+all:	compile_et libcom_err.a libcom_err_p.a
+
+lint:	llib-lcom_err.ln
+
+archive:	et.tar
+
+doc:	com_err.dvi
+
+#
+# rules
+#
+.SUFFIXES: .h .c .et .ps .x9700 .mss .dvi .texinfo
+
+.et.c:
+	./compile_et $*.et
+
+.et.h:
+	./compile_et $*.et
+
+.texinfo.dvi:
+	tex $<
+
+.dvi.ps:
+	rm -f $@.new
+	dvi2ps -r $< > $@.new
+	mv $@.new $@
+
+.c.o:
+	${CC} -c -pg ${CFLAGS} $*.c
+	mv $*.o profiled/$*.o
+	${CC} -c ${CFLAGS} $*.c
+
+#
+# real entries...
+#
+compile_et:	compile_et.o error_table.o
+	${CC} ${CFLAGS} -o compile_et compile_et.o error_table.o -ll
+
+et.tar:	${FILES}
+	rm -f et.tar
+	tar cfrlv et.tar ${FILES}
+
+tags:	TAGS
+
+com_err.ps : com_err.dvi
+com_err.dvi: com_err.texinfo
+
+install: all
+	install -c -s compile_et ${DESTDIR}${BINDIR}/compile_et
+	install -c -m 444 com_err.h ${DESTDIR}${INCDIR}/com_err.h
+	install -c -m 444 mit-sipb-copyright.h \
+				${DESTDIR}${INCDIR}/mit-sipb-copyright.h
+	install -c libcom_err.a ${DESTDIR}${LIBDIR}/libcom_err.a
+	ranlib ${DESTDIR}${LIBDIR}/libcom_err.a
+	install -c libcom_err_p.a ${DESTDIR}${LIBDIR}/libcom_err_p.a
+	ranlib ${DESTDIR}${LIBDIR}/libcom_err_p.a
+	install -c com_err.texinfo ${DESTDIR}${DOCDIR}/com_err.texinfo
+	install -c com_err.3 ${DESTDIR}/usr/man/man3/com_err.3
+	install -c compile_et.1 ${DESTDIR}/usr/man/man1/compile_et.1
+
+TAGS:	et_name.c error_message.c compile_et.c error_table.c \
+		lex.yy.c perror.c init_et.c
+	etags et_name.c error_message.c compile_et.c \
+		error_table.c perror.c init_et.c
+
+libcom_err.a:	$(LIBOBJS)
+	ar cruv libcom_err.a $(LIBOBJS)
+	ranlib libcom_err.a
+
+libcom_err_p.a:	$(LIBOBJS)
+	(cd profiled; ar uv ../libcom_err_p.a $(LIBOBJS); \
+		ranlib ../libcom_err_p.a)
+
+libcom_err.o:	$(LIBOBJS)
+	ld -r -s -o libcom_err.o $(LIBOBJS)
+	chmod -x libcom_err.o
+
+llib-lcom_err.ln: $(LINTFILES)
+	lint -Ccom_err $(LINTFLAGS) $(LINTFILES)
+
+clean:
+	rm -f *~ \#* *.bak \
+		*.otl *.aux *.toc *.PS *.dvi *.x9700 *.ps \
+		*.cp *.fn *.ky *.log *.pg *.tp *.vr \
+		*.o profiled/*.o libcom_err.a libcom_err_p.a \
+		com_err.o compile_et \
+		et.ar TAGS y.tab.c lex.yy.c error_table.c \
+		et_lex.lex.c \
+		test1.h test1.c test2.h test2.c test \
+		eddep makedep
+
+# for testing
+test:	test.o test1.o test2.o libcom_err.a
+	cc ${CFLAGS} -o test test.o test1.o test2.o libcom_err.a
+test.o:	test1.h test2.h
+test1.o : test1.c
+test1.c : test1.et
+test2.o : test2.c
+test2.c : test2.et
+# 'make depend' code
+depend: ${CFILES} et_lex.lex.c
+	rm -f eddep makedep
+	/bin/cc -M ${CFLAGS} ${CFILES} | \
+	sed 's; ./; ;' | \
+	sed -e ':loop' \
+	    -e 's/\.\.\/[^ /]*\/\.\./../' \
+	    -e 't loop' > makedep
+	echo '/^# DO NOT DELETE THIS LINE/+1,$$d' >eddep
+	echo '$$r makedep' >>eddep
+	echo 'w' >>eddep
+	cp Makefile Makefile.bak
+	ed - Makefile < eddep
+	rm eddep makedep
+#
+# the last line in the makefile should be...
+# DO NOT DELETE THIS LINE -- make depend depends on it.
+compile_et.o: compile_et.c
+compile_et.o: /usr/include/stdio.h
+compile_et.o: /usr/include/sys/file.h
+compile_et.o: /usr/include/strings.h
+compile_et.o: /usr/include/sys/param.h
+compile_et.o: /usr/include/machine/machparam.h
+compile_et.o: /usr/include/signal.h
+compile_et.o: /usr/include/sys/types.h
+compile_et.o: mit-sipb-copyright.h
+error_table.o: error_table.c
+error_table.o: /usr/include/stdio.h
+error_table.o: /usr/include/strings.h
+error_table.o: /usr/include/ctype.h
+error_table.o: /usr/include/sys/types.h
+error_table.o: /usr/include/sys/time.h
+error_table.o: /usr/include/time.h
+error_table.o: internal.h
+error_table.o: mit-sipb-copyright.h
+error_table.o: error_table.h
+error_table.o: mit-sipb-copyright.h
+error_table.o: et_lex.lex.c
+error_table.o: /usr/include/stdio.h
+error_message.o: error_message.c
+error_message.o: /usr/include/stdio.h
+error_message.o: error_table.h
+error_message.o: mit-sipb-copyright.h
+error_message.o: internal.h
+error_message.o: mit-sipb-copyright.h
+et_name.o: et_name.c
+et_name.o: error_table.h
+et_name.o: mit-sipb-copyright.h
+et_name.o: internal.h
+et_name.o: mit-sipb-copyright.h
+perror.o: perror.c
+perror.o: /usr/include/stdio.h
+perror.o: internal.h
+perror.o: mit-sipb-copyright.h
+perror.o: com_err.h
+perror.o: mit-sipb-copyright.h
+perror.o: mit-sipb-copyright.h
+init_et.o: init_et.c
+init_et.o: /usr/include/stdio.h
+init_et.o: error_table.h
+init_et.o: mit-sipb-copyright.h
+com_err.o: com_err.c
+com_err.o: /usr/include/stdio.h
+com_err.o: /usr/include/varargs.h
+com_err.o: error_table.h
+com_err.o: mit-sipb-copyright.h
+com_err.o: internal.h
+com_err.o: mit-sipb-copyright.h
