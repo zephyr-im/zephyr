@@ -47,8 +47,8 @@ Code_t ZInitLocationInfo(hostname, tty)
 	strcpy(mytty, tty);
     } else {
 	ttyp = ttyname(0);
-	if (ttyp) {
-	    p = strrchr(ttyp, '/');
+	if (ttyp && *ttyp) {
+	    p = strchr(ttyp + 1, '/');
 	    strcpy(mytty, (p) ? p + 1 : ttyp);
 	} else {
 	    strcpy(mytty, "unknown");
