@@ -20,6 +20,10 @@ static char rcsid_ZNewLocateUser_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
+#ifdef _AIX
+#include <sys/select.h>
+#endif
+
 Code_t ZNewLocateUser(user, nlocs, auth)
     char *user;
     int *nlocs;
