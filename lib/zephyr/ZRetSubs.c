@@ -38,7 +38,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 				 sizeof(u_short))) != ZERR_NONE)
 		return (retval);
 
-	(void) _BZERO((char *)&notice, sizeof(notice));
+	(void) memset((char *)&notice, 0, sizeof(notice));
 	notice.z_message = asciiport;
 	notice.z_message_len = strlen(asciiport)+1;
 	notice.z_opcode = CLIENT_GIMMESUBS;
@@ -51,7 +51,7 @@ Code_t ZRetrieveDefaultSubscriptions(nsubs)
 {
 	ZNotice_t notice;
 
-	(void) _BZERO((char *)&notice, sizeof(notice));
+	(void) memset((char *)&notice, 0, sizeof(notice));
 	notice.z_message = (char *) 0;
 	notice.z_message_len = 0;
 	notice.z_opcode = CLIENT_GIMMEDEFS;

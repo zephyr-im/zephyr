@@ -70,7 +70,7 @@ Z_SendLocation(class, opcode, auth, format)
     struct hostent *hent;
     short wg_port = ZGetWGPort();
 
-    (void) _BZERO((char *)&notice, sizeof(notice));
+    (void) memset((char *)&notice, 0, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = (u_short) ((wg_port == -1) ? 0 : wg_port);
     notice.z_class = class;

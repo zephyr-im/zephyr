@@ -83,7 +83,7 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     if (!list)
         return (ENOMEM);
 
-    (void) _BZERO((char *)&notice, sizeof(notice));
+    (void) memset((char *)&notice, 0, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = port;
     notice.z_class = ZEPHYR_CTL_CLASS;
