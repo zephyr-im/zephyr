@@ -14,6 +14,6 @@ XDEFS= -DKPOP
 SRCS = zmailnotify.c
 OBJS = zmailnotify.o
 
-zprogram(zmailnotify,$(LIB_HES))
+zprogram(zmailnotify,)
 install_man(zmailnotify.1,zmailnotify.1)
 #endif
