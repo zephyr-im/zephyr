@@ -352,9 +352,13 @@ static void signal_exit()
 
 /* clean up ALL the waiting children, in case we get hit with
    multiple SIGCHLD's at once, and don't process in time. */
-static signal_child()
+static void signal_child()
 {
+#ifdef NO_UNION_WAIT
+  int status;
+#else
   union wait status;
+#endif
   extern int errno;
   int pid, old_errno = errno;
 
