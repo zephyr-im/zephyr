@@ -73,6 +73,10 @@ static void send_stats();
 static Code_t server_register();
 #endif notdef
 static struct in_addr *get_server_addrs();
+#ifndef HESIOD
+static char **get_server_list();
+static void free_server_list();
+#endif !HESIOD
 
 ZNotAcked_t *srv_nacklist;		/* not acked list for server-server
 					   packets */
@@ -106,10 +110,10 @@ void
 server_init()
 {
 	register int i;
-	struct in_addr *serv_addr, *hes_addrs, limbo_addr;
+	struct in_addr *serv_addr, *server_addrs, limbo_addr;
 
 	/* talk to hesiod here, set nservers */
-	if (!(hes_addrs = get_server_addrs(&nservers))) {
+	if (!(server_addrs = get_server_addrs(&nservers))) {
 		syslog(LOG_ERR, "No servers?!?");
 		exit(1);
 	}
@@ -132,7 +136,7 @@ server_init()
 	timer_reset(otherservers[0].zs_timer);
 	otherservers[0].zs_timer = (timer) NULL;
 
-	for (serv_addr = hes_addrs, i = 1; i < nservers; serv_addr++, i++) {
+	for (serv_addr = server_addrs, i = 1; i < nservers; serv_addr++, i++) {
 		setup_server(&otherservers[i], serv_addr);
 		/* is this me? */
 		if (serv_addr->s_addr == my_addr.s_addr) {
@@ -145,7 +149,7 @@ server_init()
 	}
 
 	/* free up the addresses */
-	xfree(hes_addrs);
+	xfree(server_addrs);
 
 	if (me_server_idx == -1) {
 		syslog(LOG_WARNING, "I'm a renegade server!");
@@ -752,27 +756,39 @@ struct sockaddr_in *who;
 	xfree(responses);
 	return;
 }
+#ifdef HESIOD
 /*
  * get a list of server addresses, from Hesiod.  Return a pointer to an
  * array of allocated storage.  This storage is freed by the caller.
  */
+#else
+/*
+ * get a list of server addresses, from a file.  Return a pointer to an
+ * array of allocated storage.  This storage is freed by the caller.
+ */
+#endif HESIOD
 
 static struct in_addr *
 get_server_addrs(number)
 int *number;				/* RETURN */
 {
 	register int i;
-	char **hes_resolve();
 	char **server_hosts;
 	register char **cpp;
 	struct in_addr *addrs;
 	register struct in_addr *addr;
 	register struct hostent *hp;
+#ifdef HESIOD
+	char **hes_resolve();
 
 	/* get the names from Hesiod */
 	if (!(server_hosts = hes_resolve("zephyr","sloc")))
 		return((struct in_addr *)NULL);
+#else
+	if (!(server_hosts = get_server_list(SERVER_LIST_FILE)))
+		return((struct in_addr *)NULL);
 
+#endif HESIOD
 	/* count up */
 	for (cpp = server_hosts, i = 0; *cpp; cpp++, i++);
 	
@@ -790,8 +806,75 @@ int *number;				/* RETURN */
 			syslog(LOG_WARNING, "hostname failed, %s",*cpp);
 	}
 	*number = i;
+#ifndef HESIOD
+	free_server_list(server_hosts);
+#endif HESIOD
 	return(addrs);
 }
+
+#ifndef HESIOD
+#include <sys/param.h>
+
+static int nhosts = 0;
+
+/*
+ * read "file" to get a list of names of hosts to peer with.
+ * The file should contain a list of host names, one per line.
+ */
+
+static char **
+get_server_list(file)
+char *file;
+{
+	FILE *fp;
+	char buf[MAXHOSTNAMELEN];
+	char **ret_list;
+	int nused = 0;
+	char *newline;
+
+	if (!(fp = fopen(file, "r")))
+		return((char **)0);
+
+	/* start with 16, realloc if necessary */
+	nhosts = 16;
+	ret_list = (char **)xmalloc(nhosts * sizeof(char *));
+
+	while (fgets(buf, MAXHOSTNAMELEN, fp)) {
+		/* nuke the newline, being careful not to overrun
+		   the buffer searching for it with strlen() */
+		buf[MAXHOSTNAMELEN - 1] = '\0';
+		if (newline = index(buf, '\n'))
+			*newline = '\0';
+
+		if (nused >= nhosts) {
+			/* get more pointer space if necessary */
+			ret_list = (char **)realloc(ret_list,
+						    (unsigned) nhosts * 2);
+			nhosts = nhosts * 2;
+		}
+		ret_list[nused++] = strsave(buf);
+	}
+	(void) fclose(fp);
+	return(ret_list);
+}
+
+/* 
+ * free storage allocated by get_server_list
+ */
+static void
+free_server_list(list)
+char **list;
+{
+	register int i;
+
+	if (!nhosts)			/* nothing allocated */
+		return;
+	for (i = 0; i < nhosts; i++)
+		xfree(list[i]);
+	xfree(list);
+	return;
+}
+#endif !HESIOD
 
 /*
  * initialize the server structure for address addr, and set a timer
