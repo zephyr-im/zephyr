@@ -52,7 +52,7 @@ static char rcsid_uloc_s_c[] = "$Header$";
 /* WARNING: make sure this is the same as the number of strings you */
 /* plan to hand back to the user in response to a locate request, */
 /* else you will lose.  See ulogin_locate() and uloc_send_locations() */  
-#define	NUM_FIELDS	2
+#define	NUM_FIELDS	3
 
 
 typedef enum _login_type {
@@ -63,10 +63,8 @@ typedef enum _login_type {
 typedef struct _ZLocation_t {
 	char *zlt_user;
 	char *zlt_machine;
-#ifdef notdef
-	char *zlt_tty;
-#endif
 	char *zlt_time;			/* in ctime format */
+	char *zlt_tty;
 	login_type zlt_visible;
 	struct in_addr zlt_addr;	/* IP addr of this loc */
 } ZLocation_t;
@@ -273,12 +271,8 @@ ZHostList_t *host;
 		if (loc->zlt_addr.s_addr != haddr->s_addr)
 			continue;
 		lyst[0] = loc->zlt_machine;
-#ifdef notdef
-		lyst[1] = loc->zlt_tty;
-		lyst[2] = loc->zlt_time;
-#else
 		lyst[1] = loc->zlt_time;
-#endif notdef
+		lyst[2] = loc->zlt_tty;
 
 		if ((retval = bdump_send_list_tcp(ACKED, bdump_sin.sin_port,
 						  LOGIN_CLASS, loc->zlt_user,
@@ -391,7 +385,6 @@ struct sockaddr_in *who;
 		xfree(locs->zlt_user);
 		return(1);
 	}
-#ifdef notdef
 	locs->zlt_tty = strsave(locs->zlt_tty);
 	if (!locs->zlt_tty) {
 		syslog(LOG_ERR, "zloc bad format");
@@ -399,15 +392,12 @@ struct sockaddr_in *who;
 		xfree(locs->zlt_machine);
 		return(1);
 	}
-#endif notdef
 	locs->zlt_time = strsave(locs->zlt_time);
 	if (!locs->zlt_time) {
 		syslog(LOG_ERR, "zloc bad format");
 		xfree(locs->zlt_user);
 		xfree(locs->zlt_machine);
-#ifdef notdef
 		xfree(locs->zlt_tty);
-#endif notdef
 		return(1);
 	}
 	locs->zlt_visible = visible;
@@ -441,17 +431,32 @@ register ZLocation_t *locs;
 	cp = base = notice->z_message;
 
 	zdbug((LOG_DEBUG,"user %s",notice->z_class_inst));
+
 	locs->zlt_machine = cp;
 	zdbug((LOG_DEBUG,"mach %s",cp));
-#ifdef notdef
-	ADVANCE(1);
-	locs->zlt_tty = cp;
-	zdbug((LOG_DEBUG,"tty %s",cp));
-#endif notdef
-	ADVANCE(2);
+
+	cp += (strlen(cp) + 1);
+	if (cp >= base + notice->z_message_len) {
+		syslog(LOG_ERR, "zloc bad format 1");
+		return(1);
+	}
 	locs->zlt_time = cp;
 	zdbug((LOG_DEBUG,"time %s",cp));
+
 	cp += (strlen(cp) + 1);
+
+	if (cp == base + notice->z_message_len) {
+		/* no tty--for backwards compat, we allow this */
+		zdbug((LOG_DEBUG, "no tty"));
+		locs->zlt_tty = "";
+	} else if (cp > base + notice->z_message_len) {
+		syslog(LOG_ERR, "zloc bad format 2");
+		return(1);
+	} else {
+		locs->zlt_tty = cp;
+		zdbug((LOG_DEBUG,"tty %s",cp));
+		cp += (strlen(cp) + 1);
+	}
 	if (cp > base + notice->z_message_len) {
 		syslog(LOG_ERR, "zloc bad format 3");
 		return(1);
@@ -529,10 +534,8 @@ register ZLocation_t *l1, *l2;
 {
 	if (strcmp(l1->zlt_machine, l2->zlt_machine))
 		return(0);
-#ifdef notdef
 	if (strcmp(l1->zlt_tty, l2->zlt_tty))
 		return(0);
-#endif notdef
 	return(1);
 }
 
@@ -618,14 +621,29 @@ ulogin_hide_user(notice, visible)
 ZNotice_t *notice;
 login_type visible;
 {
-	ZLocation_t *loc;
+	ZLocation_t *loc, loc2;
+	int index, notfound = 1;
 
-	if (!(loc = ulogin_find(notice, 1))) {
+	if (ulogin_parse(notice, &loc2))
+		return(1);
+
+	if (!(loc = ulogin_find(notice, 0))) {
 		zdbug((LOG_DEBUG,"ul_hide: not here"));
 		return(1);
 	}
-	loc->zlt_visible = visible;
-	return(0);
+	index = loc - locations;
+
+	while (!strcmp(locations[index].zlt_user, loc2.zlt_user) &&
+	       index < num_locs) { 
+		/* change visible for each loc on that host */
+		if (!strcmp(locations[index].zlt_machine, loc2.zlt_machine)) {
+			notfound = 0;
+			locations[index].zlt_visible = visible;
+		}
+		index++;
+	}
+
+	return(notfound);
 }
 
 /*
@@ -701,10 +719,8 @@ rep:
 	} else
 		for (i = 0; i < found ; i++) {
 			answer[i*NUM_FIELDS] = matches[i]->zlt_machine;
-#ifdef notdef
-			answer[i*NUM_FIELDS + 1] = matches[i]->zlt_tty;
-#endif notdef
 			answer[i*NUM_FIELDS + 1] = matches[i]->zlt_time;
+			answer[i*NUM_FIELDS + 2] = matches[i]->zlt_tty;
 		}
 
 	xfree(matches);
