@@ -62,7 +62,7 @@ static char rcsid_subscr_c[] = "$Id$";
 
 #include "zserver.h"
 #include <ctype.h>
-#include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 
 #ifdef __STDC__
@@ -80,7 +80,6 @@ Sched	serv_ksched;
 
 /* for compatibility when sending subscription information to old clients */
 
-static void check_sub_order P((ZSubscr_t *subs, int wc));
 #ifdef OLD_COMPAT
 #define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
 #define	OLD_CLIENT_INCOMPSUBS	"INCOMP"
@@ -96,15 +95,14 @@ extern int new_compat_count_subscr;	/* counter of old use */
 #endif /* NEW_COMPAT */
 
 extern char *re_comp(), *re_conv();
+static Code_t add_subscriptions P((ZClient_t *who, ZSubscr_t *subs_queue,
+				   ZNotice_t *notice));
 static ZSubscr_t *extract_subscriptions P((register ZNotice_t *notice));
-static int clt_unique P((ZClient_t *clt, ZClientList_t *clist));
 static void free_subscriptions P((register ZSubscr_t *subs));
 static char **subscr_marshal_subs P((ZNotice_t *notice, int auth,
-					struct sockaddr_in *who,
-					register int *found));
-static Code_t subscr_subscribe_real P((ZClient_t *who, ZSubscr_t *newsubs,
-				    ZNotice_t *notice));
-static ZSubscr_t *subscr_copy_def_subs P((char *));
+				     struct sockaddr_in *who,
+				     register int *found));
+static ZSubscr_t *subscr_copy_def_subs P((char *person));
 static int cl_match  P((ZSubscr_t*, ZClient_t *));
 
 static int defaults_read = 0;		/* set to 1 if the default subs
@@ -113,10 +111,8 @@ static ZNotice_t default_notice;	/* contains default subscriptions */
 
 #undef P
 
-ZSTRING *wildcard_class;
 ZSTRING *wildcard_instance;
 ZSTRING *empty;
-ZSubscr_t matchall_sub;
 
 /* WARNING: make sure this is the same as the number of strings you */
 /* plan to hand back to the user in response to a subscription check, */
@@ -132,137 +128,101 @@ subscr_subscribe(who, notice)
      ZClient_t *who;
      ZNotice_t *notice;
 {
-	ZSubscr_t *subs;
+	ZSubscr_t *subs_queue, *sub;
+	Code_t retval;
 	
 	if (!who->zct_subs) {
 		/* allocate a subscription head */
-		if (!(subs = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t))))
+		sub = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t));
+		if (!sub)
 			return(ENOMEM);
-		subs->q_forw = subs->q_back = subs;
-		subs->zst_dest.classname = subs->zst_dest.inst =
-		  subs->zst_dest.recip = NULL;
-		subs->zst_dest.hash_value = 0;
-		who->zct_subs = subs;
+		sub->q_forw = sub->q_back = sub;
+		sub->zst_dest.classname = sub->zst_dest.inst =
+		  sub->zst_dest.recip = NULL;
+		who->zct_subs = sub;
 	}
 
-	if (!(subs = extract_subscriptions(notice)))
-		return(ZERR_NONE);	/* no subscr -> no error */
-
-	return(subscr_subscribe_real(who, subs, notice));
+	subs_queue = extract_subscriptions(notice);
+	return(add_subscriptions(who, subs_queue, notice));
 }
 
 static Code_t
-subscr_subscribe_real(who, newsubs, notice)
+add_subscriptions(who, subs_queue, notice)
      ZClient_t *who;
-     register ZSubscr_t *newsubs;
+     ZSubscr_t *subs_queue;
      ZNotice_t *notice;
 {
+	ZSubscr_t *sub, *next;
 	Code_t retval;
 	ZAcl_t *acl;
 	ZSTRING *sender;
-	ZSubscr_t *subs2, *subs3, *subs;
-	int relation;
+
+	if (!subs_queue)
+		return(ZERR_NONE);	/* no subscr -> no error */
 
 	sender = make_zstring(notice->z_sender,0);
 
 	START_CRITICAL_CODE;
 
-	for (subs = newsubs->q_forw;
-	     subs != newsubs;
-	     subs = subs->q_forw) {
-		/* for each new subscription */
+	/* Loop over the new subscriptions. */
+	next = subs_queue->q_forw;
+	while (next != subs_queue) {
+		sub = next;
+		next = sub->q_forw;
 
 #if 0
 		zdbug ((LOG_DEBUG, "subscr: %s/%s/%s",
-			subs->zst_dest.classname->string,
-			subs->zst_dest.inst->string,
-			subs->zst_dest.recip->string));
+			sub->zst_dest.classname->string,
+			sub->zst_dest.inst->string,
+			sub->zst_dest.recip->string));
 #endif
 
-		if (!bdumping
-		    && (subs->zst_dest.recip != empty)
-		    && (subs->zst_dest.recip != sender)) {
-		    syslog(LOG_WARNING, "subscr unauth %s recipient %s",
-			   sender->string,
-			   subs->zst_dest.recip->string);
-		    continue;
-		}
 		if (!bdumping) {
-		    acl = class_get_acl(subs->zst_dest.classname);
+		    if ((sub->zst_dest.recip != empty)
+			&& (sub->zst_dest.recip != sender)) {
+			syslog(LOG_WARNING, "subscr unauth %s recipient %s",
+			       sender->string,
+			       sub->zst_dest.recip->string);
+			continue;
+		    }
+		    acl = class_get_acl(sub->zst_dest.classname);
 		    if (acl) {
 			if (!(access_check(sender->string, acl, SUBSCRIBE))) {
 				syslog(LOG_WARNING,
 				       "subscr unauth %s class %s",
 				       sender->string,
-				       subs->zst_dest.classname->string);
+				       sub->zst_dest.classname->string);
 				continue; /* the for loop */
 			}
-			if (wildcard_instance == subs->zst_dest.inst) {
+			if (wildcard_instance == sub->zst_dest.inst) {
 			    if (!access_check(sender->string, acl, INSTWILD)) {
 				syslog(LOG_WARNING,
 				       "subscr unauth %s class %s wild inst",
 				       notice->z_sender,
-				       subs->zst_dest.classname->string);
+				       sub->zst_dest.classname->string);
 				continue;
 			    }
 			}
 		    }
 		}
-		/* subscriptions are stored in ascending order by */
-		/* subscription hash value */
-		/* Scan through list to check for duplicates, and to find */
-		/* where to insert these subs */
-
-		for (subs2 = who->zct_subs->q_forw;
-		     subs2 != who->zct_subs;
-		     subs2 = subs2->q_forw) {
-			/* for each existing subscription */
-		  relation = compare_subs(subs2,subs,0);
-		  if (relation == 0)
-		    goto duplicate;
-		  if (relation > 0) /* we have passed last possible one */
-		    break;
-		  if (relation < 0) /* nope... */
-		    continue;
+		xremque(sub);
+		retval = triplet_register(who, &sub->zst_dest);
+		if (retval != ZERR_NONE) {
+			xfree(sub);
+			if (retval == ZSRV_CLASSXISTS) {
+				continue;
+			} else {
+				free_subscriptions(subs_queue);
+				END_CRITICAL_CODE;
+				return(retval);
+			}
 		}
-
-		/* subs2 now points to the first class which is greater
-		   than the new class. We need to back up so that the
-		   insertion below goes BEFORE this one (i.e. after the
-		   previous one) */
-		subs2 = subs2->q_back;
-
-		/* ok, we are a new subscription. register and chain on. */
-
-		if (!(subs3 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
-			free_subscriptions(newsubs);
-			END_CRITICAL_CODE;
-			return(ENOMEM);
-		}
-
-		subs3->q_forw = subs3->q_back = subs3;
-		subs3->zst_dest.classname =
-		  dup_zstring(subs->zst_dest.classname);
-		subs3->zst_dest.inst = dup_zstring(subs->zst_dest.inst);
-		subs3->zst_dest.recip = dup_zstring(subs->zst_dest.recip);
-		set_ZDestination_hash(&subs3->zst_dest);
-
-		if ((retval = class_register(who, subs)) != ZERR_NONE) {
-		    xfree(subs3);
-		    free_subscriptions(newsubs);
-		    END_CRITICAL_CODE;
-		    return(retval);
-		}
-
-		/* subs2 was adjusted above */
-		xinsque(subs3, subs2);
- duplicate:
-		;
+		xinsque(sub, who->zct_subs);
 	}
 
 	END_CRITICAL_CODE;
 
-	free_subscriptions(newsubs);
+	free_subscriptions(subs_queue);
 	return(ZERR_NONE);
 }
 
@@ -285,12 +245,11 @@ subscr_def_subs(who)
 		subs->q_forw = subs->q_back = subs;
 		subs->zst_dest.classname = subs->zst_dest.inst =
 		  subs->zst_dest.recip = (ZSTRING *) NULL;
-		subs->zst_dest.hash_value = 0;
 		who->zct_subs = subs;
 	}
 
 	subs = subscr_copy_def_subs(who->zct_principal->string);
-	return(subscr_subscribe_real(who, subs, &default_notice));
+	return(add_subscriptions(who, subs, &default_notice));
 }
 
 void
@@ -391,13 +350,12 @@ subscr_copy_def_subs(person)
 		  free_zstring(subs2->zst_dest.recip);
 		  subs2->zst_dest.recip = dup_zstring(empty);
 		}
-		set_ZDestination_hash(&(subs2->zst_dest));
 	}
 	return(subs);
 }
 
 /*
- * Cancel one subscription.
+ * Cancel a specific set of subscriptions.
  */
 
 Code_t
@@ -406,7 +364,7 @@ subscr_cancel(sin, notice)
      ZNotice_t *notice;
 {
 	ZClient_t *who;
-	register ZSubscr_t *subs, *subs2, *subs3, *subs4;
+	register ZSubscr_t *cancel_queue, *cancel, *sub;
 	Code_t retval;
 	int found = 0;
 	int relation;
@@ -414,62 +372,39 @@ subscr_cancel(sin, notice)
 #if 0
 	zdbug((LOG_DEBUG,"subscr_cancel"));
 #endif
-	if (!(who = client_which_client(sin, notice)))
+	who = client_which_client(sin, notice);
+	if (!who)
 		return(ZSRV_NOCLT);
 
 	if (!who->zct_subs)
 		return(ZSRV_NOSUB);
 
-	if (!(subs = extract_subscriptions(notice)))
+	cancel_queue = extract_subscriptions(notice);
+	if (!cancel_queue)
 		return(ZERR_NONE);	/* no subscr -> no error */
 
 	START_CRITICAL_CODE;
 
-	for (subs4 = subs->q_forw; subs4 != subs; subs4 = subs4->q_forw) {
-	    for (subs2 = who->zct_subs->q_forw;
-		 subs2 != who->zct_subs;) {
-		/* for each existing subscription */
-		/* is this what we are canceling? */
-	      relation = compare_subs(subs2, subs4,0);
-	      if (relation < 0) {
-		subs2 = subs2->q_forw;
-		continue;
-	      }
-	      if (relation > 0)
-		/* We have passed last possible one */
-		break;
-
-	      /* go back, since remque will change things */
-	      subs3 = subs2->q_back;
-	      xremque(subs2);
-	      (void) class_deregister(who, subs2);
-	      free_zstring(subs2->zst_dest.classname);
-	      free_zstring(subs2->zst_dest.inst);
-	      free_zstring(subs2->zst_dest.recip);
-	      xfree(subs2);
-	      found = 1;
-	      /* now that the remque adjusted the linked
-		 list, we go forward again */
-	      subs2 = subs3->q_forw;
-	      break;
-	    }
-	  }
-
-	/* make sure we are still registered for all the classes */
-	if (found) {
-	  for (subs2 = who->zct_subs->q_forw;
-	       subs2 != who->zct_subs;
-	       subs2 = subs2->q_forw)
-	    if ((retval = class_register(who, subs2)) != ZERR_NONE) {
-	      free_subscriptions(subs);
-	      END_CRITICAL_CODE;
-	      return(retval);
+	for (cancel = cancel_queue->q_forw; cancel != cancel_queue;
+	     cancel = cancel->q_forw) {
+	    for (sub = who->zct_subs->q_forw; sub != who->zct_subs;
+		 sub = sub->q_forw) {
+		if (ZDest_eq(&cancel->zst_dest, &sub->zst_dest)) {
+		    xremque(sub);
+		    triplet_deregister(who, &sub->zst_dest);
+		    free_zstring(sub->zst_dest.classname);
+		    free_zstring(sub->zst_dest.inst);
+		    free_zstring(sub->zst_dest.recip);
+		    xfree(sub);
+		    found = 1;
+		    break;
+		}
 	    }
 	}
 
 	END_CRITICAL_CODE;
 
-	free_subscriptions(subs);
+	free_subscriptions(cancel_queue);
 	if (found) {
 #if 0
 	  zdbug((LOG_DEBUG, "found & removed"));
@@ -509,7 +444,7 @@ subscr_cancel_client(client)
 		zdbug((LOG_DEBUG,"sub_can %s",
 		       subs->zst_dest.classname->string));
 #endif
-		if (class_deregister(client, subs) != ZERR_NONE) {
+		if (triplet_deregister(client, &subs->zst_dest) != ZERR_NONE) {
 #if 0
 			zdbug((LOG_DEBUG,"sub_can_clt: not registered!"));
 #endif
@@ -563,106 +498,6 @@ struct in_addr *addr;
 	return(ZERR_NONE);
 }
 #endif
-
-/*
- * Here is the bulk of the work in the subscription manager.
- * We grovel over the list of clients possibly interested in this
- * notice, and copy into a list on a match.  Make sure we only add any given
- * client once.
- */
-
-ZClientList_t *
-subscr_match_list(notice)
-     ZNotice_t *notice;
-{
-	register ZClientList_t *hits, *clients, *majik, *clients2, *hit2;
-	char *saveclass, *saveclinst;
-	ZSTRING *newclass;
-	ZSTRING *newclinst;
-	ZSubscr_t check_sub;
-
-	if (!(hits = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))))
-		return(NULLZCLT);
-	hits->q_forw = hits->q_back = hits;
-
-	saveclass = notice->z_class;
-	newclass = make_zstring(notice->z_class, 1);
-
-	saveclinst = notice->z_class_inst;
-	newclinst = make_zstring(notice->z_class_inst, 1);
-
-	check_sub.zst_dest.classname = newclass;
-	check_sub.zst_dest.inst = newclinst;
-	check_sub.zst_dest.recip = make_zstring(notice->z_recipient, 0);
-	set_ZDestination_hash(&check_sub.zst_dest);
-	check_sub.q_forw = check_sub.q_back = &check_sub;
-
-	clients = class_lookup (&check_sub);
-	majik = class_lookup (&matchall_sub);
-	if (!clients && !majik)
-	    return NULLZCLT;
-
-	notice->z_class = (char *) newclass->string;
-	notice->z_class_inst = (char *) newclinst->string;
-	if (clients) {
-		for (clients2 = clients->q_forw;
-		     clients2 != clients;
-		     clients2 = clients2->q_forw)
-		  if (cl_match(&check_sub, clients2->zclt_client)) {
-				if (!clt_unique(clients2->zclt_client, hits))
-					continue;
-				/* we hit */
-				if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
-					syslog(LOG_WARNING,
-					       "subscr_match: punting/no mem");
-					notice->z_class = saveclass;
-					notice->z_class_inst = saveclinst;
-					free_zstring(newclass);
-					free_zstring(newclinst);
-					free_zstring(check_sub.zst_dest.recip);
-					return(hits);
-				}
-				hit2->zclt_client = clients2->zclt_client;
-				hit2->q_forw = hit2->q_back = hit2;
-				xinsque(hit2, hits);
-			}
-		class_free(clients);
-	}
-	if (majik) {
-		for (clients2 = majik->q_forw;
-		     clients2 != majik;
-		     clients2 = clients2->q_forw) {
-			if (!clt_unique(clients2->zclt_client, hits))
-				continue;
-			/* we hit */
-			if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
-				syslog(LOG_WARNING,
-				       "subscr_match(majik): punting/no mem");
-				notice->z_class = saveclass;
-				notice->z_class_inst = saveclinst;
-				free_zstring(newclass);
-				free_zstring(newclinst);
-				free_zstring(check_sub.zst_dest.recip);
-				return(hits);
-			}
-			hit2->zclt_client = clients2->zclt_client;
-			hit2->q_forw = hit2->q_back = hit2;
-
-			xinsque(hit2, hits);
-		}
-		class_free(majik);
-	}
-	notice->z_class = saveclass;
-	notice->z_class_inst = saveclinst;
-	free_zstring(newclass);
-	free_zstring(newclinst);
-	free_zstring(check_sub.zst_dest.recip);
-	if (hits->q_forw == hits) {
-		xfree(hits);
-		return(NULLZCLT);
-	}
-	return(hits);
-}
 
 /*
  * Free memory used by a list we allocated.
@@ -1149,58 +984,6 @@ subscr_send_subs(client, vers)
 }
 
 /*
- * is this client unique to this list?  0 = no, 1 = yes
- */
-
-static int
-clt_unique(clt, clist)
-     ZClient_t *clt;
-     ZClientList_t *clist;
-{
-	register ZClientList_t *client;
-
-	for (client = clist->q_forw;
-	     client != clist;
-	     client = client->q_forw)
-		if (client->zclt_client == clt)
-			return(0);
-	return(1);
-}
-
-/*
- * is this client listening to this notice? 1=yes, 0=no
- */
-
-static int
-cl_match(notice_subs, client)
-     register ZSubscr_t *notice_subs;
-     register ZClient_t *client;
-{
-	register ZSubscr_t *subs;
-	int relation;
-
-	if (client->zct_subs == NULLZST) {
-		syslog(LOG_WARNING, "cl_match w/ no subs");
-		return(0);
-	}
-		
-	for (subs = client->zct_subs->q_forw;
-	     subs != client->zct_subs;
-	     subs = subs->q_forw) {
-	  relation = compare_subs(notice_subs, subs, 1);
-
-/*
-	  if (relation < 0)
-	    return(0);
-*/
-	  if (relation == 0)
-	    return(1);
-	}
-	/* fall through */
-	return(0);
-}	
-
-/*
  * free the memory allocated for the list of subscriptions.
  */
 
@@ -1272,7 +1055,6 @@ extract_subscriptions(notice)
 			subs->q_forw = subs->q_back = subs;
 			subs->zst_dest.classname = subs->zst_dest.inst =
 			  subs->zst_dest.recip = NULL;
-			subs->zst_dest.hash_value = 0;
 		}
 		if (!(subs2 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
 			syslog(LOG_WARNING, "ex_subs: no mem 2");
@@ -1282,7 +1064,6 @@ extract_subscriptions(notice)
 		subs2->zst_dest.classname = make_zstring(class_name,1);
 		subs2->zst_dest.inst = make_zstring(classinst,1);
 		subs2->zst_dest.recip = make_zstring(recip,0);
-		set_ZDestination_hash(&subs2->zst_dest);
 		
 		xinsque(subs2, subs);
 	}
@@ -1301,84 +1082,20 @@ subscr_dump_subs(fp, subs)
      ZSubscr_t *subs;
 {
 	register ZSubscr_t *ptr;
+	register char *p;
 
 	if (!subs)			/* no subscriptions to dump */
 	    return;
 
 	for (ptr = subs->q_forw; ptr != subs; ptr = ptr->q_forw) {
 		fputs("\t\t'", fp);
-		fputs(ptr->zst_dest.classname->string, fp);
+		subscr_quote(ptr->zst_dest.classname->string, fp);
 		fputs("' '", fp);
-		fputs(ptr->zst_dest.inst->string, fp);
+		subscr_quote(ptr->zst_dest.inst->string, fp);
 		fputs("' '", fp);
-		fputs(ptr->zst_dest.recip->string, fp);
+		subscr_quote(ptr->zst_dest.recip->string, fp);
 		fputs("'\n", fp);
 	}
 	return;
 }
 
-int
-compare_subs(s1,s2,do_wildcard)
-     ZSubscr_t *s1, *s2;
-     int do_wildcard;
-{
-
-#if 0
-  zdbug((LOG_DEBUG,"compare_subs: %s/%s/%s to %s/%s/%s",
-	 s1->zst_dest.classname->string, s1->zst_dest.inst->string, s1->zst_dest.recip->string,
-	 s2->zst_dest.classname->string, s2->zst_dest.inst->string, s2->zst_dest.recip->string));
-#endif
-  /* wildcard must be in s2 in order for it to match */
-
-  if (do_wildcard && (s1->zst_dest.classname == s2->zst_dest.classname) &&
-      (s2->zst_dest.inst == wildcard_instance) &&
-      (s1->zst_dest.recip == s2->zst_dest.recip))
-    return(0);
-
-  if (s1->zst_dest.hash_value > s2->zst_dest.hash_value)
-    return 1;
-  if (s1->zst_dest.hash_value < s2->zst_dest.hash_value)
-    return -1;
-
-  if (s1->zst_dest.classname != s2->zst_dest.classname)
-    return(strcasecmp(s1->zst_dest.classname->string,
-		      s2->zst_dest.classname->string));
-
-  if (s1->zst_dest.inst != s2->zst_dest.inst)
-    return(strcasecmp(s1->zst_dest.inst->string,
-		      s2->zst_dest.inst->string));
-
-  if (s1->zst_dest.recip != s2->zst_dest.recip)
-    return(strcasecmp(s1->zst_dest.recip->string,
-		      s2->zst_dest.recip->string));
-
-  return(0);
-}
-
-static void
-check_sub_order(subs,wc)
-     ZSubscr_t *subs;
-     int wc;
-{
-  ZSubscr_t *subs2;
-  int relation;
-
-  for (subs2 = subs->q_forw;
-       subs2->q_forw != subs;
-       subs2 = subs2->q_forw) {
-
-    /* for each existing subscription */
-    relation = compare_subs(subs2,subs2->q_forw,wc);
-    if (relation > 0) {
-      syslog(LOG_DEBUG, "s_check failed: %s/%s/%s <=> %s/%s/%s = %d",
-	     subs2->zst_dest.classname->string,
-	     subs2->zst_dest.inst->string,
-	     subs2->zst_dest.recip->string,
-	     subs2->q_forw->zst_dest.classname->string,
-	     subs2->q_forw->zst_dest.inst->string,
-	     subs2->q_forw->zst_dest.recip->string,
-	     relation);
-    }
-    
-  }
-}
