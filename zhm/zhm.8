@@ -20,6 +20,8 @@ zhm \- Zephyr HostManager
 ] [
 .BI -i
 ] [
+.BI -f
+] [
 .BI server
 .BI ...
 ]
@@ -62,6 +64,11 @@ assumes that file descriptor zero (0) is bound to the UDP datagram port
 designated for hostmanager use.  In this mode, SIGHUP is handled as if the
 .I -h
 option were specified.
+.PP
+The
+.I -f
+option disables the "flush" operation which allows any client to flush
+all subscriptions for the host.
 .PP
 The optional
 .I server
