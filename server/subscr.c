@@ -1228,6 +1228,9 @@ ZSubscr_t *subs;
 {
 	register ZSubscr_t *ptr;
 
+	if (!subs)			/* no subscriptions to dump */
+	    return;
+
 	for (ptr = subs->q_forw; ptr != subs; ptr = ptr->q_forw) {
 		fputs("\t\t'", fp);
 		fputs(ptr->zst_class, fp);
