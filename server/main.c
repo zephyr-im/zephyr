@@ -228,7 +228,7 @@ char **argv;
 			continue;
 		else {
 			if (bdump_socket && FD_ISSET(bdump_socket,&readable))
-				send_brain_dump();
+				bdump_send();
 			else if (ZQLength() || FD_ISSET(srv_socket, &readable)) {
 				/* handle traffic */
 				
