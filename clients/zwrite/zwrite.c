@@ -36,7 +36,6 @@ char *whoami, *inst, *class, *opcode, *recips[MAXRECIPS];
 int (*auth)();
 void un_tabify();
 
-extern char *malloc(), *realloc();
 char *fix_filsrv_inst();
 
 main(argc, argv)
