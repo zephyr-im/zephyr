@@ -1,9 +1,6 @@
 #include "zserver.h"
 #include <sys/socket.h>
 
-extern int __My_length;
-extern char *__My_addr;
-
 Unacked *rlm_nacklist = NULL;   /* not acked list for realm-realm
                                    packets */
 Realm *otherrealms;             /* points to an array of the known
@@ -863,12 +860,8 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
                                            partnotice.z_uid.tv.tv_sec);
         partnotice.z_uid.tv.tv_usec = htonl((u_long) 
                                             partnotice.z_uid.tv.tv_usec);
-        if ((retval = Z_GetMyAddr()) != ZERR_NONE) {
-          syslog(LOG_WARNING, "rlm_sendit_auth addr: %s", error_message(retval));
-          return;
-        }
-        (void) memcpy((char *)&partnotice.z_uid.zuid_addr, __My_addr, 
-                      __My_length);
+        (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr, 
+                      sizeof(__My_addr));
       }
       message_len = min(notice->z_message_len-offset, fragsize);
       partnotice.z_message = notice->z_message+offset;
