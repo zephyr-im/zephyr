@@ -30,6 +30,7 @@ Code_t ZFlushLocations()
 	for (i=0;i<__locate_num;i++) {
 		free(__locate_list[i].host);
 		free(__locate_list[i].time);
+		free(__locate_list[i].tty);
 	}
 	
 	free((char *)__locate_list);
