@@ -17,7 +17,7 @@
 
 #include <sys/types.h>
 
-#if defined(ultrix) || defined(vax)
+#if defined(ultrix) || defined(vax) || defined(SUNOS)
 typedef unsigned long ulong;
 #endif
 
