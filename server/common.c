@@ -21,8 +21,9 @@ static char rcsid_common_c[] = "$Header$";
 
 #include <stdio.h>
 #include <syslog.h>
+#include <strings.h>
 
-extern char *malloc(), *strcpy();
+extern char *malloc();
 
 /* common routines for the server */
 
