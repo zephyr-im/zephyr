@@ -2,10 +2,22 @@ Source: zephyr
 Section: unknown
 Priority: optional
 Maintainer: Karl Ramm <kcr@1ts.org>
-Build-Depends: debhelper, libares-dev, libkrb5-dev, comerr-dev, ss-dev, libreadline4-dev, xlibs-dev | xlib6g-dev, libncurses5-dev, bison
+Build-Depends: debhelper, libares-dev, libkrb5-dev, comerr-dev, ss-dev, libreadline4-dev, xlibs-dev | xlib6g-dev, libxaw-dev|xlib6g-dev, libncurses5-dev, bison
 Standards-Version: 3.1.1
 
-Package: zephyr-client
+Package: libzephyr3
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: The original "Instant Message" system libraries
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: zephyr-clients
+Provides: zephyr-client
+Replaces: zephyr-client
+Conflicts: zephyr-client
 Architecture: any
 Depends: ${shlibs:Depends}, debianutils (>= 1.6)
 Description: The original "Instant Message" system client

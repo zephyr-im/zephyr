@@ -31,19 +31,19 @@ case "$1" in
 
 	if test -f /etc/zephyr/zephyr.conf
 	then
-		if test ! -f /dev/default/zephyr-client
+		if test ! -f /dev/default/zephyr-clients
 		then
-			mv /etc/zephyr/zephyr.conf /etc/default/zephyr-client
+			mv /etc/zephyr/zephyr.conf /etc/default/zephyr-clients
 		fi
 	fi
 
-	db_get zephyr-client/servers
-	if test -f /etc/default/zephyr-client
+	db_get zephyr-clients/servers
+	if test -f /etc/default/zephyr-clients
 	then
-		grep -v ^zhm_args /etc/default/zephyr-client > $tmpfile || true
+		grep -v ^zhm_args /etc/default/zephyr-clients > $tmpfile || true
 	fi
 	echo zhm_args=\"${RET}\" >> $tmpfile
-	cat $tmpfile > /etc/default/zephyr-client
+	cat $tmpfile > /etc/default/zephyr-clients
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

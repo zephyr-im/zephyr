@@ -20,9 +20,9 @@ test -f $DAEMON || exit 0
 
 set -e
 
-if test -f /etc/default/zephyr-client
+if test -f /etc/default/zephyr-clients
 then
-	. /etc/default/zephyr-client
+	. /etc/default/zephyr-clients
 fi
 
 case "$1" in

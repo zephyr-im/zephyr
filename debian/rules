@@ -14,7 +14,7 @@ export DH_COMPAT=2
 
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
-
+SONAME=3
 configure: configure-stamp
 configure-stamp:
 	dh_testdir
@@ -28,7 +28,13 @@ build-stamp:
 	dh_testdir
 
 	# Add here commands to compile the package.
-	$(MAKE)
+	-rm -f lib/zephyr/*.o
+	$(MAKE) -C lib			\
+	 FPIC= 					\
+	 LIBEXT=a
+	rm -f lib/zephyr/*.o
+	$(MAKE) LIBEXT=so \
+		FPIC=-fpic SONAME=$(SONAME)
 
 	touch build-stamp
 
@@ -60,6 +66,8 @@ install: build
 
 	# Add here commands to install the package into debian/tmp.
 	$(MAKE) install DESTDIR=`pwd`/debian/tmp
+	mv debian/tmp/usr/lib/libzephyr.so debian/tmp/usr/lib/libzephyr.so.$(SONAME)
+	ln -s libzephyr.so.$(SONAME) debian/tmp/usr/lib/libzephyr.so
 	mkdir -p debian/tmp/etc/zephyr/acl
 	set -x; for i in debian/acl/*; do install -c -m 544 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
 	install -c -m 544 debian/zephyr.vars debian/tmp/etc/zephyr
@@ -73,11 +81,8 @@ binary-indep: build install
 binary-arch: build install
 	dh_testdir
 	dh_testroot
-	dh_movefiles -pzephyr-client
-	dh_movefiles -pzephyr-server
-	dh_movefiles -plibzephyr-dev
-	dh_installdebconf -pzephyr-client
-	dh_installdebconf -pzephyr-server
+	dh_movefiles 
+	dh_installdebconf 
 	dh_installdocs
 #	dh_installexamples
 #	dh_installmenu
@@ -104,4 +109,7 @@ binary-arch: build install
 	dh_builddeb
 
 binary: binary-indep binary-arch
+
 .PHONY: build clean binary-indep binary-arch binary install configure
+
+
