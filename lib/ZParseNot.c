@@ -142,7 +142,7 @@ Code_t ZParseNotice(buffer, len, notice)
     if (numfields) {
 	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	    BAD_PACKET;
-	notice->z_kind = temp;
+	notice->z_kind = (ZNotice_Kind_t)temp;
 	numfields--;
 	next_field (ptr);
     }

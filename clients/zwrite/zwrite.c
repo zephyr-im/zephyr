@@ -34,6 +34,7 @@ Z_AuthProc auth;
 void un_tabify();
 
 char *fix_filsrv_inst();
+void usage(), send_off();
 
 main(argc, argv)
     int argc;
@@ -336,6 +337,7 @@ main(argc, argv)
     exit(0);
 }
 
+void
 send_off(notice, real)
     ZNotice_t *notice;
     int real;
@@ -444,6 +446,7 @@ send_off(notice, real)
 	exit(1);
 } 
 
+void
 usage(s)
     char *s;
 {

@@ -32,6 +32,7 @@ static int xerrortrap(dpy,xerrev)
      XErrorEvent *xerrev;
 {
    xerror_happened = 1;
+   return 0;
 }
 
 /*ARGSUSED*/
