@@ -406,7 +406,7 @@ usage(s)
     fprintf(stderr,
 	    "Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l]\n\
 \t[-c class] [-i inst] [-O opcode] [-f fsname] [-s signature]\n\
-\t[user ...] [-m message]\n", s);
+\t[user ...] [-F format] [-m message]\n", s);
     fprintf(stderr,"\t-f and -c are mutually exclusive\n\
 \t-f and -i are mutually exclusive\n\
 \trecipients must be specified unless -c or -f specifies a class\n\
