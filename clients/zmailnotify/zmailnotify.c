@@ -20,14 +20,10 @@ static char rcsid_zwmnotify_c[] = "$Header$";
 #endif lint
 
 #include <sys/uio.h>
-#include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/file.h>
-#include <ttyent.h>
 #include <pwd.h>
 #include <stdio.h>
-#include <sgtty.h>
-#include <signal.h>
 #include <errno.h>
 #include <netdb.h>
 #include <hesiod.h>
@@ -35,7 +31,7 @@ static char rcsid_zwmnotify_c[] = "$Header$";
 
 #ifdef KPOP
 #include <krb.h>
-#endif KPOP
+#endif
 
 #define NOTOK (-1)
 #define OK 0
@@ -46,7 +42,7 @@ FILE *sfo;
 char Errmsg[80];
 #ifdef KPOP
 char *PrincipalHostname(), *index();
-#endif KPOP
+#endif
 
 extern uid_t getuid();
 char *getenv(), *malloc(), *realloc();
@@ -74,7 +70,7 @@ main()
 	struct _mail mymail;
 #ifdef HESIOD
 	struct hes_postoffice *p;
-#endif HESIOD
+#endif
 
 	if ((retval = ZInitialize()) != ZERR_NONE) {
 		com_err("zmailnotify",retval,"while initializing");
@@ -108,7 +104,7 @@ main()
 			exit(1);
 		} 
 	}
-#endif HESIOD
+#endif
 	if (host == NULL) {
 		fprintf(stderr,"no MAILHOST defined");
 		exit(1);
@@ -132,10 +128,10 @@ main()
 #ifdef KPOP
 	if (pop_command("USER %s", user) == NOTOK || 
 	    pop_command("PASS %s", user) == NOTOK) {
-#else !KPOP
+#else
 	if (pop_command("USER %s", user) == NOTOK || 
 	    pop_command("RPOP %s", user) == NOTOK) {
-#endif KPOP
+#endif
 		fprintf(stderr,Errmsg);
 		(void) pop_command("QUIT");
 		pop_close();
@@ -340,7 +336,7 @@ char *host;
     KTEXT ticket = (KTEXT)NULL;
     int rem;
     long authopts;
-#endif KPOP
+#endif
     char *get_errmsg();
 
     hp = gethostbyname(host);
@@ -363,22 +359,22 @@ char *host;
 #endif
 	return(NOTOK);
     }
-#else !KPOP
+#else
     sp = getservbyname("pop", "tcp");
     if (sp == 0) {
 	(void) strcpy(Errmsg, "tcp/pop: unknown service");
 	return(NOTOK);
     }
-#endif KPOP
+#endif
 
     sin.sin_family = hp->h_addrtype;
     bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
     sin.sin_port = sp->s_port;
 #ifdef KPOP
     s = socket(AF_INET, SOCK_STREAM, 0);
-#else !KPOP
+#else
     s = rresvport(&lport);
-#endif KPOP
+#endif
     if (s < 0) {
 	(void) sprintf(Errmsg, "error creating socket: %s", get_errmsg());
 	return(NOTOK);
@@ -412,7 +408,7 @@ char *host;
 	(void) close(s);
 	return(NOTOK);
     }
-#endif KPOP
+#endif
 
     sfi = fdopen(s, "r");
     sfo = fdopen(s, "w");
