@@ -70,17 +70,18 @@ int tty_filter_init()
     char tc_buf[1024], *p = st_buf, *tmp, *term;
     int ex;
     string_dictionary_binding *b;
-    static int inited_once = 0;
+    static int inited_retval = -1;
 
-    if (inited_once)
-      return(0);
+    if (inited_retval != -1)
+      return(inited_retval);
     else
-      inited_once = 1;
+      inited_retval = 0;
 
     termcap_dict = string_dictionary_Create(7);
 
     if (!(term = getenv("TERM"))) {	/* Only use termcap if $TERM.	*/
 	fputs("zwgc: $TERM not set.  tty mode not functional.\n",stderr);
+	inited_retval = 1;
 	return(1);
     }
     tgetent(tc_buf, term);
@@ -239,6 +240,7 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
 
     for (; desc->code!=DT_EOF; desc=desc->next) {
 	/* Handle environments: */
+	isbeep = 0;
 	if (desc->code == DT_ENV) {
 	    /* PUSH! */
 	    temp = (tty_str_info *)malloc(sizeof(struct _tty_str_info));
@@ -463,7 +465,7 @@ string tty_filter(text, use_fonts)
 	result_so_far = string_Concat2(result_so_far, right);
 	free(left);  free(center);  free(right);
 
-	if (info->alignment == ' ') {
+	if (info && info->alignment == ' ') {
 	    info = info->next;
 	    result_so_far = string_Concat2(result_so_far, "\n");
 	}
