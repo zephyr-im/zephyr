@@ -19,54 +19,69 @@
 static char rcsid_zwrite_c[] = "$Header$";
 #endif lint
 
-#define FUDGEFACTOR 20
-#define MESSAGE_CLASS "MESSAGE"
-#define PERSONAL "PERSONAL"
-#define URGENT "URGENT"
+#define FUDGEFACTOR 10
+#define DEFAULT_CLASS "MESSAGE"
+#define DEFAULT_INSTANCE "PERSONAL"
+#define URGENT_INSTANCE "URGENT"
 
-int nrecips,everyone,msgarg,verbose,quiet;
-char *whoami,*inst,*class;
+#define MAXRECIPS 100
+
+int nrecips, msgarg, verbose, quiet;
+char *whoami, *inst, *class, *recips[MAXRECIPS];
 int (*auth)();
+
+char *getenv();
 
 main(argc,argv)
 	int argc;
 	char *argv[];
 {
-	ZNotice_t notice,retnotice;
+	ZNotice_t notice, retnotice;
 	ZPacket_t buffer;
-	int retval,len,arg,nocheck;
+	int retval, len, arg, nocheck, nchars, maxlen;
 	long ourtime;
-	char bfr[BUFSIZ],message[Z_MAXPKTLEN],*ptr;
+	char bfr[BUFSIZ], message[Z_MAXPKTLEN], *ptr, *signature;
 
 	whoami = argv[0];
 
 	if ((retval = ZInitialize()) != ZERR_NONE) {
-		com_err(whoami,retval,"while initializing");
+		com_err(whoami, retval, "while initializing");
 		exit(1);
 	} 
 
 	if (argc < 2)
 		usage(whoami);
 
-	bzero(&notice,sizeof(ZNotice_t));
-	
-	auth = ZAUTH;
-	verbose = quiet = msgarg = nrecips = everyone = nocheck = 0;
+	bzero(&notice, sizeof(ZNotice_t));
 
-	class = MESSAGE_CLASS;
-	inst = PERSONAL;
+	maxlen = Z_MAXPKTLEN-FUDGEFACTOR;
+	auth = ZAUTH;
+	verbose = quiet = msgarg = nrecips = nocheck = 0;
+
+	if (!(class = getenv("ZEPHYR_CLASS")))
+		class = DEFAULT_CLASS;
+	if (!(inst = getenv("ZEPHYR_INST")))
+		inst = DEFAULT_INSTANCE;
+	signature = getenv("ZEPHYR_SIGNATURE");
+	if (signature)
+		maxlen -= strlen(signature)+1;
 	
 	arg = 1;
 	
 	for (;arg<argc&&!msgarg;arg++) {
 		if (*argv[arg] != '-') {
-			nrecips++;
-			everyone = 0;
+			recips[nrecips++] = argv[arg];
 			continue;
 		} 
 		if (strlen(argv[arg]) > 2)
 			usage(whoami);
 		switch (argv[arg][1]) {
+		case 'a':  /* Backwards compatibility */
+			break;
+		case 'o':
+			class = DEFAULT_CLASS;
+			inst = DEFAULT_INSTANCE;
+			break;
 		case 'd':
 			auth = ZNOAUTH;
 			break;
@@ -80,14 +95,13 @@ main(argc,argv)
 			nocheck = 1;
 			break;
 		case 'u':
-			inst = URGENT;
+			inst = URGENT_INSTANCE;
 			break;
 		case 'i':
 			if (arg == argc-1)
 				usage(whoami);
 			arg++;
 			inst = argv[arg];
-			everyone = 1;
 			break;
 		case 'c':
 			if (arg == argc-1)
@@ -105,8 +119,9 @@ main(argc,argv)
 		}
 	}
 
-	if (!nrecips && !everyone) {
-		fprintf(stderr,"No recipients specified.\n");
+	if (!nrecips && !(strcmp(class, DEFAULT_CLASS) ||
+			  strcmp(inst, DEFAULT_INSTANCE))) {
+		fprintf(stderr, "No recipients specified.\n");
 		exit (1);
 	}
 
@@ -121,143 +136,163 @@ main(argc,argv)
 	notice.z_default_format = "";
 
 	if (!nocheck)
-		send_off(&notice,argc,argv,0);
+		send_off(&notice, 0);
 	
 	if (!msgarg && isatty(0))
 		printf("Type your message now.  End with control-D or a dot on a line by itself.\n");
 
 	notice.z_opcode = "";
 	notice.z_recipient = "foobar12";
-	notice.z_default_format = "Message from $sender at $time:\n\n$message";
+	if (signature)
+		notice.z_default_format = "Message from $1 <$sender> at $time:\n\n$2";
+	else
+		notice.z_default_format = "Message from $sender at $time:\n\n$2";
 	
-	if ((retval = ZFormatNotice(&notice,buffer,sizeof buffer,&len,
+	if ((retval = ZFormatNotice(&notice, buffer, sizeof buffer, &len,
 				    auth)) != ZERR_NONE) {
-		com_err(whoami,retval,"formatting notice");
+		com_err(whoami, retval, "formatting notice");
 		exit(1);
 	} 
 
-	ptr = message;
-
+	maxlen -= len;
+	
+	if (signature) {
+		strcpy(message, signature);
+		ptr = message+strlen(message)+1;
+	}
+	else {
+		message[0] = '\0';
+		ptr = message+1;
+	}
+	
 	if (msgarg) {
 		for (arg=msgarg;arg<argc;arg++) {
-			strcpy(ptr,argv[arg]);
+			strcpy(ptr, argv[arg]);
 			if (arg != argc-1)
-				strcat(ptr," ");
+				strcat(ptr, " ");
 			ptr += strlen(ptr);
 		}
 		*ptr++ = '\n';
 		*ptr++ = '\0';
 	}
 	else {
-		for (;;) {
-			if (!fgets(bfr,sizeof bfr,stdin))
-				break;
-			if (bfr[0] == '.' &&
-			    (bfr[1] == '\n' || bfr[1] == '\0'))
-				break;
-			if (strlen(bfr)+(ptr-message) > Z_MAXPKTLEN-len-FUDGEFACTOR) {
-				if (isatty(0))
+		if (isatty(0)) {
+			for (;;) {
+				if (!fgets(bfr, sizeof bfr, stdin))
+					break;
+				if (bfr[0] == '.' &&
+				    (bfr[1] == '\n' || bfr[1] == '\0'))
+					break;
+				if (strlen(bfr)+(ptr-message) > maxlen) {
 					printf("Your message is too long.  It will be truncated at this line.\n");
-				else
-					printf("Message too long.  Truncated.\n");
-				break;
+					break;
+				}
+				strcpy(ptr, bfr);
+				ptr += strlen(ptr);
 			}
-			strcpy(ptr,bfr);
-			ptr += strlen(ptr);
+			*ptr++ = '\0';
 		}
-
-		*ptr++ = '\0';
+		else { /* Use read so you can send binary messages... */
+			nchars = read(fileno(stdin), ptr, maxlen+1);
+			if (nchars == -1) {
+				fprintf(stderr, "Read error from stdin!  Can't continue!\n");
+				exit(1);
+			}
+			if (nchars > maxlen) {
+				printf("Message too long.  Truncated.\n");
+				nchars = maxlen;
+			}
+			ptr += nchars;
+		} 
 	}
-	
+
 	notice.z_message = message;
 	notice.z_message_len = ptr-message;
 
-	send_off(&notice,argc,argv,1);
+	send_off(&notice, 1);
 }
 
-send_off(notice,argc,argv,real)
+send_off(notice, real)
 	ZNotice_t *notice;
-	int argc;
-	char *argv[];
 	int real;
 {
-	int arg,success,retval;
+	int i, success, retval;
 	char bfr[BUFSIZ];
 	ZPacket_t buffer;
 	ZNotice_t retnotice;
 
 	success = 0;
 	
-	for (arg=1;everyone||(arg<argc&&!(msgarg&&arg>=msgarg));arg++) {
-		if (*argv[arg] == '-' && !everyone)
-			continue;
-		if (!strcmp(argv[arg-1],"-c"))
-			continue;
-		if (!strcmp(argv[arg-1],"-i") && !everyone)
-			continue;
-		notice->z_recipient = everyone?"":argv[arg];
+	for (i=0;i<nrecips || !nrecips;i++) {
+		notice->z_recipient = nrecips?recips[i]:"";
 		if (verbose && real)
-			printf("Sending %smessage, instance %s, to %s\n",
+			printf("Sending %smessage, class %s, instance %s, to %s\n",
 			       auth?"authenticated ":"",
-			       inst,everyone?"everyone":notice->z_recipient);
-		if ((retval = ZSendNotice(notice,auth)) != ZERR_NONE) {
+			       class, inst,
+			       nrecips?notice->z_recipient:"everyone");
+		if ((retval = ZSendNotice(notice, real?auth:ZNOAUTH)) != ZERR_NONE) {
 			sprintf(bfr,"while sending notice to %s",
-				everyone?inst:notice->z_recipient);
-			com_err(whoami,retval,bfr);
+				nrecips?notice->z_recipient:inst);
+			com_err(whoami, retval, bfr);
 			continue;
 		}
-		if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,
-					0,ZCompareUIDPred,
+		if ((retval = ZIfNotice(buffer, sizeof buffer, &retnotice,
+					0, ZCompareUIDPred,
 					(char *)&notice->z_uid)) !=
 		    ZERR_NONE) {
-			sprintf(bfr,"while waiting for SERVACK for %s",
-				everyone?inst:notice->z_recipient);
-			com_err(whoami,retval,bfr);
+			sprintf(bfr, "while waiting for acknowledgement for %s",
+				nrecips?notice->z_recipient:inst);
+			com_err(whoami, retval, bfr);
 			continue;
 		} 
 		if (retnotice.z_kind == SERVNAK) {
 			printf("Received authentication failure while sending to %s\n",
-			       everyone?inst:notice->z_recipient);
+			       nrecips?notice->z_recipient:inst);
 			continue;
 		} 
 		if (retnotice.z_kind != SERVACK || !retnotice.z_message_len) {
-			printf("Detected server failure while receiving SERVACK for %s\n",
-			       everyone?inst:notice->z_recipient);
+			printf("Detected server failure while receiving acknowledgement for %s\n",
+			       nrecips?notice->z_recipient:inst);
 			continue;
 		}
-		if (!quiet && real)
-			if (!strcmp(retnotice.z_message,ZSRVACK_SENT)) {
-				if (verbose)
-					printf("Successful\n");
+		if (!real || (!quiet && real))
+			if (!strcmp(retnotice.z_message, ZSRVACK_SENT)) {
+				if (real) {
+					if (verbose)
+						printf("Successful\n");
+					else
+						printf("%s: Message sent\n",
+						       nrecips?notice->z_recipient:inst);
+				}
 				else
-					printf("%s: Message sent\n",
-					       everyone?inst:notice->z_recipient);
+					success = 1;
 			} 
 			else
 				if (!strcmp(retnotice.z_message,
 					    ZSRVACK_NOTSENT)) {
-					if (verbose)
-						printf("Not logged in or not subscribing to messages\n");
-					else
-						if (everyone)
-							printf("%s: No one subscribing to this instance\n",inst);
+					if (verbose && real) {
+						if (strcmp(class, DEFAULT_CLASS))
+							printf("Not logged in or not subscribing to class %s, instance %s\n",
+							       class, inst);
 						else
-							printf("%s: Not logged in or not subscribing to messages\n",notice->z_recipient);
+							printf("Not logged in or not subscribing to messages\n");
+					} 
+					else
+						if (!nrecips)
+							printf("No one subscribing to class %s, instance %s\n",
+							       class, inst);
+						else {
+							if (strcmp(class, DEFAULT_CLASS))
+								printf("%s: Not logged in or not subscribing to class %s, instance %s\n",
+								       notice->z_recipient, class, inst);
+							else
+								printf("%s: Not logged in or not subscribing to messages\n",
+							       notice->z_recipient);
+						} 
 				} 
 				else
 					printf("Internal failure - illegal message field in server response\n");
-		if (!real) {
-			if (!strcmp(retnotice.z_message,ZSRVACK_NOTSENT)) {
-				if (everyone)
-					printf("%s: No one subscribing to this instance\n",inst);
-				else
-					printf("%s: Not logged in or not subscribing to messages\n",notice->z_recipient);
-			}
-			else
-				success = 1;
-		}
-		
-		if (everyone)
+		if (!nrecips)
 			break;
 	}
 	if (!real && !success)
@@ -267,6 +302,6 @@ send_off(notice,argc,argv,real)
 usage(s)
 	char *s;
 {
-	printf("Usage: %s [-d] [-v] [-q] [-u] [-i inst] [-c class] [user ...]  [-m message]\n",s);
+	printf("Usage: %s [-a] [-d] [-v] [-q] [-u] [-o] [-c class] [-i inst] [user ...]\n       [-m message]\n", s);
 	exit(1);
 } 
