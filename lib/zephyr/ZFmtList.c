@@ -14,24 +14,23 @@
 
 #ifndef lint
 static char rcsid_ZFormatNoticeList_c[] =
-    "$Header$";
+    "$Id$";
 #endif
-
-#include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
 
 Code_t ZFormatNoticeList(notice, list, nitems, buffer, ret_len, 
 			 cert_routine)
     ZNotice_t *notice;
-    char **list;
+    register char **list;
     int nitems;
     char **buffer;
     int *ret_len;
     Z_AuthProc cert_routine;
 {
     char header[Z_MAXHEADERLEN];
-    int hdrlen, i, size;
+    register int i;
+    int hdrlen, size;
     char *ptr;
     Code_t retval;
 
@@ -44,7 +43,8 @@ Code_t ZFormatNoticeList(notice, list, nitems, buffer, ret_len,
 	size += strlen(list[i])+1;
 
     *ret_len = hdrlen+size;
-    
+
+    /* *ret_len can never be zero here, no need to worry about malloc(0). */
     if (!(*buffer = malloc((unsigned)*ret_len)))
 	return (ENOMEM);
 
