@@ -438,22 +438,11 @@ uloc_hflush(addr)
 {
 	ZLocation_t *loc;
 	register int i = 0, new_num = 0;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 	if (num_locs == 0)
 	    return;			/* none to flush */
 
-#ifdef POSIX
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGFPE);
-	sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE));	/* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
 
 	/* slightly inefficient, assume the worst, and allocate enough space */
 	loc = (ZLocation_t *) xmalloc(num_locs *sizeof(ZLocation_t));
@@ -490,21 +479,16 @@ uloc_hflush(addr)
 		xfree(loc);
 		loc = NULLZLT;
 		num_locs = new_num;
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+
+		END_CRITICAL_CODE;
+
 		return;
 	}
 	locations = loc;
 	num_locs = new_num;
 
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+	END_CRITICAL_CODE;
+
 	/* all done */
 	return;
 }
@@ -515,22 +499,11 @@ uloc_flush_client(sin)
 {
 	ZLocation_t *loc;
 	register int i = 0, new_num = 0;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 	if (num_locs == 0)
 	    return;			/* none to flush */
 
-#ifdef POSIX
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGFPE);
-	sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE));	/* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
 
 	/* slightly inefficient, assume the worst, and allocate enough space */
 	loc = (ZLocation_t *) xmalloc(num_locs *sizeof(ZLocation_t));
@@ -568,21 +541,16 @@ uloc_flush_client(sin)
 		xfree(loc);
 		loc = NULLZLT;
 		num_locs = new_num;
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+
+		END_CRITICAL_CODE;
+
 		return;
 	}
 	locations = loc;
 	num_locs = new_num;
 
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+	END_CRITICAL_CODE;
+
 #ifdef DEBUG
 	if (zdebug) {
 		register int i;
@@ -670,11 +638,6 @@ ulogin_add_user(notice, exposure, who)
 {
 	ZLocation_t *oldlocs, newloc;
 	register int i;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 	if ((oldlocs = ulogin_find(notice,1)) != NULLZLT) {
 #if 0
@@ -686,13 +649,8 @@ ulogin_add_user(notice, exposure, who)
 
 	oldlocs = locations;
 
-#ifdef POSIX
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGFPE);
-	sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE));	/* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
+	
 	locations = (ZLocation_t *) xmalloc((num_locs +1) *
 					    sizeof(ZLocation_t));
 	if (!locations) {
@@ -705,11 +663,7 @@ ulogin_add_user(notice, exposure, who)
 		if (ulogin_setup(notice, locations, exposure, who)) {
 		  xfree(locations);
 		  locations = NULLZLT;
-#ifdef POSIX
-		  (void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		  (void) sigsetmask(omask);
-#endif
+		  END_CRITICAL_CODE;
 		  return 1;
 		}
 		num_locs = 1;
@@ -721,11 +675,7 @@ ulogin_add_user(notice, exposure, who)
 	if (ulogin_setup(notice, &newloc, exposure, who)) {
 		xfree(locations);
 		locations = oldlocs;
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+		END_CRITICAL_CODE;
 		return 1;
 	}
 	num_locs++;
@@ -762,11 +712,7 @@ ulogin_add_user(notice, exposure, who)
 			       (int) locations[i].zlt_exposure);
 	}
 #endif
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+	END_CRITICAL_CODE;
 	return 0;
 }
 
@@ -990,11 +936,6 @@ ulogin_remove_user(notice, auth, who, err_return)
 	ZLocation_t *loc, *loc2;
 	register int i = 0;
 	exposure_type quiet;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 	*err_return = 0;
 	if (!(loc2 = ulogin_find(notice, 1))) {
@@ -1014,13 +955,7 @@ ulogin_remove_user(notice, auth, who, err_return)
 
 	quiet = loc2->zlt_exposure;
 
-#ifdef POSIX
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGFPE);
-	sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE));	/* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
 	if (--num_locs == 0) {		/* last one */
 #if 0
 		zdbug((LOG_DEBUG,"last loc"));
@@ -1028,11 +963,7 @@ ulogin_remove_user(notice, auth, who, err_return)
 		free_loc(locations);
 		xfree(locations);
 		locations = NULLZLT;
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+		END_CRITICAL_CODE;
 		return(quiet);
 	}
 
@@ -1063,11 +994,8 @@ ulogin_remove_user(notice, auth, who, err_return)
 
 	locations = loc;
 
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+	END_CRITICAL_CODE;
+
 #if defined(DEBUG) && 0
 	if (zdebug) {
 		register int i;
@@ -1092,11 +1020,6 @@ ulogin_flush_user(notice)
 {
 	register ZLocation_t *loc, *loc2;
 	register int i, j, num_match, num_left;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 	i = num_match = num_left = 0;
 
@@ -1110,13 +1033,8 @@ ulogin_flush_user(notice)
 	/* compute # locations left in the list, after loc2 (inclusive) */
 	num_left = num_locs - (loc2 - locations);
 
-#ifdef POSIX
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGFPE);
-	sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE));	/* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
+
 	while (num_left &&
 	       !strcasecmp(loc2[num_match].zlt_user->string,
 		       notice->z_class_inst)) {
@@ -1133,11 +1051,7 @@ ulogin_flush_user(notice)
 		xfree (locations);
 		locations = NULLZLT;
 		num_locs = 0;
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+		END_CRITICAL_CODE;
 		return;
 	}
 
@@ -1171,11 +1085,8 @@ ulogin_flush_user(notice)
 	locations = loc;
 	num_locs -= num_match;
 
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+	END_CRITICAL_CODE;
+	
 #ifdef DEBUG
 	if (zdebug) {
 		register int i;

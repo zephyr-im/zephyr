@@ -87,12 +87,7 @@ static int net_read P((FILE *f, register char *buf, register int len));
 static int net_write P((FILE *f, register char *buf, int len));
 static int setup_file_pointers  P((void));
 static void shutdown_file_pointers  P((void));
-
-#ifdef POSIX
-static void cleanup P((ZServerDesc_t *server, sigset_t *omask));
-#else
-static void cleanup P((ZServerDesc_t *server, int *omask));
-#endif
+static void cleanup P((ZServerDesc_t *server));
 
 #ifdef KERBEROS
 static int get_tgt P((void));
@@ -240,10 +235,7 @@ bdump_send()
 	int fromlen = sizeof(from);
 	int on = 1;
 #ifdef POSIX
-	sigset_t mask, omask;
 	struct sigaction action;
-#else
-	int omask;
 #endif
 
 #ifdef KERBEROS
@@ -272,16 +264,13 @@ bdump_send()
 #endif
  
 #ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-
-	action.sa_flags = 0;
 	(void) sigemptyset(&action.sa_mask);
+	action.sa_flags = 0;
 	action.sa_handler = SIG_IGN;
 	(void) sigaction(SIGPIPE, &action, NULL);
+
+	START_CRITICAL_CODE;
 #else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let ascii dumps start */
 	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect failures */
 #endif
  
@@ -349,11 +338,11 @@ bdump_send()
 	{
 	    syslog(LOG_ERR, "bdump_send: getkdata: %s",
 		   krb_err_txt[retval]);
-	    cleanup(server, &omask);
+	    cleanup(server);
 	    return;
 	}
 	if (get_tgt()) {
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 	if (strcmp(kdata.pname,SERVER_SERVICE) ||
@@ -362,7 +351,7 @@ bdump_send()
 	{
 	    syslog(LOG_ERR, "bdump_send: peer not zephyr: %s.%s@%s",
 		   kdata.pname, kdata.pinst, kdata.prealm);
-	    cleanup(server, &omask);
+	    cleanup(server);
 	    return;
 	}
 	/* authenticate back */
@@ -371,7 +360,7 @@ bdump_send()
 	{
 	    syslog(LOG_ERR,"bdump_send: SendKerberosData: %s",
 		   error_message (retval));
-	    cleanup(server, &omask);
+	    cleanup(server);
 	    return;
 	}
 #else /* !KERBEROS */
@@ -379,7 +368,7 @@ bdump_send()
 	    (fromport < (IPPORT_RESERVED / 2))) {
 		syslog(LOG_ERR, "bdump_send: bad port from peer: %d",
 		       fromport);
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 #endif /* KERBEROS */
@@ -387,19 +376,19 @@ bdump_send()
 	if ((retval = setup_file_pointers()) != 0) {
 	    syslog (LOG_WARNING, "bdump_send: can't set up file pointers: %s",
 		    error_message (retval));
-	    cleanup(server, &omask);
+	    cleanup(server);
 	    return;
 	}
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "bdump_send: sbd_loop failed: %s",
 		       error_message(retval));
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 	    syslog(LOG_WARNING, "bdump_send: gbd_loop failed: %s",
 		   error_message(retval));
-	    cleanup(server, &omask);
+	    cleanup(server);
 	    return;
 	}
 #if 1
@@ -429,11 +418,7 @@ bdump_send()
 	/* Now that we are finished dumping, send all the queued packets */
 	server_send_queue(server);
 #endif
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+	END_CRITICAL_CODE;
 	return;
 }
 
@@ -450,9 +435,6 @@ bdump_get_v1_guts (notice, auth, who, server)
 	int on = 1;
 #ifdef POSIX
 	struct sigaction action;
-	sigset_t mask, omask;
-#else
-	int omask;
 #endif
 #ifdef KERBEROS
 	KTEXT_ST ticket;
@@ -498,19 +480,13 @@ bdump_get_v1_guts (notice, auth, who, server)
 		server->zs_dumping = 0;
 		return;
 	}
-#ifdef POSIX
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGFPE);
-	sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let ascii dumps start */
-#endif
+	START_CRITICAL_CODE;
 #ifndef KERBEROS
 	if (ntohs(from.sin_port) > IPPORT_RESERVED ||
 	    ntohs(from.sin_port) < IPPORT_RESERVED / 2) {
 		syslog(LOG_ERR, "bdump_get: port not reserved: %d",
 		       ntohs(from.sin_port));
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 	live_socket = rresvport(&reserved_port);
@@ -519,12 +495,12 @@ bdump_get_v1_guts (notice, auth, who, server)
 #endif /* KERBEROS */
 	if (live_socket < 0) {
 		syslog(LOG_ERR, "bdump_get: socket: %m");
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 	if (connect(live_socket, (struct sockaddr *) &from, sizeof(from))) {
 		syslog(LOG_ERR, "bdump_get: connect: %m");
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 	if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *)&on,
@@ -540,7 +516,7 @@ bdump_get_v1_guts (notice, auth, who, server)
 #ifdef KERBEROS
 	/* send an authenticator */
 	if (get_tgt()) {
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 	if ((retval = SendKerberosData(live_socket, &ticket,
@@ -548,7 +524,7 @@ bdump_get_v1_guts (notice, auth, who, server)
 	{
 		syslog(LOG_ERR,"bdump_get: %s",
 		       error_message (retval));
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 #if 1
@@ -561,7 +537,7 @@ bdump_get_v1_guts (notice, auth, who, server)
 	    != KSUCCESS)
 	{
 		syslog(LOG_ERR, "bdump_get getkdata: %s",krb_err_txt[retval]);
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 	/* my_realm is filled in inside get_tgt() */
@@ -572,20 +548,20 @@ bdump_get_v1_guts (notice, auth, who, server)
 		syslog(LOG_ERR,
 		       "bdump_get: peer not zephyr in lrealm: %s.%s@%s",
 		       kdata.pname, kdata.pinst,kdata.prealm);
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 #endif /* KERBEROS */
 	if ((retval = setup_file_pointers()) != 0) {
 	    syslog (LOG_WARNING, "bdump_get: can't set up file pointers: %s",
 		    error_message (retval));
-	    cleanup(server, &omask);
+	    cleanup(server);
 	    return;
 	}
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "bdump_get: gbd_loop failed: %s",
 		       error_message(retval));
-		cleanup(server, &omask);
+		cleanup(server);
 		return;
 	}
 #if 1
@@ -594,7 +570,7 @@ bdump_get_v1_guts (notice, auth, who, server)
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 	    syslog(LOG_WARNING, "sbd_loop failed: %s",
 		   error_message(retval));
-	    cleanup(server, &omask);
+	    cleanup(server);
 	    return;
 	}
 #if 1
@@ -623,11 +599,7 @@ bdump_get_v1_guts (notice, auth, who, server)
 	server_send_queue(server);
 #endif
 
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+	END_CRITICAL_CODE;
 	return;
 }
  
@@ -801,13 +773,8 @@ shutdown_file_pointers () {
 }
 
 static void
-cleanup(server, omask)
+cleanup(server)
     ZServerDesc_t *server;
-#ifdef POSIX
-    sigset_t *omask;
-#else
-    int *omask;
-#endif
 {
 #ifdef POSIX
     struct sigaction action;
@@ -836,11 +803,7 @@ cleanup(server, omask)
 #ifdef CONCURRENT
     /* XXX need to flush the server and the updates to it */
 #endif
-#ifdef POSIX
-    (void) sigprocmask(SIG_SETMASK, omask, (sigset_t *)0);
-#else
-    (void) sigsetmask(*omask);
-#endif
+    END_CRITICAL_CODE;
     return;
 }
   

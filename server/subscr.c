@@ -162,20 +162,11 @@ subscr_subscribe_real(who, newsubs, notice)
 	ZSTRING *sender;
 	ZSubscr_t *subs2, *subs3, *subs;
 	int relation;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 	sender = make_zstring(notice->z_sender,0);
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+
+	START_CRITICAL_CODE;
+
 	for (subs = newsubs->q_forw;
 	     subs != newsubs;
 	     subs = subs->q_forw) {
@@ -245,11 +236,7 @@ subscr_subscribe_real(who, newsubs, notice)
 
 		if (!(subs3 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
 			free_subscriptions(newsubs);
-#ifdef POSIX
-			(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-			(void) sigsetmask(omask);
-#endif
+			END_CRITICAL_CODE;
 			return(ENOMEM);
 		}
 
@@ -263,11 +250,7 @@ subscr_subscribe_real(who, newsubs, notice)
 		if ((retval = class_register(who, subs)) != ZERR_NONE) {
 		    xfree(subs3);
 		    free_subscriptions(newsubs);
-#ifdef POSIX
-		    (void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		    (void) sigsetmask(omask);
-#endif
+		    END_CRITICAL_CODE;
 		    return(retval);
 		}
 
@@ -276,11 +259,8 @@ subscr_subscribe_real(who, newsubs, notice)
  duplicate:
 		;
 	}
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
 
 	free_subscriptions(newsubs);
 	return(ZERR_NONE);
@@ -430,11 +410,6 @@ subscr_cancel(sin, notice)
 	Code_t retval;
 	int found = 0;
 	int relation;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 #if 0
 	zdbug((LOG_DEBUG,"subscr_cancel"));
@@ -448,14 +423,8 @@ subscr_cancel(sin, notice)
 	if (!(subs = extract_subscriptions(notice)))
 		return(ZERR_NONE);	/* no subscr -> no error */
 
-	
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
+
 	for (subs4 = subs->q_forw; subs4 != subs; subs4 = subs4->q_forw) {
 	    for (subs2 = who->zct_subs->q_forw;
 		 subs2 != who->zct_subs;) {
@@ -493,20 +462,13 @@ subscr_cancel(sin, notice)
 	       subs2 = subs2->q_forw)
 	    if ((retval = class_register(who, subs2)) != ZERR_NONE) {
 	      free_subscriptions(subs);
-#ifdef POSIX
-	      (void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	      (void) sigsetmask(omask);
-#endif
+	      END_CRITICAL_CODE;
 	      return(retval);
 	    }
 	}
 
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+	END_CRITICAL_CODE;
+
 	free_subscriptions(subs);
 	if (found) {
 #if 0
@@ -530,11 +492,6 @@ subscr_cancel_client(client)
      ZClient_t *client;
 {
 	register ZSubscr_t *subs;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 #if 0
 	zdbug((LOG_DEBUG,"subscr_cancel_client %s",
@@ -542,14 +499,9 @@ subscr_cancel_client(client)
 #endif
 	if (!client->zct_subs)
 		return;
-	
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+
+	START_CRITICAL_CODE;
+
 	for (subs = client->zct_subs->q_forw;
 	     subs != client->zct_subs;
 	     subs = client->zct_subs->q_forw) {
@@ -577,11 +529,8 @@ subscr_cancel_client(client)
 	xfree(subs);
 	client->zct_subs = NULLZST;
 
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+	END_CRITICAL_CODE;
+
 	return;
 }
 
@@ -597,32 +546,20 @@ struct in_addr *addr;
 {
 	register ZHostList_t *hosts;
 	register ZClientList_t *clist = NULLZCLT, *clt;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 	/* find the host */
 	if (!(hosts = hostm_find_host(addr)))
 		return(ZSRV_HNOTFOUND);
 	clist = hosts->zh_clients;
 
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
+
 	/* flush each one */
 	for (clt = clist->q_forw; clt != clist; clt = clt->q_forw)
 		(void) subscr_cancel_client(clt->zclt_client);
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+
 	return(ZERR_NONE);
 }
 #endif
