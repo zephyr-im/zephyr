@@ -36,7 +36,7 @@ static char rcsid_acl_s_c[] = "$Header$";
  * routines and the support needed by the Zephyr server.
  */
 
-#include "zserver.h"
+#include "zserver.h"			/* includes <sys/file.h> */
 #include <sys/param.h>
 
 /*
@@ -50,15 +50,31 @@ ZAcl_t *acl;
 ZAccess_t accesstype;
 {
 	char buf[MAXPATHLEN];		/* holds the real acl name */
+	char *prefix;
 
-	if (accesstype != TRANSMIT && accesstype != SUBSCRIBE) {
-		syslog(LOG_ERR, "unknown access type %d", accesstype);
+	switch (accesstype) {
+	case TRANSMIT:
+		prefix = "xmt";
+		break;
+	case SUBSCRIBE:
+		prefix = "sub";
+		break;
+	case INSTWILD:
+		prefix = "iws";
+		break;
+	case INSTUID:
+		prefix = "iui";
+		break;
+	default:
+		syslog(LOG_ERR, "unknown access type %d", (int) accesstype);
 		return(0);
 	}
 	(void) sprintf(buf, "%s%s-%s", 
 		       ZEPHYR_ACL_DIR,
-		       (accesstype == TRANSMIT) ? "xmt" : "sub",
+		       prefix,
 		       acl->acl_filename);
-
+	if (access(buf, F_OK))		/* no acl ==> no restriction
+					   ==> thumbs up */
+		return(1);
 	return(acl_check(buf, notice->z_sender));
 }
