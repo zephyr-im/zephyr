@@ -27,7 +27,7 @@ SUBDIR	= et et/lib et/compile_et ss ss/lib ss/make_commands clients \
 	clients/zlocate clients/zmailnotify clients/znol clients/zpopnotify \
 	clients/zshutdown_notify clients/zstat clients/zwrite \
 	include include/zephyr lib man man/man1 man/man8 server zhm zwgc \
-	ozwgc ozwgc/zbrowser
+	zwgc/String zwgc/Memory zwgc/Dictionary ozwgc ozwgc/zbrowser
 
 
 # Empty directories which also need to be built.
