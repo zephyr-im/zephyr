@@ -244,37 +244,52 @@ ulogin_dispatch(notice, auth, who, server)
 #if 0
 		zdbug((LOG_DEBUG,"opstaff"));
 #endif
-		ulogin_add_user(notice, OPSTAFF_VIS, who);
+		err_ret = ulogin_add_user(notice, OPSTAFF_VIS, who);
 		if (server == me_server)
+		    if (err_ret)
+			nack(notice, who);
+		    else
 			ack(notice, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_REALMVIS)) {
 #if 0
 		zdbug((LOG_DEBUG,"realmvis"));
 #endif
-		ulogin_add_user(notice, REALM_VIS, who);
+		err_ret = ulogin_add_user(notice, REALM_VIS, who);
 		if (server == me_server) /* realm vis is not broadcast,
 					    so we ack it here */
+		    if (err_ret)
+			nack(notice, who);
+		    else
 			ack(notice, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_REALMANN)) {
 #if 0
 		zdbug((LOG_DEBUG,"realmann"));
 #endif
-		ulogin_add_user(notice, REALM_ANN, who);
+		err_ret = ulogin_add_user(notice, REALM_ANN, who);
 		if (server == me_server) /* announce to the realm */
+		    if (err_ret)
+			nack(notice, who);
+		    else
 			login_sendit(notice, auth, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_NETVIS)) {
 #if 0
 		zdbug((LOG_DEBUG,"netvis"));
 #endif
-		ulogin_add_user(notice, NET_VIS, who);
+		err_ret = ulogin_add_user(notice, NET_VIS, who);
 		if (server == me_server) /* announce to the realm */
+		    if (err_ret)
+			nack(notice, who);
+		    else
 			login_sendit(notice, auth, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_NETANN)) {
 #if 0
 		zdbug((LOG_DEBUG,"netann"));
 #endif
-		ulogin_add_user(notice, NET_ANN, who);
+		err_ret = ulogin_add_user(notice, NET_ANN, who);
 		if (server == me_server) /* tell the world */
+		    if (err_ret)
+			nack(notice, who);
+		    else
 			login_sendit(notice, auth, who);
 	} else {
 		syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
@@ -610,7 +625,7 @@ uloc_send_locations(host, vers)
  * Add the user to the internal table of locations.
  */
 
-static void
+static int
 ulogin_add_user(notice, exposure, who)
      ZNotice_t *notice;
      exposure_type exposure;
@@ -625,7 +640,7 @@ ulogin_add_user(notice, exposure, who)
 		zdbug((LOG_DEBUG,"ul_add: already here"));
 #endif
 		(void) ulogin_expose_user(notice, exposure);
-		return;
+		return 0;
 	}
 
 	oldlocs = locations;
@@ -636,7 +651,7 @@ ulogin_add_user(notice, exposure, who)
 	if (!locations) {
 		syslog(LOG_ERR, "zloc mem alloc");
 		locations = oldlocs;
-		return;
+		return 1;
 	}
 
 	if (num_locs == 0) {		/* first one */
@@ -644,7 +659,7 @@ ulogin_add_user(notice, exposure, who)
 		  xfree(locations);
 		  locations = NULLZLT;
 		  (void) sigsetmask(omask);
-		  return;
+		  return 1;
 		}
 		num_locs = 1;
 		goto dprnt;
@@ -656,7 +671,7 @@ ulogin_add_user(notice, exposure, who)
 		xfree(locations);
 		locations = oldlocs;
 		(void) sigsetmask(omask);
-		return;
+		return 1;
 	}
 	num_locs++;
 
@@ -693,7 +708,7 @@ ulogin_add_user(notice, exposure, who)
 	}
 #endif
 	(void) sigsetmask(omask);
-	return;
+	return 0;
 }
 
 /*
