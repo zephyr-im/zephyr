@@ -98,6 +98,6 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     notice->z_auth = 1;
     notice->z_authent_len = 0;
     notice->z_ascii_authent = "";
-    return (Z_FormatRawHeader(notice, buffer, buffer_len, len, (char **) 0));
+    return (Z_FormatRawHeader(notice, buffer, buffer_len, len, NULL, NULL));
 #endif
 }
