@@ -10,10 +10,10 @@
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
-/* $Header$ */
+/* $Id$ */
 
 #ifndef lint
-static char rcsid_ZMakeAuthentication_c[] = "$Header$";
+static char rcsid_ZMakeAuthentication_c[] = "$Id$";
 #endif lint
 
 #include <zephyr/mit-copyright.h>
