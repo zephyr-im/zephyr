@@ -11,9 +11,10 @@ extern int errno;
 extern char const * const sys_errlist[];
 extern const int sys_nerr;
 
-#ifndef ULTRIX_40
+/* AIX and Ultrix have standard conforming header files. */
+#if !defined(ULTRIX_40) && !defined(_AIX)
 #ifdef __STDC__
-int perror (const char *);
+void perror (const char *);
 #else
 int perror ();
 #endif
