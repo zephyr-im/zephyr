@@ -3,7 +3,7 @@ SHELL = /bin/sh
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 datadir=@datadir@
-confdir=@confdir@
+sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
 
@@ -13,7 +13,7 @@ libdir=${exec_prefix}/lib
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
-BUILDTOP=../..
+BUILDTOP=..
 VPATH=@srcdir@
 CC=@CC@
 RANLIB=@RANLIB@
