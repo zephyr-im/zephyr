@@ -319,7 +319,7 @@ char *msg;
 	    }
 	    sprintf(real_message,"%c%s\n%s",'\0',msg,reminder_message);
 
-	    (void) bzero((char *)&notice, sizeof(notice));
+	    (void) _BZERO((char *)&notice, sizeof(notice));
 	    notice.z_kind = ACKED;
 	    notice.z_port = 0;
 	    notice.z_class = MESSAGE_CLASS;
