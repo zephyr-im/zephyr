@@ -44,6 +44,7 @@ int internal_border_width = 2;
 unsigned long default_fgcolor;
 unsigned long default_bgcolor;
 unsigned long default_bordercolor;
+long ttl = 0;
 static int reset_saver;
 static int border_width = 1;
 static int cursor_code = XC_sailboat;
@@ -118,6 +119,10 @@ void x_gram_init(dpy)
     default_bordercolor = default_fgcolor;
     if (temp = get_string_resource("borderColor","BorderColor"))
       default_bordercolor = x_string_to_color(temp,default_bordercolor);
+
+    temp = get_string_resource("timeToLive","TimeToLive");
+    if (temp && atoi(temp)>=0)
+       ttl = atoi(temp);
 
     reverse_stack = get_bool_resource("reverseStack", "ReverseStack", 0);
     reset_saver =  get_bool_resource("resetSaver", "ResetSaver", 1);
@@ -261,11 +266,9 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
     XSelectInput(dpy, w, ExposureMask|ButtonReleaseMask|ButtonPressMask
 		 |LeaveWindowMask|Button1MotionMask|
-		 Button3MotionMask
-#ifdef notdef
-		 |StructureNotifyMask
-#endif
-		 );
+		 Button3MotionMask|StructureNotifyMask);
+
+    gram->can_die.tv_sec = 0;
 
     XMapWindow(dpy, w);
 
@@ -275,44 +278,44 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
    if (reset_saver)
        XResetScreenSaver(dpy);
 
-   if (reverse_stack) {
-      if (bottom_gram) {
-	 XWindowChanges winchanges;
-	 
-	 winchanges.sibling=bottom_gram->w;
-	 winchanges.stack_mode=Below;
-	 begin_xerror_trap(dpy);
-	 XConfigureWindow(dpy,w,CWSibling|CWStackMode,&winchanges);
-	 end_xerror_trap(dpy);
-
-	 /* ICCCM compliance code:  This will happen under reparenting
-	    window managers.  This is the compliant code: */
-	 if (xerror_happened) {
-	    XEvent ev;
+    xerror_happened = 0;
+    if (reverse_stack && bottom_gram) {
+       XWindowChanges winchanges;
+       
+       winchanges.sibling=bottom_gram->w;
+       winchanges.stack_mode=Below;
+       begin_xerror_trap(dpy);
+       XConfigureWindow(dpy,w,CWSibling|CWStackMode,&winchanges);
+       end_xerror_trap(dpy);
+       
+       /* ICCCM compliance code:  This will happen under reparenting
+	  window managers.  This is the compliant code: */
+       if (xerror_happened) {
+	  XEvent ev;
 	    
-	    ev.type=ConfigureRequest;
-	    ev.xconfigurerequest.parent=DefaultRootWindow(dpy);
-	    ev.xconfigurerequest.window=w;
-	    ev.xconfigurerequest.above=bottom_gram->w;
-	    ev.xconfigurerequest.detail=Below;
-	    ev.xconfigurerequest.value_mask=CWSibling|CWStackMode;
-	    begin_xerror_trap(dpy);
-	    XSendEvent(dpy,RootWindow(dpy,DefaultScreen(dpy)),
-		       False,SubstructureRedirectMask|
-		       SubstructureNotifyMask,&ev);
-	    end_xerror_trap(dpy);
-	    if (xerror_happened) {
-	       /* the event didn't go.  Print error, continue */
-	       ERROR("error configuring window to the bottom of the stack\n");
-	    }
-	 } else {
-	    xerror_happened = 0;
-	 }
-      }
-      add_to_bottom(gram);
-      if (xerror_happened)
-	pull_to_top(gram);
-   }
+	  ev.type=ConfigureRequest;
+	  ev.xconfigurerequest.parent=DefaultRootWindow(dpy);
+	  ev.xconfigurerequest.window=w;
+	  ev.xconfigurerequest.above=bottom_gram->w;
+	  ev.xconfigurerequest.detail=Below;
+	  ev.xconfigurerequest.value_mask=CWSibling|CWStackMode;
+	  begin_xerror_trap(dpy);
+	  XSendEvent(dpy,RootWindow(dpy,DefaultScreen(dpy)),
+		     False,SubstructureRedirectMask|
+		     SubstructureNotifyMask,&ev);
+	  end_xerror_trap(dpy);
+	  if (xerror_happened) {
+	     /* the event didn't go.  Print error, continue */
+	     ERROR("error configuring window to the bottom of the stack\n");
+	  }
+       } else {
+	  xerror_happened = 0;
+       }
+    }
+    /* we always need to keep a linked list of windows */
+    add_to_bottom(gram);
+    if (xerror_happened)
+       pull_to_top(gram);
 
    XFlush(dpy);
    /* Because the flushing/syncing/etc with the error trapping can cause
