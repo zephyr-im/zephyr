@@ -170,7 +170,8 @@ ae_expire(ae)
   }
   ae->len = 0;
   ae->expire_time = 0;
-  ae->principal = 0;
+  free_zstring(ae->principal);
+  ae->principal= 0;
 }
 
 static int
