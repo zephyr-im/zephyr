@@ -67,7 +67,7 @@ Z_SendLocation(class,opcode,auth)
 	long ourtime;
 	ZNotice_t notice,retnotice;
 	ZPacket_t buffer;
-	char *bptr[2],host[MAXHOSTNAMELEN];
+	char *bptr[3],host[MAXHOSTNAMELEN],mytty[100];
 	struct hostent *hent;
 
 	notice.z_kind = ACKED;
@@ -92,6 +92,13 @@ Z_SendLocation(class,opcode,auth)
 	ourtime = time((long *)0);
 	bptr[1] = ctime(&ourtime);
 	bptr[1][strlen(bptr[1])-1] = '\0';
+
+	strcpy(mytty,ttyname(0));
+	bptr[2] = rindex(mytty,'/');
+	if (bptr[2])
+		bptr[2]++;
+	else
+		bptr[2] = mytty;
 	
 	if ((retval = ZSendList(&notice,bptr,2,auth)) != ZERR_NONE)
 		return (retval);
