@@ -97,7 +97,7 @@ Z_SendLocation(class,opcode,auth)
 	bptr[1] = ctime(&ourtime);
 	bptr[1][strlen(bptr[1])-1] = '\0';
 
-	strcpy(mytty,ttyname(0));
+	(void) strcpy(mytty,ttyname(0));
 	bptr[2] = rindex(mytty,'/');
 	if (bptr[2])
 		bptr[2]++;

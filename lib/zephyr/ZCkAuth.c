@@ -38,7 +38,7 @@ int ZCheckAuthentication(notice,buffer,from)
 	if (__Zephyr_server) {
 		if (ZReadAscii(notice->z_ascii_authent,
 			       strlen(notice->z_ascii_authent)+1,
-			       (char *)authent.dat,
+			       (unsigned char *)authent.dat,
 			       notice->z_authent_len) == ZERR_BADFIELD) {
 			return (0);
 		}
