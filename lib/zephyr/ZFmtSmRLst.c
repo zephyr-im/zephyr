@@ -1,7 +1,7 @@
 /* This file is part of the Project Athena Zephyr Notification System.
  * It contains source for the ZFormatSmallRawNoticeList function.
  *
- *	Created by:	John Kohl
+ *	Created by:	John T. Kohl
  *
  *	$Source$
  *	$Author$
@@ -31,8 +31,8 @@ Code_t ZFormatSmallRawNoticeList(notice, list, nitems, buffer, ret_len)
     int hdrlen, i, size;
     char *ptr;
 
-    if ((retval = Z_FormatRawHeader(notice, buffer, Z_MAXHEADERLEN, &hdrlen))
-	!= ZERR_NONE)
+    if ((retval = Z_FormatRawHeader(notice, buffer, Z_MAXHEADERLEN,
+				    &hdrlen, (char **) 0)) != ZERR_NONE)
 	return (retval);
 
     size = 0;
