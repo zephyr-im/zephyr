@@ -24,7 +24,7 @@ Code_t ZFormatNotice(notice, buffer, ret_len, cert_routine)
     ZNotice_t *notice;
     char **buffer;
     int *ret_len;
-    int (*cert_routine)();
+    Z_AuthProc cert_routine;
 {
     char header[Z_MAXHEADERLEN];
     int hdrlen;
