@@ -14,7 +14,7 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
-static char rcsid_acl_files_c[] = "$Header$";
+static char rcsid_acl_files_c[] = "$Id$";
 #endif lint
 
 /*** Routines for manipulating access control list files ***/
@@ -389,7 +389,10 @@ char *name;
 	i = acl_cache_next;
 	acl_cache_next = (acl_cache_next + 1) % CACHED_ACLS;
 	close(acl_cache[i].fd);
-	if(acl_cache[i].acl) destroy_hash(acl_cache[i].acl);
+	if(acl_cache[i].acl) {
+	    destroy_hash(acl_cache[i].acl);
+	    acl_cache[i].acl = (struct hashtbl *) 0;
+	}
     }
 
     /* Set up the acl */
@@ -399,8 +402,14 @@ char *name;
     acl_cache[i].acl = (struct hashtbl *) 0;
 
  got_it:
-    /* See if the stat matches */
-    if(fstat(acl_cache[i].fd, &s) < 0) return(-1);
+    /*
+     * See if the stat matches
+     *
+     * Use stat(), not fstat(), as the file may have been re-created by
+     * acl_add or acl_delete.  If this happens, the old inode will have
+     * no changes in the mod-time and the following test will fail.
+     */
+    if(stat(acl_cache[i].filename, &s) < 0) return(-1);
     if(acl_cache[i].acl == (struct hashtbl *) 0
        || s.st_nlink != acl_cache[i].status.st_nlink
        || s.st_mtime != acl_cache[i].status.st_mtime
@@ -416,6 +425,7 @@ char *name;
 	       acl_canonicalize_principal(buf, canon);
 	       add_hash(acl_cache[i].acl, canon);
 	   }
+	   fclose(f);
 	   acl_cache[i].status = s;
        }
     return(i);
