@@ -1,8 +1,9 @@
 zephyr (2.1.20000421.SNAPSHOT-10) unstable; urgency=low
 
-  * libzephyr3 should not depend on krb5, closes: #93187
+  * [hartmans] libzephyr3 should not depend on krb5, closes: #93187
+  * maybe run "/etc/init.d/zhm stop" in the preinst script, closes: #93349
 
- --
+ -- Karl Ramm <kcr@1TS.ORG>  Sat, 14 Apr 2001 21:37:09 -0400
 
 zephyr (2.1.20000421.SNAPSHOT-9) unstable; urgency=low
 
