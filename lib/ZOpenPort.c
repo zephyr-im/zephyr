@@ -22,50 +22,43 @@ static char rcsid_ZOpenPort_c[] = "$Header$";
 #include <sys/socket.h>
 
 Code_t ZOpenPort(port)
-	u_short	*port;
+    u_short *port;
 {
-	int retval;
-	struct sockaddr_in bindin;
+    int retval;
+    struct sockaddr_in bindin;
 
-	(void) ZClosePort();
+    (void) ZClosePort();
 
-	if ((__Zephyr_fd = socket(AF_INET,SOCK_DGRAM,0)) < 0) {
-		__Zephyr_fd = -1;
-		return (errno);
-	}
+    if ((__Zephyr_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+	__Zephyr_fd = -1;
+	return (errno);
+    }
 
-	bindin.sin_family = AF_INET;
+    bindin.sin_family = AF_INET;
 
-	if (port && *port)
-		bindin.sin_port = *port;
+    if (port && *port)
+	bindin.sin_port = *port;
+    else
+	bindin.sin_port = 0;
+
+    bindin.sin_addr.s_addr = INADDR_ANY;
+
+    if ((retval = bind(__Zephyr_fd, &bindin, sizeof(bindin))) < 0) {
+	if (errno == EADDRINUSE && port && *port)
+	    return (ZERR_PORTINUSE);
 	else
-		/*NOSTRICT*/
-		bindin.sin_port = htons((u_short)((getpid()*8)&0xfff)+
-					(((int)random()>>4)&0xf)+1024);
+	    return (errno);
+    }
 
-	bindin.sin_addr.s_addr = INADDR_ANY;
+    if (!bindin.sin_port)
+	if (getsockname(__Zephyr_fd, &bindin, sizeof(bindin)))
+	    return (errno);
+    
+    __Zephyr_port = bindin.sin_port;
+    __Zephyr_open = 1;
 
-	do {
-		if ((retval = bind(__Zephyr_fd,&bindin,sizeof(bindin))) < 0) {
-			if (errno == EADDRINUSE) {
-				if (port && *port)
-					return (ZERR_PORTINUSE);
-				else
-					/*NOSTRICT*/
-					bindin.sin_port = htons(ntohs(bindin.
-								      sin_port)
-								+1);
-			}
-			else
-				return (errno);
-		}
-	} while (retval < 0 && (!port || !*port));
+    if (port)
+	*port = bindin.sin_port;
 
-	__Zephyr_port = bindin.sin_port;
-	__Zephyr_open = 1;
-
-	if (port)
-		*port = bindin.sin_port;
-
-	return (ZERR_NONE);
+    return (ZERR_NONE);
 }
