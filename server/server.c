@@ -911,16 +911,19 @@ struct sockaddr_in *who;
 	(void) strcat(buf, "/");
 #ifdef vax
 	(void) strcat(buf, "VAX");
-#endif vax
+#endif /* vax */
 #ifdef ibm032
 	(void) strcat(buf, "IBM 032");
-#endif ibm032
+#endif /* ibm032 */
 #ifdef sun
 	(void) strcat(buf, "SUN");
-#endif sun
+#endif /* sun */
 #ifdef mips
 	(void) strcat(buf, "MIPS");
-#endif mips
+#endif /* mips */
+#ifdef NeXT
+	(void) strcat(buf, "NeXT");
+#endif /* NeXT */
 	vers = strsave(buf);
 
 	(void) sprintf(buf, "%d pkts", npackets);
