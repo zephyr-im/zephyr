@@ -19,7 +19,6 @@
 static char rcsid_zwmnotify_c[] = "$Header$";
 #endif lint
 
-#include <zephyr/zephyr.h>
 #include <sys/uio.h>
 #include <sys/syslog.h>
 #include <sys/wait.h>
