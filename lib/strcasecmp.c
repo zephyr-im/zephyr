@@ -18,12 +18,21 @@ static char sccsid[] = "@(#)strcasecmp.c	5.5 (Berkeley) 11/24/87";
 #include <sys/types.h>
 #endif
 
+#ifndef __STDC__
+#define const
+#endif
+
+#ifndef lint
+static const char rcsid_strcasecmp_c[] =
+    "$Zephyr$";
+#endif
+
 /*
  * This array is designed for mapping upper and lower case letter
  * together for a case independent comparison.  The mappings are
  * based upon ascii character sequences.
  */
-static u_char charmap[] = {
+static const u_char charmap[] = {
 	'\000', '\001', '\002', '\003', '\004', '\005', '\006', '\007',
 	'\010', '\011', '\012', '\013', '\014', '\015', '\016', '\017',
 	'\020', '\021', '\022', '\023', '\024', '\025', '\026', '\027',
@@ -59,11 +68,11 @@ static u_char charmap[] = {
 };
 
 strcasecmp(s1, s2)
-	char *s1, *s2;
+	const char *s1, *s2;
 {
-	register u_char	*cm = charmap,
-			*us1 = (u_char *)s1,
-			*us2 = (u_char *)s2;
+	register u_char	const *cm = charmap,
+			      *us1 = (u_char const *)s1,
+			      *us2 = (u_char const *)s2;
 
 	while (cm[*us1] == cm[*us2++])
 		if (*us1++ == '\0')
@@ -72,12 +81,12 @@ strcasecmp(s1, s2)
 }
 
 strncasecmp(s1, s2, n)
-	char *s1, *s2;
+	const char *s1, *s2;
 	register int n;
 {
-	register u_char	*cm = charmap,
-			*us1 = (u_char *)s1,
-			*us2 = (u_char *)s2;
+	register u_char	const *cm = charmap,
+			      *us1 = (u_char const *)s1,
+			      *us2 = (u_char const *)s2;
 
 	while (--n >= 0 && cm[*us1] == cm[*us2++])
 		if (*us1++ == '\0')
