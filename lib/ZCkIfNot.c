@@ -33,7 +33,7 @@ Code_t ZCheckIfNotice(buffer,buffer_len,notice,auth,predicate,args)
 	
 	qptr = __Q_Head;
 	qcount = __Q_Length;
-
+	
 	for (;qcount;qcount--) {
 		if ((retval = ZParseNotice(qptr->packet,qptr->packet_len,
 					   &tmpnotice,&tmpauth)) != ZERR_NONE)
