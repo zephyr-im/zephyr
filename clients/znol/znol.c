@@ -142,8 +142,9 @@ main(argc,argv)
 			*comment_ptr = '\0'; /* Ignore from # onwards */
 		    /* Get rid of old-style nol entries, just in case */
 		    cp = cleanname + strlen(cleanname) - 1;
-		    *cp = '\0';
-		    while(*--cp == ' ')
+		    if (*cp == '\n')
+			*cp = '\0';
+		    while (*--cp == ' ')
 			*cp = '\0';
 		    if (*cleanname == '@' || !*cleanname)
 			continue;
