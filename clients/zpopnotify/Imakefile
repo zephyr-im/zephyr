@@ -8,6 +8,6 @@
 SRCS = zpopnotify.c
 OBJS = zpopnotify.o
 
-SimpleProgram(zpopnotify,$(OBJS),$(ZLIBS),$(ATHETCDIR))
+SimpleProgram(zpopnotify,$(OBJS) $(ZLIB),$(ZLIBS),$(ATHETCDIR))
 install_man(zpopnotify.8,zpopnotify.8)
 create_depend($(SRCS))
