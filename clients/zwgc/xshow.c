@@ -45,55 +45,10 @@ xshowinit()
     desc_context = XUniqueContext();
 }
 
-/*ARGSUSED*/
-char *mode_to_colorname(dpy,style,mode)
-     Display *dpy;
-     char *style;
-     xmode *mode;
-{
-   char *desc;
-   int exists;
-   char *name;
-   pointer_dictionary_binding *binding;
-
-   desc = string_Concat("style.",style);
-   desc = string_Concat2(desc,"style");
-   desc = string_Concat2(desc,".substyle.");
-   desc = string_Concat2(desc,mode->substyle);
-   desc = string_Concat2(desc,".foreground");
-
-   if (!colorname_dict)
-      colorname_dict = pointer_dictionary_Create(37);
-   binding = pointer_dictionary_Define(colorname_dict,desc,&exists);
-
-   if (exists) {
-      free(desc);
-      return((char *) binding->value);
-   } else {
-#define COLNAME_CLASS "StyleKey.Style1.Style2.Style3.SubstyleKey.Substyle.ForegroundKey"
-      name=get_string_resource(desc,COLNAME_CLASS);
-#undef COLNAME_CLASS
-      free(desc);
-      if (name==NULL)
-	 pointer_dictionary_Delete(colorname_dict,binding);
-      else
-	 binding->value=(pointer) name;
-      return(name);  /* If resource returns NULL, return NULL also */
-   }
-}
-
 struct res_dict_type {
     pointer_dictionary	dict;
     char *		resname_suffix;
     char *		resclass;
-};
-
-static struct res_dict_type geometry_resources = {
-    NULL, ".geometry", "StyleKey.Style1.Style2.Style3.GeometryKey",
-};
-
-static struct res_dict_type bgcolor_resources = {
-    NULL, ".background", "StyleKey.Style1.Style2.Style3.BackgroundKey",
 };
 
 static char *xres_get_resource (restype, style)
@@ -126,8 +81,36 @@ static char *xres_get_resource (restype, style)
    }
 }
 
+static struct res_dict_type geometry_resources = {
+    NULL, ".geometry", "StyleKey.Style1.Style2.Style3.GeometryKey",
+};
+
+static struct res_dict_type bgcolor_resources = {
+    NULL, ".background", "StyleKey.Style1.Style2.Style3.BackgroundKey",
+};
+
 #define xres_get_geometry(style) xres_get_resource(&geometry_resources,style)
 #define xres_get_bgcolor(style)  xres_get_resource(&bgcolor_resources,style)
+
+static struct res_dict_type fgcolor_resources = {
+    NULL, ".foreground",
+    "StyleKey.Style1.Style2.Style3.SubstyleKey.Substyle.ForegroundKey",
+};
+
+/*ARGSUSED*/
+char *mode_to_colorname (dpy, style, mode)
+    Display *dpy;
+    char *style;
+    xmode *mode;
+{
+    char *desc, *result;
+
+    desc = string_Concat (style, ".substyle.");
+    desc = string_Concat2 (desc, mode->substyle);
+    result = xres_get_resource (&fgcolor_resources, desc);
+    free (desc);
+    return result;
+}
 
 void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
 		    beepcount)
