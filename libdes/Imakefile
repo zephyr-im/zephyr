@@ -25,7 +25,7 @@ DESOBJS= $(OTHEROBJS) key_sched.o debug_decl.o \
 
 #ifdef ATHENA_RULES
 
-SimpleLibrary(des,$(DESOBJS),$(ATHLIBDIR))
+build_library(des,$(DESOBJS))
 
 build_program(enc,enc.o libdes.a,,)
 build_program(destest,destest.o libdes.a,,)
