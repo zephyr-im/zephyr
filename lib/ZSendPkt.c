@@ -14,7 +14,7 @@
 
 #ifndef lint
 static char rcsid_ZSendPacket_c[] =
-    "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZSendPacket.c,v 1.28 90/12/12 02:11:34 jfc Exp $";
+    "$Zephyr: /mit/zephyr/src/lib/RCS/ZSendPacket.c,v 1.29 91/03/21 11:57:08 raeburn Exp $";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -22,12 +22,13 @@ static char rcsid_ZSendPacket_c[] =
 #include <zephyr/zephyr_internal.h>
 #include <sys/socket.h>
 
+static int wait_for_hmack();
+
 Code_t ZSendPacket(packet, len, waitforack)
     char *packet;
     int len;
     int waitforack;
 {
-    static int wait_for_hmack();
     Code_t retval;
     struct sockaddr_in dest;
     ZNotice_t notice, acknotice;
