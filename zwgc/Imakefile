@@ -76,6 +76,7 @@ depend:: ${DEPENDSRCS}
 install::
 	$(RM) $(DESTDIR)$(ACLDIR)/zwgc.desc
 	$(CP) zwgc.desc $(DESTDIR)$(ACLDIR)/zwgc.desc
+	$(CHMOD) 644 $(DESTDIR)$(ACLDIR)/zwgc.desc
 	$(RM) $(DESTDIR)$(ETCATHDIR)/zephyr.vars
 	$(CP) zephyr.vars $(DESTDIR)$(ETCATHDIR)/zephyr.vars
 	$(RM) $(DESTDIR)$(ACLDIR)/zwgc_resources
