@@ -88,6 +88,10 @@ inline unsigned long ZDestination::hash () {
 
 extern int operator== (const ZDestination&, const ZDestination&);
 
+inline int operator != (const ZDestination& z1, const ZDestination& z2) {
+    return !(z1 == z2);
+}
+
 inline operator< (const ZDestination& z1, const ZDestination& z2) {
     return (z1.hash_value != z2.hash_value
 	    ? z1.hash_value < z2.hash_value
@@ -126,8 +130,21 @@ struct ZSubscr_t {
 #endif
 };
 
-extern int operator== (const ZSubscr_t&, const ZSubscr_t&);
-extern int operator>= (const ZSubscr_t&, const ZSubscr_t&);
+inline ZSubscr_t::ZSubscr_t (const ZString& cls, const ZString& inst, const ZString& recip) : zst_dest (cls, inst, recip) {
+    q_forw = q_back = this;
+}
+
+inline ZSubscr_t::ZSubscr_t (const ZSubscr_t& z) : zst_dest (z.zst_dest) {
+    q_forw = q_back = this;
+}
+
+inline int operator== (const ZSubscr_t& s1, const ZSubscr_t& s2) {
+    return s1.zst_dest == s2.zst_dest;
+}
+
+inline int operator >= (const ZSubscr_t& s1, const ZSubscr_t& s2) {
+    return s1.zst_dest >= s2.zst_dest;
+}
 
 struct ZClient_t {
 	struct sockaddr_in zct_sin;	/* ipaddr/port of client */
@@ -236,8 +253,8 @@ struct ZServerDesc_t {
 	ZSrvPending_t *zs_update_queue;	/* queue of packets to send
 					   to this server when done dumping */
 	short zs_numsent;		/* number of hello's sent */
-	server_state zs_state : 4;	/* server's state */
 	unsigned int zs_dumping : 1;	/* 1 if dumping, so we should queue */
+	server_state zs_state;		/* server's state */
 };
 
 enum ZSentType {
@@ -257,6 +274,7 @@ public:
 	(void) sigsetmask (old_mask);
     }
 };
+const int dump_masks = sigmask (SIGFPE) | sigmask (SIGEMT);
 
 /* Function declarations */
 	
@@ -487,22 +505,6 @@ extern const ZString wildcard_instance;
 
 inline Notice::Notice (ZNotice_t *n) : notice (n), dest (n->z_class, n->z_class_inst, n->z_recipient), sender (n->z_sender) {
     msg_no = current_msg;
-}
-
-inline ZSubscr_t::ZSubscr_t (const ZString& cls, const ZString& inst, const ZString& recip) : zst_dest (cls, inst, recip) {
-    q_forw = q_back = this;
-}
-
-inline ZSubscr_t::ZSubscr_t (const ZSubscr_t& z) : zst_dest (z.zst_dest) {
-    q_forw = q_back = this;
-}
-
-inline int operator== (const ZSubscr_t& s1, const ZSubscr_t& s2) {
-    return s1.zst_dest == s2.zst_dest;
-}
-
-inline int operator >= (const ZSubscr_t& s1, const ZSubscr_t& s2) {
-    return s1.zst_dest >= s2.zst_dest;
 }
 
 inline ZClass_t::ZClass_t (const ZDestination& dest) : zct_dest (dest) {
