@@ -24,10 +24,10 @@ extern u_short cli_port;
 extern struct sockaddr_in serv_sin, from;
 extern int timeout_type, hmdebug, nservchang, booting, nserv, no_server;
 extern int deactivated, rebootflag;
-extern char **serv_list, **cur_serv_list;
+extern int numserv;
+extern char **serv_list;
 extern char cur_serv[], prim_serv[];
 extern void die_gracefully();
-extern char *strcpy();
 extern unsigned long inet_addr();
 
 /* Argument is whether we are actually booting, or just attaching
@@ -99,6 +99,7 @@ char *sugg_serv;
      struct hostent *hp;
      int done = 0;
      char **parse = serv_list;
+     char *new_serv;
   
      if (sugg_serv) {
 	  do {
@@ -114,48 +115,50 @@ char *sugg_serv;
 		    syslog(LOG_DEBUG, "Suggested server: %s\n", sugg_serv);
 	  } else {
 	       done = 0; 
-	       sleep(1);
 	  }
      }
-     if (!done)
-	  do {		  
-	       if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
-		    serv_loop = 0;
-		    if ((hp = gethostbyname(prim_serv)) != NULL) {
-			 DPR2 ("Server = %s\n", prim_serv);
-			 (void)strcpy(cur_serv, prim_serv);
-			 done = 1;
-		    } else
-			 sleep(1);
-	       } else {
-		    if (*++cur_serv_list == NULL) {
-			 /* Exit if we are rebooting, */
-			 /* and cannot find a server. */
-			 if (rebootflag)
-			      die_gracefully();
-			 cur_serv_list = serv_list;
-			 if (!cur_serv_list[1]) {
-			     /* server list has only one entry, use it */
-			     if ((hp = gethostbyname(*cur_serv_list))
-				 != NULL) {
-				 DPR2 ("Server = %s\n", *cur_serv_list);
-				 (void)strcpy(cur_serv, *cur_serv_list);
-				 done = 1;
-			     } else
-				 sleep(1);
-			 }
-		    }
-		    if (strcmp(*cur_serv_list, cur_serv)) {
-			 if ((hp = gethostbyname(*cur_serv_list)) != NULL){
-			      DPR2 ("Server = %s\n", *cur_serv_list);
-			      (void)strcpy(cur_serv, *cur_serv_list);
-			      done = 1;
-			 } else
-			      sleep(1);
-		    }
-	       }
-	  } while (done == 0);
-     bcopy(hp->h_addr, (char *)&serv_sin.sin_addr, hp->h_length);
+     while (!done) {
+	 if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
+	     serv_loop = 0;
+	     if ((hp = gethostbyname(prim_serv)) != NULL) {
+		 DPR2 ("Server = %s\n", prim_serv);
+		 (void)strcpy(cur_serv, prim_serv);
+		 done = 1;
+		 break;
+	     }
+	 }
+
+	 switch (numserv) {
+	 case 1:
+	     if ((hp = gethostbyname(*serv_list)) != NULL) {
+		 DPR2 ("Server = %s\n", *serv_list);
+		 (void)strcpy(cur_serv, *serv_list);
+		 done = 1;
+		 break;
+	     }
+	     /* fall through */
+	 case 0:
+	     if (rebootflag)
+		 die_gracefully();
+	     else
+		 sleep(1);
+	     break;
+	 default:
+	     do {
+		 new_serv = serv_list[random() % numserv];
+	     } while (!strcmp(new_serv, cur_serv));
+
+	     if ((hp = gethostbyname(new_serv)) != NULL) {
+		 DPR2 ("Server = %s\n", new_serv);
+		 (void)strcpy(cur_serv, new_serv);
+		 done = 1;
+	     } else
+		 sleep(1);
+
+	     break;
+	 }
+     }
+     _BCOPY(hp->h_addr, (char *)&serv_sin.sin_addr, hp->h_length);
      nservchang++;
 }
 
