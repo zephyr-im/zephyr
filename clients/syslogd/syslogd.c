@@ -404,7 +404,8 @@ main(argc, argv)
 	(void) strncpy(sunx.sun_path, LogName, sizeof sunx.sun_path);
 	funix = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (funix < 0 || bind(funix, (struct sockaddr *) &sunx,
-	    sizeof(sunx.sun_family)+strlen(sunx.sun_path)) < 0 ||
+			      sizeof(sunx.sun_len)+sizeof(sunx.sun_family)
+			      +strlen(sunx.sun_path)) < 0 ||
 	    chmod(LogName, 0666) < 0) {
 		(void) sprintf(line, "cannot create %s", LogName);
 		logerror(line);
@@ -421,7 +422,7 @@ main(argc, argv)
 			logerror("syslog/udp: unknown service");
 			die(0);
 		}
-		(void) memset(sin.sin_zero, 0, sizeof(sin.sin_zero));
+		(void) memset(&sin, 0, sizeof(sin));
 		sin.sin_family = AF_INET;
 		sin.sin_port = LogPort = sp->s_port;
 #ifdef COMPAT42
