@@ -28,7 +28,7 @@
 #include <stdio.h>
 
 #ifndef va_start /* guaranteed to be a macro */
-#if defined(__STDC__) && (defined(__GNUC__) || !defined(ibm032))
+#ifdef __STDC__
 #include <stdarg.h>
 #else
 #include <varargs.h>
@@ -124,19 +124,11 @@ extern "C" {
 
     /* Subscription structure */
     typedef struct _ZSubscriptions_t {
-	char	*recipient;
-#ifdef __cplusplus
+	char	*zsub_recipient;
+	/* The following field used to be named "class", but that
+	   conflicts with C++ */
 	char	*zsub_class;
-#else
-	char	*class;		/* compat */
-#endif
-	char	*classinst;
-	/* Please use these preferred names; those above will go away soon. */
-#define zsub_recipient	recipient
-#ifndef __cplusplus
-#define zsub_class	class
-#endif
-#define zsub_classinst	classinst
+	char	*zsub_classinst;
     } ZSubscription_t;
 
     /* Function return code */
