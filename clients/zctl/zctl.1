@@ -32,7 +32,7 @@ interactively by just typing
 .I zctl
 and then typing commands to the prompt.
 The commands are as follows:
-.TP 25
+.TP 15
 .B add \fIclass instance\fR [ \fIrecipient\fR ]
 Subscribe to \fIclass, instance, recipient\fR, and add this triplet to
 the subscriptions file.
@@ -56,7 +56,7 @@ from the subscriptions file.
 Unsubscribe to \fIclass, instance, recipient\fR, and remove this triplet
 from the subscriptions file as an un-subscription.
 .TP
-.B file [ \fIfile\fR ]
+.B file \fR[ \fIfile\fR ]
 Set default subscriptions file to \fIfile\fR.  If \fIfile\fR isn't specified,
 show what the current subscriptions file is.
 .TP
@@ -75,13 +75,15 @@ Tell the HostManager,
 .I zhm(8),
 to ask the server to flush all state associated with the current host.
 .TP
-.B list [ \fIfile\fR ]
-List contents of current subscriptions file or \fIfile.
+.B list \fR[ \fIfile\fR ]
+List contents of current subscriptions file or
+.I file.
+Any macros in the file (see below) are displayed verbatim and not expanded.
 .TP
 .B list_requests
 List all available commands.  May be abbreviated by '?'.
 .TP
-.B load [ \fIfile\fR ]
+.B load \fR[ \fIfile\fR ]
 Subscribe to all subscription triplets and unsubscribe to all
 un-subscription triplets in current subscriptions file or \fIfile\fR.
 .TP
@@ -98,7 +100,7 @@ Retrieve all current subscriptions from the Zephyr server.  These include
 subscriptions that might have been made by other programs, such as
 .I znol(1).
 .TP
-.B save [ \fIfile\fR ]
+.B save \fR[ \fIfile\fR ]
 Save all current subscriptions (as returned by the Zephyr server)
 into current subscriptions file or \fIfile\fR.  The 
 file will be replaced.
@@ -131,7 +133,7 @@ the subscriptions file.
 Make your location as maintained by the Zephyr server visible.  This does not
 affect the value of the exposure variable.
 .TP
-.B unload [ \fIfile\fR ]
+.B unload \fR[ \fIfile\fR ]
 Unsubscribe to all subscription triplets in current subscriptions file
 or \fIfile\fR.  Un-subscriptions in the file are ignored.
 .TP
