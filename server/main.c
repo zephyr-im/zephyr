@@ -16,10 +16,10 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_main_c[] = "$Header$";
+static char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nPortions Copyright (c) 1986 Student Information Processing Board, Massachusetts Institute of Technology\n";
+static char version[] = "Zephyr Server (Prerelease) 0.4";
 #endif SABER
 #endif lint
-static char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nPortions Copyright (c) 1986 Student Information Processing Board, Massachusetts Institute of Technology\n";
-static char version[] = "Zephyr Server (Prerelease) 0.3";
 
 /*
  * Server loop for Zephyr.
@@ -28,13 +28,16 @@ static char version[] = "Zephyr Server (Prerelease) 0.3";
 /*
   The Zephyr server maintains several linked lists of information.
 
-  There is an array of servers initialized in main.c and maintained
+  There is an array of servers (otherservers) initialized and maintained
   by server_s.c.
+
   Each server descriptor contains a pointer to a linked list of hosts
   which are ``owned'' by that server.  The first server is the ``limbo''
   server which owns any host which was formerly owned by a dead server.
+
   Each of these host list entries has an IP address and a pointer to a
   linked list of clients on that host.
+
   Each client has a sockaddr_in, a list of subscriptions, and possibly
   a session key.
 
@@ -52,8 +55,11 @@ static char version[] = "Zephyr Server (Prerelease) 0.3";
 						<netinet/in.h>
 						<sys/time.h>
 						<stdio.h>
+					   <sys/file.h>
 					   <syslog.h>
+					   <strings.h>
 					   timer.h
+					   zsrv_err.h
 					 */
 
 #include <netdb.h>
@@ -61,21 +67,27 @@ static char version[] = "Zephyr Server (Prerelease) 0.3";
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <signal.h>
-#include <sys/file.h>
 
 #define	EVER		(;;)		/* don't stop looping */
-#define	max(a,b)	((a) > (b) ? (a) : (b))
 
 static int do_net_setup(), initialize();
 static void usage();
 static int bye();
-#ifndef DEBUG
+#ifdef DEBUG
+static void dbug_on(), dbug_off();
+#else
 static void detach();
 #endif DEBUG
 
 int srv_socket;				/* dgram socket for clients
 					   and other servers */
+int bdump_socket = 0;			/* brain dump socket
+					   (closed most of the time) */
+fd_set interesting;			/* the file descrips we are listening
+					 to right now */
+int nfildes;				/* number to look at in select() */
 struct sockaddr_in sock_sin;		/* address of the socket */
+struct sockaddr_in bdump_sin;		/* addr of brain dump socket */
 struct in_addr my_addr;			/* for convenience, my IP address */
 struct timeval nexthost_tv;		/* time till next timeout for select */
 
@@ -85,10 +97,10 @@ u_short hm_port;			/* the port # of the host manager */
 
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
-ZAcl_t zctlacl = { ZEPHYR_CTL_ACL };
-ZAcl_t loginacl = { LOGIN_ACL };
-ZAcl_t locateacl = { LOCATE_ACL };
-ZAcl_t matchallacl = { MATCH_ALL_ACL };
+static ZAcl_t zctlacl = { ZEPHYR_CTL_ACL };
+static ZAcl_t loginacl = { LOGIN_ACL };
+static ZAcl_t locateacl = { LOCATE_ACL };
+static ZAcl_t matchallacl = { MATCH_ALL_ACL };
 #ifdef DEBUG
 int zdebug = 0;
 #endif DEBUG
@@ -98,7 +110,6 @@ int argc;
 char **argv;
 {
 	int nfound;			/* #fildes ready on select */
-	int nfildes;			/* number to look at in select() */
 	int authentic;			/* authentic flag for ZParseNotice */
 	Code_t status;
 	ZNotice_t new_notice;		/* parsed from input_packet */
@@ -106,17 +117,13 @@ char **argv;
 	int input_len;			/* len of packet */
 	struct sockaddr_in input_sin;	/* constructed for authent */
 
-	fd_set readable, interesting;
+	fd_set readable;
 	struct timeval *tvp;
 	struct sockaddr_in whoisit;	/* for holding peer's address */
 
 	int optchar;			/* option processing */
 	extern char *optarg;
 	extern int optind;
-
-	/* print out various copyright bullshit */
-	puts(version);
-	puts(copyright);
 
 	/* set name */
 	if (programname = rindex(argv[0],'/'))
@@ -173,6 +180,8 @@ char **argv;
 
 	(void) signal(SIGTERM, bye);
 	(void) signal(SIGINT, SIG_IGN);
+	(void) signal(SIGUSR1, dbug_on);
+	(void) signal(SIGUSR2, dbug_off);
 	syslog(LOG_INFO, "Ready for action");
 #else
 	(void) signal(SIGINT, bye);
@@ -199,14 +208,17 @@ char **argv;
 			tvp = (struct timeval *) NULL;
 		}
 		readable = interesting;
-		if (ZQLength()) nfound = 1;	/* note that this leaves
-						   srv_socket set in readable*/
-
-		else 
+		if (ZQLength()) {
+			nfound = 1;	
+			FD_ZERO(&readable);
+		} else 
 			nfound = select(nfildes, &readable, (fd_set *) NULL,
 					(fd_set *) NULL, tvp);
+		/* don't flame about EINTR, since a SIGUSR1 or SIGUSR2
+		   can generate it by interrupting the select */
 		if (nfound < 0) {
-			syslog(LOG_WARNING, "select error: %m");
+			if (errno != EINTR)
+				syslog(LOG_WARNING, "select error: %m");
 			continue;
 		}
 		if (nfound == 0)
@@ -215,7 +227,9 @@ char **argv;
 			   the loop, and process the next timeout */
 			continue;
 		else {
-			if (ZQLength() || FD_ISSET(srv_socket, &readable)) {
+			if (bdump_socket && FD_ISSET(bdump_socket,&readable))
+				send_brain_dump();
+			else if (ZQLength() || FD_ISSET(srv_socket, &readable)) {
 				/* handle traffic */
 				
 				if (status = ZReceivePacket(input_packet,
@@ -227,9 +241,6 @@ char **argv;
 					       error_message(status));
 					continue;
 				}
-				/* we need to parse twice--once to get
-				   the source addr, second to check
-				   authentication */
 				if (status = ZParseNotice(input_packet,
 							  input_len,
 							  &new_notice,
@@ -240,19 +251,25 @@ char **argv;
 					       error_message(status));
 					continue;
 				}
-				bzero((caddr_t) &input_sin, sizeof(input_sin));
-				input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
-				input_sin.sin_port = new_notice.z_port;
-				input_sin.sin_family = AF_INET;
-				if (status = ZParseNotice(input_packet,
-							  input_len,
-							  &new_notice,
-							  &authentic,
-							  &input_sin)) {
-					syslog(LOG_ERR,
-					       "bad notice parse: %s",
-					       error_message(status));
-					continue;
+				if (server_which_server(&whoisit)) {
+				/* we need to parse twice--once to get
+				   the source addr, second to check
+				   authentication */
+					bzero((caddr_t) &input_sin,
+					      sizeof(input_sin));
+					input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
+					input_sin.sin_port = new_notice.z_port;
+					input_sin.sin_family = AF_INET;
+					if (status = ZParseNotice(input_packet,
+								  input_len,
+								  &new_notice,
+								  &authentic,
+								  &input_sin)) {
+						syslog(LOG_ERR,
+						       "bad srv notice parse: %s",
+						       error_message(status));
+						continue;
+					}
 				}
 				if (whoisit.sin_port != hm_port &&
 				    whoisit.sin_port != sock_sin.sin_port &&
@@ -357,7 +374,7 @@ do_net_setup()
 		syslog(LOG_ERR, "client_sock failed: %m");
 		return(1);
 	}
-	if (bind (srv_socket, (struct sockaddr *) &sock_sin,
+	if (bind(srv_socket, (struct sockaddr *) &sock_sin,
 		  sizeof(sock_sin)) < 0) {
 		syslog(LOG_ERR, "client bind failed: %m");
 		return(1);
@@ -392,13 +409,28 @@ usage()
 static int
 bye()
 {
-	hostm_shutdown();
+	server_shutdown();		/* tell other servers */
+	hostm_shutdown();		/* tell our hosts */
 	syslog(LOG_INFO, "goodbye");
 	exit(0);
 	/*NOTREACHED*/
 }
 
-#ifndef DEBUG
+#ifdef DEBUG
+static void
+dbug_on()
+{
+	syslog(LOG_DEBUG, "debugging turned on");
+	zdebug = 1;
+}
+
+static void
+dbug_off()
+{
+	syslog(LOG_DEBUG, "debugging turned off");
+	zdebug = 0;
+}
+#else
 /*
  * detach from the terminal
  */
