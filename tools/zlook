@@ -1,0 +1,241 @@
+#!/bin/sh
+#
+# ZLOOK:  AUTHOR: "Jr" Spidell      DATE: April 25, 1992
+#
+# this script will only run properly by root
+#       on a zephyr server node
+# output: accounts logged into zephyr
+#         nodes running a host manager
+
+TEMPFILE=/usr/tmp/zephyr.$$
+TEMPFILE2=/usr/tmp/zephyr2.$$
+DBFILE=/usr/tmp/zephyr.db       # where zephyrd dumps its data after a kill -FPE
+
+# the next "magic numbers" for the servers come from looking at server.list
+# the '1' or '3' corresponds to the position of the server name in the file
+# 'server.list'
+# NOTE: these numbers will need to be changed if the server.list file gets
+# changed.  (server.list resides in the directory /usr/athena/lib/zephyr)
+CAP_SERVER="3:"
+FRED_SERVER="1:"
+
+# test for root
+if test "`whoami`" != root
+ then
+   echo "you must be root to run this script"
+   exit
+fi
+
+# test for no options
+if test $# -eq 0
+then USAGE="yes"
+     echo "no options given."
+     echo ""
+fi
+
+# test for server node
+if test -z "`ps aux | grep zephyrd | grep -v grep | awk '{print $2}'`"
+ then echo "you must be on a zephyr server (ie cap, fred)"
+      exit
+fi
+
+# root doesn't have this in its path
+path=$PATH
+PATH=$path":/usr/local/bin:/bin:"
+
+for argument in $*
+do
+ case $argument in
+  -N)# extract the running host managers
+    ZHM=yes
+    ;;
+
+  -s)# extract the suns (nodes that use fred as their server )
+    FRED=yes
+    ;;
+
+  -d)# extract the decs (nodes that use cap as their server )
+    CAP=yes
+    ;;
+
+  -A)# extract logged in users
+     EXTRACT_USERS=yes
+     ;;
+
+  -O)# list options
+     USAGE=yes
+    ;;
+
+  -e)# list exposure values
+     EXPO=yes
+     ;;
+
+  -g)# list group name
+      GRP=yes
+     ;;
+
+  -t)# list time user logged in to zephyr
+      TME=yes
+     ;;
+
+  -n)# list user's node
+      NOD=yes
+     ;;
+                                                            
+  -ni)# list user's "world name" or "nickname" ie joe B. Blow
+      NIK=yes
+     ;;
+
+  -G*)# list users by given group name
+      # note -g option does not display along with -G option
+      # (sort of redundant don't ya think?)
+
+    if test "$argument" = "-G"
+     then echo "you must specify a group for -G option"
+          zlook -o
+     exit
+    fi
+    /accts/caspidell/shelldir/zlook -A -g`echo " $* " | sed "s/-G/ /g"` | grep `echo $argument
+ | sed "s/-G//"`  | sed "s/`echo $argument| sed "s/-G//g"`//"
+  # | awk '{print $1}'
+    exit;;
+
+  -s)# subscription information
+     # nothing here, yet...
+     ;;
+
+  -?)# unknown option
+     USAGE="yes"
+     echo "unknown option $argument"
+     echo ""
+    ;;
+
+ esac # end of options
+done # end of arguments
+
+
+#############
+# -O option #
+#############
+if test "$USAGE" = "yes"
+then
+    echo "zlook [-N] [-d] [-s] [-G<groupname>] [-A] [-t] [-ni] [-n] [-e] [-o]"
+    echo ""
+    echo "     -N  nodes currently running a zephyr host manager."
+    echo "     -d  only decs currently running zhm"
+    echo "     -s  only suns currently running zhm"
+    echo "     -G<group> users by group name."
+    echo "     -A  all users currently logged into zephyr."
+    echo "     -g  give user's group association"
+    echo "     -t  give time user logged into zephyr."
+    echo "     -n  give user's node."
+    echo "     -e  give user's exposure level."
+    echo "     -ni give user's full name (ie Joe B. Blow)."
+    echo "     -O  option descriptions. (this screen)"
+    echo ""
+    echo " options -t, -n, -e, -ni must be accompanied by -A or -G<group>"
+    echo " options -d and -s must be accompanied by -N"
+    echo ""
+fi
+
+#############
+# -N option #
+#############
+if test "$ZHM" = "yes"
+ then
+
+    # this is for all nodes
+    SERVER=":"
+
+    # extract only nodes that use cap as their server
+    if test "$CAP" = "yes"
+    then
+       SERVER=$CAP_SERVER
+    fi
+
+    # extract only nodes that use fred as their server
+    if test "$FRED" = "yes"
+    then
+       SERVER=$FRED_SERVER
+    fi
+
+    # dump the database
+    kill -FPE `ps aux | grep zephyrd | grep -v grep | awk '{print $2}'`
+
+    # cross-reference the internet adresses with node names
+    for address in `cat /usr/tmp/zephyr.db | grep 131.198 | grep $SERVER | grep -v rockwell |
+grep -v SERV | sed "s/\/[0-9]://"`
+    do
+    ypcat hosts | grep "$address " | awk '{ print $2 }' | sed "s/.cca.cr.rockwell.com//" >> $T
+EMPFILE
+    done
+    cat $TEMPFILE | sort
+    rm $TEMPFILE
+fi
+
+
+
+#############
+# -A option #
+#############
+
+if test "$EXTRACT_USERS" = "yes"
+ then
+# dump the database
+  kill -FPE `ps aux | grep zephyrd | grep -v grep | awk '{print $2}'`
+
+  for instance in `cat /usr/tmp/zephyr.db | grep @cca.cr.rockwell.com/ | sed "s/ /~/g"`
+      do
+#------------------
+# display user name
+#------------------
+      PEOPLE=`echo $instance | awk '{FS="@"}{print $1}'`
+      echo $instance | awk '{FS="@"}{printf("%-10s", $1)}' >> $TEMPFILE
+
+#---------------------------------
+# display group association
+#---------------------------------
+      if test "$GRP" = "yes"
+       then
+         GROUP=`ypcat passwd | grep $PEOPLE: | awk '{FS=":"}{print $4}'`
+         ypcat group | grep ":$GROUP:" | awk '{FS=":"}{printf("%-9s", $1)}' >> $TEMPFILE
+      fi
+
+#--------------------
+# display node
+#--------------------
+      if test "$NOD" = "yes"
+       then
+       echo $instance | sed "s/.cca.cr.rockwell.com//g" | awk '{FS="/"}{printf("%-8s ",$2)}' >
+> $TEMPFILE
+      fi
+
+#-----------------------
+# display exposure level
+#-----------------------
+      if test "$EXPO" = "yes"
+       then
+        echo $instance | awk '{FS="/"}{printf("%s ", $5)}' >> $TEMPFILE
+      fi
+
+#-------------
+# display time
+#-------------
+      if test "$TME" = "yes"
+       then
+       echo $instance | sed "s/~/ /g" | sed "s/:[0-9][0-9] [0-9][0-9][0-9][0-9]//" | awk '{FS=
+"/"}{printf("%-10s ",$3)}' >> $TEMPFILE
+      fi
+
+#-----------------
+# display nickname
+#-----------------
+      if test "$NIK" = "yes"
+       then
+       ypcat passwd | grep $PEOPLE: | awk '{FS=":"}{printf("%s ", $5)}' >> $TEMPFILE
+      fi
+      echo "" >>$TEMPFILE
+  done
+  cat $TEMPFILE | sort
+  rm $TEMPFILE
+fi
