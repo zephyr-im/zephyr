@@ -29,7 +29,8 @@ Code_t ZFormatNoticeList(notice,list,nitems,buffer,buffer_len,ret_len)
 
 	end = buffer+buffer_len;
 
-	if ((retval = Z_FormatHeader(notice,buffer,buffer_len,ret_len)) > 0)
+	if ((retval = Z_FormatHeader(notice,buffer,buffer_len,ret_len)) !=
+	    ZERR_NONE)
 		return (retval);
 
 	ptr = buffer+*ret_len;
