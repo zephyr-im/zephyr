@@ -710,17 +710,19 @@ ZServerDesc_t *server;
 	if ((status = extract_addr(notice, &who)) != ZERR_NONE)
 		return(status);
 	if (!(host = hostm_find_host(&who.sin_addr))) {
-		syslog(LOG_WARNING, "recover_clt h not found, from %s",
-		       inet_ntoa(server->zs_addr.sin_addr));
-		syslog(LOG_WARNING, "%s", inet_ntoa(who.sin_addr));
+		char buf[16];		/* long enough for 255.255.255.255\0 */
+		(void) strncpy(buf, inet_ntoa(who.sin_addr), sizeof(buf));
+		syslog(LOG_WARNING, "recover_clt h not found, from %s for %s",
+		       inet_ntoa(server->zs_addr.sin_addr), buf);
 		return(ZERR_NONE);	/* XXX */
 	}
 	if (host->zh_locked)
 		return(ZSRV_REQUEUE);
 	if (!(client = client_which_client(&who, notice))) {
-		syslog(LOG_WARNING, "recover_clt not found, from %s",
-		       inet_ntoa(server->zs_addr.sin_addr));
-		syslog(LOG_WARNING, "%s/%d",inet_ntoa(who.sin_addr),
+		char buf[16];		/* long enough for 255.255.255.255\0 */
+		(void) strncpy(buf, inet_ntoa(who.sin_addr), sizeof(buf));
+		syslog(LOG_WARNING, "recover_clt not found, from %s for %s/%d",
+		       inet_ntoa(server->zs_addr.sin_addr), buf,
 		       ntohs(who.sin_port));
 		return(ZERR_NONE);	/* XXX */
 	}
