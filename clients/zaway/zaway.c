@@ -23,6 +23,7 @@ static const char rcsid_zaway_c[] = "$Id$";
 
 #define MESSAGE_CLASS "MESSAGE"
 #define DEFAULT_MSG "I'm sorry, but I am currently away from the terminal and am\nnot able to receive your message.\n"
+#define RESPONSE_OPCODE ""
 
 RETSIGTYPE cleanup();
 u_short port;
@@ -125,7 +126,8 @@ int main(argc,argv)
 		notice.z_recipient = notice.z_sender;
 		notice.z_sender = 0;
 		notice.z_default_format = "";
-		     
+		notice.z_opcode = RESPONSE_OPCODE;
+
 		msg[0] = "Automated reply:";
 		msg[1] = ptr;
 		
