@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains code for the "locate" command.
+ * It contains code for the "zlocate" command.
  *
  *	Created by:	Robert French
  *
@@ -16,7 +16,7 @@
 #include <zephyr/zephyr.h>
 
 #ifndef lint
-static char rcsid_locate_c[] = "$Header$";
+static char rcsid_zlocate_c[] = "$Header$";
 #endif lint
 
 main(argc,argv)
@@ -25,7 +25,7 @@ main(argc,argv)
 {
 	int retval,numlocs,i,one,ourargc;
 	char *whoami,bfr[BUFSIZ],user[BUFSIZ];
-	ZLocations_t locations[1];
+	ZLocations_t locations;
 	
 	whoami = argv[0];
 
@@ -60,13 +60,13 @@ main(argc,argv)
 		if (ourargc > 1)
 			printf("\t%s:\n",user);
 		if (!numlocs) {
-			printf("Not logged-in\n");
+			printf("Hidden or not logged-in\n");
 			if (argc)
 				printf("\n");
 			continue;
 		}
 		for (i=0;i<numlocs;i++) {
-			if ((retval = ZGetLocations(locations,&one))
+			if ((retval = ZGetLocations(&locations,&one))
 			    != ZERR_NONE) {
 				com_err(whoami,retval,
 					"while getting location");
@@ -75,12 +75,31 @@ main(argc,argv)
 			if (one != 1) {
 				printf("%s: internal failure while getting location\n",whoami);
 				exit(1);
-			} 
-			printf("%s\t  %s\n",locations[0].host,
-			       locations[0].time);
+			}
+			print_pad(locations.host,43);
+			print_pad(locations.tty,8);
+			printf("%s\n",locations.time);
 		}
 		if (argc)
 			printf("\n");
 		ZFlushLocations();
 	}
+}
+
+print_pad(s,n)
+	char *s;
+	int n;
+{
+	char bfr[81];
+	int num;
+
+	strcpy(bfr,"                                                                               ");
+	
+	if (strlen(s) < n)
+		num = n-strlen(s);
+	else
+		num = 0;
+
+	bfr[num] = '\0';
+	printf("%s%s",s,bfr);
 }
