@@ -317,10 +317,10 @@ char *person;
 				*cp = '\0';
 		default_notice.z_message = def_sub_area;
 		default_notice.z_message_len = statbuf.st_size + 1;
-		/* these are needed later for access_check() */
-		default_notice.z_sender = person;
 		default_notice.z_auth = 1;
 	}
+	/* needed later for access_check() */
+	default_notice.z_sender = person;
 	subs = extract_subscriptions(&default_notice);
 	/* replace any non-* recipients with "person" */
 
@@ -854,7 +854,7 @@ struct sockaddr_in *who;
 	register ZSubscr_t *subs;
 	Code_t retval;
 	ZNotice_t reply;
-	char *reppacket;
+	ZPacket_t reppacket;
 	int packlen, i, found = 0;
 	char **answer = (char **) NULL;
 
@@ -879,7 +879,7 @@ struct sockaddr_in *who;
 		/* coalesce the subscription information into a list of
 		   char *'s */
 		if ((answer = (char **) xmalloc(found * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
-			syslog(LOG_ERR, "subscr no mem(answer)");
+			syslog(LOG_ERR, "old_subscr_sendlist no mem(answer)");
 			found = 0;
 		} else
 			for (i = 0, subs = client->zct_subs->q_forw;
@@ -890,7 +890,7 @@ struct sockaddr_in *who;
 				answer[i*NUM_FIELDS + 2] = subs->zst_recipient;
 			}
 	}
-	/* note that when there are no subscriptions, found == 0, so 
+	/* note that when there are no subscriptions, found == 0, so
 	   we needn't worry about answer being NULL */
 
 	reply = *notice;
@@ -900,34 +900,38 @@ struct sockaddr_in *who;
 
 
 	/* if it's too long, chop off one at a time till it fits */
-	while ((retval = ZFormatRawNoticeList(&reply,
+	while ((retval = ZFormatSmallRawNoticeList(&reply,
 					      answer,
 					      found * NUM_FIELDS,
-					      &reppacket,
+					      reppacket,
 					      &packlen)) == ZERR_PKTLEN) {
 		found--;
 		reply.z_opcode = OLD_CLIENT_INCOMPSUBS;
 	}
 	if (retval != ZERR_NONE) {
-		syslog(LOG_ERR, "subscr_sendlist format: %s",
+		syslog(LOG_ERR, "old_subscr_sendlist format: %s",
 		       error_message(retval));
-		xfree(answer);
+		if (answer)
+			xfree(answer);
 		return;
 	}
 	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "subscr_sendlist set addr: %s",
 		       error_message(retval));
-		xfree(answer);
+		if (answer)
+			xfree(answer);
 		return;
 	}
 	if ((retval = ZSendPacket(reppacket, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "subscr_sendlist xmit: %s",
 		       error_message(retval));
-		xfree(answer);
+		if (answer)
+			xfree(answer);
 		return;
 	}
 	zdbug((LOG_DEBUG,"subscr_sendlist acked"));
-	xfree(answer);
+	if (answer)
+		xfree(answer);
 	return;
 }
 #endif /* OLD_COMPAT */
