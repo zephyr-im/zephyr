@@ -10,20 +10,19 @@
  * and MIT-Project Athena, 1989.
  */
 
-#include <stdio.h>
 #include "dynP.h"
 
-int DynInsert(obj, index, els, num)
+int DynInsert(obj, idx, els, num)
    DynObjectP obj;
    DynPtr els;
-   int index, num;
+   int idx, num;
 {
      int ret;
      
-     if (index < 0 || index > obj->num_el) {
+     if (idx < 0 || idx > obj->num_el) {
 	  if (obj->debug)
 	       fprintf(stderr, "dyn: insert: index %d is not in [0,%d]\n",
-		       index, obj->num_el);
+		       idx, obj->num_el);
 	  return DYN_BADINDEX;
      }
 
@@ -36,20 +35,20 @@ int DynInsert(obj, index, els, num)
 
      if (obj->debug)
 	  fprintf(stderr,"dyn: insert: Moving %d bytes from %d + %d to + %d\n",
-		  (obj->num_el-index)*obj->el_size, obj->array,
-		  obj->el_size*index, obj->el_size*(index+num));
+		  (obj->num_el-idx)*obj->el_size, obj->array,
+		  obj->el_size*idx, obj->el_size*(idx+num));
 
      if ((ret = _DynResize(obj, obj->num_el + num)) != DYN_OK)
 	  return ret;
 
-     bcopy(obj->array + index, obj->array + (index + num),
-	   (obj->num_el-index)*obj->el_size);
+     (void) memmove(obj->array + (idx + num), obj->array + idx, 
+		    (obj->num_el-idx)*obj->el_size);
 
      if (obj->debug)
 	  fprintf(stderr, "dyn: insert: Copying %d bytes from %d to %d + %d\n",
-		  obj->el_size*num, els, obj->array, obj->el_size*index);
+		  obj->el_size*num, els, obj->array, obj->el_size*idx);
 
-     bcopy(els, obj->array + obj->el_size*index, obj->el_size*num);
+     (void) memmove(obj->array + obj->el_size*idx, els, obj->el_size*num);
 
      obj->num_el += num;
 
