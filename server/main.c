@@ -381,8 +381,6 @@ initialize()
 
     server_init();
 
-    nexttimo = 1L;	/* trigger the timerss when we hit the FOR loop */
-
 #ifdef ZEPHYR_USES_KERBEROS
     krb_set_tkt_string(tkt_file);
 #endif
