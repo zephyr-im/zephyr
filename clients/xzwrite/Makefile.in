@@ -18,6 +18,7 @@ BUILDTOP=../..
 VPATH=@srcdir@
 CC=@CC@
 INSTALL=@INSTALL@
+at=@
 
 DEBUG=-O
 CFLAGS=${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
@@ -30,10 +31,14 @@ OBJS=	interface.o resource.o destlist.o util.o bfgets.o gethomedir.o \
 	dest_window.o xzwrite.o edit_window.o zephyr.o GetString.o Popup.o \
 	yank.o menu_window.o logins.o
 
-all: xzwrite
+all: xzwrite XZwrite
 
 xzwrite: ${OBJS} ${BUILDTOP}/lib/libzephyr.a ${BUILDTOP}/libdyn/libdyn.a
 	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+
+XZwrite: XZwrite.in
+	rm -f XZwrite
+	sed -e 's,$(at)datadir$(at),$(datadir),' < XZwrite.in > XZwrite
 
 check:
 
