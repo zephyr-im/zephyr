@@ -211,17 +211,17 @@ main(argc, argv)
     notice.z_message_len = 0;
     notice.z_recipient = "";
     if (filsys == 1)
-	    notice.z_default_format = "@bold(Filesystem Operation Message for $instance:)\nFrom: @bold($sender)\n$message";
+	    notice.z_default_format = "@bold(Filesystem Operation Message for $instance:)\nFrom: @bold($sender) at $time $date\n$message";
     else if (auth == ZAUTH) {
 	if (signature)
-	    notice.z_default_format = "Class $class, Instance $instance:\nTo: @bold($recipient)\n@bold($1) <$sender>\n\n$2";
+	    notice.z_default_format = "Class $class, Instance $instance:\nTo: @bold($recipient) at $time $date\n@bold($1) <$sender>\n\n$2";
 	else
-	    notice.z_default_format = "Class $class, Instance $instance:\nTo: @bold($recipient)\n$message";
+	    notice.z_default_format = "Class $class, Instance $instance:\nTo: @bold($recipient) at $time $date\n$message";
     } else {
 	if (signature)
-	    notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance:\n@bold($1) <$sender>\n\n$2";
+	    notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance at $time $date:\n@bold($1) <$sender>\n\n$2";
 	else
-	    notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance:\n$message";
+	    notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance at $time $date:\n$message";
     }
     if (!nocheck && !msgarg && filsys != 1)
 	send_off(&notice, 0);
