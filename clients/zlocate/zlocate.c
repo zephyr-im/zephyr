@@ -24,7 +24,7 @@ main(argc,argv)
 	int argc;
 	char *argv[];
 {
-	int retval,numlocs,i,one,ourargc;
+	int retval,numlocs,i,one,ourargc,found;
 	char *whoami,bfr[BUFSIZ],user[BUFSIZ];
 	ZLocations_t locations;
 	
@@ -44,7 +44,7 @@ main(argc,argv)
 	argc--;
 
 	one = 1;
-	
+	found = 0;
 	ourargc = argc;
 	
 	for (;argc--;argv++) {
@@ -78,17 +78,19 @@ main(argc,argv)
 				exit(1);
 			}
 			/* just use printf; make the field widths one
-			 * smaller to deal with the extra seperation space.
+			 * smaller to deal with the extra separation space.
 			 */
 			printf("%-*s %-*s %s\n",
 			       42, locations.host,
 			       7, locations.tty,
 			       locations.time);
+			found++;
 		}
 		if (argc)
 			printf("\n");
 		(void) ZFlushLocations();
 	}
+	if (!found)
+	    exit(1);
+	exit(0);
 }
-
-
