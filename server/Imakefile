@@ -19,7 +19,6 @@ SYSLOG_DEF=
 XDEFS = $(SYSLOG_DEF) -DCONCURRENT
 
 SRCS=	access.c \
-	acl_files.c \
 	bdump.c \
 	class.c \
 	client.c \
@@ -38,7 +37,6 @@ SRCS=	access.c \
 	zstring.c
 
 OBJS=	access.o \
- 	acl_files.o \
 	bdump.o \
 	class.o \
 	client.o \
@@ -63,7 +61,7 @@ install_file(default.subscriptions,$(ZLIBDIR))
 create_dir($(ZACLDIR))
 install::
 	$(RM) $(DESTDIR)$(ZACLDIR)/?*.acl
-	$(CP) acldir/?* $(DESTDIR)$(ZACLDIR)
+	$(CP) acl/?* $(DESTDIR)$(ZACLDIR)
 
 depend:: zsrv_err.h version.h
 $(OBJS): zsrv_err.h
