@@ -457,6 +457,14 @@ void xshow(dpy, desc, numstr, numnl)
 		   (desc->next->next) &&
 		   (desc->next->code == DT_STR) &&
 		   (desc->next->next->code==DT_END)) {
+
+		  /* Since @font mutates the current environment, we have
+		     to pop the environment that this case usually pushes */
+		  free(curmode.substyle);
+		  curmode = xmode_stack_top(modes);
+		  xmode_stack_pop(modes);
+
+		  /* mutating... */
 		  curmode.size=SPECIAL_SIZE; /* This is an @font() */
 		  curmode.font=string_CreateFromData(desc->next->str,
 						     desc->next->len);
@@ -473,6 +481,13 @@ void xshow(dpy, desc, numstr, numnl)
 		   (desc->next->next->code==DT_END)) {
 		  char *colorname;
 
+		  /* Since @font mutates the current environment, we have
+		     to pop the environment that this case usually pushes */
+		  free(curmode.substyle);
+		  curmode = xmode_stack_top(modes);
+		  xmode_stack_pop(modes);
+
+		  /* mutating... */
 		  colorname=string_CreateFromData(desc->next->str,
 						  desc->next->len);
 		  curmode.color = x_string_to_color(colorname,default_fgcolor);
