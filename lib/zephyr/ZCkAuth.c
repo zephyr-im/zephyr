@@ -42,6 +42,9 @@ int ZCheckAuthentication(notice, from)
     if (!notice->z_auth)
 	return (ZAUTH_NO);
 	
+    if (notice->z_authent_len <= 0)	/* bogus length */
+	return(ZAUTH_FAILED);
+
     if (__Zephyr_server) {
 	if (ZReadAscii(notice->z_ascii_authent, 
 		       strlen(notice->z_ascii_authent)+1, 
