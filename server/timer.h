@@ -53,7 +53,7 @@ typedef struct _timer {
 #define ALARM_ARG(x)  ((x)->arg)
 #define TIMER_SIZE sizeof(struct _timer)
 
-long time();
+time_t time();
 #define NOW (time((time_t *)NULL))
 extern timer timer_set_rel(), timer_set_abs();
 extern void timer_reset(), timer_process();
