@@ -50,13 +50,36 @@ extern void init_queue(), retransmit_queue();
 #ifdef vax
 #define MACHINE "vax"
 #define ok
-#endif vax
+#endif /* vax */
+
 #ifdef ibm032
 #define MACHINE "rt"
 #define ok
-#endif ibm032
+#endif /* ibm032 */
+
+#ifdef NeXT
+#define MACHINE "NeXT"
+#define ok
+#endif /* NeXT */
+
+#ifdef SUN2_ARCH
+#define MACHINE "sun2"
+#define ok
+#endif /* SUN2_ARCH */
+
+#ifdef SUN3_ARCH
+#define MACHINE "sun3"
+#define ok
+#endif /* SUN3_ARCH */
+
+#ifdef SUN4_ARCH
+#define MACHINE "sun4"
+#define ok
+#endif /* SUN4_ARCH */
+
 #ifndef ok
 #define MACHINE "unknown"
 #endif ok
+#undef ok
 
 #endif !__HM_H__
