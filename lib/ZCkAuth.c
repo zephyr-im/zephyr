@@ -74,7 +74,7 @@ int ZCheckAuthentication(notice, from)
 #ifdef NOENCRYPTION
     our_checksum = 0;
 #else
-    our_checksum = (ZChecksum_t)quad_cksum(notice->z_packet, NULL, 
+    our_checksum = (ZChecksum_t)des_quad_cksum(notice->z_packet, NULL, 
 					   notice->z_default_format+
 					   strlen(notice->z_default_format)+1-
 					   notice->z_packet, 0, cred.session);
