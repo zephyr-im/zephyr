@@ -32,7 +32,7 @@ char *realmname;
 	char *cp1, *cp2;
 	int retval;
 	FILE *rlm_file;
-	char list_file128];
+	char list_file[128];
 	char linebuf[BUFSIZ];
 	char scratch[128];
 
