@@ -17,7 +17,7 @@
 # make -f makeconfig SRCDIR=/u2/lockers/zephyr DESTDIR=myconfig
 
 DESTDIR	= .
-SRCDIR 	= /mit/zephyr/src
+SRCDIR 	= /afs/athena.mit.edu/mit/zephyr/src
 
 LN	= ln -s
 CP	= cp
