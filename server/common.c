@@ -20,7 +20,7 @@ static char rcsid_common_c[] = "$Header$";
 #endif lint
 
 #include <stdio.h>
-#include <syslog.h>
+#include <zephyr/zsyslog.h>
 #include <strings.h>
 
 extern char *malloc();
