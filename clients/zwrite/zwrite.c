@@ -271,8 +271,7 @@ main(argc, argv)
 	    } 
 	}
 	message[msgsize] = '\n';
-	message[msgsize+1] = '\0';
-	msgsize += 2;
+	msgsize += 1;
     } else {
 	if (isatty(0)) {
 	    for (;;) {
@@ -286,7 +285,6 @@ main(argc, argv)
 		msgsize += strlen(bfr);
 	    }
 	    message = realloc(message, (unsigned)(msgsize+1));
-	    message[msgsize++] = '\0';
 	}
 	else {	/* Use read so you can send binary messages... */
 	    while (nchars = read(fileno(stdin), bfr, sizeof bfr)) {
@@ -300,7 +298,6 @@ main(argc, argv)
 	    }
 	    /* end of msg */
 	    message = realloc(message, (unsigned)(msgsize+1));
-	    message[msgsize++] = '\0';	/* null-terminate */
 	} 
     }
 
