@@ -177,7 +177,7 @@ ZServerDesc_t *server;
 			server_forward(notice, auth, who);
 		return(ZERR_NONE);
 	}
-	if (!auth) {
+	if (!auth || strcmp(notice->z_sender, notice->z_class_inst)) {
 		zdbug((LOG_DEBUG,"unauthentic ulogin"));
 		sense_logout(notice, who);
 		if (server == me_server)
@@ -450,7 +450,8 @@ struct in_addr *addr;
 		i++;
 	}
 
-	xfree(locations);
+	if (locations)
+	    xfree(locations);
 
 	if (!new_num) {
 		zdbug((LOG_DEBUG,"no more locs"));
@@ -509,7 +510,8 @@ struct sockaddr_in *sin;
 		i++;
 	}
 
-	xfree(locations);
+	if (locations)
+	    xfree(locations);
 
 	if (!new_num) {
 		zdbug((LOG_DEBUG,"no more locs"));
@@ -688,7 +690,8 @@ struct sockaddr_in *who;
 		locations[i] = oldlocs[i - 1];
 		i++;
 	}
-	xfree(oldlocs);
+	if (oldlocs)
+	    xfree(oldlocs);
 	
 	(void) sigsetmask(omask);
 #ifdef DEBUG
