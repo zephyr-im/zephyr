@@ -218,12 +218,12 @@ void finalize_zephyr() /* <<<>>> */
 	 */
 #ifdef DEBUG
 	if (zwgc_debug) {
-	    TRAP( ZCancelSubscriptions(0), "while canceling subscriptions" );
 	    TRAP( ZUnsetLocation(), "while unsetting location" );
+	    TRAP( ZCancelSubscriptions(0), "while canceling subscriptions" );
 	} else {
 #endif /* DEBUG */
-	    (void) ZCancelSubscriptions(0);
 	    (void) ZUnsetLocation();
+	    (void) ZCancelSubscriptions(0);
 #ifdef DEBUG
 	}
 #endif /* DEBUG */
