@@ -20,7 +20,7 @@ static const char rcsid_kstuff_c[] = "$Id$";
 #endif
 #endif
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 
 /* Keep a hash table mapping tickets to session keys, so we can do a fast
  * check of the cryptographic checksum without doing and DES decryptions.
@@ -113,7 +113,7 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
  * get the ticket and write it to the file descriptor
  */
 
-int
+Code_t
 SendKerberosData(fd, ticket, service, host)
      int fd;		/* file descriptor to write onto */
      KTEXT ticket;	/* where to put ticket (return) */
@@ -141,15 +141,15 @@ SendKerberosData(fd, ticket, service, host)
     return 0;
 }
 
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 
-int
+Code_t
 ZCheckRealmAuthentication(notice, from, realm)
     ZNotice_t *notice;
     struct sockaddr_in *from;
     char *realm;
 {       
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     int result;
     char rlmprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
     char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
@@ -229,17 +229,17 @@ ZCheckRealmAuthentication(notice, from, realm)
 
     return ZAUTH_YES;
 
-#else /* !ZEPHYR_USES_KERBEROS */
+#else /* !HAVE_KRB4 */
     return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
 #endif
 }
 
-int
+Code_t
 ZCheckAuthentication(notice, from)
     ZNotice_t *notice;
     struct sockaddr_in *from;
 {	
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     int result;
     char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
     KTEXT_ST authent, ticket;
@@ -315,12 +315,12 @@ ZCheckAuthentication(notice, from)
 
     return ZAUTH_YES;
 
-#else /* !ZEPHYR_USES_KERBEROS */
+#else /* !HAVE_KRB4 */
     return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
 #endif
 }
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 
 static int hash_ticket(p, len)
     unsigned char *p;
@@ -448,5 +448,5 @@ void sweep_ticket_hash_table(arg)
     timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
 }
 
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 
