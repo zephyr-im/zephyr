@@ -15,7 +15,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_subscr_c[] = "$Header$";
+static char rcsid_subscr_c[] = "$Id$";
 #endif SABER
 #endif lint
 
@@ -173,7 +173,7 @@ ZNotice_t *notice;
 		     subs2 != who->zct_subs;
 		     subs2 = subs2->q_forw) {
 			/* for each existing subscription */
-			relation = strcmp(subs->zst_class, subs2->zst_class);
+			relation = strcasecmp(subs->zst_class, subs2->zst_class);
 			if (relation > 0) /* we have passed the last
 					     possible one */
 				break;
@@ -372,7 +372,7 @@ ZNotice_t *notice;
 		     subs2 != who->zct_subs;) {
 			/* for each existing subscription */
 			/* is this what we are canceling? */
-			relation = strcmp(subs4->zst_class, subs2->zst_class);
+			relation = strcasecmp(subs4->zst_class, subs2->zst_class);
 			if (relation > 0) /* we have passed the last
 					     possible one */
 				break;
@@ -1086,13 +1086,13 @@ register ZClient_t *client;
 	     subs != client->zct_subs;
 	     subs = subs->q_forw) {
 		/* for each subscription, do matching */
-		relation = strcmp(notice->z_class, subs->zst_class);
+		relation = strcasecmp(notice->z_class, subs->zst_class);
 		if (relation > 0)	/* past the last possible one */
 			return(0);
 		if (relation < 0)
 			continue;	/* no match */
 		if (strcmp(subs->zst_classinst, WILDCARD_INSTANCE) &&
-		    strcmp(subs->zst_classinst, notice->z_class_inst))
+		    strcasecmp(subs->zst_classinst, notice->z_class_inst))
 			continue;
 		if (strcmp(notice->z_recipient, subs->zst_recipient))
 			continue;
@@ -1143,7 +1143,7 @@ static int
 subscr_equiv(s1, s2)
 register ZSubscr_t *s1, *s2;
 {
-	if (strcmp(s1->zst_classinst,s2->zst_classinst))
+	if (strcasecmp(s1->zst_classinst,s2->zst_classinst))
 		return(0);
 	if (strcmp(s1->zst_recipient,s2->zst_recipient))
 		return(0);
