@@ -38,7 +38,8 @@ static char rcsid_acl_s_c[] = "$Header$";
  * routines and the support needed by the Zephyr server.
  */
 
-#include "zserver.h"			/* includes <sys/file.h> */
+#include "zserver.h"			/* includes <sys/file.h>,
+					 <strings.h> */
 #include <sys/param.h>
 
 /*
@@ -89,6 +90,7 @@ access_init()
 	FILE *registry;
 	ZAcl_t *acl;
 	register int len;
+	register char *colon_idx;
 
 	(void) sprintf(buf, "%s%s", ZEPHYR_ACL_DIR, ZEPHYR_CLASS_REGISTRY);
 	
@@ -97,7 +99,9 @@ access_init()
 		return;
 	}
 	while (fgets(class, 512, registry) != NULL) {
-		if (len = strlen(class))
+		if (colon_idx = index(class, ':'))
+			*colon_idx = '\0';
+		else if (len = strlen(class))
 			class[len - 1] = '\0';
 		acl = (ZAcl_t *) xmalloc(sizeof(ZAcl_t));
 		if (!acl) {
