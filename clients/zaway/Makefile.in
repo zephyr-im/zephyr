@@ -40,9 +40,8 @@ install: zaway
 clean:
 	rm -f ${OBJS} zaway
 
-${OBJS}: ${top_srcdir}/h/sysdep.h ${DESTDIR}${BUILDTOP}/h/config.h
-${OBJS}: ${BUILDTOP}/h/zephyr/zephyr.h \
-	${DESTDIR}${BUILDTOP}/h/zephyr/zephyr_err.h
+${OBJS}: ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
+${OBJS}: ${BUILDTOP}/h/zephyr/zephyr.h ${BUILDTOP}/h/zephyr/zephyr_err.h
 
 .PHONY: all check install clean
 
