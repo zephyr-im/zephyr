@@ -1,0 +1,43 @@
+Milestone 1 (done)
+	  * client library uses as much krb5 as possible to talk to krb4
+	  server, converting tickets and whatnot.  This will be mostly
+	  ripped out, but serves as a proof of concept.  Client will
+	  successfully receive new-style checksums, but this code won't be
+	  tested for a while.
+
+Milestone 2 (written, not tested)
+	  * server will accept new-style checksums and authenticators, as
+	  well as old-style.  It will never send them, and "bad things"
+	  will happen if non-DES enctypes get used.
+	  * Note that this will allow krb5 interrealm clients, and there
+	  are no brain-dump issues to deal with.  This is aesthetically
+	  unpleasing, however.
+
+Milestone 3
+	  * client sends only new-style messages
+
+Milestone 4
+	  * server sends only newstyle messages, and can't brain dump the
+	  new keys.  (this tests the codepath opened in milestone 1)
+
+Milestone 5
+	  * server can send new or old-style messages depending on how the
+	  client subscribed.
+	  * server can brain dump newstyle keys, and figure out whether
+	  the rest of the federation speaks them.
+
+Milestone 6
+	  * zhm can figure out what sort of realm it's talking to, and
+	  communicate this to the client.
+
+-send to derrick-
+
+Milestone 7
+	  * brain dump via krb5, encrypted
+
+Milestone 8
+	  * bring sourceforge up to date
+
+Milestone 9
+	  * cough up a release of sourceforge
+	
