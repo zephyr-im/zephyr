@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xselect_c[] = "$Header$";
+static char rcsid_xselect_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
