@@ -4,6 +4,9 @@
 /* Define to compile with Kerberos support. */
 #undef HAVE_KRB4
 
+/* Define to compile with ares support. */
+#undef HAVE_ARES
+
 /* Define to a signed 32-bit integral type. */
 #define ZEPHYR_INT32 long
 

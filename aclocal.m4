@@ -22,8 +22,8 @@ dnl		Generates error if com_err not found.
 dnl	ATHENA_UTIL_SS
 dnl		Generates error if ss not found.
 dnl	ATHENA_REGEXP
-dnl		Sets RX_LIBS if rx library used; ensures POSIX regexp
-dnl		support.
+dnl		Sets REGEX_LIBS if rx library used; ensures POSIX
+dnl		regexp support.
 dnl	ATHENA_MOTIF
 dnl		Sets MOTIF_LIBS and defines HAVE_MOTIF if Motif used.
 dnl	ATHENA_MOTIF_REQUIRED
@@ -52,6 +52,11 @@ dnl		Sets HESIOD_LIBS and defines HAVE_HESIOD if Hesiod
 dnl		used.
 dnl	ATHENA_HESIOD_REQUIRED
 dnl		Generates error if Hesiod not found.
+dnl	ATHENA_ARES
+dnl		Sets ARES_LIBS and defines HAVE_ARES if libares
+dnl		used.
+dnl	ATHENA_ARES_REQUIRED
+dnl		Generates error if libares not found.
 dnl
 dnl All of the macros may extend CPPFLAGS and LDFLAGS to let the
 dnl compiler find the requested libraries.  Put ATHENA_UTIL_COM_ERR
@@ -291,4 +296,35 @@ if test "$hesiod" != no; then
 	ATHENA_HESIOD_CHECK
 else
 	AC_MSG_ERROR(This package requires Hesiod.)
+fi])
+
+dnl ----- libares -----
+
+AC_DEFUN(ATHENA_ARES_CHECK,
+[AC_CHECK_FUNC(res_send, :, AC_CHECK_LIB(resolv, res_send))
+if test "$ares" != yes; then
+	CPPFLAGS="$CPPFLAGS -I$ares/include"
+	LDFLAGS="$LDFLAGS -L$ares/lib"
+fi
+AC_CHECK_LIB(ares, ares_init, :, [AC_MSG_ERROR(libares not found)])])
+
+AC_DEFUN(ATHENA_ARES,
+[AC_ARG_WITH(ares,
+	[  --with-ares=PREFIX      Use libares],
+	[ares="$withval"], [ares=no])
+if test "$ares" != no; then
+	ATHENA_ARES_CHECK
+	ARES_LIBS="-lares"
+	AC_DEFINE(HAVE_ARES)
+fi
+AC_SUBST(ARES_LIBS)])
+
+AC_DEFUN(ATHENA_ARES_REQUIRED,
+[AC_ARG_WITH(ares,
+	[  --with-ares=PREFIX      Specify location of libares],
+	[ares="$withval"], [ares=yes])
+if test "$ares" != no; then
+	ATHENA_ARES_CHECK
+else
+	AC_MSG_ERROR(This package requires libares.)
 fi])
