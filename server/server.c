@@ -1579,7 +1579,7 @@ register int from, to;
 {
 	/* XXX release any private queue for this server */
 
-	register ZNotAcked_t *nacked, *nack2;
+	register ZNotAcked_t *nacked;
 
 	/* search the not-yet-acked list for anything destined to 'from', and
 	   change the index to 'to'. */
