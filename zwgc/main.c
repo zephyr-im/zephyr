@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_main_c[] = "$Header$";
+static char rcsid_main_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -104,8 +104,7 @@ static void read_in_description_file()
 
 /*    var_clear_all_variables(); <<<>>> */
 
-    input_file = locate_file(description_filename_override, ".zwgc.desc",
- "/afs/athena.mit.edu/astaff/project/zephyr/src/zwgc/zwgc.dev/misc/zwgc.desc");
+    input_file = locate_file(description_filename_override, USRDESC, DEFDESC);
     if (input_file)
       program = parse_file(input_file);
     else
