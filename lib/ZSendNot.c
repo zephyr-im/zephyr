@@ -14,7 +14,7 @@
 
 #ifndef lint
 static char rcsid_ZSendNotice_c[] = "$Header$";
-#endif lint
+#endif
 
 #include <zephyr/mit-copyright.h>
 

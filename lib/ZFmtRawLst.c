@@ -14,7 +14,7 @@
 
 #ifndef lint
 static char rcsid_ZFormatRawNoticeList_c[] = "$Header$";
-#endif lint
+#endif
 
 #include <zephyr/mit-copyright.h>
 
@@ -42,7 +42,7 @@ Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len)
 
     *ret_len = hdrlen+size;
     
-    if (!(*buffer = malloc((unsigned) *ret_len)))
+    if (!(*buffer = (char *) malloc((unsigned) *ret_len)))
 	return (ENOMEM);
 
     bcopy(header, *buffer, hdrlen);
