@@ -11,7 +11,7 @@
 #define no_curdir_lint
 
 SRCDIR= ${SRCTOP}/clients
-CODE= Imakefile
+CODE= Imakefile ${SHELLSRC}
 
 #ifdef DO_SYSLOG
 SYSLOGD= syslogd
@@ -32,10 +32,13 @@ SUBDIRS = zaway zctl zinit zleave zlocate \
 
 #ifdef OLD_ATHENA_COMPAT
 SHELLSCRIPTS= zlogout zhide zwgc
+SHELLSRC= zlogout.sh zhide.sh zwgc.sh
 
 install_shell_scripts(SHELLSCRIPTS,$(CLIENTDIR))
 
 install::
 	rm -f ${DESTDIR}${CLIENTDIR}/zlogin
 	ln -s zlogout ${DESTDIR}${CLIENTDIR}/zlogin
+#else
+SHELLSRC=
 #endif
