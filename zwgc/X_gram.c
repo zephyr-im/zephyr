@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_X_gram_c[] = "$Header$";
+static char rcsid_X_gram_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -27,13 +27,11 @@ static char rcsid_X_gram_c[] = "$Header$";
 #include "X_fonts.h"
 #include "error.h"
 #include "new_string.h"
+#include "xrevstack.h"
+#include "xerror.h"
 
 extern XContext desc_context;
 extern char *app_instance;
-
-#ifdef REVSTACK
-extern void add_to_bottom();
-#endif
 
 /*
  *
@@ -50,12 +48,6 @@ static Window group_leader; /* In order to have transient windows,
 			     * I need a top-level window to always exist
 			     */
 static XClassHint classhint;
-
-#ifdef REVSTACK
-int reverse_stack=0;
-extern x_gram *bottom_gram;
-extern Window just_added;
-#endif
 
 /* ICCCM note:
  *
@@ -101,9 +93,7 @@ void x_gram_init(dpy)
     XWMHints wmhints;
 
     reverse_video = get_bool_resource("reverseVideo", "ReverseVideo", 0);
-#ifdef REVSTACK
     reverse_stack = get_bool_resource("reverseStack", "ReverseStack", 0);
-#endif
 
     temp = get_string_resource("borderWidth", "BorderWidth");
     /* <<<>>> */
@@ -202,9 +192,7 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize)
     w = XCreateSimpleWindow(dpy,DefaultRootWindow(dpy),xpos,ypos,xsize,
 			    ysize,border_width,foreground_color,
 			    background_color);
-#ifdef REVSTACK
     gram->w=w;
-#endif
 
     XDefineCursor(dpy, w, cursor);
     
@@ -225,66 +213,55 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize)
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
     XSelectInput(dpy, w, ExposureMask|ButtonReleaseMask|ButtonPressMask
 		 |EnterWindowMask|LeaveWindowMask|Button1MotionMask|
-		 Button3MotionMask|
-#ifdef REVSTACK
-		 (reverse_stack?StructureNotifyMask:0));
-#else
-                 0);
+		 Button3MotionMask
+#ifdef notdef
+		 |StructureNotifyMask
 #endif
+		 );
 
     XMapWindow(dpy, w);
 
-#ifdef REVSTACK
-    if (reverse_stack) {
-       XWindowChanges winchanges;
-       int cfgerr;
-       XEvent ev;
-       Window bottom_window=(bottom_gram?bottom_gram->w:0);
+   if (reverse_stack) {
+      if (bottom_gram) {
+	 XWindowChanges winchanges;
+	 
+	 winchanges.sibling=bottom_gram->w;
+	 winchanges.stack_mode=Below;
+	 begin_xerror_trap(dpy);
+	 XConfigureWindow(dpy,w,CWSibling|CWStackMode,&winchanges);
+	 end_xerror_trap(dpy);
 
-       winchanges.sibling=bottom_window;
-       winchanges.stack_mode=bottom_window?Below:Above;
-       if ((cfgerr=XConfigureWindow(dpy,w,(bottom_window?CWSibling:0)|
-				    CWStackMode,&winchanges))>1) {
-	  /* ICCCM compliance code:  This can happen under reparenting
-	     window managers.  This is the compliant code: */
-	  ev.type=ConfigureRequest;
-	  ev.xconfigurerequest.parent=RootWindow(dpy,DefaultScreen(dpy));
-	  ev.xconfigurerequest.window=w;
-	  ev.xconfigurerequest.above=bottom_window;
-	  ev.xconfigurerequest.detail=bottom_window?Below:Above;
-	  ev.xconfigurerequest.value_mask=(bottom_window?CWSibling:0)|
-	                                  CWStackMode;
-	  if ((cfgerr=XSendEvent(dpy,RootWindow(dpy,DefaultScreen(dpy)),False,
-				  SubstructureRedirectMask|
-				  SubstructureNotifyMask,&ev))>1)
-	    /* the event didn't go.  Print error, continue */
-	    ERROR("error configuring window to the bottom of the stack\n");
-       }
+	 /* ICCCM compliance code:  This will happen under reparenting
+	    window managers.  This is the compliant code: */
+	 if (xerror_happened) {
+	    XEvent ev;
+	    
+	    ev.type=ConfigureRequest;
+	    ev.xconfigurerequest.parent=DefaultRootWindow(dpy);
+	    ev.xconfigurerequest.window=w;
+	    ev.xconfigurerequest.above=bottom_gram->w;
+	    ev.xconfigurerequest.detail=Below;
+	    ev.xconfigurerequest.value_mask=CWSibling|CWStackMode;
+	    begin_xerror_trap(dpy);
+	    XSendEvent(dpy,RootWindow(dpy,DefaultScreen(dpy)),
+		       False,SubstructureRedirectMask|
+		       SubstructureNotifyMask,&ev);
+	    end_xerror_trap(dpy);
+	    if (xerror_happened) {
+	       /* the event didn't go.  Print error, continue */
+	       ERROR("error configuring window to the bottom of the stack\n");
+	    }
+	 } else {
+	    xerror_happened = 0;
+	 }
+      }
+      add_to_bottom(gram);
+      if (xerror_happened)
+	pull_to_top(gram);
+   }
 
-       gram->above = gram;
-       gram->below = gram;
-       XSync(dpy,False);
-    }
-#endif
-
-    XFlush(dpy);
+   XFlush(dpy);
 }
-
-#ifdef notdef
-int intersect(r1x1,r1y1,r1x2,r1y2,r2x1,r2y1,r2x2,r2y2)
-int r1x1,r1y1,r1x2,r1y2,r2x1,r2y1,r2x2,r2y2;
-{
-#define Inside(x,y,x1,y1,x2,y2) ((x>=x1)&&(x<=x2)&&(y>=y1)&&(y<=y2))
-   return(Inside(r1x1,r1y1,r2x1,r2y1,r2x2,r2y2) ||
-	  Inside(r1x1,r1y2,r2x1,r2y1,r2x2,r2y2) ||
-	  Inside(r1x2,r1y1,r2x1,r2y1,r2x2,r2y2) ||
-	  Inside(r1x2,r1y2,r2x1,r2y1,r2x2,r2y2) ||
-	  Inside(r2x1,r2y1,r1x1,r1y1,r1x2,r1y2) ||
-	  Inside(r2x1,r2y2,r1x1,r1y1,r1x2,r1y2) ||
-	  Inside(r2x2,r2y1,r1x1,r1y1,r1x2,r1y2) ||
-	  Inside(r2x2,r2y2,r1x1,r1y1,r1x2,r1y2));
-}
-#endif
 
 void x_gram_draw(dpy, w, gram, region)
      Display *dpy;

@@ -16,8 +16,60 @@
 static char rcsid_xrevstack_c[] = "$Id$";
 #endif
 
-#ifdef REVSTACK
 #include <zephyr/mit-copyright.h>
+
+#define REVSTACK
+
+#ifdef REVSTACK
+#include "X_gram.h"
+#include <stdio.h>
+
+x_gram *bottom_gram = NULL;
+int reverse_stack = 0;
+
+void add_to_bottom(gram)
+     x_gram *gram;
+{
+   if (bottom_gram) {
+      bottom_gram->below = gram;
+      gram->below = NULL;
+      gram->above = bottom_gram;
+      bottom_gram = gram;
+   } else {
+      gram->above = NULL;
+      gram->below = NULL;
+      bottom_gram = gram;
+   }
+}
+
+void pull_to_top(gram)
+     x_gram *gram;
+{}
+
+void push_to_bottom(gram)
+     x_gram *gram;
+{}
+
+void delete_gram(gram)
+     x_gram *gram;
+{
+   if (gram == bottom_gram) {
+      if (gram->above) {
+	 bottom_gram = gram->above;
+	 bottom_gram->below = NULL;
+      } else {
+	 bottom_gram = NULL;
+      }
+   } else {
+      if (gram->above)
+	gram->above->below = gram->below;
+      gram->below->above = gram->above;     
+   }
+}
+
+#endif
+
+#ifdef TRUEREVSTACK
 
 #include "X_gram.h"
 #include "zwgc.h"
@@ -177,4 +229,4 @@ x_gram *gram;
 #endif
 }
 
-#endif /* REVSTACK */
+#endif /* TRUEREVSTACK */
