@@ -21,6 +21,9 @@
 /*
  * DECstation ULTRIX
  */
+#ifdef ultrix
+#define SYSLOG_COMPAT42
+#endif
 
 
 /* 
@@ -149,6 +152,7 @@ clean::
 #ifdef linux
 #define NOLINT
 #define NOPROF
+#define SYSLOG_COMPAT42
 #endif
 
 
