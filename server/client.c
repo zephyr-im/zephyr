@@ -18,21 +18,22 @@
 static char rcsid_client_s_c[] = "$Header$";
 #endif SABER
 #endif lint
+
 /*
  * External functions:
  *
  * Code_t client_register(notice, who, client, server)
- * ZNotice_t *notice;
- * struct sockaddr_in *who;
- * ZClient_t **client; (RETURN)
- * ZServerDesc_t *server;
+ *	ZNotice_t *notice;
+ *	struct sockaddr_in *who;
+ *	ZClient_t **client; (RETURN)
+ *	ZServerDesc_t *server;
  *
  * Code_t client_deregister(client)
- * ZClient_t *client;
+ *	ZClient_t *client;
  *
  * ZClient_t *client_which_client(who, notice)
- * struct sockaddr_in *who;
- * ZNotice_t *notice;
+ *	struct sockaddr_in *who;
+ *	ZNotice_t *notice;
  */
 
 #include "zserver.h"
@@ -46,6 +47,7 @@ static char rcsid_client_s_c[] = "$Header$";
  * This routine assumes that the client has not been registered yet.
  * The caller should check by calling client_which_client
  */
+
 Code_t
 client_register(notice, who, client, server)
 ZNotice_t *notice;
@@ -58,26 +60,28 @@ ZServerDesc_t *server;
 	register ZClientList_t *clist;
 
 	/* allocate a client struct */
-	if ((*client = (ZClient_t *) xmalloc(sizeof(ZClient_t))) == NULLZCNT)
+	if (!(*client = (ZClient_t *) xmalloc(sizeof(ZClient_t))))
 		return(ENOMEM);
 
 	/* chain the client's host onto this server's host list */
 
-	if (!hlp)			/* bad host list */
-		return(EINVAL);
+	if (!hlp) {			/* bad host list */
+		syslog(LOG_ERR, "cl_register: bad server host list");
+		abort();
+	}
 
-	if ((hlp2 = hostm_find_host(&who->sin_addr)) == NULLZHLT)
+	if (!(hlp2 = hostm_find_host(&who->sin_addr)))
 		/* not here */
 		return(ZSRV_HNOTFOUND);
 
 	/* hlp2 is now pointing to the client's host's address struct */
 
-	if (hlp2->zh_clients == NULLZCLT) {
+	if (!hlp2->zh_clients) {
 		xfree(*client);
 		return(EINVAL);
 	}
 
-	if ((clist = (ZClientList_t *)xmalloc(sizeof(ZClientList_t))) == NULLZCLT) {
+	if (!(clist = (ZClientList_t *)xmalloc(sizeof(ZClientList_t)))) {
 		xfree(*client);
 		return(ENOMEM);
 	}
@@ -120,7 +124,7 @@ ZHostList_t *host;
 
 	/* unthread and release this client */
 
-	if (host->zh_clients != NULLZCLT)
+	if (host->zh_clients)
 		for (clients = host->zh_clients->q_forw;
 		     clients != host->zh_clients;
 		     clients = clients->q_forw)
@@ -147,17 +151,17 @@ ZNotice_t *notice;
 	register ZHostList_t *hlt;
 	register ZClientList_t *clients;
 
-	zdbug1("which_client entry");
+	zdbug((LOG_DEBUG,"which_client entry"));
 
-	if ((hlt = hostm_find_host(&who->sin_addr)) == NULLZHLT) {
-		zdbug1("host not found");
+	if (!(hlt = hostm_find_host(&who->sin_addr))) {
+		zdbug((LOG_DEBUG,"host not found"));
 		return(NULLZCNT);
 	}
 
-	zdbug2("host %s",inet_ntoa(hlt->zh_addr.sin_addr));
+	zdbug((LOG_DEBUG,"host %s",inet_ntoa(hlt->zh_addr.sin_addr)));
 	
-	if (hlt->zh_clients == NULLZCLT) {
-		zdbug1("no clients");
+	if (!hlt->zh_clients) {
+		zdbug((LOG_DEBUG,"no clients"));
 		return(NULLZCNT);
 	}
 
@@ -165,10 +169,10 @@ ZNotice_t *notice;
 	     clients != hlt->zh_clients;
 	     clients = clients->q_forw)
 		if (clients->zclt_client->zct_sin.sin_port == notice->z_port) {
-			zdbug2("match port %d", ntohs(notice->z_port));
+			zdbug((LOG_DEBUG,"match port %d", ntohs(notice->z_port)));
 			return(clients->zclt_client);
 		}
-	zdbug1("no port");
+	zdbug((LOG_DEBUG,"no port"));
 
 	return(NULLZCNT);
 }
