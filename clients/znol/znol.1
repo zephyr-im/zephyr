@@ -1,0 +1,72 @@
+.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
+.\" specifies the terms and conditions for redistribution.
+.\"
+.\"	@(#)znol.1	6.1 (MIT) 7/9/87
+.\"
+.TH ZNOL 1 "July 14, 1987"
+.SH NAME
+znol \- notify on login or logout of interesting people
+.SH SYNOPSIS
+.B znol
+[
+.BI on|off
+] [
+.BI -f \ file
+] [
+.BI -l
+] [
+.BI -q
+]
+.SH DESCRIPTION
+.I Znol
+provides a way for you to be notified when interesting people log in
+or out.  It uses the
+.I Zephyr(1)
+Notification Service, which causes a message to appear on your screen
+for every person specified in a namelist (which defaults to
+$HOME/.anyone).  Anyone in the namelist who is logged in when
+.I znol
+is executed is printed to stdout.  The control arguments are as
+follows:
+.TP 12
+.B on|off
+Turns notification on or off.
+.TP
+.B \-f
+The namelist file is taken to be
+.I file.
+If
+.I file
+does not exist, an error message is printed, and
+.I znol
+exits.
+.TP
+.B \-l
+Causes
+.I znol
+to just list the people in the namelist who are currently logged in,
+without subscribing to the login messages.  Cannot be used with the
+.BI \-q
+option.
+.TP
+.B \-q
+Disables printing who is currently logged in when subscribing.  Cannot
+be used with the
+.BI \-l
+option.
+.SH FILES
+$HOME/.anyone
+.SH SEE ALSO
+anyone(SIPB), nol(SIPB), zctl(1), zephyr(1), zwgc(1), hm(8), zephyrd(8)
+.br
+`Zephyr Notification Service'
+.SH AUTHOR
+.PP
+Robert S. French (MIT-Project Athena)
+.sp
+Copyright (c) 1987 by the Massachusetts Institute of Technology
+.br
+See
+.I zephyr(1)
+for a full copyright notice.
