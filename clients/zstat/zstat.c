@@ -342,6 +342,7 @@ srv_stat(host)
 	printf("\n");
 	
 	(void) close(sock);
+	ZFreeNotice(&notice);
 	return(0);
 }
 
