@@ -25,8 +25,4 @@
 #define	ADMIN_KILL_CLT	"KILL_CLIENT"	/* Opcode: client is dead, remove */
 #define	ADMIN_STATUS	"STATUS"	/* Opcode: please send status */
 
-#define	ADMIN_LIMBO	"LIMBO"		/* Class inst: please send limbo info*/
-#define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
-#define	ADMIN_ME	"MY_STATE"	/* Class inst: please send my info */
-
 #endif /* !__ZSERVER_H__ */

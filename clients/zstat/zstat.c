@@ -11,52 +11,40 @@
  *      "mit-copyright.h". 
  */
 
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
-#include <sys/param.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <stdio.h>
-#include <string.h>
-#include <signal.h>		/* BSD includes this from <sys/param.h>,
-				   but AIX does not. */
 #include "zserver.h"
 
 #if !defined(lint) && !defined(SABER)
 static char rcsid_zstat_c[] = "$Id$";
 #endif
 
-#ifdef __STDC__
-const
-#endif
-  char *hm_head[] = { "Current server =",
-		     "Items in queue:",
-		     "Client packets received:",
-		     "Server packets received:",
-		     "Server changes:",
-		     "Version:",
-		     "Looking for a new server:",
-		     "Time running:",
-		     "Size:",
-		     "Machine type:"
+const char *hm_head[] = {
+    "Current server =",
+    "Items in queue:",
+    "Client packets received:",
+    "Server packets received:",
+    "Server changes:",
+    "Version:",
+    "Looking for a new server:",
+    "Time running:",
+    "Size:",
+    "Machine type:"
 };
 #define	HM_SIZE	(sizeof(hm_head) / sizeof (char *))
-#ifdef __STDC__
-const
-#endif
-  char *srv_head[] = { 
-	"Current server version =",
-	"Packets handled:",
-	"Uptime:",
-	"Server states:",
+const char *srv_head[] = { 
+    "Current server version =",
+    "Packets handled:",
+    "Uptime:",
+    "Server states:",
 };
 #define	SRV_SIZE	(sizeof(srv_head) / sizeof (char *))
 
 int outoftime = 0;
 
-#if defined(ultrix) || defined(POSIX)
-void
-#endif
-timeout()
+RETSIGTYPE timeout()
 {
 	outoftime = 1;
 }
@@ -158,10 +146,10 @@ hm_stat(host,server)
 	int sock,i,nf,ret;
 	struct hostent *hp;
 	struct sockaddr_in sin;
-	long runtime;
+	time_t runtime;
 	struct tm *tim;
 	ZNotice_t notice;
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	struct sigaction sa;
 #endif
 	
@@ -207,7 +195,7 @@ hm_stat(host,server)
 		com_err("zstat", ret, "sending notice");
 		exit(-1);
 	}
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	sa.sa_handler = timeout;
@@ -268,9 +256,9 @@ srv_stat(host)
 	struct hostent *hp;
 	struct sockaddr_in sin;
 	ZNotice_t notice;
-	long runtime;
+	time_t runtime;
 	struct tm *tim;
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	struct sigaction sa;
 #endif
 		
@@ -317,7 +305,7 @@ srv_stat(host)
 		exit(-1);
 	}
 
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	sa.sa_handler = timeout;
