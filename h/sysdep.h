@@ -89,7 +89,7 @@ char *strchr(), *strrchr();
 #endif
 
 /* Because we have public header files (and our prototypes need to agree with
- * those header files, use __STDC__ to guess whether the compiler can handle
+ * those header files), use __STDC__ to guess whether the compiler can handle
  * stdarg, const, and prototypes. */
 #ifdef __STDC__
 # include <stdarg.h>
