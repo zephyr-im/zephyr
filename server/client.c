@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -15,7 +15,7 @@
 
 #if !defined (lint) && !defined (SABER)
 static const char rcsid_client_c[] =
-    "$Header$";
+    "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/server/RCS/client.C,v 1.19 90/11/13 17:05:00 raeburn Exp $";
 #endif
 
 /*
@@ -100,8 +100,10 @@ client_register(ZNotice_t *notice, struct sockaddr_in *who, register ZClient_t *
 	/* initialize the struct */
 	bzero((caddr_t) &(*client)->zct_sin,
 	      sizeof(struct sockaddr_in));
+#ifdef KERBEROS
 	bzero((caddr_t) &(*client)->zct_cblock,
 	      sizeof((*client)->zct_cblock));
+#endif
 	(*client)->zct_sin.sin_addr.s_addr = who->sin_addr.s_addr;
 	(*client)->zct_sin.sin_port = notice->z_port;
 	(*client)->zct_sin.sin_family = AF_INET;
