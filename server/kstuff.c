@@ -223,7 +223,7 @@ check_cache (notice, from)
 	    return ZAUTH_FAILED;
 	}
 #ifndef NOENCRYPTION
-	bcopy (a->session_key, __Zephyr_session, sizeof (C_Block));
+	_BCOPY (a->session_key, __Zephyr_session, sizeof (C_Block));
 #endif
 	return ZAUTH_YES;
     }
@@ -307,9 +307,9 @@ ZCheckAuthentication(notice, from)
 			    SERVER_INSTANCE, (int) from->sin_addr.s_addr, 
 			    &dat, SERVER_SRVTAB);
 	if (result == RD_AP_OK) {
-	    bcopy ((void *) dat.session, (void *) a.session_key,
+	    _BCOPY ((void *) dat.session, (void *) a.session_key,
 		   sizeof(C_Block));
-	    bcopy((char *)dat.session, (char *)__Zephyr_session, 
+	    _BCOPY((char *)dat.session, (char *)__Zephyr_session, 
 		  sizeof(C_Block));
 	    (void) sprintf(srcprincipal, "%s%s%s@%s", dat.pname, 
 			   dat.pinst[0]?".":"", dat.pinst, dat.prealm);
