@@ -37,7 +37,7 @@ extern void usage();
 /* DEFDESC points to where the system default description is stored */
 
 #ifndef DEFDESC
-#define DEFDESC "/etc/athena/zwgc.desc"
+#define DEFDESC "/usr/athena/lib/zephyr/zwgc.desc"
 #endif
 
 #endif
