@@ -237,6 +237,8 @@ timer_timeout(tvbuf)
 {
     if (num_timers > 0) {
 	tvbuf->tv_sec = heap[0]->abstime - NOW;
+	if (tvbuf->tv_sec < 0)
+	    tvbuf->tv_sec = 0;
 	tvbuf->tv_usec = 0;
 	return tvbuf;
     } else {
