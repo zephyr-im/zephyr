@@ -113,9 +113,6 @@ struct _Client {
     C_Block		session_key;	/* session key for this client */
 #endif /* HAVE_KRB4 */
     String		*principal;	/* krb principal of user */
-    time_t		last_check;	/* last time the other server was
-					   asked to check */
-    long		last_msg;	/* last message sent to this client */
     int			last_send;	/* Counter for last sent packet. */
     Realm		*realm;
     struct _Client	*next, **prev_p;
@@ -222,7 +219,7 @@ Code_t client_register __P((ZNotice_t *notice, struct in_addr *host,
 void client_deregister __P((Client *client, int flush)); 
 void client_flush_host __P((struct in_addr *host));
 void client_dump_clients __P((FILE *fp));
-Client *client_which_client __P((struct in_addr *host, ZNotice_t *notice));
+Client *client_find __P((struct in_addr *host, unsigned int port));
 Code_t client_send_clients __P((void));
 
 /* found in common.c */

@@ -676,7 +676,6 @@ rexmit(arg)
 {
     Unacked *nacked = (Unacked *) arg;
     int retval;
-    ZNotice_t dummy_notice;
     Client *client;
 
 #if 1
@@ -688,9 +687,8 @@ rexmit(arg)
     nacked->rexmits++;
     if (rexmit_times[nacked->rexmits] == -1) {
 	/* Unresponsive client, find it in our database. */
-	dummy_notice.z_port = nacked->dest.addr.sin_port;
-	client = client_which_client(&nacked->dest.addr.sin_addr,
-				     &dummy_notice);
+	client = client_find(&nacked->dest.addr.sin_addr,
+			     nacked->dest.addr.sin_port);
 
 	/* unlink & free nacked */
 	LIST_DELETE(nacked);
@@ -1035,7 +1033,7 @@ control_dispatch(notice, auth, who, server)
 	    return ZERR_NONE;
 	}
     } else if (strcmp(opcode, CLIENT_UNSUBSCRIBE) == 0) {
-	client = client_which_client(&who->sin_addr, notice);
+	client = client_find(&who->sin_addr, notice->z_port);
 	if (client != NULL) {
 	    if (strcmp(client->principal->string, notice->z_sender) != 0) {
 		/* you may only cancel for your own clients */
@@ -1063,7 +1061,7 @@ control_dispatch(notice, auth, who, server)
 	}
     } else if (strcmp(opcode, CLIENT_CANCELSUB) == 0) {
 	/* canceling subscriptions implies I can punt info about this client */
-	client = client_which_client(&who->sin_addr, notice);
+	client = client_find(&who->sin_addr, notice->z_port);
 	if (client == NULL) {
 #if 0
 	    zdbug((LOG_DEBUG,"can_sub not found client"));

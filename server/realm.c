@@ -450,8 +450,6 @@ realm_init()
 #endif
     sprintf(rlmprinc, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE, rlm->name);
     client->principal = make_string(rlmprinc, 0);
-    client->last_msg = 0;
-    client->last_check = 0;
     client->last_send = 0;
     client->subs = NULL;
     client->realm = rlm;
