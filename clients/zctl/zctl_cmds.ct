@@ -1,3 +1,7 @@
+#	$Source$
+#	$Author$
+#	$Header$
+#
 	command_table	zctl_cmds;
 
 	request		set_file, "Set default subscriptions file.",
@@ -24,8 +28,13 @@
 	request		sub_file, "Subscribe and add to subscriptions file.",
 			add;
 
-	request		sub_file, "Unsubscribe and delete from subscriptions file.",
+	request		sub_file, "Unsubscribe and add to subscriptions file\n                         as un-subscription.",
+			add_unsubscription, add_un;
+
+	request		sub_file, "Unsubscribe and delete subscription from\n                         subscriptions file.",
 			delete, del, dl;
+	request		sub_file, "Delete unsubscription from subscriptions file.",
+			delete_unsubscription, del_un;
 
 	request		current, "Retrieve current subscriptions.",
 			retrieve, ret;
@@ -33,7 +42,7 @@
 	request		current, "Retrieve system-wide default subscriptions.",
 			defaults, defs;
 
-	request		current, "Save current subscriptions.",
+	request		current, "Save current subscriptions (replacing existing file).",
 			save;
 
 	request		show_var, "Show a variable's value.",
@@ -60,7 +69,7 @@
 	request		hm_control, "Tell the HostManager to find a new server.",
 			new_server;
 
-	request		flush_locations, "Flush all current location information.",
+	request		flush_locations, "Flush all location information.",
 			flush_locs;
 
 	request		ss_list_requests, "List available commands.",
