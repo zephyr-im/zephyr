@@ -15,6 +15,9 @@ OBJS = zstat.o
 SRCDIR= ${SRCTOP}/clients/zstat
 CODE= ${SRCS} Imakefile
 
+/* dummy rule so 'make' means 'make all' */
+all::
+
 depend::
 	(cd ../../server; make src)
 normal_obj_rule()
