@@ -1,0 +1,164 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(server/server.c)
+
+if test ! -d h; then mkdir h; fi
+if test ! -d h/zephyr; then mkdir h/zephyr; fi
+
+dnl Command-line option to enable Athena paths.
+AC_ARG_ENABLE(athena,
+	      [  --enable-athena         Use Athena paths],
+	      [hesiod=yes
+	       kerberos=yes
+	       if test "${prefix}" = "NONE"; then prefix=/usr/athena; fi
+	       datadir=${prefix}/lib/zephyr
+	       confdir=/etc/athena/zephyr
+	       sbindir=${prefix}/etc
+	       lsbindir=/etc/athena
+	       COMPILE_ET=compile_et
+	       MK_CMDS=mk_cmds
+	       CPPFLAGS="${CPPFLAGS} -I/usr/athena/include"
+	       LDFLAGS="${LDFLAGS} -L/usr/athena/lib"
+	       INITPROGS=${lsbindir}/zinit],
+	      [if test "${prefix}" = "NONE"; then prefix=/usr/local; fi
+	       datadir=${prefix}/share/zephyr
+	       confdir=${prefix}/etc/zephyr
+	       sbindir=${prefix}/sbin
+	       lsbindir=${prefix}/sbin
+	       SUPPORT_LIBS="et ss"
+	       ET_LDFLAGS='-L$(BUILDTOP)/lib/et'
+	       ETDEP='$(BUILDTOP)/lib/et/libcom_err.a'
+	       SS_LDFLAGS='-L$(BUILDTOP)/lib/ss'
+	       SSDEP='$(BUILDTOP)/lib/ss/libss.a'
+	       COMPILE_ET='$(BUILDTOP)/lib/et/compile_et'
+	       MK_CMDS='$(BUILDTOP)/lib/ss/mk_cmds'
+	       INITPROGS=true
+	       if test ! -d h/ss; then mkdir h/ss; fi
+	       cp ${srcdir}/lib/et/com_err.h h
+	       cp ${srcdir}/lib/ss/*.h h/ss])
+
+AC_SUBST(confdir)
+AC_SUBST(datadir)
+AC_SUBST(sbindir)
+AC_SUBST(lsbindir)
+AC_SUBST(SUPPORT_LIBS)
+AC_SUBST(ET_LDFLAGS)
+AC_SUBST(ETDEP)
+AC_SUBST(SS_LDFLAGS)
+AC_SUBST(SSDEP)
+AC_SUBST(COMPILE_ET)
+AC_SUBST(MK_CMDS)
+AC_SUBST(INITPROGS)
+AC_DEFINE_UNQUOTED(CONFDIR, "${confdir}")
+AC_DEFINE_UNQUOTED(DATADIR, "${datadir}")
+
+dnl Command-line option to disable Hesiod support
+AC_ARG_WITH(hesiod,
+	    [  --with-hesiod=PREFIX    Compile with Hesiod support],
+	    [hesiod="$withval"], [hesiod=${hesiod-no}])
+if test "$hesiod" != "no"; then
+	if test "$hesiod" != "yes"; then
+		CPPFLAGS="${CPPFLAGS} -I${hesiod}/include"
+		LDFLAGS="${LDFLAGS} -L${hesiod}/lib"
+	fi
+	AC_DEFINE(ZEPHYR_USES_HESIOD)
+	INSTALLED_LIBS="${INSTALLED_LIBS} -lhesiod"
+fi
+
+dnl Command-line option to disable Kerberos support
+AC_ARG_WITH(krb4,
+	    [  --with-krb4=PREFIX      Compile with Kerberos support],
+	    [kerberos="$withval"], [kerberos=${kerberos-no}])
+if test "$kerberos" != "no"; then
+	if test "$kerberos" != "yes"; then
+		CPPFLAGS="${CPPFLAGS} -I${kerberos}/include"
+		LDFLAGS="${LDFLAGS} -L${kerberos}/lib"
+	fi
+	AC_DEFINE(ZEPHYR_USES_KERBEROS)
+	INSTALLED_LIBS="${INSTALLED_LIBS} -lkrb -ldes"
+else
+	AC_WARN(compiling without Kerberos support; Zephyr will be
+insecure.)
+fi
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+
+AC_MSG_CHECKING(location of temporary directory)
+if test -d /var/tmp; then
+	found_tmp=/var/tmp
+elif test -d /usr/tmp; then
+	found_tmp=/usr/tmp
+else
+	found_tmp=/tmp
+fi
+AC_DEFINE_UNQUOTED(FOUND_TMP, "${found_tmp}")
+AC_MSG_RESULT(${found_tmp})
+
+dnl Checks for header files.
+AC_PATH_XTRA
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS(fcntl.h paths.h termios.h sgtty.h unistd.h libgen.h malloc.h)
+AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/uio.h sys/file.h)
+AC_CHECK_HEADERS(sys/utsname.h sys/select.h sys/msgbuf.h)
+
+if test "$no_x" != "yes"; then
+	XCLIENTS=xzwrite
+	ZWGC_LIBX11=-lX11
+fi
+AC_SUBST(XCLIENTS)
+AC_SUBST(ZWGC_LIBX11)
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_SIGNAL
+AC_TYPE_UID_T
+AC_CHECK_TYPE(ulong, unsigned long)
+AC_CHECK_SIZEOF(short)
+AC_CHECK_SIZEOF(int)
+AC_CHECK_SIZEOF(long)
+AC_MSG_CHECKING(for 32-bit integer type)
+if test "$ac_cv_sizeof_long" = 4; then
+	int32=long
+elif test "$ac_cv_sizeof_int" = 4; then
+	int32=int
+elif test "$ac_cv_sizeof_short" = 4; then
+	int32=short
+else
+	AC_WARN([Can't find 32-bit type, using long])
+	int32=long
+fi
+AC_DEFINE_UNQUOTED(INT_32_TYPE, ${int32})
+AC_MSG_RESULT(${int32})
+
+AC_CHECK_LIB(w, wslen)
+AC_CHECK_LIB(dl, dlopen)
+AC_CHECK_LIB(socket, socket)
+AC_CHECK_LIB(nsl, gethostbyname)
+AC_CHECK_LIB(resolv, res_send)
+AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
+AC_CHECK_LIB(gen, regcmp, [RLIB=-lgen])
+AC_CHECK_LIB(src, srcsrpy, [SLIB=-lsrc; AC_DEFINE(HAVE_SRC)])
+AC_SUBST(TLIB)
+AC_SUBST(RLIB)
+AC_SUBST(SLIB)
+LIBS="${INSTALLED_LIBS} ${LIBS}"
+
+dnl Checks for library functions.
+AC_PROG_GCC_TRADITIONAL
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS(putenv regcomp re_comp strchr memcpy memmove waitpid getlogin)
+AC_CHECK_FUNCS(strerror random lrand48 gethostid)
+
+AC_CONFIG_HEADER(h/config.h h/zephyr/zephyr.h)
+AC_OUTPUT(Makefile clients/Makefile clients/syslogd/Makefile
+	  clients/xzwrite/Makefile clients/zaway/Makefile clients/zctl/Makefile
+	  clients/zleave/Makefile clients/zlocate/Makefile
+	  clients/zmailnotify/Makefile clients/znol/Makefile
+	  clients/zpopnotify/Makefile clients/zshutdown_notify/Makefile
+	  clients/zstat/Makefile clients/zwgc/Makefile clients/zwrite/Makefile
+	  lib/Makefile lib/des/Makefile lib/dyn/Makefile lib/et/Makefile
+	  lib/ss/Makefile lib/zephyr/Makefile server/Makefile zhm/Makefile
+	  clients/xzwrite/XZwrite clients/zwgc/zephyr.vars)
+

@@ -1,0 +1,44 @@
+This file explains how to operate a Zephyr service once you have
+installed Zephyr on all the relevant machines and file servers in your
+environment.  To learn how to configure, build, and install Zephyr,
+read the file INSTALL.
+
+To set up a Zephyr service, follow these steps:
+
+1. Choose the machines you wish to have act as Zephyr servers at your
+site.  A Zephyr server may require a fair amount of CPU and network
+bandwidth, and should be configured with enough memory so that the
+server process swaps rarely if at all.
+
+2a. If you configured Zephyr with Hesiod support, make sure your
+Hesiod realm has a zephyr.sloc record for each server.  (Each entry
+should contain the name of the server, nothing else.)
+
+2b. If you configured Zephyr without Hesiod support, each server
+should have a file "server.list" in the configuration directory (which
+is /etc/athena/zephyr if you built with --enable-athena, or
+/usr/local/etc/zephyr if you installed Zephyr in /usr/local and didn't
+use --enable-athena).  This file should contain a list of the servers,
+one per line.
+
+3. If you configured Zephyr with Kerberos 4 support, make a service
+key "zephyr.zephyr@REALMNAME" and install a srvtab for that service as
+"srvtab" in the configuration directory of each of your zephyr
+servers.
+
+4. Start zephyrd from the system binary directory (/usr/athena/etc if
+you built with --enable-athena, /usr/local/sbin if you installed in
+/usr/local and didn't use --enable-athena).  Zephyr logs as service
+"local6"; watch the syslogs for error messages.  Arrange for zephyrd
+to be run at boot time on your server machines.
+
+5. Each client machine should run zhm (the Zephyr Host Manager) from
+the local system binary directory (/etc/athena for --enable-athena,
+/usr/local/sbin if you installed in /usr/local and didn't use
+--enable-athena).  If you built Zephyr without Hesiod support, you
+should start zhm as "zhm server1 server2 server3 ..." so that zhm
+knows where the Zephyr servers are.
+
+You can send a SIGFPE signal to the server process to make it dump its
+subscription database to /var/tmp/zephyr.db.
+

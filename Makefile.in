@@ -1,0 +1,46 @@
+SHELL = /bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+datadir=@datadir@
+confdir=@confdir@
+sbindir=@sbindir@
+
+includedir=$(prefix)/include
+mandir=$(prefix)/man
+libdir=$(exec_prefix)/lib
+
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+ENSUREDIR=$(srcdir)/ensure-dir.sh
+INSTALL=@INSTALL@
+
+SUBDIRS=lib clients server zhm
+
+all:
+	for i in $(SUBDIRS); do (cd $$i; $(MAKE) $(MFLAGS) $@) || exit 1; done
+
+check clean:
+	for i in $(SUBDIRS); do (cd $$i; $(MAKE) $(MFLAGS) $@) || exit 1; done
+
+install:
+	$(ENSUREDIR) $(prefix) 755
+	$(ENSUREDIR) $(exec_prefix) 755
+	$(ENSUREDIR) $(datadir) 755
+	$(ENSUREDIR) $(confdir) 755
+	$(ENSUREDIR) $(confdir)/acl 755
+	$(ENSUREDIR) $(sbindir) 755
+	$(ENSUREDIR) $(includedir) 755
+	$(ENSUREDIR) $(includedir)/zephyr 755
+	$(ENSUREDIR) $(mandir) 755
+	$(ENSUREDIR) $(mandir)/man1 755
+	$(ENSUREDIR) $(mandir)/man3 755
+	$(ENSUREDIR) $(mandir)/man8 755
+	$(INSTALL) -m 644 -c $(srcdir)/h/zephyr/mit-copyright.h \
+		$(includedir)/zephyr
+	$(INSTALL) -m 644 -c h/zephyr/zephyr.h $(includedir)/zephyr
+	$(INSTALL) -m 644 -c h/zephyr/zephyr_err.h $(includedir)/zephyr
+	for i in $(SUBDIRS); do (cd $$i; $(MAKE) $(MFLAGS) $@) || exit 1; done
+
+.PHONY: all check install clean
+
