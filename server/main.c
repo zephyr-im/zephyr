@@ -20,9 +20,9 @@ char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nP
 #endif SABER
 #endif lint
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 2.3";
+char version[] = "Zephyr Server (DEBUG) 2.4";
 #else
-char version[] = "Zephyr Server 2.3";
+char version[] = "Zephyr Server 2.4";
 #endif DEBUG
 /*
  * Server loop for Zephyr.
@@ -67,6 +67,9 @@ char version[] = "Zephyr Server 2.3";
 
 #include <netdb.h>
 #include <sys/socket.h>
+#ifdef lint
+#include <sys/uio.h>
+#endif lint
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <signal.h>
@@ -187,6 +190,10 @@ char **argv;
 
 	if (initialize())
 		exit(1);
+
+	/* chdir to somewhere where a core dump will survive */
+	if (chdir("/usr/tmp") != 0)
+		syslog(LOG_ERR,"chdir failed (%m) (execution continuing)");
 
 	FD_ZERO(&interesting);
 	FD_SET(srv_socket, &interesting);
