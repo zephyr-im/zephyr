@@ -14,7 +14,9 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
+#ifndef SABER
 static char rcsid_dispatch_c[] = "$Header$";
+#endif SABER
 #endif lint
 
 #include "zserver.h"
@@ -34,30 +36,71 @@ static char rcsid_dispatch_c[] = "$Header$";
  *
  */
 
-static void xmit(), rexmit();
+static void xmit(), rexmit(), nack_cancel();
 static int is_server();
 
 int num_rexmits = NUM_REXMITS;		/* patchable... */
 long rexmit_secs = REXMIT_SECS;
+long abs_timo = REXMIT_SECS*NUM_REXMITS;
+
+#ifdef DEBUG
+static char *pktypes[] = {
+	"UNSAFE",
+	"UNACKED",
+	"ACKED",
+	"HMACK",
+	"HMCTL",
+	"SERVACK",
+	"SERVNAK",
+	"CLIENTACK"
+};
+#endif DEBUG
 
 /*
  * Dispatch a notice.
  */
 void
 dispatch(notice, auth, who)
-ZNotice_t *notice;
+register ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
 {
-	register ZClientList_t *clientlist, *ptr;
-	int acked = 0;
 
+#ifdef DEBUG
+	if (zdebug) {
+		char buf[4096];
+		
+		(void) sprintf(buf, "disp:%s '%s' '%s' '%s' '%s' '%s' %s/%d/%d",
+			       pktypes[(int) notice->z_kind],
+			       notice->z_class,
+			       notice->z_class_inst,
+			       notice->z_opcode,
+			       notice->z_sender,
+			       notice->z_recipient,
+			       inet_ntoa(who->sin_addr),
+			       ntohs(who->sin_port),
+			       ntohs(notice->z_port));
+		syslog(LOG_DEBUG, buf);
+	}
+#endif DEBUG
+	if (notice->z_kind == CLIENTACK) {
+		nack_cancel(notice, who);
+		return;
+	}
 	if (is_server(who)) {
 		server_dispatch(notice, auth, who);
 		return;
-	}
-	if (class_is_control(notice)) {
-		control_handle(notice, auth, who);
+	} else if (class_is_hm(notice)) {
+		syslog(LOG_WARNING, "HM_CTL received?");
+		return;
+	} else if (class_is_control(notice)) {
+		control_dispatch(notice, auth, who);
+		return;
+	} else if (class_is_ulogin(notice)) {
+		ulogin_dispatch(notice, auth, who);
+		return;
+	} else if (class_is_ulocate(notice)) {
+		ulocate_dispatch(notice, auth, who);
 		return;
 	} else if (class_is_admin(notice)) {
 		/* this had better be a HELLO message--start of acquisition
@@ -70,29 +113,47 @@ struct sockaddr_in *who;
 			       inet_ntoa(who->sin_addr),
 			       ntohs(who->sin_port));
 		return;
-	} else if (class_is_restricted(notice) &&
-		   !access_check(notice, XMIT)) {
-		syslog(LOG_WARNING, "disp unauthorized %s", notice->z_class);
-		return;
 	}
-	
+
 	/* oh well, do the dirty work */
-	if ((clientlist = subscr_match_list(notice)) == NULLZCLT) {
-		clt_ack(notice, who, NOT_SENT);
-		return;
-	}
-	for (ptr = clientlist->q_forw; ptr != clientlist; ptr = ptr->q_forw) {
-		/* for each client who gets this notice,
-		   send it along */
-		xmit(notice, ptr->zclt_client);
-		if (!acked) {
-			acked = 1;
-			clt_ack(notice, who, SENT);
-		}
-	}
-	if (!acked)
-		clt_ack(notice, who, NOT_SENT);
+	sendit(notice, auth, who);
 }
+
+void
+sendit(notice, auth, who)
+register ZNotice_t *notice;
+int auth;
+struct sockaddr_in *who;
+{
+	int acked = 0;
+	ZAcl_t *acl;
+	register ZClientList_t *clientlist, *ptr;
+
+	if ((acl = class_get_acl(notice->z_class)) != NULLZACLT &&
+	    (!auth || !access_check(notice, acl, TRANSMIT))) {
+		syslog(LOG_WARNING, "sendit unauthorized %s", notice->z_class);
+		clt_ack(notice, who, AUTH_FAILED);
+		return;
+	}	
+	if ((clientlist = subscr_match_list(notice)) != NULLZCLT) {
+		for (ptr = clientlist->q_forw;
+		     ptr != clientlist;
+		     ptr = ptr->q_forw) {
+			/* for each client who gets this notice,
+			   send it along */
+			xmit(notice, ptr->zclt_client, auth);
+			if (!acked) {
+				acked = 1;
+				ack(notice, who);
+			}
+		}
+		subscr_list_free(clientlist);
+	}
+
+	if (!acked)
+		nack(notice, who);
+}
+
 
 /*
  * Is this from a server?
@@ -109,8 +170,7 @@ struct sockaddr_in *who;
 		
 	/* just look over the server list */
 	for (servs = otherservers, num = 0; num < nservers; num++, servs++)
-		if (!bcmp(&servs->zs_addr.sin_addr, who->sin_addr,
-			  sizeof(struct in_addr)))
+		if (servs->zs_addr.sin_addr.s_addr == who->sin_addr.s_addr)
 			return(1);
 	return(0);
 }
@@ -120,26 +180,44 @@ struct sockaddr_in *who;
  */
 
 static void
-xmit(notice, client)
+xmit(notice, client, auth)
 register ZNotice_t *notice;
 ZClient_t *client;
+int auth;
 {
-	ZPacket_t *noticepack;
-	register ZNotAcked_t *nack;
+	caddr_t noticepack;
+	register ZNotAcked_t *nacked;
 	int packlen;
 	Code_t retval;
 
-	if ((noticepack = (ZPacket_t *) malloc(sizeof(ZPacket_t))) == NULLZPT){
+	zdbug1("xmit");
+	if ((noticepack = (caddr_t) xmalloc(sizeof(ZPacket_t))) == (caddr_t) NULL) {
 		syslog(LOG_ERR, "xmit malloc");
 		return;			/* DON'T put on nack list */
 	}
 
+
 	packlen = sizeof(ZPacket_t);
 
-	if ((retval = ZFormatNotice(notice, noticepack, packlen, &packlen)) != ZERR_NONE) {
-		syslog(LOG_ERR, "xmit format: %s", error_message(retval));
-		return;			/* DON'T put on nack list */
+	if (auth) {			/* we are distributing authentic */
+		if ((retval = ZFormatAuthenticNotice(notice, noticepack, packlen, &packlen, client->zct_cblock)) != ZERR_NONE) {
+			syslog(LOG_ERR, "xmit auth format: %s",
+			       error_message(retval));
+			xfree(noticepack);
+			return;
+		}
+	} else {
+		notice->z_auth = 0;
+		notice->z_authent_len = 0;
+		notice->z_ascii_authent = (char *)"";
+		if ((retval = ZFormatRawNotice(notice, noticepack, packlen, &packlen)) != ZERR_NONE) {
+			syslog(LOG_ERR, "xmit format: %s", error_message(retval));
+			xfree(noticepack);
+			return;			/* DON'T put on nack list */
+		}
 	}
+	zdbug3(" to %s/%d",inet_ntoa(client->zct_sin.sin_addr),
+	       ntohs(client->zct_sin.sin_port));
 	if ((retval = ZSetDestAddr(&client->zct_sin)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "xmit set addr: %s",
 		       error_message(retval));
@@ -152,40 +230,70 @@ ZClient_t *client;
 
 	/* now we've sent it, mark it as not ack'ed */
 
-	if ((nack = (ZNotAcked_t *)malloc(sizeof(ZNotAcked_t))) == NULLZNAT) {
+	if ((nacked = (ZNotAcked_t *)xmalloc(sizeof(ZNotAcked_t))) == NULLZNAT) {
 		/* no space: just punt */
 		syslog(LOG_WARNING, "xmit nack malloc");
 		return;
 	}
 
-	nack->na_rexmits = 0;
-	nack->na_packet = noticepack;
-	nack->na_client = client;
-
-	/* chain in */
-	insque(nacklist, nack);
-
+	nacked->na_rexmits = 0;
+	nacked->na_packet = noticepack;
+	nacked->na_client = client;
+	nacked->na_packsz = packlen;
+	nacked->na_uid = notice->z_uid;
+	nacked->q_forw = nacked->q_back = nacked;
+	nacked->na_abstimo = NOW + abs_timo;
 	/* set a timer */
-	nack->na_timer = timer_set_rel (rexmit_secs, rexmit, (caddr_t) nack);
+	nacked->na_timer = timer_set_rel (rexmit_secs, rexmit, (caddr_t) nacked);
+	/* chain in */
+	xinsque(nacked, nacklist);
+#ifdef DEBUG
+	if (zdebug)
+		dump_nack();
+#endif DEBUG
+
 }
+
+#ifdef DEBUG
+dump_nack()
+{
+	register ZNotAcked_t *nacked;
+
+	/* search the not-yet-acked list for anything destined to him, and
+	   flush it. */
+	for (nacked = nacklist->q_forw; nacked != nacklist; nacked = nacked->q_forw)
+		syslog(LOG_DEBUG, "nck 0x%x, tmr 0x%x, clt 0x%x",
+		       nacked, nacked->na_timer, nacked->na_client);
+}
+#endif DEBUG
 
 static void
 rexmit(nackpacket)
 register ZNotAcked_t *nackpacket;
 {
-	ZClient_t *client;
 	int retval;
 
-	if (++(nackpacket->na_rexmits) > num_rexmits) {
-		/* possibly dead client */
-		/* remove timer */
-		timer_reset(nackpacket->na_timer);
-		/* unlink & free packet */
-		remque(nackpacket);
-		free(nackpacket->na_packet);
-		client = nackpacket->na_client;
-		free(nackpacket);
+	register ZClient_t *client;
+	zdbug1("rexmit");
 
+	if (++(nackpacket->na_rexmits) > num_rexmits ||
+	    NOW > nackpacket->na_abstimo) {
+		/* possibly dead client */
+
+		client = nackpacket->na_client;
+		syslog(LOG_WARNING, "lost client %s %d",
+		       inet_ntoa(client->zct_sin.sin_addr),
+		       ntohs(client->zct_sin.sin_port));
+
+		/* unlink & free packet */
+		xremque(nackpacket);
+		xfree(nackpacket->na_packet);
+		xfree(nackpacket);
+
+#ifdef DEBUG
+		if (zdebug)
+			dump_nack();
+#endif DEBUG
 		/* initiate recovery */
 		server_recover(client);
 		return;
@@ -193,15 +301,25 @@ register ZNotAcked_t *nackpacket;
 
 	/* retransmit the packet */
 	
+	zdbug3(" to %s/%d",inet_ntoa(nackpacket->na_client->zct_sin.sin_addr),
+	       ntohs(nackpacket->na_client->zct_sin.sin_port));
 	if ((retval = ZSetDestAddr(&nackpacket->na_client->zct_sin)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "rexmit set addr: %s",
 		       error_message(retval));
-		return;
+		goto requeue;
+
 	}
 	if ((retval = ZSendPacket(nackpacket->na_packet,
 				  nackpacket->na_packsz)) != ZERR_NONE)
 		syslog(LOG_WARNING, "rexmit xmit: %s", error_message(retval));
 
+requeue:
+	/* reset the timer */
+	nackpacket->na_timer = timer_set_rel (rexmit_secs, rexmit, (caddr_t) nackpacket);
+#ifdef DEBUG
+		if (zdebug)
+			dump_nack();
+#endif DEBUG
 	return;
 
 }
@@ -217,15 +335,33 @@ ZSentType sent;
 	int packlen;
 	Code_t retval;
 
+	zdbug3("clt_ack type %d for %d", (int) sent, ntohs(notice->z_port));
+	zdbug3(" to %s/%d",inet_ntoa(who->sin_addr), ntohs(who->sin_port));
+
+	if (hostm_find_server(&who->sin_addr) != me_server) {
+		zdbug1("not me");
+		return;
+	}
 	acknotice = *notice;
 
 	acknotice.z_kind = SERVACK;
-	if (sent == SENT)
+	switch (sent) {
+	case SENT:
 		acknotice.z_message = ZSRVACK_SENT;
-	else
+		break;
+	case NOT_FOUND:
+		acknotice.z_message = ZSRVACK_FAIL;
+		acknotice.z_kind = SERVNAK;
+		break;
+	case AUTH_FAILED:
+		acknotice.z_kind = SERVNAK;
+		/* fall thru */
+	case NOT_SENT:
 		acknotice.z_message = ZSRVACK_NOTSENT;
+		break;
+	}
 
-	/* Don't forget room for the null */
+	/* leave room for the trailing null */
 	acknotice.z_message_len = strlen(acknotice.z_message) + 1;
 
 	packlen = sizeof(ackpack);
@@ -243,5 +379,60 @@ ZSentType sent;
 		syslog(LOG_WARNING, "clt_ack xmit: %s", error_message(retval));
 		return;
 	}
+	return;
+}
+
+void
+nack_release(client)
+ZClient_t *client;
+{
+	register ZNotAcked_t *nacked, *nack2;
+
+	/* search the not-yet-acked list for anything destined to him, and
+	   flush it. */
+	for (nacked = nacklist->q_forw; nacked != nacklist; nacked = nacked->q_forw)
+		if (nacked->na_client == client) {
+			zdbug3("nack_rel: punt 0x%x, 0x%x",nacked, nacked->na_timer);
+			nack2 = nacked->q_forw; /* go back */
+			timer_reset(nacked->na_timer);
+			xfree(nacked->na_packet);
+			xremque(nacked);
+			nacked = nack2->q_back; /* the remque will have frobbed things */
+		}
+	return;
+}
+
+static void
+nack_cancel(notice, who)
+register ZNotice_t *notice;
+struct sockaddr_in *who;
+{
+	register ZNotAcked_t *nacked;
+	ZClient_t *client;
+
+	notice->z_port = who->sin_port;	/* set the origin of the ack to the client who is responding */
+	if ((client = client_which_client(who, notice)) == NULLZCNT) {
+		zdbug1("nack clt not found");
+		return;
+	}
+
+	zdbug2("nack_can: 0x%x", notice->z_uid.zuid_addr.s_addr);
+	zdbug3("  %d %d", notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec);
+	/* search the not-yet-acked list for this packet, and
+	   flush it. */
+	for (nacked = nacklist->q_forw; nacked != nacklist; nacked = nacked->q_forw)
+		if ((nacked->na_client == client))
+			if (!bcmp((caddr_t) &nacked->na_uid, (caddr_t) &notice->z_uid, sizeof(nacked->na_uid))) {
+				zdbug1("nack_canceled");
+				timer_reset(nacked->na_timer);
+				xfree(nacked->na_packet);
+				xremque(nacked);
+				return;
+			} else {
+				zdbug1("not this one");
+				zdbug2("nack_can: 0x%x", nacked->na_uid.zuid_addr.s_addr);
+				zdbug3("  %d %d", nacked->na_uid.tv.tv_sec, nacked->na_uid.tv.tv_usec);
+			}
+	zdbug1("nack not found");
 	return;
 }
