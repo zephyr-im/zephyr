@@ -313,6 +313,8 @@ main(argc, argv)
 	if (dump_strings_flag)
 	    dump_strings();
 
+	timer_process();
+
 	readable = interesting;
 	if (msgs_queued()) {
 	    /* when there is input in the queue, we
