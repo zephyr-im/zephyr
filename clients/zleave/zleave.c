@@ -11,8 +11,8 @@
  *      "mit-copyright.h". 
  */
 
+#include <sysdep.h>
 #include <zephyr/mit-copyright.h>
-
 #include <zephyr/zephyr.h>
 
 #ifndef lint
@@ -37,15 +37,6 @@ char copyright[] =
  All rights reserved.\n";
 #endif /* not lint */
 
-#ifndef lint
-static char sccsid[] = "@(#)leave.c	5.2 (Berkeley) 12/2/87";
-#endif /* not lint */
-
-#include <stdio.h>
-#include <ctype.h>
-#include <signal.h>
-#include <string.h>
-
 #define MESSAGE_CLASS "MESSAGE"
 #define INSTANCE "LEAVE"
 /*
@@ -69,7 +60,8 @@ int use_zephyr=1, oldpid;
 main(argc, argv)
 char **argv;
 {
-	long when, now, diff, hours, minutes;
+	time_t now;
+	long when, diff, hours, minutes;
 	char *cp;
 	FILE *fp;
 	struct tm *nv;
@@ -212,13 +204,13 @@ int *hp, *mp;
 doalarm(nmins)
 long nmins;
 {
+	time_t daytime;
 	char *msg1, *msg2, *msg3, *msg4;
 	register int i;
 	long slp1, slp2, slp3, slp4;
 	long seconds, gseconds;
-	long daytime;
 	FILE *fp;
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	struct sigaction sa;
 #endif
 
@@ -282,7 +274,7 @@ long nmins;
 		      (void) perror("fclose on pid file");
 	}
 
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	sa.sa_handler = SIG_IGN;
@@ -407,7 +399,7 @@ long secs;
 	}
 }
 
-#ifdef V6
+#ifndef HAVE_GETLOGIN
 char *getlogin() {
 #include <utmp.h>
 

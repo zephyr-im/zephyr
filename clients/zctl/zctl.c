@@ -11,17 +11,12 @@
  *	"mit-copyright.h". 
  */
 
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include <ss/ss.h>
 #include <com_err.h>
 #include <pwd.h>
 #include <netdb.h>
-#include <string.h>
-#include <sys/file.h>
-#include <sys/param.h>
-#ifdef POSIX
-#include <sys/utsname.h>
-#endif
 #ifndef lint
 static char *rcsid_zctl_c = "$Id$";
 #endif
@@ -62,7 +57,7 @@ main(argc,argv)
 	struct hostent *hent;
 	char ssline[BUFSIZ],oldsubsname[BUFSIZ],*envptr;
 	int retval,code,i;
-#ifdef POSIX
+#ifdef HAVE_SYS_UTSNAME
 	struct utsname name;
 #endif
 
@@ -92,7 +87,7 @@ main(argc,argv)
 			com_err(argv[0], errno, "renaming .subscriptions");
 	}
 
-#ifdef POSIX
+#ifdef HAVE_SYS_UTSNAME
 	uname(&name);
 	strcpy(ourhost, name.nodename);
 #else

@@ -11,8 +11,8 @@
  *	"mit-copyright.h". 
  */
 
-#include <zephyr/zephyr_internal.h>
-#include <signal.h>
+#include <sysdep.h>
+#include <zephyr/zephyr.h>
 #include <sys/socket.h>
 
 #if !defined(lint) && !defined(SABER)
@@ -22,10 +22,7 @@ static char rcsid_zlocate_c[] = "$Id$";
 int numusers=0, numleft=0, parallel=0, oneline=0;
 char *whoami;
 
-#ifdef POSIX
-void
-#endif
-timeout(sig)
+RETSIGTYPE timeout(sig)
 {
   fprintf (stderr, "%s: no response from server\n", whoami);
   exit(1);
@@ -77,7 +74,7 @@ main(argc,argv)
     ZAsyncLocateData_t ald;
     int retval,i,numlocs,loc,auth;
     ZNotice_t notice;
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     struct sigaction sa;
 #endif
    
@@ -149,7 +146,7 @@ main(argc,argv)
     }
 
     if (parallel) {
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	sa.sa_handler = timeout;

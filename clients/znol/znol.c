@@ -11,10 +11,10 @@
  *	"mit-copyright.h". 
  */
 
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
 
 #include <pwd.h>
-#include <string.h>
 
 #ifndef lint
 static char rcsid_znol_c[] = "$Id$";

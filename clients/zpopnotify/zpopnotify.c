@@ -11,13 +11,16 @@
  *	"mit-copyright.h". 
  */
 
-#include <zephyr/mit-copyright.h>
 
+#include <sysdep.h>
+#include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
+#include <stdio.h>
 #include <netdb.h>
 #include <string.h>
 #include <sys/param.h>			/* for MAXHOSTNAMELEN */
 #include <com_err.h>
+#include <errno.h>
 
 #ifndef lint
 static char rcsid_zpopnotify_c[] = "$Header$";
