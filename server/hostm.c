@@ -104,7 +104,7 @@ static int cmp_hostlist();
  */
 
 /*ARGSUSED*/
-void
+Code_t
 hostm_dispatch(notice, auth, who, server)
 ZNotice_t *notice;
 int auth;
@@ -112,18 +112,24 @@ struct sockaddr_in *who;
 ZServerDesc_t *server;
 {
 	ZServerDesc_t *owner;
+	ZHostList_t *host = NULLZHLT;
 	char *opcode = notice->z_opcode;
 	Code_t retval;
 
 
 	zdbug((LOG_DEBUG,"hm_disp"));
+
+	host = hostm_find_host(&who->sin_addr);
+	if (host && host->zh_locked)
+		return(ZSRV_REQUEUE);
+
 	if (notice->z_kind == HMACK) {
 		host_not_losing(who);
-		return;
+		return(ZERR_NONE);
 	} else if (notice->z_kind != HMCTL) {
 		zdbug((LOG_DEBUG, "bogus HM packet"));
 		clt_ack(notice, who, AUTH_FAILED);
-		return;
+		return(ZERR_NONE);
 	}
 	owner = hostm_find_server(&who->sin_addr);
 	if (!strcmp(opcode, HM_ATTACH)) {
@@ -136,16 +142,14 @@ ZServerDesc_t *server;
 			   he was lost but has asked server to work for him.
 			   We need to transfer him to server */
 			zdbug((LOG_DEBUG,"hm_disp transfer"));
-			/* hostm_find_host won't fail here, since we just
-			   did a hostm_find_server successfully */
-			hostm_transfer(hostm_find_host(&who->sin_addr), server);
+			hostm_transfer(host, server);
 		} else {
 			/* no owner.  attach him to server. */
 			if ((retval = host_attach(who, server))
 			    != ZERR_NONE) {
 				syslog(LOG_WARNING, "hattach failed: %s",
 				       error_message(retval));
-				return;
+				return(retval);
 			}
 
 		}
@@ -157,11 +161,11 @@ ZServerDesc_t *server;
 		zdbug((LOG_DEBUG, "boot %s",inet_ntoa(who->sin_addr)));
 		/* Booting is just like flushing and attaching */
 		if (owner)		/* if owned, flush */
-			hostm_flush(hostm_find_host(&who->sin_addr), owner);
+			hostm_flush(host, owner);
 		if ((retval = host_attach(who, server)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "hattach failed: %s",
 			       error_message(retval));
-			return;
+			return(retval);
 		}
 		if (server == me_server) {
 			server_forward(notice, auth, who);
@@ -170,9 +174,9 @@ ZServerDesc_t *server;
 	} else if (!strcmp(opcode, HM_FLUSH)) {
 		zdbug((LOG_DEBUG, "hm_flush %s",inet_ntoa(who->sin_addr)));
 		if (!owner)
-			return;
+			return(ZERR_NONE);
 		/* flush him */
-		hostm_flush(hostm_find_host(&who->sin_addr), owner);
+		hostm_flush(host, owner);
 		if (server == me_server)
 			server_forward(notice, auth, who);
 	} else if (!strcmp(opcode, HM_DETACH)) {
@@ -180,9 +184,9 @@ ZServerDesc_t *server;
 		/* ignore it */
 	} else {
 		syslog(LOG_WARNING, "hm_disp: unknown opcode %s",opcode);
-		return;
+		return(ZERR_NONE);
 	}
-	return;
+	return(ZERR_NONE);
 }
 
 /*
@@ -214,10 +218,13 @@ ZServerDesc_t *server;
 				lhp = lhp->q_forw;
 
 	if ((clist = host->zh_clients))
-		for (clt = clist->q_forw; clt != clist; clt = clist->q_forw)
+		for (clt = clist->q_forw; clt != clist; clt = clist->q_forw) {
 			/* client_deregister frees this client & subscriptions
 			   & locations and remque()s the client */
+			if (zdebug)
+				syslog(LOG_DEBUG, "hostm_flush clt_dereg");
 			client_deregister(clt->zclt_client, host, 1);
+		}
 
 	uloc_hflush(&host->zh_addr.sin_addr);
 	host_detach(&host->zh_addr.sin_addr, server);
@@ -361,6 +368,8 @@ struct sockaddr_in *who;
 			       ntohs(lhp->lh_client->zct_sin.sin_port)));
 			/* deregister all subscriptions, and flush locations
 			   associated with the client. */
+			if (zdebug)
+				syslog(LOG_DEBUG,"h_not_lose clt_dereg");
 			client_deregister(lhp->lh_client, lhp->lh_host, 1);
 			server_kill_clt(lhp->lh_client);
 			xremque(lhp);
@@ -431,12 +440,13 @@ ZServerDesc_t *server;
 	hlist->zh_clients = clist;
 	hlist->zh_addr = *who;
 	hlist->q_forw = hlist->q_back = hlist;
+	hlist->zh_locked = 0;
 
 	/* add to table */
 	insert_host(hlist, server);
 
-	/* chain in */
-	xinsque(hlist, server->zs_hosts);
+	/* chain in to the end of the list */
+	xinsque(hlist, server->zs_hosts->q_back);
 	return(ZERR_NONE);
 }
 
