@@ -17,14 +17,14 @@ static char rcsid_ZMakeAuthentication_c[] = "$Id$";
 #endif
 
 #include <zephyr/zephyr_internal.h>
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
 #include "krb_err.h"
 static long last_authent_time = 0L;
 static KTEXT_ST last_authent;
 #endif
 
 Code_t ZResetAuthentication () {
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
     last_authent_time = 0L;
 #endif
     return ZERR_NONE;
@@ -36,7 +36,7 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     int buffer_len;
     int *len;
 {
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
     int retval, result;
     long now,time();
     KTEXT_ST authent;
