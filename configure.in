@@ -51,12 +51,12 @@ AC_SUBST(INITPROGS)
 AC_CANONICAL_SYSTEM
 AC_DEFINE_UNQUOTED(MACHINE_TYPE, "$host")
 
-dnl Command-line option to disable Hesiod support
+dnl Command-line option to enable Hesiod support
 AC_ARG_WITH(hesiod,
 	    [  --with-hesiod=PREFIX    Compile with Hesiod support],
 	    [hesiod="$withval"], [hesiod=${hesiod-no}])
 
-dnl Command-line option to disable Kerberos support
+dnl Command-line option to enable Kerberos support
 AC_ARG_WITH(krb4,
 	    [  --with-krb4=PREFIX      Compile with Kerberos 4 support],
 	    [kerberos="$withval"], [kerberos=${kerberos-no}])
@@ -144,7 +144,7 @@ if test "$hesiod" != "no"; then
 		LDFLAGS="${LDFLAGS} -L${hesiod}/lib"
 	fi
 	AC_DEFINE(ZEPHYR_USES_HESIOD)
-	AC_CHECK_LIB(hesiod, hes_resolve, LIBS="-lhesiod $(LIBS)",
+	AC_CHECK_LIB(hesiod, hes_resolve, LIBS="-lhesiod ${LIBS}",
 		     [AC_CHECK_FUNC(hes_resolve),,
 		      AC_ERROR(Hesiod library not found)])
 fi
@@ -176,7 +176,7 @@ AC_OUTPUT(Makefile clients/Makefile clients/syslogd/Makefile
 	  clients/zmailnotify/Makefile clients/znol/Makefile
 	  clients/zpopnotify/Makefile clients/zshutdown_notify/Makefile
 	  clients/zstat/Makefile clients/zwgc/Makefile clients/zwrite/Makefile
-	  lib/Makefile lib/des/Makefile lib/dyn/Makefile lib/et/Makefile
-	  lib/ss/Makefile lib/zephyr/Makefile server/Makefile zhm/Makefile
+	  lib/Makefile lib/dyn/Makefile lib/et/Makefile lib/ss/Makefile
+	  lib/zephyr/Makefile server/Makefile zhm/Makefile
 	  clients/xzwrite/XZwrite clients/zwgc/zephyr.vars)
 
