@@ -55,7 +55,10 @@ clean:
 
 	# Add here commands to clean up after the build process.
 	-rm -rf krb no-krb debian/tmp-krb
-	-rm debian/zephyr-server-krb.*
+	-rm debian/zephyr-server-krb.files
+	-rm debian/zephyr-server-krb.templates
+	-rm debian/zephyr-server-krb.config
+	-rm debian/zephyr-server-krb.postinst
 	-rm debian/libzephyr3-krb.files
 
 	dh_clean
