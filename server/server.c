@@ -747,8 +747,9 @@ kill_clt(ZNotice_t *notice, ZServerDesc_t *server)
 	}
 #if 1
 	if (zdebug || 1)
-		syslog(LOG_DEBUG, "kill_clt clt_dereg %s from %s",
-		       inet_ntoa (who.sin_addr), server->addr);
+		syslog(LOG_DEBUG, "kill_clt clt_dereg %s/%d from %s",
+		       inet_ntoa (who.sin_addr), ntohs (who.sin_port),
+		       server->addr);
 #endif
 
 	hostm_lose_ignore(client);
