@@ -19,7 +19,7 @@
 int ZReadAscii(ptr,len,field,num)
 	char *ptr;
 	int len;
-	char *temp;
+	char *field;
 	int num;
 {
 	int i;
@@ -42,7 +42,7 @@ int ZReadAscii(ptr,len,field,num)
 		bfr[2] = '\0';
 		if (!bfr[0] || !bfr[1])
 			return (ZERR_BADFIELD);
-		sscanf(bfr,"%x",temp+i);
+		sscanf(bfr,"%x",field+i);
 		ptr += 2;
 		len -= 2;
 		if (len < 1)
