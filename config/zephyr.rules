@@ -87,7 +87,7 @@ SimpleProgram(name,$(OBJS) $(ZLIB),libs $(ZLIBS),$(ATHBINDIR)) @@\
 create_depend($(SRCS))
 
 
-#ifdef UseInstalled
+#if defined(UseInstalled) && defined(NoBrainDamage)
 ATHBINDIR = /mit/zephyr/@sys/bin
 ATHLIBDIR = /mit/zephyr/@sys/lib
 ATHINCDIR = /mit/zephyr/include
