@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -32,6 +32,7 @@ static char rcsid_zwmnotify_c[] = "$Header$";
 #include <errno.h>
 #include <netdb.h>
 #include <hesiod.h>
+#include <string.h>
 
 #ifdef KPOP
 #include <krb.h>
@@ -41,7 +42,6 @@ static char rcsid_zwmnotify_c[] = "$Header$";
 #define OK 0
 #define DONE 1
 
-char *progname;
 FILE *sfi;
 FILE *sfo;
 char Errmsg[80];
@@ -49,6 +49,9 @@ char Errmsg[80];
 char *PrincipalHostname(), *index();
 #endif KPOP
 
+extern uid_t getuid();
+char *getenv(), *malloc(), *realloc();
+void get_message(), pop_close(), mail_notify();
 #define MAXMAIL 4
 
 struct _mail {
@@ -57,7 +60,7 @@ struct _mail {
 	char *subj;
 } maillist[MAXMAIL];
 
-char *mailptr;
+char *mailptr = NULL;
 
 /* This entire program is a kludge - beware! */
 
@@ -79,10 +82,10 @@ main()
 		exit(1);
 	}
 
-	dir = (char *)getenv("HOME");
-	user = (char *)getenv("USER");
+	dir = getenv("HOME");
+	user = getenv("USER");
 	if (!user || !dir) {
-		pwd = (struct passwd *)getpwuid(getuid());
+		pwd = (struct passwd *)getpwuid((int) getuid());
 		if (!pwd) {
 			fprintf(stderr,"Can't figure out who you are!\n");
 			exit(1);
@@ -93,9 +96,9 @@ main()
 			dir = pwd->pw_dir;
 	}
 
-	sprintf(lockfile,"%s/.maillock",dir);
+	(void) sprintf(lockfile,"%s/.maillock",dir);
 	
-	host = (char *)getenv("MAILHOST");
+	host = getenv("MAILHOST");
 #ifdef HESIOD
 	if (host == NULL) {
 		p = hes_getmailhost(user);
@@ -114,7 +117,7 @@ main()
 
 	lock = fopen(lockfile,"r");
 	if (lock)
-		flock(fileno(lock),LOCK_EX);
+		(void) flock(fileno(lock),LOCK_EX);
 	
 	if (pop_init(host) == NOTOK) {
 		fprintf(stderr,Errmsg);
@@ -135,25 +138,25 @@ main()
 	    pop_command("RPOP %s", user) == NOTOK) {
 #endif KPOP
 		fprintf(stderr,Errmsg);
-		pop_command("QUIT");
+		(void) pop_command("QUIT");
 		pop_close();
 		exit (1);
 	} 
 
 	if (pop_stat(&nmsgs, &nbytes) == NOTOK) {
 		fprintf(stderr,Errmsg);
-		pop_command("QUIT");
+		(void) pop_command("QUIT");
 		pop_close();
 		exit (1);
 	}
 
 	if (!nmsgs) {
 		if (lock) {
-			flock(fileno(lock),LOCK_UN);
-			fclose(lock);
+			(void) flock(fileno(lock),LOCK_UN);
+			(void) fclose(lock);
 		} 
-		unlink(lockfile);
-		pop_command("QUIT");
+		(void) unlink(lockfile);
+		(void) pop_command("QUIT");
 		pop_close();
 		exit (0);
 	}
@@ -161,12 +164,12 @@ main()
 	uselock = 0;
         if (lock) {
 		uselock = 1;
-		mymail.to = (char *)malloc(BUFSIZ);
-		mymail.from = (char *)malloc(BUFSIZ);
-		mymail.subj = (char *)malloc(BUFSIZ);
-		fgets(mymail.from,BUFSIZ,lock);
-		fgets(mymail.to,BUFSIZ,lock);
-		fgets(mymail.subj,BUFSIZ,lock);
+		mymail.to = malloc(BUFSIZ);
+		mymail.from = malloc(BUFSIZ);
+		mymail.subj = malloc(BUFSIZ);
+		(void) fgets(mymail.from,BUFSIZ,lock);
+		(void) fgets(mymail.to,BUFSIZ,lock);
+		(void) fgets(mymail.subj,BUFSIZ,lock);
 		mymail.from[strlen(mymail.from)-1] = 0;
 		mymail.to[strlen(mymail.to)-1] = 0;
 		mymail.subj[strlen(mymail.subj)-1] = 0;
@@ -174,7 +177,7 @@ main()
 	else {
 		lock = fopen(lockfile,"w");
 		if (lock)
-			flock(fileno(lock),LOCK_EX);
+			(void) flock(fileno(lock),LOCK_EX);
 		uselock = 0;
 	}
 	
@@ -193,8 +196,8 @@ main()
 		mail_notify(&maillist[nmsgs-i]);
 	i--;
 	if (lock) {
-		flock(fileno(lock),LOCK_UN);
-		fclose(lock);
+		(void) flock(fileno(lock),LOCK_UN);
+		(void) fclose(lock);
 	} 
 	lock = fopen(lockfile,"w");
 	if (!lock)
@@ -203,20 +206,19 @@ main()
 		maillist[nmsgs-i].from,
 		maillist[nmsgs-i].to,
 		maillist[nmsgs-i].subj);
-	fclose(lock);
+	(void) fclose(lock);
 
-	pop_command("QUIT");
+	(void) pop_command("QUIT");
 	pop_close();
 }
 
-get_message(i)
+void get_message(i)
 	int i;
 {
 	int mbx_write();
-
 	if (pop_retr(i, mbx_write, 0) != OK) {
 		fprintf(stderr,Errmsg);
-		pop_command("QUIT");
+		(void) pop_command("QUIT");
 		pop_close();
 		exit(1);
 	}
@@ -224,12 +226,12 @@ get_message(i)
 
 /* Pop stuff */
 
-pop_close()
+void pop_close()
 {
 	if (sfi)
-		fclose(sfi);
+		(void) fclose(sfi);
 	if (sfo)
-		fclose(sfo);
+		(void) fclose(sfo);
 }
 
 get_mail(i,mail)
@@ -252,17 +254,17 @@ get_mail(i,mail)
 
 	ptr = mailptr;
 	while (ptr) {
-		ptr2 = (char *)index(ptr,'\n');
+		ptr2 = index(ptr,'\n');
 		if (ptr2)
 			*ptr2++ = 0;
 		if (*ptr == '\0')
 			break;
 		if (!strncmp(ptr, "From: ", 6))
-			strcpy(from, ptr+6);
+			(void) strcpy(from, ptr+6);
 		else if (!strncmp(ptr, "To: ", 4))
-			strcpy(to, ptr+4);
+			(void) strcpy(to, ptr+4);
 		else if (!strncmp(ptr, "Subject: ", 9))
-			strcpy(subj, ptr+9);
+			(void) strcpy(subj, ptr+9);
 		ptr = ptr2;
 	}
 
@@ -279,16 +281,17 @@ get_mail(i,mail)
 		*c = 0;
 	}
 
-	mail->from = (char *)malloc(strlen(from)+1);
-	strcpy(mail->from,from);
-	mail->to = (char *)malloc(strlen(to)+1);
-	strcpy(mail->to,to);
-	mail->subj = (char *)malloc(strlen(subj)+1);
-	strcpy(mail->subj,subj);
+	mail->from = malloc((unsigned)(strlen(from)+1));
+	(void) strcpy(mail->from,from);
+	mail->to = malloc((unsigned)(strlen(to)+1));
+	(void) strcpy(mail->to,to);
+	mail->subj = malloc((unsigned)(strlen(subj)+1));
+	(void) strcpy(mail->subj,subj);
 
 	return (0);
 }
 
+void
 mail_notify(mail)
 	struct _mail *mail;
 {
@@ -296,6 +299,7 @@ mail_notify(mail)
 	char *fields[3];
 	ZNotice_t notice;
 
+	(void) bzero((char *)&notice, sizeof(notice));
 	notice.z_kind = UNACKED;
 	notice.z_port = 0;
 	notice.z_class = "MAIL";
@@ -334,20 +338,20 @@ char *host;
 
     hp = gethostbyname(host);
     if (hp == NULL) {
-	sprintf(Errmsg, "MAILHOST unknown: %s", host);
+	(void) sprintf(Errmsg, "MAILHOST unknown: %s", host);
 	return(NOTOK);
     }
 
 #ifdef KPOP
     sp = getservbyname("knetd", "tcp");
     if (sp == 0) {
-	strcpy(Errmsg, "tcp/knetd: unknown service");
+	(void) strcpy(Errmsg, "tcp/knetd: unknown service");
 	return(NOTOK);
     }
 #else !KPOP
     sp = getservbyname("pop", "tcp");
     if (sp == 0) {
-	strcpy(Errmsg, "tcp/pop: unknown service");
+	(void) strcpy(Errmsg, "tcp/pop: unknown service");
 	return(NOTOK);
     }
 #endif KPOP
@@ -361,13 +365,13 @@ char *host;
     s = rresvport(&lport);
 #endif KPOP
     if (s < 0) {
-	sprintf(Errmsg, "error creating socket: %s", get_errmsg());
+	(void) sprintf(Errmsg, "error creating socket: %s", get_errmsg());
 	return(NOTOK);
     }
 
-    if (connect(s, (char *)&sin, sizeof sin) < 0) {
-	sprintf(Errmsg, "error during connect: %s", get_errmsg());
-	close(s);
+    if (connect(s, (struct sockaddr *)&sin, sizeof sin) < 0) {
+	(void) sprintf(Errmsg, "error during connect: %s", get_errmsg());
+	(void) close(s);
 	return(NOTOK);
     }
 #ifdef KPOP
@@ -375,8 +379,8 @@ char *host;
     rem=KSUCCESS;
     rem = SendKerberosData(s, ticket, "pop", hp->h_name);
     if (rem != KSUCCESS) {
-	sprintf(Errmsg, "kerberos error: %s",krb_err_txt[rem]);
-	close(s);
+	(void) sprintf(Errmsg, "kerberos error: %s",krb_err_txt[rem]);
+	(void) close(s);
 	return(NOTOK);
     }
 #endif KPOP
@@ -384,31 +388,31 @@ char *host;
     sfi = fdopen(s, "r");
     sfo = fdopen(s, "w");
     if (sfi == NULL || sfo == NULL) {
-	sprintf(Errmsg, "error in fdopen: %s", get_errmsg());
-	close(s);
+	(void) sprintf(Errmsg, "error in fdopen: %s", get_errmsg());
+	(void) close(s);
 	return(NOTOK);
     }
 
     return(OK);
 }
 
+/*VARARGS1*/
 pop_command(fmt, a, b, c, d)
 char *fmt;
 {
     char buf[4096];
-    char errmsg[64];
 
-    sprintf(buf, fmt, a, b, c, d);
+    (void) sprintf(buf, fmt, a, b, c, d);
 
     if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
 
     if (getline(buf, sizeof buf, sfi) != OK) {
-	strcpy(Errmsg, buf);
+	(void) strcpy(Errmsg, buf);
 	return(NOTOK);
     }
 
     if (*buf != '+') {
-	strcpy(Errmsg, buf);
+	(void) strcpy(Errmsg, buf);
 	return(NOTOK);
     } else {
 	return(OK);
@@ -424,15 +428,16 @@ int *nmsgs, *nbytes;
     if (putline("STAT", Errmsg, sfo) == NOTOK) return(NOTOK);
 
     if (getline(buf, sizeof buf, sfi) != OK) {
-	strcpy(Errmsg, buf);
+	(void) strcpy(Errmsg, buf);
 	return(NOTOK);
     }
 
     if (*buf != '+') {
-	strcpy(Errmsg, buf);
+	(void) strcpy(Errmsg, buf);
 	return(NOTOK);
     } else {
-	sscanf(buf, "+OK %d %d", nmsgs, nbytes);
+	if (sscanf(buf, "+OK %d %d", nmsgs, nbytes) != 2)
+	    return(NOTOK);
 	return(OK);
     }
 }
@@ -442,11 +447,11 @@ int (*action)();
 {
     char buf[4096];
 
-    sprintf(buf, "RETR %d", msgno);
+    (void) sprintf(buf, "RETR %d", msgno);
     if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
 
     if (getline(buf, sizeof buf, sfi) != OK) {
-	strcpy(Errmsg, buf);
+	(void) strcpy(Errmsg, buf);
 	return(NOTOK);
     }
 
@@ -458,7 +463,7 @@ int (*action)();
 	case DONE:
 	    return (OK);
 	case NOTOK:
-	    strcpy(Errmsg, buf);
+	    (void) strcpy(Errmsg, buf);
 	    return (NOTOK);
 	}
     }
@@ -477,12 +482,12 @@ FILE *f;
       if ((*p++ = c) == '\n') break;
 
     if (ferror(f)) {
-	strcpy(buf, "error on connection");
+	(void) strcpy(buf, "error on connection");
 	return (NOTOK);
     }
 
     if (c == EOF && p == buf) {
-	strcpy(buf, "connection closed by foreign host");
+	(void) strcpy(buf, "connection closed by foreign host");
 	return (DONE);
     }
 
@@ -502,7 +507,7 @@ FILE *f;
 	if (*(buf+1) == NULL) {
 	    return (DONE);
 	} else {
-	    strcpy(buf, buf+1);
+	    (void) strcpy(buf, buf+1);
 	}
     }
     return(OK);
@@ -528,37 +533,27 @@ char *err;
 FILE *f;
 {
     fprintf(f, "%s\r\n", buf);
-    fflush(f);
+    (void) fflush(f);
     if (ferror(f)) {
-	strcpy(err, "lost connection");
+	(void) strcpy(err, "lost connection");
 	return(NOTOK);
     }
     return(OK);
 }
 
-mbx_write(line, foo)
+/*ARGSUSED*/
+mbx_write(line, dummy)
 char *line;
-int foo;
+int dummy;				/* for consistency with pop_retr */
 {
 	if (mailptr) {
-		mailptr = (char *)realloc(mailptr,strlen(mailptr)+strlen(line)+2);
-		strcat(mailptr,line);
+		mailptr = realloc(mailptr,(unsigned)(strlen(mailptr)+strlen(line)+2));
+		(void) strcat(mailptr,line);
 	} 
 	else {
-		mailptr = (char *)malloc(strlen(line)+2);
-		strcpy(mailptr,line);
+		mailptr = malloc((unsigned)(strlen(line)+2));
+		(void) strcpy(mailptr,line);
 	}
-	strcat(mailptr,"\n");
-}
-
-mbx_delimit_begin(mbf)
-FILE *mbf;
-{
-    fputs("\f\n0,unseen,,\n", mbf);
-}
-
-mbx_delimit_end(mbf)
-FILE *mbf;
-{
-    putc('\037', mbf);
+	(void) strcat(mailptr,"\n");
+	return(0);
 }
