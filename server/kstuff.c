@@ -121,15 +121,10 @@ SendKerberosData(fd, ticket, service, host)
 {
     int rem;
     char p[32];
-    char krb_realm[REALM_SZ];
     int written;
     int size_to_write;
 
-    rem = krb_get_lrealm(krb_realm,1);
-    if (rem != KSUCCESS)
-	return rem + krb_err_base;
-
-    rem = krb_mk_req( ticket, service, host, krb_realm, (u_long)0 );
+    rem = krb_mk_req(ticket, service, host, my_realm, (u_long) 0);
     if (rem != KSUCCESS)
 	return rem + krb_err_base;
 
@@ -185,23 +180,24 @@ ZCheckAuthentication(notice, from)
 	    return ZAUTH_FAILED;
 	checksum = compute_checksum(notice, session_key);
 
-	/* If checksum matches, packet is authentic.  Otherwise, check
-	 * the authenticator as if we didn't have the session key cached
+	/* If the checksum matches, the packet is authentic.  Otherwise,
+	 * check authenticator as if we didn't have the session key cached
 	 * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
 	 * ticket isn't cached after a checksum failure), so don't worry
 	 * about the extra des_quad_cksum() call. */
-	if (checksum == notice->z_checksum)
+	if (checksum == notice->z_checksum) {
+	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
 	    return ZAUTH_YES;
+	}
     }
 
     /* We don't have the session key cached; do it the long way. */
     result = krb_rd_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
 			from->sin_addr.s_addr, &dat, srvtab_file);
     if (result == RD_AP_OK) {
-	(void) memcpy((char *)__Zephyr_session, (char *)dat.session, 
-		      sizeof(C_Block));
-	(void) sprintf(srcprincipal, "%s%s%s@%s", dat.pname, 
-		       dat.pinst[0]?".":"", dat.pinst, dat.prealm);
+	memcpy(__Zephyr_session, dat.session, sizeof(C_Block));
+	sprintf(srcprincipal, "%s%s%s@%s", dat.pname, dat.pinst[0] ? "." : "",
+		dat.pinst, dat.prealm);
 	if (strcmp(srcprincipal, notice->z_sender))
 	    return ZAUTH_FAILED;
     } else {
