@@ -13,7 +13,7 @@ void logins_deal(notice)
      char		*newdest;
      int		d;
 
-     d = distance(notice->z_class_inst, index(notice->z_class_inst, '@'));
+     d = distance(notice->z_class_inst, strchr(notice->z_class_inst, '@'));
      newdest = (char *) Malloc(d+1, "while dealing with login/logout notice",
 			       NULL);
      strncpy(newdest, notice->z_class_inst, d);
@@ -78,7 +78,7 @@ Boolean login_scan_work(client_data)
      if (i >= num)
 	  return True;
 
-     if (index(text[i], ',') || index(text[i], '.')) {
+     if (strchr(text[i], ',') || strchr(text[i], '.')) {
 	  i += 1;
 	  return False; }
 
