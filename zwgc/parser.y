@@ -13,8 +13,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_parser_y[] = "$Id$";
+static const char rcsid_parser_y[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -56,7 +58,7 @@ static Node *the_program;
 %token  ELSE ELSEIF ENDCASE ENDIF ENDWHILE EXEC EXECPORT EXIT
 %token  FIELDS GET GETENV IF INPUTPORT LANY LBREAK LSPAN
 %token  MATCH NOOP NOT OUTPUTPORT PRINT PROTECT VERBATIM PUT RANY RBREAK
-%token  RSPAN SET SHOW SUBSTITUTE THEN UPCASE WHILE ZVAR
+%token  RSPAN SET SUBSTITUTE THEN UPCASE WHILE ZVAR STYLESTRIP
 
 %type <node> expr varname string
 %type <node> exprlist comma_exprlist varnamelist
@@ -132,6 +134,8 @@ expr : '(' expr ')'
         { $$ = node_create_unary(ZVAR_OPCODE, $3); }
      | GET '(' expr ')'
         { $$ = node_create_unary(GET_OPCODE, $3); }
+     | STYLESTRIP '(' expr ')'
+        { $$ = node_create_unary(STYLESTRIP_OPCODE, $3); }
 
      | LANY '(' expr ',' expr ')'
         { $$ = node_create_binary(LANY_OPCODE, $3, $5 ); }

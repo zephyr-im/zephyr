@@ -22,9 +22,8 @@ static char rcsid_subscriptions_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
-#include <sys/param.h>
 #include <netdb.h>
 #include "new_memory.h"
 #include "new_string.h"

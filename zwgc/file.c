@@ -12,15 +12,14 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_file_c[] = "$Id$";
+static const char rcsid_file_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
 
-#include <errno.h>
-#include <sys/types.h>
-#include <stdio.h>
 #include <pwd.h>
 #include "new_memory.h"
 #include "new_string.h"

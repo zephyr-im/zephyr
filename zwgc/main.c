@@ -12,15 +12,16 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_main_c[] = "$Id$";
+static const char rcsid_main_c[] = "$Id$";
 #endif
 
+#include <sys/resource.h>
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
 
-#include <stdio.h>
-#include <signal.h>
 #include "new_memory.h"
 #include "zwgc.h"
 #include "parser.h"
@@ -36,7 +37,7 @@ static char rcsid_main_c[] = "$Id$";
 #include "main.h"
 
 extern void notice_handler();
-static void setup_signals(), detach();
+static void setup_signals(), detach(), signal_exit();
 
 /*
  * Global zwgc-wide variables:
@@ -46,13 +47,19 @@ static void setup_signals(), detach();
 int zwgc_debug = 0;
 #endif
 
-static char *zwgc_version_string = "0.4.7";
+static char *zwgc_version_string = "1.0";
 
 /*
  * description_filename_override - <<<>>>
  */
 
 static char *description_filename_override = NULL;
+
+/*
+ * progname - <<<>>> export!
+ */
+
+char *progname = NULL;
 
 /*
  * subscriptions_filename_override - <<<>>> export!
@@ -109,10 +116,12 @@ static void fake_startup_packet()
 static void read_in_description_file()
 {
     FILE *input_file;
+    char defdesc[128];
 
 /*    var_clear_all_variables(); <<<>>> */
 
-    input_file = locate_file(description_filename_override, USRDESC, DEFDESC);
+    sprintf(defdesc, "%s/%s", DATADIR, DEFDESC);
+    input_file = locate_file(description_filename_override, USRDESC, defdesc);
     if (input_file)
       program = parse_file(input_file);
     else
@@ -191,6 +200,8 @@ int main(argc, argv)
     char **new;
     register char **current;
     int dofork = 1;
+
+    progname = argv[0];
 
     /*
      * Process "-f <filename>", "-subfile <filename>", "-nofork",
@@ -309,6 +320,8 @@ void notice_handler(notice)
 	    free(class);
 	    free(instance);
 	    free(recipient);
+	} else if (!strcasecmp(control_opcode, USER_EXIT)) {
+	    signal_exit();
 	} else
 	  printf("zwgc: unknown control opcode %s.\n", control_opcode);
 
@@ -347,15 +360,11 @@ static void signal_exit()
     mux_end_loop_p = 1;
 }
 
-#include <sys/wait.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-
 /* clean up ALL the waiting children, in case we get hit with
    multiple SIGCHLD's at once, and don't process in time. */
-static void signal_child()
+static RETSIGTYPE signal_child()
 {
-#ifdef POSIX
+#ifdef HAVE_WAITPID
   int status;
 #else
   union wait status;
@@ -364,7 +373,7 @@ static void signal_child()
   int pid, old_errno = errno;
 
   do {
-#ifdef POSIX
+#ifdef HAVE_WAITPID
       pid = waitpid(-1, &status, WNOHANG);
 #else
       pid = wait3(&status, WNOHANG, (struct rusage *)0);
@@ -376,7 +385,7 @@ static void signal_child()
 static void setup_signals(dofork)
      int dofork;
 {
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     struct sigaction sa;
 
     sigemptyset(&sa.sa_mask);
@@ -433,7 +442,7 @@ static void detach()
   register int i;
 
   /* to try to get SIGHUP on user logout */
-#if defined(POSIX) && !defined(ultrix)
+#if defined(_POSIX_VERSION) && !defined(ultrix)
   (void) setpgid(0, tcgetpgrp(1));
 #else
   (void) setpgrp(0, getpgrp(getppid()));

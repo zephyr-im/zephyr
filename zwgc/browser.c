@@ -18,8 +18,7 @@ static char rcsid_browser_c[] = "$Header$";
 
 #include <zephyr/mit-copyright.h>
 
-#include <stdio.h>
-#include <sys/types.h>
+#include <sysdep.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "zwgc.h"

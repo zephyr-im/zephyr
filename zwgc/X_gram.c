@@ -12,17 +12,20 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_X_gram_c[] = "$Id$";
+static const char rcsid_X_gram_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
+
+#ifndef X_DISPLAY_MISSING
 
 #include "X_gram.h"
 #include "xmark.h"
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
-#include <X11/Xatom.h>
 #include "zwgc.h"
 #include "X_driver.h"
 #include "X_fonts.h"
@@ -52,10 +55,6 @@ static int border_width = 1;
 static int cursor_code = XC_sailboat;
 static int set_transient;
 static int enable_delete;
-#ifdef SGI_DESKS
-static int global_4dwm;
-static Atom desks_hints, desks_always_global;
-#endif
 static char *title_name,*icon_name;
 static Cursor cursor;
 static Window group_leader; /* In order to have transient windows,
@@ -143,18 +142,6 @@ void x_gram_init(dpy)
     /* The default here should be 1, but mwm sucks */
     set_transient = get_bool_resource("transient", "Transient", 0);
     enable_delete = get_bool_resource("enableDelete", "EnableDelete", 1);
-
-#ifdef SGI_DESKS
-    global_4dwm = get_bool_resource("global", "Global", 1);
-
-    if (global_4dwm)
-      {
-	desks_hints = XInternAtom(dpy, "_SGI_DESKS_HINTS", False);
-
-	desks_always_global = XInternAtom(dpy, "_SGI_DESKS_ALWAYS_GLOBAL",
-					  False);
-      }
-#endif
 
     temp = get_string_resource("borderWidth", "BorderWidth");
     /* <<<>>> */
@@ -324,13 +311,7 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
 
        x_set_icccm_hints(dpy,w,title_name,icon_name,&sizehints,&wmhints,0);
     }
-
-#ifdef SGI_DESKS
-    if (global_4dwm)
-      (void)XChangeProperty(dpy, w,
-			    desks_hints, XA_ATOM, 32, PropModeAppend,
-			    (char *)&desks_always_global, 1);
-#endif
+       
 
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
 
@@ -501,3 +482,6 @@ void x_gram_expose(dpy,w,gram,event)
       XDestroyRegion(region);
    }
 }
+
+#endif /* X_DISPLAY_MISSING */
+

@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_X_fonts_c[] = "$Id$";
+static const char rcsid_X_fonts_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -24,7 +26,8 @@ static char rcsid_X_fonts_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
+#ifndef X_DISPLAY_MISSING
+
 #include "X_fonts.h"
 #include "new_memory.h"
 #include "new_string.h"
@@ -297,3 +300,6 @@ XFontStruct *get_font(dpy,style,substyle,size,face)
    exit(1);
 #endif
 }
+
+#endif /* X_DISPLAY_MISSING */
+

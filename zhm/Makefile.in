@@ -1,0 +1,48 @@
+SHELL = /bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+datadir=@datadir@
+confdir=@confdir@
+sbindir=@sbindir@
+lsbindir=@lsbindir@
+
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
+
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+BUILDTOP=..
+VPATH=@srcdir@
+CC=@CC@
+INSTALL=@INSTALL@
+
+DEBUG=-O
+CFLAGS=${DEBUG} -DCONFDIR=\"${confdir}\" -I${top_srcdir}/h -I${BUILDTOP}/h \
+	@CPPFLAGS@
+LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LIBS=-lzephyr @LIBS@ -lcom_err
+
+OBJS=	timer.o queue.o zhm.o zhm_client.o zhm_server.o
+
+all: zhm
+
+zhm: ${OBJS} ${BUILDTOP}/lib/zephyr/libzephyr.a @ETDEP@
+	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+
+check:
+
+install: zhm
+	${INSTALL} -m 755 -s zhm ${DESTDIR}${lsbindir}
+	${INSTALL} -m 644 ${srcdir}/zhm.8 ${DESTDIR}${mandir}/man8
+
+clean:
+	rm -f ${OBJS} zhm
+
+${OBJS}: zhm.h timer.h ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
+${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h
+${OBJS}: ${BUILDTOP}/h/zephyr/zephyr_err.h
+
+.PHONY: all check install clean
+

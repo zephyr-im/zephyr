@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_tty_filter_c[] = "$Id$";
+static const char rcsid_tty_filter_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -24,9 +26,6 @@ static char rcsid_tty_filter_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <stdio.h>
-#include <ctype.h>
-#include <termios.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "string_dictionary_aux.h"
@@ -68,11 +67,14 @@ static char code_buf[10240], *code_buf_pos = code_buf, *code;
    @u		"us"/"ue" termcap entry.
  */
 
-#define TD_SET(k,v) (string_dictionary_Define(termcap_dict,(k),&ex)->value = (v))
-#define EAT_PADDING(var) (code = code_buf_pos, tputs(var, 1, tty_outc), *code_buf_pos++ = 0, var = code)
+#define TD_SET(k,v) (string_dictionary_Define(termcap_dict, (k), &ex)->value \
+		     = (v))
+#define EXPAND(k) (code = code_buf_pos, tputs(tmp, 1, tty_outc), \
+		   *code_buf_pos++ = 0, TD_SET(k, code))
 
-static int tty_outc(c)
-int c;
+static int
+tty_outc(c)
+    int c;
 {
     *code_buf_pos++ = c;
     return 0;
@@ -90,9 +92,15 @@ char **argv;
     int ex;
     string_dictionary_binding *b;
     int isrealtty = string_Eq(drivername, "tty");
+#ifdef HAVE_TERMIOS_H
     struct termios tbuf;
 
-    ospeed = (tcgetattr(0, &tbuf) == 0) ? cfgetospeed(&tbuf) : 2400;
+    ospeed = (tcgetattr(STDIN_FILENO, &tbuf) == 0) ? cfgetospeed(&tbuf) : 2400;
+#else
+    struct sgttyb sgttyb;
+
+    ospeed = (ioctl(0, TIOCGETP, &sgttyb) == 0) ? sgttyb.sg_ospeed : 2400;
+#endif
 
     if (termcap_dict == (string_dictionary) NULL)
       termcap_dict = string_dictionary_Create(7);
@@ -119,46 +127,39 @@ char **argv;
     
 	/* Step 1: get all of {rv,bold,u,bell,blink} that are available. */
 
+	/* We cheat here, and ignore the padding (if any) specified for
+	   the mode-change strings (it's a real pain to do "right") */
+
 	tmp = tgetstr("pc", &p);
 	PC = (tmp) ? *tmp : 0;
 	if (tmp = tgetstr("md",&p)) {	/* bold ? */
-	    EAT_PADDING(tmp);
-	    TD_SET("B.bold",tmp);
+	    EXPAND("B.bold");
 	    tmp = tgetstr("me",&p);
-	    EAT_PADDING(tmp);
-	    TD_SET("E.bold",tmp);
+	    EXPAND("E.bold");
 	}
 	if (tmp = tgetstr("mr",&p)) {	/* reverse video? */
-	    EAT_PADDING(tmp);
-	    TD_SET("B.rv",tmp);
+	    EXPAND("B.rw");
 	    tmp = tgetstr("me",&p);
-	    EAT_PADDING(tmp);
-	    TD_SET("E.rv",tmp);
+	    EXPAND("E.rw");
 	}
 	if (tmp = tgetstr("bl",&p)) {	/* Bell ? */
-	    TD_SET("B.bell",tmp);
-	    TD_SET("E.bell",NULL);
+	    EXPAND("B.bell");
+	    TD_SET("E.bell", NULL);
 	}
 	if (tmp = tgetstr("mb",&p)) {	/* Blink ? */
-	    EAT_PADDING(tmp);
-	    TD_SET("B.blink",tmp);
+	    EXPAND("B.blink");
 	    tmp = tgetstr("me",&p);
-	    EAT_PADDING(tmp);
-	    TD_SET("E.blink",tmp);
+	    EXPAND("E.blink");
 	}
 	if (tmp = tgetstr("us",&p))	{ /* Underline ? */
-	    EAT_PADDING(tmp);
-	    TD_SET("B.u",tmp);
+	    EXPAND("B.u");
 	    tmp = tgetstr("ue",&p);
-	    EAT_PADDING(tmp);
-	    TD_SET("E.u", tmp);
+	    EXPAND("E.u");
 	}
 	if (tmp = tgetstr("so",&p))	{ /* Standout ? */
-	    EAT_PADDING(tmp);
-	    TD_SET("B.so",tmp);
+	    EXPAND("B.so");
 	    tmp = tgetstr("se",&p);
-	    EAT_PADDING(tmp);
-	    TD_SET("E.so", tmp);
+	    EXPAND("E.so");
 	}
     }    
     /* Step 2: alias others to the nearest substitute */
@@ -388,6 +389,8 @@ static int calc_max_line_width(info)
     int right = 0;
 
     for (; info; info=info->next) {
+	if (info->ignore)
+	    continue;
 	switch (info->alignment) {
 	  case 'l':
 	    left += info->len;
@@ -434,11 +437,11 @@ string tty_filter(text, use_fonts)
     desctype *desc;
     int number_of_strs;
     int number_of_lines;
-    tty_str_info *info;
+    tty_str_info *info, *info_head;
     int max_line_width;
 
     desc = disp_get_cmds(text_copy, &number_of_strs, &number_of_lines);
-    info = convert_desc_to_tty_str_info(desc);
+    info_head = info = convert_desc_to_tty_str_info(desc);
     free_desc(desc);
 
 #ifdef DEBUG
@@ -537,7 +540,7 @@ string tty_filter(text, use_fonts)
 	}
     }
 
-    free_info(info);
+    free_info(info_head);
     free(text_copy);
     if (number_of_lines &&
 	(result_so_far[string_Length(result_so_far)-1] != '\n'))

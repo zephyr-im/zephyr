@@ -18,13 +18,16 @@ static char rcsid_xmark_c[] = "$Id$";
 
 #include <zephyr/mit-copyright.h>
 
+#include <sysdep.h>
+
+#ifndef X_DISPLAY_MISSING
+
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include "X_gram.h"
 #include "X_fonts.h"
 #include "xmark.h"
 #include "new_string.h"
-#include <stdio.h>
 
 int markblock[3] = { -1 , -1 , -1 };
 int markchar[3] = { -1 , -1 , -1 };
@@ -383,3 +386,6 @@ char *xmarkGetText()
 
     return(text_so_far);
 }
+
+#endif /* X_DISPLAY_MISSING */
+
