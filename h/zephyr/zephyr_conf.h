@@ -40,28 +40,21 @@
 
 #ifdef ultrix
 /* If you are using Ultrix versions prior to 3.0, uncomment the following
-   three lines  so that users don't need to specify -DULTRIX22 on their
-   compile lines. */
+ * three lines  so that users don't need to specify -DULTRIX22 on their
+ * compile lines. */
+
 /* #ifndef ULTRIX22 */
 /* #define ULTRIX22 */
 /* #endif */
-#endif /* ultrix */
 
-#if (defined(ultrix) && defined(ULTRIX22))
-/* Ultrix 3.0 and beyond have these defined in standard places */
-/* Ultrix 2.2 and previous don't have these defined */
+#ifdef ULTRIX22
 #define	MAXHOSTNAMELEN	64
 typedef int uid_t;
 typedef int gid_t;
-#ifndef Z_HaveKerberos
-#define FD_ZERO(p)  ((p)->fds_bits[0] = 0)
-#define FD_SET(n, p)   ((p)->fds_bits[0] |= (1 << (n)))
-#define FD_ISSET(n, p)   ((p)->fds_bits[0] & (1 << (n)))
-#endif /* KERBEROS */
-#define	FD_CLR(n, p)	((p)->fds_bits[0] &= ~(1 << (n)))
-#endif /* ultrix */
+#endif
+#endif
 
-#ifdef macII
+#if defined(macII) || defined(ULTRIX22)
 #define FD_ZERO(p)  ((p)->fds_bits[0] = 0)
 #define FD_SET(n, p)   ((p)->fds_bits[0] |= (1 << (n)))
 #define FD_ISSET(n, p)   ((p)->fds_bits[0] & (1 << (n)))
@@ -72,6 +65,6 @@ typedef int gid_t;
 #define	REALM_SZ	MAXHOSTNAMELEN
 #define	INST_SZ		0		/* no instances w/o Kerberos */
 #define	ANAME_SZ	9		/* size of a username + null */
-#endif /* !KERBEROS */
+#endif
 
 #endif /* __ZEPHYR_CONF_H__ */
