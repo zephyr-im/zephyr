@@ -101,6 +101,7 @@ extern void acl_cache_reset P((void));
 #define	xinsque(a,b)	insque((struct qelem *)(a), (struct qelem *)(b))
 #define xremque(a)	remque((struct qelem *)(a))
 #define	xmalloc(a)	malloc((unsigned)(a))
+#define	xrealloc(foo,a) realloc((caddr_t) (foo), (unsigned) (a))
 
 #define ZSERVER_UNIX_H__
 #endif
