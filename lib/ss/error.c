@@ -53,26 +53,19 @@ char * ss_name(sci_idx)
     }
 }
 
-#ifdef HAVE_STDARG_H
+#ifdef __STDC__
 void ss_error (int sci_idx, long code, const char * fmt, ...)
 #else
-void ss_error (va_alist)
+void ss_error (sci_idx, code, fmt, va_alist)
+    int sci_idx;
+    long code;
+    const char *fmt;
     va_dcl
 #endif
 {
     register char *whoami;
     va_list pvar;
-#ifdef HAVE_STDARG_H
-    va_start (pvar, fmt);
-#else
-    int sci_idx;
-    long code;
-    char * fmt;
-    va_start (pvar);
-    sci_idx = va_arg (pvar, int);
-    code = va_arg (pvar, long);
-    fmt = va_arg (pvar, char *);
-#endif
+    VA_START (pvar, fmt);
     whoami = ss_name (sci_idx);
     com_err_va (whoami, code, fmt, pvar);
     free (whoami);
