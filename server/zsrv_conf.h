@@ -31,7 +31,9 @@
 /* name of file to hold the tickets for keys to exchange with other servers */
 #define	ZEPHYR_TKFILE		Z_LIBDIR "/ztkts"
 
-/* pathname of Kerberos srvtab file */
+/* Pathname of Kerberos srvtab file.
+   WARNING: lib/ZCheckAuthentication.c needs to have a corresponding
+   definition!  */
 #define SERVER_SRVTAB		Z_LIBDIR "/srvtab"
 #endif
 
