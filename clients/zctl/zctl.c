@@ -478,8 +478,7 @@ sub_file(argc,argv)
 	}
 	sub.zsub_class = argv[1];
 	sub.zsub_classinst = argv[2];
-	sub.zsub_recipient = (argc == 3)?TOKEN_ME:TOKEN_WILD;
-
+	sub.zsub_recipient = (argc == 3)?TOKEN_ME:argv[3];
 
 	if (make_exist(subsname))
 		return;
