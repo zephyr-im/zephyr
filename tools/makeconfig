@@ -1,0 +1,57 @@
+# $Source$
+# $Author$
+# $Header$
+#
+# Makefile for creating a Zephyr configuration
+#
+# This Makefile creates the directories needed to hold Zephyr
+# object files and executables.  It also installs the Imakefiles.
+# This also copies in the Imake and make depend program and Imake macros.
+# By default, the Imakefiles are copied into the configuration
+# and made writeable.  If a link is preferred, change LN to "ln".
+#
+# The default distination for the configuration is the current
+# directory; defaults for destination and source directories may be
+# specified, e.g.:
+#
+# make -f makeconfig SRCDIR=/u2/lockers/zephyr DESTDIR=myconfig
+
+DESTDIR	= .
+SRCDIR 	= /mit/zephyr/src
+
+LN	= ln -s
+
+SUBDIR	= et et/lib et/compile_et ss ss/lib ss/make_commands clients \
+	clients/syslogd clients/zaway \
+	clients/zbitmap clients/zctl clients/zinit clients/zleave \
+	clients/zlocate clients/zmailnotify clients/znol clients/zpopnotify \
+	clients/zshutdown_notify clients/zstat clients/ztalk clients/zwrite \
+	include lib man man/man1 man/man8 server zhm zwgc \
+	zwgc/browser zwgc/zbrowser
+
+
+# Empty directories which also need to be built.
+
+MTDIR	= et/profiled lib/profiled libs
+
+# Directories which need only be linked into the sources
+
+LINKDIR = server/acldir
+
+all:
+	${LN} ${SRCDIR}/Makefile ${DESTDIR}
+	${LN} ${SRCDIR}/Imakefile ${DESTDIR}
+	chmod +w ${DESTDIR}/Makefile
+	-for i in ${SUBDIR}; do \
+		mkdir ${DESTDIR}/$$i; \
+		rm -f ${DESTDIR}/$$i/Imakefile; \
+		${LN} ${SRCDIR}/$$i/Imakefile ${DESTDIR}/$$i; \
+	done
+	-for i in ${MTDIR}; do mkdir ${DESTDIR}/$$i; done
+	-for i in ${LINKDIR}; do ${LN} ${SRCDIR}/$$i ${DESTDIR}/$$i; done
+	for i in imake makedepend config; do \
+		rm -rf ${DESTDIR}/$$i; \
+		cp -r ${SRCDIR}/$$i ${DESTDIR}; \
+	done
+	
+	
