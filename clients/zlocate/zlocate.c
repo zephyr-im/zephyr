@@ -77,9 +77,13 @@ main(argc,argv)
 				printf("%s: internal failure while getting location\n",whoami);
 				exit(1);
 			}
-			print_pad(locations.host,43);
-			print_pad(locations.tty,8);
-			printf("%s\n",locations.time);
+			/* just use printf; make the field widths one
+			 * smaller to deal with the extra seperation space.
+			 */
+			printf("%-*s %-*s %s\n",
+			       42, locations.host,
+			       7, locations.tty,
+			       locations.time);
 		}
 		if (argc)
 			printf("\n");
@@ -87,20 +91,4 @@ main(argc,argv)
 	}
 }
 
-print_pad(s,n)
-	char *s;
-	int n;
-{
-	char bfr[81];
-	int num;
 
-	(void) strcpy(bfr,"                                                                               ");
-	
-	if (strlen(s) < n)
-		num = n-strlen(s);
-	else
-		num = 0;
-
-	bfr[num] = '\0';
-	printf("%s%s",s,bfr);
-}
