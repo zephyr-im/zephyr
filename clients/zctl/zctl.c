@@ -14,7 +14,7 @@
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr.h>
-#include <ss.h>
+#include <ss/ss.h>
 #include <pwd.h>
 #include <netdb.h>
 #include <string.h>
