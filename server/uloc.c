@@ -125,26 +125,11 @@ ulogin_dispatch(notice, auth, who, server)
     Exposure_type retval;
     int err_ret;
 
-#if 0
-    zdbug((LOG_DEBUG,
-	   "ulogin_dispatch: opc=%s from=%s/%d auth=%d who=%s/%d",
-	   notice->z_opcode, notice->z_sender, ntohs (notice->z_port),
-	   auth, inet_ntoa (who->sin_addr), ntohs (who->sin_port)));
-#endif
-
     if (strcmp(notice->z_opcode, LOGIN_USER_LOGOUT) == 0) {
-#if 0
-	zdbug((LOG_DEBUG,"logout"));
-#endif
 	retval = ulogin_remove_user(notice, auth, who, &err_ret);
 	switch (retval) {
 	  case NONE:
 	    if (err_ret == UNAUTH) {
-#if 0
-		zdbug((LOG_DEBUG, "unauth logout: %s %d",
-		       inet_ntoa(who->sin_addr),
-		       ntohs(notice->z_port)));
-#endif
 		if (server == me_server)
 		    clt_ack(notice, who, AUTH_FAILED);
 		return ZERR_NONE;
@@ -188,31 +173,19 @@ ulogin_dispatch(notice, auth, who, server)
     }
     if (!bdumping && 
 	(!auth || strcmp(notice->z_sender, notice->z_class_inst) != 0))  {
-#if 1
 	zdbug((LOG_DEBUG,"unauthentic ulogin: %d %s %s", auth,
 	       notice->z_sender, notice->z_class_inst));
-#endif
 	if (server == me_server)
 	    clt_ack(notice, who, AUTH_FAILED);
 	return ZERR_NONE;
     }
     if (strcmp(notice->z_opcode, LOGIN_USER_FLUSH) == 0) {
-#if 0
-	zdbug((LOG_DEBUG, "user flush"));
-#endif
 	ulogin_flush_user(notice);
 	if (server == me_server)
 	    ack(notice, who);
     } else if (strcmp(notice->z_opcode, EXPOSE_NONE) == 0) {
-#if 0
-	zdbug((LOG_DEBUG,"no expose"));
-#endif
 	ulogin_remove_user(notice, auth, who, &err_ret);
 	if (err_ret == UNAUTH) {
-#if 0
-	    zdbug((LOG_DEBUG, "unauth noexpose: %s/%d",
-		   inet_ntoa(who->sin_addr), ntohs(notice->z_port)));
-#endif
 	    if (server == me_server)
 		clt_ack(notice, who, AUTH_FAILED);
 	    return ZERR_NONE;
@@ -227,9 +200,6 @@ ulogin_dispatch(notice, auth, who, server)
 	}
 	return ZERR_NONE;
     } else if (strcmp(notice->z_opcode, EXPOSE_OPSTAFF) == 0) {
-#if 0
-	zdbug((LOG_DEBUG,"opstaff"));
-#endif
 	err_ret = ulogin_add_user(notice, OPSTAFF_VIS, who);
 	if (server == me_server) {
 	    if (err_ret)
@@ -238,9 +208,6 @@ ulogin_dispatch(notice, auth, who, server)
 		ack(notice, who);
 	}
     } else if (strcmp(notice->z_opcode, EXPOSE_REALMVIS) == 0) {
-#if 0
-	zdbug((LOG_DEBUG,"realmvis"));
-#endif
 	err_ret = ulogin_add_user(notice, REALM_VIS, who);
 	if (server == me_server) { /* realm vis is not broadcast,
 				      so we ack it here */
@@ -250,9 +217,6 @@ ulogin_dispatch(notice, auth, who, server)
 		ack(notice, who);
 	}
     } else if (!strcmp(notice->z_opcode, EXPOSE_REALMANN)) {
-#if 0
-	zdbug((LOG_DEBUG,"realmann"));
-#endif
 	err_ret = ulogin_add_user(notice, REALM_ANN, who);
 	if (server == me_server) { /* announce to the realm */
 	    if (err_ret)
@@ -261,9 +225,6 @@ ulogin_dispatch(notice, auth, who, server)
 		login_sendit(notice, auth, who, 0);
 	}
     } else if (!strcmp(notice->z_opcode, EXPOSE_NETVIS)) {
-#if 0
-	zdbug((LOG_DEBUG,"netvis"));
-#endif
 	err_ret = ulogin_add_user(notice, NET_VIS, who);
 	if (server == me_server) { /* announce to the realm */
 	    if (err_ret)
@@ -272,9 +233,6 @@ ulogin_dispatch(notice, auth, who, server)
 		login_sendit(notice, auth, who, 0);
 	}
     } else if (!strcmp(notice->z_opcode, EXPOSE_NETANN)) {
-#if 0
-	zdbug((LOG_DEBUG,"netann"));
-#endif
 	err_ret = ulogin_add_user(notice, NET_ANN, who);
 	if (server == me_server) { /* tell the world */
 	    if (err_ret)
@@ -326,24 +284,7 @@ ulocate_dispatch(notice, auth, who, server)
     char *cp;
     Realm *realm;
 
-#if 0
-    zdbug((LOG_DEBUG,"ulocate_disp"));
-#endif
-
-#if 0				/* Now we support unauthentic locate for net-visible.  */
-    if (!auth) {
-#if 0
-	zdbug((LOG_DEBUG,"unauthentic ulocate"));
-#endif
-	if (server == me_server)
-	    clt_ack(notice, who, AUTH_FAILED);
-	return ZERR_NONE;
-    }
-#endif
     if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
-#if 0
-	zdbug((LOG_DEBUG,"locate"));
-#endif
 	/* we are talking to a current-rev client; send an ack */
 	ack(notice, who);
 	cp = strchr(notice->z_class_inst, '@');
@@ -358,13 +299,6 @@ ulocate_dispatch(notice, auth, who, server)
 	    nack(notice, who);
 	return ZERR_NONE;
     }
-#if 0
-    if (server == me_server) {
-	server_forward(notice, auth, who);
-	ack(notice, who);
-    }
-    return ZERR_NONE;
-#endif
 }
 
 /*
@@ -390,18 +324,10 @@ uloc_hflush(addr)
 
     /* copy entries which don't match */
     while (i < num_locs) {
-	if (locations[i].addr.sin_addr.s_addr != addr->s_addr) {
+	if (locations[i].addr.sin_addr.s_addr != addr->s_addr)
 	    loc[new_num++] = locations[i];
-	} else {
-#if 0
-	    if (zdebug)
-		syslog(LOG_DEBUG, "uloc hflushing %s/%s/%s",
-		       locations[i].user->string,
-		       locations[i].machine->string,
-		       locations[i].tty->string);
-#endif
+	else
 	    free_loc(&locations[i]);
-	}
 	i++;
     }
 
@@ -409,9 +335,6 @@ uloc_hflush(addr)
     locations = NULL;
 
     if (!new_num) {
-#if 0
-	zdbug((LOG_DEBUG,"no more locs"));
-#endif
 	free(loc);
 	loc = NULL;
 	num_locs = new_num;
@@ -448,13 +371,6 @@ uloc_flush_client(sin)
 	    || (locations[i].addr.sin_port != sin->sin_port)) {
 	    loc[new_num++] = locations[i];
 	} else {
-#if 0
-	    if (zdebug)
-		syslog(LOG_DEBUG, "uloc cflushing %s/%s/%s",
-		       locations[i].user->string,
-		       locations[i].machine->string,
-		       locations[i].tty->string);
-#endif
 	    free_loc(&locations[i]);
 	}
 	i++;
@@ -464,9 +380,6 @@ uloc_flush_client(sin)
     locations = NULL;
 
     if (!new_num) {
-#if 0
-	zdbug((LOG_DEBUG,"no more locs"));
-#endif
 	free(loc);
 	loc = NULL;
 	num_locs = new_num;
@@ -555,9 +468,6 @@ ulogin_add_user(notice, exposure, who)
     int i;
 
     if ((oldlocs = ulogin_find(notice,1)) != NULL) {
-#if 0
-	zdbug((LOG_DEBUG,"ul_add: already here"));
-#endif
 	ulogin_expose_user(notice, exposure);
 	return 0;
     }
@@ -610,17 +520,6 @@ ulogin_add_user(notice, exposure, who)
 	free(oldlocs);
 
   dprnt:
-#if 0
-    if (zdebug) {
-	int i;
-	syslog(LOG_DEBUG, "ul_add: New Locations (%d)", num_locs);
-	for (i = 0; i < num_locs; i++) {
-	    syslog(LOG_DEBUG, "%s/%s/%s/%d", locations[i].user->string,
-		   locations[i].machine->string, locations[i].tty->string,
-		   (int) locations[i].exposure);
-	}
-    }
-#endif
     return 0;
 }
 
@@ -677,22 +576,13 @@ ulogin_parse(notice, locs)
 
     cp = base;
     locs->machine = make_string(cp,0);
-#if 0
-    zdbug((LOG_DEBUG, "ul_parse: mach %s", cp));
-#endif
 
     cp += (strlen(cp) + 1);
     locs->time = strsave(cp);
-#if 0
-    zdbug((LOG_DEBUG, "ul_parse: time %s", cp));
-#endif
 
     /* This field might not be null-terminated */
     cp += (strlen(cp) + 1);
     locs->tty = make_string(cp, 0);
-#if 0
-    zdbug((LOG_DEBUG, "ul_parse: tty %s", locs->tty->string));
-#endif
 
     return 0;
 }	
@@ -728,43 +618,24 @@ ulogin_find(notice, strict)
     rhi = num_locs - 1;		/* first index is 0 */
 
     while ((compar = comp_string(locations[i].user, inst)) != 0) {
-#if 0
-	zdbug ((LOG_DEBUG, "ulogin_find: comparing %s %s %s %d %d",
-		notice->z_class_inst, locations[i].user->string,
-		locations[i].tty->string, rlo, rhi));
-#endif
 	if (compar < 0)
 	    rlo = i + 1;
 	else
 	    rhi = i - 1;
 	if (rhi - rlo < 0) {
-#if 0
-	    zdbug((LOG_DEBUG,"ul_find: %s not found",
-		   inst->string));
-#endif
 	    free_string(inst);
 	    return 0;
 	}
 	i = (rhi + rlo) >> 1;	/* split the diff */
     }
-#if 0
-    zdbug((LOG_DEBUG, "ul_find: %s found at loc %d",
-	   inst->string, i));
-#endif
     if (strict && ulogin_parse(notice, &tmploc)) {
-#if 1
 	zdbug((LOG_DEBUG,"ul_find bad fmt"));
-#endif
 	free_string(inst);
 	return 0;
     }
     /* back up to the first of this guy */
     while (i > 0 && (locations[i-1].user == inst)) {
 	i--;
-#if 0
-	zdbug((LOG_DEBUG, "ulogin_find: backing up: %s %d %s %s", inst->string,
-	       i, locations[i].user->string, locations[i].tty->string));
-#endif
     }
     if (strict) {
 	while (i < num_locs && !ul_equiv(&tmploc, &locations[i])
@@ -774,9 +645,7 @@ ulogin_find(notice, strict)
     if (strict)
 	free_loc(&tmploc);
     if (i == num_locs || locations[i].user != inst) {
-#if 1
 	zdbug((LOG_DEBUG,"ul_find final match loss"));
-#endif
 	free_string(inst);
 	return 0;
     }
@@ -813,9 +682,6 @@ ulogin_remove_user(notice, auth, who, err_return)
     *err_return = 0;
     loc = ulogin_find(notice, 1);
     if (!loc) {
-#if 0
-	zdbug((LOG_DEBUG,"ul_rem: not here"));
-#endif
 	*err_return = NOLOC;
 	return NONE;
     }
@@ -829,9 +695,6 @@ ulogin_remove_user(notice, auth, who, err_return)
     quiet = loc->exposure;
 
     if (--num_locs == 0) {	/* last one */
-#if 0
-	zdbug((LOG_DEBUG,"last loc"));
-#endif
 	free_loc(locations);
 	free(locations);
 	locations = NULL;
@@ -864,16 +727,6 @@ ulogin_remove_user(notice, auth, who, err_return)
 
     locations = new_locs;
 
-#if defined(DEBUG) && 0
-    if (zdebug) {
-	int i;
-
-	for (i = 0; i < num_locs; i++) {
-	    syslog(LOG_DEBUG, "%s/%d", locations[i].user->string,
-		   (int) locations[i].exposure);
-	}
-    }
-#endif
     /* all done */
     return quiet;
 }
@@ -891,12 +744,8 @@ ulogin_flush_user(notice)
 
     i = num_match = num_left = 0;
 
-    if (!(loc2 = ulogin_find(notice, 0))) {
-#if 0
-	zdbug((LOG_DEBUG,"ul_rem: not here"));
-#endif
+    if (!(loc2 = ulogin_find(notice, 0)))
 	return;
-    }
 
     /* compute # locations left in the list, after loc2 (inclusive) */
     num_left = num_locs - (loc2 - locations);
@@ -909,9 +758,6 @@ ulogin_flush_user(notice)
 	num_left--;
     }
     if (num_locs == num_match) { /* no other locations left */
-#if 0
-	zdbug((LOG_DEBUG,"last loc"));
-#endif
 	for (j = 0; j < num_match; j++)
 	    free_loc(&locations[j]); /* free storage */
 	free (locations);
@@ -972,18 +818,9 @@ ulogin_expose_user(notice, exposure)
     Location *loc, loc2;
     int idx, notfound = 1;
 
-#if 0
-    zdbug((LOG_DEBUG,"ul_expose: %s type %d", notice->z_sender,
-	   (int) exposure));
-#endif
-
     loc = ulogin_find(notice, 0);
-    if (!loc) {
-#if 0
-		zdbug((LOG_DEBUG,"ul_hide: not here"));
-#endif
-		return 1;
-    }
+    if (!loc)
+	return 1;
 
     if (ulogin_parse(notice, &loc2))
 	return 1;
@@ -1076,9 +913,6 @@ ulogin_marshal_locs(notice, found, auth)
     inst = make_string(notice->z_class_inst,0);
     while (i < num_locs && (inst == locations[i].user)) {
 	/* these locations match */
-#if 0
-	zdbug((LOG_DEBUG,"match %s", locations[i].user->string));
-#endif
 	switch (locations[i].exposure) {
 	  case OPSTAFF_VIS:
 	    i++;
