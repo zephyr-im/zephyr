@@ -55,8 +55,10 @@ ZAccess_t accesstype;
 		syslog(LOG_ERR, "unknown access type %d", accesstype);
 		return(0);
 	}
-	(void) sprintf(buf, "%s.%s", acl->acl_filename,
-		(accesstype == TRANSMIT) ? "xmt" : "sub");
+	(void) sprintf(buf, "%s%s-%s", 
+		       ZEPHYR_ACL_DIR,
+		       (accesstype == TRANSMIT) ? "xmt" : "sub",
+		       acl->acl_filename);
 
 	return(acl_check(buf, notice->z_sender));
 }
