@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -162,6 +162,7 @@ bdump_send()
 	ZServerDesc_t *server;
 	Code_t retval;
 	int fromlen = sizeof(from);
+	int omask;
 #ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
@@ -180,6 +181,8 @@ bdump_send()
 #ifndef KERBEROS
 	fromport = ntohs(from.sin_port);
 #endif KERBEROS
+
+	omask = sigblock(sigmask(SIGFPE)); /* don't let ascii dumps start */
 
 	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect failures */
 
@@ -212,31 +215,31 @@ bdump_send()
 	if ((retval = GetKerberosData(live_socket, from.sin_addr, &kdata, "zephyr",
 				      ZEPHYR_SRVTAB)) != KSUCCESS) {
 		syslog(LOG_ERR, "sbd getkdata: %s",krb_err_txt[retval]);
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 	if (strcmp(kdata.pname,"zephyr") || strcmp(kdata.pinst,"zephyr")) {
 		syslog(LOG_ERR, "sbd peer not zephyr: %s.%s@%s",
 		       kdata.pname, kdata.pinst,kdata.prealm);
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 	/* authenticate back */
 	if (get_tgt()) {
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 	if ((retval = SendKerberosData(live_socket, &ticket, "zephyr", "zephyr"))
 	    != KSUCCESS) {
 		syslog(LOG_ERR,"bdump_send: %s",krb_err_txt[retval]);
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 #else
 	if ((fromport > IPPORT_RESERVED) ||
 	    (fromport < (IPPORT_RESERVED / 2))) {
 		syslog(LOG_ERR,"bad port from peer: %d",fromport);
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 #endif KERBEROS
@@ -244,13 +247,13 @@ bdump_send()
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sbd_loop failed: %s",
 		       error_message(retval));
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	} else {
 		if ((retval = gbd_loop(server)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "gbd_loop failed: %s",
 			       error_message(retval));
-			cleanup(server);
+			cleanup(server, omask);
 			return;
 		} else {
 			zdbug((LOG_DEBUG, "sbd finished"));
@@ -274,6 +277,7 @@ bdump_send()
 	server_send_queue(server);
 #endif CONCURRENT
 
+	(void) sigsetmask(omask);
 	return;
 }
 
@@ -287,6 +291,7 @@ ZServerDesc_t *server;
 {
 	struct sockaddr_in from;
 	Code_t retval;
+	int omask;
 #ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
@@ -331,12 +336,13 @@ ZServerDesc_t *server;
 		server->zs_dumping = 0;
 		return;
 	}
+	omask = sigblock(sigmask(SIGFPE)); /* don't let ascii dumps start */
 #ifndef KERBEROS
 	if (ntohs(from.sin_port) > IPPORT_RESERVED ||
 	    ntohs(from.sin_port) < IPPORT_RESERVED / 2) {
 		syslog(LOG_ERR, "gbd port not reserved: %d",
 		       ntohs(from.sin_port));
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 	if ((live_socket = rresvport(&reserved_port)) < 0) {
@@ -344,12 +350,12 @@ ZServerDesc_t *server;
 	if ((live_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 #endif KERBEROS
 		syslog(LOG_ERR, "gbd socket: %m");
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 	if (connect(live_socket, (struct sockaddr *) &from, sizeof(from))) {
 		syslog(LOG_ERR, "gbd connect: %m");
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 	zdbug((LOG_DEBUG, "gbd connected"));
@@ -359,13 +365,13 @@ ZServerDesc_t *server;
 #ifdef KERBEROS
 	/* send an authenticator */
 	if (get_tgt()) {
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 	if ((retval = SendKerberosData(live_socket, &ticket, "zephyr", "zephyr"))
 	    != KSUCCESS) {
 		syslog(LOG_ERR,"bdump_send: %s",krb_err_txt[retval]);
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 	zdbug((LOG_DEBUG,"skd ok"));
@@ -374,7 +380,7 @@ ZServerDesc_t *server;
 	if ((retval = GetKerberosData(live_socket, from.sin_addr, &kdata, "zephyr",
 				      ZEPHYR_SRVTAB)) != KSUCCESS) {
 		syslog(LOG_ERR, "sbd getkdata: %s",krb_err_txt[retval]);
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 	/* my_realm is filled in inside get_tgt() */
@@ -382,21 +388,21 @@ ZServerDesc_t *server;
 	    || strcmp(kdata.prealm, my_realm)) {
 		syslog(LOG_ERR, "sbd peer not zephyr in lrealm: %s.%s@%s",
 		       kdata.pname, kdata.pinst,kdata.prealm);
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	}
 #endif KERBEROS
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "gbd_loop failed: %s",
 		       error_message(retval));
-		cleanup(server);
+		cleanup(server, omask);
 		return;
 	} else {
 		zdbug((LOG_DEBUG,"gbdl ok"));
 		if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "sbd_loop failed: %s",
 			       error_message(retval));
-			cleanup(server);
+			cleanup(server, omask);
 			return;
 		} else {
 			zdbug((LOG_DEBUG, "gbd finished"));
@@ -419,6 +425,7 @@ ZServerDesc_t *server;
 	server_send_queue(server);
 #endif CONCURRENT	
 
+	(void) sigsetmask(omask);
 	return;
 }
 
@@ -462,7 +469,7 @@ int num;
 
 	if ((count = net_write(live_socket, (caddr_t) &length, sizeof(length))) != sizeof(length))
 		if (count < 0)
-			return(count);
+			return(errno);
 		else {
 			syslog(LOG_WARNING, "slt xmit: %d vs %d",sizeof(length),count);
 			return(ZSRV_PKSHORT);
@@ -470,7 +477,7 @@ int num;
 
 	if ((count = net_write(live_socket, pack, packlen)) != packlen)
 		if (count < 0)
-			return(count);
+			return(errno);
 		else {
 			syslog(LOG_WARNING, "slt xmit: %d vs %d",packlen, count);
 			return(ZSRV_PKSHORT);
@@ -479,8 +486,9 @@ int num;
 }
 
 static void
-cleanup(server)
+cleanup(server, omask)
 ZServerDesc_t *server;
+int omask;
 {
 	zdbug((LOG_DEBUG, "cleanup"));
 	if (server != limbo_server) {
@@ -497,6 +505,7 @@ ZServerDesc_t *server;
 #ifdef CONCURRENT
 	/* XXX need to flush the server and the updates to it */
 #endif CONCURRENT
+	(void) sigsetmask(omask);
 	return;
 }
 
