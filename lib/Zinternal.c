@@ -14,9 +14,8 @@
 
 #ifndef lint
 static char rcsid_Zinternal_c[] = "$Header$";
-#endif lint
-
 static char copyright[] = "Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.";
+#endif lint
 
 #include <zephyr/mit-copyright.h>
 
@@ -714,25 +713,25 @@ void Z_RemQueue(qptr)
 	free ((char *)qptr);
 	__Q_Head = (struct _Z_InputQ *)0;
 	__Q_Tail = (struct _Z_InputQ *)0;
-	return (ZERR_NONE);
+	return;
     }
     
     if (qptr == __Q_Head) {
 	__Q_Head = qptr->next;
 	__Q_Head->prev = (struct _Z_InputQ *)0;
 	free ((char *)qptr);
-	return (ZERR_NONE);
+	return;
     } 
     if (qptr == __Q_Tail) {
 	__Q_Tail = qptr->prev;
 	__Q_Tail->next = (struct _Z_InputQ *)0;
 	free ((char *)qptr);
-	return (ZERR_NONE);
+	return;
     }
     qptr->prev->next = qptr->next;
     qptr->next->prev = qptr->prev;
     free ((char *)qptr);
-    return (ZERR_NONE);
+    return;
 }
 
 Code_t Z_SendFragmentedNotice(notice, len, send_func)
