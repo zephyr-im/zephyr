@@ -2,9 +2,11 @@
 
 #include "xzwrite.h"
 #include <string.h>
+#include <dyn.h>
 
 static int zeph_send_notice();
 extern Defaults defs;
+extern DynObject zsigs;
 
 /* ARGSUSED */
 void zeph_dispatch(client_data, source, input_id)
@@ -127,15 +129,21 @@ int zeph_send_message(dest, msg)
 {
      ZNotice_t	notice;
      int 	msglen, siglen, ret;
-     char	*sig_msg;
+     char	*sig_msg, *sig;
+
+     if (!zsigs) sig = defs.signature;
+     else {
+       char **tmp;
+       tmp = (char **) DynGet (zsigs, rand() % DynSize(zsigs));
+       sig = *tmp; }
 
      msglen = strlen(msg);
-     siglen = strlen(defs.signature);
+     siglen = strlen(sig);
      sig_msg = (char *) Malloc(msglen + siglen + 2, "while sending message",
 			       NULL);
-     sprintf(sig_msg, "%s%c%s", defs.signature, '\0', msg);
+     sprintf(sig_msg, "%s%c%s", sig, '\0', msg);
           
-     (void) memset((char *) &notice, 0, sizeof(ZNotice_t));
+     memset((char *) &notice, 0, sizeof(ZNotice_t));
      notice.z_kind = ACKED;
      notice.z_class = dest->zclass;
      notice.z_class_inst = dest->zinst;
@@ -148,13 +156,13 @@ int zeph_send_message(dest, msg)
 
      /* This really gross looking mess is brought to you by zwrite.c */
      if (defs.auth) {
-	  if (*defs.signature)
+	  if (*sig)
 	       notice.z_default_format = "Class $class, Instance $instance:\nTo: @bold($recipient)\n@bold($1) <$sender>\n\n$2";
 	  else
 	       notice.z_default_format = "Class $class, Instance $instance:\nTo: @bold($recipient)\n$message";
      }
      else {
-	  if (*defs.signature)
+	  if (*sig)
 	       notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance:\n@bold($1) <$sender>\n\n$2";
 	  else
 	       notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance:\n$message";
@@ -162,6 +170,12 @@ int zeph_send_message(dest, msg)
      
      ret = zeph_send_notice(&notice, (defs.auth) ? ZAUTH : ZNOAUTH);
      free(sig_msg);
+
+     /* log to file */
+     if (defs.logfile)
+       if (strcmp(defs.logfile, "*"))
+	 log_message (dest, msg);
+
      return ret;
 }
 
@@ -267,3 +281,31 @@ void zeph_display_subscriptions()
      }
 }
 #endif
+
+void log_message(dest, msg)
+   Dest	dest;
+   char	*msg;
+{
+  FILE *fp;
+  int i;
+  time_t now;
+
+  fp = fopen(defs.logfile, "a");
+  if (!fp) {
+    fp = fopen(defs.logfile, "w");
+    if (!fp) {
+      fprintf(stderr, "xzwrite: could not open log file \"%s\".\n",
+	      defs.logfile);
+      return; }
+  }
+
+  now = time (NULL);
+  fprintf(fp, "To: %s, %s, %s\n", dest->zclass, dest->zinst, dest->zrecip);
+  fprintf(fp, "Date: %s\n", ctime (&now));
+
+  i = strlen(msg)-1;
+  while (msg[i] == '\n' && i > 0) i--;
+  if (msg[i] != '\n') i++; msg[i] = 0;
+  fputs(msg, fp); fprintf(fp, "\n\n");
+  fclose(fp);
+}
