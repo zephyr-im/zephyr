@@ -532,7 +532,12 @@ usage()
  */
 
 static SIGNAL_RETURN_TYPE
+#ifdef __STDC__
 bye(int sig)
+#else
+bye(sig)
+     int sig;
+#endif
 {
 	server_shutdown();		/* tell other servers */
 	hostm_shutdown();		/* tell our hosts */
@@ -545,7 +550,12 @@ bye(int sig)
 }
 
 static SIGNAL_RETURN_TYPE
+#ifdef __STDC__
 dbug_on(int sig)
+#else
+dbug_on(sig)
+     int sig;
+#endif
 {
 	syslog(LOG_DEBUG, "debugging turned on");
 #ifdef DEBUG_MALLOC
@@ -556,7 +566,12 @@ dbug_on(int sig)
 }
 
 static SIGNAL_RETURN_TYPE
+#ifdef __STDC__
 dbug_off(int sig)
+#else
+dbug_off(sig)
+     int sig;
+#endif
 {
 	syslog(LOG_DEBUG, "debugging turned off");
 #ifdef DEBUG_MALLOC
@@ -569,7 +584,13 @@ dbug_off(int sig)
 int fork_for_dump = 0;
 
 static SIGNAL_RETURN_TYPE
-dump_strings (int sig) {
+#ifdef __STDC__
+dump_strings (int sig)
+#else
+dump_strings(sig)
+     int sig;
+#endif
+{
     FILE *fp;
     int oerrno = errno;
     fp = fopen ("/usr/tmp/zephyr.strings", "w");
@@ -589,7 +610,12 @@ dump_strings (int sig) {
 }
 
 static SIGNAL_RETURN_TYPE
+#ifdef __STDC__
 dump_db(int sig)
+#else
+dump_db(sig)
+     int sig;
+#endif
 {
 	/* dump the in-core database to human-readable form on disk */
 	FILE *fp;
@@ -629,7 +655,12 @@ dump_db(int sig)
 }
 
 static SIGNAL_RETURN_TYPE
+#ifdef __STDC__
 reset(int sig)
+#else
+reset(sig)
+     int sig;
+#endif
 {
 #if 1
 	zdbug((LOG_DEBUG,"reset()"));
@@ -643,7 +674,12 @@ reset(int sig)
 #endif
 
 static SIGNAL_RETURN_TYPE
+#ifdef __STDC__
 reap(int sig)
+#else
+reap(sig)
+     int sig;
+#endif
 {
 #ifdef _POSIX_SOURCE
   int waitb;
