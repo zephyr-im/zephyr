@@ -296,6 +296,7 @@ long nmins;
 		bother(slp4, msg4);
 
 	bother(0L, "That was the last time I'll tell you. Bye.");
+	(void) unlink(tempfile);
 	exit(0);
 }
 
