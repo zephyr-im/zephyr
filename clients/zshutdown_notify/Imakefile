@@ -11,6 +11,6 @@
 SRCS = zshutdown_notify.c
 OBJS = zshutdown_notify.o
 
-SimpleProgram(zshutdown_notify,$(OBJS),$(ZLIBS),$(ATHETCDIR))
+SimpleProgram(zshutdown_notify,$(OBJS) $(ZLIB),$(ZLIBS),$(ATHETCDIR))
 install_man(zshutdown_notify.8,zshutdown_notify.8)
 create_depend($(SRCS))

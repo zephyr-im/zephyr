@@ -12,8 +12,6 @@
 MACHLIBS= -lsrc
 #endif
 
-LIBS= $(ZLIBS) $(MACHLIBS)
-
 SRCS = syslogd.c logger.c syslog.c 
 
 DOBJS = syslogd.o
@@ -26,5 +24,5 @@ SimpleProgram(logger,$(LOBJS),,$(ATHETCDIR))
 
 XDEFS = -I. $(COMPAT)
 
-SimpleProgram(syslogd,$(DOBJS),$(LIBS),$(ATHRETCDIR))
+SimpleProgram(syslogd,$(DOBJS) $(ZLIB),$(ZLIBS) $(MACHLIBS),$(ATHRETCDIR))
 install_man(syslogd.8,syslogd.8)
