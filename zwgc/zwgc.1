@@ -1,0 +1,440 @@
+.\"	$Source$
+.\"	$Author$
+.\"	$Id$
+.TH ZWGC 1 "November 27, 1989" "MIT Project Athena"
+.SH NAME
+zwgc \- Zephyr Windowgram Client program
+.SH SYNOPSIS
+.B zwgc
+[ -f
+.I filename
+]
+[ -subfile
+.I filename
+]
+[ -default
+.I portname
+]
+[ -disable 
+.I portname
+] ... [output driver options] [ X Toolkit options... ]
+.SH DESCRIPTION
+.I Zwgc
+is the main
+.I zephyr(1)
+client.  It is responsible for receiving selected zephyr notices on
+behalf of the user, formatting them, and then outputting them using
+one or more of the output devices.
+
+.PP
+.B Selection of Zephyr Notices
+
+.PP 
+.I Zwgc
+subscribes to various notice classes and instances on behalf of the
+user.  Only notices in the subscription list will be received.  The
+subscription list is composed of the default subscriptions (stored on
+the server), the user's subscriptions file, and any subscriptions made
+using \fIzctl(1)\fR.  The user's subscription file is
+/fI$HOME/.zephyr.subs/fR, or it can be specified with the -subfile
+option.  If - is specified as the subscription filename, the
+subscriptions will be read from standard input.
+
+.PP
+The \fIzctl\fR command is used to manipulate subscriptions and
+to change subscriptions.  See the \fIzctl(1)\fR man page for details.
+
+.PP
+.B Zephyr Description Files
+
+.PP
+.I Zwgc
+formats its output messages according to the commands in its
+description file.  The user's description file (\fB$HOME/.zwgc.desc by
+default, or whatever is specified by -f) is read, or the system file
+is read if the user's does not exist.
+
+.PP
+.B Zephyr Description File Syntax
+
+A description file is simply a list of commands.  Whitespace is used
+to separate tokens, what kind and how much is irrelevant.  Comments
+can be delimited by # and newline or by /* and */.
+
+EXPRESSIONS
+
+Expressions consist of variable references, function calls, and
+operators.  Variables are set using the \fBset\fR command.  They are
+referenced in an expression by using the form $\fIvarname\fR.  Some
+variables are set by default for each zephyrgram.
+Functions are called using a C-like syntax,
+\fBfname\fR(\fIexpr1\fR,\fIexpr2\fR), where \fBfname\fR is the
+function name and \fIexpr\fRn are the arguments.  Binary operators use
+infix notation.  Parenthesis can be used anywhere in an expression to
+group expressions or increase readability.
+
+Default variables
+
+zephyr_version
+The current version of \fIzwgc\fR
+
+class
+
+instance
+
+opcode
+
+default
+The default output format for the zephyrgram
+
+recipient
+This is set to the recipent's name, or ``*'' for broadcast messages.
+
+fullsender
+The sender's name including the zephyr realm name
+
+port
+The port which the zephyrgram was sent from
+
+kind
+
+auth
+``yes'', ``no'', or ``forged''
+
+sender
+fullsender, with the realm removed if it is equal to the realm of the
+recipient.
+
+time
+
+date
+
+fromhost
+The hostname of the sender
+
+message
+The full text of the message, with nulls converted to newlines.
+
+
+Functions
+
+buffer()
+The contents of the current output buffer
+
+substitute(expr)
+Evaluates variable references of the form \fI$variable\fR in expr and
+converts $$ to $.
+
+protect(expr)
+Returns a string which will be evaluated identically to \fIexpr\fR,
+but will not affect any surrounding environments.  That is, any
+characters which could close outside environments are quoted, and any
+environments in \fIexpr\fR which are not closed at the end are closed.
+
+verbatim(expr)
+Returns a string that will be displayed exactly as \fIexpr\fR looks.
+Anything which could be mistaken for an environment is quoted.
+
+getenv(expr)
+Returns the value of the environment variable \fIexpr\fR, or the empty
+string if it does not exist.
+
+upcase(expr)
+
+lowercase(expr)
+
+zvar(expr)
+Returns the value of the zephyr variable \fIexpr\fR, or the empty
+string if it does not exist.
+
+get(expr)
+Returns a line from the port named \fIexpr\fR.  This call will block.
+
+.HP
+.BI "lbreak(" expr1 ", " expr2 ")"
+.HP
+.BI "rbreak(" expr1 ", " expr2 ")"
+.br
+.I Expr2
+defines a set of characters.  The function returns the longest
+initial
+.RB ( lbreak )
+or final 
+.RB ( rbreak )
+string from
+.I expr1
+composed of characters not in this set.  If 
+.I expr1
+is a variable reference, the variable
+is modified to remove the characters returned.  If no characters
+in
+.IR expr2 " are in " "expr1, expr1 "
+is returned, then set to "" (if a variable).
+.HP
+.BI "lspan(" expr1 ", " expr2 ")"
+.HP
+.BI "rspan(" expr1 ", " expr2 ")"
+.br
+This is the negation of
+.B span;
+the returned string consists off all characters in the set defined by
+.I expr2
+.B Operators
+.RS .5i
+.HP
+.IB expr1 " + " expr2
+.br
+Concatenation of
+.IR expr1 " and " expr2
+.HP
+.IB expr1 " == " expr2
+.br
+True if the two exprs are equal, false otherwise.
+.HP
+.IB expr " =~ " expr2
+.br
+True if regexp pattern
+.IR expr2 " matches " expr1.
+.HP
+.IB expr1 " !~ " expr2
+.br
+Negation of "=~".
+.HP
+.IB expr1 " != " expr2
+.br
+Negation of "=="
+.HP
+.IB expr1 " and " expr2
+.HP
+.IB expr1 " & " expr2
+.br
+True if
+.IR expr1 " and " expr2
+are both true.
+.HP
+.IB expr1 " or " expr2
+.HP
+.IB expr1 " | " expr2
+.br
+True if either of
+.IR expr1 " and " expr2
+are true.
+.HP
+.BI "! " expr1
+.br
+The logical negation of
+.I expr1.
+
+PORTS
+
+Ports are an abstraction which puts together all forms of I/O which
+zwgc can do.  There are prexisting output ports corresponding to each
+of the output devices, and more ports can be created with the
+port commands described below.  It is important to realize that the
+output devices are also implemented as ports.
+
+COMMANDS
+
+noop
+does nothing
+
+set variable = expr
+sets \fIvariable\fR equal to \fIexpr\fR
+
+fields variable ...
+sets the list of variables to be equal to the fields in the
+zephyrgram.  If there are more variables than fields, the extra
+variables are left empty.
+
+print expr ...
+adds the values of the expressions to the current output buffer,
+separated by one space.
+
+show text endshow
+Appends text to the output buffer.  This command is special, because
+the string does not need to be quoted.  Whitespace at the beginning or
+end of a line is ignored, and there must be only whitespace before 
+the \fIendshow\fR.  Variable substitutions and formatting commands
+(but not expressions or functions) happen.
+
+clearbuf
+Clears the output buffer.
+
+appendport expr1 expr2
+Creates a port called \fIexpr1\fR.  All output to the port will be
+appended to the file \fIexpr2\fR.  There is no input.
+
+execport expr1 exprlist
+Creates a port called \fIexpr1\fR.  A command named by \fIexprlist\R
+is forked, and all output to the port will go to the standard input
+of the process.  Reading from the port will return the standart output
+of the process.
+
+inputport expr1 expr2 
+Creates a port called \fIexpr1\fR.  All input from the port come from
+the file \fIexpr2\fR.  There is no output.
+
+outputport expr1 expr2
+Creates a port called \fIexpr1\fR.  The file \fIexpr2\fR will be
+truncated, or created if it does not exist. All output to the port
+will be appended to the file \fIexpr2\fR.  There is no input.
+
+closeinput expr
+Closes the file associated with \fIexpr\fR.
+
+closeoutput expr
+Sends an EOF to the process if \fIexpr\fR was a port created by
+execport, or closes the file if it was created by closeport or
+appendport.
+
+closeport expr
+Closes input and output of \fIexpr\fR as defined above.
+
+put [expr [exprlist]]
+Sends data to a port.  The default data if no expressions are given is
+the output buffer.  The default port if no port is specified is the
+port corresponding to the default output device.
+
+exec exprlist
+Execs a program without any input or output.
+
+if expr then commands [elseif expr then commands] ... [else commands] endif
+
+case expr1 [ ((match expr ...) | default) commands ] ... endcase
+Evaluates \fIexpr1\fR.  Then, each of the match expressions is
+evaluated in order.  The first time an expression matches \fIexpr1\fR,
+then the body of commands under it is executed.  default always
+matches, so it should go at the end.
+
+while expr do statements endwhile
+Executes \fIstatements\fR until \fIexpr\fR is true.
+
+break
+Exits the innermost if, case, or while block.
+
+exit
+Completes processing of the current zephyrgram.
+
+
+.SH OUTPUT
+Output devices are implemented as output ports.  A message is
+displayed in a device-dependent manner when a string is output to the
+port corresponding to the output device.  Formatting commands are
+embedded in the text as @ commands of the form @command(text).
+Command names are case-insensitive and consist of alphanumeric
+characters and underscores.  Valid brackets are () [] {} and <>.
+If the command name is empty (such as in \fB@(foo)\fR), then a new
+environment with no changes is created.  The following output devices
+are supported:
+
+stdout
+Sends the string to standard output exactly as is.
+
+stderr
+Sends the string to standard error exactly as is.
+
+plain
+Sends the string with all formatting environments removed to standard
+output.
+
+tty
+Does formatting on the message according to @ commands embedded in the
+text.  The appropriate characteristics of the display are taken from
+the TERMCAP entry for that tty (see \fItermcap(5)\fR.  Supported @
+commands are:
+   @center	center
+   @em		Emphasis.  User underline if available, else reverse video.
+   @bold	Bold letters.  If not available, reverse video, else underline.
+   @bell	"bl" termcap entry, else "^G"
+   @blink	"mb"/"me" termcap entry, else nothing.
+   @rv		"so"/"se" termcap entry.
+   @u		"us"/"ue" termcap entry.
+   @l or @left		left aligned
+   @c or @center	center aligned
+   @r or @right		right aligned
+
+X
+Displays one window per string output to the port.  The output is
+formatted according to @ commands embedded in the string.  Supported
+@ commands are:
+	@roman		turns off @italic and @bold
+	@b or @bold	turns on boldface
+	@i or @italic	turns on italics
+	@large		large type size
+	@medium		medium type size
+	@small		small type size
+	@beep		beeps once
+	@font		sets the font.  This will remain in effect for
+			the rest of the environment.
+	@color		sets the color.  This will remain in effect for
+			the rest of the environment.
+
+Any other environment name not corresponding to the above environment
+names will set the current substyle.
+
+The attributes of a given block of text are determined by any active
+environments, evaluated in the context of the current style and
+substyle.  The style is specific to each window.  It has three .
+separated fields, which are the class, instance, and recipient of the
+message by default.  It can be set by setting the \fIstyle\fR zwgc
+variable.  Note that it \fBmust always\fR have exactly two .
+characters in it.  The substyle is determined by as above by @
+commands in the message text.
+
+Zwgc variables which the X output device can read are:
+
+	default_X_geometry	default geometry for zgrams
+	X_geometry		overrides geometry in resource file
+	default_X_bgcolor	default background color for zgrams
+	X_bgcolor		overrides bgcolor in resource file
+
+The fonts and color for a piece of text are determined by the styles
+defined in the X resources file.  The following resources are
+understood
+by zwgc:
+
+zwgc.style.\fIstylenames\fR.geometry
+	geometry for messages of the specified style
+
+zwgc.style.\fIstylenames\fR.background
+	background colorfor messages of the specified style
+
+zwgc.style.\fIstylenames\fR.substyle.\fIsubstylename\fR.fontfamily
+	fontfamily name for the specified style and substyle
+
+zwgc.style.\fIstylenames\fR.substyle.\fIsubstylename\fR.foreground
+	foreground color for the specified style and substyle
+
+zwgc.fontfamily.\fIfontfamilyname\fR.\fIsize\fR.\fIface\fR
+	specifies the fonts for a given fontfamily.  \fIsize\fR is one
+	of small, medium, or large, and \fIface\fR is one of roman,
+	bold, italic, or bolditalic.
+
+If you think this is all confusing, you're right.  The best thing to
+do is to look at the default files and the desc and resource files of
+people who seem to know what's going on.
+
+.B raw
+No processing is performed on the output.
+
+.SH FILES
+.nf
+~/.zwgc.desc
+~/.zephyr.vars
+~/.zephyr.subs
+~/.Xresources
+/usr/athena/lib/zephyr/zwgc_resources
+/etc/athena/zwgc.desc
+.fi
+.SH SEE ALSO
+zctl(1), zephyr(1), znol(1), zephyrd(8), zhm(8), X(1)
+.br
+Project Athena Technical Plan Section E.4.1, `Zephyr Notification Service'
+.SH AUTHORS
+.br
+John Carr
+.br
+Marc Horowitz
+.br
+Mark Lillibridge
+.sp
