@@ -14,9 +14,11 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
+#ifndef SABER
 static char rcsid_uloc_c[] =
   "$Id$";
-#endif
+#endif /* SABER */
+#endif /* lint */
 
 #include "zserver.h"
 
@@ -62,65 +64,59 @@ static char rcsid_uloc_c[] =
 /* else you will lose.  See ulogin_locate() and uloc_send_locations() */  
 #define	NUM_FIELDS	3
 
-enum exposure_type {
+typedef enum _exposure_type {
 	NONE,
 	OPSTAFF_VIS,
 	REALM_VIS,
 	REALM_ANN,
 	NET_VIS,
 	NET_ANN
-};
+} exposure_type;
 
-struct ZLocation_t {
-	ZString zlt_user;
-	ZString zlt_machine;
-	ZString zlt_time;		/* in ctime format */
-	ZString zlt_tty;
+typedef struct _ZLocation_t {
+	ZSTRING * zlt_user;
+	ZSTRING * zlt_machine;
+	char * zlt_time;		/* in ctime format */
+	ZSTRING * zlt_tty;
 	struct in_addr zlt_addr;	/* IP addr of this loc */
 	unsigned short zlt_port;	/* port of registering client--
 					   for removing old entries */
-#if defined(__GNUC__) || defined(__GNUG__)
-	exposure_type zlt_exposure : 16;
-#else
 	exposure_type zlt_exposure;
+} ZLocation_t;
+
+#define NULLZLT		((ZLocation_t *) 0)
+#define NOLOC		1
+#define QUIET		-1
+#define UNAUTH		-2
+
+#ifdef __STDC__
+# define        P(s) s
+#else
+# define P(s) ()
 #endif
 
-#if !defined(__GNUG__) || defined(FIXED_GXX)
-	void *operator new (unsigned int sz) { return zalloc (sz); }
-	void operator delete (void *ptr) { zfree (ptr, sizeof (ZLocation_t)); }
-#endif
-};
-
-inline int operator == (const ZLocation_t &l1, const ZLocation_t &l2) {
-	return (!strcasecmp (l1.zlt_machine.value(), l2.zlt_machine.value())
-		&& l1.zlt_tty == l2.zlt_tty);
-}
-inline int operator != (const ZLocation_t &l1, const ZLocation_t &l2) {
-	return !(l1 == l2);
-}
-
-static ZLocation_t* const	NULLZLT = 0;
-static const int		NOLOC	= 1;
-static const int		QUIET	= -1;
-static const int		UNAUTH	= -2;
-
-static void ulogin_locate(ZNotice_t *, struct sockaddr_in *who, int auth),
-    ulogin_add_user(ZNotice_t *notice, exposure_type exposure,
-		    struct sockaddr_in *who),
-    ulogin_flush_user(ZNotice_t *notice);
-static ZLocation_t **ulogin_find(ZNotice_t *notice, int strict);
-static int ulogin_setup(ZNotice_t *notice, ZLocation_t **locs,
-			exposure_type exposure, struct sockaddr_in *who),
-    ulogin_parse(ZNotice_t *notice, ZLocation_t **locs),
-    ulogin_expose_user(ZNotice_t *notice, exposure_type exposure);
-static exposure_type ulogin_remove_user(ZNotice_t *notice, int auth,
+static void ulogin_locate P((ZNotice_t *notice, struct sockaddr_in *who,
+			     int auth)),
+    ulogin_add_user P((ZNotice_t *notice, exposure_type exposure,
+		    struct sockaddr_in *who)),
+    ulogin_flush_user P((ZNotice_t *notice));
+static ZLocation_t *ulogin_find P((ZNotice_t *notice, int strict));
+static int ulogin_setup P((ZNotice_t *notice, ZLocation_t *locs,
+			exposure_type exposure, struct sockaddr_in *who)),
+    ulogin_parse P((ZNotice_t *notice, ZLocation_t *locs)),
+    ulogin_expose_user P((ZNotice_t *notice, exposure_type exposure));
+static exposure_type ulogin_remove_user P((ZNotice_t *notice, int auth,
 					struct sockaddr_in *who,
-					int *err_return);
-static void login_sendit(ZNotice_t *notice, int auth, struct sockaddr_in *who),
-    sense_logout(ZNotice_t *notice, struct sockaddr_in *who);
-static char **ulogin_marshal_locs(ZNotice_t *notice, int *found, int auth);
+					int *err_return));
+static void login_sendit P((ZNotice_t *notice, int auth, struct sockaddr_in *who)),
+    sense_logout P((ZNotice_t *notice, struct sockaddr_in *who));
+static char **ulogin_marshal_locs P((ZNotice_t *notice, int *found, int auth));
 
-static ZLocation_t **locations = 0; /* ptr to first in array */
+static int ul_equiv P((ZLocation_t *l1, ZLocation_t *l2));
+
+static void free_loc P((ZLocation_t *loc));
+
+static ZLocation_t *locations = NULLZLT; /* ptr to first in array */
 static int num_locs = 0;	/* number in array */
 
 /*
@@ -128,8 +124,11 @@ static int num_locs = 0;	/* number in array */
  */
 
 Code_t
-ulogin_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who,
-		ZServerDesc_t *server)
+ulogin_dispatch(notice, auth, who, server)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
+     ZServerDesc_t *server;
 {
 	exposure_type retval;
 	int err_ret;
@@ -207,8 +206,7 @@ ulogin_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who,
 		sense_logout(notice, who);
 		if (server == me_server)
 			clt_ack(notice, who, AUTH_FAILED);
-		if (!bdumping /* XXX: inter-server and tcp */)
-		    return(ZERR_NONE);
+		return(ZERR_NONE);
 	}
 	if (!strcmp(notice->z_opcode, LOGIN_USER_FLUSH)) {
 #if 0
@@ -289,7 +287,10 @@ ulogin_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who,
 }
 
 static void
-login_sendit(ZNotice_t *notice, int auth, struct sockaddr_in *who)
+login_sendit(notice, auth, who)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
 {
 	ZNotice_t log_notice;
 
@@ -307,10 +308,12 @@ login_sendit(ZNotice_t *notice, int auth, struct sockaddr_in *who)
 
 /*ARGSUSED*/
 static void
-sense_logout(ZNotice_t *notice, struct sockaddr_in *who)
+sense_logout(notice, who)
+     ZNotice_t *notice;
+     struct sockaddr_in *who;
 {
 	ZNotice_t sense_notice;
-	ZLocation_t *loc, **locptr;
+	ZLocation_t *loc;
 	struct sockaddr_in owner;
 	char message[BUFSIZ];
 	int retval, len;
@@ -325,11 +328,8 @@ sense_logout(ZNotice_t *notice, struct sockaddr_in *who)
 	  will eventually result in a flush of the location.
 	 */
 
-	locptr = ulogin_find (notice, 1);
-	if (!locptr)
+	if (!(loc = ulogin_find (notice, 1)))
 	    return;
-	loc = *locptr;
-	assert (loc != 0);
 
 	/* fabricate an addr descriptor for him */
 	owner = *who;
@@ -344,7 +344,7 @@ sense_logout(ZNotice_t *notice, struct sockaddr_in *who)
 	sense_notice.z_class_inst = "URGENT";
 	sense_notice.z_opcode = "";
 	sense_notice.z_sender = "Zephyr Server";
-	sense_notice.z_recipient = (char *) loc->zlt_user.value ();
+	sense_notice.z_recipient = (char *) loc->zlt_user->string;
 	sense_notice.z_default_format = "Urgent Message from $sender at $time:\n\n$1";
 	(void) sprintf(message,
 		       "Someone at host %s tried an unauthorized \nchange to your login information",
@@ -370,7 +370,11 @@ sense_logout(ZNotice_t *notice, struct sockaddr_in *who)
  */
 
 Code_t
-ulocate_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDesc_t *server)
+ulocate_dispatch(notice, auth, who, server)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
+     ZServerDesc_t *server;
 {
 #if 0
 	zdbug((LOG_DEBUG,"ulocate_disp"));
@@ -412,9 +416,10 @@ ulocate_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDe
  */
 
 void
-uloc_hflush(struct in_addr *addr)
+uloc_hflush(addr)
+     struct in_addr *addr;
 {
-	ZLocation_t **loc;
+	ZLocation_t *loc;
 	register int i = 0, new_num = 0;
 	int omask;
 
@@ -424,7 +429,7 @@ uloc_hflush(struct in_addr *addr)
 	omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
 
 	/* slightly inefficient, assume the worst, and allocate enough space */
-	loc = new ZLocation_t* [num_locs];
+	loc = (ZLocation_t *) xmalloc(num_locs *sizeof(ZLocation_t));
 	if (!loc) {
 		syslog(LOG_CRIT, "uloc_flush alloc");
 		abort();
@@ -433,29 +438,30 @@ uloc_hflush(struct in_addr *addr)
 
 	/* copy entries which don't match */
 	while (i < num_locs) {
-		if (locations[i]->zlt_addr.s_addr != addr->s_addr)
+		if (locations[i].zlt_addr.s_addr != addr->s_addr)
 			loc[new_num++] = locations[i];
 		else {
 #if 0
 		    if (zdebug)
 			syslog(LOG_DEBUG, "uloc hflushing %s/%s/%s",
-			       locations[i]->zlt_user.value (),
-			       locations[i]->zlt_machine.value(),
-			       locations[i]->zlt_tty.value());
+			       locations[i].zlt_user->string,
+			       locations[i].zlt_machine->string,
+			       locations[i].zlt_tty->string);
 #endif
-		    delete locations[i];
+		    free_loc(&locations[i]);
 		}
 		i++;
 	}
 
-	delete locations;
+	xfree(locations);
 
 	if (!new_num) {
 #if 0
 		zdbug((LOG_DEBUG,"no more locs"));
 #endif
-		delete loc;
-		loc = 0;
+		xfree(loc);
+		loc = NULLZLT;
+		num_locs = new_num;
 		(void) sigsetmask(omask);
 		return;
 	}
@@ -469,8 +475,8 @@ uloc_hflush(struct in_addr *addr)
 
 		for (i = 0; i < num_locs; i++)
 			syslog(LOG_DEBUG, "%s/%d",
-			       locations[i]->zlt_user.value (),
-			       (int) locations[i]->zlt_exposure);
+			       locations[i].zlt_user->string,
+			       (int) locations[i].zlt_exposure);
 	}
 #endif
 	/* all done */
@@ -478,9 +484,10 @@ uloc_hflush(struct in_addr *addr)
 }
 
 void
-uloc_flush_client(struct sockaddr_in *sin)
+uloc_flush_client(sin)
+     struct sockaddr_in *sin;
 {
-	ZLocation_t **loc;
+	ZLocation_t *loc;
 	register int i = 0, new_num = 0;
 	int omask;
 
@@ -490,7 +497,7 @@ uloc_flush_client(struct sockaddr_in *sin)
 	omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
 
 	/* slightly inefficient, assume the worst, and allocate enough space */
-	loc = new ZLocation_t* [num_locs];
+	loc = (ZLocation_t *) xmalloc(num_locs *sizeof(ZLocation_t));
 	if (!loc) {
 		syslog(LOG_CRIT, "uloc_flush_clt alloc");
 		abort();
@@ -499,30 +506,33 @@ uloc_flush_client(struct sockaddr_in *sin)
 
 	/* copy entries which don't match */
 	while (i < num_locs) {
-		if ((locations[i]->zlt_addr.s_addr != sin->sin_addr.s_addr)
-		     || (locations[i]->zlt_port != sin->sin_port))
+		if ((locations[i].zlt_addr.s_addr != sin->sin_addr.s_addr)
+		     || (locations[i].zlt_port != sin->sin_port))
 			loc[new_num++] = locations[i];
 		else {
 #if 0
 		    if (zdebug)
 			syslog(LOG_DEBUG, "uloc cflushing %s/%s/%s",
-			       locations[i]->zlt_user.value (),
-			       locations[i]->zlt_machine.value(),
-			       locations[i]->zlt_tty.value());
+			       locations[i].zlt_user->string,
+			       locations[i].zlt_machine->string,
+			       locations[i].zlt_tty->string);
 #endif
-		    delete locations[i];
+		    free_loc(&locations[i]);
 		}
 		i++;
 	}
 
-	delete locations;
+	xfree(locations);
 
 	if (!new_num) {
 #if 0
 		zdbug((LOG_DEBUG,"no more locs"));
 #endif
-		delete loc;
-		loc = 0;
+		xfree(loc);
+		loc = NULLZLT;
+		num_locs = new_num;
+		(void) sigsetmask(omask);
+		return;
 	}
 	locations = loc;
 	num_locs = new_num;
@@ -534,8 +544,8 @@ uloc_flush_client(struct sockaddr_in *sin)
 
 		for (i = 0; i < num_locs; i++)
 			syslog(LOG_DEBUG, "%s/%d",
-			       locations[i]->zlt_user.value (),
-			       (int) locations[i]->zlt_exposure);
+			       locations[i].zlt_user->string,
+			       (int) locations[i].zlt_exposure);
 	}
 #endif
 	/* all done */
@@ -548,7 +558,9 @@ uloc_flush_client(struct sockaddr_in *sin)
 
 /*ARGSUSED*/
 Code_t
-uloc_send_locations(ZHostList_t *host, char *vers)
+uloc_send_locations(host, vers)
+     ZHostList_t *host;
+     char *vers;
 {
 	register ZLocation_t *loc;
 	register int i;
@@ -557,13 +569,12 @@ uloc_send_locations(ZHostList_t *host, char *vers)
 	char *exposure_level;
 	Code_t retval;
 
-	for (i = 0; i < num_locs; i++) {
-		loc = locations[i];
+	for (i = 0, loc = locations; i < num_locs; i++, loc++) {
 		if (loc->zlt_addr.s_addr != haddr->s_addr)
 			continue;
-		lyst[0] = (char *) loc->zlt_machine.value();
-		lyst[1] = (char *) loc->zlt_time.value();
-		lyst[2] = (char *) loc->zlt_tty.value ();
+		lyst[0] = (char *) loc->zlt_machine->string;
+		lyst[1] = (char *) loc->zlt_time;
+		lyst[2] = (char *) loc->zlt_tty->string;
 
 		switch (loc->zlt_exposure) {
 		case OPSTAFF_VIS:
@@ -583,13 +594,13 @@ uloc_send_locations(ZHostList_t *host, char *vers)
 			break;
 		default:
 			syslog(LOG_ERR,"broken location state %s/%d",
-			       loc->zlt_user.value (),
+			       loc->zlt_user->string,
 			       (int) loc->zlt_exposure);
 			break;
 		}
 		retval = bdump_send_list_tcp(ACKED, loc->zlt_port,
 					     LOGIN_CLASS,
-					     (char *) loc->zlt_user.value (), /* XXX */
+					     (char *) loc->zlt_user->string, /* XXX */
 					     exposure_level,
 					     myname, "", lyst,
 					     NUM_FIELDS);
@@ -607,9 +618,12 @@ uloc_send_locations(ZHostList_t *host, char *vers)
  */
 
 static void
-ulogin_add_user(ZNotice_t *notice, exposure_type exposure, sockaddr_in *who)
+ulogin_add_user(notice, exposure, who)
+     ZNotice_t *notice;
+     exposure_type exposure;
+     struct sockaddr_in *who;
 {
-	ZLocation_t **oldlocs, *newloc;
+	ZLocation_t *oldlocs, *newloc;
 	register int i = 0;
 	int omask;
 
@@ -618,11 +632,7 @@ ulogin_add_user(ZNotice_t *notice, exposure_type exposure, sockaddr_in *who)
 	       (int) exposure));
 #endif
 
-	{
-	    ZLocation_t **tmp = ulogin_find (notice, 1);
-	    newloc = tmp ? *tmp : 0;
-	}
-	if (newloc) {
+	if (newloc = ulogin_find(notice,1)) {
 #if 1
 		zdbug((LOG_DEBUG,"ul_add: already here"));
 #endif
@@ -633,7 +643,8 @@ ulogin_add_user(ZNotice_t *notice, exposure_type exposure, sockaddr_in *who)
 	oldlocs = locations;
 
 	omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
-	locations = new ZLocation_t* [num_locs + 1];
+	locations = (ZLocation_t *) xmalloc((num_locs +1) *
+					    sizeof(ZLocation_t));
 	if (!locations) {
 		syslog(LOG_ERR, "zloc mem alloc");
 		locations = oldlocs;
@@ -642,30 +653,32 @@ ulogin_add_user(ZNotice_t *notice, exposure_type exposure, sockaddr_in *who)
 
 	if (num_locs == 0) {		/* first one */
 		if (ulogin_setup(notice, locations, exposure, who)) {
-			delete locations;
-			locations = 0;
+		  xfree(locations);
+		  locations = NULLZLT;
+		  (void) sigsetmask(omask);
+		  return;
 		}
-		else
-			num_locs = 1;
+		num_locs = 1;
 		goto dprnt;
 	}
 
 	/* not the first one, insert him */
 
-	if (ulogin_setup(notice, &newloc, exposure, who)) {
+	if (ulogin_setup(notice, newloc, exposure, who)) {
 		(void) sigsetmask(omask);
 		return;
 	}
 	num_locs++;
 
 	/* copy old locs */
-	while ((i < (num_locs - 1)) && oldlocs[i]->zlt_user < newloc->zlt_user) {
+	while ((i < (num_locs - 1)) &&
+	       (comp_zstring(oldlocs[i].zlt_user,newloc->zlt_user) < 0)) {
 		locations[i] = oldlocs[i];
 		i++;
 	}
 
 	/* add him in here */
-	locations[i++] = newloc;
+	locations[i++] = *newloc;
 
 	/* copy the rest */
 	while (i < num_locs) {
@@ -673,7 +686,7 @@ ulogin_add_user(ZNotice_t *notice, exposure_type exposure, sockaddr_in *who)
 		i++;
 	}
 	if (oldlocs)
-		delete oldlocs;
+		xfree(oldlocs);
 
  dprnt:
 	(void) sigsetmask(omask);
@@ -683,8 +696,8 @@ ulogin_add_user(ZNotice_t *notice, exposure_type exposure, sockaddr_in *who)
 
 		for (i = 0; i < num_locs; i++)
 			syslog(LOG_DEBUG, "%s/%d",
-			       locations[i]->zlt_user.value (),
-			       (int) locations[i]->zlt_exposure);
+			       locations[i].zlt_user->string,
+			       (int) locations[i].zlt_exposure);
 	}
 #endif
 	return;
@@ -695,34 +708,40 @@ ulogin_add_user(ZNotice_t *notice, exposure_type exposure, sockaddr_in *who)
  */ 
 
 static int
-ulogin_setup(ZNotice_t *notice, ZLocation_t **locs, exposure_type exposure, sockaddr_in *who)
+ulogin_setup(notice, locs, exposure, who)
+     ZNotice_t *notice;
+     ZLocation_t *locs;
+     exposure_type exposure;
+     struct sockaddr_in *who;
 {
 	if (ulogin_parse(notice, locs))
 		return(1);
-	ZLocation_t *loc = *locs;
-	if (!loc->zlt_user) {
-	ret1:
-		syslog(LOG_ERR, "zloc bad format");
-		return 1;
+
+	if (!locs->zlt_user) {
+	  syslog(LOG_ERR, "zloc bad format");
+	  return(1);
 	}
-	if (!loc->zlt_machine) {
-	ret2:
-		loc->zlt_user = 0;
-		goto ret1;
+	if (!locs->zlt_machine) {
+	  free_zstring(locs->zlt_user);
+	  return(1);
+		
 	}
-	if (!loc->zlt_tty) {
-	ret3:
-		loc->zlt_machine = 0;
-		goto ret2;
+	if (!locs->zlt_tty) {
+	  free_zstring(locs->zlt_user);
+	  free_zstring(locs->zlt_machine);
+	  return(1);
 	}
-	if (!loc->zlt_time) {
-		loc->zlt_tty = 0;
-		goto ret3;
+	locs->zlt_time = strsave(locs->zlt_time);
+	if (!locs->zlt_time) {
+	  free_zstring(locs->zlt_user);
+	  free_zstring(locs->zlt_machine);
+	  free_zstring(locs->zlt_tty);
+	  return(1);
 	}
-	loc->zlt_exposure = exposure;
-	loc->zlt_addr = who->sin_addr;
-	loc->zlt_port = notice->z_port;
-	return 0;
+	locs->zlt_exposure = exposure;
+	locs->zlt_addr = who->sin_addr;
+	locs->zlt_port = notice->z_port;
+	return(0);
 }
 
 /*
@@ -730,25 +749,25 @@ ulogin_setup(ZNotice_t *notice, ZLocation_t **locs, exposure_type exposure, sock
  */
 
 static int
-ulogin_parse(ZNotice_t *notice, ZLocation_t **locs)
+ulogin_parse(notice, locs)
+     ZNotice_t *notice;
+     ZLocation_t *locs;
 {
 	register char *cp, *base;
-	ZLocation_t *loc = new ZLocation_t;
-	*locs = 0;
 
 	if (!notice->z_message_len) {
 		syslog(LOG_ERR, "short ulogin");
 		return(1);
 	}
 
-	loc->zlt_user = notice->z_class_inst;
+	locs->zlt_user = make_zstring(notice->z_class_inst,1);
 	cp = base = notice->z_message;
 
 #if 0
 	zdbug((LOG_DEBUG,"user %s",notice->z_class_inst));
 #endif
 
-	loc->zlt_machine = cp;
+	locs->zlt_machine = make_zstring(cp,1);
 #if 0
 	zdbug((LOG_DEBUG,"mach %s",cp));
 #endif
@@ -758,7 +777,7 @@ ulogin_parse(ZNotice_t *notice, ZLocation_t **locs)
 		syslog(LOG_ERR, "zloc bad format 1");
 		return(1);
 	}
-	loc->zlt_time = cp;
+	locs->zlt_time = cp;
 #if 0
 	zdbug((LOG_DEBUG,"time %s",cp));
 #endif
@@ -769,17 +788,16 @@ ulogin_parse(ZNotice_t *notice, ZLocation_t **locs)
 		syslog(LOG_ERR, "zloc bad format 2");
 		return(1);
 	} else {
-		loc->zlt_tty = cp;
+		locs->zlt_tty = make_zstring(cp,1);
 #if 0
 		zdbug((LOG_DEBUG,"tty %s",cp));
 #endif
-		cp += loc->zlt_tty.length () + 1;
+		cp += strlen(locs->zlt_tty->string) + 1;
 	}
 	if (cp > base + notice->z_message_len) {
 		syslog(LOG_ERR, "zloc bad format 3");
 		return(1);
 	}
-	*locs = loc;
 	return(0);
 }	
 
@@ -790,16 +808,20 @@ ulogin_parse(ZNotice_t *notice, ZLocation_t **locs)
  * in the table.
  */
 
-static ZLocation_t **
-ulogin_find(ZNotice_t *notice, int strict)
+static ZLocation_t *
+ulogin_find(notice, strict)
+     ZNotice_t *notice;
+     int strict;
 {
 	register int i, rlo, rhi;
-	ZLocation_t *tmploc = 0;
+	ZLocation_t tmploc;
+	int compar;
+	ZSTRING *inst;
 
 	if (num_locs == 0)
-		return 0;
+		return(NULLZLT);
 
-	ZString inst (notice->z_class_inst);
+	inst = make_zstring(notice->z_class_inst,1);
 
 	/* i is the current loc we are checking */
 	/* rlo is the lowest we will still check, rhi is the highest we will
@@ -809,15 +831,15 @@ ulogin_find(ZNotice_t *notice, int strict)
 	rlo = 0;
 	rhi = num_locs - 1;		/* first index is 0 */
 
-	while (locations[i]->zlt_user != inst) {
+	while (compar = comp_zstring(locations[i].zlt_user, inst)) {
 #if 1
 		zdbug ((LOG_DEBUG, "ulogin_find: comparing %s %s %s %d %d",
 			notice->z_class_inst,
-			locations[i]->zlt_user.value (),
-			locations[i]->zlt_tty.value (),
+			locations[i].zlt_user->string,
+			locations[i].zlt_tty->string,
 			rlo, rhi));
 #endif
-		if (locations[i]->zlt_user < inst)
+		if (compar < 0)
 			rlo = i + 1;
 		else
 			rhi = i - 1;
@@ -825,7 +847,7 @@ ulogin_find(ZNotice_t *notice, int strict)
 #if 1
 			zdbug((LOG_DEBUG,"ul_find not found"));
 #endif
-			return 0;
+			return(NULLZLT);
 		}
 		i = (rhi + rlo) >> 1; /* split the diff */
 	}
@@ -837,36 +859,43 @@ ulogin_find(ZNotice_t *notice, int strict)
 	}
 	/* back up to the first of this guy */
 	if (i) {
-		while (i > 0 && locations[--i]->zlt_user == inst) {
+		while (i > 0 && (locations[--i].zlt_user == inst)) {
 #if 0
 			zdbug ((LOG_DEBUG,
 				"ulogin_find: backing up: %s %d %s %s",
-				inst.value (), i,
-				locations[i]->zlt_user.value (),
-				locations[i]->zlt_tty.value ()));
+				inst->string, i,
+				locations[i].zlt_user->string,
+				locations[i].zlt_tty->string));
 #endif
 		}
-		if (i || locations[i]->zlt_user != inst)
+		if (i || (locations[i].zlt_user != inst))
 		  i++;
 	}
 	if (strict)
 		while (i < num_locs
-		       && *tmploc != *locations[i]
-		       && locations[i]->zlt_user == inst) {
+		       && !ul_equiv(&tmploc, &locations[i])
+		       && (locations[i].zlt_user == inst)) {
 			i++;
 		}
 
-	if ((i == num_locs) || locations[i]->zlt_user != inst) {
+	if ((i == num_locs) || (locations[i].zlt_user != inst)) {
 #if 1
 		zdbug((LOG_DEBUG,"ul_find final match loss"));
 #endif
-		if (tmploc)
-		  delete tmploc;
 		return 0;
 	}
-	if (tmploc)
-	  delete tmploc;
 	return &locations[i];
+}
+
+static int
+ul_equiv(l1, l2)
+register ZLocation_t *l1, *l2;
+{
+        if (l1->zlt_machine != l2->zlt_machine)
+                return(0);
+        if (l1->zlt_tty != l2->zlt_tty)
+                return(0);
+        return(1);
 }
 
 /*
@@ -874,16 +903,19 @@ ulogin_find(ZNotice_t *notice, int strict)
  */
 
 static exposure_type
-ulogin_remove_user(ZNotice_t *notice, int auth, sockaddr_in *who, int *err_return)
+ulogin_remove_user(notice, auth, who, err_return)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
+     int *err_return;
 {
-	ZLocation_t **loc, *loc2;
+	ZLocation_t *loc, *loc2;
 	register int i = 0;
 	exposure_type quiet;
 	int omask;
 
 	*err_return = 0;
-	loc = ulogin_find (notice, 1);
-	if (!loc || !(loc2 = *loc)) {
+	if (!(loc2 = ulogin_find(notice, 1))) {
 #if 0
 		zdbug((LOG_DEBUG,"ul_rem: not here"));
 #endif
@@ -905,13 +937,13 @@ ulogin_remove_user(ZNotice_t *notice, int auth, sockaddr_in *who, int *err_retur
 #if 0
 		zdbug((LOG_DEBUG,"last loc"));
 #endif
-		delete locations;
-		locations = 0;
+		xfree(locations);
+		locations = NULLZLT;
 		(void) sigsetmask(omask);
 		return(quiet);
 	}
 
-	loc = new ZLocation_t* [num_locs];
+	loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t));
 	if (!loc) {
 		syslog(LOG_CRIT, "ul_rem alloc");
 		abort();
@@ -919,13 +951,13 @@ ulogin_remove_user(ZNotice_t *notice, int auth, sockaddr_in *who, int *err_retur
 	}
 
 	/* copy old entries */
-	while (i < num_locs && locations[i] != loc2) {
+	while (i < num_locs && &locations[i] < loc2) {
 		loc[i] = locations[i];
 		i++;
 	}
 
 	/* free up this one */
-	delete locations[i];
+	free_loc(&locations[i]);
 	i++;				/* skip over this one */
 
 	/* copy the rest */
@@ -934,7 +966,7 @@ ulogin_remove_user(ZNotice_t *notice, int auth, sockaddr_in *who, int *err_retur
 		i++;
 	}
 
-	delete locations;
+	xfree(locations);
 
 	locations = loc;
 
@@ -945,8 +977,8 @@ ulogin_remove_user(ZNotice_t *notice, int auth, sockaddr_in *who, int *err_retur
 
 		for (i = 0; i < num_locs; i++)
 			syslog(LOG_DEBUG, "%s/%d",
-			       locations[i]->zlt_user.value(),
-			       (int) locations[i]->zlt_exposure);
+			       locations[i].zlt_user->string,
+			       (int) locations[i].zlt_exposure);
 	}
 #endif
 	/* all done */
@@ -958,13 +990,14 @@ ulogin_remove_user(ZNotice_t *notice, int auth, sockaddr_in *who, int *err_retur
  */
 
 static void
-ulogin_flush_user(ZNotice_t *notice)
+ulogin_flush_user(notice)
+     ZNotice_t *notice;
 {
-	register ZLocation_t **loc, **loc2, *loc3;
+	register ZLocation_t *loc, *loc2;
 	register int i, j, num_match, num_left;
 	int omask;
 
-	num_match = num_left = 0;
+	i = num_match = num_left = 0;
 
 	if (!(loc2 = ulogin_find(notice, 0))) {
 #if 0
@@ -974,17 +1007,11 @@ ulogin_flush_user(ZNotice_t *notice)
 	}
 
 	/* compute # locations left in the list, after loc2 (inclusive) */
-	{
-	    int k;
-	    ZLocation_t *tmp = *loc2;
-	    for (k = 0; locations[k] != tmp; k++)
-		;
-	    num_left = num_locs - k;
-	}
+	num_left = num_locs - (loc2 - locations);
 
 	omask = sigblock(sigmask(SIGFPE)); /* don't let disk db dumps start */
 	while (num_left &&
-	       !strcmp(loc2[num_match]->zlt_user.value(),
+	       !strcmp(loc2[num_match].zlt_user->string,
 		       notice->z_class_inst)) {
 		/* as long as we keep matching, march up the list */
 		num_match++;
@@ -995,15 +1022,16 @@ ulogin_flush_user(ZNotice_t *notice)
 		zdbug((LOG_DEBUG,"last loc"));
 #endif
 		for (j = 0; j < num_match; j++)
-			delete locations[j]; /* free storage */
-		delete locations;
-		locations = 0;
+			free_loc(&locations[j]); /* free storage */
+		xfree (locations);
+		locations = NULLZLT;
 		num_locs = 0;
 		(void) sigsetmask(omask);
 		return;
 	}
 
-	loc = new ZLocation_t* [num_locs - num_match];
+	loc = (ZLocation_t *) xmalloc((num_locs - num_match) *
+				      sizeof(ZLocation_t));
 	if (!loc) {
 		syslog(LOG_CRIT, "ul_rem alloc");
 		abort();
@@ -1011,24 +1039,16 @@ ulogin_flush_user(ZNotice_t *notice)
 	}
 
 	/* copy old entries */
-	loc3 = *loc2;
-	i = 0;
-	while (1) {
-	    ZLocation_t *tmp = locations[i];
-	    if (tmp == loc3)
-		break;
-#if 0
-	    if (i >= num_locs)
-		break;
-#endif
-	    loc[i] = tmp;
-	    i++;
+	while (i < num_locs && &locations[i] < loc2) {
+	  /* XXX should bcopy */
+	  loc[i] = locations[i];
+	  i++;
 	}
-
-	/* skip over (and delete) matches */
-	j = i + num_match;
-	while (i < j)
-	    delete locations[i++];
+	
+	for(j = 0; j < num_match; j++) {
+	  free_loc(&locations[i]);
+	  i++;
+	}
 
 	/* copy the rest */
 	while (i < num_locs) {
@@ -1037,7 +1057,7 @@ ulogin_flush_user(ZNotice_t *notice)
 		i++;
 	}
 
-	delete locations;
+	xfree(locations);
 
 	locations = loc;
 	num_locs -= num_match;
@@ -1049,8 +1069,8 @@ ulogin_flush_user(ZNotice_t *notice)
 
 		for (i = 0; i < num_locs; i++)
 			syslog(LOG_DEBUG, "%s/%d",
-			       locations[i]->zlt_user.value(),
-			       (int) locations[i]->zlt_exposure);
+			       locations[i].zlt_user->string,
+			       (int) locations[i].zlt_exposure);
 	}
 #endif
 	/* all done */
@@ -1062,9 +1082,11 @@ ulogin_flush_user(ZNotice_t *notice)
  */
 
 static int
-ulogin_expose_user(ZNotice_t *notice, exposure_type exposure)
+ulogin_expose_user(notice, exposure)
+     ZNotice_t *notice;
+     exposure_type exposure;
 {
-	ZLocation_t *loc, *loc2;
+	ZLocation_t *loc, loc2;
 	int idx, notfound = 1;
 
 #if 0
@@ -1075,42 +1097,40 @@ ulogin_expose_user(ZNotice_t *notice, exposure_type exposure)
 	if (ulogin_parse(notice, &loc2))
 		return(1);
 
-	{
-	    ZLocation_t **tmp = ulogin_find (notice, 0);
-	    loc = tmp ? *tmp : 0;
-	}
-	if (!loc) {
+	if (!(loc = ulogin_find(notice, 0))) {
 #if 0
 		zdbug((LOG_DEBUG,"ul_hide: not here"));
 #endif
 		return(1);
 	}
-	for (idx = 0; locations[idx] != loc; idx++)
-	  ;
+
+	idx = loc -locations;
 
 	while ((idx < num_locs) &&
-	       locations[idx]->zlt_user != loc2->zlt_user) {
+	       locations[idx].zlt_user != loc2.zlt_user) {
 
 		/* change exposure and owner for each loc on that host */
-		if (!strcasecmp(locations[idx]->zlt_machine.value(), loc2->zlt_machine.value())) {
+		if (locations[idx].zlt_machine == loc2.zlt_machine) {
 			notfound = 0;
-			locations[idx]->zlt_exposure = exposure;
-			locations[idx]->zlt_port = notice->z_port;
+			locations[idx].zlt_exposure = exposure;
+			locations[idx].zlt_port = notice->z_port;
 			/* change time for the specific loc */
-			if (locations[idx]->zlt_tty == loc2->zlt_tty) {
-				locations[idx]->zlt_time = loc2->zlt_time;
+			if (locations[idx].zlt_tty == loc2.zlt_tty) {
+			  xfree(locations[idx].zlt_time);
+			  locations[idx].zlt_time = loc2.zlt_time;
 			}
 		}
 		idx++;
 	}
-	delete loc2;
-
 	return(notfound);
 }
 
 
 static void
-ulogin_locate(ZNotice_t *notice, sockaddr_in *who, int auth)
+ulogin_locate(notice, who, auth)
+     ZNotice_t *notice;
+     struct sockaddr_in *who;
+     int auth;
 {
 	char **answer;
 	int found;
@@ -1151,32 +1171,32 @@ ulogin_locate(ZNotice_t *notice, sockaddr_in *who, int auth)
  */
 
 static char **
-ulogin_marshal_locs(ZNotice_t *notice, register int *found, int auth)
+ulogin_marshal_locs(notice, found, auth)
+     ZNotice_t *notice;
+     register int *found;
+     int auth;
 {
 	ZLocation_t **matches = (ZLocation_t **) 0;
 	ZLocation_t *loc;
 	char **answer;
 	register int i = 0;
+	ZSTRING *inst;
 
 	*found = 0;			/* # of matches */
 
-	{
-	    ZLocation_t **tmp = ulogin_find (notice, 0);
-	    loc = tmp ? *tmp : 0;
-	}
-	if (!loc)
+	if (!(loc = ulogin_find(notice, 0)))
 		/* not here anywhere */
 		return((char **)0);
 
-	for (i = 0; locations[i] != loc; i++)
-	    ;
-	ZString inst (notice->z_class_inst);
-	while (i < num_locs && inst == locations[i]->zlt_user) {
+	i = loc - locations;
+
+	inst = make_zstring(notice->z_class_inst,1);
+	while (i < num_locs && (inst == locations[i].zlt_user)) {
 		/* these locations match */
 #if 0
-		zdbug((LOG_DEBUG,"match %s", locations[i]->zlt_user.value()));
+		zdbug((LOG_DEBUG,"match %s", locations[i].zlt_user->string));
 #endif
-		switch (locations[i]->zlt_exposure) {
+		switch (locations[i].zlt_exposure) {
 		case OPSTAFF_VIS:
 			i++;
 			continue;
@@ -1196,7 +1216,7 @@ ulogin_marshal_locs(ZNotice_t *notice, register int *found, int auth)
 				syslog(LOG_ERR, "ulog_loc: no mem");
 				break;	/* from the while */
 			}
-			matches[0] = locations[i];
+			matches[0] = &locations[i];
 			(*found)++;
 		} else {
 			if ((matches = (ZLocation_t **) realloc((caddr_t) matches, (unsigned) ++(*found) * sizeof(ZLocation_t *))) == (ZLocation_t **) 0) {
@@ -1204,10 +1224,11 @@ ulogin_marshal_locs(ZNotice_t *notice, register int *found, int auth)
 				*found = 0;
 				break;	/* from the while */
 			}
-			matches[*found - 1] = locations[i];
+			matches[*found - 1] = &locations[i];
 		}
 		i++;
 	}
+	free_zstring(inst);
 
 	/* OK, now we have a list of user@host's to return to the client
 	   in matches */
@@ -1217,7 +1238,7 @@ ulogin_marshal_locs(ZNotice_t *notice, register int *found, int auth)
 	if (zdebug) {
 		for (i = 0; i < *found ; i++)
 			zdbug((LOG_DEBUG,"found %s",
-			       matches[i]->zlt_user.value()));
+			       matches[i]->zlt_user->string));
 	}
 #endif
 
@@ -1227,9 +1248,9 @@ ulogin_marshal_locs(ZNotice_t *notice, register int *found, int auth)
 		*found = 0;
 	} else
 		for (i = 0; i < *found ; i++) {
-			answer[i*NUM_FIELDS] = (char *) matches[i]->zlt_machine.value ();
-			answer[i*NUM_FIELDS + 1] = (char *) matches[i]->zlt_time.value();
-			answer[i*NUM_FIELDS + 2] = (char *) matches[i]->zlt_tty.value();
+			answer[i*NUM_FIELDS] = (char *) matches[i]->zlt_machine->string;
+			answer[i*NUM_FIELDS + 1] = (char *) matches[i]->zlt_time;
+			answer[i*NUM_FIELDS + 2] = (char *) matches[i]->zlt_tty->string;
 		}
 
 	if (matches)
@@ -1238,25 +1259,26 @@ ulogin_marshal_locs(ZNotice_t *notice, register int *found, int auth)
 }
 
 void
-uloc_dump_locs(register FILE *fp)
+uloc_dump_locs(fp)
+     register FILE *fp;
 {
 	register int i;
 	char buf[BUFSIZ*3];
 	static char *bufp;
-	static const char *cp;
+	static Zconst char *cp;
 
 	/* delay using stdio so that we can run FAST! */
 	for (i = 0; i < num_locs; i++) {
 		bufp = buf;
-#define cpy(str) do{cp=(str);while(*cp){*bufp++=*cp++;}}while(0)
-		cpy (locations[i]->zlt_user.value ());
+#define cpy(str) cp=(str);while(*cp){*bufp++ = *cp++;}
+		cpy (locations[i].zlt_user->string);
 		*bufp++ = '/';
-		cpy (locations[i]->zlt_machine.value());
+		cpy (locations[i].zlt_machine->string);
 		*bufp++ = '/';
-		cpy (locations[i]->zlt_time.value());
+		cpy (locations[i].zlt_time);
 		*bufp++ = '/';
-		cpy (locations[i]->zlt_tty.value());
-		switch (locations[i]->zlt_exposure) {
+		cpy (locations[i].zlt_tty->string);
+		switch (locations[i].zlt_exposure) {
 		case OPSTAFF_VIS:
 			cpy ("/OPSTAFF/");
 			break;
@@ -1273,17 +1295,28 @@ uloc_dump_locs(register FILE *fp)
 			cpy ("/NET_ANN/");
 			break;
 		default:
-			sprintf (bufp, "/? %d ?/", locations[i]->zlt_exposure);
+			sprintf (bufp, "/? %d ?/", locations[i].zlt_exposure);
 			while (*bufp)
 			    bufp++;
 			break;
 		}
-		cpy (inet_ntoa (locations[i]->zlt_addr));
+		cpy (inet_ntoa (locations[i].zlt_addr));
 		*bufp++ = '/';
-		sprintf(bufp, "%d", ntohs(locations[i]->zlt_port));
+		sprintf(bufp, "%d", ntohs(locations[i].zlt_port));
 		fputs(buf, fp);
 		(void) putc('\n', fp);
 #undef cpy
 	}
 	return;
+}
+
+static void
+free_loc(loc)
+     ZLocation_t *loc;
+{
+  free_zstring(loc->zlt_user);
+  free_zstring(loc->zlt_machine);
+  free_zstring(loc->zlt_tty);
+  xfree(loc->zlt_time);
+  return;
 }

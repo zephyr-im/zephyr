@@ -15,22 +15,24 @@
 
 #ifndef lint
 #ifndef SABER
-static const char rcsid_common_c[] =
-    "$Header$";
-#endif SABER
-#endif lint
+static char rcsid_common_c[] =
+    "$Id$";
+#endif /* SABER */
+#endif /* lint */
 
+#include <zephyr/zephyr.h>
 #include <stdio.h>
-#include <assert.h>
 #include <ctype.h>
-#include "zserver.h"
+#include <syslog.h>
+#include <string.h>
+#include "unix.h"
 
 /* common routines for the server */
 
 /* copy the string into newly allocated area */
 
 char *
-strsave (const char *sp)
+strsave (Zconst char *sp)
 {
     register char *ret;
 
@@ -45,7 +47,7 @@ strsave (const char *sp)
 /* generic string hash function */
 
 unsigned long
-hash (const char *string)
+hash (Zconst char *string)
 {
 	register unsigned long hval = 0;
 	register char cp;

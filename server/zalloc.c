@@ -3,6 +3,8 @@
  */
 
 #include <stdio.h>
+#include <zephyr/zephyr.h>
+#include "unix.h"
 #include "zalloc.h"
 
 #ifndef MPROF
@@ -10,63 +12,62 @@
  * What's the maximum number of words to expect to allocate through
  * this mechanism?  (Larger requests will be fed to malloc.)
  */
-const int max_size = 32;
+#define MAX_SIZE 32
 
 static void *free_space;
-static int free_space_size;
-static void *buckets[max_size];
+static unsigned int free_space_size;
+static void *buckets[MAX_SIZE];
 #ifdef ZALLOC_STATS
 enum zalloc_memtype {
     FREE=0, ALLOCATED,
     N_zalloc_memtype
 };
-static int zalloc_count[max_size][(int) N_zalloc_memtype];
+static int zalloc_count[MAX_SIZE][(int) N_zalloc_memtype];
 #endif
 
-struct dummy {
-    int a;
-    virtual int i() { return a; }
-};
-
-union misc_types {		/* used only for its size */
+/* 
+  union misc_types {
     void *void_p;
     int i;
     long l;
     double d;
-    int (dummy::* member_p) ();
-    /* Can't just use a `dummy' object, because it has an invisible
-       constructor.  */
-    char cc[sizeof (dummy)];
-};
-
-const unsigned int sz = sizeof (misc_types);
+  };
+*/
+/* SZ = sizeof(misc_types) */
+#define SZ 32
 
 /*
  * Pick some size here that will help keep down the number of calls to
  * malloc, but doesn't waste too much space.  To avoid waste of space,
  * we leave some overhead before the next power of two.
  */
-const int alloc_size = ((16384 - 32) / sz) * sz;
 
-inline unsigned int round (unsigned int size) {
-    size += sz - 1;
-    size -= (size % sz);
+
+/* ALLOC_SIZE = ((16384 - 32) / SZ) * SZ      */
+#define ALLOC_SIZE 16352
+
+unsigned int round (size)
+     unsigned int size;
+{
+    size += SZ - 1;
+    size -= (size % SZ);
     return size;
 }
+
 #define ROUND(size)	(size = round (size))
-inline int BUCKET (unsigned int size) {
+int BUCKET (size)
+     unsigned int size;
+{
     ROUND (size);
-    return size / sz - 1;
+    return size / SZ - 1;
 }
 
-extern "C" {
-    void * malloc (unsigned int);
-    void free (void *);
-    void abort ();
-    void bzero (void *, unsigned int);
-}
-
-static inline void zmemset (void *ptr, int size, int fill) {
+static void
+zmemset (ptr, size, fill)
+     void *ptr;
+     int size;
+     int fill;
+{
 #ifdef ZALLOC_DEBUG
     char *cptr = (char *) ptr;
     while (size--)
@@ -74,15 +75,20 @@ static inline void zmemset (void *ptr, int size, int fill) {
 #endif
 }
 
-void *zalloc (unsigned int size) {
-    ROUND (size);
-
-    int bucket = BUCKET (size);
-    if (bucket < 0 || bucket >= max_size)
-	return malloc (size);
-
+void *
+zalloc (size)
+     unsigned int size;
+{
+    int bucket;
     void *ret;
-    void **ptr = &buckets[bucket];
+    void **ptr;
+
+    ROUND (size);
+    bucket = BUCKET (size);
+    if (bucket < 0 || bucket >= MAX_SIZE)
+	return (void *) malloc (size);
+
+    ptr = &buckets[bucket];
 #ifdef ZALLOC_DEBUG_PRINT
     fprintf (stderr, "zalloc(%d); looking in bucket %d, found %08X\n",
 	     size, bucket, *ptr);
@@ -107,8 +113,8 @@ void *zalloc (unsigned int size) {
 #endif
 	}
 
-	free_space_size = alloc_size;
-	free_space = malloc (free_space_size);
+	free_space_size = ALLOC_SIZE;
+	free_space = (void *) malloc (free_space_size);
 	if (!free_space)
 	    abort ();
 #ifdef ZALLOC_DEBUG_PRINT
@@ -130,16 +136,21 @@ return_it:
     return ret;
 }
 
-void zfree (void *ptr, unsigned int size) {
-    ROUND (size);
+void zfree (ptr, size)
+     void *ptr;
+     unsigned int size;
+{
+    int bucket;
+    void **b;
 
-    int bucket = BUCKET (size);
-    if (bucket < 0 || bucket >= max_size) {
+    ROUND (size);
+    bucket = BUCKET (size);
+    if (bucket < 0 || bucket >= MAX_SIZE) {
 	free (ptr);
 	return;
     }
 
-    void **b = &buckets[bucket];
+    b = &buckets[bucket];
     zmemset (ptr, size, 0xe5);
     *(void **) ptr = *b;
     *b = ptr;

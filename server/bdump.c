@@ -16,7 +16,7 @@
  
 #ifndef lint
 #ifndef SABER
-static const char rcsid_bdump_c[] = "$Zephyr: /mit/zephyr/src/server/RCS/bdump.C,v 1.37 91/01/28 15:31:53 raeburn Exp Locker: raeburn $";
+static char rcsid_bdump_c[] = "$Id$";
 #endif /* SABER */
 #endif /* lint */
  
@@ -56,33 +56,49 @@ static const char rcsid_bdump_c[] = "$Zephyr: /mit/zephyr/src/server/RCS/bdump.C
  *	int num;
  */
  
-static void close_bdump(void* arg),
-    cleanup(ZServerDesc_t *server, int omask);
-static Code_t bdump_send_loop(register ZServerDesc_t *server, char *vers),
-    bdump_ask_for(char *inst),
-    bdump_recv_loop(ZServerDesc_t *server);
-static Code_t get_packet(caddr_t packet, int len, int *retlen);
-static Code_t extract_sin(ZNotice_t *notice, struct sockaddr_in *target);
-static Code_t send_done(void);
-static Code_t send_list(ZNotice_Kind_t kind, u_short port, char *zclass,
+#ifdef __STDC__
+# define        P(s) s
+#else
+# define P(s) ()
+#endif
+
+static void close_bdump P((void* arg)),
+    cleanup P((ZServerDesc_t *server, int omask));
+static Code_t bdump_send_loop P((register ZServerDesc_t *server, char *vers)),
+    bdump_ask_for P((char *inst)),
+    bdump_recv_loop P((ZServerDesc_t *server));
+static void bdump_get_v1 P((ZNotice_t *, int, struct sockaddr_in *,
+			    ZServerDesc_t *));
+static void bdump_get_v1a P((ZNotice_t *notice, int auth,
+			    struct sockaddr_in *who, ZServerDesc_t *server));
+static Code_t get_packet P((caddr_t packet, int len, int *retlen));
+static Code_t extract_sin P((ZNotice_t *notice, struct sockaddr_in *target));
+static Code_t send_done P((void));
+static Code_t send_list P((ZNotice_Kind_t kind, int port, char *class_name,
 			char *inst, char *opcode, char *sender, char *recip,
-			char **lyst, int num);
-static Code_t send_host_register(ZHostList_t *host);
-static Code_t sbd_loop(struct sockaddr_in *from);
-static Code_t gbd_loop(ZServerDesc_t *server);
-static Code_t send_normal_tcp(ZNotice_Kind_t kind, u_short port, char *zclass,
-			      char *inst, char *opcode, char *sender,
-			      char *recip, char *message, int len);
-static int net_read(FILE *f, register char *buf, register int len);
-static int net_write(FILE *f, register char *buf, int len);
-static int setup_file_pointers (void);
-static void shutdown_file_pointers (void);
+			char **lyst, int num));
+static Code_t send_host_register P((ZHostList_t *host));
+static Code_t sbd_loop P((struct sockaddr_in *from));
+static Code_t gbd_loop P((ZServerDesc_t *server));
+static Code_t send_normal_tcp P((ZNotice_Kind_t kind, int port,
+				 char *class_name,
+				 char *inst, char *opcode, char *sender,
+				 char *recip, char *message, int len));
+static int net_read P((FILE *f, register char *buf, register int len));
+static int net_write P((FILE *f, register char *buf, int len));
+static int setup_file_pointers  P((void));
+static void shutdown_file_pointers  P((void));
 
 #ifdef KERBEROS
-static int get_tgt(void);
+static int get_tgt P((void));
 static long ticket_time;
 static char my_realm[REALM_SZ];
+
+#define TKTLIFETIME	96
+#define tkt_lifetime(val) ((long) val * 5L * 60L)
 #endif /* KERBEROS */
+
+#undef P
 
 static timer bdump_timer;
 static int bdump_inited;
@@ -92,6 +108,7 @@ static struct sockaddr_in bdump_sin;
 static int cancel_outgoing_dump;
 
 int bdumping;
+
  
 /*
  * Functions for performing a brain dump between servers.
@@ -102,7 +119,8 @@ int bdumping;
  */
  
 void
-bdump_offer(struct sockaddr_in *who)
+bdump_offer(who)
+     struct sockaddr_in *who;
 {
 	Code_t retval;
 	char buf[512], *addr, *lyst[2];
@@ -163,7 +181,7 @@ bdump_offer(struct sockaddr_in *who)
 #endif /* KERBEROS */
 	(void) listen(bdump_socket, 1);
  
-	bdump_timer = timer_set_rel(20L, close_bdump, (caddr_t) 0);
+	bdump_timer = timer_set_rel(20L, close_bdump, (void *) 0);
 	FD_SET(bdump_socket, &interesting);
 	nfildes = max(bdump_socket, srv_socket) + 1;
  
@@ -205,6 +223,14 @@ bdump_send(void)
 	int fromlen = sizeof(from);
 	int omask;
 	int on = 1;
+#ifdef _POSIX_SOURCE
+	struct sigaction action;
+    /* Set up sigaction structure */
+    /* This is all done because the RS/6000 emulation of signal sets the */
+    /* signal action back to the default action when the signal handler is */
+    /* called, instead of leaving well enough alone.. */
+#endif /* _POSIX_SOURCE */
+
 #ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
@@ -232,7 +258,14 @@ bdump_send(void)
  
 	omask = sigblock(sigmask(SIGFPE)); /* don't let ascii dumps start */
  
+#ifdef _POSIX_SOURCE
+	action.sa_flags = 0;
+	sigemptyset(&action.sa_mask);
+	action.sa_handler = SIG_IGN;
+	sigaction(SIGPIPE, &action, NULL);
+#else
 	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect failures */
+#endif /* _POSIX_SOURCE */
  
 	from.sin_port = sock_sin.sin_port; /* we don't care what port
 					    it came from, and we need to
@@ -289,13 +322,12 @@ bdump_send(void)
  
 #ifdef KERBEROS
 	/* receive the authenticator */
-	retval = GetKerberosData(live_socket, from.sin_addr, &kdata, "zephyr",
-				      ZEPHYR_SRVTAB);
-	if (retval != KSUCCESS) {
-		syslog(LOG_ERR, "bdump_send: getkdata: %s",
-		       krb_err_txt[retval]);
-		cleanup(server, omask);
-		return;
+	if ((retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
+				      "zephyr", ZEPHYR_SRVTAB)) != KSUCCESS) {
+	  syslog(LOG_ERR, "bdump_send: getkdata: %s",
+		 krb_err_txt[retval]);
+	  cleanup(server, omask);
+	  return;
 	}
 	if (strcmp(kdata.pname,"zephyr") || strcmp(kdata.pinst,"zephyr")) {
 		syslog(LOG_ERR, "bdump_send: peer not zephyr: %s.%s@%s",
@@ -308,12 +340,12 @@ bdump_send(void)
 		cleanup(server, omask);
 		return;
 	}
-	retval = SendKerberosData(live_socket, &ticket, "zephyr", "zephyr");
-	if (retval) {
-		syslog(LOG_ERR,"bdump_send: SendKerberosData: %s",
-		       error_message (retval));
-		cleanup(server, omask);
-		return;
+	if ((retval = SendKerberosData(live_socket, &ticket, "zephyr",
+				      "zephyr"))) {
+	  syslog(LOG_ERR,"bdump_send: SendKerberosData: %s",
+		 error_message (retval));
+	  cleanup(server, omask);
+	  return;
 	}
 #else /* !KERBEROS */
 	if ((fromport > IPPORT_RESERVED) ||
@@ -325,8 +357,7 @@ bdump_send(void)
 	}
 #endif /* KERBEROS */
 
-	retval = setup_file_pointers ();
-	if (retval) {
+	if ((retval = setup_file_pointers())) {
 	    syslog (LOG_WARNING, "bdump_send: can't set up file pointers: %s",
 		    error_message (retval));
 	    cleanup (server, omask);
@@ -349,15 +380,21 @@ bdump_send(void)
 #endif
 	if (server != limbo_server) {
 	    /* set this guy to be up, and schedule a hello */
-	    server->set_state (SERV_UP);
+	    server->zs_state  = SERV_UP;
 	    timer_reset(server->zs_timer);
-	    server->zs_timer = timer_set_rel(0L, server_timo, (caddr_t) server);
+	    server->zs_timer = timer_set_rel(0L, server_timo, (void *) server);
 	}
 #if 0
 	zdbug((LOG_DEBUG,"cleanup sbd"));
 #endif
 	shutdown_file_pointers ();
+
+#ifdef _POSIX_SOURCE
+	action.sa_handler = SIG_DFL;
+	sigaction(SIGPIPE, &action, NULL);
+#else
 	(void) signal(SIGPIPE, SIG_DFL);
+#endif /* _POSIX_SOURCE */
 	bdump_inited = 1;
 	bdumping = 0;
 	server->zs_dumping = 0;
@@ -372,13 +409,19 @@ bdump_send(void)
 
 /*ARGSUSED*/
 static void
-bdump_get_v1_guts (ZNotice_t *notice, int auth, sockaddr_in *who,
-		   ZServerDesc_t *server)
+bdump_get_v1_guts (notice, auth, who, server)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
+     ZServerDesc_t *server;
 {
 	struct sockaddr_in from;
 	Code_t retval;
 	int omask;
 	int on = 1;
+#ifdef _POSIX_SOURCE
+	struct sigaction action;
+#endif /* _POSIX_SOURCE */
 #ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
@@ -389,11 +432,23 @@ bdump_get_v1_guts (ZNotice_t *notice, int auth, sockaddr_in *who,
 	bdumping = 1;
 	server->zs_dumping = 1;
  
+#ifdef _POSIX_SOURCE
+	action.sa_flags = 0;
+	sigemptyset(&action.sa_mask);
+	action.sa_handler = SIG_IGN;
+	sigaction(SIGPIPE, &action, NULL);
+#else
 	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect problems */
+#endif /* _POSIX_SOURCE */
  
 	if ((retval = extract_sin(notice, &from)) != ZERR_NONE) {
 		syslog(LOG_ERR, "bdump_get: sin: %s", error_message(retval));
+#ifdef _POSIX_SOURCE
+		action.sa_handler = SIG_DFL;
+		sigaction(SIGPIPE, &action, NULL);
+#else
 		(void) signal(SIGPIPE, SIG_DFL);
+#endif /* _POSIX_SOURCE */
 		bdumping = 0;
 		server->zs_dumping = 0;
 		return;
@@ -437,8 +492,8 @@ bdump_get_v1_guts (ZNotice_t *notice, int auth, sockaddr_in *who,
 		cleanup(server, omask);
 		return;
 	}
-	retval = SendKerberosData(live_socket, &ticket, "zephyr", "zephyr");
-	if (retval){
+	if ((retval = SendKerberosData(live_socket, &ticket, "zephyr",
+				       "zephyr"))) {
 		syslog(LOG_ERR,"bdump_get: %s",
 		       error_message (retval));
 		cleanup(server, omask);
@@ -465,8 +520,7 @@ bdump_get_v1_guts (ZNotice_t *notice, int auth, sockaddr_in *who,
 		return;
 	}
 #endif /* KERBEROS */
-	retval = setup_file_pointers ();
-	if (retval) {
+	if ((retval = setup_file_pointers())) {
 	    syslog (LOG_WARNING, "bdump_get: can't set up file pointers: %s",
 		    error_message (retval));
 	    cleanup (server, omask);
@@ -491,15 +545,20 @@ bdump_get_v1_guts (ZNotice_t *notice, int auth, sockaddr_in *who,
 	zdbug((LOG_DEBUG, "bdump_get: gbd finished"));
 #endif
 	/* set this guy to be up, and schedule a hello */
-	server->set_state (SERV_UP);
+	server->zs_state = SERV_UP;
 	timer_reset(server->zs_timer);
-	server->zs_timer = timer_set_rel(0L, server_timo, (caddr_t) server);
+	server->zs_timer = timer_set_rel(0L, server_timo, (void *) server);
 
 #if 1
 	zdbug((LOG_DEBUG,"cleanup gbd"));
 #endif
 	shutdown_file_pointers ();
+#ifdef _POSIX_SOURCE
+	action.sa_handler = SIG_DFL;
+	sigaction(SIGPIPE, &action, NULL);
+#else
 	(void) signal(SIGPIPE, SIG_DFL);
+#endif
 	bdump_inited = 1;
 	bdumping = 0;
 	server->zs_dumping = 0;
@@ -513,8 +572,16 @@ bdump_get_v1_guts (ZNotice_t *notice, int auth, sockaddr_in *who,
 }
  
 static void
-bdump_get_v1(ZNotice_t *notice, int auth, sockaddr_in *who,
+#ifdef __STDC__
+bdump_get_v1(ZNotice_t *notice, int auth, struct sockaddr_in *who,
 	     ZServerDesc_t *server)
+#else
+bdump_get_v1(notice, auth, who, server)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
+     ZServerDesc_t *server;
+#endif
 {
     if (bdump_socket >= 0) {
 	/* We cannot go get a brain dump when someone may
@@ -533,8 +600,16 @@ bdump_get_v1(ZNotice_t *notice, int auth, sockaddr_in *who,
 }
 
 static void
-bdump_get_v1a(ZNotice_t *notice, int auth, sockaddr_in *who,
+#ifdef __STDC__
+bdump_get_v1a( ZNotice_t *notice, int auth, struct sockaddr_in *who,
 	      ZServerDesc_t *server)
+#else
+bdump_get_v1a(notice, auth, who, server)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
+     ZServerDesc_t *server;
+#endif
 {
     /* In version 1A, leave the listening file descriptor open; if we
        get a connection while we're dumping, one of the two will be
@@ -543,17 +618,28 @@ bdump_get_v1a(ZNotice_t *notice, int auth, sockaddr_in *who,
 }
 
 void
-bdump_get(ZNotice_t *notice, int auth, sockaddr_in *who, ZServerDesc_t *server)
+bdump_get(notice, auth, who, server)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
+     ZServerDesc_t *server;
 {
+#ifdef __STDC__
+# define        P(s) s
+#else
+# define P(s) ()
+#endif
+
+  void (*proc) P((ZNotice_t *, int, struct sockaddr_in *, ZServerDesc_t *));
+
+#undef P
+  proc = NULL;
+
 #if 1
 	if (zdebug)
 		syslog(LOG_DEBUG, "bdump_get: bdump v%s avail %s",
 		       notice->z_class_inst, inet_ntoa(who->sin_addr));
 #endif
-
-	/* version number 1 is the same as no version number */
-	auto void (*proc)(ZNotice_t *, int, sockaddr_in *, ZServerDesc_t *);
-	proc = 0;
 	if (!strcmp (notice->z_class_inst, "1")
 	    || !strcmp (notice->z_class_inst, ""))
 	    proc = bdump_get_v1;
@@ -573,13 +659,21 @@ bdump_get(ZNotice_t *notice, int auth, sockaddr_in *who, ZServerDesc_t *server)
  * Send a list off as the specified notice
  */
  
-Code_t
-bdump_send_list_tcp(ZNotice_Kind_t kind, u_short port, char *class_name,
-		    char *inst, char *opcode, char *sender, char *recip,
-		    const char **lyst, int num)
+int
+bdump_send_list_tcp(kind, port, class_name, inst, opcode, sender, recip,
+		    lyst, num)
+     ZNotice_Kind_t kind;
+     int port;
+     char *class_name;
+     char *inst;
+     char *opcode;
+     char *sender;
+     char *recip;
+     char **lyst;
+     int num;
 {
 	ZNotice_t notice;
-	register ZNotice_t *const pnotice = &notice; /* speed hack */
+	register ZNotice_t *Zconst pnotice = &notice; /* speed hack */
 	char *pack;
 	int packlen, count;
 	Code_t retval;
@@ -643,19 +737,32 @@ shutdown_file_pointers () {
 }
 
 static void
-cleanup(ZServerDesc_t *server, int omask)
+cleanup(server, omask)
+     ZServerDesc_t *server;
+     int omask;
 {
+#ifdef _POSIX_SOURCE
+	struct sigaction action;
+#endif /* _POSIX_SOURCE */
+
 #if 1
 	zdbug((LOG_DEBUG, "bdump cleanup"));
 #endif
 	if (server != limbo_server) {
-		server->set_state (SERV_DEAD);
+		server->zs_state = SERV_DEAD;
 		timer_reset(server->zs_timer);
 		server->zs_timer =
-			timer_set_rel(0L, server_timo, (caddr_t) server);
+			timer_set_rel(0L, server_timo, (void *) server);
 	}
 	shutdown_file_pointers ();
+#ifdef _POSIX_SOURCE
+	action.sa_flags = 0;
+	sigemptyset(&action.sa_mask);
+	action.sa_handler = SIG_DFL;
+	sigaction(SIGPIPE,&action, NULL);
+#else
 	(void) signal(SIGPIPE, SIG_DFL);
+#endif /* _POSIX_SOURCE */
 	bdumping = 0;
 	server->zs_dumping = 0;
 #ifdef CONCURRENT
@@ -664,17 +771,10 @@ cleanup(ZServerDesc_t *server, int omask)
 	(void) sigsetmask(omask);
 	return;
 }
- 
+  
 #ifdef KERBEROS
-#define TKTLIFETIME	96
-static inline long
-tkt_lifetime(int val)
-{
-    return((long) val * 5L * 60L);
-}
- 
 static int
-get_tgt(void)
+get_tgt()
 {
 	int retval;
 	if (!*my_realm)
@@ -719,7 +819,8 @@ get_tgt(void)
 #endif /* KERBEROS */
  
 static Code_t
-sbd_loop(struct sockaddr_in *from)
+sbd_loop(from)
+     struct sockaddr_in *from;
 {
 	ZNotice_t bd_notice;
 	ZPacket_t pack;
@@ -727,7 +828,6 @@ sbd_loop(struct sockaddr_in *from)
 	int packlen = sizeof(pack);
 	Code_t retval;
 	struct sockaddr_in bogus_from;
-	char buf[30];
 	char *zeph_version = NULL;
  
 	bogus_from = *from;
@@ -746,17 +846,7 @@ sbd_loop(struct sockaddr_in *from)
 			return(retval);
 		}
 		if (!zeph_version) {
-			int len = strlen (bd_notice.z_version) + 1;
-
-			/* combine these, and cfront complains... */
-			if (len < 30)
-			    zeph_version = buf;
-			else {
-			    void *v = LOCAL_ALLOC (len);
-			    zeph_version = (char *) v;
-			}
-
-			strcpy (zeph_version, bd_notice.z_version);
+		  zeph_version = strsave(bd_notice.z_version);
 		}
 #ifdef DEBUG
 		if (zdebug) {
@@ -818,13 +908,14 @@ sbd_loop(struct sockaddr_in *from)
 			break;
 		}
 	}
-	if (zeph_version && zeph_version != buf)
-	    LOCAL_FREE (zeph_version);
+	if (zeph_version)
+	    xfree(zeph_version);
 	return(ZERR_NONE);
 }
  
 static Code_t
-gbd_loop(ZServerDesc_t *server)
+gbd_loop(server)
+     ZServerDesc_t *server;
 {
 	Code_t retval;
  
@@ -861,18 +952,19 @@ gbd_loop(ZServerDesc_t *server)
  
 /*ARGSUSED*/
 static void
-close_bdump(void * arg)
+close_bdump(arg)
+     void * arg;
 {
 	if (bdump_socket >= 0) {
 		FD_CLR(bdump_socket, &interesting);
 		(void) close(bdump_socket);
 		nfildes = srv_socket + 1;
 		bdump_socket = -1;
-#if 0
+#if 1
 		zdbug((LOG_DEBUG, "bdump not used"));
 #endif
 	} else {
-#if 0
+#if 1
 		zdbug((LOG_DEBUG, "bdump not open"));
 #endif
 	}
@@ -885,7 +977,8 @@ close_bdump(void * arg)
  */
  
 static Code_t
-bdump_ask_for(char *inst)
+bdump_ask_for(inst)
+     char *inst;
 {
 	Code_t retval;
  
@@ -901,7 +994,8 @@ bdump_ask_for(char *inst)
  */
  
 static Code_t
-bdump_recv_loop(ZServerDesc_t *server)
+bdump_recv_loop(server)
+     ZServerDesc_t *server;
 {
 	ZNotice_t notice;
 	ZPacket_t packet;
@@ -1085,7 +1179,9 @@ bdump_recv_loop(ZServerDesc_t *server)
  */
  
 static Code_t
-bdump_send_loop(register ZServerDesc_t *server, char *vers)
+bdump_send_loop(server, vers)
+     ZServerDesc_t *server;
+     char *vers;
 {
 	register ZHostList_t *host;
 	register ZClientList_t *clist;
@@ -1174,7 +1270,8 @@ bdump_send_loop(register ZServerDesc_t *server, char *vers)
  */
  
 static Code_t
-send_host_register(ZHostList_t *host)
+send_host_register(host)
+     ZHostList_t *host;
 {
 	char buf[512], *addr, *lyst[2];
 	Code_t retval;
@@ -1188,7 +1285,7 @@ send_host_register(ZHostList_t *host)
 	lyst[1] = buf;
  
 	/* myname is the hostname */
-	retval = bdump_send_list_tcp (HMCTL, bdump_sin.sin_port,
+	retval = bdump_send_list_tcp (HMCTL, (int) bdump_sin.sin_port,
 				      ZEPHYR_CTL_CLASS, ZEPHYR_CTL_HM,
 				      HM_BOOT, myname, "", lyst, 2);
 	if (retval != ZERR_NONE)
@@ -1201,7 +1298,7 @@ send_host_register(ZHostList_t *host)
  */
  
 static Code_t
-send_done(void)
+send_done()
 {
 	Code_t retval;
  
@@ -1220,7 +1317,16 @@ send_done(void)
  */
  
 static Code_t
-send_list(ZNotice_Kind_t kind, u_short port, char *class_name, char *inst, char *opcode, char *sender, char *recip, char **lyst, int num)
+send_list(kind, port, class_name, inst, opcode, sender, recip, lyst, num)
+     ZNotice_Kind_t kind;
+     int port;
+     char *class_name;
+     char *inst;
+     char *opcode;
+     char *sender;
+     char *recip;
+     char **lyst;
+     int num;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
@@ -1260,7 +1366,17 @@ send_list(ZNotice_Kind_t kind, u_short port, char *class_name, char *inst, char 
  */
  
 static Code_t
-send_normal_tcp(ZNotice_Kind_t kind, u_short port, char *class_name, char *inst, char *opcode, char *sender, char *recip, char *message, int len)
+send_normal_tcp(kind, port, class_name, inst, opcode, sender, recip,
+		message, len)
+     ZNotice_Kind_t kind;
+     int port;
+     char *class_name;
+     char *inst;
+     char *opcode;
+     char *sender;
+     char *recip;
+     char *message;
+     int len;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
@@ -1322,7 +1438,10 @@ send_normal_tcp(ZNotice_Kind_t kind, u_short port, char *class_name, char *inst,
  */
  
 static Code_t
-get_packet(caddr_t packet, int len, int *retlen)
+get_packet(packet, len, retlen)
+     caddr_t packet;
+     int len;
+     int *retlen;
 {
 	u_short length;
 	int result;
@@ -1352,7 +1471,9 @@ get_packet(caddr_t packet, int len, int *retlen)
 }
  
 static Code_t
-extract_sin(ZNotice_t *notice, struct sockaddr_in *target)
+extract_sin(notice, target)
+     ZNotice_t *notice;
+     struct sockaddr_in *target;
 {
 	register char *cp = notice->z_message;
 	char *buf;
@@ -1380,7 +1501,10 @@ extract_sin(ZNotice_t *notice, struct sockaddr_in *target)
 }
  
 static int
-net_read(FILE *f, register char *buf, register int len)
+net_read(f, buf, len)
+     FILE *f;
+     register char *buf;
+     register int len;
 {
     int cc, len2 = 0;
  
@@ -1398,7 +1522,10 @@ net_read(FILE *f, register char *buf, register int len)
 }
  
 static int
-net_write(FILE *f, register char *buf, int len)
+net_write(f, buf, len)
+     FILE *f;
+     register char *buf;
+     int len;
 {
     int cc;
     register int wrlen = len;
@@ -1415,11 +1542,13 @@ net_write(FILE *f, register char *buf, int len)
 static int
 setup_file_pointers ()
 {
+  int fd;
+
     input = fdopen (live_socket, "r");
     if (!input)
 	return errno;
 
-    int fd = dup (live_socket);
+    fd = dup (live_socket);
     if (fd < 0)
 	return errno;
     output = fdopen (fd, "w");

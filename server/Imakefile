@@ -21,73 +21,77 @@ LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${HES_LINTLIB} \
 HDRS=	zserver.h \
 	zsrv_conf.h \
 	timer.h \
-	ZString.h ZStringTable.h ZStringRep.h \
-	Set.hT Set.CT \
+	zstring.h \
 	unix.h \
 	zalloc.h \
-	access.h \
-	template_macros.h \
-	new.h
+	access.h
 
-SRCS=	main.C \
-	access.C \
-	bdump.C \
-	class.C \
-	client.C \
-	common.C \
-	dispatch.C \
-	hostm.C \
-	server.C \
-	subscr.C \
-	timer.C \
-	uloc.C \
-	kstuff.C \
-	version.C \
-	ZString.C ZStringTable.C \
-	kopt.c \
+SRCS=	access.c \
 	acl_files.c \
-	xxx.c \
-	zalloc.C
+	bdump.c \
+	class.c \
+	client.c \
+	common.c \
+	dispatch.c \
+	hostm.c \
+	kopt.c \
+	kstuff.c \
+	main.c \
+	server.c \
+	subscr.c \
+	timer.c \
+	uloc.c \
+	version.c \
+	zsrv_err.c \
+	zstring.c
 
-OBJS=	main.o \
-	zsrv_err.o \
-	access.o \
+OBJS=	access.o \
+ 	acl_files.o \
 	bdump.o \
 	class.o \
 	client.o \
 	common.o \
 	dispatch.o \
 	hostm.o \
+	kopt.o \
+	kstuff.o \
+	main.o \
 	server.o \
 	subscr.o \
 	timer.o \
 	uloc.o \
-	kstuff.o \
 	version.o \
-	ZString.o ZStringTable.o \
-	kopt.o \
-	acl_files.o \
-	xxx.o \
-	zalloc.o
+	zsrv_err.o \
+	zstring.o
 
 OTHERSRCS= zsrv_err.et
 CONFIG_FILES= default.subscriptions
 SRCDIR= ${SRCTOP}/server
 CODE= ${SRCS} ${HDRS} ${OTHERSRCS} ${CONFIG_FILES} Imakefile
 
-DEFINES=-DNDEBUG -DCONCURRENT
+DEFINES=-DDEBUG -DCONCURRENT
 normal_obj_rule()
 
-cplusplus_program(zephyrd,${OBJS},,${LIBS},${USRETCDIR})
+zephyrd:: new_vers.sh
+	-$(RM) zephyrd
+	sh new_vers.sh
+
+program(zephyrd,${OBJS},,${LIBS},${USRETCDIR})
+
+saber_program(zephyrd, ${SRCS}, ${OBJS}, , ${LIBS})
 
 error_table_noprof(zsrv_err)
 
 src:: zsrv_err.h
 
-depend:: zsrv_err.h
+depend:: zsrv_err.h version.h
 
 install::
 	-mkdir ${DESTDIR}${ACLDIR}
 	-rm -f ${DESTDIR}${ACLDIR}/?*.acl
 	cp acldir/?* ${DESTDIR}${ACLDIR}
 	${INSTALLFILE} default.subscriptions ${DESTDIR}${ACLDIR}/default.subscriptions
+
+
+version.h::
+	sh new_vers.sh
