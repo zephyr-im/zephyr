@@ -21,6 +21,7 @@ static char rcsid_ZVariables_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
+#include <ctype.h>
 #include <pwd.h>
 
 extern char *getenv();
