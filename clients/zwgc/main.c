@@ -320,6 +320,8 @@ void notice_handler(notice)
 	    free(class);
 	    free(instance);
 	    free(recipient);
+	} else if (!strcasecmp(control_opcode, USER_EXIT)) {
+	    signal_exit();
 	} else
 	  printf("zwgc: unknown control opcode %s.\n", control_opcode);
 
