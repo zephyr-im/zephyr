@@ -135,7 +135,7 @@ test2.o : test2.c
 test2.c : test2.et
 # 'make depend' code
 depend: ${CFILES} et_lex.lex.c
-	makedepend ${CFLAGS} ${CFILES}
+	touch Make.depend; makedepend -fMake.depend ${CFLAGS} ${CFILES}
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
