@@ -365,9 +365,11 @@ void init_hm()
      fp = fopen(PidFile, "r");
      if (fp != NULL) {
 	  (void)fscanf(fp, "%d\n", &oldpid);
-	  while (!kill(oldpid, SIGTERM))
-	       sleep(1);
-	  syslog(LOG_INFO, "Killed old image.");
+	  if (oldpid > 1) {
+	      while (!kill(oldpid, SIGTERM))
+		  sleep(1);
+	      syslog(LOG_INFO, "Killed old image.");
+	  }
 	  (void) fclose(fp);
      }
 
