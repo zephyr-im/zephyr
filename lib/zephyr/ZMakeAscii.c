@@ -19,6 +19,8 @@
 static const char rcsid_ZMakeAscii_c[] = "$Id$";
 #endif
 
+static char *itox_chars = "0123456789ABCDEF";
+
 Code_t ZMakeAscii(ptr, len, field, num)
     register char *ptr;
     int len;
@@ -26,7 +28,6 @@ Code_t ZMakeAscii(ptr, len, field, num)
     int num;
 {
     int i;
-    register char *itox_chars = "0123456789ABCDEF";
 
     for (i=0;i<num;i++) {
 	/* we need to add "0x" if we are between 4 byte pieces */
@@ -58,9 +59,20 @@ Code_t ZMakeAscii32(ptr, len, value)
     int len;
     unsigned long value;
 {
-    /* Convert to network byte order and convert last four bytes. */
-    value = htonl(value);
-    return ZMakeAscii(ptr, len, ((char *)&value) + sizeof(value) - 4, 4);
+    if (len < 11)
+	return ZERR_FIELDLEN;
+    *ptr++ = '0';
+    *ptr++ = 'x';
+    *ptr++ = itox_chars[(value >> 28) & 0xf];
+    *ptr++ = itox_chars[(value >> 24) & 0xf];
+    *ptr++ = itox_chars[(value >> 20) & 0xf];
+    *ptr++ = itox_chars[(value >> 16) & 0xf];
+    *ptr++ = itox_chars[(value >> 12) & 0xf];
+    *ptr++ = itox_chars[(value >>  8) & 0xf];
+    *ptr++ = itox_chars[(value >>  4) & 0xf];
+    *ptr++ = itox_chars[(value >>  0) & 0xf];
+    *ptr = 0;
+    return ZERR_NONE;
 }
 
 Code_t ZMakeAscii16(ptr, len, value)
@@ -68,8 +80,15 @@ Code_t ZMakeAscii16(ptr, len, value)
     int len;
     unsigned int value;
 {
-    /* Convert to network byte order and convert last two bytes. */
-    value = htons((unsigned short) value);
-    return ZMakeAscii(ptr, len, ((char *)&value) + sizeof(value) - 2, 2);
+    if (len < 7)
+	return ZERR_FIELDLEN;
+    *ptr++ = '0';
+    *ptr++ = 'x';
+    *ptr++ = itox_chars[(value >> 12) & 0xf];
+    *ptr++ = itox_chars[(value >>  8) & 0xf];
+    *ptr++ = itox_chars[(value >>  4) & 0xf];
+    *ptr++ = itox_chars[(value >>  0) & 0xf];
+    *ptr = 0;
+    return ZERR_NONE;
 }
 
