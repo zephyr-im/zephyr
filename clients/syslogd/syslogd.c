@@ -308,8 +308,14 @@ main(argc, argv)
 		(void) dup2(0, 1);
 		(void) dup2(0, 2);
 		untty();
-	} else
+	} else {
+#ifndef macII
 		setlinebuf(stdout);
+#else
+		static char buf[BUFSIZ];
+		setvbuf (stdout, buf, _IOLBF, BUFSIZ);
+#endif
+	}
 
 	consfile.f_type = F_CONSOLE;
 	(void) strcpy(consfile.f_un.f_fname, ctty);
