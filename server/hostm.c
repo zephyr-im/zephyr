@@ -125,14 +125,11 @@ ZServerDesc_t *server;
 #endif notdef
 	}
 	owner = hostm_find_server(&who->sin_addr);
-	if (!strcmp(opcode, HM_BOOT)) {
-		zdbug((LOG_DEBUG,"boot %s",inet_ntoa(who->sin_addr)));
+	if (!strcmp(opcode, HM_ATTACH)) {
+		zdbug((LOG_DEBUG,"attach %s",inet_ntoa(who->sin_addr)));
 		if (owner == server) {
-			zdbug((LOG_DEBUG,"hm_disp flushing"));
-			/* Same server owns him.  Just cancel
-			   any subscriptions */
-			flush(who, server);
-		
+			zdbug((LOG_DEBUG,"no change"));
+			/* Same server owns him.  do nothing */
 		} else if (owner) {
 			/* He has switched servers.
 			   he was lost but has asked server to work for him.
@@ -141,10 +138,54 @@ ZServerDesc_t *server;
 			/* hostm_find_host won't fail here, since we just
 			   did a hostm_find_server successfully */
 			hostm_transfer(hostm_find_host(&who->sin_addr), server);
-
 		} else {
-			zdbug((LOG_DEBUG,"acquiring"));
-			/* no owner.  Acquire him. */
+			syslog(LOG_WARNING,"attach new host?");
+			/* no owner.  attach him to server. */
+			if ((retval = host_attach(who, server))
+			    != ZERR_NONE) {
+				syslog(LOG_WARNING, "hattach failed: %s",
+				       error_message(retval));
+				return;
+			}
+
+		}
+		if (server == me_server) {
+			server_forward(notice, auth, who);
+			ack(notice, who);
+		}
+	} else if (!strcmp(opcode, HM_DETACH)) {
+#ifdef notdef
+		zdbug((LOG_DEBUG, "hm_disp detach %s",inet_ntoa(who->sin_addr)));
+		if (!owner)
+			return;
+		/* put him in limbo */
+		hostm_transfer(hostm_find_host(&who->sin_addr), limbo_server);
+		if (server == me_server)
+			server_forward(notice, auth, who);
+#else
+		zdbug((LOG_DEBUG, "hm_detach ignoring %s",inet_ntoa(who->sin_addr)));
+#endif notdef
+		return;
+	} else if (!strcmp(opcode, HM_BOOT)) {
+		zdbug((LOG_DEBUG, "boot %s",inet_ntoa(who->sin_addr)));
+		if (owner == server) {
+			zdbug((LOG_DEBUG, "flush"));
+			/* same server--just cancel
+			   any subscriptions */
+			flush(who, server);
+		} else if (owner) {
+			/* he has switched servers after booting */
+			zdbug((LOG_DEBUG, "hostm_flush"));
+			hostm_flush(hostm_find_host(&who->sin_addr), owner);
+			if ((retval = host_attach(who, server))
+			    != ZERR_NONE) {
+				syslog(LOG_WARNING, "hattach failed: %s",
+				       error_message(retval));
+				return;
+			}
+		} else {
+			zdbug((LOG_DEBUG,"new host"));
+			/* no owner.  attach him to server. */
 			if ((retval = host_attach(who, server))
 			    != ZERR_NONE) {
 				syslog(LOG_WARNING, "hattach failed: %s",
@@ -157,14 +198,13 @@ ZServerDesc_t *server;
 			ack(notice, who);
 		}
 	} else if (!strcmp(opcode, HM_FLUSH)) {
-		zdbug((LOG_DEBUG,"hm_disp flush %s",inet_ntoa(who->sin_addr)));
+		zdbug((LOG_DEBUG, "hm_flush %s",inet_ntoa(who->sin_addr)));
 		if (!owner)
 			return;
-		/* put him in limbo */
-		hostm_transfer(hostm_find_host(&who->sin_addr), limbo_server);
+		/* flush him */
+		hostm_flush(hostm_find_host(&who->sin_addr), owner);
 		if (server == me_server)
 			server_forward(notice, auth, who);
-		return;
 	} else {
 		syslog(LOG_WARNING, "hm_disp: unknown opcode %s",opcode);
 		return;
@@ -213,7 +253,7 @@ ZServerDesc_t *server;
 }
 
 /*
- * send a shutdown to each of our hosts, then tell the other servers
+ * send a shutdown to each of our hosts
  */
 
 void
@@ -232,8 +272,6 @@ hostm_shutdown()
 	     host = host->q_forw)
 		deathgram(&host->zh_addr);
 	
-	server_shutdown();
-
 	return;
 }
 
@@ -448,17 +486,14 @@ ZServerDesc_t *server;
 {
 	/* undo what we did in host_attach */
 	register ZHostList_t *hlist;
+	register ZServerDesc_t *serv;
 
-	for (hlist = server->zs_hosts->q_forw;
-	     hlist != server->zs_hosts;
-	     hlist = hlist->q_forw)
-		if (hlist->zh_addr.sin_addr.s_addr == addr->s_addr)
-			/* found him */
-			break;
-	if (hlist == server->zs_hosts) {
+	if ((serv = hostm_find_server(addr)) != server) {
 		syslog(LOG_WARNING, "host_detach: wrong server");
 		return;
 	}
+
+	hlist = hostm_find_host(addr);
 
 	/* all the clients have already been freed */
 	xfree(hlist->zh_clients);
