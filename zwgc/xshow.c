@@ -243,7 +243,12 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
 	    break;
 	    
 	  case 3:
-	    width = lsize*2+csize+XTextWidth(auxblocks[i].font," ",1);
+	    /* in all these cases, we just want to add the width of *any*
+	       space, so the first font will do just fine. */
+	    /* XXX implicit assumption that a line must have at least one
+	       block, so that there is indeed a reasonable font in
+	       auxblocks[0].font */
+	    width = lsize*2+csize+XTextWidth(auxblocks[0].font," ",1);
 	    break;
 	    
 	  case 4:
@@ -251,16 +256,16 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
 	    break;
 	    
 	  case 5:
-	    width = lsize+rsize+XTextWidth(auxblocks[i].font, " ", 1);
+	    width = lsize+rsize+XTextWidth(auxblocks[0].font, " ", 1);
 	    break;
 	    
 	  case 6:
-	    width = csize+rsize*2+XTextWidth(auxblocks[i].font, " ", 1);
+	    width = csize+rsize*2+XTextWidth(auxblocks[0].font, " ", 1);
 	    break;
 	    
 	  case 7:
 	    width = max(lsize,rsize)*2+csize+
-	      XTextWidth(auxblocks[i].font," ",1)*2;
+	      XTextWidth(auxblocks[0].font," ",1)*2;
 	    break;
 	}
 	if (width>maxwidth)
