@@ -173,18 +173,16 @@ OLIST=	\
 	acl_files.o
 #endif /* KERBEROS */
 
+/**/#dummy target so that 'make' does a make all.
+all:: libzephyr.a
+
 #ifdef KERBEROS
 KRB_OTHERSRCS= krb_err.et
-
-depend:: krb_err.h
-#endif /*KERBEROS*/
+#endif /* KERBEROS */
 
 OTHERSRCS= zephyr_err.et ${KRB_OTHERSRCS}
 SRCDIR= ${SRCTOP}/lib
 CODE= ${SRCS} ${OTHERSRCS} Imakefile
-
-/**/#dummy target so that 'make' does a make all.
-all:: libzephyr.a
 
 llib-lzephyr.ln:: ${HDRS}
 	@echo "Don't worry about the complaints about"
@@ -210,13 +208,26 @@ all::
 	$(RANLIB) -t ../libs/libzephyr_p.a
 #endif
 	
+
+#ifdef KERBEROS
+depend:: krb_err.h
+	$(RM) ../include/zephyr/krb_err.h
+	$(CP) -p krb_err.h ../include/zephyr/krb_err.h
+#endif /* KERBEROS */
+
+depend:: zephyr_err.h
+	$(RM) ../include/zephyr/zephyr_err.h
+	$(CP) -p zephyr_err.h ../include/zephyr/zephyr_err.h
+
 install::
 	-mkdir ${DESTDIR}/usr/include/zephyr
 	install -c -m 0644 ../include/zephyr/zephyr.h ${DESTDIR}/usr/include/zephyr/zephyr.h
 	install -c -m 0644 ../include/zephyr/zephyr_conf.h ${DESTDIR}/usr/include/zephyr/zephyr_conf.h
 	install -c -m 0644 ../include/zephyr/zephyr_internal.h ${DESTDIR}/usr/include/zephyr/zephyr_internal.h
-	install -c -m 0644 ../include/zephyr/zephyr_err.h ${DESTDIR}/usr/include/zephyr/zephyr_err.h
-	install -c -m 0644 ../include/zephyr/krb_err.h ${DESTDIR}/usr/include/zephyr/krb_err.h
+	install -c -m 0644 zephyr_err.h ${DESTDIR}/usr/include/zephyr/zephyr_err.h
+#ifdef KERBEROS
+	install -c -m 0644 krb_err.h ${DESTDIR}/usr/include/zephyr/krb_err.h
+#endif /* KERBEROS */
 	install -c -m 0644 ../include/zephyr/mit-copyright.h ${DESTDIR}/usr/include/zephyr/mit-copyright.h
 
 #define last_licks()							@@\
