@@ -161,12 +161,14 @@ handle_packet()
 		authentic = ZCheckAuthentication(&new_notice,
 						 &whoisit);
 	switch (authentic) {
-	ZAUTH_FAILED:
-	ZAUTH_NO:
+	case ZAUTH_YES:
+		authentic = 1;
+		break;
+	case ZAUTH_FAILED:
+	case ZAUTH_NO:
+	default:
 		authentic = 0;
 		break;
-	ZAUTH_YES:
-		authentic = 1;
 	}
 	if (whoisit.sin_port != hm_port &&
 	    strcmp(new_notice.z_class,ZEPHYR_ADMIN_CLASS) &&
