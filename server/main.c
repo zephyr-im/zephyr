@@ -115,7 +115,7 @@ int argc;
 char **argv;
 {
 	int nfound;			/* #fildes ready on select */
-	int authentic;			/* authentic flag for ZParseNotice */
+	int authentic;			/* authentic flag */
 	Code_t status;
 	ZNotice_t new_notice;		/* parsed from input_packet */
 	ZPacket_t input_packet;		/* from the network */
@@ -250,9 +250,7 @@ char **argv;
 				npackets++;
 				if (status = ZParseNotice(input_packet,
 							  input_len,
-							  &new_notice,
-							  &authentic,
-							  &whoisit)) {
+							  &new_notice)) {
 					syslog(LOG_ERR,
 					       "bad notice parse: %s",
 					       error_message(status));
@@ -267,17 +265,14 @@ char **argv;
 					input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
 					input_sin.sin_port = new_notice.z_port;
 					input_sin.sin_family = AF_INET;
-					if (status = ZParseNotice(input_packet,
-								  input_len,
-								  &new_notice,
-								  &authentic,
-								  &input_sin)) {
-						syslog(LOG_ERR,
-						       "bad srv notice parse: %s",
-						       error_message(status));
-						continue;
-					}
+					authentic = ZCheckAuthentication(&new_notice,
+									 input_packet,
+									 &input_sin);
 				}
+				else
+					authentic = ZCheckAuthentication(&new_notice,
+									 input_packet,
+									 &whoisit);
 				if (whoisit.sin_port != hm_port &&
 				    strcmp(new_notice.z_class,ZEPHYR_ADMIN_CLASS) &&
 				    whoisit.sin_port != sock_sin.sin_port &&
