@@ -6,14 +6,15 @@
  *      $Source$
  *      $Author$
  *
- *      Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *      Copyright (c) 1987,1991 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
  *      "mit-copyright.h". 
  */
 
 #include "zhm.h"
 
-static char rcsid_hm_c[] = "$Id$";
+static char rcsid_hm_c[] =
+    "$Zephyr: zhm.c,v 1.47 90/12/21 17:50:03 raeburn Exp $";
 
 #include <ctype.h>
 #include <signal.h>
@@ -25,28 +26,24 @@ static char rcsid_hm_c[] = "$Id$";
  */
 #include <sys/param.h>
 
-#ifdef HESIOD
+#ifdef Z_HaveHesiod
 #include <hesiod.h>
-#endif /* HESIOD */
+#endif
 
 #ifdef macII
 #define srandom srand48
 #endif
 
-#ifndef PIDFILE
-#define	PIDFILE	"/etc/athena/zhm.pid"
-#endif /* PIDFILE */
-
-int hmdebug = 0, rebootflag = 0, errflg = 0, dieflag = 0, inetd = 0, oldpid;
-int no_server = 1, nservchang = 0, nserv = 0, nclt = 0;
-int booting = 1, timeout_type = 0, deactivated = 1;
+int hmdebug, rebootflag, errflg, dieflag, inetd, oldpid;
+int no_server = 1, nservchang, nserv, nclt;
+int booting = 1, timeout_type, deactivated = 1;
 long starttime;
 u_short cli_port;
 struct sockaddr_in cli_sin, serv_sin, from;
 char **serv_list, **cur_serv_list;
 char prim_serv[MAXHOSTNAMELEN], cur_serv[MAXHOSTNAMELEN];
-char *zcluster = NULL;
-int sig_type = 0;
+char *zcluster;
+int sig_type;
 struct hostent *hp;
 char **clust_info;
 char hostname[MAXHOSTNAMELEN], loopback[4];
@@ -123,7 +120,7 @@ char *argv[];
 	 }
 	 serv_list[i] = NULL;
      }
-#ifdef HESIOD
+#ifdef Z_HaveHesiod
      else {
 
 	 if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
@@ -191,7 +188,7 @@ char *argv[];
 	 srandom(time((long *) 0));
 	 (void) strcpy(prim_serv, serv_list[random() % j]);
      }
-#endif /* HESIOD */
+#endif
      if (*prim_serv == '\0') {
 	 printf("No valid primary server found, exiting.\n");
 	 exit(ZERR_SERVNAK);
@@ -419,7 +416,7 @@ int set_sig_type(sig)
      return(0);
 }
 
-static char version[BUFSIZ] = "";
+static char version[BUFSIZ];
 
 send_stats(notice, sin)
      ZNotice_t *notice;
@@ -459,18 +456,11 @@ send_stats(notice, sin)
 	  (void)sprintf(list[6], "no");
      list[7] = (char *)malloc(64);
      (void)sprintf(list[7], "%ld", time((time_t *)0) - starttime);
+#ifdef adjust_size
      size = (unsigned int)sbrk(0);
-#if defined(ibm032) || defined(mips)
-     size -= 0x10000000;
-#endif
-#ifdef i386
-     size -= 0x800000;
-#endif
-#ifdef vax
-     {
-       extern int etext;
-       size -= (unsigned int) &etext;
-     }
+     adjust_size (size);
+#else
+     size = -1;
 #endif
      list[8] = (char *)malloc(64);
      (void)sprintf(list[8], "%ld", size);
