@@ -144,9 +144,9 @@ if test "$hesiod" != "no"; then
 		LDFLAGS="${LDFLAGS} -L${hesiod}/lib"
 	fi
 	AC_DEFINE(ZEPHYR_USES_HESIOD)
-	AC_CHECK_LIB(hesiod, hes_resolve,,
-		     [AC_ERROR(Hesiod library not found)])
-	LIBS="-lhesiod ${LIBS}"
+	AC_CHECK_LIB(hesiod, hes_resolve, LIBS="-lhesiod $(LIBS)",
+		     [AC_CHECK_FUNC(hes_resolve),,
+		      AC_ERROR(Hesiod library not found)])
 fi
 
 if test "$kerberos" != "no"; then
