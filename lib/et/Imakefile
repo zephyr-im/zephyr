@@ -97,6 +97,7 @@ install:: all
 	ranlib ${DESTDIR}${LIBDIR}/libcom_err.a
 	install -c libcom_err_p.a ${DESTDIR}${LIBDIR}/libcom_err_p.a
 	ranlib ${DESTDIR}${LIBDIR}/libcom_err_p.a
+	-mkdir ${DESTDIR}${DOCDIR}
 	install -c com_err.texinfo ${DESTDIR}${DOCDIR}/com_err.texinfo
 	install -c com_err.3 ${DESTDIR}/usr/man/man3/com_err.3
 	install -c compile_et.1 ${DESTDIR}/usr/man/man1/compile_et.1
