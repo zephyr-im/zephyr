@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xmark_c[] = "$Header$";
+static char rcsid_xmark_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -276,12 +276,12 @@ void xmarkClear()
    oldpixel[1]=markpixel[1];
    oldgram=markgram;
 
-   markblock[0]=-1;
-   markblock[1]=-1;
-   markchar[0]=-1;
-   markchar[1]=-1;
-   markpixel[0]=-1;
-   markpixel[1]=-1;
+   markblock[0] = -1;
+   markblock[1] = -1;
+   markchar[0] = -1;
+   markchar[1] = -1;
+   markpixel[0] = -1;
+   markpixel[1] = -1;
    markgram=NULL;
 }
 
