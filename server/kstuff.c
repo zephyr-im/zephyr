@@ -189,11 +189,9 @@ ZCheckRealmAuthentication(notice, from, realm)
             return ZAUTH_FAILED;
         checksum = compute_rlm_checksum(notice, session_key);
 
-        /* If checksum matches, packet is authentic.  Otherwise, check
-         * the authenticator as if we didn't have the session key cached
-         * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
-         * ticket isn't cached after a checksum failure), so don't worry
-         * about the extra des_quad_cksum() call. */
+        /* If checksum matches, packet is authentic.  If not, we might
+	 * have an outdated session key, so keep going the slow way.
+	 */
         if (checksum == notice->z_checksum) {
 	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
 	    return ZAUTH_YES;
@@ -219,7 +217,7 @@ ZCheckRealmAuthentication(notice, from, realm)
     checksum = compute_rlm_checksum(notice, dat.session);
 #endif
     if (checksum != notice->z_checksum)
-        return ZAUTH_CKSUM_FAILED;
+        return ZAUTH_FAILED;
 
     /* Record the session key, expiry time, and source principal in the
      * hash table, so we can do a fast check next time. */
@@ -274,11 +272,9 @@ ZCheckAuthentication(notice, from)
 	    return ZAUTH_FAILED;
 	checksum = compute_checksum(notice, session_key);
 
-	/* If the checksum matches, the packet is authentic.  Otherwise,
-	 * check authenticator as if we didn't have the session key cached
-	 * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
-	 * ticket isn't cached after a checksum failure), so don't worry
-	 * about the extra des_quad_cksum() call. */
+        /* If checksum matches, packet is authentic.  If not, we might
+	 * have an outdated session key, so keep going the slow way.
+	 */
 	if (checksum == notice->z_checksum) {
 	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
 	    return ZAUTH_YES;
@@ -305,7 +301,7 @@ ZCheckAuthentication(notice, from)
     checksum = compute_checksum(notice, dat.session);
 #endif
     if (checksum != notice->z_checksum)
-	return ZAUTH_CKSUM_FAILED;
+	return ZAUTH_FAILED;
 
     /* Record the session key, expiry time, and source principal in the
      * hash table, so we can do a fast check next time. */
