@@ -28,7 +28,7 @@ static char rcsid_hm_c[] = "$Header$";
 #include <sys/ioctl.h>
 #include <sys/file.h>
 
-int serv_sock, no_server = 1, timeout_type = 0, serv_loop = 0;
+int no_server = 1, timeout_type = 0, serv_loop = 0;
 int nserv = 0, nclt = 0, nservchang = 0;
 struct sockaddr_in cli_sin, serv_sin, from;
 struct hostent *hp;
@@ -122,10 +122,6 @@ void init_hm()
 
       openlog("hm", LOG_PID, LOG_DAEMON);
 
-#ifndef DEBUG
-      detach();
-#endif DEBUG
-
       if ((ret = ZInitialize()) != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("hm", ret, "initializing");
@@ -172,14 +168,14 @@ void init_hm()
 	    printf("No zephyr-clt entry in /etc/services.\n");
 	    exit(1);
       }
+
+#ifndef DEBUG
+      detach();
+#endif DEBUG
+
       bzero(&serv_sin, sizeof(struct sockaddr_in));
       serv_sin.sin_port = sp->s_port;
       
-      if ((serv_sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
-	    syslog(LOG_ERR, "Server socket failed.");
-	    exit(1);
-      }
-
       /* Set up communications with server */
       /* target is "zephyr-clt" port on server machine */
 
@@ -274,7 +270,7 @@ static void
 detach()
 {
         /* detach from terminal and fork. */
-        register int i, size = getdtablesize();
+        register int i, x = ZGetFD(), size = getdtablesize();
 
         if (i = fork()) {
                 if (i < 0)
@@ -282,9 +278,10 @@ detach()
                 exit(0);
         }
 
-        for (i = 0; i < size; i++) {
-                (void) close(i);
-        }
+        for (i = 0; i < size; i++)
+	  if (i != x)
+	    (void) close(i);
+
         i = open("/dev/tty", O_RDWR, 666);
         (void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
         (void) close(i);
