@@ -102,7 +102,9 @@ binary-arch: build install
 #	dh_installmenu
 #	dh_installemacsen
 #	dh_installpam
-	dh_installinit
+	dh_installinit -pzephyr-clients --init_script=zhm
+	dh_installinit -pzephyr-server-krb --init_script=zephyrd
+	dh_installinit -pzephyr-server --init_script=zephyrd
 #	dh_installcron
 #	dh_installmanpages
 #	dh_installinfo

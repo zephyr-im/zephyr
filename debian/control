@@ -1,8 +1,8 @@
 Source: zephyr
 Section: non-us/main
 Priority: optional
-Maintainer: Karl Ramm <kcr@1ts.org>
-Build-Depends: debhelper, libares-dev, libkrb5-dev, comerr-dev, ss-dev, libreadline4-dev, xlibs-dev | xlib6g-dev, libxaw-dev|xlib6g-dev, libncurses5-dev, bison
+Maintainer: Karl Ramm <kcr@debian.org>
+Build-Depends: debhelper, libares-dev, libkrb5-dev, comerr-dev, ss-dev, libreadline4-dev, xlibs-dev | xlib6g-dev, libxaw-dev | xlib6g-dev, libncurses5-dev, bison
 Standards-Version: 3.1.1
 
 Package: libzephyr3
@@ -62,12 +62,3 @@ Description: The original "Instant Message" system development libraries
  Zephyr allows users to send messages to other users or to groups of
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
-
-Package: zephyr-client
-Depends: zephyr-clients, libzephyr3-krb
-Priority: extra
-Architecture: all
-Description: Phased upgrade package from kcr's earlier build
- This package should make your life easier if you are using the earlier Zephyr packages; 
- it will install the Kerberized versions of Zephyr.
- You can remove once installed.

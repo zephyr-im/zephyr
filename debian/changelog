@@ -1,3 +1,19 @@
+zephyr (2.1.20000421.SNAPSHOT-9) unstable; urgency=low
+
+  * New maintainer, closes: #92061
+  * This builds with glibc2.2, closes: #86183
+  * This builds with Sam's MIT krb5 packages, closes: #40001, #40215
+  * There are now kerberized shared libraries, thanks to Sam, closes: #56691
+  * zaway works for me, closes: #76302
+  * build-depends fixed in packaging new version,
+    closes: #72006, #74371, #84558
+  * drop dummy zephyr-client package
+  * rename /etc/init.d/zephyr-clients to /etc/init.d/zhm
+  * rename /etc/init.d/zephyr-server to /etc/init.d/zephyrd
+  * rename /etc/init.d/zephyr-server-krb to /etc/init.d/zephyr.d
+
+ -- Karl Ramm <kcr@debian.org>  Sun,  1 Apr 2001 01:34:22 -0500
+
 zephyr (2.1.20000421.SNAPSHOT-8) unstable; urgency=low
 
   * zephyr-client -> zephyr-clients
