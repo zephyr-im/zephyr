@@ -7,7 +7,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -34,6 +34,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 				 sizeof(u_short))) != ZERR_NONE)
 		return (retval);
 
+	(void) bzero((char *)&notice, sizeof(notice));
 	notice.z_message = asciiport;
 	notice.z_message_len = strlen(asciiport)+1;
 	notice.z_opcode = CLIENT_GIMMESUBS;
@@ -46,6 +47,7 @@ Code_t ZRetrieveDefaultSubscriptions(nsubs)
 {
 	ZNotice_t notice;
 
+	(void) bzero((char *)&notice, sizeof(notice));
 	notice.z_message = (char *) 0;
 	notice.z_message_len = 0;
 	notice.z_opcode = CLIENT_GIMMEDEFS;
@@ -78,7 +80,6 @@ static Code_t Z_RetSubs(notice, nsubs)
 	notice->z_sender = 0;
 	notice->z_recipient = "";
 	notice->z_default_format = "";
-	notice->z_num_other_fields = 0;
 
 	if ((retval = ZSendNotice(notice,ZAUTH)) != ZERR_NONE)
 		return (retval);
@@ -101,6 +102,7 @@ static Code_t Z_RetSubs(notice, nsubs)
 
 		if (retnotice.z_kind == SERVACK &&
 		    !strcmp(retnotice.z_opcode,notice->z_opcode)) {
+			ZFreeNotice(&retnotice);
 			gimmeack = 1;
 			continue;
 		} 
@@ -124,20 +126,26 @@ static Code_t Z_RetSubs(notice, nsubs)
 		__subscriptions_list = (ZSubscription_t *)
 			malloc((unsigned)(__subscriptions_num*
 					  sizeof(ZSubscription_t)));
-		if (!__subscriptions_list)
+		if (!__subscriptions_list) {
+			ZFreeNotice(&notice);
 			return (ENOMEM);
+		}
 	
 		for (ptr=retnotice.z_message,i = 0; i< __subscriptions_num; i++) {
 			__subscriptions_list[i].class = (char *)
 				malloc((unsigned)strlen(ptr)+1);
-			if (!__subscriptions_list[i].class)
+			if (!__subscriptions_list[i].class) {
+				ZFreeNotice(&notice);
 				return (ENOMEM);
+			}
 			(void) strcpy(__subscriptions_list[i].class,ptr);
 			ptr += strlen(ptr)+1;
 			__subscriptions_list[i].classinst = (char *)
 				malloc((unsigned)strlen(ptr)+1);
-			if (!__subscriptions_list[i].classinst)
+			if (!__subscriptions_list[i].classinst) {
+				ZFreeNotice(&notice);
 				return (ENOMEM);
+			}
 			(void) strcpy(__subscriptions_list[i].classinst,ptr);
 			ptr += strlen(ptr)+1;
 			ptr2 = ptr;
@@ -145,8 +153,10 @@ static Code_t Z_RetSubs(notice, nsubs)
 				ptr2 = "*";
 			__subscriptions_list[i].recipient = (char *)
 				malloc((unsigned)strlen(ptr2)+1);
-			if (!__subscriptions_list[i].recipient)
+			if (!__subscriptions_list[i].recipient) {
+				ZFreeNotice(&notice);
 				return (ENOMEM);
+			}
 			(void) strcpy(__subscriptions_list[i].recipient,ptr2);
 			ptr += strlen(ptr)+1;
 		}

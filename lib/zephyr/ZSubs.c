@@ -7,7 +7,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -51,7 +51,6 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     char *opcode;
     int authit;
 {
-    int wait_for_servack();
     int i, retval;
     ZNotice_t notice, retnotice;
     char **list;
@@ -60,6 +59,7 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     if (!list)
 	return (ENOMEM);
 	
+    (void) bzero((char *)&notice, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = port;
     notice.z_class = ZEPHYR_CTL_CLASS;
@@ -67,7 +67,6 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     notice.z_opcode = opcode;
     notice.z_sender = 0;
     notice.z_recipient = "";
-    notice.z_num_other_fields = 0;
     notice.z_default_format = "";
     notice.z_message_len = 0;
 
@@ -91,24 +90,17 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
 	return (retval);
 
     if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *)0, 
-			    wait_for_servack, (char *)&notice.z_uid)) !=
+			    ZCompareUIDPred, (char *)&notice.z_uid)) !=
 	ZERR_NONE)
 	return (retval);
 
-    ZFreeNotice(&retnotice);
-
-    if (retnotice.z_kind == SERVNAK)
+    if (retnotice.z_kind == SERVNAK) {
+	ZFreeNotice(&retnotice);
 	return (ZERR_SERVNAK);
-	
-    if (retnotice.z_kind != SERVACK)
+    }
+    if (retnotice.z_kind != SERVACK) {
+	ZFreeNotice(&retnotice);
 	return (ZERR_INTERNAL);
-
+    }
     return (ZERR_NONE);
-}
-
-static wait_for_servack(notice, uid)
-    ZNotice_t *notice;
-    ZUnique_Id_t *uid;
-{
-    return (notice->z_kind == SERVACK && ZCompareUID(&notice->z_uid, uid));
 }

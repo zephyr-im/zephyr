@@ -7,7 +7,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -46,7 +46,7 @@ Code_t ZFlushMyLocations()
     return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_FLUSH, ZAUTH, ""));
 }
 
-static char host[MAXHOSTNAMELEN], mytty[MAXHOSTNAMELEN];
+static char host[MAXHOSTNAMELEN], mytty[MAXPATHLEN];
 static int reenter = 0;
 
 Z_SendLocation(class, opcode, auth, format)
@@ -65,6 +65,7 @@ Z_SendLocation(class, opcode, auth, format)
     struct hostent *hent;
     short wg_port = ZGetWGPort();
 
+    (void) bzero((char *)&notice, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = (u_short) ((wg_port == -1) ? 0 : wg_port);
     notice.z_class = class;
@@ -77,7 +78,7 @@ Z_SendLocation(class, opcode, auth, format)
 
     /*
       keep track of what we said before so that we can be consistent
-      when changing our minds.
+      when changing location information.
       This is done mainly for the sake of the WindowGram client.
      */
 
