@@ -16,7 +16,7 @@
 
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
-#include <syslog.h>
+#include <zephyr/zsyslog.h>
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <netdb.h>
