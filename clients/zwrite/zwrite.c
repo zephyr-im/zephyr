@@ -21,7 +21,7 @@
 
 #ifndef lint
 static char rcsid_zwrite_c[] = "$Id$";
-#endif lint
+#endif /* lint */
 
 #define DEFAULT_CLASS "MESSAGE"
 #define DEFAULT_INSTANCE "PERSONAL"
