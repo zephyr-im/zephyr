@@ -33,7 +33,7 @@
 
 	request		sub_file, "Unsubscribe and delete subscription from\n                         subscriptions file.",
 			delete, del, dl;
-	request		sub_file, "Delete unsubscription from subscriptions file.",
+	request		sub_file, "Delete un-subscription from subscriptions file.",
 			delete_unsubscription, del_un;
 
 	request		current, "Retrieve current subscriptions.",
