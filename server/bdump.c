@@ -218,7 +218,11 @@ bdump_offer(who)
  */
  
 void
+#ifdef __STDC__
 bdump_send(void)
+#else
+bdump_send()
+#endif
 {
 	struct sockaddr_in from;
 	ZServerDesc_t *server;

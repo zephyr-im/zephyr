@@ -90,7 +90,11 @@ static void timer_botch P((void*)), insert_timer P((timer)),
 
 timer timer_set_rel (time_rel, proc, arg)
      long time_rel;
+#ifdef __STDC__
      void (*proc)(void*);
+#else
+     void (*proc)();
+#endif
      void *arg;
 {
 	timer new_t;

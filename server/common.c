@@ -32,7 +32,12 @@ static char rcsid_common_c[] =
 /* copy the string into newly allocated area */
 
 char *
+#ifdef __STDC__
 strsave (Zconst char *sp)
+#else
+strsave (sp)
+     Zconst char *sp;
+#endif
 {
     register char *ret;
 
@@ -47,7 +52,12 @@ strsave (Zconst char *sp)
 /* generic string hash function */
 
 unsigned long
+#ifdef __STDC__
 hash (Zconst char *string)
+#else
+hash (string)
+     Zconst char *string;
+#endif
 {
 	register unsigned long hval = 0;
 	register char cp;
