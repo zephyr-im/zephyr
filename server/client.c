@@ -110,8 +110,8 @@ ZServerDesc_t *server;
 
 /*
  * Deregister the client, freeing resources.  
- * Remove any packets in the nack queue, release subscriptions, and
- * dequeue him from the host.
+ * Remove any packets in the nack queue, release subscriptions, release
+ * locations, and dequeue him from the host.
  */
 
 void
@@ -126,6 +126,9 @@ ZHostList_t *host;
 
 	/* release subscriptions */
 	(void) subscr_cancel_client(client);
+
+	/* release locations */
+	(void) uloc_flush_client(&client->zct_sin);
 
 	/* unthread and release this client */
 
