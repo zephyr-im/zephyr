@@ -41,6 +41,7 @@
 #define MAXRETRIES 2
 
 extern char *malloc();
+extern Code_t send_outgoing();
 
 #ifdef vax
 #define MACHINE "vax"
