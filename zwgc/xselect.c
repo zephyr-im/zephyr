@@ -111,9 +111,17 @@ static void xselSetProperties(dpy,w,property,target,selreq)
    } else if (target==XA_STRING) {
       char *selected;
 
-      selected=getSelectedText();
-
-      ChangeProp(XA_STRING,8,selected,string_Length(selected));
+      if (selected = getSelectedText()) {
+	 ChangeProp(XA_STRING,8,selected,string_Length(selected));
+      } else {
+	 /* This should only happen if the pasting client is out of
+	    spec (or if this program is buggy), but it could happen */
+#ifdef DEBUG
+	 fprintf(stderr,
+		 "SelectionRequest event received for unowned selection: requestor wid=0x%x", w);
+#endif
+	 ChangeProp(XA_STRING,8,"",0);
+      }
       XSync(dpy,0);
    }
 
