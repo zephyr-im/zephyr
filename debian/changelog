@@ -1,3 +1,10 @@
+zephyr (2.1.20010518.SNAPSHOT-6) unstable; urgency=low
+
+  * Second try at placating the ia64 autobuilders.  Why they weren't
+    building non-US, I don't know...  closes: #142951
+
+ -- Karl Ramm <kcr@debian.org>  Tue, 16 Apr 2002 04:11:33 -0400
+
 zephyr (2.1.20010518.SNAPSHOT-5) unstable; urgency=low
 
   * (hopefully) fix build problem on ia64, closes: #142650
