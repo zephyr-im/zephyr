@@ -271,21 +271,27 @@ set_var(argc,argv)
 			return;
 		}
 		exp_level = (char *)0;
-		if (!cistrcmp(argv[2],"none"))
+		if (!cistrcmp(argv[2],EXPOSE_NONE))
 			exp_level = EXPOSE_NONE;
-		if (!cistrcmp(argv[2],"operations"))
+		if (!cistrcmp(argv[2],EXPOSE_OPSTAFF))
 			exp_level = EXPOSE_OPSTAFF;
-		if (!cistrcmp(argv[2],"realm-visible"))
+		if (!cistrcmp(argv[2],EXPOSE_REALMVIS))
 			exp_level = EXPOSE_REALMVIS;
-		if (!cistrcmp(argv[2],"realm-announced"))
+		if (!cistrcmp(argv[2],EXPOSE_REALMANN))
 			exp_level = EXPOSE_REALMANN;
-		if (!cistrcmp(argv[2],"net-visible"))
+		if (!cistrcmp(argv[2],EXPOSE_NETVIS))
 			exp_level = EXPOSE_NETVIS;
-		if (!cistrcmp(argv[2],"net-announced"))
+		if (!cistrcmp(argv[2],EXPOSE_NETANN))
 			exp_level = EXPOSE_NETANN;
 		if (!exp_level) {
 			fprintf(stderr,"The exposure setting must be one of:\n");
-			fprintf(stderr,"none, operations, realm-visible, realm-announced, net-visible, net-announced.\n");
+			fprintf(stderr,"%s, %s, %s, %s, %s, %s.\n",
+				EXPOSE_NONE,
+				EXPOSE_OPSTAFF,
+				EXPOSE_REALMVIS,
+				EXPOSE_REALMANN,
+				EXPOSE_NETVIS,
+				EXPOSE_NETANN);
 			return;
 		}
 	} 
