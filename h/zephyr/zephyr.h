@@ -21,7 +21,7 @@
 
 #include <errno.h>
 #include <sys/types.h>
-#if defined(_AIX) && defined(_IBMR2)
+#if (defined(_AIX) && defined(_IBMR2)) || defined (macII)
 #include <time.h>
 #endif
 #include <sys/time.h>
