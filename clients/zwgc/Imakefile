@@ -20,7 +20,8 @@ LIBS2 = -lgen
 
 LIBS = $(ZLIB) $(LIB_X) $(TERMCAP) $(LIBS2)
 
-SRCS = parser.y lexer.c node.c exec.c buffer.c main.c zephyr.c X_driver.c\
+SRCS = port_dictionary.c pointer_dictionary.c ulong_dictionary.c \
+	  parser.y lexer.c node.c exec.c buffer.c main.c zephyr.c X_driver.c\
           substitute.c port.c xshow.c \
           mux.c eval.c subscriptions.c notice.c xcut.c regexp.c\
 	  character_class.c text_operations.c file.c error.c variables.c\
@@ -41,16 +42,13 @@ LIBRARIES = ./String/new_string.o\
 	    ./Dictionary/int_dictionary.o\
 	    ./Memory/new_memory.o
 
-GENERATED= port_dictionary.c port_dictionary.h \
-	pointer_dictionary.c pointer_dictionary.h \
-	ulong_dictionary.c ulong_dictionary.h \
-	char_stack.h \
-	string_stack.h \
-	xmode_stack.h \
+GENSRCS= port_dictionary.c pointer_dictionary.c ulong_dictionary.c
+
+GENERATED= $(GENSRCS) \
+	port_dictionary.h pointer_dictionary.h ulong_dictionary.h \
+	char_stack.h string_stack.h xmode_stack.h \
 	y.tab.h
 	
-DEPENDSRCS= $(SRCS) $(GENERATED)
-
 XDEFS =	-I./Memory -I./String -I./Dictionary -DREVSTACK \
 	-DDEFDESC=\"$(ZLIBDIR)/zwgc.desc\" \
 	-DAPPDEFDATABASE=\"$(ZLIBDIR)/zwgc_resources\" \
@@ -73,8 +71,6 @@ install::
 	$(RM) $(DESTDIR)/usr/etc/zwgc
 	ln $(DESTDIR)$(CLIENTDIR)/zwgc $(DESTDIR)/usr/etc/zwgc || ln -s $(CLIENTDIR)/zwgc $(DESTDIR)/usr/etc/zwgc 
 #endif
-
-create_depend($(DEPENDSRCS))
 
 install_file(zwgc.desc,$(ZLIBDIR))
 install_file(zwgc_resources,$(ZLIBDIR))
@@ -113,11 +109,12 @@ xmode_stack.h: stack.h
 clean::
 	$(RM) $(GENERATED)
 
-eval.o: port.h string_stack.h
-exec.o: port.h string_stack.h
-main.o: port.h string_stack.h
-port.o: port_dictionary.h
-standard_ports.o: port.h string_stack.h 
-text_operations.o: char_stack.h
-xshow.o: pointer_dictionary.h xmode_stack.h
-X_driver.o: ulong_dictionary.h
+eval.c eval.o: port.h string_stack.h
+exec.c exec.o: port.h string_stack.h
+lexer.c: y.tab.h
+main.c main.o: port.h string_stack.h
+port.c port.o: port_dictionary.h
+standard_ports.c standard_ports.o: port.h string_stack.h 
+text_operations.c text_operations.o: char_stack.h
+xshow.c xshow.o: pointer_dictionary.h xmode_stack.h
+X_driver.c X_driver.o: ulong_dictionary.h
