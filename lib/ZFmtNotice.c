@@ -26,7 +26,8 @@ Code_t ZFormatNotice(notice,buffer,buffer_len,len)
 	int hdrlen;
 	Code_t retval;
 
-	if ((retval = Z_FormatHeader(notice,buffer,buffer_len,&hdrlen)) > 0)
+	if ((retval = Z_FormatHeader(notice,buffer,buffer_len,&hdrlen)) !=
+	    ZERR_NONE)
 		return (retval);
 
 	ptr = buffer+hdrlen;
