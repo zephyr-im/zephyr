@@ -280,11 +280,7 @@ void init_standard_ports(pargc, argv)
 	else { /* no suitable default has been found */
 	    if (fallback == -1)		/* complain, since indeterminate */
 		ERROR2(
-"\7\7\7There is no X display available, so zwgc cannot run.\n\
-THIS MEANS THAT YOU WILL NOT RECEIVE ANY ZEPHYR MESSAGES.\n\
-If you wish to receive Zephyr messages, you should start zwgc\n\
-with the -ttymode option (type `%s -ttymode').\n\
-Read the zwgc(1) manual page for details on the fallback variable.\n\n",
+"To receive Zephyrgrams, (type `%s -ttymode').\n",
 		      ZWGCPATH);
 	    exit(1);
 	}
