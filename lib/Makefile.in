@@ -44,7 +44,7 @@ libzephyr.a: ${OBJS}
 	${RANLIB} $@
 
 libzephyr.so: $(OBJS)
-	ld -shared -soname libzephyr.so.$(SONAME) -o libzephyr.so $(OBJS) $(LIBS) -lc -lcom_err  
+	gcc  -shared -Wl,-soname -Wl,libzephyr.so.$(SONAME) -o libzephyr.so $(OBJS) $(LIBS)  -lcom_err  
 
 zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
 	compile_et ${srcdir}/zephyr_err.et
