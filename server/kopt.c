@@ -541,11 +541,11 @@ decomp_ticket(tkt, flags, pname, pinstance, prealm, paddress, session,
     char *pname;                /* Authentication name */
     char *pinstance;            /* Principal's instance */
     char *prealm;               /* Principal's authentication domain */
-    unsigned long *paddress; /* Net address of entity
+    unsigned KRB4_32 *paddress; /* Net address of entity
                                  * requesting ticket */
     C_Block session;            /* Session key inserted in ticket */
     int *life;                  /* Lifetime of the ticket */
-    unsigned long *time_sec; /* Issue time and date */
+    unsigned KRB4_32 *time_sec; /* Issue time and date */
     char *sname;                /* Service name */
     char *sinstance;            /* Service instance */
     C_Block key;                /* Service's secret key
