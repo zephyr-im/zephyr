@@ -9,20 +9,14 @@
  * For copyright info, see mit-sipb-copyright.h.
  */
 
-#include <stdio.h>
+#include <sysdep.h>
 #include "error_table.h"
 #include "mit-sipb-copyright.h"
-
-#ifndef __STDC__
-#define const
-#endif
 
 #ifndef	lint
 static const char rcsid_init_et_c[] =
     "$Header$";
 #endif
-
-extern char *malloc(), *realloc();
 
 struct foobar {
     struct et_list etl;

@@ -9,28 +9,32 @@
  */
 
 #ifndef __COM_ERR_H
-
-#ifdef __STDC__
-#ifndef __HIGHC__		/* gives us STDC but not stdarg */
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-/* ANSI C -- use prototypes etc */
-void com_err (const char *, long, const char *, ...);
-char const *error_message (long);
-void (*com_err_hook) (const char *, long, const char *, va_list);
-void (*set_com_err_hook (void (*) (const char *, long, const char *, va_list)))
-    (const char *, long, const char *, va_list);
-void (*reset_com_err_hook ()) (const char *, long, const char *, va_list);
-#else
-/* no prototypes */
-void com_err ();
-char *error_message ();
-void (*com_err_hook) ();
-void (*set_com_err_hook ()) ();
-void (*reset_com_err_hook ()) ();
-#endif
-
 #define __COM_ERR_H
+
+#define COM_ERR_BUF_LEN 25
+
+/* Use __STDC__ to guess whether we can use stdarg, prototypes, and const.
+ * This is a public header file, so autoconf can't help us here. */
+#ifdef __STDC__
+# include <stdarg.h>
+#  ifndef __P
+#   define __P(x) x
+#  endif
+# define ETCONST const
+#else
+# define ETCONST
+# ifndef __P
+#  define __P(x) ()
+# endif
+#endif
+
+typedef void (*error_handler_t) __P((ETCONST char *, long, ETCONST char *,
+				     va_list));
+extern error_handler_t com_err_hook;
+void com_err __P((ETCONST char *, long, ETCONST char *, ...));
+ETCONST char *error_message __P((long));
+ETCONST char *error_message_r __P((long, char *));
+error_handler_t set_com_err_hook __P((error_handler_t));
+error_handler_t reset_com_err_hook __P((void));
+
 #endif /* ! defined(__COM_ERR_H) */

@@ -1,5 +1,6 @@
 %{
-#include <stdio.h>
+#include <sysdep.h>
+#undef ECHO /* Used by both lex and termios.h. */
 char *str_concat(), *ds(), *quote();
 char *current_token = (char *)NULL;
 extern char *table_name;
@@ -62,12 +63,8 @@ description	:	QUOTED_STRING
  * For copyright info, see mit-sipb-copyright.h.
  */
 
-#include <string.h>
 #include <assert.h>
-#include <ctype.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include "internal.h"
+#include "et_lex.lex.c"
 #include "error_table.h"
 #include "mit-sipb-copyright.h"
 
@@ -76,7 +73,6 @@ static char const rcsid_error_table_y[] =
     "$Header$";
 #endif
 
-#include "et_lex.lex.c"
 
 extern FILE *hfile, *cfile;
 
@@ -120,7 +116,7 @@ quote(string)
 	return(rv);
 }
 
-long table_number;
+int table_number;
 int current = 0;
 char **error_codes = (char **)NULL;
 

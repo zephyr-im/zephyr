@@ -4,9 +4,9 @@
  * For copyright info, see mit-sipb-copyright.h.
  */
 
+#include <sysdep.h>
 #include "error_table.h"
 #include "mit-sipb-copyright.h"
-#include "internal.h"
 
 #ifndef	lint
 static const char copyright[] =
@@ -18,10 +18,9 @@ static const char rcsid_et_name_c[] =
 static const char char_set[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
 
-static char buf[6];
-
-const char * error_table_name(num)
+const char * error_table_name_r(num, buf)
     int num;
+    char *buf;
 {
     int ch;
     int i;
@@ -41,3 +40,12 @@ const char * error_table_name(num)
     *p = '\0';
     return(buf);
 }
+
+const char * error_table_name(num)
+    int num;
+{
+    static char buf[6];
+
+    return(error_table_name_r(num, buf));
+}
+

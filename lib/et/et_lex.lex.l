@@ -1,6 +1,12 @@
+%{
+#undef yywrap
+%}
+	int num_lines = 0;
+
 PC	[^\"]
 AN	[A-Z_a-z0-9]
 %%
+\n	++num_lines;
 
 error_table	return ERROR_TABLE;
 et		return ERROR_TABLE;
@@ -11,7 +17,7 @@ end		return END;
 [\t\n ]		;
 
 \"{PC}*\"	{ register char *p; yylval.dynstr = ds(yytext+1);
-		  if (p=rindex(yylval.dynstr, '"')) *p='\0';
+		  if (p=strrchr(yylval.dynstr, '"')) *p='\0';
 		  return QUOTED_STRING;
 		}
 
@@ -24,3 +30,9 @@ end		return END;
 #ifndef lint
 static char rcsid_et_lex_lex_l[] = "$Header$";
 #endif
+
+int yywrap()
+{
+    return 1;
+}
+

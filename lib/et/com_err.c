@@ -5,34 +5,14 @@
  */
 
 #include <stdio.h>
+#include <sysdep.h>
 #include "mit-sipb-copyright.h"
+#include "error_table.h"
 
-/*
- * Our environment only provides for ANSI's <stdarg.h> when using GNU
- * C.  Grump grump...
- */
-#if ! __GNUC__
-#if !defined(__osf__) && !defined(sgi)
-#define VARARGS 1
-#endif
-#endif
-
+#ifndef HAVE_VPRINTF
 /* We don't have the v*printf routines... */
 #define vfprintf(stream,fmt,args) _doprnt(fmt,args,stream)
-
-#if __STDC__ && !VARARGS
-#	include <stdarg.h>
-#else /* varargs: not STDC or no <stdarg> */
-	/* Non-ANSI, always take <varargs.h> path. */
-#	undef VARARGS
-#	define VARARGS 1
-#	include <varargs.h>
-#	undef vfprintf
-#	define vfprintf(stream,fmt,args) _doprnt(fmt,args,stream)
-#endif /* varargs */
-
-#include "error_table.h"
-#include "internal.h"
+#endif
 
 /*
  * Protect us from header version (externally visible) of com_err, so
@@ -42,59 +22,38 @@
 #include "com_err.h"
 #undef com_err
 
-/* BSD. sigh. */
-#undef vfprintf
-#define vfprintf(stream,fmt,args) _doprnt(fmt,args,stream)
-
 #if ! lint
 static const char rcsid[] =
     "$Header$";
 #endif	/* ! lint */
 
 static void
-#ifdef __STDC__
-    default_com_err_proc (const char *whoami, long code, const char *fmt, va_list args)
-#else
-    default_com_err_proc (whoami, code, fmt, args)
+default_com_err_proc (whoami, code, fmt, args)
     const char *whoami;
     long code;
     const char *fmt;
     va_list args;
-#endif
 {
+    char buf[25];
+
     if (whoami) {
 	fputs(whoami, stderr);
 	fputs(": ", stderr);
     }
-#ifdef SOLARIS
     if (code) {
-	fputs(error_message(code), stderr);
-	fputs(" ", stderr);
-    } else {
-        vfprintf (stderr, fmt, args);
-    }
-#else
-    if (code) {
-	fputs(error_message(code), stderr);
+	fputs(error_message_r(code, buf), stderr);
 	fputs(" ", stderr);
     }
     if (fmt) {
         vfprintf (stderr, fmt, args);
     }
-#endif
-    putc('\n', stderr);
-    /* should do this only on a tty in raw mode */
+    /* should do \r only on a tty in raw mode, but it won't hurt */
     putc('\r', stderr);
+    putc('\n', stderr);
     fflush(stderr);
 }
 
-#ifdef __STDC__
-typedef void (*errf) (const char *, long, const char *, va_list);
-#else
-typedef void (*errf) ();
-#endif
-
-errf com_err_hook = default_com_err_proc;
+error_handler_t com_err_hook = default_com_err_proc;
 
 void com_err_va (whoami, code, fmt, args)
     const char *whoami;
@@ -102,43 +61,32 @@ void com_err_va (whoami, code, fmt, args)
     const char *fmt;
     va_list args;
 {
-  if (! com_err_hook)
-        com_err_hook = default_com_err_proc;
     (*com_err_hook) (whoami, code, fmt, args);
 }
 
-#if ! VARARGS
+#ifdef __STDC__
 void com_err (const char *whoami,
 	      long code,
 	      const char *fmt, ...)
 {
 #else
-void com_err (va_alist)
-    va_dcl
-{
+void com_err (whoami, code, fmt, va_alist)
     const char *whoami, *fmt;
     long code;
+    va_dcl
+{
 #endif
     va_list pvar;
 
-    if (!com_err_hook)
-	com_err_hook = default_com_err_proc;
-#if VARARGS
-    va_start (pvar);
-    whoami = va_arg (pvar, const char *);
-    code = va_arg (pvar, long);
-    fmt = va_arg (pvar, const char *);
-#else
-    va_start(pvar, fmt);
-#endif
+    VA_START(pvar, fmt);
     com_err_va (whoami, code, fmt, pvar);
     va_end(pvar);
 }
 
-errf set_com_err_hook (new_proc)
-    errf new_proc;
+error_handler_t set_com_err_hook (new_proc)
+    error_handler_t new_proc;
 {
-    errf x = com_err_hook;
+    error_handler_t x = com_err_hook;
 
     if (new_proc)
 	com_err_hook = new_proc;
@@ -148,8 +96,8 @@ errf set_com_err_hook (new_proc)
     return x;
 }
 
-errf reset_com_err_hook () {
-    errf x = com_err_hook;
+error_handler_t reset_com_err_hook () {
+    error_handler_t x = com_err_hook;
     com_err_hook = default_com_err_proc;
     return x;
 }
