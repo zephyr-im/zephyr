@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for the ZParseNotice function.
+ * It contains source for the ZReadAscii function.
  *
  *	Created by:	Robert French
  *
