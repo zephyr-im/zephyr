@@ -66,7 +66,7 @@ FILES=	$(SRCS) $(MKCMDSFILES) $(HFILES) \
 # stuff to build
 #
 
-all:	libss.a mk_cmds libss_p.a # lint
+all:	libss.a mk_cmds libss_p.a llib-lss.ln # lint
 
 dist:	archives
 
@@ -80,6 +80,7 @@ install: all
 	@mkdir ${DESTDIR}/usr/include/ss
 	cp ss.h ss_err.h ss_internal.h copyright.h ${DESTDIR}/usr/include/ss/
 	cp copyright.h ${DESTDIR}/usr/include/ss/mit-sipb-copyright.h
+	install -c -m 644 llib-lss.ln ${DESTDIR}/usr/athena/lib/llib-lcom_err.ln
 
 tags:	TAGS
 
@@ -122,7 +123,10 @@ libss.o:	$(OBJS)
 
 lint:	llib-lss.ln
 
-llib-lss.ln:	$(SRCS) ../../et/$(MACHINE)/llib-lcom_err.ln
+../et/llib-lcom_err.ln:
+	cd ../etc ; make ${MFLAGS} llib-lcom_err.ln
+
+llib-lss.ln:	$(SRCS) ../et/llib-lcom_err.ln
 	lint -Css $(LINTSFLAGS) $(SRCS) ../et/llib-lcom_err.ln | \
 		egrep -v 'possible pointer alignment problem' | \
 		egrep -v 'returns value which is'
@@ -153,22 +157,75 @@ saber:	${SRCS} ss_err.o std_rqs.o
 
 clean:	
 	rm -f *.o *~ \#* *.bak core \
-		ss_err.h ct.tab.c ct.tab.h cmd_tbl.c \
+		ss_err.h ss_err.c ct.tab.c ct.tab.h cmd_tbl.c \
 		lex.yy.c y.tab.c \
 		libss.a libss_p.a llib-lss.ln mk_cmds \
 		ss.ar ss.tar \
-		TAGS test
+		TAGS test profiled/*.o
 
 # 'make depend' code
 depend: $(CFILES) ss_err.h
-	$(CC) -M $(CFLAGS) $(CFILES) > makedep
-	echo '/^# DO NOT DELETE THIS LINE/+1,$$d' >eddep
-	echo '$$r makedep' >>eddep
-	echo 'w' >>eddep
-	cp Makefile Makefile.bak
-	ed - Makefile < eddep
-	rm eddep makedep
-#
-# the last constant line in the makefile should be...
+	makedepend $(CFLAGS) $(CFILES) 
+
+
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
+invocation.o: invocation.c ss_internal.h /usr/include/stdio.h
+invocation.o: /usr/include/string.h /usr/include/strings.h ss.h
+invocation.o: ss/mit-sipb-copyright.h ss/ss_err.h copyright.h
+help.o: help.c /usr/include/sys/param.h /usr/include/machine/machparam.h
+help.o: /usr/include/sys/signal.h /usr/include/sys/types.h
+help.o: /usr/include/sys/file.h /usr/include/sys/wait.h ss_internal.h
+help.o: /usr/include/stdio.h /usr/include/string.h /usr/include/strings.h
+help.o: ss.h ss/mit-sipb-copyright.h ss/ss_err.h copyright.h
+help.o: /usr/include/sys/dir.h
+execute_cmd.o: execute_cmd.c ss_internal.h /usr/include/stdio.h
+execute_cmd.o: /usr/include/string.h /usr/include/strings.h ss.h
+execute_cmd.o: ss/mit-sipb-copyright.h ss/ss_err.h copyright.h
+listen.o: listen.c copyright.h ss_internal.h /usr/include/stdio.h
+listen.o: /usr/include/string.h /usr/include/strings.h ss.h
+listen.o: ss/mit-sipb-copyright.h ss/ss_err.h /usr/include/setjmp.h
+listen.o: /usr/include/sys/signal.h /usr/include/sys/param.h
+listen.o: /usr/include/machine/machparam.h /usr/include/sys/types.h
+listen.o: /usr/include/sgtty.h /usr/include/sys/ioctl.h
+listen.o: /usr/include/sys/ttychars.h /usr/include/sys/ttydev.h
+parse.o: parse.c ss_internal.h /usr/include/stdio.h /usr/include/string.h
+parse.o: /usr/include/strings.h ss.h ss/mit-sipb-copyright.h ss/ss_err.h
+parse.o: copyright.h
+error.o: error.c /usr/include/stdio.h /usr/include/varargs.h copyright.h
+error.o: /usr/include/com_err.h ss_internal.h /usr/include/string.h
+error.o: /usr/include/strings.h ss.h ss/mit-sipb-copyright.h ss/ss_err.h
+prompt.o: prompt.c copyright.h /usr/include/stdio.h ss_internal.h
+prompt.o: /usr/include/string.h /usr/include/strings.h ss.h
+prompt.o: ss/mit-sipb-copyright.h ss/ss_err.h
+request_tbl.o: request_tbl.c copyright.h ss_internal.h /usr/include/stdio.h
+request_tbl.o: /usr/include/string.h /usr/include/strings.h ss.h
+request_tbl.o: ss/mit-sipb-copyright.h ss/ss_err.h
+list_rqs.o: list_rqs.c copyright.h ss_internal.h /usr/include/stdio.h
+list_rqs.o: /usr/include/string.h /usr/include/strings.h ss.h
+list_rqs.o: ss/mit-sipb-copyright.h ss/ss_err.h /usr/include/sys/signal.h
+list_rqs.o: /usr/include/setjmp.h /usr/include/sys/wait.h
+pager.o: pager.c ss_internal.h /usr/include/stdio.h /usr/include/string.h
+pager.o: /usr/include/strings.h ss.h ss/mit-sipb-copyright.h ss/ss_err.h
+pager.o: copyright.h /usr/include/sys/file.h /usr/include/sys/signal.h
+requests.o: requests.c mit-sipb-copyright.h /usr/include/stdio.h
+requests.o: ss_internal.h /usr/include/string.h /usr/include/strings.h ss.h
+requests.o: ss/mit-sipb-copyright.h ss/ss_err.h
+data.o: data.c /usr/include/stdio.h ss_internal.h /usr/include/string.h
+data.o: /usr/include/strings.h ss.h ss/mit-sipb-copyright.h ss/ss_err.h
+data.o: copyright.h
+mk_cmds.o: mk_cmds.c copyright.h /usr/include/stdio.h
+mk_cmds.o: /usr/include/sys/param.h /usr/include/machine/machparam.h
+mk_cmds.o: /usr/include/sys/signal.h /usr/include/sys/types.h
+mk_cmds.o: /usr/include/sys/file.h /usr/include/strings.h ss_internal.h
+mk_cmds.o: /usr/include/string.h ss.h ss/mit-sipb-copyright.h ss/ss_err.h
+utils.o: utils.c /usr/include/string.h /usr/include/strings.h copyright.h
+utils.o: ss_internal.h /usr/include/stdio.h ss.h ss/mit-sipb-copyright.h
+utils.o: ss/ss_err.h
+options.o: options.c copyright.h /usr/include/stdio.h ss.h
+options.o: ss/mit-sipb-copyright.h ss/ss_err.h
+ct.tab.o: ct.tab.c /usr/include/stdio.h copyright.h ss.h
+ct.tab.o: ss/mit-sipb-copyright.h ss/ss_err.h
+cmd_tbl.o: cmd_tbl.c /usr/include/stdio.h /usr/include/string.h
+cmd_tbl.o: /usr/include/strings.h ct.tab.h copyright.h
+test.o: test.c /usr/include/stdio.h ss.h ss/mit-sipb-copyright.h ss/ss_err.h
