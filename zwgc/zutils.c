@@ -9,7 +9,9 @@
 #include <sys/param.h>
 
 #include <zephyr/zephyr.h>
+#ifdef HAVE_KRB4
 #include <krb_err.h>
+#endif
 
 #include "zutils.h"
 
@@ -122,8 +124,8 @@ void fix_macros2(src,dest)
     }
 }
 
-Code_t set_exposure(galaxy, exposure)
-     char *galaxy;
+Code_t set_exposure(zgalaxy, exposure)
+     char *zgalaxy;
      char *exposure;
 {
     char *exp_level, *galaxy_exp_level, zvar[1024];
@@ -132,15 +134,15 @@ Code_t set_exposure(galaxy, exposure)
 
     exp_level = ZParseExposureLevel(exposure);
 
-    if (galaxy && strcmp(galaxy, "*") == 0) {
+    if (zgalaxy && strcmp(zgalaxy, "*") == 0) {
 	if (retval = ZGetGalaxyCount(&cnt))
 		return(retval);
 
 	for (i=0; i<cnt; i++) {
-	    if (retval = ZGetGalaxyName(i, &galaxy))
+	    if (retval = ZGetGalaxyName(i, &zgalaxy))
 		return(retval);
 
-	    sprintf(zvar, "exposure-%s", galaxy);
+	    sprintf(zvar, "exposure-%s", zgalaxy);
 				
 	    if (galaxy_exp_level = ZGetVariable(zvar)) {
 		if (strcmp(galaxy_exp_level, EXPOSE_NETVIS) == 0)
@@ -166,7 +168,7 @@ Code_t set_exposure(galaxy, exposure)
 	    if (strcmp(galaxy_exp_level, EXPOSE_NONE) == 0)
 		continue;
 
-	    if ((code = ZSetLocation(galaxy, exp_level)) != ZERR_NONE) {
+	    if ((code = ZSetLocation(zgalaxy, exp_level)) != ZERR_NONE) {
 	       retval = code;
 	       continue;
 	    }
@@ -184,9 +186,13 @@ Code_t set_exposure(galaxy, exposure)
 	    }
 #endif
 	}
-	return((retval == KRBET_AD_NOTGT)?ZERR_NONE:retval);
+#ifdef HAVE_KRB4
+	if (retval == KRBET_AD_NOTGT)
+	    retval = ZERR_NONE;
+#endif
+	return(retval);
     } else {
-	if ((retval = ZSetLocation(galaxy, exp_level)) != ZERR_NONE)
+	if ((retval = ZSetLocation(zgalaxy, exp_level)) != ZERR_NONE)
 	    return(retval);
 #ifdef ZCTL
 	if (strcmp(exp_level,EXPOSE_NONE) == 0) {
@@ -486,5 +492,9 @@ Code_t load_all_sub_files(type, basefile)
 	if (type == LIST)
 		printf("\n");
     }
-    return((retval == KRBET_AD_NOTGT)?ZERR_NONE:retval);
+#ifdef HAVE_KRB4
+    if (retval == KRBET_AD_NOTGT)
+	retval = ZERR_NONE;
+#endif
+    return(retval);
 }

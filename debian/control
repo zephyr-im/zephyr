@@ -5,7 +5,8 @@ Maintainer: Karl Ramm <kcr@debian.org>
 Build-Depends: debhelper, libares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev, libreadline4-dev, xlibs-dev | xlib6g-dev, libxaw-dev | xlib6g-dev, libncurses5-dev, bison, libzephyr-dev, libhesiod-dev
 Standards-Version: 3.1.1
 
-Package: libzephyr4itecture: any
+Package: libzephyr4
+architecture: any
 Depends: ${shlibs:Depends}
 Conflicts: libzephyr4-krb
 Description: The original "Instant Message" system libraries without Kerberos
@@ -16,7 +17,8 @@ Description: The original "Instant Message" system libraries without Kerberos
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
 
-Package: libzephyr4itecture: any
+Package: libzephyr4-krb
+architecture: any
 Depends: ${shlibs:Depends}, krb4-config
 Conflicts: libzephyr4
 Provides: libzephyr4

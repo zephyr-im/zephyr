@@ -9,12 +9,15 @@
 #include <sys/param.h>
 
 #include <zephyr/zephyr.h>
+#ifdef HAVE_KRB4
 #include <krb_err.h>
+#endif
 
 #include "zutils.h"
 
 #ifdef ZWGC
 #include "subscriptions.h"
+#define ZGetWGPort() (ZGetPort())
 #endif
 
 #ifdef ZCTL
@@ -183,7 +186,11 @@ Code_t set_exposure(zgalaxy, exposure)
 	    }
 #endif
 	}
-	return((retval == KRBET_AD_NOTGT)?ZERR_NONE:retval);
+#ifdef HAVE_KRB4
+	if (retval == KRBET_AD_NOTGT)
+	    retval = ZERR_NONE;
+#endif
+	return(retval);
     } else {
 	if ((retval = ZSetLocation(zgalaxy, exp_level)) != ZERR_NONE)
 	    return(retval);
@@ -471,17 +478,23 @@ Code_t load_all_sub_files(type, basefile)
 	    printf("For galaxy %s:\n", galaxy);
 
 	if ((i == 0) && basefile) {
-	    if ((code = load_sub_file(type, basefile, galaxy))
-		!= ZERR_NONE)
+	    code = load_sub_file(type, basefile, galaxy);
+	    if ((code != ZERR_NONE) &&
+		(code != ENOENT))
 		retval = code;
 	}
 
-	if ((code = load_sub_file(type, basefile?fn:NULL, galaxy))
-	    != ZERR_NONE)
+	code = load_sub_file(type, basefile?fn:NULL, galaxy);
+	if ((code != ZERR_NONE) &&
+	    (code != ENOENT))
 	    retval = code;
 
 	if (type == LIST)
 		printf("\n");
     }
-    return((retval == KRBET_AD_NOTGT)?ZERR_NONE:retval);
+#ifdef HAVE_KRB4
+    if (retval == KRBET_AD_NOTGT)
+	retval = ZERR_NONE;
+#endif
+    return(retval);
 }
