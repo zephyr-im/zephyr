@@ -211,13 +211,21 @@ all::
 
 #ifdef KERBEROS
 depend:: krb_err.h
-	$(RM) ../include/zephyr/krb_err.h
-	$(CP) -p krb_err.h ../include/zephyr/krb_err.h
+	-if cmp krb_err.h ../include/zephyr/krb_err.h >/dev/null 2>&1; then \
+		echo ; \
+	else \
+		$(RM) ../include/zephyr/krb_err.h ; \
+		$(CP) krb_err.h ../include/zephyr/krb_err.h; \
+	fi
 #endif /* KERBEROS */
 
 depend:: zephyr_err.h
-	$(RM) ../include/zephyr/zephyr_err.h
-	$(CP) -p zephyr_err.h ../include/zephyr/zephyr_err.h
+	-if cmp zephyr_err.h ../include/zephyr/zephyr_err.h >/dev/null 2>&1; then \
+		echo ; \
+	else \
+		$(RM) ../include/zephyr/zephyr_err.h ; \
+		$(CP) zephyr_err.h ../include/zephyr/zephyr_err.h; \
+	fi
 
 install::
 	-mkdir ${DESTDIR}/usr/include/zephyr
