@@ -14,9 +14,8 @@
 
 #ifndef lint
 static char rcsid_ZMakeAuthentication_c[] = "$Id$";
-#endif lint
+#endif
 
-#include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr_internal.h>
 #ifdef KERBEROS
 #include "krb_err.h"
@@ -32,7 +31,7 @@ Code_t ZResetAuthentication () {
 }
 
 Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
-    ZNotice_t *notice;
+    register ZNotice_t *notice;
     char *buffer;
     int buffer_len;
     int *len;
@@ -59,6 +58,7 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     notice->z_auth = 1;
     notice->z_authent_len = authent.length;
     notice->z_ascii_authent = (char *)malloc((unsigned)authent.length*3);
+    /* zero length authent is an error, so malloc(0) is not a problem */
     if (!notice->z_ascii_authent)
 	return (ENOMEM);
     if ((retval = ZMakeAscii(notice->z_ascii_authent, 
