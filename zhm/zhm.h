@@ -89,7 +89,7 @@ extern void init_queue(), retransmit_queue();
 
 #ifndef ok
 #define MACHINE "unknown"
-#endif ok
+#endif
 #undef ok
 
 #endif !__HM_H__
