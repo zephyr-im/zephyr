@@ -13,11 +13,14 @@
 zleave \- notify you via Zephyr when you have to leave 
 .SH SYNOPSIS
 .B zleave
-[ [+]
-.I hhmm
-] [
+[ 
+.RI [+] hhmm
+[
+.I -m "Reminder Message"
+] ]
+.br
+.B zleave 
 .I can\fR[\fIcel\fR]
-]
 .SH DESCRIPTION
 .I Zleave
 waits until the specified time, then reminds you that you
@@ -56,15 +59,32 @@ is running, it is automatically killed when a new time to leave is
 set.  The process id is stored in the file /tmp/zleave.\fIuid\fR, where
 \fIuid\fR is the user's UNIX uid.
 .PP
+If the
+.I -m
+argument is specified, the next argument is taken to be a message that
+is sent to the user as the second field of every Zephyr message sent
+by
+.I zleave 
+(The first field is a sentence describing how much time remains until
+the appointed hour.).
+If you want a multiple-word message, you normally must quote it with
+double quotes (") (This is necessary for users of
+.IR csh(1)
+and
+.IR sh (1).)
+.PP
 .I Zleave
 automatically subscribes you to Zephyr class "MESSAGE",
 instance "LEAVE".  You do not have to add anything to your
-default subscriptions file (see \fIzctl(1)\fR).
+default subscriptions file (see 
+.IR zctl (1)).
+The reminder message is displayed by the WindowGram client (usually
+.IR zwgc (1)).
 .PP
 If Zephyr is unavailable,
 .I zleave 
 acts essentially like 
-.I leave(1).
+.IR leave (1).
 .PP
 Zleave ignores SIGINT, SIGQUIT, and SIGTERM.
 To get rid of it you should either log off or use the
@@ -74,7 +94,7 @@ option.
 /tmp/zleave.\fIuid\fR
 /tmp/wg.*
 .SH SEE ALSO
-calendar(1), zephyr(1), leave(1), zctl(1)
+calendar(1), zephyr(1), leave(1), zwgc(1), zctl(1), csh(1), sh(1)
 .br
 Project Athena Technical Plan Section E.4.1, `Zephyr Notification
 Service'
