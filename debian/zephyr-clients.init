@@ -20,19 +20,14 @@ test -f $DAEMON || exit 0
 
 set -e
 
-if test -f /etc/default/zephyr-clients
-then
-	. /etc/default/zephyr-clients
-fi
-
 case "$1" in
   start)
 	# note that the following will need revisting when we get hesiod support
-	if test -z "$zhm_args"
+	if test ! -f /etc/zephyr/zhm.conf
 	then
 		cat <<EOF
 The zephyr-clients package for whatever reason does not have any zephyr
-servers configured. Please edit the file /etc/default/zephyr-clients and
+servers configured. Please edit the file /etc/zephyr/zhm.conf and
 add the names of your zephyr servers, seperated by spaces, to the
 zhm_args variable.
 EOF
