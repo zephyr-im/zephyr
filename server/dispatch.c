@@ -191,8 +191,8 @@ handle_packet()
 				    &input_len,
 				    &whoisit)) {
 		syslog(LOG_ERR,
-		       "bad packet receive: %s",
-		       error_message(status));
+		       "bad packet receive: %s from %s",
+		       error_message(status), inet_ntoa(whoisit.sin_addr));
 		return;
 	}
 	npackets++;
@@ -271,7 +271,7 @@ dispatch(notice, auth, who, from_server)
 		       inet_ntoa(who->sin_addr));
 		return;
 	}
-#if defined (DEBUG)
+#if 0
 	if (zdebug) {
 	    (void) sprintf (dbg_buf,
 		    "disp:%s '%s' '%s' '%s' notice to '%s' from '%s' %s/%d/%d",
@@ -483,6 +483,7 @@ xmit_frag(notice, buf, len, waitforack)
 
 	nacked->na_rexmits = 0;
 	nacked->na_packet = savebuf;
+	nacked->na_srv_idx = 0;
 	nacked->na_addr = ZGetDestAddr();
 	nacked->na_packsz = len;
 	nacked->na_uid = notice->z_uid;
@@ -568,7 +569,7 @@ xmit(notice, dest, auth, client)
 			return;			/* DON'T put on nack list */
 		}
 	}
-#if 1
+#if 0
 	zdbug((LOG_DEBUG," to %s/%d",inet_ntoa(dest->sin_addr),
 	       ntohs(dest->sin_port)));
 #endif
@@ -658,7 +659,7 @@ rexmit(arg)
 
 	/* retransmit the packet */
 	
-#if 1
+#if 0
 	zdbug((LOG_DEBUG," to %s/%d",
 	       inet_ntoa(nackpacket->na_addr.sin_addr),
 	       ntohs(nackpacket->na_addr.sin_port)));
@@ -736,7 +737,7 @@ clt_ack(notice, who, sent)
 		abort ();
 	}
 
-#if 1
+#if 0
 	zdbug((LOG_DEBUG,"clt_ack type %s for %d to %s/%d",
 	       sent_name,
 	       ntohs(notice->z_port),
@@ -795,7 +796,7 @@ nack_cancel(notice, who)
 
 	/* search the not-yet-acked list for this packet, and
 	   flush it. */
-#if 1
+#if 0
 	zdbug((LOG_DEBUG, "nack_cancel: %s:%08X,%08X",
 	       inet_ntoa (notice->z_uid.zuid_addr),
 	       notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
@@ -940,7 +941,7 @@ control_dispatch(notice, auth, who, server)
 					clt_ack(notice, who, AUTH_FAILED);
 				return(ZERR_NONE);
 			}
-#if 1
+#if 0
 			if (zdebug) {
 			    if (server == me_server)
 				syslog (LOG_DEBUG,
@@ -973,7 +974,7 @@ control_dispatch(notice, auth, who, server)
 			if (host) {
 				/* don't flush locations here, let him
 				   do it explicitly */
-#if 1
+#if 0
 				zdbug((LOG_DEBUG, "cancelsub clt_dereg %s/%d",
 					inet_ntoa (who->sin_addr),
 					ntohs (who->sin_port)));
