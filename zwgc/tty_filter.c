@@ -36,7 +36,7 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 
 extern int tgetent();
 extern char *tgetstr(),*getenv();
-short ospeed;
+extern speed_t ospeed;
 char PC;
 
 /* Dictionary naming convention:
