@@ -94,6 +94,9 @@ extern C_Block __Zephyr_session;
 	/* ZGetFD() macro */
 #define ZGetFD() (__Zephyr_fd)
 
+	/* ZQLength macro */
+#define ZQLength() (__Q_Length)
+
 	/* ZGetDestAddr() macro */
 #define ZGetDestAddr() (__HM_addr)
 
