@@ -6,10 +6,10 @@ datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
 
-includedir=$(prefix)/include
-mandir=$(prefix)/man
-libdir=$(exec_prefix)/lib
-bindir=$(exec_prefix)/bin
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
+bindir=${exec_prefix}/bin
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
@@ -19,9 +19,9 @@ CC=@CC@
 INSTALL=@INSTALL@
 
 DEBUG=-O
-CFLAGS=$(DEBUG) -DDATADIR=\"$(datadir)\" -I$(top_srcdir)/h -I$(BUILDTOP)/h \
+CFLAGS=${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h -I${BUILDTOP}/h \
 	@X_CFLAGS@ @CPPFLAGS@
-LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr -L$(BUILDTOP)/lib/dyn @ET_LDFLAGS@ \
+LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr -L${BUILDTOP}/lib/dyn @ET_LDFLAGS@ \
 	@X_LIBS@ @LDFLAGS@
 LIBS=-lzephyr -ldyn -lXaw -lXmu -lXt @X_PRE_LIBS@ -lX11 -lXext @X_EXTRA_LIBS@ \
      @LIBS@ -lcom_err
@@ -32,25 +32,25 @@ OBJS=	interface.o resource.o destlist.o util.o bfgets.o gethomedir.o \
 
 all: xzwrite
 
-xzwrite: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a \
-	 $(BUILDTOP)/lib/dyn/libdyn.a @ETDEP@
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+xzwrite: ${OBJS} ${BUILDTOP}/lib/zephyr/libzephyr.a \
+	 ${BUILDTOP}/lib/dyn/libdyn.a @ETDEP@
+	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 check:
 
 install: xzwrite XZwrite
-	$(INSTALL) -m 755 -s xzwrite $(bindir)
-	$(INSTALL) -m 644 $(srcdir)/xzwrite.1 $(mandir)/man1
-	$(INSTALL) -m 644 XZwrite $(datadir)
-	$(INSTALL) -m 644 $(srcdir)/xzwrite.bitmap $(datadir)
+	${INSTALL} -m 755 -s xzwrite ${DESTDIR}${bindir}
+	${INSTALL} -m 644 ${srcdir}/xzwrite.1 ${DESTDIR}${mandir}/man1
+	${INSTALL} -m 644 XZwrite ${DESTDIR}${datadir}
+	${INSTALL} -m 644 ${srcdir}/xzwrite.bitmap ${DESTDIR}${datadir}
 
 clean:
-	rm -f $(OBJS) xzwrite
+	rm -f ${OBJS} xzwrite
 
-$(OBJS): xzwrite.h xzwrite-proto.h $(top_srcdir)/h/sysdep.h
-$(OBJS): $(BUILDTOP)/h/config.h $(BUILDTOP)/h/zephyr/zephyr.h
-$(OBJS): $(BUILDTOP)/h/zephyr/zephyr_err.h
-destlist.o logins.o xzwrite.o zephyr.o: $(top_srcdir)/h/dyn.h
+${OBJS}: xzwrite.h xzwrite-proto.h ${top_srcdir}/h/sysdep.h
+${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h
+${OBJS}: ${BUILDTOP}/h/zephyr/zephyr_err.h
+destlist.o logins.o xzwrite.o zephyr.o: ${top_srcdir}/h/dyn.h
 
 .PHONY: all check install clean
 

@@ -6,10 +6,10 @@ datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
 
-includedir=$(prefix)/include
-mandir=$(prefix)/man
-libdir=$(exec_prefix)/lib
-bindir=$(exec_prefix)/bin
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
+bindir=${exec_prefix}/bin
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
@@ -18,13 +18,13 @@ VPATH=@srcdir@
 CC=@CC@
 YACC=@YACC@
 INSTALL=@INSTALL@
-INSTANTIATE=$(srcdir)/instantiate
+INSTANTIATE=${srcdir}/instantiate
 
 DEBUG=-O
-CFLAGS=	$(DEBUG) -DDATADIR=\"$(datadir)\" -I$(top_srcdir)/h -I$(BUILDTOP)/h \
-	-I$(srcdir) -I. @X_CFLAGS@ @CPPFLAGS@
+CFLAGS=	${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h -I${BUILDTOP}/h \
+	-I${srcdir} -I. @X_CFLAGS@ @CPPFLAGS@
 YFLAGS=-d
-LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @X_LIBS@ @LDFLAGS@
+LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @X_LIBS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err @X_PRE_LIBS@ @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
      @TLIB@ @RLIB@
 
@@ -39,49 +39,49 @@ OBJS=	port_dictionary.o pointer_dictionary.o ulong_dictionary.o \
 
 all: zwgc
 
-zwgc: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a @ETDEP@
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+zwgc: ${OBJS} ${BUILDTOP}/lib/zephyr/libzephyr.a @ETDEP@
+	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 port_dictionary.c port_dictionary.h: dictionary.c dictionary.h
-	$(INSTANTIATE) $(srcdir) dictionary port port.h
+	${INSTANTIATE} ${srcdir} dictionary port port.h
 
 pointer_dictionary.c pointer_dictionary.h: dictionary.c dictionary.h
-	$(INSTANTIATE) $(srcdir) dictionary pointer pointer.h
+	${INSTANTIATE} ${srcdir} dictionary pointer pointer.h
 
 ulong_dictionary.c ulong_dictionary.h: dictionary.c dictionary.h
-	$(INSTANTIATE) $(srcdir) dictionary ulong sysdep.h
+	${INSTANTIATE} ${srcdir} dictionary ulong sysdep.h
 
 string_dictionary.c string_dictionary.h: dictionary.c dictionary.h
-	$(INSTANTIATE) $(srcdir) dictionary string new_string.h
+	${INSTANTIATE} ${srcdir} dictionary string new_string.h
 
 int_dictionary.c int_dictionary.h: dictionary.c dictionary.h
-	$(INSTANTIATE) $(srcdir) dictionary int
+	${INSTANTIATE} ${srcdir} dictionary int
 
 char_stack.h: stack.h
-	$(INSTANTIATE) $(srcdir) stack char
+	${INSTANTIATE} ${srcdir} stack char
 
 string_stack.h: stack.h
-	$(INSTANTIATE) $(srcdir) stack string
+	${INSTANTIATE} ${srcdir} stack string
 
 xmode_stack.h: stack.h
-	$(INSTANTIATE) $(srcdir) stack xmode
+	${INSTANTIATE} ${srcdir} stack xmode
 
 check:
 
 install: zwgc
-	$(INSTALL) -m 755 -s zwgc $(bindir)
-	$(INSTALL) -m 644 $(srcdir)/zwgc.1 $(mandir)/man1
-	$(INSTALL) -m 644 $(srcdir)/zwgc.desc $(datadir)
-	$(INSTALL) -m 644 $(srcdir)/zwgc_resources $(datadir)
-	$(INSTALL) -m 644 zephyr.vars $(confdir)
+	${INSTALL} -m 755 -s zwgc ${DESTDIR}${bindir}
+	${INSTALL} -m 644 ${srcdir}/zwgc.1 ${DESTDIR}${mandir}/man1
+	${INSTALL} -m 644 ${srcdir}/zwgc.desc ${DESTDIR}${datadir}
+	${INSTALL} -m 644 ${srcdir}/zwgc_resources ${DESTDIR}${datadir}
+	${INSTALL} -m 644 zephyr.vars ${DESTDIR}${confdir}
 
 clean:
-	rm -f $(OBJS) zwgc port_dictionary.[ch] pointer_dictionary.[ch]
+	rm -f ${OBJS} zwgc port_dictionary.[ch] pointer_dictionary.[ch]
 	rm -f ulong_dictionary.[ch] string_dictionary.[ch] int_dictionary.[ch]
 	rm -f char_stack.h string_stack.h xmode_stack.h
 
-$(OBJS): $(top_srcdir)/h/sysdep.h $(BUILDTOP)/h/config.h
-zephyr.o: $(BUILDTOP)/h/zephyr/zephyr.h $(BUILDTOP)/h/zephyr/zephyr_err.h
+${OBJS}: ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
+zephyr.o: ${BUILDTOP}/h/zephyr/zephyr.h ${BUILDTOP}/h/zephyr/zephyr_err.h
 
 port_dictionary.o: port.h string_stack.h new_string.h new_memory.h
 pointer_dictionary.o: pointer.h new_string.h new_memory.h
