@@ -154,6 +154,7 @@ extern	char *sys_errlist[];
 extern	char *ctime(), *index(), *error_message(), *malloc(), *strcpyn();
 extern	long time();
 
+
 /* used by cfline and now zephyr ... be careful that the order is consistent
    with syslog.h or Zephyr messages will contain bogus info ... */
 
@@ -216,7 +217,7 @@ main(argc, argv)
 	register int i;
 	register char *p;
 	int funix, finet, inetm, fklog, klogm, len;
-	struct sockaddr_un sun, fromunix;
+	struct sockaddr_un s_un, fromunix;
 	struct sockaddr_in sin, frominet;
 	FILE *fp;
 	char line[MSG_BSIZE + 1];
@@ -278,11 +279,11 @@ main(argc, argv)
 	(void) alarm((unsigned)(MarkInterval * 60 / MARKCOUNT));
 	(void) unlink(LogName);
 
-	sun.sun_family = AF_UNIX;
-	(void) strncpy(sun.sun_path, LogName, sizeof sun.sun_path);
+	s_un.sun_family = AF_UNIX;
+	(void) strncpy(s_un.sun_path, LogName, sizeof s_un.sun_path);
 	funix = socket(AF_UNIX, SOCK_DGRAM, 0);
-	if (funix < 0 || bind(funix, (struct sockaddr *) &sun,
-	    sizeof(sun.sun_family)+strlen(sun.sun_path)) < 0 ||
+	if (funix < 0 || bind(funix, (struct sockaddr *) &s_un,
+	    sizeof(s_un.sun_family)+strlen(s_un.sun_path)) < 0 ||
 	    chmod(LogName, 0666) < 0) {
 		(void) sprintf(line, "cannot create %s", LogName);
 		logerror(line);
@@ -869,6 +870,7 @@ die(sig)
 		dprintf("syslogd: going down on signal %d\n", sig);
 		flushmsg();
 		(void) sprintf(buf, "going down on signal %d", sig);
+		errno = 0;
 		logerror(buf);
 	}
 	(void) unlink(LogName);
@@ -895,6 +897,7 @@ init()
 	/*
 	 *  Close all open log files.
 	 */
+	Initialized = 0;
 	for (f = Files; f < &Files[nlogs]; f++) {
 		if (f->f_type == F_FILE ||
 		    f->f_type == F_TTY ||
@@ -1012,6 +1015,9 @@ cfline(line, f)
 	char buf[MAXLINE];
 
 	dprintf("cfline(%s)\n", line);
+
+	errno = 0;	/* keep sys_errlist stuff out of logerror messages */
+	
 	/* clear out file entry */
 	bzero((char *) f, sizeof *f);
 	for (i = 0; i <= LOG_NFACILITIES; i++)
