@@ -4,6 +4,7 @@
  * For copyright info, see copyright.h.
  */
 
+#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/wait.h>
