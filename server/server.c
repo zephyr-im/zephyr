@@ -1260,6 +1260,7 @@ send_msg(who, opcode, auth)
     pnotice->z_sender = myname;	/* myname is the hostname */
     pnotice->z_recipient = "";
     pnotice->z_default_format = "";
+    pnotice->z_dest_realm = "";
     pnotice->z_message = NULL;
     pnotice->z_message_len = 0;
     pnotice->z_num_other_fields = 0;
