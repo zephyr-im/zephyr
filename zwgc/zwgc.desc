@@ -113,7 +113,8 @@ match "message"
 	endif
 
 	print "@center(@bold("+$aval+") "+$type+" message at "+$time+
-		" on "+$date+" from "+$fromhost+")\n"+$ftext+"\n\n"
+		" on "+$date+"\n"+$ftext+" on "+$fromhost+"\nTo: "+
+		$recipient+")\n\n"
 	print $body
 	put
 	exit
