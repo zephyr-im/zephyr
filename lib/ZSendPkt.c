@@ -39,7 +39,7 @@ Code_t ZSendPacket(packet,len)
 	bcopy(__HM_addr,&sin.sin_addr,__HM_length);
 
 	if (sendto(ZGetFD(),packet,len,0,&sin,sizeof(sin)) < 0)
-		return (ZERR_UNIX);
+		return (errno);
 
 	return (ZERR_NONE);
 }
