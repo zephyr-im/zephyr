@@ -167,78 +167,13 @@ static char brackets[]="()<>[]{}@";
 static char *openbracket[]={"@<","@<","@[","@[","@{","@{","@(","@(","@("};
 static char *closebracket[]={">",">","]","]","}","}",")",")",")"};
 
-/* the char * that str points to is free'd by this function.
- * if you want to keep it, save it yourself
- */
-string verbatim(str)
+int not_contains(str, set)
      string str;
+     character_class set;
 {
-   char *temp,*temp2;
-   int bracketnum,len;
-
-   if (strlen(str) == pure_text_length(str,0)) {
-      /* No environments, so consider the fast-and-easy methods */
-
-      if (not_contains(str,allbracket_set))
-	 return(string_Copy(str));
-
-      if (not_contains(str,abracket_set)) {
-	 temp=(char *) malloc((len=strlen(str))+4);
-	 temp[0]='@';
-	 temp[1]='<';
-	 bcopy(str,temp+2,len);
-	 temp[len+2]='>';
-	 temp[len+3]='\0';
-	 return(temp);
-      }
-      if (not_contains(str,sbracket_set)) {
-	 temp=(char *) malloc((len=strlen(str))+4);
-	 temp[0]='@';
-	 temp[1]='[';
-	 bcopy(str,temp+2,len);
-	 temp[len+2]=']';
-	 temp[len+3]='\0';
-	 return(temp);
-      }
-      if (not_contains(str,cbracket_set)) {
-	 temp=(char *) malloc((len=strlen(str))+4);
-	 temp[0]='@';
-	 temp[1]='{';
-	 bcopy(str,temp+2,len);
-	 temp[len+2]='}';
-	 temp[len+3]='\0';
-	 return(temp);
-      }
-      if (not_contains(str,paren_set)) {
-	 temp=(char *) malloc((len=strlen(str))+4);
-	 temp[0]='@';
-	 temp[1]='(';
-	 bcopy(str,temp+2,len);
-	 temp[len+2]=')';
-	 temp[len+3]='\0';
-	 return(temp);
-      }
-   }
-
-   temp=lbreak(&str,allmaskable_set);
-   while(*str) {
-      bracketnum=(int) (index(brackets,str[0])-brackets);
-      temp=string_Concat2(temp,openbracket[bracketnum]);
-      temp=string_Concat2(temp,temp2=lany(&str," "));
-      free(temp2);
-      temp=string_Concat2(temp,closebracket[bracketnum]);
-      temp=string_Concat2(temp,temp2=lbreak(&str,allmaskable_set));
-      free(temp2);
-   }
-   free(str);  /* str is "" at this point, anyway */
-
-   return(temp);
+   while (*str && ! set[*str]) str++;
+   return (! *str);
 }
-
-/* text points to beginning of text string.  return value is
-   length of string, up to but not including the passed terminator
-   or the default terminator \0.  The text will not be modified,
-   and @@ will be counted twice */
 
 static int pure_text_length(text,terminator)
      char *text;
@@ -266,12 +201,6 @@ static int pure_text_length(text,terminator)
    }
 }
 
-/* returns length of "block" pointed to by str, where a block is a
- * combination of pure strings and environments, surrounded by one
- * valid environment.  If str does not point to an environment 
- * then -1 is returned.  No replacement of @@ is made.
-*/
-
 static char otherside(opener)
 char opener;
 {
@@ -291,94 +220,150 @@ char opener;
 #endif
 }
 
-int length_of_block(str)
-     string str;
-{
-   int len,temp;
-   char terminator;
-
-   if ((! str[0])||(str[0]!='@')||((len=env_length(str+1)) == -1))
-      return(-1);
-
-   len++;
-   terminator=otherside(str[len++]);
-   do {
-      len+=((temp=length_of_block(str+len)) != -1)?
-	   (temp):
-	   (pure_text_length(str+len,terminator));
-   } while (str[len] && str[len]!=terminator);
-
-   return(str[len]?len+1:len);
-}
-
-/* returns a character to close the most recently opened environment,
- * or \0 if there are no open environments.
+/* the char * that str points to is free'd by this function.
+ * if you want to keep it, save it yourself
  */
-
-char close_bracket(str)
+string verbatim(str)
      string str;
 {
-   int temp;
-   char ch,close;
+   char *temp,*temp2;
+   int bracketnum,len;
 
-   while (*str) {
-      if (temp=pure_text_length(str,0)) {
-	 str+=temp;
-      } else {
-	 temp = env_length(str+1)+2;
-	 close = otherside(str[temp-1]);
-	 if (ch=close_bracket(str+temp))
-	    return(ch);
-	 temp = length_of_block(str);
-	 if (str[temp-1] != close)
-	   return(close);
-	 else
-	   str+=temp;
+   if (strlen(str) == pure_text_length(str,0)) {
+      /* No environments, so consider the fast-and-easy methods */
+
+      if (not_contains(str,allbracket_set)) {
+	 temp = string_Copy(str);
+	 free(str);
+	 return(temp);
+      }
+
+      if (not_contains(str,abracket_set)) {
+	 temp=(char *) malloc((len=strlen(str))+4);
+	 temp[0]='@';
+	 temp[1]='<';
+	 bcopy(str,temp+2,len);
+	 temp[len+2]='>';
+	 temp[len+3]='\0';
+	 free(str);
+	 return(temp);
+      }
+      if (not_contains(str,sbracket_set)) {
+	 temp=(char *) malloc((len=strlen(str))+4);
+	 temp[0]='@';
+	 temp[1]='[';
+	 bcopy(str,temp+2,len);
+	 temp[len+2]=']';
+	 temp[len+3]='\0';
+	 free(str);
+	 return(temp);
+      }
+      if (not_contains(str,cbracket_set)) {
+	 temp=(char *) malloc((len=strlen(str))+4);
+	 temp[0]='@';
+	 temp[1]='{';
+	 bcopy(str,temp+2,len);
+	 temp[len+2]='}';
+	 temp[len+3]='\0';
+	 free(str);
+	 return(temp);
+      }
+      if (not_contains(str,paren_set)) {
+	 temp=(char *) malloc((len=strlen(str))+4);
+	 temp[0]='@';
+	 temp[1]='(';
+	 bcopy(str,temp+2,len);
+	 temp[len+2]=')';
+	 temp[len+3]='\0';
+	 free(str);
+	 return(temp);
       }
    }
-   return('\0');
+
+   temp=lbreak(&str,allmaskable_set);
+   while(*str) {
+      bracketnum=(int) (index(brackets,str[0])-brackets);
+      temp=string_Concat2(temp,openbracket[bracketnum]);
+      temp=string_Concat2(temp,temp2=lany(&str," "));
+      free(temp2);
+      temp=string_Concat2(temp,closebracket[bracketnum]);
+      temp=string_Concat2(temp,temp2=lbreak(&str,allmaskable_set));
+      free(temp2);
+   }
+   free(str);  /* str is "" at this point, anyway */
+
+   return(temp);
 }
+
+/* text points to beginning of text string.  return value is
+   length of string, up to but not including the passed terminator
+   or the default terminator \0.  The text will not be modified,
+   and @@ will be counted twice */
 
 string protect(str)
      string str;
 {
    string temp,temp2,temp3;
-   int len;
-   char ch;
+   int len,templen;
+   char_stack chs;
+   char tos;
 
-   /* verbatim all top-level strings */
+   temp = string_Copy("");
+   templen = 1;
+   chs = char_stack_create();
 
-   temp=string_Copy("");
    while(*str) {
-      if ((len=length_of_block(str)) == -1) {
-	 temp2=string_CreateFromData(str,len=pure_text_length(str,0));
-	 str+=len;
-	 temp3=verbatim(temp2);
-	 temp=string_Concat2(temp,temp3);
-	 free(temp3);
+      tos = (char_stack_empty(chs)?0:char_stack_top(chs));
+
+      if (*str == tos) {
+	 /* if the character is the next terminator */
+
+	 temp = (char *) realloc(temp,++templen);
+	 temp[templen-2] = *str++;
+	 char_stack_pop(chs);
+	 temp[templen-1] = '\0';
+      } else if (len = pure_text_length(str,tos)) {
+	 if (tos) {
+	    /* if the block is text in an environment, just copy it */
+
+	    temp2 = string_CreateFromData(str,len);
+	    str += len;
+	    temp = string_Concat2(temp,temp2);
+	    templen += len;
+	    free(temp2);
+	 } else {
+	    /* if the block is top level text, verbatim it and add to temp */
+
+	    temp2 = string_CreateFromData(str,len);
+	    str += len;
+	    temp3 = verbatim(temp2);
+	    temp = string_Concat2(temp,temp3);
+	    templen += strlen(temp3);
+	    free(temp3);
+	 }
       } else {
-	 temp2=string_CreateFromData(str,len);
-	 str+=len;
-	 temp=string_Concat2(temp,temp2);
+	 /* if the block is an environment, copy it, push delimiter */
+
+	 len = env_length(str+1);
+	 char_stack_push(chs,otherside(str[len+1]));
+	 len += 2;
+     	 temp2 = string_CreateFromData(str,len);
+	 str += len;
+	 temp = string_Concat2(temp,temp2);
+	 templen += len;
 	 free(temp2);
       }
    }
-   len=string_Length(temp)+1;  /* len = size of malloc'd block */
-   while ((ch=close_bracket(temp))>0) {
-      temp=(char *) realloc(temp,++len);
-      temp[len-2]=ch;
-      temp[len-1]='\0';
+   /* all blocks have been copied. */
+
+   while (!char_stack_empty(chs)) {
+      temp = (char *) realloc(temp,++templen);
+      temp[templen-2] = char_stack_top(chs);
+      char_stack_pop(chs);
    }
+   temp[templen-1] = '\0';
 
    return(temp);
-}
-
-int not_contains(str, set)
-     string str;
-     character_class set;
-{
-   while (*str && ! set[*str]) str++;
-   return (! *str);
 }
 
 void free_desc(desc)
