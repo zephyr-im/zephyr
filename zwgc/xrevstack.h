@@ -22,10 +22,12 @@ static char rcsid_xrevstack_h[] = "$Id$";
 #include <zephyr/mit-copyright.h>
 
 extern x_gram *bottom_gram; /* for testing against NULL */
+extern x_gram *unlinked;
 extern int reverse_stack; /* is reverse stack on? */
 
 extern void add_to_bottom(/* x_gram */);
 extern void delete_gram(/* x_gram */);
+extern void unlink_gram(/* x_gram */);
 extern void pull_to_top(/* x_gram */);
 extern void push_to_bottom(/* x_gram */);
 
