@@ -132,7 +132,7 @@ xselect.o: new_string.h xselect.h
 xshow.o: pointer_dictionary.h new_memory.h formatter.h variables.h zwgc.h
 xshow.o: X_fonts.h X_gram.h xmode_stack.h
 zephyr.o: new_string.h zephyr.h error.h mux.h subscriptions.h variables.h
-zephyr.o: pointer.h
+zephyr.o: pointer.h X_driver.h
 
 .PHONY: all check install clean
 
