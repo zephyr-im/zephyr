@@ -1,11 +1,7 @@
 
 #ETDIR=../../et/src/
 
-#ifdef ultrix
-DEFINES=-I. -DPOSIX
-#else
 DEFINES=-I. 
-#endif
 
 LIB=	libss.a
 COMERR=	-lcom_err
