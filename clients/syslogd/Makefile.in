@@ -22,7 +22,7 @@ SYSLOG_CONFPREFIX=n
 DEBUG=-O
 CFLAGS=$(DEBUG) -I$(srcdir) -I$(top_srcdir)/h -I$(BUILDTOP)/h \
 	-DCONFPREFIX=\"$(SYSLOG_CONFPREFIX)\" @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err @SLIB@
 
 OBJS=	syslogd.o
@@ -35,8 +35,8 @@ syslogd: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a @ETDEP@
 check:
 
 install: syslogd
-	$(INSTALL) -m 755 -c -s syslogd $(sbindir)
-	$(INSTALL) -m 644 -c $(srcdir)/syslogd.8 $(mandir)/man8
+	$(INSTALL) -m 755 -s syslogd $(sbindir)
+	$(INSTALL) -m 644 $(srcdir)/syslogd.8 $(mandir)/man8
 
 clean:
 	rm -f $(OBJS) syslogd
