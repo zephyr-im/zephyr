@@ -30,8 +30,7 @@ extern char *inet_ntoa ();
 int __Zephyr_fd = -1;
 int __Zephyr_open;
 int __Zephyr_port = -1;
-int __My_length;
-char *__My_addr;
+struct in_addr __My_addr;
 int __Q_CompleteLength;
 int __Q_Size;
 struct _Z_InputQ *__Q_Head, *__Q_Tail;
@@ -132,35 +131,6 @@ static int find_or_insert_uid(uid, kind)
 
     return 0;
 }
-
-/* Get the address of the local host and cache it */
-
-Code_t Z_GetMyAddr()
-{
-    register struct hostent *myhost;
-    char hostname[MAXHOSTNAMELEN];
-	
-    if (__My_length > 0)
-	return (ZERR_NONE);
-
-    if (gethostname(hostname, MAXHOSTNAMELEN) < 0)
-	return (errno);
-
-    if (!(myhost = gethostbyname(hostname)))
-	return (errno);
-
-    /* If h_length is 0, that is a serious problem and it doesn't
-       make it worse for malloc(0) to return NULL, so don't worry
-       about that case. */
-    if (!(__My_addr = (char *)malloc((unsigned)myhost->h_length)))
-	return (ENOMEM);
-
-    __My_length = myhost->h_length;
-
-    (void) memcpy(__My_addr, myhost->h_addr, myhost->h_length);
-
-    return (ZERR_NONE);
-} 
 
 
 /* Return 1 if there is a packet waiting, 0 otherwise */
@@ -631,10 +601,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     notice->z_uid.tv.tv_sec = htonl((u_long) notice->z_uid.tv.tv_sec);
     notice->z_uid.tv.tv_usec = htonl((u_long) notice->z_uid.tv.tv_usec);
     
-    if ((retval = Z_GetMyAddr()) != ZERR_NONE)
-	return (retval);
-
-    (void) memcpy((char *)&notice->z_uid.zuid_addr, __My_addr, __My_length);
+    (void) memcpy(&notice->z_uid.zuid_addr, &__My_addr, sizeof(__My_addr));
 
     notice->z_multiuid = notice->z_uid;
 
@@ -905,10 +872,8 @@ Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
 		htonl((u_long) partnotice.z_uid.tv.tv_sec);
 	    partnotice.z_uid.tv.tv_usec =
 		htonl((u_long) partnotice.z_uid.tv.tv_usec);
-	    if ((retval = Z_GetMyAddr()) != ZERR_NONE)
-		return (retval);
-	    (void) memcpy((char *)&partnotice.z_uid.zuid_addr, __My_addr, 
-			   __My_length);
+	    (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr, 
+			  sizeof(__My_addr));
 	}
 	message_len = min(notice->z_message_len-offset, fragsize);
 	partnotice.z_message = notice->z_message+offset;
