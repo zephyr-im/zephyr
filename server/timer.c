@@ -68,6 +68,7 @@ long nexttimo = 0L;			/* the Unix time of the next
 					   alarm */
 static timer timers = NULL;
 static long right_now;
+struct timeval t_local;
 
 #ifdef __STDC__
 # define        P(s) s
