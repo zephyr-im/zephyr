@@ -1,0 +1,60 @@
+This is Info file ../standards.info, produced by Makeinfo-1.55 from the
+input file ../standards.texi.
+
+START-INFO-DIR-ENTRY
+* Standards: (standards).        GNU coding standards.
+END-INFO-DIR-ENTRY
+
+   GNU Coding Standards Copyright (C) 1992, 1993, 1994 Free Software
+Foundation, Inc.
+
+   Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+   Permission is granted to copy and distribute modified versions of
+this manual under the conditions for verbatim copying, provided that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+   Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions, except that this permission notice may be stated in a
+translation approved by the Free Software Foundation.
+
+
+Indirect:
+standards.info-1: 960
+standards.info-2: 49450
+
+Tag Table:
+(Indirect)
+Node: Top960
+Node: Preface2096
+Node: Reading Non-Free Code3138
+Node: Contributions4868
+Node: Change Logs6466
+Node: Compatibility10182
+Node: Makefile Conventions11821
+Node: Makefile Basics12178
+Node: Utilities in Makefiles14522
+Node: Standard Targets16219
+Node: Command Variables23328
+Node: Directory Variables26158
+Node: Configuration35220
+Node: Source Language42244
+Node: Formatting43374
+Node: Comments46664
+Node: Syntactic Conventions49450
+Node: Names52342
+Node: Using Extensions53632
+Node: System Functions55373
+Node: Semantics60176
+Node: Errors63464
+Node: Libraries64667
+Node: Portability65891
+Node: User Interfaces69178
+Node: Documentation85106
+Node: Releases89040
+
+End Tag Table
