@@ -46,7 +46,7 @@ static void setup_signals(), detach();
 int zwgc_debug = 0;
 #endif
 
-static char *zwgc_version_string = "0.4.3";
+static char *zwgc_version_string = "0.4.4";
 
 /*
  * description_filename_override - <<<>>>
@@ -188,7 +188,8 @@ int main(argc, argv)
      int argc;
      char **argv;
 {
-    char **new, **current;
+    char **new;
+    register char **current;
     int dofork = 1;
 
     /*
@@ -354,7 +355,7 @@ static void signal_exit()
    multiple SIGCHLD's at once, and don't process in time. */
 static void signal_child()
 {
-#ifdef NO_UNION_WAIT
+#if defined(NO_UNION_WAIT) || defined(_POSIX_SOURCE)
   int status;
 #else
   union wait status;
@@ -395,8 +396,12 @@ static void detach()
   /* detach from terminal and fork. */
   register int i;
 
-  (void) setpgrp(0, getpgrp(getppid())); /* to try to get SIGHUP on user
-					    logout */
+  /* to try to get SIGHUP on user logout */
+#ifdef _AIX
+  (void) setpgid(0, getpgrp(getppid()));
+#else
+  (void) setpgrp(0, getpgrp(getppid()));
+#endif
   /* fork off and let parent exit... */
   if (i = fork()) {
       if (i < 0) {
