@@ -89,9 +89,12 @@ typedef struct _ZLocation_t {
 #ifdef OLD_COMPAT
 #define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
 #define	LOGIN_QUIET_LOGIN	"QUIET_LOGIN"
+extern int old_compat_count_ulocate;	/* counter of old use */
+extern int old_compat_count_uloc;	/* counter of old use */
 #endif /* OLD_COMPAT */
 #ifdef NEW_COMPAT
 #define	NEW_OLD_ZEPHYR_VERSION	"ZEPH0.1"
+extern int new_compat_count_uloc;	/* counter of old use */
 #endif NEW_COMPAT
 #if defined(OLD_COMPAT) || defined(NEW_COMPAT)
 static void old_compat_ulogin_locate();
@@ -186,13 +189,15 @@ ZServerDesc_t *server;
 	}
 #ifdef OLD_COMPAT
 	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
-		zdbug((LOG_DEBUG, "old login"));
+		syslog(LOG_INFO, "old login, %s", inet_ntoa(who->sin_addr));
+		old_compat_count_uloc++;
 		/* map LOGIN's to realm-announced */
 		ulogin_add_user(notice, REALM_ANN, who);
 		if (server == me_server) /* announce to the realm */
 			sendit(notice, auth, who);
 	} else if (!strcmp(notice->z_opcode, LOGIN_QUIET_LOGIN)) {
-		zdbug((LOG_DEBUG, "old quiet"));
+		syslog(LOG_INFO, "old hide, %s", inet_ntoa(who->sin_addr));
+		old_compat_count_uloc++;
 		/* map LOGIN's to realm-announced */
 		ulogin_add_user(notice, OPSTAFF_VIS, who);
 		if (server == me_server) /* announce to the realm */
@@ -358,7 +363,8 @@ ZServerDesc_t *server;
 	if (!strcmp(notice->z_version, OLD_ZEPHYR_VERSION) &&
 	    !strcmp(notice->z_opcode, LOCATE_LOCATE)) {
 		/* we support locates on the old version */
-		zdbug((LOG_DEBUG,"old locate"));
+		syslog(LOG_INFO, "old locate, %s", inet_ntoa(who->sin_addr));
+		old_compat_count_ulocate++;
 		ulogin_locate(notice, who);
 		/* does xmit and ack itself, so return */
 		return(ZERR_NONE);
@@ -376,15 +382,19 @@ ZServerDesc_t *server;
 		if (host && host->zh_locked) /* process later if locked */
 			return(ZSRV_REQUEUE);
 
+		old_compat_count_ulocate++;
+
 		if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
-			zdbug((LOG_DEBUG,"old hide"));
+			syslog(LOG_INFO, "old hide, %s",
+			       inet_ntoa(who->sin_addr));
 			if (ulogin_expose_user(notice, OPSTAFF_VIS)) {
 				if (server == me_server)
 					clt_ack(notice, who, NOT_FOUND);
 				return(ZERR_NONE);
 			}
 		} else if (!strcmp(notice->z_opcode, LOCATE_UNHIDE)) {
-			zdbug((LOG_DEBUG,"old unhide"));
+			syslog(LOG_INFO, "old unhide, %s",
+			       inet_ntoa(who->sin_addr));
 			if (ulogin_expose_user(notice, REALM_VIS)) {
 				if (server == me_server)
 					clt_ack(notice, who, NOT_FOUND);
@@ -1250,6 +1260,12 @@ struct sockaddr_in *who;
 	ZNotice_t reply;
 	Code_t retval;
 
+#ifdef NEW_COMPAT
+	if (!strcmp(notice->z_version, NEW_OLD_ZEPHYR_VERSION)) {
+	    new_compat_count_uloc++;
+	    syslog(LOG_INFO, "new old locate, %s", inet_ntoa(who->sin_addr));
+	}
+#endif
 	answer = ulogin_marshal_locs(notice, &found);
 
 	reply = *notice;
