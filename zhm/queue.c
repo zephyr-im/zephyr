@@ -70,7 +70,7 @@ int len;
 	  entry->timeout = time((time_t *)0) + NOTICE_TIMEOUT;
 	  entry->retries = 0;
 	  entry->z_packet = (char *)malloc(Z_MAXPKTLEN);
-	  _BCOPY(packet, entry->z_packet, Z_MAXPKTLEN);
+	  (void) memcpy(entry->z_packet, packet, Z_MAXPKTLEN);
 	  if (ZParseNotice(entry->z_packet, len, &entry->z_notice)
 	      != ZERR_NONE) {
 	       syslog(LOG_ERR, "ZParseNotice failed, but succeeded before");
