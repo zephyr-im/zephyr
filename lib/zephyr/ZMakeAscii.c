@@ -13,30 +13,23 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZMakeAscii_c[] = "$Header$";
-#endif lint
-
-#include <zephyr/mit-copyright.h>
+static char rcsid_ZMakeAscii_c[] = "$Id$";
+#endif
 
 #include <zephyr/zephyr_internal.h>
 
-static
-#ifdef __STDC__
-    const
-#endif
-    char itox_chars[] = "0123456789ABCDEF";
-
 Code_t ZMakeAscii(ptr, len, field, num)
-    char *ptr;
+    register char *ptr;
     int len;
     unsigned char *field;
     int num;
 {
     int i;
+    register char *itox_chars = "0123456789ABCDEF";
 
     for (i=0;i<num;i++) {
 	/* we need to add "0x" if we are between 4 byte pieces */
-	if (i%4 == 0) {
+	if ((i & 3) == 0) {
 	    if (len < (i?4:3))
 		return ZERR_FIELDLEN;
 	    /* except at the beginning, put a space in before the "0x" */
