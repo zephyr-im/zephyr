@@ -20,9 +20,9 @@ char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nP
 #endif SABER
 #endif lint
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 1.0";
+char version[] = "Zephyr Server (DEBUG) 1.1";
 #else
-char version[] = "Zephyr Server 1.0";
+char version[] = "Zephyr Server 1.1";
 #endif DEBUG
 /*
  * Server loop for Zephyr.
@@ -100,10 +100,6 @@ u_short hm_port;			/* the port # of the host manager */
 
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
-static ZAcl_t zctlacl = { ZEPHYR_CTL_ACL };
-static ZAcl_t loginacl = { LOGIN_ACL };
-static ZAcl_t locateacl = { LOCATE_ACL };
-static ZAcl_t matchallacl = { MATCH_ALL_ACL };
 #ifdef DEBUG
 int zdebug = 0;
 #endif DEBUG
@@ -252,7 +248,8 @@ char **argv;
 							  input_len,
 							  &new_notice)) {
 					syslog(LOG_ERR,
-					       "bad notice parse: %s",
+					       "bad notice parse (%s): %s",
+					       inet_ntoa(whoisit.sin_addr),
 					       error_message(status));
 					continue;
 				}
@@ -324,11 +321,7 @@ initialize()
 					   input fildes */
 
 	/* restrict certain classes */
-	(void) class_setup_restricted(ZEPHYR_CTL_CLASS, &zctlacl);
-	(void) class_setup_restricted(LOGIN_CLASS, &loginacl);
-	(void) class_setup_restricted(LOCATE_CLASS, &locateacl);
-	(void) class_setup_restricted(MATCHALL_CLASS, &matchallacl);
-	
+	access_init();
 	return(0);
 }
 
