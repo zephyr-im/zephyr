@@ -1,3 +1,13 @@
+zephyr (2.1.20010518.SNAPSHOT-3) unstable; urgency=low
+
+  * hopefully build non-Kerberos packages successfully, closes: #106610
+  * clean up zephyr-server.init slightly, closes: #106751
+  * Spanish translation for zephyr-server debconf, closes #106573, #106572
+  * Spanish translation for zephyr-clients debconf, closes #106571
+  * include hints for people trying to use zephyr-server-krb, closes: #106852
+
+ -- Karl Ramm <kcr@debian.org>  Sat, 20 Oct 2001 12:25:07 -0400
+
 zephyr (2.1.20010518.SNAPSHOT-2) unstable; urgency=low
 
   * On linux/alpha, longs are 8 octets, not 4.  Thus, timeval is sixteen
@@ -150,6 +160,3 @@ zephyr (2.1.20000421.SNAPSHOT-1) unstable; urgency=low
 
  -- Karl Ramm <kcr@1ts.org>  Mon,  4 Dec 2000 05:28:22 -0500
 
-Local variables:
-add-log-mailing-address "kcr@1ts.org"
-End:

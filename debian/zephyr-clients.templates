@@ -1,8 +1,12 @@
 Template: zephyr-clients/servers
 Type: string
 Description: What are your zephyr servers?
- Please type the full names of your zephyr servers, seperated by spaces.
+ Please type the full names of your zephyr servers, separated by spaces.
  (note that this can be a subset of what you're telling the servers)
+Description-es: ¿Cuáles son sus servidores zephyr?
+ Por favor, introduzca los nombres completos de sus servidores zephyr
+ separados por espacios. (tenga en cuenta que se puede tratar de sólo una
+ parte de lo que usted considera los servidores)
 
 Template: zephyr-clients/read_conf
 Type: boolean
@@ -14,11 +18,21 @@ Description: You should never see this
  before the postinst is run.  Thus we may read the wrong value before the 
  edited value is written out in postinst.
  If this is false we skip reading config files until postinst runs.
+Description-es: No debería poder leer esto
+ Para averiguar qué cambios ha realizado el usuario manualmente en el
+ fichero de configuración, hay que mirar en el fichero que hay en el
+ script de configuración. Sin embargo, si se trata de preconfigurar el
+ paquete, dicho script se ejecuta dos veces antes de que lo haga el
+ posterior a la instalación. De ese modo, es posible obtener un valor
+ equivocado antes de que se guarde después de la instalación el valor
+ editado. Si no es éste el caso, nos saltamos la lectura de los ficheros
+ de configuración hasta que se ejecute el script posterior a la
+ instalación.
 
 Template: zephyr-clients/need-servers
 Type: note
 Description: You have no zephyr servers specified for the client
  The zephyr-clients package for whatever reason does not
  have any zephyr servers configured.  Please edit the file
- /etc/default/zephyr-clients and add  the names of your zephyr
- servers, seperated by spaces to the zhm_args variable.
+ /etc/default/zephyr-clients and add the names of your zephyr
+ servers, separated by spaces to the zhm_args variable.

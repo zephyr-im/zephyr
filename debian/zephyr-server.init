@@ -41,7 +41,7 @@ case "$1" in
 	start-stop-daemon --oknodo --stop --quiet --exec $DAEMON
 	sleep 1
 	start-stop-daemon --start --quiet --pidfile \
-		/var/run/$NAME.pid --exec $DAEMON -- $zhm_args
+		/var/run/$NAME.pid --exec $DAEMON 
 	echo "$NAME."
 	;;
   reload|force-reload)
