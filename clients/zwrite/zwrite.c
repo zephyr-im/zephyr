@@ -98,6 +98,7 @@ main(argc, argv)
 	    usage(whoami);
 	switch (argv[arg][1]) {
 	case 'a':		/* Backwards compatibility */
+	    auth = ZAUTH;
 	    break;
 	case 'o':
 	    class = DEFAULT_CLASS;
@@ -149,6 +150,7 @@ main(argc, argv)
 	    class = FILSRV_CLASS;
 	    inst = fix_filsrv_inst(argv[arg]);
 	    filsys = 1;
+	    nocheck = 1;		/* implied -n (no ping) */
 	    break;
 	case 's':
 	    if (arg == argc-1)
@@ -159,6 +161,7 @@ main(argc, argv)
 	case 'm':
 	    if (arg == argc-1)
 		usage(whoami);
+	    nocheck = 1;		/* implied -n (no ping) */
 	    msgarg = arg+1;
 	    break;
 	case 'l':			/* literal */
@@ -222,7 +225,7 @@ main(argc, argv)
 	else
 	    notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance at $time $date:\n$message";
     }
-    if (!nocheck && !msgarg && filsys != 1)
+    if (!nocheck && nrecips)
 	send_off(&notice, 0);
 	
     if (quiet)
@@ -285,7 +288,7 @@ main(argc, argv)
 		    exit(1);
 		}
 		message = realloc(message, (unsigned)(msgsize+nchars));
-		_BCOPY(bfr, message+msgsize, nchars);
+		(void) memcpy(message+msgsize, bfr, nchars);
 		msgsize += nchars;
 	    }
 	    /* end of msg */
@@ -427,7 +430,7 @@ char *str;
 	char *ptr;
 	struct hostent *hp;
 
-	ptr = index(str,':');
+	ptr = strchr(str,':');
 	if (ptr)
 		*ptr = '\0';
 	
