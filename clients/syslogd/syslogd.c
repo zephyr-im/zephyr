@@ -89,10 +89,6 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #define PIDDIR "/etc/"
 #endif
 
-#ifndef COMPAT_PREFIX
-#define COMPAT_PREFIX ""
-#endif
-
 #define	CTTY	"/dev/console"
 char	*LogName = "/dev/log";
 char	ConfFile[128];
@@ -301,8 +297,8 @@ int main(argc, argv)
 	char line[MSG_BSIZE + 1];
 #endif
 
-	sprintf(ConfFile, "/etc/%ssyslog.conf", CONFPREFIX);
-	sprintf(PidFile, "%s%ssyslog.pid", PIDDIR, CONFPREFIX);
+	strcpy(ConfFile, "/etc/syslog.conf");
+	sprintf(PidFile, "%ssyslog.pid", PIDDIR);
 	while (--argc > 0) {
 		p = *++argv;
 		if (p[0] != '-')
@@ -383,9 +379,12 @@ int main(argc, argv)
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
 
-	action.sa_handler = Debug ? die : SIG_IGN;
+	action.sa_handler = die;
 	sigaction(SIGTERM, &action, NULL);
+
+	action.sa_handler = Debug ? die : SIG_IGN;
 	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGQUIT, &action, NULL);
 
 	action.sa_handler = reapchild;
 	sigaction(SIGCHLD, &action, NULL);
