@@ -345,7 +345,9 @@ extern struct in_addr my_addr;
 extern struct timeval t_local;		/* current time */
 
 /* found in bdump.c */
-extern int bdumping;			/* are we dumping right now? */
+extern int bdumping;			/* are we processing a bdump packet? */
+extern int bdump_concurrent;		/* set while processing a packet
+					 * concurrently during a braindump. */
 
 /* found in dispatch.c */
 extern Statistic i_s_ctls, i_s_logins, i_s_admins, i_s_locates;
