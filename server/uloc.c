@@ -271,27 +271,30 @@ ZServerDesc_t *server;
 			clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}
+#ifdef OLD_COMPAT
+	if (!strcmp(notice->z_version, OLD_ZEPHYR_VERSION)) {
+		if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
+			zdbug((LOG_DEBUG,"old hide"));
+			if (ulogin_expose_user(notice, EXPOSE_OPSTAFF)) {
+				if (server == me_server)
+					clt_ack(notice, who, NOT_FOUND);
+				return;
+			}
+		} else if (!strcmp(notice->z_opcode, LOCATE_UNHIDE)) {
+			zdbug((LOG_DEBUG,"user unhide"));
+			if (ulogin_expose_user(notice, EXPOSE_REALMVIS)) {
+				if (server == me_server)
+					clt_ack(notice, who, NOT_FOUND);
+				return;
+			}
+		}
+	} else
+#endif /* OLD_COMPAT */
 	if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
 		zdbug((LOG_DEBUG,"locate"));
 		ulogin_locate(notice, who);
 		/* does xmit and ack itself, so return */
 		return;
-#ifdef notdef
-	} else if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
-		zdbug((LOG_DEBUG,"user hide"));
-		if (ulogin_expose_user(notice, INVISIBLE)) {
-			if (server == me_server)
-				clt_ack(notice, who, NOT_FOUND);
-			return;
-		}
-	} else if (!strcmp(notice->z_opcode, LOCATE_UNHIDE)) {
-		zdbug((LOG_DEBUG,"user unhide"));
-		if (ulogin_expose_user(notice, VISIBLE)) {
-			if (server == me_server)
-				clt_ack(notice, who, NOT_FOUND);
-			return;
-		}
-#endif notdef
 	} else {
 		syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
 		if (server == me_server)
