@@ -44,6 +44,14 @@ Code_t ZCancelSubscriptions(port)
 			    CLIENT_CANCELSUB, 0));
 }
 
+static Code_t subscr_sendoff();
+
+/*
+ * This routine must do its own fragmentation.  Subscriptions must
+ * not be broken across packet boundaries, or else the server will
+ * mis-interpret them.
+ */
+
 Z_Subscriptions(sublist, nitems, port, opcode, authit)
     ZSubscription_t *sublist;
     int nitems;
@@ -51,14 +59,20 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     char *opcode;
     int authit;
 {
-    int i, retval;
-    ZNotice_t notice, retnotice;
+    register int i, j;
+    int retval;
+    ZNotice_t notice;
+    char header[Z_MAXHEADERLEN];
     char **list;
-	
+    int hdrlen;
+    int size_avail = Z_MAXPKTLEN-Z_FRAGFUDGE; /* space avail for data,
+						 adjusted below */
+    int size, start, numok;
+
     list = (char **)malloc((unsigned)nitems*3*sizeof(char *));
     if (!list)
-	return (ENOMEM);
-	
+        return (ENOMEM);
+
     (void) bzero((char *)&notice, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = port;
@@ -70,6 +84,19 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     notice.z_default_format = "";
     notice.z_message_len = 0;
 
+    /* format the header to figure out how long it is */
+    retval = Z_FormatHeader(&notice, header, sizeof(header), &hdrlen, ZAUTH);
+    if (retval != ZERR_NONE && !authit)
+	retval = Z_FormatHeader(&notice, header, sizeof(header),
+				&hdrlen, ZAUTH);
+    if (retval != ZERR_NONE)
+	return(retval);
+
+    /* compute amount of room left */
+    size_avail -= hdrlen;
+    size = size_avail;
+
+    /* assemble subs into an array of pointers */
     for (i=0;i<nitems;i++) {
 	list[i*3] = sublist[i].class;
 	list[i*3+1] = sublist[i].classinst;
@@ -79,21 +106,68 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
 	else
 	    list[i*3+2] = "";
     }
-	
-    retval = ZSendList(&notice, list, nitems*3, ZAUTH);
-    if (retval != ZERR_NONE && !authit)
-	retval = ZSendList(&notice, list, nitems*3, ZNOAUTH);
-	
-    free((char *)list);
 
+    start = -1;
+    i = 0;
+    numok = 0;
+    if (!nitems) {
+	/* there aren't really any, but we need to xmit anyway */
+	retval = subscr_sendoff(&notice, list, 0, authit);
+	free((char *)list);
+	return(retval);
+    }
+    while(i < nitems) {
+	if (start == -1) {
+	    size = size_avail;
+	    start = i;
+	    numok = 0;
+	}
+	if ((j = strlen(list[i*3])
+	     + strlen(list[i*3+1])
+	     + strlen(list[i*3+2]) + 3) <= size) {
+	    /* it will fit in this packet */
+	    size -= j;
+	    numok++;
+	    i++;
+	    continue;
+	}
+	if (!numok)			/* a single subscription won't
+					   fit into one packet */
+	    return(ZERR_FIELDLEN);
+
+	retval = subscr_sendoff(&notice, &list[start*3], numok, authit);
+	if (retval) {
+	    free((char *)list);
+	    return(retval);
+	}
+	start = -1;
+    }
+    if (numok)
+	retval = subscr_sendoff(&notice, &list[start*3], numok, authit);
+    free((char *)list);
+    return(retval);
+}
+
+static Code_t
+subscr_sendoff(notice, lyst, num, authit)
+ZNotice_t *notice;
+char **lyst;
+int num;
+int authit;
+{
+    register Code_t retval;
+    ZNotice_t retnotice;
+
+    retval = ZSendList(notice, lyst, num*3, ZAUTH);
+    if (retval != ZERR_NONE && !authit)
+	retval = ZSendList(notice, lyst, num*3, ZNOAUTH);
+	
     if (retval != ZERR_NONE)
 	return (retval);
-
     if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *)0, 
-			    ZCompareUIDPred, (char *)&notice.z_uid)) !=
+				ZCompareUIDPred, (char *)&notice->z_uid)) !=
 	ZERR_NONE)
 	return (retval);
-
     if (retnotice.z_kind == SERVNAK) {
 	ZFreeNotice(&retnotice);
 	return (ZERR_SERVNAK);
