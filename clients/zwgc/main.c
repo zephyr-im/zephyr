@@ -85,7 +85,7 @@ static void fake_startup_packet()
 
     var_set_variable("version", zwgc_version_string);
 
-    _BZERO(&notice, sizeof(notice));
+    (void) memset(&notice, 0, sizeof(notice));
 
     notice.z_version = "";
     notice.z_class = "WG_CTL_CLASS";
@@ -355,7 +355,7 @@ static void signal_exit()
    multiple SIGCHLD's at once, and don't process in time. */
 static void signal_child()
 {
-#if defined(POSIX)
+#ifdef POSIX
   int status;
 #else
   union wait status;
@@ -430,8 +430,8 @@ static void detach()
   register int i;
 
   /* to try to get SIGHUP on user logout */
-#ifdef _AIX
-  (void) setpgid(0, getpgrp(getppid()));
+#ifdef POSIX
+  (void) setpgid(0, tcgetpgrp(1));
 #else
   (void) setpgrp(0, getpgrp(getppid()));
 #endif
