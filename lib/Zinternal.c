@@ -27,26 +27,27 @@ static char copyright[] = "Copyright (c) 1987,1988 by the Massachusetts Institut
 #include <utmp.h>
 
 int __Zephyr_fd = -1;
-int __Zephyr_open = 0;
+int __Zephyr_open;
 int __Zephyr_port = -1;
 int __My_length;
 char *__My_addr;
-int __Q_CompleteLength = 0;
-int __Q_Size = 0;
-struct _Z_InputQ *__Q_Head = 0, *__Q_Tail = 0;
+int __Q_CompleteLength;
+int __Q_Size;
+struct _Z_InputQ *__Q_Head, *__Q_Tail;
 struct sockaddr_in __HM_addr;
-int __HM_set = 0;
+struct sockaddr_in __HM_addr_real;
+int __HM_set;
 #ifdef KERBEROS
 C_Block __Zephyr_session;
-#endif KERBEROS
-int __Zephyr_server = 0;
+#endif
+int __Zephyr_server;
 char __Zephyr_realm[REALM_SZ];
-ZLocations_t *__locate_list = 0;
-int __locate_num = 0;
-int __locate_next = 0;
-ZSubscription_t *__subscriptions_list = 0;
-int __subscriptions_num = 0;
-int __subscriptions_next = 0;
+ZLocations_t *__locate_list;
+int __locate_num;
+int __locate_next;
+ZSubscription_t *__subscriptions_list;
+int __subscriptions_num;
+int __subscriptions_next;
 
 #define min(a,b) ((a)<(b)?(a):(b))
 
@@ -502,8 +503,6 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
     return (ZERR_NONE);
 }
 
-static char version[BUFSIZ] = "";	/* init so version[0] = '\0'; */
-
 Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     ZNotice_t *notice;
     char *buffer;
@@ -512,6 +511,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     int (*cert_routine)();
 {
     Code_t retval;
+    static char version[BUFSIZ]; /* default init should be all \0 */
 	
     if (!notice->z_sender)
 	notice->z_sender = ZGetSender();
@@ -529,7 +529,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
 
     notice->z_multiuid = notice->z_uid;
 
-    if (!*version)
+    if (!version[0])
 	    (void) sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR,
 			   ZVERSIONMINOR);
     notice->z_version = version;
