@@ -20,9 +20,9 @@ char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nP
 #endif SABER
 #endif lint
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 1.1";
+char version[] = "Zephyr Server (DEBUG) 1.3";
 #else
-char version[] = "Zephyr Server 1.1";
+char version[] = "Zephyr Server 1.3";
 #endif DEBUG
 /*
  * Server loop for Zephyr.
@@ -102,6 +102,7 @@ char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 #ifdef DEBUG
 int zdebug = 0;
+int zalone = 0;
 #endif DEBUG
 u_long npackets = 0;			/* number of packets processed */
 long uptime;				/* when we started operations */
@@ -138,12 +139,16 @@ char **argv;
 #endif DEBUG
 	/* process arguments */
 	
-	while ((optchar = getopt(argc, argv, "d")) != EOF) {
+	while ((optchar = getopt(argc, argv, "ds")) != EOF) {
 		switch(optchar) {
 #ifdef DEBUG
 		case 'd':
 			syslog(LOG_DEBUG, "debugging on");
 			zdebug = 1;
+			break;
+		case 's':
+			syslog(LOG_DEBUG, "standalone operation");
+			zalone = 1;
 			break;
 #endif DEBUG
 		case '?':
