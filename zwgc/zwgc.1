@@ -963,7 +963,12 @@ SIGINT, SIGQUIT, and SIGTSTP are ignored because they can be sent
 inadvertently, and bizarre side-effects can result.  If you want them
 to be acted on, then run
 .I zwgc -nofork &
-
+.PP
+If
+.I zwgc
+receives a SIGUSR1, it will rewrite the file used to store the
+WindowGram port number ($WGFILE or /tmp/wg.\fIuid\fR), in the event
+that the file has been lost.
 .SH CONTROL MESSAGES
 In order to allow some special user controls over the behavior of
 .IR zwgc ,
