@@ -277,7 +277,7 @@ Code_t ZParseNotice(buffer, len, notice)
 	next_field (ptr);
     }
     else
-	notice->z_uid = notice->z_multiuid;
+	notice->z_multiuid = notice->z_uid;
 
     for (i=0;i<Z_MAXOTHERFIELDS && numfields;i++,numfields--) {
 	notice->z_other_fields[i] = ptr;
