@@ -2893,18 +2893,23 @@ fi
 if test "$krb4" != no; then
 	if test "$krb4" != yes; then
 	CPPFLAGS="$CPPFLAGS -I$krb4/include"
+	if test -d "$krb4/include/kerberosIV"; then
+		CPPFLAGS="$CPPFLAGS -I$krb4/include/kerberosIV"
+	fi
 	LDFLAGS="$LDFLAGS -L$krb4/lib"
+elif test -d /usr/include/kerberosIV; then
+	CPPFLAGS="$CPPFLAGS -I/usr/include/kerberosIV"
 fi
-echo $ac_n "checking for krb_rd_req in -lkrb""... $ac_c" 1>&6
-echo "configure:2900: checking for krb_rd_req in -lkrb" >&5
-ac_lib_var=`echo krb'_'krb_rd_req | sed 'y%./+-%__p_%'`
+echo $ac_n "checking for krb_rd_req in -lkrb4""... $ac_c" 1>&6
+echo "configure:2905: checking for krb_rd_req in -lkrb4" >&5
+ac_lib_var=`echo krb4'_'krb_rd_req | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   ac_save_LIBS="$LIBS"
-LIBS="-lkrb -ldes $LIBS"
+LIBS="-lkrb4 -ldes425 -lkrb5 -lcrypto -lcom_err $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 2908 "configure"
+#line 2913 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -2915,7 +2920,7 @@ int main() {
 krb_rd_req()
 ; return 0; }
 EOF
-if { (eval echo configure:2919: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+if { (eval echo configure:2924: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -2930,22 +2935,17 @@ LIBS="$ac_save_LIBS"
 fi
 if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
   echo "$ac_t""yes" 1>&6
-  KRB4_LIBS="-lkrb -ldes"
+  KRB4_LIBS="-lkrb4 -ldes425 -lkrb5 -lcrypto -lcom_err"
 else
   echo "$ac_t""no" 1>&6
-if test "$krb4" != yes; then
-		CPPFLAGS="$CPPFLAGS -I$krb4/include/kerberosIV"
-	else
-		CPPFLAGS="$CPPFLAGS -I/usr/include/kerberosIV"
-	fi
-	echo $ac_n "checking for krb_rd_req in -lkrb4""... $ac_c" 1>&6
-echo "configure:2943: checking for krb_rd_req in -lkrb4" >&5
-ac_lib_var=`echo krb4'_'krb_rd_req | sed 'y%./+-%__p_%'`
+echo $ac_n "checking for krb_rd_req in -lkrb""... $ac_c" 1>&6
+echo "configure:2943: checking for krb_rd_req in -lkrb" >&5
+ac_lib_var=`echo krb'_'krb_rd_req | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   ac_save_LIBS="$LIBS"
-LIBS="-lkrb4 -ldes425 -lkrb5 -lcrypto -lcom_err $LIBS"
+LIBS="-lkrb -ldes $LIBS"
 cat > conftest.$ac_ext <<EOF
 #line 2951 "configure"
 #include "confdefs.h"
@@ -2973,7 +2973,7 @@ LIBS="$ac_save_LIBS"
 fi
 if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
   echo "$ac_t""yes" 1>&6
-  KRB4_LIBS="-lkrb4 -ldes425 -lkrb5 -lcrypto -lcom_err"
+  KRB4_LIBS="-lkrb -ldes"
 else
   echo "$ac_t""no" 1>&6
 { echo "configure: error: Kerberos 4 libraries not found" 1>&2; exit 1; }
