@@ -30,7 +30,6 @@
 *sendClose.bottom:	ChainTop
 *sendClose.left:	ChainLeft
 *sendClose.right:	ChainRight
-*sendClose.width:	671
 *sendClose.translations:#override\
 	<BtnDown>:	set() \n\
 	<BtnUp>:	CloseSend() unset() \n\
@@ -41,7 +40,6 @@
 *editPane.left:		ChainLeft
 
 *editTitle.showGrip:	false
-*editTitle.width:	480
 *editTitle.borderWidth:	0
 
 *editForm.showGrip:	false
@@ -73,7 +71,6 @@
 	<BtnDown>:	set() \n\
 	<BtnUp>:	YankNext() unset() \n\
 
-*editor.width:		480
 *editor.height:		130
 *editor*editType:	edit
 *editor*wrap:		never
@@ -98,7 +95,6 @@
 *destScroll.bottom:	ChainBottom
 *destScroll.left:	ChainLeft
 *destScroll.right:	ChainRight
-*destScroll.width:	190
 *destScroll.height:	178
 *destScroll.resizable:	false
 *destScroll.allowVert:	true
@@ -132,8 +128,16 @@
 	<BtnDown>:	set() \n\
 	<BtnUp>:	Signature()
 
+*clearOnSend.label:	Clear On Send
+*clearOnSend.fromVert:	signature
+*clearOnSend.left:	ChainLeft
+*clearOnSend.right:	ChainRight
+*clearOnSend.width:	200
+*clearOnSend.translations: #override\
+	<BtnDown>,<BtnUp>: toggle() ToggleOption()
+
 *closeOnSend.label:	Close On Send
-*closeOnSend.fromVert:	signature
+*closeOnSend.fromVert:	clearOnSend
 *closeOnSend.left:	ChainLeft
 *closeOnSend.right:	ChainRight
 *closeOnSend.width:	200
