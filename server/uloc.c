@@ -20,6 +20,7 @@ static char rcsid_uloc_s_c[] = "$Header$";
 #include "zserver.h"
 
 /*
+ * The user locator functions.
  *
  * External functions:
  *
@@ -39,10 +40,9 @@ static char rcsid_uloc_s_c[] = "$Header$";
  */
 
 /*
- * The user locator functions.
- *
- * We maintain a table sorted by user field, with entries
- *	user@realm	machine		time	visible
+ * The user locator.
+ * We maintain an array of ZLocation_t sorted by user (so we can do
+ * binary searches), growing and shrinking it as necessary.
  */
 
 typedef enum _login_type {
@@ -61,6 +61,11 @@ typedef struct _ZLocation_t {
 	struct in_addr zlt_addr;
 } ZLocation_t;
 
+/* WARNING: make sure this is the same as the number of strings you */
+/* plan to hand back to the user in response to a locate request, */
+/* else you will lose.  See ulogin_locate() */  
+#define	NUM_FIELDS	2
+
 #define	NULLZLT		((ZLocation_t *) 0)
 #define	QUIET		(-1)
 
@@ -70,31 +75,36 @@ static int uloc_compare(), ulogin_setup(), ulogin_parse(), ul_equiv();
 static int ulogin_remove_user(), ulogin_hide_user();
 
 static ZLocation_t *locations = NULLZLT; /* ptr to first in array */
-static int num_locs = 0;		/* number in array */
+static int num_locs = 0;		 /* number in array */
 
-void ulogin_dispatch(notice, auth, who)
+/*
+ * Dispatch a LOGIN notice.
+ */
+
+void
+ulogin_dispatch(notice, auth, who)
 ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
 {
 	Code_t retval;
-	zdbug1("ulogin_disp");
+	zdbug((LOG_DEBUG,"ulogin_disp"));
 
 	if (!auth) {
-		zdbug1("unauthentic ulogin");
+		zdbug((LOG_DEBUG,"unauthentic ulogin"));
 		clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}
 	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
-		zdbug1("user login");
+		zdbug((LOG_DEBUG,"user login"));
 		ulogin_add_user(notice, VISIBLE, who);
 		sendit(notice, auth, who);
 	} else if (!strcmp(notice->z_opcode, LOGIN_QUIET_LOGIN)) {
-		zdbug1("quiet login");
+		zdbug((LOG_DEBUG,"quiet login"));
 		ulogin_add_user(notice, INVISIBLE, who);
 		ack(notice, who);
 	} else if (!strcmp(notice->z_opcode, LOGIN_USER_LOGOUT)) {
-		zdbug1("logout");
+		zdbug((LOG_DEBUG,"logout"));
 		if ((retval = ulogin_remove_user(notice)) == QUIET)
 			ack(notice, who);
 		else if (retval)
@@ -108,33 +118,39 @@ struct sockaddr_in *who;
 	return;
 }
 
-void ulocate_dispatch(notice, auth, who)
+/*
+ * Dispatch a LOCATE notice.
+ */
+
+void
+ulocate_dispatch(notice, auth, who)
 ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
 {
-	zdbug1("ulocate_disp");
+	zdbug((LOG_DEBUG,"ulocate_disp"));
 
 	/* we allow unauthenticated locates */
 	if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
-		zdbug1("locate");
+		zdbug((LOG_DEBUG,"locate"));
 		ulogin_locate(notice, who);
 		/* does xmit and ack itself, so return */
 		return;
 	} 
+	/* ... but not unauthentic changes of location status */
 	if (!auth) {
-		zdbug1("unauthentic ulocate");
+		zdbug((LOG_DEBUG,"unauthentic ulocate"));
 		clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}
 	if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
-		zdbug1("user hide");
+		zdbug((LOG_DEBUG,"user hide"));
 		if (ulogin_hide_user(notice, INVISIBLE)) {
 			clt_ack(notice, who, NOT_FOUND);
 			return;
 		}
 	} else if (!strcmp(notice->z_opcode, LOCATE_UNHIDE)) {
-		zdbug1("user unhide");
+		zdbug((LOG_DEBUG,"user unhide"));
 		if (ulogin_hide_user(notice, VISIBLE)) {
 			clt_ack(notice, who, NOT_FOUND);
 			return;
@@ -147,7 +163,62 @@ struct sockaddr_in *who;
 	return;
 }
 
-static void
+/*
+ * Flush all locations at the address.
+ */
+
+void
+uloc_hflush(addr)
+struct in_addr *addr;
+{
+	ZLocation_t *loc;
+	register int i = 0, new_num = 0;
+
+	/* slightly inefficient, assume the worst, and allocate enough space */
+	if (!(loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t)))) {
+		syslog(LOG_CRIT, "uloc_flush malloc");
+		abort();
+		/*NOTREACHED*/
+	}
+
+	/* copy entries which don't match */
+	while (i < num_locs) {
+		if (locations[i].zlt_addr.s_addr != addr->s_addr)
+			loc[new_num++] = locations[i];
+		i++;
+	}
+
+	xfree(locations);
+
+	if (!new_num) {
+		zdbug((LOG_DEBUG,"no more locs"));
+		xfree(loc);
+		locations = NULLZLT;
+		return;
+	}
+	locations = loc;
+	num_locs = new_num;
+
+#ifdef DEBUG
+	if (zdebug) {
+		register int i;
+
+		for (i = 0; i < num_locs; i++)
+			syslog(LOG_DEBUG, "%s/%d",
+			       locations[i].zlt_user,
+			       (int) locations[i].zlt_visible);
+	}
+#endif DEBUG
+	/* all done */
+	return;
+}
+
+/*
+ * Add the user to the internal table of locations.
+ */
+
+static
+void
 ulogin_add_user(notice, visible, who)
 ZNotice_t *notice;
 login_type visible;
@@ -155,14 +226,14 @@ struct sockaddr_in *who;
 {
 	ZLocation_t *loc;
 
-	if ((loc = ulogin_find(notice, 1)) != NULLZLT) {
-		zdbug1("ul_add: already here");
+	if ((loc = ulogin_find(notice, 1))) {
+		zdbug((LOG_DEBUG,"ul_add: already here"));
 		(void) ulogin_hide_user(notice, visible);
 		return;
 	}
 
 	if (num_locs == 0) {		/* first one */
-		if ((locations = (ZLocation_t *) malloc(sizeof(ZLocation_t))) == NULLZLT) {
+		if (!(locations = (ZLocation_t *) malloc(sizeof(ZLocation_t)))) {
 			syslog(LOG_ERR, "zloc mem alloc");
 			return;
 		}
@@ -185,7 +256,9 @@ struct sockaddr_in *who;
 		return;
 	}
 
-	if ((loc = (ZLocation_t *) realloc((caddr_t) locations, (unsigned) ((num_locs + 1) * sizeof(ZLocation_t)))) == NULLZLT) {
+	/* not the first one: reallocate, add him on and sort in */
+
+	if (!(loc = (ZLocation_t *) realloc((caddr_t) locations, (unsigned) ((num_locs + 1) * sizeof(ZLocation_t))))) {
 		syslog(LOG_ERR, "zloc realloc");
 		num_locs = 0;
 		locations = NULLZLT;
@@ -212,6 +285,10 @@ struct sockaddr_in *who;
 	/* all done */
 	return;
 }
+
+/*
+ * Set up the location locs with the information in the notice.
+ */ 
 
 static int
 ulogin_setup(notice, locs, visible, who)
@@ -263,6 +340,10 @@ struct sockaddr_in *who;
 			return(1); \
 		} }
 
+/*
+ * Parse the location information in the notice, and fill it into *locs
+ */
+
 static int
 ulogin_parse(notice, locs)
 register ZNotice_t *notice;
@@ -278,17 +359,17 @@ register ZLocation_t *locs;
 	locs->zlt_user = notice->z_class_inst;
 	cp = base = notice->z_message;
 
-	zdbug2("user %s",notice->z_class_inst);
+	zdbug((LOG_DEBUG,"user %s",notice->z_class_inst));
 	locs->zlt_machine = cp;
-	zdbug2("mach %s",cp);
+	zdbug((LOG_DEBUG,"mach %s",cp));
 #ifdef notdef
 	ADVANCE(1);
 	locs->zlt_tty = cp;
-	zdbug2("tty %s",cp);
+	zdbug((LOG_DEBUG,"tty %s",cp));
 #endif notdef
 	ADVANCE(2);
 	locs->zlt_time = cp;
-	zdbug2("time %s",cp);
+	zdbug((LOG_DEBUG,"time %s",cp));
 	cp += (strlen(cp) + 1);
 	if (cp > base + notice->z_message_len) {
 		syslog(LOG_ERR, "zloc bad format 3");
@@ -297,12 +378,23 @@ register ZLocation_t *locs;
 	return(0);
 }	
 
+/*
+ * Compare two locations for ordering via qsort
+ */
+
 static int
 uloc_compare(l1, l2)
 ZLocation_t *l1, *l2;
 {
 	return(strcmp(l1->zlt_user, l2->zlt_user));
 }
+
+/*
+ * Find the username specified in notice->z_class_inst.
+ * If strict, make sure the locations in notice and the table match.
+ * Otherwise return a pointer to the first instance of this user@realm
+ * in the table.
+ */
 
 static ZLocation_t *
 ulogin_find(notice, strict)
@@ -313,7 +405,7 @@ int strict;
 	int compar;
 	ZLocation_t tmploc;
 
-	if (locations == NULLZLT)
+	if (!locations)
 		return(NULLZLT);
 
 	/* i is the current loc we are checking */
@@ -330,13 +422,13 @@ int strict;
 		else
 			rhi = i - 1;
 		if (rhi - rlo < 0) {
-			zdbug1("ul_find not found");
+			zdbug((LOG_DEBUG,"ul_find not found"));
 			return(NULLZLT);
 		}
 		i = (rhi + rlo) >> 1; /* split the diff */
 	}
 	if (strict  && ulogin_parse(notice, &tmploc)) {
-		zdbug1("ul_find bad fmt");
+		zdbug((LOG_DEBUG,"ul_find bad fmt"));
 		return(NULLZLT);
 	}
 	/* back up to the first of this guy */
@@ -351,11 +443,15 @@ int strict;
 			i++;
 
 	if ((i == num_locs) || strcmp(locations[i].zlt_user, notice->z_class_inst)) {
-		zdbug1("ul_find final match loss");
+		zdbug((LOG_DEBUG,"ul_find final match loss"));
 		return(NULLZLT);
 	}
 	return(&locations[i]);
 }
+
+/*
+ * are the locations of this user equivalent? 1 = yes, 0 = no
+ */
 
 static int
 ul_equiv(l1, l2)
@@ -370,51 +466,9 @@ register ZLocation_t *l1, *l2;
 	return(1);
 }
 
-void
-uloc_hflush(addr)
-struct in_addr *addr;
-{
-	ZLocation_t *loc;
-	register int i = 0, new_num = 0;
-
-	/* slightly inefficient, assume the worst, and allocate enough space */
-	if ((loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t))) == NULLZLT) {
-		syslog(LOG_CRIT, "uloc_flush malloc");
-		abort();
-		/*NOTREACHED*/
-	}
-
-	/* copy entries which don't match */
-	while (i < num_locs) {
-		if (locations[i].zlt_addr.s_addr != addr->s_addr)
-			loc[new_num++] = locations[i];
-		i++;
-	}
-
-	xfree(locations);
-
-	if (!new_num) {
-		zdbug1("no more locs");
-		xfree(loc);
-		locations = NULLZLT;
-		return;
-	}
-	locations = loc;
-	num_locs = new_num;
-
-#ifdef DEBUG
-	if (zdebug) {
-		register int i;
-
-		for (i = 0; i < num_locs; i++)
-			syslog(LOG_DEBUG, "%s/%d",
-			       locations[i].zlt_user,
-			       (int) locations[i].zlt_visible);
-	}
-#endif DEBUG
-	/* all done */
-	return;
-}
+/*
+ * remove the user specified in notice from the internal table
+ */
 
 static int
 ulogin_remove_user(notice)
@@ -424,8 +478,8 @@ ZNotice_t *notice;
 	register int i = 0;
 	int quiet = 0;
 
-	if ((loc2 = ulogin_find(notice, 1)) == NULLZLT) {
-		zdbug1("ul_rem: not here");
+	if (!(loc2 = ulogin_find(notice, 1))) {
+		zdbug((LOG_DEBUG,"ul_rem: not here"));
 		return(1);
 	}
 
@@ -433,13 +487,13 @@ ZNotice_t *notice;
 		quiet = QUIET;
 
 	if (--num_locs == 0) {		/* last one */
-		zdbug1("last loc");
+		zdbug((LOG_DEBUG,"last loc"));
 		xfree(locations);
 		locations = NULLZLT;
 		return(quiet);
 	}
 
-	if ((loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t))) == NULLZLT) {
+	if (!(loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t)))) {
 		syslog(LOG_CRIT, "ul_rem malloc");
 		abort();
 		/*NOTREACHED*/
@@ -477,6 +531,10 @@ ZNotice_t *notice;
 	return(quiet);
 }
 
+/*
+ * Set the user's visible flag to visible
+ */
+
 static int
 ulogin_hide_user(notice, visible)
 ZNotice_t *notice;
@@ -484,13 +542,17 @@ login_type visible;
 {
 	ZLocation_t *loc;
 
-	if ((loc = ulogin_find(notice, 1)) == NULLZLT) {
-		zdbug1("ul_hide: not here");
+	if (!(loc = ulogin_find(notice, 1))) {
+		zdbug((LOG_DEBUG,"ul_hide: not here"));
 		return(1);
 	}
 	loc->zlt_visible = visible;
 	return(0);
 }
+
+/*
+ * Locate the user and send the locations in the acknowledgement to the client.
+ */
 
 static void
 ulogin_locate(notice, who)
@@ -508,14 +570,14 @@ struct sockaddr_in *who;
 	int packlen;
 
 	/* advance past non-matching locs */
-	if ((loc = ulogin_find(notice, 0)) == NULLZLT)
+	if (!(loc = ulogin_find(notice, 0)))
 		/* not here anywhere */
 		goto rep;
 
 	i = loc - locations;
 	while (i < num_locs && !strcmp(notice->z_class_inst, locations[i].zlt_user)) {
 		/* these locations match */
-		zdbug2("match %s", locations[i].zlt_user);
+		zdbug((LOG_DEBUG,"match %s", locations[i].zlt_user));
 		if (locations[i].zlt_visible != VISIBLE) {
 			i++;
 			continue;
@@ -550,25 +612,30 @@ rep:
 #ifdef DEBUG
 	if (zdebug) {
 		for (i = 0; i < found ; i++)
-			zdbug2("found %s", matches[i]->zlt_user);
+			zdbug((LOG_DEBUG,"found %s", matches[i]->zlt_user));
 	}
 #endif DEBUG
 
 	/* coalesce the location information into a list of char *'s */
-	if ((answer = (char **) xmalloc(found * 2 * sizeof(char *))) == (char **) 0) {
+	if ((answer = (char **) xmalloc(found * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
 		syslog(LOG_ERR, "zloc no mem(answer)");
 		found = 0;
 	} else
 		for (i = 0; i < found ; i++) {
-			answer[i*2] = matches[i]->zlt_machine;
+			answer[i*NUM_FIELDS] = matches[i]->zlt_machine;
 #ifdef notdef
-			answer[i*3 + 1] = matches[i]->zlt_tty;
+			answer[i*NUM_FIELDS + 1] = matches[i]->zlt_tty;
 #endif notdef
-			answer[i*2 + 1] = matches[i]->zlt_time;
+			answer[i*NUM_FIELDS + 1] = matches[i]->zlt_time;
 		}
 
 	/* if it's too long, chop off one at a time till it fits */
-	while ((retval = ZFormatRawNoticeList(&reply, answer, found * 2, reppacket, packlen, &packlen)) == ZERR_PKTLEN)
+	while ((retval = ZFormatRawNoticeList(&reply,
+					      answer,
+					      found * NUM_FIELDS,
+					      reppacket,
+					      packlen,
+					      &packlen)) == ZERR_PKTLEN)
 		found--;
 
 	if (retval != ZERR_NONE) {
@@ -589,7 +656,7 @@ rep:
 		xfree(answer);
 		return;
 	}
-	zdbug1("ulog_loc acked");
+	zdbug((LOG_DEBUG,"ulog_loc acked"));
 	xfree(answer);
 	return;
 }
