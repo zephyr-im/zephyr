@@ -569,7 +569,7 @@ static char *put_filter(p, text, length)
       return(NULL);
 
     input = convert_nulls_to_newlines(text, length);
-    output = p->data.filter.filter(input);
+    output = (*(p->data.filter.filter))(input);
     free(input);
     string_stack_push(p->data.filter.waiting_packets, output);
     return(NULL);
