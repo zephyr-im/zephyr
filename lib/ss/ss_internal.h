@@ -108,6 +108,8 @@ extern char *ss_et_msgs[];
 extern pointer malloc PROTOTYPE((unsigned));
 extern pointer realloc PROTOTYPE((pointer, unsigned));
 extern pointer calloc PROTOTYPE((unsigned, unsigned));
+#ifndef sun
 extern int exit PROTOTYPE((int));
+#endif
 
 #endif /* _ss_internal_h */
