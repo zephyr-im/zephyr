@@ -20,7 +20,8 @@
 					   <sys/types.h>,
 					   <netinet/in.h>,
 					   <sys/time.h>, 
-					   <stdio.h> */
+					   <stdio.h>,
+					   <krb.h> */
 #include <arpa/inet.h>
 #include <zephyr/acl.h>
 #include <sys/file.h>
@@ -280,6 +281,8 @@ extern char *pktypes[];			/* names of the packet types */
 #define	LOGIN_ACL	"login.acl"
 #define	LOCATE_ACL	"locate.acl"
 #define	MATCH_ALL_ACL	"matchall.acl"
+#define	ZEPHYR_SRVTAB	"/site/zephyr/srvtab"
+#define	ZEPHYR_TKFILE	"/site/zephyr/ztkts"
 
 /* debugging macros */
 #ifdef DEBUG
