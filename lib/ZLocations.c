@@ -52,6 +52,11 @@ Code_t ZUnsetLocation()
 			       "$sender logged out of $1 on $3 at $2"));
 }
 
+Code_t ZFlushLocations()
+{
+	return (Z_SendLocation(LOGIN_CLASS,LOGIN_USER_FLUSH,ZAUTH,""));
+}
+
 Code_t ZHideLocation()
 {
 	return (Z_SendLocation(LOCATE_CLASS,LOCATE_HIDE,ZAUTH,(char *)0));
