@@ -64,17 +64,18 @@ error_table.o: et_lex.lex.c
 #
 SimpleProgram(compile_et, compile_et.o error_table.o, -ll,$(ATHBINDIR))
 
-create_dir($(DOCDIR))
-
 install_file(com_err.h,$(ATHINCDIR))
 install_file(mit-sipb-copyright.h,$(ATHINCDIR))
 install_man(com_err.3,com_err.3)
 install_man(compile_et.1,compile_et.1)
+
+#if 0
+create_dir($(DOCDIR))
 install_file(com_err.texinfo,${DOCDIR}/com_err.texinfo)
+#endif
 
 
 SimpleLibrary(com_err,$(LIBOBJS),$(ATHLIBDIR))
-
 
 SimpleLint(com_err,$(LINTFILES))
 
@@ -89,22 +90,6 @@ clean::
 		test1.h test1.c test2.h test2.c test \
 		eddep makedep *.ln
 
-# for testing
-test:	test.o test1.o test2.o libcom_err.a
-	cc ${CFLAGS} -o test test.o test1.o test2.o libcom_err.a
-test.o:	test1.h test2.h
-test1.o : test1.c
-test1.c : test1.et
-test2.o : test2.c
-test2.c : test2.et
-
-et.tar:	${FILES}
-	rm -f et.tar
-	tar cfrlv et.tar ${FILES}
-
-tags:	TAGS
-
-doc:	com_err.dvi
 
 
 com_err.ps : com_err.dvi
