@@ -9,7 +9,7 @@ void yank_init()
 {
      yank_buffer = (Yank) Malloc(defs.max_yanks*sizeof(YankRec),
 				   "while allocating yank buffer", NULL);
-     _BZERO((char *) yank_buffer, defs.max_yanks*sizeof(YankRec));
+     (void) memset((char *) yank_buffer, 0, defs.max_yanks*sizeof(YankRec));
 
      read_index = write_index = 0;
      highest = -1;
