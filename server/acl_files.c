@@ -56,7 +56,6 @@ static char rcsid_acl_files_c[] = "$Id$";
 
 extern int errno;
 
-extern char *malloc(), *calloc();
 extern time_t time();
 
 /* Canonicalize a principal name */
@@ -72,8 +71,8 @@ acl_canonicalize_principal(principal, canon)
     char *dot, *atsign;
     int len;
 
-    dot = index(principal, INST_SEP);
-    atsign = index(principal, REALM_SEP);
+    dot = (char *) index(principal, INST_SEP);
+    atsign = (char *) index(principal, REALM_SEP);
 
     /* Maybe we're done already */
     if(dot != NULL && atsign != NULL) {
@@ -352,7 +351,7 @@ char *el;
 
     hv = hashval(el) % h->size;
     while(h->tbl[hv] != NULL && strcmp(h->tbl[hv], el)) hv = (hv+1) % h->size;
-    s = malloc(strlen(el)+1);
+    s = (char *) malloc(strlen(el)+1);
     strcpy(s, el);
     h->tbl[hv] = s;
     h->entries++;
@@ -513,8 +512,8 @@ acl_check(acl, principal)
 	return 1;
 
     /* Try the wildcards */
-    realm = index(canon, REALM_SEP);
-    *index(canon, INST_SEP) = '\0';	/* Chuck the instance */
+    realm = (char *) index(canon, REALM_SEP);
+    *((char *)index(canon, INST_SEP)) = '\0';	/* Chuck the instance */
 
     sprintf(buf, "%s.*%s", canon, realm);
     if(acl_exact_match(acl, buf)) return 1;
