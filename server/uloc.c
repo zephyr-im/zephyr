@@ -438,12 +438,14 @@ struct in_addr *addr;
 	while (i < num_locs) {
 		if (locations[i].zlt_addr.s_addr != addr->s_addr)
 			loc[new_num++] = locations[i];
-		else if (zdebug)
+		else {
+		    if (zdebug)
 			syslog(LOG_DEBUG, "uloc hflushing %s/%s/%s",
 			       locations[i].zlt_user,
 			       locations[i].zlt_machine,
 			       locations[i].zlt_tty);
-		free_loc(&locations[i]);
+		    free_loc(&locations[i]);
+		}
 		i++;
 	}
 
@@ -495,12 +497,14 @@ struct sockaddr_in *sin;
 		if ((locations[i].zlt_addr.s_addr != sin->sin_addr.s_addr)
 		     || (locations[i].zlt_port != sin->sin_port))
 			loc[new_num++] = locations[i];
-		else if (zdebug)
+		else {
+		    if (zdebug)
 			syslog(LOG_DEBUG, "uloc cflushing %s/%s/%s",
 			       locations[i].zlt_user,
 			       locations[i].zlt_machine,
 			       locations[i].zlt_tty);
-		free_loc(&locations[i]);
+		    free_loc(&locations[i]);
+		}
 		i++;
 	}
 
@@ -638,13 +642,13 @@ struct sockaddr_in *who;
 
 	oldlocs = locations;
 
+	omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
 	if (!(locations = (ZLocation_t *) xmalloc((num_locs + 1) * sizeof(ZLocation_t)))) {
 		syslog(LOG_ERR, "zloc mem alloc");
 		locations = oldlocs;
 		return;
 	}
 
-	omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
 	if (num_locs == 0) {		/* first one */
 		if (ulogin_setup(notice, locations, exposure, who)) {
 			xfree(locations);
