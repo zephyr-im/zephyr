@@ -26,7 +26,7 @@ Code_t ZSubscribeTo(sublist,nitems,port)
 	int nitems;
 	u_short port;
 {
-	return (Z_Subscriptions(sublist,nitems,port,CLIENT_SUBSCRIBE));
+	return (Z_Subscriptions(sublist,nitems,port,CLIENT_SUBSCRIBE,1));
 }
 
 Code_t ZUnsubscribeTo(sublist,nitems,port)
@@ -34,21 +34,22 @@ Code_t ZUnsubscribeTo(sublist,nitems,port)
 	int nitems;
 	u_short port;
 {
-	return (Z_Subscriptions(sublist,nitems,port,CLIENT_UNSUBSCRIBE));
+	return (Z_Subscriptions(sublist,nitems,port,CLIENT_UNSUBSCRIBE,1));
 }
 
 Code_t ZCancelSubscriptions(port)
 	u_short port;
 {
 	return (Z_Subscriptions((ZSubscription_t *)0,0,port,
-				CLIENT_CANCELSUB));
+				CLIENT_CANCELSUB,0));
 }
 
-Z_Subscriptions(sublist,nitems,port,opcode)
+Z_Subscriptions(sublist,nitems,port,opcode,authit)
 	ZSubscription_t	*sublist;
 	int nitems;
 	u_short port;
 	char *opcode;
+	int authit;
 {
 	int i,retval;
 	ZNotice_t notice,retnotice;
@@ -80,7 +81,9 @@ Z_Subscriptions(sublist,nitems,port,opcode)
 	}
 	
 	retval = ZSendList(&notice,list,nitems*3,ZAUTH);
-
+	if (retval != ZERR_NONE && !authit)
+		retval = ZSendList(&notice,list,nitems*3,ZNOAUTH);
+	
 	free((char *)list);
 
 	if (retval != ZERR_NONE)
