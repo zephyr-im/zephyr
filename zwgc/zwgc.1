@@ -801,6 +801,18 @@ Title
 Secondary window title [defaults to the last pathname component
 of the program name, usually "zwgc"]
 .TP
+transient
+(logical) Primary value which determines if zephyrgram windows will be
+created with the \fBWM_TRANSIENT_FOR\fR property set.  If this
+resource is true, the property will be set, telling certain
+windowmanagers to treat zephyrgram windows specially.  For instance,
+\fItwm\fR will not put decorations on transient windows, \fImwm\fR
+will not let you iconify them, and \fIuwm\fR ignores the resource
+entirely.
+.TP
+Transient
+Secondary transient determining value [default False]
+.TP
 iconName
 (string) Primary icon name
 .TP
@@ -895,10 +907,13 @@ will exit cleanly (unset location and cancel subscriptions) on:
 .nf
 	SIGTERM
 	SIGHUP
-	SIGINT
 	XIOError (with a message to stderr)
 .fi
-SIGHUP is what it expects to get upon logout.
+SIGHUP is what it expects to get upon logout.  Also, the signals
+SIGINT, SIGQUIT, and SIGTSTP are ignored because they can be sent
+inadvertently, and bizarre side-effects can result.  If you want them
+to be acted on, then run
+.I zwgc -nofork &
 
 .SH CONTROL MESSAGES
 In order to allow some special user controls over the behavior of
