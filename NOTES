@@ -44,11 +44,3 @@ as using autoconf features like AC_C_CONST.
 The Zephyr system version number is kept in server/version.c, and
 should be updated when releases are made.
 
-If you want to run "autoheader" to regenerate h/config.h.in in the
-source tree, you should know that autoconf 2.3's autoheader has a bug
-which prevents it from finding the right header file to use when
-multiple output header files are specified.  I've sent in a patch for
-this, but until the next release, use:
-
-	autoheader configure.in > h/config.h.in
-
