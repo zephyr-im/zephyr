@@ -25,13 +25,18 @@ static char rcsid_hostm_s_c[] = "$Header$";
  *
  * External functions:
  *
- * void hostm_dispatch(notice, auth, who)
+ * void hostm_dispatch(notice, auth, who, server)
  *	ZNotice_t *notice;
  *	int auth;
  *	struct sockaddr_in *who;
+ *	ZServerDesc_t *server;
  *
  * void hostm_flush(host)
  *	ZHostList_t *host;
+ *
+ * void hostm_transfer(host, server)
+ *	ZHostList_t *host;
+ *	ZServerDesc_t *server;
  *
  * ZHostList_t *hostm_find_host(addr)
  *	struct in_addr *addr;
@@ -61,8 +66,8 @@ static char rcsid_hostm_s_c[] = "$Header$";
  */
 
 struct hostlist {
-	ZHostList_t *host;
-	ZServerDesc_t *server;
+	ZHostList_t *host;		/* ptr to host struct */
+	int server_index;		/* index of server in the table */
 };
 
 typedef struct _losinghost {
@@ -95,10 +100,11 @@ static int cmp_hostlist();
 
 /*ARGSUSED*/
 void
-hostm_dispatch(notice, auth, who)
+hostm_dispatch(notice, auth, who, server)
 ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
+ZServerDesc_t *server;
 {
 	ZServerDesc_t *owner;
 	ZHostList_t *host;
@@ -110,43 +116,54 @@ struct sockaddr_in *who;
 	if (notice->z_kind == HMACK) {
 		host_not_losing(who);
 		return;
+#ifdef notdef
+	/* not yet--wait til next release */
+	} else if (notice->z_kind != HMCTL) {
+		zdbug((LOG_DEBUG, "bogus HM packet"));
+		clt_ack(notice, who, AUTH_FAILED);
+		return;
+#endif notdef
 	}
 	owner = hostm_find_server(&who->sin_addr);
 	if (!strcmp(opcode, HM_BOOT)) {
 		zdbug((LOG_DEBUG,"boot %s",inet_ntoa(who->sin_addr)));
-		if (owner == &otherservers[me_server_idx]) {
+		if (owner == server) {
 			zdbug((LOG_DEBUG,"hm_disp flushing"));
-			/* I own him.  Just cancel any subscriptions */
-			flush(who, me_server);
+			/* Same server owns him.  Just cancel
+			   any subscriptions */
+			flush(who, server);
 		
-		} else if (!owner) {
+		} else if (owner) {
+			/* He has switched servers.
+			   he was lost but has asked server to work for him.
+			   We need to transfer him to server */
+			zdbug((LOG_DEBUG,"hm_disp transfer"));
+			/* hostm_find_host won't fail here, since we just
+			   did a hostm_find_server successfully */
+			hostm_transfer(hostm_find_host(&who->sin_addr), server);
+
+		} else {
 			zdbug((LOG_DEBUG,"acquiring"));
 			/* no owner.  Acquire him. */
-			if ((retval = host_attach(who, me_server))
+			if ((retval = host_attach(who, server))
 			    != ZERR_NONE) {
 				syslog(LOG_WARNING, "hattach failed: %s",
 				       error_message(retval));
 				return;
 			}
-		} else {
-			zdbug((LOG_DEBUG,"hostm_flush'ing"));
-			/* He has switched servers.  Take him, then
-			   tell the owner and other hosts to flush. */
-			hostm_flush(hostm_find_host(&who->sin_addr), owner);
-			/* XXX tell other servers */
-
-			if ((retval = host_attach(who, me_server))
-			    != ZERR_NONE)
-				syslog(LOG_WARNING, "hattach failed: %s",
-				       error_message(retval));
 		}
-		ack(notice, who);
+		if (server == me_server) {
+			server_forward(notice, auth, who);
+			ack(notice, who);
+		}
 	} else if (!strcmp(opcode, HM_FLUSH)) {
-		zdbug((LOG_DEBUG,"hm_disp flush %s", inet_ntoa(who->sin_addr)));
-		if (!owner ||
-		    !(host = hostm_find_host(&who->sin_addr)))
+		zdbug((LOG_DEBUG,"hm_disp flush %s",inet_ntoa(who->sin_addr)));
+		if (!owner)
 			return;
-		hostm_flush(host, owner);
+		/* put him in limbo */
+		hostm_transfer(hostm_find_host(&who->sin_addr), limbo_server);
+		if (server == me_server)
+			server_forward(notice, auth, who);
 		return;
 	} else {
 		syslog(LOG_WARNING, "hm_disp: unknown opcode %s",opcode);
@@ -215,7 +232,7 @@ hostm_shutdown()
 	     host = host->q_forw)
 		deathgram(&host->zh_addr);
 	
-	/* XXX tell other servers */
+	server_shutdown();
 
 	return;
 }
@@ -241,6 +258,13 @@ ZHostList_t *host;
 		}
 		losing_hosts->q_forw = losing_hosts->q_back = losing_hosts;
 	}
+	for (newhost = losing_hosts->q_forw;
+	     newhost != losing_hosts;
+	     newhost = newhost->q_forw)
+		if (newhost->lh_client == client) {
+			zdbug((LOG_DEBUG,"clt already losing"));
+			return;
+		}
 	if (!(newhost = (losinghost *) xmalloc(sizeof(losinghost)))) {
 		syslog(LOG_ERR, "no mem losing host 2");
 		return;
@@ -343,6 +367,37 @@ ZServerDesc_t *server;
 		syslog(LOG_ERR, "flush h_attach: %s",
 		       error_message(retval));
 }
+
+/*
+ * transfer this host to server's ownership.  The caller must update the
+ * other servers.
+ */
+
+void
+hostm_transfer(host, server)
+ZHostList_t *host;
+ZServerDesc_t *server;
+{
+	/* we need to unlink and relink him, and change the table entry */
+
+	zdbug((LOG_DEBUG, "hostm_transfer 0x%x to 0x%x", host, server));
+
+	/* is this the same server? */
+	if (hostm_find_server(&host->zh_addr.sin_addr) == server)
+		return;
+
+	/* remove from old server's queue */
+	xremque(host);
+
+	/* switch servers in the table */
+	remove_host(host);
+	insert_host(host, server);
+
+	/* insert in our queue */
+	xinsque(host, server->zs_hosts);
+	return;
+}
+
 
 /*
  * attach the host with return address in who to the server.
@@ -581,7 +636,7 @@ struct in_addr *addr;
 			return(NULLZSDT);
 		i = (rhi + rlo) >> 1; /* split the diff */
 	}
-	return(all_hosts[i].server);
+	return(&otherservers[all_hosts[i].server_index]);
 }
 
 /*
@@ -609,7 +664,7 @@ ZServerDesc_t *server;
 			abort();
 		}
 		all_hosts[0].host = host;
-		all_hosts[0].server = server;
+		all_hosts[0].server_index = server - otherservers;
 		return;
 	}
 
@@ -619,7 +674,7 @@ ZServerDesc_t *server;
 	}
 
 	all_hosts[num_hosts - 1].host = host;
-	all_hosts[num_hosts - 1].server = server;
+	all_hosts[num_hosts - 1].server_index = server - otherservers;
 
 	/* sort it */
 
@@ -629,10 +684,11 @@ ZServerDesc_t *server;
 	if (zdebug) {
 		register int i = 0;
 		char buf[512];
-		for (i = 0; i < num_hosts; i++)
-			syslog(LOG_DEBUG, "%d: %s %s",i,
-			       strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr)),
-			       inet_ntoa((all_hosts[i].server)->zs_addr.sin_addr));
+		for (i = 0; i < num_hosts; i++) {
+			strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr));
+			syslog(LOG_DEBUG, "%d: %s %s",i,buf,
+			       inet_ntoa(otherservers[all_hosts[i].server_index].zs_addr.sin_addr));
+		}
 	}
 #endif DEBUG
 	return;
@@ -684,10 +740,11 @@ ZHostList_t *host;
 #ifdef DEBUG
 	if (zdebug) {
 		char buf[512];
-		for (i = 0; i < num_hosts; i++)
-			syslog(LOG_DEBUG, "%d: %s %s",i,
-			       strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr)),
-			       inet_ntoa((all_hosts[i].server)->zs_addr.sin_addr));
+		for (i = 0; i < num_hosts; i++) {
+			strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr));
+			syslog(LOG_DEBUG, "%d: %s %s",i,buf,
+			       inet_ntoa(otherservers[all_hosts[i].server_index].zs_addr.sin_addr));
+		}
 	}
 #endif DEBUG
 	return;
