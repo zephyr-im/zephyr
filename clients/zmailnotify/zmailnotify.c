@@ -16,8 +16,9 @@
 #include <zephyr/zephyr.h>
 
 #ifndef lint
-static char rcsid_zwmnotify_c[] = "$Header$";
-#endif lint
+static char rcsid_zwmnotify_c[] =
+    "$Header$";
+#endif
 
 #include <sys/uio.h>
 #include <sys/socket.h>
@@ -46,7 +47,7 @@ char *PrincipalHostname(), *index();
 
 extern uid_t getuid();
 char *getenv(), *malloc(), *realloc();
-void get_message(), pop_close(), mail_notify();
+void get_message(), pop_close(), mail_notify(), fatal_pop_err ();
 #define MAXMAIL 4
 
 struct _mail {
@@ -57,6 +58,8 @@ struct _mail {
 
 char *mailptr = NULL;
 
+char *prog = "zmailnotify";
+
 /* This entire program is a kludge - beware! */
 
 main()
@@ -65,6 +68,7 @@ main()
 	int nmsgs;
 	char *user,response[512],lockfile[100];
 	char *host,*dir;
+	char *auth_cmd;
 	int i,nbytes,retval,uselock;
 	struct passwd *pwd;
 	struct _mail mymail;
@@ -72,8 +76,11 @@ main()
 	struct hes_postoffice *p;
 #endif
 
+	if (argv[0] && *argv[0])
+	    prog = argv[0];
+	
 	if ((retval = ZInitialize()) != ZERR_NONE) {
-		com_err("zmailnotify",retval,"while initializing");
+		com_err(prog,retval,"while initializing");
 		exit(1);
 	}
 
@@ -82,7 +89,8 @@ main()
 	if (!user || !dir) {
 		pwd = (struct passwd *)getpwuid((int) getuid());
 		if (!pwd) {
-			fprintf(stderr,"Can't figure out who you are!\n");
+			fprintf(stderr,"%s: Can't figure out who you are!\n",
+				prog);
 			exit(1);
 		}
 		if (!user)
@@ -100,13 +108,15 @@ main()
 		if (p != NULL && strcmp(p->po_type, "POP") == 0)
 			host = p->po_host;
 		else {
-			fprintf(stderr,"no POP server listed in Hesiod");
+			fprintf(stderr,
+				"%s: no POP server listed in Hesiod for %s\n",
+				prog, user);
 			exit(1);
 		} 
 	}
 #endif
 	if (host == NULL) {
-		fprintf(stderr,"no MAILHOST defined");
+		fprintf(stderr,"%s: no MAILHOST defined\n", prog);
 		exit(1);
 	}
 
@@ -115,35 +125,27 @@ main()
 		(void) flock(fileno(lock),LOCK_EX);
 	
 	if (pop_init(host) == NOTOK) {
-		fprintf(stderr,Errmsg);
+		fprintf(stderr,"%s: %s\n",prog, Errmsg);
 		exit(1);
 	}
 
 	if ((getline(response, sizeof response, sfi) != OK) ||
 	    (*response != '+')) {
-		fprintf(stderr,"%s",response);
+		fprintf(stderr,"%s: %s\n",prog,response);
 		exit(1);
 	}
 
 #ifdef KPOP
-	if (pop_command("USER %s", user) == NOTOK || 
-	    pop_command("PASS %s", user) == NOTOK) {
+	auth_cmd = "PASS %s";
 #else
-	if (pop_command("USER %s", user) == NOTOK || 
-	    pop_command("RPOP %s", user) == NOTOK) {
+	auth_cmd = "RPOP %s";
 #endif
-		fprintf(stderr,Errmsg);
-		(void) pop_command("QUIT");
-		pop_close();
-		exit (1);
-	} 
+	if (pop_command("USER %s", user) == NOTOK
+	    || pop_command(auth_cmd, user) == NOTOK)
+	    fatal_pop_err ();
 
-	if (pop_stat(&nmsgs, &nbytes) == NOTOK) {
-		fprintf(stderr,Errmsg);
-		(void) pop_command("QUIT");
-		pop_close();
-		exit (1);
-	}
+	if (pop_stat(&nmsgs, &nbytes) == NOTOK)
+	    fatal_pop_err ();
 
 	if (!nmsgs) {
 		if (lock) {
@@ -216,16 +218,20 @@ main()
 	exit(0);
 }
 
+void fatal_pop_err ()
+{
+    fprintf (stderr, "%s: %s\n", prog, Errmsg);
+    (void) pop_command ("QUIT");
+    pop_close ();
+    exit (1);
+}
+
 void get_message(i)
 	int i;
 {
 	int mbx_write();
-	if (pop_retr(i, mbx_write, 0) != OK) {
-		fprintf(stderr,Errmsg);
-		(void) pop_command("QUIT");
-		pop_close();
-		exit(1);
-	}
+	if (pop_retr(i, mbx_write, 0) != OK)
+	    fatal_pop_err ();
 }
 
 /* Pop stuff */
@@ -318,7 +324,7 @@ mail_notify(mail)
 	fields[2] = mail->subj;
       
 	if ((retval = ZSendList(&notice,fields,3,ZNOAUTH)) != ZERR_NONE)
-		com_err("zmailnotify",retval,"while sending notice");
+		com_err(prog,retval,"while sending notice");
 }
 
 /*
@@ -340,6 +346,7 @@ char *host;
     long authopts;
 #endif
     char *get_errmsg();
+    char *svc_name;
 
     hp = gethostbyname(host);
     if (hp == NULL) {
@@ -347,28 +354,22 @@ char *host;
 	return(NOTOK);
     }
 
+
 #ifdef KPOP
 #ifdef ATHENA_COMPAT
-    sp = getservbyname("knetd", "tcp");
+    svc_name = "knetd";
 #else
-    sp = getservbyname("kpop", "tcp");
+    svc_name = "kpop";
 #endif
-    if (sp == 0) {
-#ifdef ATHENA_COMPAT
-	(void) strcpy(Errmsg, "tcp/knetd: unknown service");
 #else
-	(void) strcpy(Errmsg, "tcp/kpop: unknown service");
-#endif
-	return(NOTOK);
-    }
-#else
-    sp = getservbyname("pop", "tcp");
-    if (sp == 0) {
-	(void) strcpy(Errmsg, "tcp/pop: unknown service");
-	return(NOTOK);
-    }
+    svc_name = "pop";
 #endif
 
+    sp = getservbyname (svc_name, "tcp");
+    if (sp == 0) {
+	(void) sprintf (Errmsg, "%s/tcp: unknown service");
+	return NOTOK;
+    }
     sin.sin_family = hp->h_addrtype;
     bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
     sin.sin_port = sp->s_port;
