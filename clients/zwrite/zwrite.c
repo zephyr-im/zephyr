@@ -26,12 +26,14 @@ static char rcsid_zwrite_c[] = "$Id$";
 #define DEFAULT_CLASS "MESSAGE"
 #define DEFAULT_INSTANCE "PERSONAL"
 #define URGENT_INSTANCE "URGENT"
+#define DEFAULT_OPCODE "VERBATIM"
+#define PRETTY_OPCODE "PRETTY"
 #define FILSRV_CLASS "FILSRV"
 
 #define MAXRECIPS 100
 
 int nrecips, msgarg, verbose, quiet, nodot;
-char *whoami, *inst, *class, *recips[MAXRECIPS];
+char *whoami, *inst, *class, *opcode, *recips[MAXRECIPS];
 int (*auth)();
 void un_tabify();
 
@@ -43,16 +45,16 @@ main(argc, argv)
     char *argv[];
 {
     ZNotice_t notice;
-    int retval, arg, nocheck, nchars, msgsize, filsys, tabexpand;
+    int retval, arg, nocheck, nchars, msgsize, filsys, tabexpand, pretty;
     char bfr[BUFSIZ], *message, *signature = NULL;
-    char classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ];
+    char classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ], opbfr[BUFSIZ];
 	
     whoami = argv[0];
 
     if ((retval = ZInitialize()) != ZERR_NONE) {
 	com_err(whoami, retval, "while initializing");
 	exit(1);
-    } 
+    }
 
     if (argc < 2)
 	usage(whoami);
@@ -60,7 +62,7 @@ main(argc, argv)
     bzero((char *) &notice, sizeof(notice));
 
     auth = ZAUTH;
-    verbose = quiet = msgarg = nrecips = nocheck = filsys = nodot = 0;
+    verbose = quiet = msgarg = nrecips = nocheck = filsys = nodot = pretty = 0;
     tabexpand = 1;
 
     if (class = ZGetVariable("zwrite-class")) {
@@ -75,11 +77,17 @@ main(argc, argv)
     }
     else
 	inst = DEFAULT_INSTANCE;
+    if (opcode = ZGetVariable("zwrite-opcode")) {
+	(void) strcpy(opbfr, opcode);
+	opcode = opbfr;
+    }
+    else
+	opcode = DEFAULT_OPCODE;
     signature = ZGetVariable("zwrite-signature");
     if (signature) {
 	(void) strcpy(sigbfr, signature);
 	signature = sigbfr;
-    } 
+    }
 	
     arg = 1;
 	
@@ -87,15 +95,22 @@ main(argc, argv)
 	if (*argv[arg] != '-') {
 	    recips[nrecips++] = argv[arg];
 	    continue;
-	} 
+	}
 	if (strlen(argv[arg]) > 2)
 	    usage(whoami);
 	switch (argv[arg][1]) {
 	case 'a':		/* Backwards compatibility */
 	    break;
+	case 'p':
+	    if (pretty == -1)
+	        usage(whoami);
+	    pretty = 1;
+	    opcode = PRETTY_OPCODE;
+	    break;
 	case 'o':
 	    class = DEFAULT_CLASS;
 	    inst = DEFAULT_INSTANCE;
+	    opcode = DEFAULT_OPCODE;
 	    break;
 	case 'd':
 	    auth = ZNOAUTH;
@@ -114,6 +129,13 @@ main(argc, argv)
 	    break;
 	case 'u':
 	    inst = URGENT_INSTANCE;
+	    break;
+	case 'O':
+	    if (arg == argc-1 || pretty == 1)
+	        usage(whoami);
+	    arg++;
+	    opcode = argv[arg];
+	    pretty = -1;
 	    break;
 	case 'i':
 	    if (arg == argc-1 || filsys == 1)
@@ -282,7 +304,7 @@ main(argc, argv)
 	} 
     }
 
-    notice.z_opcode = "";
+    notice.z_opcode = opcode;
     if (tabexpand)
 	un_tabify(&message, &msgsize);
     notice.z_message = message;
@@ -391,10 +413,11 @@ send_off(notice, real)
 usage(s)
     char *s;
 {
-    printf("Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l]\n\
-\t[-c class] [-i inst] [-f fsname] [user ...] [-m message]\n", s);
+    printf("Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l] [-p]\n\
+\t[-c class] [-i inst] [-f fsname] [-O opcode] [user ...] [-m message]\n", s);
     printf("\t-f and -c are mutually exclusive\n\
 \t-f and -i are mutually exclusive\n\
+\t-p and -O are mutually exclusive\n\
 \trecipients must be specified unless -c or -f specifies a class\n\
 \tother than the default class or -i or -f specifies an instance\n\
 \tother than the default or urgent instance\n");
