@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -36,6 +36,10 @@ static char rcsid_client_s_c[] = "$Header$";
  * ZClient_t *client_which_client(who, notice)
  *	struct sockaddr_in *who;
  *	ZNotice_t *notice;
+ *
+ * void client_dump_clients(fp, clist)
+ *	FILE *fp;
+ *	ZClientList_t *clist;
  */
 
 #include "zserver.h"
@@ -65,6 +69,7 @@ ZServerDesc_t *server;
 	register ZHostList_t *hlp = server->zs_hosts;
 	register ZHostList_t *hlp2;
 	register ZClientList_t *clist;
+	int omask;
 
 	/* chain the client's host onto this server's host list */
 
@@ -107,7 +112,9 @@ ZServerDesc_t *server;
 
 	/* chain him in to the clients list in the host list*/
 
+	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 	xinsque(clist, hlp2->zh_clients);
+	(void) sigsetmask(omask);
 
 	return(ZERR_NONE);
 }
@@ -125,6 +132,7 @@ ZHostList_t *host;
 int flush;
 {
 	ZClientList_t *clients;
+	int omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 
 	/* release any not-acked packets in the rexmit queue */
 	nack_release(client);
@@ -146,6 +154,7 @@ int flush;
 				xremque(clients);
 				clt_free(client);
 				xfree(clients);
+				(void) sigsetmask(omask);
 				return;
 			}
 	syslog(LOG_CRIT, "clt_dereg: clt not in host list");
@@ -196,4 +205,26 @@ ZClient_t *client;
 {
 	xfree(client->zct_principal);
 	xfree(client);
+}
+
+/*
+ * dump info about clients in this clist onto the fp.
+ * assumed to be called with SIGFPE blocked
+ * (true if called from signal handler)
+ */
+
+void
+client_dump_clients(fp, clist)
+FILE *fp;
+ZClientList_t *clist;
+{
+	register ZClientList_t *ptr;
+
+	for (ptr = clist->q_forw; ptr != clist; ptr = ptr->q_forw) {
+		(void) fprintf(fp, "\t%d (%s):\n",
+			       ntohs(ptr->zclt_client->zct_sin.sin_port),
+			       ptr->zclt_client->zct_principal);
+		subscr_dump_subs(fp, ptr->zclt_client->zct_subs);
+	}
+	return;
 }
