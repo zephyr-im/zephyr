@@ -92,15 +92,15 @@ main(argc, argv)
 		exit(1);
 	}
 
-	if (!(sp = getservbyname("zephyr-hm","udp"))) {
-		fprintf(stderr,"zephyr-hm/udp: unknown service\n");
+	if (!(sp = getservbyname(HM_SVCNAME,"udp"))) {
+		fprintf(stderr,"%s/udp: unknown service\n", HM_SVCNAME);
 		exit(-1);
 	}
 
 	hm_port = sp->s_port;
 
-	if (!(sp = getservbyname("zephyr-clt","udp"))) {
-		fprintf(stderr,"zephyr-clt/udp: unknown service\n");
+	if (!(sp = getservbyname(SERVER_SVCNAME,"udp"))) {
+		fprintf(stderr,"%s/udp: unknown service\n",SERVER_SVCNAME);
 		exit(-1);
 	}
 
