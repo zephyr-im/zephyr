@@ -104,7 +104,7 @@ Z_SendLocation(class,opcode,auth)
 	else
 		bptr[2] = mytty;
 	
-	if ((retval = ZSendList(&notice,bptr,2,auth)) != ZERR_NONE)
+	if ((retval = ZSendList(&notice,bptr,3,auth)) != ZERR_NONE)
 		return (retval);
 
 	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,(int *)0,
