@@ -21,14 +21,15 @@
 #ifdef Z_HaveKerberos
 #define SERVER_SERVICE		"zephyr"
 #define SERVER_INSTANCE		"zephyr"
+#define SERVER_SRVTAB		"/etc/athena/zephyr/srvtab"
 #endif
 
 /* General filenames */
 #define DEFAULT_VARS_FILE	"/etc/athena/zephyr.vars"
 
 /* Service names */
-#define	HM_SVCNAME	"zephyr-hm"
-#define	SERVER_SVCNAME	"zephyr-clt"
+#define	HM_SVCNAME		"zephyr-hm"
+#define	SERVER_SVCNAME		"zephyr-clt"
 
 #if defined(vax) || defined(ibm032)
 #define memset(a,b,c) bzero(a,c)
@@ -36,6 +37,18 @@
 #define memcmp(a,b,c) bcmp(a,b,c)
 #define strchr index
 #define strrchr rindex
+#endif
+
+#ifdef SUNOS
+extern char *sys_errlist[];
+
+#ifndef memmove
+#define memmove(a,b,c) bcopy(b,a,c)
+#endif
+
+#ifndef memmove
+#define strerror(e) (sys_errlist[e])
+#endif
 #endif
 
 #ifdef ultrix
