@@ -57,14 +57,24 @@ extern "C" {
     /* From the Error table library */
     char *error_message(long);
 
+#ifdef KERBEROS
     /* Kerberos */
-    extern int krb_get_lrealm (...);
-    extern int dest_tkt (...);
-    extern int krb_get_svc_in_tkt (...);
+    extern int krb_get_lrealm (char *, int);
+    extern int dest_tkt (void);
+    extern int krb_get_svc_in_tkt (char *, char *, char *, char *, char *, int,
+				   char *);
+#ifdef KRB_DEFS		/* have we actually got krb.h? */
+    extern int krb_mk_req (KTEXT, char *, char *, char *, unsigned long);
+    extern int krb_get_cred (char *, char *, char *, CREDENTIALS *);
+#endif
     extern int krb_rd_req (...);
-    extern int krb_mk_req (...);
-    extern int krb_get_cred (...);
     extern int des_quad_cksum (...);
+#endif
+
+#ifdef HESIOD
+    /* Hesiod */
+    extern char ** hes_resolve (const char *, const char *);
+#endif
 
     /* hacked acl code */
     extern void acl_cache_reset (void);
