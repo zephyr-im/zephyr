@@ -12,7 +12,7 @@ extern char const * const sys_errlist[];
 extern const int sys_nerr;
 
 /* AIX and Ultrix have standard conforming header files. */
-#if !defined(ULTRIX_40) && !defined(_AIX)
+#if !defined(ULTRIX_40) && !defined(_AIX) && !defined(__osf__)
 #ifdef __STDC__
 void perror (const char *);
 #else
