@@ -143,8 +143,8 @@ ZNotice_t *notice;
 	     subs = subs->q_forw) {
 		/* for each new subscription */
 
-		if (*(subs->zst_recipient) && strcmp(subs->zst_recipient,
-						     notice->z_sender)) {
+		if (!bdumping && *(subs->zst_recipient) &&
+		    strcmp(subs->zst_recipient, notice->z_sender)) {
 		    syslog(LOG_WARNING, "subscr unauth to rcpt %s by %s",
 			   subs->zst_recipient,
 			   notice->z_sender);
