@@ -15,8 +15,8 @@
 #ifndef ulong_MODULE
 #define ulong_MODULE
 
-#if defined(_AIX) && defined(i386)
-/* AIX 1.2 defines ulong in <sys/types.h>.  */
+#if defined(_AIX) || defined(_AUX_SOURCE) || defined(SYSV)
+/* Sys5 derived systems define ulong in <sys/types.h>.  */
 #include <sys/types.h>
 #else
 typedef unsigned long ulong;
