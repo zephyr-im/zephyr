@@ -110,6 +110,9 @@ main(argc,argv)
 		exit((code != 0));
 	} 
 
+	printf("ZCTL version %d.%d - Type '?' for a list of commands.\n\n",
+	       ZVERSIONMAJOR,ZVERSIONMINOR);
+	
 	ss_listen(sci_idx,&code);
 }
 
@@ -405,7 +408,7 @@ sub_file(argc,argv)
 
 	sub.class = argv[1];
 	sub.classinst = argv[2];
-	sub.recipient = (argc == 3)?ZGetSender():argv[3];
+	sub.recipient = (argc == 3)?TOKEN_ME:argv[3];
 
  	if ((wgport = ZGetWGPort()) == -1) {
 		ss_perror(sci_idx,errno,"while finding WindowGram port");
