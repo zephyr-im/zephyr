@@ -35,7 +35,7 @@ Code_t ZSendRawNotice(notice)
     if ((retval = ZParseNotice(buffer, len, &newnotice)) != ZERR_NONE)
 	return (retval);
     
-    retval = Z_SendFragmentedNotice(&newnotice);
+    retval = Z_SendFragmentedNotice(&newnotice, len, Z_XmitFragment);
 
     free(buffer);
 
