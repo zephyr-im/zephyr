@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifndef lint
 #ifndef SABER
@@ -39,11 +40,12 @@ static char *rcsid_zshutdown_notify_c = "$Header$";
 
 static char warning[] = "Please detach any filesystems you may have\nattached from this host!";
 
+/*ARGSUSED*/
 main(argc,argv)
     int argc;
     char *argv[];
 {
-    ZNotice_t notice, retnotice;
+    ZNotice_t notice;
     struct hostent *hp;
     int retval;
     char hostname[MAXHOSTNAMELEN];
@@ -64,7 +66,8 @@ main(argc,argv)
 	exit(1);
     }
 
-    if ((hp = gethostbyname(hostname)) != NULL) strcpy(hostname, hp->h_name);
+    if ((hp = gethostbyname(hostname)) != NULL)
+	    (void) strcpy(hostname, hp->h_name);
 
     ptr = message;
 
@@ -74,11 +77,11 @@ main(argc,argv)
 	if ((strlen(msgbuff) + (ptr - message)) > Z_MAXPKTLEN){
 	    break;
 	}
-	strcpy(ptr, msgbuff);
+	(void) strcpy(ptr, msgbuff);
 	ptr += strlen(ptr);
     }
 
-    bzero(&notice, sizeof(ZNotice_t));
+    bzero((char *)&notice, sizeof(ZNotice_t));
 
     notice.z_kind = N_KIND;
     notice.z_port = 0;
