@@ -73,6 +73,7 @@ static XClassHint classhint;
  * XSetTransientForHint is not called.
  */
 
+/*ARGSUSED*/
 void x_set_icccm_hints(dpy,w,name,icon_name,psizehints,pwmhints,main_window)
      Display *dpy;
      Window w;
@@ -87,7 +88,11 @@ void x_set_icccm_hints(dpy,w,name,icon_name,psizehints,pwmhints,main_window)
    XSetNormalHints(dpy,w,psizehints);
    XSetWMHints(dpy,w,pwmhints);
    XSetClassHint(dpy,w,&classhint);
+#ifdef DO_TRANSIENT_WINDOWS
+   /* in order for some wm's to iconify, the window shouldn't be transient.
+      e.g. Motif wm */
    if (main_window) XSetTransientForHint(dpy,w,main_window);
+#endif /* DO_TRANSIENT_WINDOWS */
 }
 
 void x_gram_init(dpy)
