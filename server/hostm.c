@@ -606,6 +606,26 @@ host_detach(register ZHostList_t *host, ZServerDesc_t *server)
 }
 
 /*
+ * Build hostmanager recipient name.
+ */
+static inline char *
+hm_recipient ()
+{
+    static char *recipient;
+
+    if (recipient)
+	return recipient;
+
+    const char *realm = ZGetRealm ();
+    if (!realm)
+	realm = "???";
+    recipient = (char *) zalloc (strlen (realm) + 4);
+    strcpy (recipient, "hm@");
+    strcat (recipient, realm);
+    return recipient;
+}
+
+/*
  * Send a shutdown message to the HostManager at sin, recommending him to
  * use server
  */
@@ -630,7 +650,7 @@ hostm_deathgram(struct sockaddr_in *sin, ZServerDesc_t *server)
 	shutnotice.z_class_inst = HM_CTL_SERVER;
 	shutnotice.z_opcode = SERVER_SHUTDOWN;
 	shutnotice.z_sender = HM_CTL_SERVER;
-	shutnotice.z_recipient = "hm@ATHENA.MIT.EDU";
+	shutnotice.z_recipient = hm_recipient ();
 	shutnotice.z_default_format = "";
 	shutnotice.z_num_other_fields = 0;
 
@@ -692,7 +712,7 @@ ping(struct sockaddr_in *sin)
 	shutnotice.z_class_inst = HM_CTL_SERVER;
 	shutnotice.z_opcode = SERVER_PING;
 	shutnotice.z_sender = HM_CTL_SERVER;
-	shutnotice.z_recipient = "hm@ATHENA.MIT.EDU";
+	shutnotice.z_recipient = hm_recipient ();
 	shutnotice.z_message = NULL;
 	shutnotice.z_message_len = 0;
 	shutnotice.z_default_format = "";
