@@ -95,9 +95,7 @@ Z_SendLocation(class, opcode, auth, format)
 		    return (errno);
 
 	    hent = gethostbyname(host);
-	    if (!hent)
-		    (void) strcpy(host, "unknown");
-	    else
+	    if (hent)
 		    (void) strcpy(host, hent->h_name);
 	    bptr[0] = host;
 #ifdef X11
