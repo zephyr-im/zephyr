@@ -28,6 +28,8 @@ zwrite \- write to another user
 ] [
 .BI -o
 ] [
+.BI -n
+] [
 .BI -c
 class ] [
 .BI -i
@@ -92,6 +94,22 @@ Causes
 .I zwrite
 to ignore the Zephyr variables \fIzwrite-class\fR and \fIzwrite-inst\fR
 when picking a default class and instance.
+.TP
+.B \-n
+prevents
+.I zwrite
+from sending a PING message to verify the recipient is subscribing to
+messages.  By default,
+.I zwrite
+will send a notice to the destination class, instance, and recipient,
+with opcode ``PING'' before sending the message.  If the PING is sent,
+and the server response indicates there are no recipients subscribed to
+your message,
+.I zwrite
+exits without sending a message.
+When the
+.B \-m
+option is used, no PING is sent.
 .TP
 .B \-c \fIclass\fR
 Allows a user to specify a different class for the message.  This allows
