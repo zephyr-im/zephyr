@@ -41,18 +41,18 @@ Code_t ZIfNotice(buffer,buffer_len,notice,auth,predicate,args)
 
 	for (;;qcount--) {
 		if ((retval = ZParseNotice(qptr->packet,qptr->packet_len,
-					   &tmpnotice,&tmpauth,&qptr->from))
-		    != ZERR_NONE)
+					   &tmpnotice,auth?&tmpauth:0,
+					   &qptr->from)) != ZERR_NONE)
 			return (retval);
 		if ((predicate)(&tmpnotice,args)) {
 			if (qptr->packet_len > buffer_len)
 				return (ZERR_PKTLEN);
 			bcopy(qptr->packet,buffer,qptr->packet_len);
 			if ((retval = ZParseNotice(buffer,qptr->packet_len,
-						   notice,auth))
+						   notice,auth,
+						   &qptr->from))
 			    != ZERR_NONE)
 				return (retval);
-			*auth = tmpauth;
 			return (Z_RemQueue(qptr));
 		} 
 		/* Grunch! */

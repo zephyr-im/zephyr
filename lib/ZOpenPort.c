@@ -18,7 +18,7 @@
 #include <sys/socket.h>
 
 Code_t ZOpenPort(port)
-	int	*port;
+	u_short	*port;
 {
 	int retval;
 	struct sockaddr_in bindin;

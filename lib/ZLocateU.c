@@ -45,7 +45,8 @@ Code_t ZLocateUser(user,nlocs)
 		return (retval);
 
 	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,&auth,
-				locate_pred,&notice.z_uid)) != ZERR_NONE)
+				locate_pred,(char *)&notice.z_uid)) !=
+	    ZERR_NONE)
 		return (retval);
 
 	if (retnotice.z_kind != SERVACK)
