@@ -79,45 +79,70 @@ static string address_to_string(class, instance, recipient)
     return(result);
 }
 
-int puntable_address_p(class, instance, recipient)
-     string class;
-     string instance;
-     string recipient;
+/* hack.  enumerate should allow client_data to be passed.  If this
+ * were C++ I could be amazingly more elegant.
+ */
+
+static int in_punt_list;
+static char *ctest,*itest,*utest;
+
+static void punt_dict_test(binding)
+     int_dictionary_binding *binding;
 {
-    string temp;
+   char *inst,*user;
+   static char wild[] = "*"; /* len = 2 */
+   char *key = binding->key;
 
-    if (!puntable_addresses_dict)
-      init_puntable_dict();
+   if (in_punt_list) return;
 
-    temp = address_to_string(class, instance, recipient);
-    if (int_dictionary_Lookup(puntable_addresses_dict, temp)) {
-	free(temp);
-	return(1);
-    }
+   inst = index(key,'\001')+1;
+   user = index(inst,'\001')+1;
 
-    free(temp);
-    return(0);
+   if (((*key == '*')  || (bcmp(key,ctest,inst-key) == 0)) &&
+       ((*inst == '*') || (bcmp(inst,itest,user-inst) == 0)) &&
+       ((*user == '*') || (strcmp(user,utest) == 0)))
+     in_punt_list = 1;
+   return;
 }
 
-void punt(class, instance, recipient)
+int puntable_address_p(class, instance, sender)
      string class;
      string instance;
-     string recipient;
+     string sender;
+{
+    if (!puntable_addresses_dict)
+      init_puntable_dict();
+
+    in_punt_list = 0;
+    ctest = address_to_string(class, instance, sender);
+    itest = index(ctest,'\001')+1;
+    utest = index(itest,'\001')+1;
+
+    int_dictionary_Enumerate(puntable_addresses_dict,punt_dict_test);
+
+    free(ctest);
+    return(in_punt_list);
+}
+
+void punt(class, instance, sender)
+     string class;
+     string instance;
+     string sender;
 {
     string temp;
 
     if (!puntable_addresses_dict)
       init_puntable_dict();
 
-    temp = address_to_string(class, instance, recipient);
+    temp = address_to_string(class, instance, sender);
     (void)int_dictionary_Define(puntable_addresses_dict, temp, 0);
     free(temp);
 }
 
-void unpunt(class, instance, recipient)
+void unpunt(class, instance, sender)
      string class;
      string instance;
-     string recipient;
+     string sender;
 {
     string temp;
     int_dictionary_binding *binding;
@@ -125,7 +150,7 @@ void unpunt(class, instance, recipient)
     if (!puntable_addresses_dict)
       init_puntable_dict();
 
-    temp = address_to_string(class, instance, recipient);
+    temp = address_to_string(class, instance, sender);
     binding = int_dictionary_Define(puntable_addresses_dict, temp, 0);
     free(temp);
     if (binding)
@@ -298,6 +323,8 @@ static void load_subscriptions_from_file(file)
 		unsubscribe(class, instance, recipient);
 		break;
 	      case PUNT_CHARACTER:
+		/* well, if it's a punt, it's not a recip, but we'll
+		   let that go */
 		punt(class, instance, recipient);
 		break;
 	      default:
