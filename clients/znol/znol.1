@@ -17,11 +17,13 @@ znol \- notify via Zephyr upon login or logout of interesting people
 [
 .BI on|off
 ] [
-.BI -f \ file
+.BI \-f \ file
 ] [
-.BI -l
+.BI \-u \ username
 ] [
-.BI -q
+.BI \-l
+] [
+.BI \-q
 ]
 .SH DESCRIPTION
 .I Znol
@@ -48,20 +50,46 @@ If
 does not exist, an error message is printed, and
 .I znol
 exits.
+This option may not be used in conjunction with the
+.B \-u
+option.
 .TP
 .B \-l
 Causes
 .I znol
 to just list the people in the namelist who are currently logged in,
-without subscribing to the login messages.  Cannot be used with the
+without subscribing to the login messages.   This option may not be used
+in conjunction with the
 .BI \-q
 option.
 .TP
 .B \-q
-Disables printing who is currently logged in when subscribing.  Cannot
-be used with the
+Disables printing who is currently logged in when subscribing.  This
+option may not be used in conjunction with the
 .BI \-l
 option.
+.TP
+.B \-u
+Instead of reading a file to specify the "interesting" users, the next
+argument is used as the only "interesting" user.  This option may not be
+used in conjunction with the
+.B \-f
+option.
+.SH EXAMPLES
+.nf
+.in +.5in
+znol
+.in -.5in
+.fi
+reads the standard namelist file, prints the locations of any users
+named therein which can be found on the system, and enters subscriptions
+for notices about those users.
+.nf
+.in +.5in
+znol -l -u foo
+.in -.5in
+.fi
+prints the location (if visible) of the user 'foo'.
 .SH FILES
 $HOME/.anyone
 .SH SEE ALSO
