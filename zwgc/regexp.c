@@ -16,8 +16,6 @@
 static char rcsid_regexp_c[] = "$Id$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
 #include <stdio.h>
 #include "regexp.h"
 
@@ -42,3 +40,35 @@ int ed_regexp_match_p(test_string, pattern)
 
     return(exec_retval);
 }
+
+
+/*
+ * This is for AUX.
+ * It is a wrapper around the C library regexp functions.
+ */
+
+#ifdef _AUX_SOURCE
+
+static char *re;
+
+char *re_comp(s)
+    char *s;
+{
+    if(!s)
+	return 0;
+    if(re)
+	free(re);
+
+    if(!(re = regcmp(s, (char *)0)))
+	return "Bad argument to re_comp";
+
+    return 0;
+}
+
+int re_exec(s)
+    char *s;
+{
+    return regex(re, s) != 0;
+}
+
+#endif
