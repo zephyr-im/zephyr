@@ -99,13 +99,19 @@ main(argc,argv)
 			com_err(argv[0],retval,"while receiving notice");
 			continue;
 		}
-		if (!strcmp(notice.z_sender,ZGetSender()))
-			continue;
-		if (!strcmp(notice.z_message,"Automated reply:"))
-			continue;
+
+		if (strcmp(notice.z_sender,ZGetSender()) == 0 ||
+		    strcmp(notice.z_opcode,"PING") == 0 ||
+		    strcmp(notice.z_message,"Automated reply:") == 0) {
+		     ZFreeNotice(&notice);
+		     continue;
+		}
+
 		if (fp) {
-			if (!(ptr = find_message(&notice,fp)))
+			if (!(ptr = find_message(&notice,fp))) {
+				ZFreeNotice(&notice);
 				continue;
+			}
 		}
 		else {
 			ptr = malloc(sizeof(DEFAULT_MSG)+1);
@@ -125,7 +131,6 @@ main(argc,argv)
 		notice.z_message_len = strlen(notice.z_message)+1;
 		if ((retval = ZSendList(&notice,msg,2,ZNOAUTH)) != ZERR_NONE) {
 			com_err(argv[0],retval,"while sending notice");
-			continue;
 		}
 		free(ptr);
 		ZFreeNotice(&notice);
