@@ -247,7 +247,7 @@ int open_display_and_load_resources(pargc, argv)
      char **argv;
 {
     XrmDatabase temp_db1, temp_db2, temp_db3;
-    char *filename;
+    char *filename, *res;
     extern char *getenv();
 
     /* Initialize X resource manager: */
@@ -286,6 +286,14 @@ int open_display_and_load_resources(pargc, argv)
      * application resources
      */
     XrmMergeDatabases(temp_db2, &temp_db1);
+
+#if XlibSpecificationRelease > 4
+    /* X11 R5 per-screen resources */
+    res = XScreenResourceString (DefaultScreenOfDisplay (dpy));
+    if (res != NULL)
+	XrmMergeDatabases(XrmGetStringDatabase(res), &temp_db1);
+#endif
+
     /*
      * Get XENVIRONMENT resources, if they exist, and merge
      */
