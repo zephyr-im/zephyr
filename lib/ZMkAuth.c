@@ -46,13 +46,13 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
 	free(notice->z_ascii_authent);
 	return (retval);
     }
-    retval = Z_FormatRawHeader(notice, buffer, buffer_len, len);
+    retval = Z_FormatRawHeader(notice, buffer, buffer_len, len, (char **) 0);
     free(notice->z_ascii_authent);
     notice->z_authent_len = 0;
 
     return (retval);
 #else
     notice->z_authent_len = 0;
-    return (Z_FormatRawHeader(notice, buffer, buffer_len, len));
+    return (Z_FormatRawHeader(notice, buffer, buffer_len, len, (char **) 0));
 #endif
 }
