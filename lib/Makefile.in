@@ -56,17 +56,10 @@ zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
 
 check:
 
-<<<<<<< Makefile.in
-install: libzephyr.$(LIBEXT)
-	-${INSTALL} -m 644 libzephyr.a ${DESTDIR}${libdir}
-	-$(INSTALL) -m 644 libzephyr.so ${DESTDIR}$(libdir)
-
-	${INSTALL} -m 644 ${srcdir}/zephyr.1 ${DESTDIR}${mandir}/man1
-=======
 install: libzephyr.la
 	${LIBTOOL} ${INSTALL} -m 644 libzephyr.la ${DESTDIR}${libdir}
 	${LIBTOOL} ${INSTALL} -m 644 ${srcdir}/zephyr.1 ${DESTDIR}${mandir}/man1
->>>>>>> 1.1.1.2
+
 
 clean:
 	${LIBTOOL} rm -f ${OBJS} libzephyr.la zephyr_err.c zephyr_err.h
