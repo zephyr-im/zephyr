@@ -119,7 +119,7 @@ main(argc,argv)
 		exit((code != 0));
 	} 
 
-	printf("ZCTL $Version:$ (Protocol %s%d.%d) - Type '?' for a list of commands.\n\n",
+	printf("ZCTL $Revision$ (Protocol %s%d.%d) - Type '?' for a list of commands.\n\n",
 	       ZVERSIONHDR,
 	       ZVERSIONMAJOR,ZVERSIONMINOR);
 	
@@ -517,7 +517,7 @@ int unsub;
 	if (retval == NOT_REMOVED)
 		fprintf(stderr,
 			"Couldn't find %sclass %s instance %s recipient %s in\n\tfile %s\n",
-			unsub ? "unsubscription " : "",
+			unsub ? "un-subscription " : "",
 			subs->class,subs->classinst,subs->recipient,subsname);
 	fix_macros(subs,&sub2,1);
 	if ((retval = ZUnsubscribeTo(&sub2,1,(u_short)wgport)) !=
@@ -668,7 +668,7 @@ load_subs(argc,argv)
 		*comma2 = '\0';
 		if (type == LIST) {
 			if (*subline == '!') 
-				printf("(Unsubscription) Class %s instance %s recipient %s\n",
+				printf("(Un-subscription) Class %s instance %s recipient %s\n",
 				       subline+1, comma+1, comma2+1);
 			else
 				printf("Class %s instance %s recipient %s\n",
