@@ -96,10 +96,20 @@ struct sockaddr_in *who;
 	bdump_sin.sin_addr.s_addr = INADDR_ANY;
 	bdump_sin.sin_family = AF_INET;
 	if ((retval = bind(bdump_socket, (struct sockaddr *) &bdump_sin, sizeof(bdump_sin))) < 0) {
-		syslog(LOG_ERR, "bdump bind %d: %m", htons(bdump_sin.sin_port));
+		syslog(LOG_ERR, "bdump bind: %m");
 		(void) close(bdump_socket);
 		bdump_socket = -1;
 		return;
+	}
+	if (!bdump_sin.sin_port) {
+		int len = sizeof(bdump_sin);
+		if (getsockname(bdump_socket,
+				(struct sockaddr *)&bdump_sin, &len)) {
+			syslog(LOG_ERR, "bdump getsockname: %m");
+			(void) close(bdump_socket);
+			bdump_socket = -1;
+			return;
+		}
 	}
 #else
 	int bdump_port = IPPORT_RESERVED - 1;
@@ -1068,7 +1078,7 @@ int len;
 			return(ZSRV_LEN);
 		}
 	}
-	if ((count = net_write(live_socket, *pack, packlen)) != packlen)
+	if ((count = net_write(live_socket, pack, packlen)) != packlen)
 		if (count < 0) {
 			syslog(LOG_WARNING, "snt xmit: %m");
 			xfree(pack);	/* free allocated storage */
