@@ -1,0 +1,11 @@
+/*#	$Source$ */
+/*#	$Author$ */
+/*#	$Header$ */
+/*# */
+SRCS= zhm.c zhm_server.c zhm_client.c queue.c
+LIBS= ${COMERR_LIB} ${ZEPHYR_LIB} ${KRB_LIB} ${HES_LIB}
+OBJS= zhm.o zhm_server.o zhm_client.o queue.o
+
+normal_obj_rule()
+
+program(zhm,${OBJS},,${LIBS},${ETCATHDIR})
