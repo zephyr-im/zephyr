@@ -1,11 +1,11 @@
-/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#	Copyright 1988, 1991 Massachusetts Institute of Technology.
 /**/#
 /**/#	For copying and distribution information, see the file
 /**/#	"mit-copyright.h". 
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Header$
+/**/#	$Zephyr: /mit/zephyr/src/lib/RCS/Imakefile,v 1.11 91/01/07 13:32:27 raeburn Exp $
 /**/#
 #define no_curdir_lint
 
@@ -74,6 +74,7 @@ SRCS=	\
 	ZSetServerState.c \
 	ZSubscriptions.c \
 	ZVariables.c \
+	ZWaitForNotice.c \
 	Zinternal.c \
 	acl_files.c \
 	strcasecmp.c
@@ -127,6 +128,7 @@ OLIST=	\
 	ZSetServerState.o \
 	ZSubscriptions.o \
 	ZVariables.o \
+	ZWaitForNotice.o \
 	Zinternal.o \
 	acl_files.o
 
