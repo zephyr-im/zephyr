@@ -21,6 +21,10 @@ static const char rcsid_server_c[] = "$Id$";
 #endif
 #endif
 
+#define SRV_NACKTAB_HASHSIZE		1023
+#define SRV_NACKTAB_HASHVAL(which, uid)	(((which) ^ (uid).zuid_addr.s_addr ^ \
+					  (uid).tv.tv_sec ^ (uid).tv.tv_usec) \
+					 % SRV_NACKTAB_HASHSIZE)
 /*
  * Server manager.  Deal with  traffic to and from other servers.
  *
@@ -67,7 +71,7 @@ static void hello_respond __P((struct sockaddr_in *, int, int));
 static void srv_responded __P((struct sockaddr_in *));
 static void send_msg __P((struct sockaddr_in *, char *, int));
 static void send_msg_list __P((struct sockaddr_in *, char *, char **, int,
-			       int, int));
+			       int));
 static void srv_nack_cancel __P((ZNotice_t *, struct sockaddr_in *));
 static void srv_nack_release __P((Server *));
 static void srv_nack_renumber  __P((int *));
@@ -93,8 +97,7 @@ static char **get_server_list __P((char *file));
 static void free_server_list __P((char **list));
 #endif
 
-Unacked *srv_nacklist = NULL;	/* not acked list for server-server
-				   packets */
+static Unacked *srv_nacktab[SRV_NACKTAB_HASHSIZE];
 Server *otherservers;		/* points to an array of the known
 				   servers */
 int nservers;			/* number of other servers */
@@ -938,7 +941,7 @@ send_stats(who)
     }
 #endif /* NEW_COMPAT */
 
-    send_msg_list(who, ADMIN_STATUS, responses, num_resp, 0, -1);
+    send_msg_list(who, ADMIN_STATUS, responses, num_resp, 0);
 
     /* Start at one; don't try to free static version string */
     for (i = 1; i < num_resp; i++)
@@ -1021,31 +1024,36 @@ get_server_list(file)
     int nused = 0;
     char *newline;
 
-    fp = fopen(file, "r");
-    if (!fp)
-	return NULL;
-
     /* start with 16, realloc if necessary */
     nhosts = 16;
     ret_list = (char **) malloc(nhosts * sizeof(char *));
 
-    while (fgets(buf, MAXHOSTNAMELEN, fp)) {
-	/* nuke the newline, being careful not to overrun
-	   the buffer searching for it with strlen() */
-	buf[MAXHOSTNAMELEN - 1] = '\0';
-	newline = strchr(buf, '\n');
-	if (newline)
-	    *newline = '\0';
+    fp = fopen(file, "r");
+    if (fp) {
+	while (fgets(buf, MAXHOSTNAMELEN, fp)) {
+	    /* nuke the newline, being careful not to overrun
+	       the buffer searching for it with strlen() */
+	    buf[MAXHOSTNAMELEN - 1] = '\0';
+	    newline = strchr(buf, '\n');
+	    if (newline)
+		*newline = '\0';
 
-	if (nused + 1 >= nhosts) {
-	    /* get more pointer space if necessary */
-	    /* +1 to leave room for null pointer */
-	    ret_list = (char **) realloc(ret_list, nhosts * 2);
-	    nhosts = nhosts * 2;
+	    if (nused + 1 >= nhosts) {
+		/* get more pointer space if necessary */
+		/* +1 to leave room for null pointer */
+		ret_list = (char **) realloc(ret_list, nhosts * 2);
+		nhosts = nhosts * 2;
+	    }
+	    ret_list[nused++] = strsave(buf);
+	}
+	fclose(fp);
+    } else {
+	if (gethostname(buf, sizeof(buf)) < 0) {
+	    free(ret_list);
+	    return NULL;
 	}
 	ret_list[nused++] = strsave(buf);
     }
-    fclose(fp);
     ret_list[nused] = NULL;
     return ret_list;
 }
@@ -1282,39 +1290,35 @@ send_msg(who, opcode, auth)
  */
 
 static void
-send_msg_list(who, opcode, lyst, num, auth, server_idx)
+send_msg_list(who, opcode, lyst, num, auth)
     struct sockaddr_in *who;
     char *opcode;
     char **lyst;
     int num;
     int auth;
-    int server_idx;
 {
     ZNotice_t notice;
-    ZNotice_t *pnotice; /* speed hack */
     char *pack;
     int packlen;
     Code_t retval;
     Unacked *nacked;
 
-    pnotice = &notice;
-
-    pnotice->z_kind = UNSAFE;
-    pnotice->z_port = srv_addr.sin_port;
-    pnotice->z_class = ZEPHYR_ADMIN_CLASS;
-    pnotice->z_class_inst = "";
-    pnotice->z_opcode = opcode;
-    pnotice->z_sender = myname;	/* myname is the hostname */
-    pnotice->z_recipient = "";
-    pnotice->z_default_format = "";
-    pnotice->z_message = NULL;
-    pnotice->z_message_len = 0;
-    pnotice->z_num_other_fields = 0;
+    notice.z_kind = UNSAFE;
+    notice.z_port = srv_addr.sin_port;
+    notice.z_class = ZEPHYR_ADMIN_CLASS;
+    notice.z_class_inst = "";
+    notice.z_opcode = opcode;
+    notice.z_sender = myname;	/* myname is the hostname */
+    notice.z_recipient = "";
+    notice.z_default_format = "";
+    notice.z_message = NULL;
+    notice.z_message_len = 0;
+    notice.z_num_other_fields = 0;
 
     /* XXX for now, we don't do authentication */
     auth = 0;
 
-    retval = ZFormatNoticeList(pnotice, lyst, num, &pack, &packlen,
+    retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen,
 			       auth ? ZAUTH : ZNOAUTH);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "snd_msg_lst format: %s", error_message(retval));
@@ -1326,36 +1330,8 @@ send_msg_list(who, opcode, lyst, num, auth, server_idx)
 	free(pack);
 	return;
     }
-    retval = ZSendPacket(pack, packlen, 0);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "snd_msg_lst xmit: %s", error_message(retval));
-	free(pack);
-	return;
-    }
-
-    nacked = (Unacked *) malloc(sizeof(Unacked));
-    if (!nacked) {
-	/* no space: just punt */
-	syslog(LOG_WARNING, "xmit nack malloc");
-	free(pack);
-	return;
-    }
-
-    nacked->rexmits = 0;
-    nacked->packet = pack;
-    nacked->packsz = packlen;
-    nacked->uid = pnotice->z_uid;
-
-    /* Set the address and chain into the appropriate queue. */
-    if (server_idx < 0) {
-	nacked->dest.addr = *who;
-	nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-	LIST_INSERT(nacklist, nacked);
-    } else {
-	nacked->dest.srv_idx = server_idx;
-	nacked->timer = timer_set_rel(rexmit_times[0], srv_rexmit, nacked);
-	LIST_INSERT(srv_nacklist, nacked);
-    }
+    xmit_frag(&notice, pack, packlen, 0);
+    free(pack);
 }
 
 /*
@@ -1414,6 +1390,7 @@ server_forw_reliable(server, pack, packlen, notice)
 {
     Code_t retval;
     Unacked *nacked;
+    int hashval;
 
     retval = ZSetDestAddr(&server->addr);
     if (retval != ZERR_NONE) {
@@ -1443,7 +1420,8 @@ server_forw_reliable(server, pack, packlen, notice)
     nacked->packsz = packlen;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], srv_rexmit, nacked);
-    LIST_INSERT(srv_nacklist, nacked);
+    hashval = SRV_NACKTAB_HASHVAL(nacked->dest.srv_idx, nacked->uid);
+    LIST_INSERT(&srv_nacktab[hashval], nacked);
 }
 
 /*
@@ -1483,22 +1461,23 @@ srv_nack_cancel(notice, who)
     ZNotice_t *notice;
     struct sockaddr_in *who;
 {
-    Server *which = server_which_server(who);
+    Server *server = server_which_server(who);
     Unacked *nacked;
+    int hashval;
 
-    if (!which) {
+    if (!server) {
 	syslog(LOG_ERR, "non-server ack?");
 	return;
     }
-    for (nacked = srv_nacklist; nacked; nacked = nacked->next) {
-	if (&otherservers[nacked->dest.srv_idx] == which) {
-	    if (ZCompareUID(&nacked->uid, &notice->z_uid)) {
-		timer_reset(nacked->timer);
-		free(nacked->packet);
-		LIST_DELETE(nacked);
-		free(nacked);
-		return;
-	    }
+    hashval = SRV_NACKTAB_HASHVAL(server - otherservers, notice->z_uid);
+    for (nacked = srv_nacktab[hashval]; nacked; nacked = nacked->next) {
+	if (nacked->dest.srv_idx == server - otherservers
+	    && ZCompareUID(&nacked->uid, &notice->z_uid)) {
+	    timer_reset(nacked->timer);
+	    free(nacked->packet);
+	    LIST_DELETE(nacked);
+	    free(nacked);
+	    return;
 	}
     }
 #if 0
@@ -1559,19 +1538,18 @@ static void
 srv_nack_release(server)
     Server *server;
 {
-    /* XXX release any private queue for this server */
-
+    int i;
     Unacked *nacked, *next;
 
-    /* search the not-yet-acked list for anything destined to him, and
-       flush it. */
-    for (nacked = srv_nacklist; nacked; nacked = next) {
-	next = nacked->next;
-	if (&otherservers[nacked->dest.srv_idx] == server) {
-	    timer_reset(nacked->timer);
-	    free(nacked->packet);
-	    LIST_DELETE(nacked);
-	    free(nacked);
+    for (i = 0; i < SRV_NACKTAB_HASHSIZE; i++) {
+	for (nacked = srv_nacktab[i]; nacked; nacked = next) {
+	    next = nacked->next;
+	    if (nacked->dest.srv_idx == server - otherservers) {
+		timer_reset(nacked->timer);
+		LIST_DELETE(nacked);
+		free(nacked->packet);
+		free(nacked);
+	    }
 	}
     }
 }
@@ -1587,18 +1565,20 @@ srv_nack_renumber (new_idx)
 {
     /* XXX release any private queue for this server */
     Unacked *nacked;
-    int idx;
+    int idx, i;
 
     /* search the not-yet-acked list for anything destined to 'from', and
        change the index to 'to'. */
-    for (nacked = nacklist; nacked; nacked = nacked->next) {
-	idx = new_idx[nacked->dest.srv_idx];
-	if (idx < 0) {
-	    syslog (LOG_ERR, "srv_nack_renumber error: [%d]=%d",
-		    nacked->dest.srv_idx, idx);
-	    idx = 0;
+    for (i = 0; i < SRV_NACKTAB_HASHSIZE; i++) {
+	for (nacked = srv_nacktab[i]; nacked; nacked = nacked->next) {
+	    idx = new_idx[nacked->dest.srv_idx];
+	    if (idx < 0) {
+		syslog(LOG_ERR, "srv_nack_renumber error: [%d]=%d",
+		       nacked->dest.srv_idx, idx);
+		idx = 0;
+	    }
+	    nacked->dest.srv_idx = idx;
 	}
-	nacked->dest.srv_idx = idx;
     }
 }
 
