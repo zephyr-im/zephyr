@@ -44,6 +44,8 @@ zwgc \- Zephyr Windowgram Client program
 .I filename
 ] [ \-subfile
 .I filename
+] [ \-loc
+.I text
 ] [ \-default
 .I portname
 ] [ \-disable 
@@ -910,11 +912,10 @@ is normally invoked from
 .IR $HOME/.xsession ,
 or 
 .I /usr/athena/lib/init/xsession
-in the foreground
-and with no arguments. When it has successfully set your location, it
-will put itself into the background (unless the \-nofork option has been
-specified). At this point it is safe to
-invoke additional zephyr commands, such as 
+in the foreground. When it has successfully set your location and
+obtained subscriptions, it will put itself into the background (unless
+the \-nofork option has been specified). At this point it is safe to
+invoke additional zephyr commands, such as
 .IR znol (1).
 (You can also put these commands in the
 .I initprogs
@@ -944,6 +945,14 @@ option is specified,
 .I zwgc
 will ignore any X display and use the terminal as its primary output
 device.  This flag overrides any setting of the fallback variable.
+.PP
+If the
+.I \-loc
+option is specified,
+.I zwgc
+will use the specified string as the tty field for the location it
+sets.  This allows users to potentially specify more useful auxiliary
+information than their ttys or display names.
 .PP
 The
 .I \-reenter
