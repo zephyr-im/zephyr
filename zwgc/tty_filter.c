@@ -26,6 +26,7 @@ static char rcsid_tty_filter_c[] = "$Id$";
 
 #include <stdio.h>
 #include <ctype.h>
+#include <termios.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "string_dictionary_aux.h"
@@ -37,6 +38,8 @@ static char rcsid_tty_filter_c[] = "$Id$";
 
 extern int tgetent();
 extern char *tgetstr(),*getenv();
+short ospeed;
+char PC;
 
 /* Dictionary naming convention:
 
@@ -46,6 +49,7 @@ extern char *tgetstr(),*getenv();
    */
 
 static string_dictionary termcap_dict;
+static char code_buf[10240], *code_buf_pos = code_buf, *code;
 
 /* Define the following commands:
 
@@ -65,7 +69,14 @@ static string_dictionary termcap_dict;
  */
 
 #define TD_SET(k,v) (string_dictionary_Define(termcap_dict,(k),&ex)->value = (v))
-#define EAT_PADDING(var) while (*var && isdigit(*var)) var++
+#define EAT_PADDING(var) (code = code_buf_pos, tputs(var, 1, tty_outc), *code_buf_pos++ = 0, var = code)
+
+static int tty_outc(c)
+int c;
+{
+    *code_buf_pos++ = c;
+    return 0;
+}
 
 /* ARGSUSED */
 int tty_filter_init(drivername, notfirst, pargc, argv)
@@ -79,6 +90,9 @@ char **argv;
     int ex;
     string_dictionary_binding *b;
     int isrealtty = string_Eq(drivername, "tty");
+    struct termios tbuf;
+
+    ospeed = (tcgetattr(0, &tbuf) == 0) ? cfgetospeed(&tbuf) : 2400;
 
     if (termcap_dict == (string_dictionary) NULL)
       termcap_dict = string_dictionary_Create(7);
@@ -105,9 +119,8 @@ char **argv;
     
 	/* Step 1: get all of {rv,bold,u,bell,blink} that are available. */
 
-	/* We cheat here, and ignore the padding (if any) specified for
-	   the mode-change strings (it's a real pain to do "right") */
-
+	tmp = tgetstr("pc", &p);
+	PC = (tmp) ? *tmp : 0;
 	if (tmp = tgetstr("md",&p)) {	/* bold ? */
 	    EAT_PADDING(tmp);
 	    TD_SET("B.bold",tmp);
