@@ -15,12 +15,10 @@
 
 #ifndef lint
 static char rcsid_Zinternal_c[] =
-  "$Zephyr: Zinternal.c,v 1.22 91/03/08 11:50:59 raeburn Exp $";
+  "$Id$";
 static char copyright[] =
   "Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.";
 #endif
-
-#include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
 #include <netdb.h>
@@ -28,10 +26,6 @@ static char copyright[] =
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <utmp.h>
-/* are we using varargs or stdarg? */
-#if !(defined(__STDC__) && (defined(__GNUC__) || !defined(ibm032)))
-#define VARARGS
-#endif
 
 #ifdef __STDC__
 typedef void *pointer;
@@ -72,7 +66,7 @@ pointer __Z_debug_print_closure;
 
 Code_t Z_GetMyAddr()
 {
-    struct hostent *myhost;
+    register struct hostent *myhost;
     char hostname[MAXHOSTNAMELEN];
 	
     if (__My_length > 0)
@@ -84,6 +78,9 @@ Code_t Z_GetMyAddr()
     if (!(myhost = gethostbyname(hostname)))
 	return (errno);
 
+    /* If h_length is 0, that is a serious problem and it doesn't
+       make it worse for malloc(0) to return NULL, so don't worry
+       about that case. */
     if (!(__My_addr = (char *)malloc((unsigned)myhost->h_length)))
 	return (ENOMEM);
 
@@ -151,7 +148,8 @@ struct _Z_InputQ *Z_SearchQueue(uid, kind)
     ZUnique_Id_t *uid;
     ZNotice_Kind_t kind;
 {
-    struct _Z_InputQ *qptr, *next;
+    register struct _Z_InputQ *qptr;
+    struct _Z_InputQ *next;
     struct timeval tv;
 
     (void) gettimeofday(&tv, (struct timezone *)0);
@@ -180,7 +178,7 @@ struct _Z_InputQ *Z_SearchQueue(uid, kind)
 
 Code_t Z_ReadWait()
 {
-    struct _Z_InputQ *qptr;
+    register struct _Z_InputQ *qptr;
     ZNotice_t notice;
     ZPacket_t packet;
     struct sockaddr_in olddest, from;
@@ -198,7 +196,7 @@ Code_t Z_ReadWait()
 	return (ZERR_NOPORT);
 	
     from_len = sizeof(struct sockaddr_in);
-	
+
     packet_len = recvfrom(ZGetFD(), packet, sizeof(packet), 0, 
 			  (struct sockaddr *)&from, &from_len);
 
@@ -384,16 +382,20 @@ Code_t Z_ReadWait()
 	qptr->holelist = (struct _Z_Hole *) 0;
 	qptr->complete = 1;
 	/* allocate a msg buf for this piece */
-	if (!(qptr->msg = malloc((unsigned) notice.z_message_len)))
-		return(ENOMEM);
+	if (notice.z_message_len == 0)
+	    qptr->msg = 0;
+	else if (!(qptr->msg = malloc((unsigned) notice.z_message_len)))
+	    return(ENOMEM);
+	else
+	    bcopy(notice.z_message, qptr->msg, notice.z_message_len);
 	qptr->msg_len = notice.z_message_len;
 	__Q_Size += notice.z_message_len;
-	bcopy(notice.z_message, qptr->msg, notice.z_message_len);
 	qptr->packet_len = qptr->header_len+qptr->msg_len;
 	if (!(qptr->packet = malloc((unsigned) qptr->packet_len)))
 	    return (ENOMEM);
 	bcopy(qptr->header, qptr->packet, qptr->header_len);
-	bcopy(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
+	if(qptr->msg)
+	    bcopy(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
 	return (ZERR_NONE);
     }
 
@@ -401,7 +403,7 @@ Code_t Z_ReadWait()
      * We know how long the message is going to be (this is better
      * than IP fragmentation...), so go ahead and allocate it all.
      */
-    if (!(qptr->msg = malloc((unsigned) partof)))
+    if (!(qptr->msg = malloc((unsigned) partof)) && partof)
 	return (ENOMEM);
     qptr->msg_len = partof;
     __Q_Size += partof;
@@ -868,7 +870,7 @@ Zconst char *Zconst ZNoticeKinds[] = { "UNSAFE", "UNACKED", "ACKED", "HMACK",
 					 "CLIENTACK", "STAT", };
 
 #undef Z_debug
-#ifdef VARARGS
+#ifdef Z_Varargs
 void Z_debug (va_alist) va_dcl
 {
     va_list pvar;
@@ -880,7 +882,7 @@ void Z_debug (va_alist) va_dcl
     (*__Z_debug_print) (format, pvar, __Z_debug_print_closure);
     va_end (pvar);
 }
-#else /* STDC */
+#else /* stdarg */
 void Z_debug (const char *format, ...)
 {
     va_list pvar;
@@ -934,9 +936,3 @@ void ZSetDebug ARGS {
     __Z_debug_print = proc;
     __Z_debug_print_closure = arg;
 }
-
-#ifdef NO_MALLOC_ZERO
-#undef malloc
-extern pointer malloc ();
-pointer (*Z_malloc) () = &malloc;
-#endif
