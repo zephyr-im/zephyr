@@ -115,7 +115,8 @@ struct sockaddr_in *who;
 	}
 
 	/* myname is the hostname */
-	(void) send_list(ACKED, sock_sin.sin_port, ZEPHYR_ADMIN_CLASS, "",
+	/* the class instance is the version number, here it is "1" */
+	(void) send_list(ACKED, sock_sin.sin_port, ZEPHYR_ADMIN_CLASS, "1",
 		  ADMIN_BDUMP, myname, "", lyst, 2);
 	
 	return;
@@ -242,6 +243,15 @@ ZServerDesc_t *server;
 
 	zdbug((LOG_DEBUG, "bdump avail"));
 
+	/* version number 1 is the same as no version number */
+	if (strcmp(notice->z_class_inst, "1")
+	     && strcmp(notice->z_class_inst, "")) {
+		syslog(LOG_WARNING,
+		       "Incompatible bdump version '%s' from %s",
+		       notice->z_class_inst,
+		       inet_ntoa(who->sin_addr));
+		return;
+	}
 	bdumping = 1;
 	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect problems */
 
