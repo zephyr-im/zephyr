@@ -214,8 +214,11 @@ void init_standard_ports(pargc, argv)
         } else if (string_Eq((string) *current, "-ttymode")) {
 	    default_port = (string) "tty";
 	    (*pargc)--;
-            if (p = get_standard_port_info(default_port))
+            if (p = get_standard_port_info(default_port)) {
 		p->port_setup_status = DEFAULT_OK;
+		if (p = get_standard_port_info ((string) "X"))
+		    p->port_setup_status = DISABLED;
+	    }
 	} else
           *(new++) = *current;
     }
