@@ -15,6 +15,9 @@
 /* Define as the return type of signal handlers (int or void).  */
 #undef RETSIGTYPE
 
+/* Define if the `setpgrp' function takes no argument.  */
+#undef SETPGRP_VOID
+
 /* Define if you have the ANSI C header files.  */
 #undef STDC_HEADERS
 
@@ -57,6 +60,12 @@
 /* Define if you have the getlogin function.  */
 #undef HAVE_GETLOGIN
 
+/* Define if you have the getpgid function.  */
+#undef HAVE_GETPGID
+
+/* Define if you have the getsid function.  */
+#undef HAVE_GETSID
+
 /* Define if you have the krb_get_err_text function.  */
 #undef HAVE_KRB_GET_ERR_TEXT
 
@@ -78,9 +87,6 @@
 /* Define if you have the random function.  */
 #undef HAVE_RANDOM
 
-/* Define if you have the re_comp function.  */
-#undef HAVE_RE_COMP
-
 /* Define if you have the strchr function.  */
 #undef HAVE_STRCHR
 
@@ -92,9 +98,6 @@
 
 /* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H
-
-/* Define if you have the <libgen.h> header file.  */
-#undef HAVE_LIBGEN_H
 
 /* Define if you have the <malloc.h> header file.  */
 #undef HAVE_MALLOC_H
@@ -140,6 +143,9 @@
 
 /* Define if you have the dl library (-ldl).  */
 #undef HAVE_LIBDL
+
+/* Define if you have the gen library (-lgen).  */
+#undef HAVE_LIBGEN
 
 /* Define if you have the nsl library (-lnsl).  */
 #undef HAVE_LIBNSL
