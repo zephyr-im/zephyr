@@ -38,7 +38,7 @@ syslogd: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
 check:
 
 install: syslogd
-	${INSTALL} -m 755 -s syslogd ${DESTDIR}${sbindir}
+	${INSTALL} -m 755 -s syslogd ${DESTDIR}${lsbindir}
 	${INSTALL} -m 644 ${srcdir}/syslogd.8 ${DESTDIR}${mandir}/man8
 
 clean:
