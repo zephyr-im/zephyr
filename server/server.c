@@ -61,6 +61,8 @@ static char rcsid_server_s_c[] = "$Header$";
  * void server_kill_clt(client);
  *	ZClient_t *client;
  *
+ * void server_dump_servers(fp);
+ *	FILE *fp;
  */
 
 static void server_hello(), server_flush(), setup_server();
@@ -112,6 +114,9 @@ server_init()
 {
 	register int i;
 	struct in_addr *serv_addr, *server_addrs, limbo_addr;
+
+	/* we don't need to mask SIGFPE here since when we are called,
+	   the signal handler isn't set up yet. */
 
 	/* talk to hesiod here, set nservers */
 	if (!(server_addrs = get_server_addrs(&nservers))) {
@@ -188,6 +193,8 @@ server_init()
 	}
 	bzero((caddr_t) srv_nacklist, sizeof(ZNotAcked_t));
 	srv_nacklist->q_forw = srv_nacklist->q_back = srv_nacklist;
+
+	return;
 }
 
 /* note: these must match the order given in zserver.h */
@@ -324,16 +331,19 @@ struct sockaddr_in *who;
 	ZServerDesc_t *temp;
 	register int i;
 	long timerval;
+	int omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
 
 	if (who->sin_port != sock_sin.sin_port) {
 		zdbug((LOG_DEBUG, "srv_register wrong port %d",
 		       ntohs(who->sin_port)));
+		(void) sigsetmask(omask);
 		return(1);
 	}
 	/* Not yet... talk to ken about authenticators */
 #ifdef notdef
 	if (!auth) {
 		zdbug((LOG_DEBUG, "srv_register unauth"));
+		(void) sigsetmask(omask);
 		return(1);
 	}
 #endif notdef
@@ -341,6 +351,7 @@ struct sockaddr_in *who;
 	temp = (ZServerDesc_t *)malloc((unsigned) ((nservers + 1) * sizeof(ZServerDesc_t)));
 	if (!temp) {
 		syslog(LOG_CRIT, "srv_reg malloc");
+		(void) sigsetmask(omask);
 		return(1);
 	}
 	bcopy((caddr_t) otherservers, (caddr_t) temp, nservers * sizeof(ZServerDesc_t));
@@ -365,6 +376,7 @@ struct sockaddr_in *who;
 	zdbug((LOG_DEBUG, "srv %s is %s",
 	       inet_ntoa(otherservers[nservers].zs_addr.sin_addr),
 	       srv_states[(int) otherservers[nservers].zs_state]));
+	(void) sigsetmask(omask);
 	return(0);
 }
 #endif notdef
@@ -1515,5 +1527,27 @@ struct sockaddr_in *who;
 		abort();
 	}
 	server_queue(me_server, packlen, pack, auth, who);
+	return;
+}
+
+/*
+ * dump info about servers onto the fp.
+ * assumed to be called with SIGFPE blocked
+ * (true if called from signal handler)
+ */
+void
+server_dump_servers(fp)
+FILE *fp;
+{
+	register int i;
+
+	for (i = 0; i < nservers ; i++) {
+		(void) fprintf(fp, "%d:%s/%s%s\n",
+			       i,
+			       inet_ntoa(otherservers[i].zs_addr.sin_addr),
+			       srv_states[(int) otherservers[i].zs_state],
+			       otherservers[i].zs_dumping ? " (DUMPING)" : "");
+	}
+
 	return;
 }
