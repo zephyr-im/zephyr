@@ -91,7 +91,7 @@ struct sockaddr_in *who;
 		server_dispatch(notice, auth, who);
 		return;
 	} else if (class_is_hm(notice)) {
-		syslog(LOG_WARNING, "HM_CTL received?");
+		hostm_dispatch(notice, auth, who);
 		return;
 	} else if (class_is_control(notice)) {
 		control_dispatch(notice, auth, who);
