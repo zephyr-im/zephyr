@@ -28,14 +28,27 @@ static char rcsid_hm_c[] = "$Header$";
 #include <sys/ioctl.h>
 #include <sys/file.h>
 
+#ifdef vax
+#define MACHINE "vax"
+#define ok
+#endif vax
+#ifdef ibm032
+#define MACHINE "rtpc"
+#define ok
+#endif ibm032
+#ifndef ok
+#define MACHINE "unknown"
+#endif ok
+
 int no_server = 1, timeout_type = 0, serv_loop = 0;
 int nserv = 0, nclt = 0, nservchang = 0, sig_type = 0;
+long starttime;
 struct sockaddr_in cli_sin, serv_sin, from;
 struct hostent *hp;
 char **serv_list, **cur_serv_list, **clust_info;
 u_short cli_port;
 char hostname[MAXHOSTNAMELEN], prim_serv[MAXHOSTNAMELEN], loopback[4];
-char *cur_serv;
+char *cur_serv, *PidFile = "/etc/athena/hm.pid";
 
 extern int errno;
 extern char *index();
@@ -115,7 +128,7 @@ char *argv[];
 	  } else {
 		switch(sig_type) {
 		    case SIGHUP:
-		      new_server();
+		      new_server(NULL);
 		      break;
 		    case SIGTERM:
 		      die_gracefully();
@@ -135,7 +148,9 @@ void init_hm()
 {
       struct servent *sp;
       Code_t ret;
+      FILE *fp;
 
+      starttime = time(0);
       openlog("hm", LOG_PID, LOG_DAEMON);
 
       if ((ret = ZInitialize()) != ZERR_NONE) {
@@ -187,6 +202,13 @@ void init_hm()
 
 #ifndef DEBUG
       detach();
+
+      /* Write pid to file */
+      fp = fopen(PidFile, "w");
+      if (fp != NULL) {
+	    fprintf(fp, "%d\n", getpid());
+	    (void) fclose(fp);
+      }
 #endif DEBUG
 
       bzero(&serv_sin, sizeof(struct sockaddr_in));
@@ -200,7 +222,7 @@ void init_hm()
       /* who to talk to */
       if ((hp = gethostbyname(prim_serv)) == NULL) {
 	    DPR("gethostbyname failed\n");
-	    find_next_server();
+	    find_next_server(NULL);
       } else {
 	    DPR2 ("Server = %s\n", prim_serv);
 	    cur_serv = prim_serv;
@@ -304,27 +326,41 @@ detach()
         (void) close(i);
 }
 
-find_next_server()
+find_next_server(sugg_serv)
+     char *sugg_serv;
 {
       struct hostent *hp;
       int done = 0;
+      char **parse = serv_list;
 
-      if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
-	    serv_loop = 0;
-	    hp = gethostbyname(prim_serv);
-	    DPR2 ("Server = %s\n", prim_serv);
-	    cur_serv = prim_serv;
-      } else
-	do {
-	    if (*++cur_serv_list == NULL)
-	      cur_serv_list = serv_list;
-	    if (strcmp(*cur_serv_list, cur_serv)) {
-		  hp = gethostbyname(*cur_serv_list);
-		  DPR2 ("Server = %s\n", *cur_serv_list);
-		  cur_serv = *cur_serv_list;
-		  done = 1;
-	    }
-      } while (done == 0);
+      if (sugg_serv) {
+	    do {
+		  if (!strcmp(*parse, sugg_serv))
+		    done = 1;
+	    } while ((done == 0) && (*++parse != NULL));
+      }
+      if (done) {
+	    hp = gethostbyname(sugg_serv);
+	    DPR2 ("Server = %s\n", sugg_serv);
+	    cur_serv = sugg_serv;
+      } else {		  
+	    if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
+		  serv_loop = 0;
+		  hp = gethostbyname(prim_serv);
+		  DPR2 ("Server = %s\n", prim_serv);
+		  cur_serv = prim_serv;
+	    } else
+	      do {
+		    if (*++cur_serv_list == NULL)
+		      cur_serv_list = serv_list;
+		    if (strcmp(*cur_serv_list, cur_serv)) {
+			  hp = gethostbyname(*cur_serv_list);
+			  DPR2 ("Server = %s\n", *cur_serv_list);
+			  cur_serv = *cur_serv_list;
+			  done = 1;
+		    }
+	      } while (done == 0);
+      }
       bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
       nservchang++;
 }
@@ -364,11 +400,19 @@ hm_control(notice)
      ZNotice_t *notice;
 {
       Code_t ret;
+      struct hostent *hp;
+      char *suggested_server;
 
       DPR("Control message!\n");
-      if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN))
-	    new_server();
-      else if (!strcmp(notice->z_opcode, SERVER_PING)) {
+      if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN)) {
+	    if ((hp = gethostbyaddr(notice->z_message,
+				    notice->z_message_len,
+				    AF_INET)) != NULL) {
+		  strcpy(suggested_server, hp->h_name);
+		  new_server(suggested_server);
+	    } else
+	      new_server(NULL);
+      } else if (!strcmp(notice->z_opcode, SERVER_PING)) {
 	    if (no_server)
 	      (void)alarm(0);
 	    notice->z_kind = HMACK;
@@ -481,8 +525,10 @@ send_stats(notice, sin)
 {
       Code_t ret;
       ZPacket_t bfr;
-      char *list[10];
-      int len, i, nitems = 7;
+      char *list[20];
+      int len, i, nitems = 10;
+      long runtime;
+      struct tm *tim;
 
       if ((ret = ZSetDestAddr(sin)) != ZERR_NONE) {
 	    Zperr(ret);
@@ -507,6 +553,15 @@ send_stats(notice, sin)
 	sprintf(list[6], "yes");
       else
 	sprintf(list[6], "no");
+      list[7] = (char *)malloc(64);
+      runtime = time(0) - starttime;
+      tim = gmtime(&runtime);
+      sprintf(list[7], "%d days, %02d:%02d:%02d", tim->tm_yday,
+	      tim->tm_hour, tim->tm_min, tim->tm_sec);
+      list[8] = (char *)malloc(64);
+      sprintf(list[8], "%ld", sbrk(0));
+      list[9] = (char *)malloc(32);
+      strcpy(list[9], MACHINE);
 
       if ((ret = ZFormatRawNoticeList(notice, list, nitems, bfr,
 				      Z_MAXPKTLEN, &len)) != ZERR_NONE) {
@@ -520,12 +575,13 @@ send_stats(notice, sin)
 	free(list[i]);
 }
 
-new_server()
+new_server(sugg_serv)
+     char *sugg_serv;
 {
       no_server = 1;
       syslog (LOG_INFO, "Server went down, finding new server.");
       send_flush_notice(HM_DETACH);
-      find_next_server();
+      find_next_server(sugg_serv);
       send_boot_notice(HM_ATTACH);
 }
 
@@ -533,7 +589,7 @@ void handle_timeout()
 {
       switch(timeout_type) {
 	  case BOOTING:
-	    new_server();
+	    new_server(NULL);
 	    break;
 	  case NOTICES:
 	    DPR ("Notice timeout\n");
@@ -549,6 +605,7 @@ void die_gracefully()
 {
       syslog(LOG_INFO, "Terminate signal caught...");
       send_flush_notice(HM_FLUSH);
+      unlink(PidFile);
       closelog();
       exit(0);
 }
