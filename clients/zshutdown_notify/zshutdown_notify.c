@@ -30,8 +30,12 @@ static char *rcsid_zshutdown_notify_c = "$Header$";
 #define N_KIND		UNSAFE
 #define N_CLASS		"FILSRV"
 #define N_OPCODE	"SHUTDOWN"
-#define N_DEF_FORMAT	"@bold(Shutdown message from $1 at $time)\n@center(System going down, message is:)\n\n$2\n\n@center(@bold($3))"
+#define N_DEF_FORMAT	"From $sender:\n@bold(Shutdown message from $1 at $time)\n@center(System going down, message is:)\n\n$2\n\n@center(@bold($3))"
 #define N_FIELD_CNT	3
+
+#ifdef KERBEROS
+#define SVC_NAME	"rcmd"
+#endif
 
 /*
  * Standard warning strings appended as extra fields to
@@ -51,6 +55,13 @@ main(argc,argv)
     char hostname[MAXHOSTNAMELEN];
     char msgbuff[BUFSIZ], message[Z_MAXPKTLEN], *ptr;
     char *msg[N_FIELD_CNT];
+#ifdef KERBEROS
+    char tkt_filename[MAXPATHLEN];
+    char rlm[REALM_SZ];
+    char hn2[MAXHOSTNAMELEN];
+    char *cp;
+    extern char *krb_get_phost();
+#endif
 
     msg[0] = hostname;
     msg[1] = message;
@@ -68,6 +79,31 @@ main(argc,argv)
 
     if ((hp = gethostbyname(hostname)) != NULL)
 	    (void) strcpy(hostname, hp->h_name);
+
+#ifdef KERBEROS
+    (void) sprintf(tkt_filename, "/tmp/tkt_zshut_%d", getpid());
+    krb_set_tkt_string(tkt_filename);
+
+    cp = krb_get_phost(hostname);
+    if (cp)
+	(void) strcpy(hn2, cp);
+    else {
+	fprintf(stderr, "%s: can't figure out canonical hostname\n",argv[0]);
+	exit(1);
+    }
+    if (retval = krb_get_lrealm(rlm, 1)) {
+	fprintf(stderr, "%s: can't get local realm: %s\n",
+		argv[0], krb_err_txt[retval]);
+	exit(1);
+    }
+    if (retval = krb_get_svc_in_tkt(SVC_NAME, hn2, rlm,
+				    SERVER_SERVICE, SERVER_INSTANCE, 1,
+				    KEYFILE)) {
+	fprintf(stderr, "%s: can't get tickets: %s\n",
+		argv[0], krb_err_txt[retval]);
+	exit(1);
+    }
+#endif
 
     ptr = message;
 
@@ -93,8 +129,14 @@ main(argc,argv)
     notice.z_recipient = "";
     notice.z_default_format = N_DEF_FORMAT;
 
-    if ((retval = ZSendList(&notice, msg, N_FIELD_CNT, ZNOAUTH)) != ZERR_NONE) {
+    if ((retval = ZSendList(&notice, msg, N_FIELD_CNT, ZAUTH)) != ZERR_NONE) {
 	    com_err(argv[0], retval, "while sending notice");
+#ifdef KERBEROS
+	    (void) dest_tkt();
+#endif
 	    exit(1);
     } 
+#ifdef KERBEROS
+    (void) dest_tkt();
+#endif
 }
