@@ -1,0 +1,139 @@
+# $Id$
+#
+# Copyright 1987, 1993 by the Massachusetts Institute of Technology.
+#
+# For copying and distribution information,
+# please see the file <mit-copyright.h>.
+#
+# Imakefile for DES library
+#
+
+all:: $(BINC)/des.h
+
+$(BINC)/des.h: des.h
+	$(RM) $@; $(CP) des.h $@
+
+#ifdef MIT_DES
+OTHEROBJS= cbc_encrypt.o cksum.o pcbc_encrypt.o make_key_sched.o des.o \
+	key_parity.o
+#else
+OTHEROBJS= f_cbc.o f_cksum.o f_pcbc.o f_sched.o f_ecb.o f_parity.o f_tables.o
+#endif
+DESOBJS= $(OTHEROBJS) key_sched.o debug_decl.o \
+	quad_cksum.o random_key.o read_password.o \
+	string_to_key.o weak_key.o new_rnd_key.o util.o $(OLDOBJS)
+
+#ifdef ATHENA_RULES
+
+SimpleLibrary(des,$(DESOBJS),$(ATHLIBDIR))
+
+build_program(enc,enc.o libdes.a,,)
+build_program(destest,destest.o libdes.a,,)
+build_program(verify,verify.o libdes.a,,)
+
+#ifdef MIT_DES
+build_program(make_key_perm,make_key_perm.o misc.o,,)
+build_program(make_odd,make_odd.o misc.o,,)
+build_program(make_p_table,make_p_table.o misc.o,,)
+build_program(make_s_table,make_s_table.o misc.o,,)
+build_program(make_p,make_p.o misc.o,,)
+build_program(make_fp,make_fp.o misc.o,,)
+build_program(make_ip,make_ip.o misc.o,,)
+
+key_perm.h:	make_key_perm
+	./make_key_perm key_perm.h
+odd.h:	make_odd
+	./make_odd odd.h
+p_table.h:	make_p_table
+	./make_p_table p_table.h
+s_table.h:	make_s_table
+	./make_s_table s_table.h
+p.c:	make_p
+	./make_p p.c
+fp.c:	make_fp
+	./make_fp fp.c
+ip.c:	make_ip
+	./make_ip ip.c
+
+clean::
+	$(RM) ip.c fp.c p.c s_table.h p_table.h odd.h key_perm.h
+
+key_parity.o: odd.h
+key_sched.o: key_perm.h
+des.o: s_table.h p_table.h ip.c fp.c p.c
+misc.o: des_internal.h
+
+make_s_table:: tables.h des_internal.h
+make_p_table:: tables.h des_internal.h
+make_key_perm:: des_internal.h
+make_s:: s_table.h des_internal.h
+#endif
+
+#else /* ATHENA_RULES */
+
+#ifdef OLD_COMPAT
+OLDSRCS= desglue.c
+OLDOBJS= desglue.o
+#else
+OLDSRCS=
+OLDOBJS=
+#endif
+DESSRCS= key_sched.c des.c cbc_encrypt.c pcbc_encrypt.c debug_decl.c \
+	cksum.c quad_cksum.c random_key.c read_password.c \
+	string_to_key.c weak_key.c key_parity.c new_rnd_key.c util.c $(OLDSRCS)
+
+SRCS=   des_internal.h make_key_perm.c make_ip.c make_fp.c make_e.c make_p.c make_s.c \
+	make_s_table.c make_p_table.c make_odd.c misc.c \
+	key_test.c testit.c verify.c epc_encrypt.c \
+	cbc_noop.c enc.c ${DESSRCS}
+
+SRCDIR=$(SRCTOP)/lib/des
+CODE=$(SRCS) Imakefile tables.h des.vaxasm
+
+library_obj_rule()
+
+install_library_target(des,$(DESOBJS),$(DESSRCS),)
+
+library_ro_object(dbg_prt)
+
+/* add other assembler versions here, if you come up with them. */
+#ifdef VAXASM
+library_asm_object(des.o,des.vaxasm)
+#else
+library_ro_object(des)
+library_ro_object(key_sched)
+#endif
+/*
+ * misc.o is used by all of the header generators.
+ */
+
+host_simple_object(misc.o,misc.c)
+/*
+ * Generate include files for use by key_sched & friends.
+ */
+
+generate_depend(key_perm.h,make_key_perm,misc.o)
+generate_depend(odd.h,make_odd,misc.o)
+generate_depend(p_table.h,make_p_table,misc.o)
+generate_depend(s_table.h,make_s_table,misc.o)
+generate_depend(p.c,make_p,misc.o)
+generate_depend(fp.c,make_fp,misc.o)
+generate_depend(ip.c,make_ip,misc.o)
+
+misc.o: des_internal.h
+make_s_table: tables.h des_internal.h
+make_p_table: tables.h des_internal.h
+make_key_perm: des_internal.h
+make_s: s_table.h des_internal.h
+
+
+/*
+ * verify that the library correctly implements the DES standard.  
+ * Run this after any change to the source.
+ */
+
+test(verify,libdes.a,)
+test(key_test,libdes.a,)
+test(testit,libdes.a,)
+
+#endif /* ATHENA_RULES */
