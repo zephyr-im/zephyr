@@ -72,19 +72,22 @@ static Code_t gbd_loop(ZServerDesc_t *server);
 static Code_t send_normal_tcp(ZNotice_Kind_t kind, u_short port, char *zclass,
 			      char *inst, char *opcode, char *sender,
 			      char *recip, char *message, int len);
-static int net_read(int fd, register char *buf, register int len);
-static int net_write(int fd, register char *buf, int len);
+static int net_read(FILE *f, register char *buf, register int len);
+static int net_write(FILE *f, register char *buf, int len);
+static void setup_file_pointers (void);
+static void shutdown_file_pointers (void);
 #ifdef KERBEROS
 static int get_tgt(void);
 #endif /* KERBEROS */
  
 static timer bdump_timer;
 #ifdef KERBEROS
-static long ticket_time = 0L;
+static long ticket_time;
 static char my_realm[REALM_SZ] = "";
 #endif /* KERBEROS */
-static int bdump_inited = 0;
+static int bdump_inited;
 static int live_socket = -1;
+static FILE *input, *output;
  
 int bdumping = 0;
  
@@ -286,7 +289,8 @@ bdump_send(void)
 		return;
 	}
 #endif /* KERBEROS */
- 
+
+	setup_file_pointers ();
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sbd_loop failed: %s",
 		       error_message(retval));
@@ -314,7 +318,9 @@ bdump_send(void)
 #if 0
 	zdbug((LOG_DEBUG,"cleanup sbd"));
 #endif
-	(void) close(live_socket);
+	(void) fclose (input);
+	(void) fclose (output);
+	live_socket = -1;
 	(void) signal(SIGPIPE, SIG_DFL);
 	bdump_inited = 1;
 	bdumping = 0;
@@ -446,6 +452,7 @@ bdump_get(ZNotice_t *notice, int auth, sockaddr_in *who, ZServerDesc_t *server)
 		return;
 	}
 #endif /* KERBEROS */
+	setup_file_pointers ();
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "gbd_loop failed: %s",
 		       error_message(retval));
@@ -475,7 +482,7 @@ bdump_get(ZNotice_t *notice, int auth, sockaddr_in *who, ZServerDesc_t *server)
 #if 1
 	zdbug((LOG_DEBUG,"cleanup gbd"));
 #endif
-	(void) close(live_socket);
+	shutdown_file_pointers ();
 	(void) signal(SIGPIPE, SIG_DFL);
 	bdump_inited = 1;
 	bdumping = 0;
@@ -521,7 +528,7 @@ bdump_send_list_tcp(ZNotice_Kind_t kind, u_short port, char *class_name,
 	
 	length = htons((u_short) packlen);
  
-	if ((count = net_write(live_socket, (caddr_t) &length, sizeof(length))) != sizeof(length))
+	if ((count = net_write(output, (caddr_t) &length, sizeof(length))) != sizeof(length))
 		if (count < 0) {
 			xfree(pack);	/* free allocated storage */
 			return(errno);
@@ -531,7 +538,7 @@ bdump_send_list_tcp(ZNotice_Kind_t kind, u_short port, char *class_name,
 			return(ZSRV_PKSHORT);
 		}
  
-	if ((count = net_write(live_socket, pack, packlen)) != packlen)
+	if ((count = net_write(output, pack, packlen)) != packlen)
 		if (count < 0) {
 			xfree(pack);	/* free allocated storage */
 			return(errno);
@@ -545,6 +552,15 @@ bdump_send_list_tcp(ZNotice_Kind_t kind, u_short port, char *class_name,
 }
  
 static void
+shutdown_file_pointers () {
+    (void) fclose (input);
+    input = 0;
+    (void) fclose (output);
+    output = 0;
+    live_socket = -1;
+}
+
+static void
 cleanup(ZServerDesc_t *server, int omask)
 {
 #if 0
@@ -556,8 +572,7 @@ cleanup(ZServerDesc_t *server, int omask)
 		server->zs_timer =
 			timer_set_rel(0L, server_timo, (caddr_t) server);
 	}
-	(void) close(live_socket);
-	live_socket = -1;
+	shutdown_file_pointers ();
 	(void) signal(SIGPIPE, SIG_DFL);
 	bdumping = 0;
 	server->zs_dumping = 0;
@@ -570,7 +585,7 @@ cleanup(ZServerDesc_t *server, int omask)
  
 #ifdef KERBEROS
 #define TKTLIFETIME	96
-static long
+static inline long
 tkt_lifetime(int val)
 {
     return((long) val * 5L * 60L);
@@ -1180,7 +1195,7 @@ send_normal_tcp(ZNotice_Kind_t kind, u_short port, char *class_name, char *inst,
  
 	length = htons((u_short) packlen);
  
-	if ((count = net_write(live_socket, (caddr_t) &length, sizeof(length))) != sizeof(length)) {
+	if ((count = net_write(output, (caddr_t) &length, sizeof(length))) != sizeof(length)) {
 		if (count < 0) {
 			syslog(LOG_WARNING, "snt xmit/len: %m");
 			xfree(pack);	/* free allocated storage */
@@ -1191,7 +1206,7 @@ send_normal_tcp(ZNotice_Kind_t kind, u_short port, char *class_name, char *inst,
 			return(ZSRV_LEN);
 		}
 	}
-	if ((count = net_write(live_socket, pack, packlen)) != packlen)
+	if ((count = net_write(output, pack, packlen)) != packlen)
 		if (count < 0) {
 			syslog(LOG_WARNING, "snt xmit: %m");
 			xfree(pack);	/* free allocated storage */
@@ -1216,7 +1231,7 @@ get_packet(caddr_t packet, int len, int *retlen)
 	u_short length;
 	int result;
  
-	if ((result = net_read(live_socket, (caddr_t) &length, sizeof(u_short))) < sizeof(short)) {
+	if ((result = net_read(input, (caddr_t) &length, sizeof(u_short))) < sizeof(short)) {
 		if (result < 0)
 			return(errno);
 		else {
@@ -1228,7 +1243,7 @@ get_packet(caddr_t packet, int len, int *retlen)
 	length = ntohs(length);
 	if (len < length)
 		return(ZSRV_BUFSHORT);
-	if ((result = net_read(live_socket, packet, (int) length)) < length) {
+	if ((result = net_read(input, packet, (int) length)) < length) {
 		if (result < 0)
 			return(errno);
 		else {
@@ -1269,38 +1284,47 @@ extract_sin(ZNotice_t *notice, struct sockaddr_in *target)
 }
  
 static int
-net_read(int fd, register char *buf, register int len)
+net_read(FILE *f, register char *buf, register int len)
 {
     int cc, len2 = 0;
  
+    fflush (output);
     do {
-	cc = read(fd, buf, len);
-	if (cc < 0)
-	    return(cc);		 /* errno is already set */
-	else if (cc == 0) {
-	    return(len2);
-	} else {
-	    buf += cc;
-	    len2 += cc;
-	    len -= cc;
-	}
+	errno = 0;
+	cc = fread (buf, 1, len, f);
+	if (cc == 0)
+	    return -1;
+	buf += cc;
+	len2 += cc;
+	len -= cc;
     } while (len > 0);
-    return(len2);
+    return len2;
 }
  
 static int
-net_write(int fd, register char *buf, int len)
+net_write(FILE *f, register char *buf, int len)
 {
     int cc;
     register int wrlen = len;
     do {
-	cc = write(fd, buf, wrlen);
-	if (cc < 0)
-	    return(cc);
-	else {
-	    buf += cc;
-	    wrlen -= cc;
-	}
+	cc = fwrite (buf, 1, wrlen, f);
+	if (cc == 0)
+	    return -1;
+	buf += cc;
+	wrlen -= cc;
     } while (wrlen > 0);
-    return(len);
+    return len;
+}
+
+static void
+setup_file_pointers ()
+{
+    input = fdopen (live_socket, "r");
+    if (!input)
+	return;
+
+    int fd = dup (live_socket);
+    if (fd < 0)
+	return;
+    output = fdopen (fd, "w");
 }
