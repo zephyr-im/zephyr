@@ -1,5 +1,3 @@
-#ifndef __ZEPHYR_H__
-#define __ZEPHYR_H__
 /* This file is part of the Project Athena Zephyr Notification System.
  * It contains global definitions
  *
@@ -14,8 +12,10 @@
  */
 /* $Header$ */
 
-#include <zephyr/mit-copyright.h>
+#ifndef __ZEPHYR_H__
+#define __ZEPHYR_H__
 
+#include <zephyr/mit-copyright.h>
 
 #include <errno.h>
 #include <sys/types.h>
@@ -95,7 +95,9 @@ extern int errno;
 #define ZERR_BADPKT		1005	/* Bad incoming packet */
 #define ZERR_VERS		1006	/* Bad version # in packet */
 #define ZERR_NOPORT		1007	/* No port opened */
+#define ZERR_NONOTICE		1008	/* No notices selected */
 
 #define	ZERR_S_FIRST		2000	/* internal server error codes */
 #define	ZERR_S_LAST		3000
+
 #endif !__ZEPHYR_H__
