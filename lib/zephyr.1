@@ -41,8 +41,8 @@ and the HostManager forwards these notices to the nearest server for
 action.  The HostManager is responsible for ensuring that the notices
 reach a server, and for finding a new one if its server fails to respond.
 .PP
-Each user on the network usually automatically runs a WindowGram client program
-upon login.
+Each user on the network usually runs a WindowGram client program
+automatically upon login.
 .I Zwgc(1)
 displays notices to the user, and handles user
 responses.  Only notices to which the user has subscribed will be sent
@@ -51,7 +51,8 @@ to the WindowGram client.
 Subscriptions are handled through the
 .I zctl(1)
 program.  This program allows the user to add or delete subscriptions
-from Zephyr, and to add the subscriptions to a file.
+from Zephyr, to add the subscriptions to a file, and to perform other
+miscellaneous functions.
 .SH SEE ALSO
 kerberosintro(1)
 .br
