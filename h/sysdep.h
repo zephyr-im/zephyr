@@ -160,6 +160,19 @@ INT_32_TYPE gethostid();
 # endif
 #endif
 
+/* Kerberos compatibility. */
+#ifdef ZEPHYR_USES_KERBEROS
+# include <krb.h>
+# include <krb_err.h>
+# include <des.h>
+# ifndef HAVE_KRB_GET_ERR_TEXT
+#  define krb_get_err_text(n)	krb_err_text[n]
+# endif
+# ifndef HAVE_KRB_LOG
+#  define krb_log		log
+# endif
+#endif
+
 #ifdef HAVE_SYS_UIO_H
 # include <sys/uio.h>
 #endif

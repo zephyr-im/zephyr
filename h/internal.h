@@ -11,9 +11,6 @@
 #endif
 
 #ifdef ZEPHYR_USES_KERBEROS
-#include <krb.h>
-#include <krb_err.h>
-#include <des.h>
 /* Prototypes omitted from <krb.h> and <des.h> */
 int krb_get_cred __P((char *, char *, char *, CREDENTIALS *));
 int krb_get_lrealm __P((char *, int));
@@ -22,8 +19,6 @@ int krb_get_svc_in_tkt __P((char *, char *, char *, char *,
 			    char *, int, char *));
 int krb_get_tf_fullname __P((char *, char *, char *, char *));
 int krb_mk_req __P((register KTEXT, char *, char *, char *, long));
-unsigned long des_quad_cksum __P((unsigned char *, unsigned INT_32_TYPE *,
-				  long, int, des_cblock));
 #else
 #define REALM_SZ	MAXHOSTNAMELEN
 #define INST_SZ		0		/* no instances w/o Kerberos */
