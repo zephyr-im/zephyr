@@ -1,0 +1,18 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB} ${DES_LIB} ${HES_LIB}
+LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB}
+DEFINES= -DKPOP -DATHENA_COMPAT
+
+SRCS = zmailnotify.c
+OBJS = zmailnotify.o
+normal_obj_rule()
+
+program(zmailnotify,${OBJS},,${LIBS},${CLIENTDIR})
