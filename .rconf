@@ -1,0 +1,17 @@
+link *
+copy *;d
+
+ignore *.o
+ignore *.a
+ignore */core
+
+ignore .#*
+ignore *~
+ignore *.orig
+ignore *.bak
+ignore *.rej
+ignore *RCS;d
+
+ignore attic
+ignore .rconf
+ignore ATHENA
