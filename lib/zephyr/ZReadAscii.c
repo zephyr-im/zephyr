@@ -50,7 +50,7 @@ int ZReadAscii(ptr, len, field, num)
 {
     int i;
     unsigned int hexbyte;
-    register char c1, c2;
+    register int c1, c2;
 #ifdef Z_cnvt_xtoi
     register unsigned int temp;
 #endif
