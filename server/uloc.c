@@ -617,13 +617,8 @@ ulogin_add_user(notice, exposure, who)
      struct sockaddr_in *who;
 {
 	ZLocation_t *oldlocs, newloc;
-	register int i = 0;
+	register int i;
 	int omask;
-
-#if 0
-	zdbug((LOG_DEBUG,"ul_add: %s type %d", notice->z_sender,
-	       (int) exposure));
-#endif
 
 	if ((oldlocs = ulogin_find(notice,1)) != NULLZLT) {
 #if 0
@@ -658,13 +653,16 @@ ulogin_add_user(notice, exposure, who)
 	/* not the first one, insert him */
 
 	if (ulogin_setup(notice, &newloc, exposure, who)) {
+		xfree(locations);
+		locations = oldlocs;
 		(void) sigsetmask(omask);
 		return;
 	}
 	num_locs++;
 
 	/* copy old locs */
-	while ((i < (num_locs - 1)) &&
+	i = 0;
+	while ((i < num_locs-1) &&
 	       (comp_zstring(oldlocs[i].zlt_user,newloc.zlt_user) < 0)) {
 		locations[i] = oldlocs[i];
 		i++;
@@ -682,6 +680,18 @@ ulogin_add_user(notice, exposure, who)
 		xfree(oldlocs);
 
  dprnt:
+#if 0
+	if (zdebug) {
+		register int i;
+		syslog(LOG_DEBUG, "ul_add: New Locations (%d)", num_locs);
+		for (i = 0; i < num_locs; i++)
+			syslog(LOG_DEBUG, "%s/%s/%s/%d",
+			       locations[i].zlt_user->string,
+			       locations[i].zlt_machine->string,
+			       locations[i].zlt_tty->string,
+			       (int) locations[i].zlt_exposure);
+	}
+#endif
 	(void) sigsetmask(omask);
 	return;
 }
@@ -701,20 +711,23 @@ ulogin_setup(notice, locs, exposure, who)
 		return(1);
 
 	if (!locs->zlt_user) {
-	  syslog(LOG_ERR, "zloc bad format");
+	  syslog(LOG_ERR, "zloc bad format: no user");
 	  return(1);
 	}
 	if (!locs->zlt_machine) {
+	  syslog(LOG_ERR, "zloc bad format: no machine");
 	  free_zstring(locs->zlt_user);
 	  return(1);
 		
 	}
 	if (!locs->zlt_tty) {
+	  syslog(LOG_ERR, "zloc bad format: no tty");
 	  free_zstring(locs->zlt_user);
 	  free_zstring(locs->zlt_machine);
 	  return(1);
 	}
 	if (!locs->zlt_time) {
+	  syslog(LOG_ERR, "zloc bad format: no time");
 	  free_zstring(locs->zlt_user);
 	  free_zstring(locs->zlt_machine);
 	  free_zstring(locs->zlt_tty);
@@ -736,51 +749,52 @@ ulogin_parse(notice, locs)
      ZLocation_t *locs;
 {
 	register char *cp, *base;
+	register int nulls = 0;
 
 	if (!notice->z_message_len) {
 		syslog(LOG_ERR, "short ulogin");
 		return(1);
 	}
 
+	base = notice->z_message;
+	for (cp = base; cp < base + notice->z_message_len; cp++)
+	    if (! *cp) nulls++;
+	if (nulls < 3) {
+	    syslog(LOG_ERR, "zloc bad format from user %s (only %d fields)",
+		   notice->z_sender, nulls);
+	    return 1;
+	}
+
 	locs->zlt_user = make_zstring(notice->z_class_inst,0);
-	cp = base = notice->z_message;
 
-#if 0
-	zdbug((LOG_DEBUG,"user %s",notice->z_class_inst));
-#endif
-
+	cp = base;
 	locs->zlt_machine = make_zstring(cp,0);
 #if 0
-	zdbug((LOG_DEBUG,"mach %s",cp));
+	zdbug((LOG_DEBUG, "ul_parse: mach %s", cp));
 #endif
 
 	cp += (strlen(cp) + 1);
-	if (cp >= base + notice->z_message_len) {
-		syslog(LOG_ERR, "zloc bad format 1");
-		return(1);
-	}
 	locs->zlt_time = strsave(cp);
 #if 0
-	zdbug((LOG_DEBUG,"time %s",cp));
+	zdbug((LOG_DEBUG, "ul_parse: time %s", cp));
 #endif
 
+	/* This field might not be null-terminated */
 	cp += (strlen(cp) + 1);
-
-	if (cp > base + notice->z_message_len) {
-		syslog(LOG_ERR, "zloc bad format 2");
-		return(1);
-	} else {
-		locs->zlt_tty = make_zstring(cp,0);
 #if 0
-		zdbug((LOG_DEBUG,"tty %s",cp));
+	if (nulls == 2) {
+	    s = (char *)xmalloc(base + notice->z_message_len - cp + 1);
+	    strncpy(s, cp);
+	    locs->zlt_tty = make_zstring(s, 0);
+	    xfree(s);
+	} else
 #endif
-		cp += strlen(locs->zlt_tty->string) + 1;
-	}
-	if (cp > base + notice->z_message_len) {
-		syslog(LOG_ERR, "zloc bad format 3");
-		return(1);
-	}
-	return(0);
+	    locs->zlt_tty = make_zstring(cp,0);
+#if 0
+	zdbug((LOG_DEBUG, "ul_parse: tty %s", locs->zlt_tty->string));
+#endif
+
+	return 0;
 }	
 
 /*
@@ -827,14 +841,19 @@ ulogin_find(notice, strict)
 			rhi = i - 1;
 		if (rhi - rlo < 0) {
 #if 0
-			zdbug((LOG_DEBUG,"ul_find not found"));
+			zdbug((LOG_DEBUG,"ul_find: %s not found",
+			       inst->string));
 #endif
 			free_zstring(inst);
-			return(NULLZLT);
+			return 0;
 		}
 		i = (rhi + rlo) >> 1; /* split the diff */
 	}
-	if (strict  && ulogin_parse(notice, &tmploc)) {
+#if 0
+	zdbug((LOG_DEBUG, "ul_find: %s found at loc %d",
+	       inst->string, i));
+#endif
+	if (strict && ulogin_parse(notice, &tmploc)) {
 #if 1
 		zdbug((LOG_DEBUG,"ul_find bad fmt"));
 #endif
@@ -842,18 +861,15 @@ ulogin_find(notice, strict)
 		return 0;
 	}
 	/* back up to the first of this guy */
-	if (i) {
-		while (i > 0 && (locations[--i].zlt_user == inst)) {
+	while (i > 0 && (locations[i-1].zlt_user == inst)) {
+	    i--;
 #if 0
-			zdbug ((LOG_DEBUG,
-				"ulogin_find: backing up: %s %d %s %s",
-				inst->string, i,
-				locations[i].zlt_user->string,
-				locations[i].zlt_tty->string));
+	    zdbug ((LOG_DEBUG,
+		    "ulogin_find: backing up: %s %d %s %s",
+		    inst->string, i,
+		    locations[i].zlt_user->string,
+		    locations[i].zlt_tty->string));
 #endif
-		}
-		if (i || (locations[i].zlt_user != inst))
-		  i++;
 	}
 	if (strict)
 		while (i < num_locs
