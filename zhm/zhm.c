@@ -19,6 +19,11 @@ static char rcsid_hm_c[] = "$Header$";
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
+/* 
+ * warning: sys/param.h may include sys/types.h which may not be protected from
+ * multiple inclusions on your system
+ */
+#include <sys/param.h>
 
 #ifdef HESIOD
 #include <hesiod.h>
@@ -45,7 +50,11 @@ extern long time();
 
 void init_hm(), detach(), handle_timeout(), resend_notices(), die_gracefully();
 void set_sig_type();
+
+#if BSD < 43
 char *upcase();
+#define strncasecmp(x, y, len) strcmp(x, upcase((y)), len)
+#endif /* BSD */
 
 main(argc, argv)
 char *argv[];
@@ -110,7 +119,7 @@ char *argv[];
 		* new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
 		* server
 		*/
-	       if (!strncmp("ZEPHYR", upcase(*clust_info), 6)) {
+	       if (!strncasecmp("ZEPHYR", *clust_info, 6)) {
 		    register char *c;
 	
 		    if ((c = index(*clust_info, ' ')) == 0) {
@@ -119,7 +128,7 @@ char *argv[];
 			 (void)strcpy(prim_serv, c+1);
 		    break;
 	       }
-	       if (!strncmp("ZCLUSTER", upcase(*clust_info), 6)) {
+	       if (!strncasecmp("ZCLUSTER", *clust_info, 6)) {
 		    register char *c;
 
 		    if ((c = index(*clust_info, ' ')) == 0) {
@@ -159,7 +168,6 @@ char *argv[];
 	       if (dieflag) {
 		    die_gracefully();
 	       } else {
-		    syslog(LOG_INFO, "Flushing this client...");
 		    send_flush_notice(HM_FLUSH);
 		    deactivated = 1;
 	       }
@@ -174,7 +182,7 @@ char *argv[];
 	       break;
 	  default:
 	       sig_type = 0;
-	       syslog (LOG_INFO, "Unknown system interrupt.");
+	       syslog (LOG_WARNING, "Unknown system interrupt.");
 	       break;
 	  }
 	  ret = ZReceivePacket(packet, &pak_len, &from);
@@ -358,6 +366,7 @@ void init_hm()
      (void)signal (SIGTERM, set_sig_type);
 }
 
+#if BSD < 43
 char *upcase(s)
      register char *s;
 {
@@ -367,6 +376,7 @@ char *upcase(s)
 	  if (islower(*s)) *s = toupper(*s);
      return(r);
 }
+#endif /* BSD */
 
 void detach()
 {
