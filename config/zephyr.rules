@@ -53,7 +53,8 @@ ZACLDIR = $(ZLIBDIR)/acl
 
 BINC = $(PTOP)/h
 
-ZLIBS = $(PTOP)/lib/libzephyr.a $(LIB_KRB) $(LIB_ET)
+ZLIB = $(PTOP)/lib/libzephyr.a
+ZLIBS = $(LIB_KRB) $(LIB_ET)
 DYN_LIB = $(PTOP)/libdyn/libdyn.a
 
 DEFINES = $(XDEFS) -I$(BINC) \
@@ -75,7 +76,7 @@ clean::									@@\
 	$(RM) concat3($(BINC)/zephyr/,name,.h)
 
 #define zprogram(name,libs) \
-SimpleProgram(name,$(OBJS),libs $(ZLIBS),$(ATHBINDIR))			@@\
+SimpleProgram(name,$(OBJS) $(ZLIB),libs $(ZLIBS),$(ATHBINDIR)) @@\
 create_depend($(SRCS))
 
 
@@ -96,4 +97,6 @@ ZLIBDIR = /mit/zephyr/configs
 ATHCONFDIR = $(ZLIBDIR)
 ATHETCDIR = $(ATHBINDIR)
 ATHRETCDIR = $(ATHBINDIR)
+
+LDPATH = -L/usr/athena/lib/shared -L/usr/athena/lib
 #endif
