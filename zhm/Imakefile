@@ -13,11 +13,15 @@ SOBJS= ../clients/syslogd/syslog.o
 SINCLUDE= -I../clients/syslogd
 #endif
 
+#ifdef __NetBSD__
+OSLIBS=-lcompat			/* for insque() */
+#endif
+
 SRCS= zhm.c zhm_server.c zhm_client.c queue.c
 OBJS= zhm.o zhm_server.o zhm_client.o queue.o
 
 XDEFS= $(SINCLUDE) -DPIDFILE=\"$(ZPIDDIR)/zhm.pid\"
 
-SimpleProgram(zhm,$(OBJS) $(SOBJS) $(ZLIB),$(ZLIBS) $(LIB_HES),$(ATHRETCDIR))
+SimpleProgram(zhm,$(OBJS) $(SOBJS) $(ZLIB),$(ZLIBS) $(OSLIBS),$(ATHRETCDIR))
 install_man(zhm.8,zhm.8)
 create_depend($(SRCS))
