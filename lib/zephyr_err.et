@@ -6,8 +6,6 @@ ec  ZERR_ILLVAL,
 	"Illegal value in notice"
 ec  ZERR_HMPORT,
 	"Can't get host manager port"
-ec  ZERR_NOMEM,
-	"Out of memory"
 ec  ZERR_PORTINUSE,
 	"Can't assign port"
 ec  ZERR_BADPKT,
@@ -22,5 +20,29 @@ ec  ZERR_QLEN,
 	"Input queue too long"
 ec  ZERR_HMDEAD,
 	"Hostmanager not responding"
+ec  ZERR_INTERNAL,
+	"Internal error"
+ec  ZERR_NOLOCATIONS,
+	"No previous call to ZLocateUser"
+ec  ZERR_NOMORELOCS,
+	"No more locations available"
+ec  ZERR_FIELDLEN,
+	"Field too long for buffer"
+ec  ZERR_BADFIELD,
+	"Improperly formatted field"
+ec  ZERR_SERVNAK,
+	"SERVNAK received"
+ec  ZERR_AUTHFAIL,
+	"Server could not verify authentication"
+ec  ZERR_LOGINFAIL,
+	"Not logged-in"
+ec  ZERR_NOSUBSCRIPTIONS,
+	"No previous call to ZRetrieveSubscriptions"
+ec  ZERR_NOMORESUBSCRIPTIONS,
+	"No more subscriptions available"
+ec  ZERR_TOOMANYSUBS,
+	"Too many subscriptions to transmit"
+ec  ZERR_EOF,
+	"End of file detected during read"
 
 	end
