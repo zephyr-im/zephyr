@@ -19,6 +19,7 @@ static char rcsid_xselect_c[] = "$Id$";
 #include <zephyr/mit-copyright.h>
 
 /* xselect.c - ICCCM compliant cut-and-paste */
+/* also includes some other ICCCMisms, such as the WM_PROTOCOL handling */
 
 #include <stdio.h>
 #include <X11/Xlib.h>
@@ -31,12 +32,15 @@ extern char *getSelectedText();
 
 static Time ownership_start = CurrentTime;
 static Time ownership_end = CurrentTime;
+Atom XA_WM_PROTOCOLS,XA_WM_DELETE_WINDOW;
 static Atom ZA_TARGETS,ZA_MULTIPLE,ZA_TIMESTAMP,ZA_ATOM_PAIR;
 
 static struct _ZAtom {
    Atom *patom;
    char *name;
 } ZAtom[] = {
+   {&XA_WM_PROTOCOLS,"WM_PROTOCOLS"},
+   {&XA_WM_DELETE_WINDOW,"WM_DELETE_WINDOW"},
    {&ZA_TARGETS,"TARGETS"},
    {&ZA_MULTIPLE,"MULTIPLE"},
    {&ZA_TIMESTAMP,"TIMESTAMP"},
@@ -130,7 +134,7 @@ static void xselSetProperties(dpy,w,property,target,selreq)
 
 /* global functions */
 
-void xselInitAtoms(dpy)
+void xicccmInitAtoms(dpy)
      Display *dpy;
 {
    int i;
