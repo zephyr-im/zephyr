@@ -28,7 +28,7 @@ static const char rcsid_zwrite_c[] = "$Id$";
 
 #define MAXRECIPS 100
 
-int nrecips, msgarg, verbose, quiet, nodot;
+int nrecips, msgarg, verbose, quiet, nodot, cc;
 char *whoami, *inst, *class, *opcode, *realm, *recips[MAXRECIPS];
 Z_AuthProc auth;
 void un_tabify();
@@ -175,6 +175,9 @@ main(argc, argv)
 	    arg++;
 	    realm = argv[arg];
 	    break;
+	case 'C':
+	    cc = 1;
+	    break;
 	default:
 	    usage(whoami);
 	}
@@ -254,6 +257,26 @@ main(argc, argv)
     } else {
 	message = malloc(1);
 	message[msgsize++] = '\0';
+    }
+
+    if (cc && nrecips > 1) {
+        int size = msgsize;
+    	for (arg=0;arg<nrecips;arg++)
+	    size += (strlen(recips[arg]) + 2);
+	size += 6;			/* for the newlines and "cc: " */
+	message = realloc(message, (unsigned) size);
+	(void) strcpy(message+msgsize, "CC: ");
+	msgsize += 4;
+	for (arg=0;arg<nrecips;arg++) {
+	    (void) strcpy(message+msgsize, recips[arg]);
+	    msgsize += strlen(recips[arg]);
+	    if (arg != nrecips-1) {
+		message[msgsize] = ' ';
+		msgsize++;
+	    }
+	}
+	message[msgsize] = '\n';
+	msgsize += 1;
     }
 
     if (msgarg) {
@@ -417,7 +440,7 @@ usage(s)
 {
     fprintf(stderr,
 	    "Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l]\n\
-\t[-c class] [-i inst] [-O opcode] [-f fsname] [-s signature]\n\
+\t[-c class] [-i inst] [-O opcode] [-f fsname] [-s signature] [-C]\n\
 \t[user ...] [-F format] [-r realm] [-m message]\n", s);
     fprintf(stderr,"\t-f and -c are mutually exclusive\n\
 \t-f and -i are mutually exclusive\n\

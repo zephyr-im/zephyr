@@ -30,6 +30,8 @@ zwrite \- write to another user via Zephyr
 ] [
 .BI -l
 ] [
+.BI -C
+] [
 .BI -O
 opcode ] [
 .BI -s
@@ -127,6 +129,14 @@ exits without sending a message.
 When the
 .B \-m
 option is used, no PING is sent.
+.TP
+.B \-C
+prepends a "CC:" line to the body of the message indicating the
+recipients of the message. This is strictly a convenience: the
+presence of a "CC:" line at the top of a zephyr body does not
+necessarily indicate that this option was used, or that the message
+really was sent to the listed users, and its lack doesn't indicate
+that the message was not sent to multiple users.
 .TP
 .B \-s \fIsignature\fR
 sets the signature to be included in the message.  This overrides both
