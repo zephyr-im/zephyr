@@ -107,6 +107,10 @@ Current Kerberos tickets for exchange with other servers
 .TP
 .I /usr/tmp/zephyr.db:
 File containing an ASCII dump of the database.
+.SH BUGS
+The current implementation of the Zephyr server (\fIzephyrd(8)\fR) makes
+no distinction between realm-announced, net-visible and net-announced
+exposure levels.
 .SH SEE ALSO
 zephyr(1), zhm(8), kerberosintro(1), hesiod(3), access_control_lists(?),
 syslog(3)
