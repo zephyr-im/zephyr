@@ -10,7 +10,6 @@
 #include "ss_internal.h"
 #include "copyright.h"
 #include <stdio.h>
-#include <sys/types.h>
 #include <sys/file.h>
 #include <signal.h>
 
