@@ -6,9 +6,9 @@ datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
 
-includedir=$(prefix)/include
-mandir=$(prefix)/man
-libdir=$(exec_prefix)/lib
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
@@ -18,7 +18,7 @@ CC=@CC@
 RANLIB=@RANLIB@
 
 DEBUG=-O
-CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @CPPFLAGS@
+CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @CPPFLAGS@
 
 OBJS =	f_cbc.o f_cksum.o f_pcbc.o f_sched.o f_ecb.o f_parity.o f_tables.o \
 	key_sched.o debug_decl.o quad_cksum.o random_key.o string_to_key.o \
@@ -26,22 +26,22 @@ OBJS =	f_cbc.o f_cksum.o f_pcbc.o f_sched.o f_ecb.o f_parity.o f_tables.o \
 
 all: libdes.a destest
 
-libdes.a: $(OBJS)
-	$(AR) cru $@ $(OBJS)
-	$(RANLIB) $@
+libdes.a: ${OBJS}
+	${AR} cru $@ ${OBJS}
+	${RANLIB} $@
 
 destest: libdes.a destest.o
-	$(CC) $(LDFLAGS) -o $@ destest.o libdes.a
+	${CC} ${LDFLAGS} -o $@ destest.o libdes.a
 
 check:
 
 install:
 
 clean:
-	rm -f $(OBJS) libdes.a enc.o enc destest.o destest verify.o verify
+	rm -f ${OBJS} libdes.a enc.o enc destest.o destest verify.o verify
 
-${OBJS} enc.o destest.o verify.o: des.h $(top_srcdir)/h/sysdep.h
-${OBJS} enc.o destest.o verify.o: $(BUILDTOP)/h/config.h
+${OBJS} enc.o destest.o verify.o: des.h ${top_srcdir}/h/sysdep.h
+${OBJS} enc.o destest.o verify.o: ${BUILDTOP}/h/config.h
 
 .PHONY: all check install clean
 
