@@ -23,13 +23,12 @@ Code_t ZSendNotice(notice)
 	char *buffer;
 	int len;
 
-	buffer = (char *)malloc(BUFSIZ);
+	buffer = (char *)malloc(Z_MAXPKTLEN);
 	if (!buffer)
 		return (ZERR_NOMEM);
 
-	len = BUFSIZ;
-
-	if ((retval = ZFormatNotice(notice,buffer,BUFSIZ,&len)) < 0) {
+	if ((retval = ZFormatNotice(notice,buffer,Z_MAXPKTLEN,&len)) !=
+	    ZERR_NONE) {
 		free(buffer);
 		return (retval);
 	}

@@ -25,12 +25,12 @@ Code_t ZSendList(notice,list,nitems)
 	char *buffer;
 	int len;
 
-	buffer = (char *)malloc(BUFSIZ);
+	buffer = (char *)malloc(Z_MAXPKTLEN);
 	if (!buffer)
 		return (ZERR_NOMEM);
 
 	if ((retval = ZFormatNoticeList(notice,list,nitems,buffer,
-					 BUFSIZ,&len)) < 0) {
+					Z_MAXPKTLEN,&len)) != ZERR_NONE) {
 		free(buffer);
 		return (retval);
 	}
