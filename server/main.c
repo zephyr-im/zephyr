@@ -20,10 +20,15 @@ char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nP
 #endif SABER
 #endif lint
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 2.4";
+char version[] = "Zephyr Server (DEBUG) 2.5EXL2";
 #else
-char version[] = "Zephyr Server 2.4";
+char version[] = "Zephyr Server 2.5EXL2";
 #endif DEBUG
+#ifdef CONCURRENT
+char concurrent[] = "Brain-dump concurrency enabled";
+#else
+char concurrent[] = "no brain-dump concurrency";
+#endif CONCURRENT
 /*
  * Server loop for Zephyr.
  */
@@ -67,27 +72,24 @@ char version[] = "Zephyr Server 2.4";
 
 #include <netdb.h>
 #include <sys/socket.h>
-#ifdef lint
-#include <sys/uio.h>
-#endif lint
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <signal.h>
+#include <sys/resource.h>
 
 #define	EVER		(;;)		/* don't stop looping */
 
 static int do_net_setup(), initialize();
 static void usage();
 static int bye();
-#ifdef DEBUG
 static void dbug_on(), dbug_off();
-#else
+#ifndef DEBUG
 static void detach();
 #endif DEBUG
 
 int srv_socket;				/* dgram socket for clients
 					   and other servers */
-int bdump_socket = 0;			/* brain dump socket
+int bdump_socket = -1;			/* brain dump socket fd
 					   (closed most of the time) */
 fd_set interesting;			/* the file descrips we are listening
 					   to right now */
@@ -103,8 +105,8 @@ u_short hm_port;			/* the port # of the host manager */
 
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
-#ifdef DEBUG
 int zdebug = 0;
+#ifdef DEBUG
 int zalone = 0;
 #endif DEBUG
 u_long npackets = 0;			/* number of packets processed */
@@ -115,16 +117,8 @@ int argc;
 char **argv;
 {
 	int nfound;			/* #fildes ready on select */
-	int authentic;			/* authentic flag */
-	Code_t status;
-	ZNotice_t new_notice;		/* parsed from input_packet */
-	ZPacket_t input_packet;		/* from the network */
-	int input_len;			/* len of packet */
-	struct sockaddr_in input_sin;	/* constructed for authent */
-
 	fd_set readable;
 	struct timeval *tvp;
-	struct sockaddr_in whoisit;	/* for holding peer's address */
 
 	int optchar;			/* option processing */
 	extern char *optarg;
@@ -135,22 +129,15 @@ char **argv;
 		programname++;
 	else programname = argv[0];
 
-#ifdef DEBUG
-	/* open log here, before we might send a message */
-	/* XXX eventually make this LOG_DAEMON */
-	openlog(programname, LOG_PID, LOG_LOCAL6);
-#endif DEBUG
 	/* process arguments */
 	
 	while ((optchar = getopt(argc, argv, "ds")) != EOF) {
 		switch(optchar) {
-#ifdef DEBUG
 		case 'd':
-			syslog(LOG_DEBUG, "debugging on");
 			zdebug = 1;
 			break;
+#ifdef DEBUG
 		case 's':
-			syslog(LOG_DEBUG, "standalone operation");
 			zalone = 1;
 			break;
 #endif DEBUG
@@ -170,18 +157,24 @@ char **argv;
 #endif DEBUG
 	    ) {
 		fprintf(stderr, "NO ZEPHYR SRVTAB available; exiting\n");
-#ifdef DEBUG
-		syslog(LOG_ERR, "NO ZEPHYR SRVTAB available; exiting\n");
-#endif DEBUG
 		exit(1);
 	}
 
 #ifndef DEBUG
 	detach();
+#endif DEBUG
+
 	/* open log */
 	/* XXX eventually make this LOG_DAEMON */
 	openlog(programname, LOG_PID, LOG_LOCAL6);
-#endif !DEBUG
+
+#ifdef DEBUG
+	if (zalone)
+		syslog(LOG_DEBUG, "standalone operation");
+	
+#endif DEBUG
+	if (zdebug)
+		syslog(LOG_DEBUG, "debugging on");
 
 	/* set up sockets & my_addr and myname, 
 	   find other servers and set up server table, initialize queues
@@ -194,6 +187,9 @@ char **argv;
 	/* chdir to somewhere where a core dump will survive */
 	if (chdir("/usr/tmp") != 0)
 		syslog(LOG_ERR,"chdir failed (%m) (execution continuing)");
+
+	if (setpriority(PRIO_PROCESS, getpid(), -10))
+		syslog(LOG_ERR,"setpriority failed (%m)");
 
 	FD_ZERO(&interesting);
 	FD_SET(srv_socket, &interesting);
@@ -208,13 +204,13 @@ char **argv;
 
 	(void) signal(SIGTERM, bye);
 	(void) signal(SIGINT, SIG_IGN);
-	(void) signal(SIGUSR1, dbug_on);
-	(void) signal(SIGUSR2, dbug_off);
 	syslog(LOG_INFO, "Ready for action");
 #else
 	(void) signal(SIGINT, bye);
 	(void) signal(SIGTERM, bye);
 #endif DEBUG
+	(void) signal(SIGUSR1, dbug_on);
+	(void) signal(SIGUSR2, dbug_off);
 
 	/* GO! */
 	uptime = NOW;
@@ -237,8 +233,10 @@ char **argv;
 			tvp = (struct timeval *) NULL;
 		}
 		readable = interesting;
-		if (ZQLength()) {
-			nfound = 1;	
+		if (msgs_queued()) {
+			/* when there is input in the queue, we
+			   artificially set up to pick up the input */
+			nfound = 1;
 			FD_ZERO(&readable);
 		} else 
 			nfound = select(nfildes, &readable, (fd_set *) NULL,
@@ -256,58 +254,12 @@ char **argv;
 			   the loop, and process the next timeout */
 			continue;
 		else {
-			if (bdump_socket && FD_ISSET(bdump_socket,&readable))
+			if ((bdump_socket >= 0) &&
+			    FD_ISSET(bdump_socket,&readable))
 				bdump_send();
-			else if (ZQLength() || FD_ISSET(srv_socket, &readable)) {
-				/* handle traffic */
-				
-				if (status = ZReceivePacket(input_packet,
-							    sizeof(input_packet),
-							    &input_len,
-							    &whoisit)) {
-					syslog(LOG_ERR,
-					       "bad packet receive: %s",
-					       error_message(status));
-					continue;
-				}
-				npackets++;
-				if (status = ZParseNotice(input_packet,
-							  input_len,
-							  &new_notice)) {
-					syslog(LOG_ERR,
-					       "bad notice parse (%s): %s",
-					       inet_ntoa(whoisit.sin_addr),
-					       error_message(status));
-					continue;
-				}
-				if (server_which_server(&whoisit)) {
-				/* we need to parse twice--once to get
-				   the source addr, second to check
-				   authentication */
-					bzero((caddr_t) &input_sin,
-					      sizeof(input_sin));
-					input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
-					input_sin.sin_port = new_notice.z_port;
-					input_sin.sin_family = AF_INET;
-					authentic = ZCheckAuthentication(&new_notice,
-									 input_packet,
-									 &input_sin);
-				}
-				else
-					authentic = ZCheckAuthentication(&new_notice,
-									 input_packet,
-									 &whoisit);
-				if (whoisit.sin_port != hm_port &&
-				    strcmp(new_notice.z_class,ZEPHYR_ADMIN_CLASS) &&
-				    whoisit.sin_port != sock_sin.sin_port &&
-				    new_notice.z_kind != CLIENTACK) {
-					syslog(LOG_ERR,
-					       "bad port %s/%d",
-					       inet_ntoa(whoisit.sin_addr),
-					       ntohs(whoisit.sin_port));
-					continue;
-				}
-				dispatch(&new_notice, authentic, &whoisit);
+			else if (msgs_queued() ||
+				 FD_ISSET(srv_socket, &readable)) {
+				handle_packet();
 			} else
 				syslog(LOG_ERR, "select weird?!?!");
 		}
@@ -418,9 +370,9 @@ static void
 usage()
 {
 #ifdef DEBUG
-	fprintf(stderr,"Usage: %s [-d]\n",programname);
+	fprintf(stderr,"Usage: %s [-d] [-s]\n",programname);
 #else
-	fprintf(stderr,"Usage: %s\n",programname);
+	fprintf(stderr,"Usage: %s [-d]\n",programname);
 #endif DEBUG
 	exit(2);
 }
@@ -455,7 +407,8 @@ dbug_off()
 	syslog(LOG_DEBUG, "debugging turned off");
 	zdebug = 0;
 }
-#else
+#endif
+
 /*
  * detach from the terminal
  */
@@ -480,4 +433,3 @@ detach()
 	(void) close(i);
 
 }
-#endif DEBUG
