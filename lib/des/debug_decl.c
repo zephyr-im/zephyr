@@ -15,5 +15,5 @@ static char rcsid_debug_decl_c[] =
     "$Id$";
 #endif
 
-#include <mit-copyright.h>
+#include "mit-copyright.h"
 int	des_debug	= 0;

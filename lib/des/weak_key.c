@@ -20,7 +20,7 @@ static char rcsid_weak_key_c[] =
     "$Id$";
 #endif
 
-#include <des.h>
+#include "des.h"
 
 /*
  * The following are the weak DES keys:

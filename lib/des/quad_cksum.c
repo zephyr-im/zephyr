@@ -75,7 +75,7 @@ static char rcsid_quad_cksum_c[] =
 #include <sys/types.h>
 #include <netinet/in.h>
 
-#include <mit-copyright.h>
+#include "mit-copyright.h"
 #include "des.h"
 
 /* Externals */
@@ -85,11 +85,11 @@ extern int des_debug;
 
 unsigned long
 des_quad_cksum(in,out,length,out_count,c_seed)
-    des_cblock c_seed;		/* secret seed, 8 bytes */
     unsigned char *in;		/* input block */
     u_int32 *out;		/* optional longer output */
-    int out_count;		/* number of iterations */
     long length;		/* original length in bytes */
+    int out_count;		/* number of iterations */
+    des_cblock c_seed;		/* secret seed, 8 bytes */
 {
 
     /*
@@ -108,6 +108,7 @@ des_quad_cksum(in,out,length,out_count,c_seed)
     register int i;
 
     /* use all 8 bytes of seed */
+
 
     z = c_seed[0] +
 	((u_int32)c_seed[1] << 8) +
@@ -140,7 +141,7 @@ des_quad_cksum(in,out,length,out_count,c_seed)
 	    z  = ((x * x) + (x2 * x2)) % 0x7fffffff;
 	    z2 = (x * (x2+83653421))   % 0x7fffffff; /* modulo */
 	    if (des_debug & 8)
-		printf("%d %d\n",z,z2);
+		printf("%lu %lu\n", (unsigned long) z, (unsigned long) z2);
 	}
 
 	if (out != NULL) {

@@ -18,8 +18,8 @@
  */
 int
 des_pcbc_encrypt(in, out, length, schedule, ivec, encrypt)
-	des_cblock *in;
-	des_cblock *out;
+	des_cblock in;
+	des_cblock out;
 	long length;
 	des_key_schedule schedule;
 	des_cblock ivec;
@@ -39,8 +39,8 @@ des_pcbc_encrypt(in, out, length, schedule, ivec, encrypt)
 	 * Deal with encryption and decryption separately.
 	 */
 	if (encrypt) {
-		register unsigned long plainl;
-		register unsigned long plainr;
+		register unsigned long plainl = 0;
+		register unsigned long plainr = 0;
 
 		/*
 		 * Initialize left and right with the contents of the initial

@@ -27,12 +27,12 @@ static char rcsid_random_key_c[] =
     "$Id$";
 #endif
 
-#include <mit-copyright.h>
+#include "mit-copyright.h"
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
 
-#include <des.h>
+#include "des.h"
 
 #ifdef USE_RAND48
 #define random	lrand48
@@ -42,7 +42,7 @@ static char rcsid_random_key_c[] =
 /* random_key */
 int
 des_random_key(key)
-    des_cblock *key;
+    des_cblock key;
 {
     /*
      * create a random des key; should force odd parity per byte;
@@ -63,7 +63,7 @@ des_random_key(key)
 
     if (!p) {
 	p = getpid();
-#ifndef SOLARIS
+#ifdef HAVE_GETHOSTID
 	p ^= gethostid();
 #endif
     }

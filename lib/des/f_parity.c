@@ -32,7 +32,7 @@ des_fixup_key_parity(key)
     for (i=0; i<sizeof(des_cblock); i++) 
       {
 	key[i] &= 0xfe;
-	key[i] |= 1^parity_char(key[i]);
+	key[i] |= 1 ^ parity_char(key[i]);
       }
   
     return;
@@ -51,7 +51,7 @@ des_check_key_parity(key)
     
     for (i=0; i<sizeof(des_cblock); i++) 
       {
-	if((key[i] & 1) == parity_char(0xfe&key[i])) 
+	if((key[i] & 1) == parity_char(0xfe & key[i])) 
 	  {
 	    return 0;
 	  }

@@ -15,12 +15,12 @@ static char rcsid_util_c[] =
     "$Id$";
 #endif
 
-#include <mit-copyright.h>
+#include "mit-copyright.h"
+#include "des.h"
 #include <stdio.h>
-#include <des.h>
 
-des_cblock_print_file(x, fp)
-    des_cblock *x;
+void des_cblock_print_file(x, fp)
+    des_cblock x;
     FILE *fp;
 {
     unsigned char *y = (unsigned char *) x;

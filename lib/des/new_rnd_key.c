@@ -21,18 +21,12 @@ static char rcsid_new_rnd_key_c[] =
     "$Id";
 #endif
 
-#include <mit-copyright.h>
+#include "mit-copyright.h"
 
-#include <des.h>
+#include "des.h"
 #include <time.h>
 #include <time.h>
 #include <sys/time.h>
-
-extern void des_fixup_key_parity();
-extern int des_is_weak_key();
-
-void des_set_random_generator_seed(), des_set_sequence_number();
-void des_generate_random_block();
 
 /*
  * des_new_random_key: create a random des key
@@ -75,8 +69,8 @@ void des_init_random_number_generator(key)
      des_cblock key;
 {
     struct { /* This must be 64 bits exactly */
-	long process_id;
-	long host_id;
+	int32 process_id;
+	int32 host_id;
     } seed;
     struct timeval time; /* this must also be 64 bits exactly */
     des_cblock new_key;
@@ -86,8 +80,10 @@ void des_init_random_number_generator(key)
      * that different servers have different streams:
      */
     seed.process_id = getpid();
-#if !defined(SOLARIS)
+#ifdef HAVE_GETHOSTID
     seed.host_id = gethostid();
+#else
+    seed.host_id = 0;
 #endif
     
     /*
@@ -172,9 +168,7 @@ void
 des_set_sequence_number(new_sequence_number)
      des_cblock new_sequence_number;
 {
-    memcpy((char *)sequence_number,
-	   (char *)new_sequence_number,
-	   sizeof(sequence_number));
+    memcpy(sequence_number, new_sequence_number, sizeof(sequence_number));
 }
 
 /*

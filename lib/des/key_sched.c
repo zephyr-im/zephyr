@@ -35,7 +35,6 @@ static char rcsid_key_sched_c[] =
     "$Id$";
 #endif
 
-#include <mit-copyright.h>
 #include <stdio.h>
 #include "des.h"
 

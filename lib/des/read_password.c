@@ -18,43 +18,36 @@ static char rcsid_read_password_c[] =
     "$Id$";
 #endif
 
-#include <mit-copyright.h>
-#include <des.h>
+#include <sysdep.h>
+#include "mit-copyright.h"
+#include "des.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
 #include <setjmp.h>
 
-#ifdef	POSIX
-#include <termios.h>
-#else
-#include <sys/ioctl.h>
-#endif
-
-#ifdef POSIX
-typedef void sigtype;
+#ifdef _POSIX_VERSION
 static sigjmp_buf env;
 #else
-typedef int sigtype;
 static jmp_buf env;
 #endif
 
-static sigtype sig_restore();
-static push_signals(), pop_signals();
-int des_read_pw_string();
+static RETSIGTYPE sig_restore __P((int sig));
+static void push_signals __P((void));
+static void pop_signals __P((void));
 
 /*** Routines ****************************************************** */
 int
 des_read_password(k,prompt,verify)
-    des_cblock *k;
+    des_cblock k;
     char *prompt;
     int	verify;
 {
     int ok;
     char key_string[BUFSIZ];
 
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     if (sigsetjmp(env, 1)) {
 	ok = -1;
 	goto lose;
@@ -91,7 +84,7 @@ des_read_pw_string(s,max,prompt,verify)
     int ok = 0;
     char *ptr;
     char key_string[BUFSIZ];
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     sigjmp_buf old_env;
     struct termios tty_state;
 #else
@@ -103,7 +96,7 @@ des_read_pw_string(s,max,prompt,verify)
 	return -1;
     }
 
-#ifdef POSIX
+#ifdef HAVE_TERMIOS_H
     /* save terminal state */
     if (tcgetattr(0, &tty_state) == -1)
 	return -1;
@@ -172,7 +165,7 @@ lose:
     if (!ok)
 	memset(s, 0, max);
     printf("\n");
-#ifdef POSIX
+#ifdef HAVE_TERMIOS_H
     /* turn echo back on */
     tty_state.c_lflag |= ECHO;
     if (tcsetattr(0, TCSANOW, &tty_state))
@@ -192,58 +185,74 @@ lose:
     return !ok;			/* return nonzero if not okay */
 }
 
-#ifdef POSIX
-/* This can be static since we should never have more than one set saved... */
-static struct sigaction osa[NSIG];
+#ifdef _POSIX_VERSION
+static int lose_signals[] = {
+    SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGFPE, SIGBUS, SIGSEGV, SIGALRM, SIGTSTP
+};
+#define NUM_LOSE_SIGNALS (sizeof(lose_signals) / sizeof(*lose_signals))
 
-static push_signals()
+/* These can be static since we should never have more than one set saved. */
+static struct sigaction old_action[NUM_LOSE_SIGNALS];
+static sigset_t old_set;
+
+static void push_signals()
 {
-    register int i;
-    struct sigaction nsa;
+    struct sigaction restore_action;
+    sigset_t others;
+    int i;
 
-    sigemptyset(&nsa.sa_mask);
-    nsa.sa_flags = 0;
-    nsa.sa_handler = sig_restore;
-    
-    for (i=0; i<NSIG; i++)
-	sigaction(i, &nsa, &osa[i]);
+    sigemptyset(&restore_action.sa_mask);
+    restore_action.sa_flags = 0;
+    restore_action.sa_handler = sig_restore;
+
+    sigfillset(&others);
+    for (i = 0; i < NUM_LOSE_SIGNALS; i++) {
+	sigaction(lose_signals[i], &restore_action, &old_action[i]);
+	sigdelset(&others, lose_signals[i]);
+    }
+    sigprocmask(SIG_BLOCK, &others, &old_set);
 }
 
-static pop_signals()
+static void pop_signals()
 {
-    register int i;
-    for (i=0; i<NSIG; i++)
-	sigaction(i, &osa[i], (struct sigaction *)0);
+    int i;
+
+    for (i = 0; i < NUM_LOSE_SIGNALS; i++)
+	sigaction(lose_signals[i], &old_action[i], NULL);
+    sigprocmask(SIG_SETMASK, &old_set, NULL);
 }
 
-static sigtype sig_restore()
+static RETSIGTYPE sig_restore(sig)
+    int sig;
 {
     siglongjmp(env, 1);
 }
 
-#else /* !POSIX */
+#else /* !_POSIX_VERSION */
 
 /* This can be static since we should never have more than one set saved... */
-static sigtype (*old_sigfunc[NSIG])();
+static RETSIGTYPE (*old_sigfunc[NSIG])();
 
 static push_signals()
 {
-    register int i;
+    int i;
+
     for (i = 0; i < NSIG; i++)
 	old_sigfunc[i] = signal(i,sig_restore);
 }
 
 static pop_signals()
 {
-    register int i;
+    int i;
+
     for (i = 0; i < NSIG; i++)
 	(void) signal(i,old_sigfunc[i]);
 }
 
-static sigtype
+static RETSIGTYPE
 sig_restore()
 {
     longjmp(env,1);
 }
 
-#endif /* POSIX */
+#endif /* _POSIX_VERSION */

@@ -18,8 +18,8 @@
  */
 int
 des_ecb_encrypt(in, out, schedule, encrypt)
-	des_cblock *in;
-	des_cblock *out;
+	des_cblock in;
+	des_cblock out;
 	des_key_schedule schedule;
 	int encrypt;
 {
