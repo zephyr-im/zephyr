@@ -54,6 +54,9 @@ extern void bzero ();
 extern void bcopy ();
 #else
 #include <stdio.h>
+#ifdef _POSIX_SOURCE
+#include <stdlib.h>
+#else
 extern void *malloc (unsigned);
 extern void *realloc (void *, unsigned);
 extern void free (void *);
@@ -61,6 +64,7 @@ extern int fprintf (FILE *, const char *, ...);
 extern void bzero (void *, unsigned);
 extern void memcpy (void *, void *, unsigned);
 #define bcopy(src,dest,size)	memcpy(dest,src,size)
+#endif
 #endif
 
 #endif /* _DynP_h */
