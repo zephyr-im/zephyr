@@ -538,7 +538,8 @@ Bold letters.  If not available, reverse video, else underline.
 Italic letters (underlining, if available).
 .TQ
 @beep
-"bl" termcap entry, else "^G" (beep the terminal)
+"bl" termcap entry, else "^G" (beep the terminal); limited to once per
+message.
 .\" .TQ
 .\" @blink
 .\" "mb"/"me" termcap entry, else nothing.
@@ -595,7 +596,7 @@ medium type size
 small type size
 .TQ
 @beep
-Ring the X bell once
+Ring the X bell (limited to once per message)
 .TP
 @font
 sets the current font to the font specified in the contents of the
