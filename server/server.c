@@ -368,6 +368,9 @@ server_reset()
 			zdbug((LOG_DEBUG, "reset timer for %s",
 			       inet_ntoa(otherservers[i].zs_addr.sin_addr)));
 		}
+	xfree(ok_list_old);
+	xfree(ok_list_new);
+
 	zdbug((LOG_DEBUG, "server_reset: %d servers now", nservers));
 	return;
 }

@@ -631,6 +631,8 @@ struct sockaddr_in *from;
 			break;
 		}
 	}
+	if (zeph_version)
+	    xfree(zeph_version);
 	return(ZERR_NONE);
 }
 
