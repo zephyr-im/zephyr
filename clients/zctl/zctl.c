@@ -135,7 +135,7 @@ main(argc,argv)
 	       ZVERSIONHDR,
 	       ZVERSIONMAJOR,ZVERSIONMINOR);
 	
-	ss_listen(sci_idx,&code);
+	ss_listen(sci_idx);
 	exit(0);
 }
 
