@@ -5,11 +5,11 @@
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Header$
+/**/#	$Id$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB}
+LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${COMERR_LIB}
+LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${COMERR_LINTLIB}
 SRCS = zpopnotify.c
 OBJS = zpopnotify.o
 
