@@ -40,7 +40,7 @@ Qelem hm_queue = { &hm_queue, &hm_queue, NULL }, *is_in_queue();
 extern long time();
 extern int timeout_type;
 
-Code_t init_queue()
+void init_queue()
 {
      while (hm_queue.q_forw != &hm_queue) {
 	  free(hm_queue.q_forw->q_data->z_packet);
@@ -117,7 +117,7 @@ struct sockaddr_in *repl;
      }
 }
 
-Code_t retransmit_queue(sin)
+void retransmit_queue(sin)
 struct sockaddr_in *sin;
 {
      Qelem *srch;
