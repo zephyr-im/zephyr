@@ -13,6 +13,11 @@
 
 #include <zephyr/mit-copyright.h>
 
+#ifdef DEBUG
+char version[] = "Zephyr Server (DEBUG) 3.2";
+#else
+char version[] = "Zephyr Server 3.2";
+#endif DEBUG
 #ifndef lint
 #ifndef SABER
 static char rcsid_main_c[] = "$Header$";
@@ -24,11 +29,6 @@ char concurrent[] = "no brain-dump concurrency";
 #endif CONCURRENT
 #endif SABER
 #endif lint
-#ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 3.1";
-#else
-char version[] = "Zephyr Server 3.1";
-#endif DEBUG
 /*
  * Server loop for Zephyr.
  */
