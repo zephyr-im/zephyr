@@ -69,7 +69,7 @@ AnsiCC()
  */
 #define make_err(name) \
 error_table(name)							@@\
-all:: concat3($(BINC)/zephyr/,name,.h)					@@\
+all depend:: concat3($(BINC)/zephyr/,name,.h)				@@\
 $(OBJS): concat3($(BINC)/zephyr/,name,.h)				@@\
 concat3($(BINC)/zephyr/,name,.h): concat2(name,.h)			@@\
 	$(RM) $@; $(CP) concat2(name,.h) $@				@@\
