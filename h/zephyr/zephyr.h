@@ -78,3 +78,6 @@ extern int errno;
 #define ZERR_BADPKT		1005	/* Bad incoming packet */
 #define ZERR_VERS		1006	/* Bad version # in packet */
 #define ZERR_NOPORT		1007	/* No port opened */
+
+#define	ZERR_S_FIRST		2000	/* internal server error codes */
+#define	ZERR_S_LAST		3000
