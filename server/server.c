@@ -687,39 +687,47 @@ send_stats(who)
 struct sockaddr_in *who;
 {
 	register int i;
-	char scratch[32];
-	char *newline = "\n";
 	char buf[BUFSIZ];
-	char *responses[1];
+	char **responses;
+	int num_resp;
+	char *vers, *pkts, *upt;
+#define	NUM_FIXED 3			/* 3 fixed fields, plus server info */
 
 	(void) strcpy(buf,version);
 	(void) strcat(buf, "/");
 #ifdef vax
-	(void) strcat(buf, "VAX\n");
+	(void) strcat(buf, "VAX");
 #endif vax
 #ifdef ibm032
-	(void) strcat(buf, "IBM 032\n");
+	(void) strcat(buf, "IBM 032");
 #endif ibm032
 #ifdef sun
-	(void) strcat(buf, "SUN\n");
+	(void) strcat(buf, "SUN");
 #endif sun
+	vers = strsave(buf);
 
-	(void) sprintf(scratch, "%d pkts\n", npackets);
-	(void) strcat(buf, scratch);
-	(void) sprintf(scratch, "up %d seconds\n",NOW - uptime);
-	(void) strcat(buf, scratch);
+	(void) sprintf(buf, "%d pkts", npackets);
+	pkts = strsave(buf);
+	(void) sprintf(buf, "%d seconds operational",NOW - uptime);
+	upt = strsave(buf);
 
-	(void) strcat(buf, "server states:\n");
-		
+	responses = (char **) xmalloc((NUM_FIXED + nservers)*sizeof(char **));
+	responses[0] = vers;
+	responses[1] = pkts;
+	responses[2] = upt;
+
+	num_resp = NUM_FIXED;
 	for (i = 0; i < nservers ; i++) {
-		(void) strcat(buf, inet_ntoa(otherservers[i].zs_addr.sin_addr));
-		(void) strcat(buf, "/");
-		(void) strcat(buf, srv_states[(int) otherservers[i].zs_state]);
-		(void) strcat(buf, newline);
+		(void) sprintf(buf, "%s/%s",
+			       inet_ntoa(otherservers[i].zs_addr.sin_addr),
+			       srv_states[(int) otherservers[i].zs_state]);
+		responses[num_resp++] = strsave(buf);
 	}
 
-	responses[0] = buf;
-	send_msg_list(who, ADMIN_STATUS, responses, 1, 0);
+	send_msg_list(who, ADMIN_STATUS, responses, num_resp, 0);
+	for (i = 0; i < num_resp; i++)
+		xfree(responses[i]);
+	xfree(responses);
 	return;
 }
 /*
