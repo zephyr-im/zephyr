@@ -26,7 +26,7 @@ void send_message()
      /* I should do more interesting things with these error conditions */
 
      XtVaGetValues(editor, XtNstring, (XtArgVal) &buf,
-		   XTNtextSource, (XtArgVal) &text_source, NULL);
+		   XtNtextSource, (XtArgVal) &text_source, NULL);
 
      ret = zeph_send_message(&current_dest, buf);
      XawAsciiSourceFreeString(text_source);
