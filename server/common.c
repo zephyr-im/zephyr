@@ -49,7 +49,7 @@ strsave (sp)
     return(ret);
 }
 
-/* generic string hash function */
+/* The "& 0x5f" provides case-insensitivity for ASCII. */
 
 unsigned long
 #ifdef __STDC__
@@ -66,30 +66,49 @@ hash (string)
 	    cp = *string++;
 	    if (!cp)
 		break;
-	    hval += cp;
+	    hval += cp & 0x5f;
 
 	    cp = *string++;
 	    if (!cp)
 		break;
-	    hval += cp * (3 + (1 << 16));
+	    hval += (cp & 0x5f) * (3 + (1 << 16));
 
 	    cp = *string++;
 	    if (!cp)
 		break;
-	    hval += cp * (1 + (1 << 8));
+	    hval += (cp & 0x5f) * (1 + (1 << 8));
 
 	    cp = *string++;
 	    if (!cp)
 		break;
-	    hval += cp * (1 + (1 << 12));
+	    hval += (cp & 0x5f) * (1 + (1 << 12));
 
 	    cp = *string++;
 	    if (!cp)
 		break;
-	    hval += cp * (1 + (1 << 4));
+	    hval += (cp & 0x5f) * (1 + (1 << 4));
 
 	    hval += ((long) hval) >> 18;
 	}
 	hval &= 0x7fffffff;
 	return hval;
 }
+
+/* Output a name, replacing newlines with \n and single quotes with \q. */
+void subscr_quote(p, fp)
+    char *p;
+    FILE *fp;
+{
+    for (; *p; p++) {
+	if (*p == '\'') {
+	    putc('\\', fp);
+	    putc('q', fp);
+	} else if (*p == '\n') {
+	    putc('\\', fp);
+	    putc('n', fp);
+	} else {
+	    putc(*p, fp);
+	}
+    }
+}
+
