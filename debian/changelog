@@ -1,8 +1,9 @@
 zephyr (2.1.20000421.SNAPSHOT-12) unstable; urgency=low
 
   * libzephyr-dev failed to have any files in it... and no one noticed.
+  * pull down a new config.guess and config.sub while we're at it.
 
- -- Karl Ramm <kcr@debian.org>  Wed, 16 May 2001 10:25:00 -0400
+ -- Karl Ramm <kcr@debian.org>  Wed, 16 May 2001 10:33:07 -0400
 
 zephyr (2.1.20000421.SNAPSHOT-11) unstable; urgency=low
 
