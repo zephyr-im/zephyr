@@ -23,6 +23,7 @@ main()
 	printf("KRB error table initialized:  base %d (%s), name %s\n",
 	       ERROR_TABLE_BASE_krb, error_message(ERROR_TABLE_BASE_krb),
 	       error_table_name(ERROR_TABLE_BASE_krb));
+	initialize_krb_error_table();
 	printf("With krb: tgt-expired -> %s\n",
 	       error_message(KRB_MK_AP_TGTEXP));
 
