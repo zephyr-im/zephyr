@@ -100,6 +100,7 @@ client_register(notice, who, client, server, wantdefaults)
 
 	(*client)->last_msg = 0;
 	(*client)->last_check = 0;
+	(*client)->last_send = 0;
 
 	if (!(clist = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
 	  xfree(*client);
