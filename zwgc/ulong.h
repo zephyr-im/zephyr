@@ -15,10 +15,9 @@
 #ifndef ulong_MODULE
 #define ulong_MODULE
 
-#if defined(_AIX) || defined(_AUX_SOURCE) || defined(SYSV)
-/* Sys5 derived systems define ulong in <sys/types.h>.  */
 #include <sys/types.h>
-#else
+
+#if defined(ultrix) || defined(vax)
 typedef unsigned long ulong;
 #endif
 
