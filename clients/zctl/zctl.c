@@ -18,6 +18,8 @@
 #include <ss.h>
 #include <pwd.h>
 #include <netdb.h>
+#include <string.h>
+#include <sys/file.h>
 
 #ifndef lint
 static char rcsid_zctl_c[] = "$Header$";
@@ -40,11 +42,13 @@ static char rcsid_zctl_c[] = "$Header$";
 
 char *index(),*malloc();
 
-int wgport,sci_idx;
+int sci_idx;
 char subsname[BUFSIZ];
 char ourhost[BUFSIZ],ourhostcanon[BUFSIZ];
 
 extern ss_request_table zctl_cmds;
+extern char *getenv(), *malloc();
+extern uid_t getuid();
 
 main(argc,argv)
 	int argc;
@@ -52,8 +56,7 @@ main(argc,argv)
 {
 	struct passwd *pwd;
 	struct hostent *hent;
-	FILE *fp;
-	char ssline[BUFSIZ],buf[BUFSIZ],oldsubsname[BUFSIZ],*envptr;
+	char ssline[BUFSIZ],oldsubsname[BUFSIZ],*envptr;
 	int retval,code,i;
 
 	if ((retval = ZInitialize()) != ZERR_NONE) {
@@ -61,24 +64,25 @@ main(argc,argv)
 		exit (1);
 	}
 
-	envptr = (char *)getenv("HOME");
+	envptr = getenv("HOME");
 	if (envptr)
-		strcpy(subsname,envptr);
+		(void) strcpy(subsname,envptr);
 	else {
-		if (!(pwd = getpwuid(getuid()))) {
+		if (!(pwd = getpwuid((int) getuid()))) {
 			fprintf(stderr,"Who are you?\n");
 			exit (1);
 		}
 
-		strcpy(subsname,pwd->pw_dir);
+		(void) strcpy(subsname,pwd->pw_dir);
 	}
-	strcpy(oldsubsname,subsname);
-	strcat(oldsubsname,OLD_SUBS);
-	strcat(subsname,USERS_SUBS);
-	if (!access(oldsubsname,0)) {
-		printf("The .subscriptions file in your home directory is no longer\n");
-		printf("being used.  I will rename it to .zephyr.subs for you.\n");
-		rename(oldsubsname,subsname);
+	(void) strcpy(oldsubsname,subsname);
+	(void) strcat(oldsubsname,OLD_SUBS);
+	(void) strcat(subsname,USERS_SUBS);
+	if (!access(oldsubsname,F_OK) && access(subsname, F_OK)) {
+		/* only if old one exists and new one does not exist */
+		printf("The .subscriptions file in your home directory is now being used as\n.zephyr.subs . I will rename it to .zephyr.subs for you.\n");
+		if (rename(oldsubsname,subsname))
+			com_err(argv[0], retval, "renaming .subscriptions");
 	}
 	
 	if (gethostname(ourhost,BUFSIZ) == -1) {
@@ -91,7 +95,7 @@ main(argc,argv)
 		exit (1);
 	}
 
-	strcpy(ourhostcanon,hent->h_name);
+	(void) strcpy(ourhostcanon,hent->h_name);
 	
 	sci_idx = ss_create_invocation("zctl","",0,&zctl_cmds,&code);
 	if (code) {
@@ -102,7 +106,7 @@ main(argc,argv)
 	if (argc > 1) {
 		*ssline = '\0';
 		for (i=1;i<argc;i++)
-			sprintf(ssline+strlen(ssline),"%s ",argv[i]);
+			(void) sprintf(ssline+strlen(ssline),"%s ",argv[i]);
 		ssline[strlen(ssline)-1] = '\0';
 		ss_execute_line(sci_idx,ssline,&code);
 		if (code)
@@ -128,7 +132,7 @@ set_file(argc,argv)
 	if (argc == 1)
 		printf("Current file: %s\n",subsname);
 	else
-		strcpy(subsname,argv[1]);
+		(void) strcpy(subsname,argv[1]);
 }
 
 flush_locations(argc,argv)
@@ -150,8 +154,9 @@ wgc_control(argc,argv)
 	int argc;
 	char *argv[];
 {
-	int retval,newport;
-	struct sockaddr_in newsin,oldsin;
+	int retval;
+	short newport;
+	struct sockaddr_in newsin;
 	ZNotice_t notice;
 
 	newsin = ZGetDestAddr();
@@ -166,7 +171,7 @@ wgc_control(argc,argv)
 		return;
 	}
 
-	newsin.sin_port = newport;
+	newsin.sin_port = (u_short) newport;
 	if ((retval = ZSetDestAddr(&newsin)) != ZERR_NONE) {
 		ss_perror(sci_idx,retval,"while setting destination address");
 		return;
@@ -302,8 +307,8 @@ set_var(argc,argv)
 		varcat[0] = '\0';
 		for (i=2;i<argc;i++) {
 			if (i != 2)
-				strcat(varcat," ");
-			strcat(varcat,argv[i]);
+				(void) strcat(varcat," ");
+			(void) strcat(varcat,argv[i]);
 		} 
 		retval = ZSetVariable(argv[1],varcat);
 	} 
@@ -360,7 +365,8 @@ cancel_subs(argc,argv)
 	int argc;
 	char *argv[];
 {
-	int retval,wgport;
+	int retval;
+	short wgport;
 
 	if (argc != 1) {
 		fprintf(stderr,"Usage: %s\n",argv[0]);
@@ -379,7 +385,8 @@ subscribe(argc,argv)
 	int argc;
 	char *argv[];
 {
-	int retval,wgport;
+	int retval;
+	short wgport;
 	ZSubscription_t sub,sub2;
 	
 	if (argc > 4 || argc < 3) {
@@ -413,7 +420,8 @@ sub_file(argc,argv)
 	FILE *fp,*fpout;
 	char errbuf[BUFSIZ],subline[BUFSIZ],ourline[BUFSIZ];
 	char backup[BUFSIZ];
-	int delflag,retval,wgport;
+	int delflag,retval;
+	short wgport;
 	
 	if (argc > 4 || argc < 3) {
 		fprintf(stderr,"Usage: %s class instance [*]\n",argv[0]);
@@ -433,13 +441,17 @@ sub_file(argc,argv)
 		if (make_exist(subsname))
 			return;
 		if (!(fp = fopen(subsname,"a"))) {
-			sprintf(errbuf,"while opening %s for append",subsname);
+			(void) sprintf(errbuf,"while opening %s for append",subsname);
 			ss_perror(sci_idx,errno,errbuf);
 			return;
 		} 
 		fprintf(fp,"%s,%s,%s\n",sub.class,sub.classinst,
 			sub.recipient);
-		fclose(fp);
+		if (fclose(fp) == EOF) {
+			(void) sprintf(errbuf, "while closing %s", subsname);
+			ss_perror(sci_idx, errno, errbuf);
+			return;
+		}
 		fix_macros(&sub,&sub2,1);
 		if ((retval = ZSubscribeTo(&sub2,1,(u_short)wgport)) !=
 		    ZERR_NONE)
@@ -448,18 +460,21 @@ sub_file(argc,argv)
 	}
 
 	delflag = 0;
-	sprintf(ourline,"%s,%s,%s",sub.class,sub.classinst,sub.recipient);
+	(void) sprintf(ourline,"%s,%s,%s",
+		       sub.class,
+		       sub.classinst,
+		       sub.recipient);
 	if (make_exist(subsname))
 		return;
 	if (!(fp = fopen(subsname,"r"))) {
-		sprintf(errbuf,"while opening %s for read",subsname);
+		(void) sprintf(errbuf,"while opening %s for read",subsname);
 		ss_perror(sci_idx,errno,errbuf);
 		return;
 	} 
-	sprintf(backup,"%s.temp",subsname);
-	unlink(backup);
+	(void) sprintf(backup,"%s.temp",subsname);
+	(void) unlink(backup);
 	if (!(fpout = fopen(backup,"w"))) {
-		sprintf(errbuf,"while opening %s for writing",backup);
+		(void) sprintf(errbuf,"while opening %s for writing",backup);
 		ss_perror(sci_idx,errno,errbuf);
 		return;
 	} 
@@ -474,12 +489,18 @@ sub_file(argc,argv)
 			delflag = 1;
 	}
 	if (!delflag)
-		fprintf(stderr,"Couldn't find class %s instance %s recipient %s\n",
+		fprintf(stderr,
+			"Couldn't find class %s instance %s recipient %s\n",
 			sub.class,sub.classinst,subsname);
-	fclose(fp);
-	fclose(fpout);
+	(void) fclose(fp);		/* open read-only, ignore errs */
+	if (fclose(fpout) == EOF) {
+		(void) sprintf(errbuf, "while closing %s",backup);
+		ss_perror(sci_idx, errno, errbuf);
+		return;
+	}
 	if (rename(backup,subsname) == -1) {
-		sprintf(errbuf,"while renaming %s to %s\n",backup,subsname);
+		(void) sprintf(errbuf,"while renaming %s to %s\n",
+			       backup,subsname);
 		ss_perror(sci_idx,errno,errbuf);
 		return;
 	}
@@ -495,7 +516,8 @@ load_subs(argc,argv)
 {
 	ZSubscription_t subs[SUBSATONCE],subs2[SUBSATONCE];
 	FILE *fp;
-	int ind,lineno,i,retval,type,wgport;
+	int ind,lineno,i,retval,type;
+	short wgport;
 	char *comma,*comma2,*file,subline[BUFSIZ],errbuf[BUFSIZ];
 
 	if (argc > 2) {
@@ -512,7 +534,8 @@ load_subs(argc,argv)
 	
 	if (!(fp = fopen(file,"r")))
 		if (!(fp = fopen(DEFAULT_SUBS,"r"))) {
-			sprintf(errbuf,"while opening %s for read",file);
+			(void) sprintf(errbuf,
+				       "while opening %s for read",file);
 			ss_perror(sci_idx,errno,errbuf);
 			return;
 		} 
@@ -547,12 +570,12 @@ load_subs(argc,argv)
 		}
 		*comma = '\0';
 		*comma2 = '\0';
-		subs[ind].class = malloc(strlen(subline)+1);
-		strcpy(subs[ind].class,subline);
-		subs[ind].classinst = malloc(strlen(comma+1)+1);
-		strcpy(subs[ind].classinst,comma+1);
-		subs[ind].recipient = malloc(strlen(comma2+1)+1);
-		strcpy(subs[ind].recipient,comma2+1);
+		subs[ind].class = malloc((unsigned)(strlen(subline)+1));
+		(void) strcpy(subs[ind].class,subline);
+		subs[ind].classinst = malloc((unsigned)(strlen(comma+1)+1));
+		(void) strcpy(subs[ind].classinst,comma+1);
+		subs[ind].recipient = malloc((unsigned)(strlen(comma2+1)+1));
+		(void) strcpy(subs[ind].recipient,comma2+1);
 		ind++;
 		if (type == LIST)
 			printf("Class %s instance %s recipient %s\n",
@@ -593,7 +616,7 @@ load_subs(argc,argv)
 		}
 	} 
 
-	fclose(fp);
+	(void) fclose(fp);		/* ignore errs--file is read-only */
 }
 
 current(argc,argv)
@@ -603,7 +626,8 @@ current(argc,argv)
 	FILE *fp;
 	char errbuf[BUFSIZ];
 	ZSubscription_t subs;
-	int i,nsubs,retval,save,one,wgport;
+	int i,nsubs,retval,save,one;
+	short wgport;
 	char *file,backup[BUFSIZ];
 	
 	save = 0;
@@ -638,10 +662,11 @@ current(argc,argv)
 
 	if (save) {
 		file = (argc == 1)?subsname:argv[1];
-		strcpy(backup,file);
-		strcat(backup,".temp");
+		(void) strcpy(backup,file);
+		(void) strcat(backup,".temp");
 		if (!(fp = fopen(backup,"w"))) {
-			sprintf(errbuf,"while opening %s for write",file);
+			(void) sprintf(errbuf,"while opening %s for write",
+				       file);
 			ss_perror(sci_idx,errno,errbuf);
 			return;
 		}
@@ -653,8 +678,8 @@ current(argc,argv)
 			ss_perror(sci_idx,retval,"while getting subscription");
 			if (save) {
 				fprintf(stderr,"Subscriptions file not modified\n");
-				fclose(fp);
-				unlink(backup);
+				(void) fclose(fp);
+				(void) unlink(backup);
 			}
 			return;
 		} 
@@ -667,11 +692,16 @@ current(argc,argv)
 	}
 
 	if (save) {
-		fclose(fp);
+		if (fclose(fp) == EOF) {
+			(void) sprintf(errbuf, "while closing %s", backup);
+			ss_perror(sci_idx, errno, errbuf);
+			return;
+		}
 		if (rename(backup,file) == -1) {
-			sprintf(errbuf,"while renaming %s to %s",backup,file);
+			(void) sprintf(errbuf,"while renaming %s to %s",
+				       backup,file);
 			ss_perror(sci_idx,retval,errbuf);
-			unlink(backup);
+			(void) unlink(backup);
 		}
 	}
 }
@@ -682,30 +712,34 @@ make_exist(filename)
 	char bfr[BUFSIZ],errbuf[BUFSIZ];
 	FILE *fp,*fpout;
 	
-	if (!access(filename,0))
+	if (!access(filename,F_OK))
 		return (0);
 
 	fprintf(stderr,"Copying %s to %s\n",DEFAULT_SUBS,filename);
 
 	if (!(fp = fopen(DEFAULT_SUBS,"r"))) {
-		sprintf(errbuf,"while opening %s for read",DEFAULT_SUBS);
+		(void) sprintf(errbuf,"while opening %s for read",
+			       DEFAULT_SUBS);
 		ss_perror(sci_idx,errno,errbuf);
 		return (1);
 	}
 
 	if (!(fpout = fopen(filename,"w"))) {
-		sprintf(errbuf,"while opening %s for write",filename);
+		(void) sprintf(errbuf,"while opening %s for write",filename);
 		ss_perror(sci_idx,errno,errbuf);
-		fclose(fp);
+		(void) fclose(fp);
 		return (1);
 	}
 
 	while (fgets(bfr,sizeof bfr,fp))
 		fprintf(fpout,"%s",bfr);
 
-	fclose(fp);
-	fclose(fpout);
-
+	(void) fclose(fp);
+	if (fclose(fpout) == EOF) {
+		(void) sprintf(errbuf, "while closing %s", filename);
+		ss_perror(sci_idx, errno, errbuf);
+		return(1);
+	}
 	return (0);
 }
 
