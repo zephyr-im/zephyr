@@ -1,4 +1,13 @@
 #ifdef KERBEROS
+/* This file is part of the Project Athena Zephyr Notification System.
+ * It contains functions for dealing with Kerberos functions in the server.
+ *
+ *	Created by:	John T Kohl
+ *
+ *	Copyright (c) 1988 by the Massachusetts Institute of Technology.
+ *	For copying and distribution information, see the file
+ *	"mit-copyright.h". 
+ */
 /*
  *	$Source$
  *	$Header$
