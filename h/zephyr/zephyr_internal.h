@@ -31,6 +31,7 @@ extern int __Q_Length;
 
 extern int __HM_port;
 extern int __HM_length;
+extern int __Zephyr_open;
 extern char *__HM_addr;
 
 #define Z_QLength() (__Q_Length)
