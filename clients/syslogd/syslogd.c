@@ -93,6 +93,10 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #include <zephyr/zephyr.h>
 
 extern int sys_nerr;
+#ifdef SUNOS
+extern char *sys_errlist[];
+#define strerror(n) sys_errlist[n]
+#endif
 
 #if defined(ultrix) || defined(POSIX)
 #define sighandler_type void
@@ -383,8 +387,13 @@ main(argc, argv)
 	sigaction(SIGALRM, &action, NULL);
 #else
 	(void) signal(SIGTERM, die);
-	(void) signal(SIGINT, Debug ? die : SIG_IGN);
-	(void) signal(SIGQUIT, Debug ? die : SIG_IGN);
+	if (Debug) {
+		(void) signal(SIGINT, die);
+		(void) signal(SIGQUIT, die);
+	} else {
+		(void) signal(SIGINT, SIG_IGN);
+		(void) signal(SIGQUIT, SIG_IGN);
+	}
 	(void) signal(SIGCHLD, reapchild);
 	(void) signal(SIGALRM, domark);
 #endif
