@@ -35,6 +35,10 @@ static char rcsid_zephyr_c[] = "$Id$";
 #include "variables.h"
 #include "pointer.h"
 
+#ifdef DEBUG
+extern int zwgc_debug;
+#endif /* DEBUG */
+
 /*
  *  Internal Routine:
  *
@@ -219,8 +223,17 @@ void finalize_zephyr() /* <<<>>> */
 	 * Cancel our subscriptions, unset our location, and close our zephyr
 	 * connection:
 	 */
-	TRAP( ZCancelSubscriptions(0), "while canceling subscriptions" );
-	TRAP( ZUnsetLocation(), "while unsetting location" );
+#ifdef DEBUG
+	if (zwgc_debug) {
+	    TRAP( ZCancelSubscriptions(0), "while canceling subscriptions" );
+	    TRAP( ZUnsetLocation(), "while unsetting location" );
+	} else {
+#endif /* DEBUG */
+	    (void) ZCancelSubscriptions(0);
+	    (void) ZUnsetLocation();
+#ifdef DEBUG
+	}
+#endif /* DEBUG */
 	ZClosePort();
     }
     return;
