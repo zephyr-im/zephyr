@@ -21,11 +21,13 @@ static char *rcsid_mailwatch_c = "$Header$";
 #define OK 0
 #define DONE 1
 
+#define DEF_INTERVAL 300
+#define DEF_DEBUG 0
+
 int	Pfd;
 FILE	*sfi;
 FILE	*sfo;
 char	Errmsg[128];
-FILE	*logf;
 
 struct	mailsav {
     struct iovec m_iov[3];
@@ -35,34 +37,27 @@ struct	mailsav {
     
 int MailIndex;
 int MailSize;
-int Debug = 0;
-int Interval = 0;
+int Debug = DEF_DEBUG;
+int Interval = DEF_INTERVAL;
 int List = 0;
 int Shutdown = 0;
+
+int check_mail(), cleanup();
+uid_t getuid();
+char *strcpy(), *getenv(), index();
 
 main(argc,argv)
     int argc;
     char *argv[];
 {
-    char *host;
-    char *user;
     char *str_index;
-    int readfds;
-    struct timeval timeout;
-    register int curtime;
     register int i;
-    char *getenv();
-    int cleanup();
-
-    user = getenv("USER");
-    host = getenv("MAILHOST");
-    if (user == NULL)
-	fatal("No USER envariable defined");
-    if (host == NULL)
-	fatal("No MAILHOST envariable defined");
+    int readfds = 0;
+    int maxfds = 0;
+    struct timeval timeout;
 
     for (i = 1; i < argc; i++) {
-	str_index = (char *)index(argv[i], '-');
+	str_index = index(argv[i], '-');
 	if (str_index == (char *)NULL) syntax(argv[0]);
 	if (strncmp(argv[i], "-d", 2) == 0) {
 	    Debug = 1;
@@ -83,29 +78,49 @@ main(argc,argv)
 	syntax(argv[0]);
     }
     
-    if (!Debug || !Interval || !List) background();
-
-    logf = fopen("/usr/adm/zmailwatch.log", "a");
-    setlinebuf(logf);
-    log("startup");
-    /* Initialize Notify */
-    timeout.tv_usec = 0;
+    if (!Debug && !List) background();
 
     signal(SIGHUP, cleanup);
     signal(SIGTERM, cleanup);
 
-    check_mail(host, user);
-    i = 59 - (time(0) % 60);
+    check_mail();
+
+    if (List) {
+	exit(0);
+    }
+
+    /*
+     * Initialize select's maximum file descriptor number to
+     * be one more than the file descriptor number of the
+     * Zephyr socket.
+     */
+    maxfds = ZGetFD() + 1;
+
+    /*
+     * Initialize the select timeout structure.
+     */
+    timeout.tv_sec = Interval;
+    timeout.tv_usec = 0;
+
     while (1) {
+	/*
+	 * Use select on the Zephyr port to determine if there
+	 * is new mail.  If not block untill timeout.  Remember 
+	 * to reset the file descriptor before each select.
+	 */
+	readfds = 1 << ZGetFD();
+	if (select(maxfds, &readfds, NULL, NULL, &timeout) == -1)
+	  fatal("select failed on Zephyr socket");
+	/*
+	 * Check for mail.
+	 */
 	check_mail(host, user);
+	/*
+	 * Shutdown if requested.
+	 */
 	if (Shutdown) {
-	    log("shutdown");
-	    fclose(logf);
-	    /* Shutdown Notify */
 	    exit(0);
 	}
-	i = 60 - (time(0) % 60);
-	sleep(i);
     }
 }
 
@@ -125,9 +140,7 @@ background()
     }
 }
 
-check_mail(host, user)
-    char *host;
-    char *user;
+check_mail()
 {
     static int LastNmsgs = -1;
     static int LastNbytes = -1;
@@ -142,7 +155,7 @@ check_mail(host, user)
     struct mailsav *build_mailsav();
 
     if (pop_init(host) == NOTOK) {
-	log("pop_init: %s", Errmsg);
+	if (Debug) printf("zmailwatch(pop_init): %s\n", Errmsg);
 	error(Errmsg);
 	return(1);
     }
@@ -150,7 +163,7 @@ check_mail(host, user)
     if (pop_command("USER %s", user) == NOTOK || 
             pop_command("RPOP %s", user) == NOTOK) {
 	error(Errmsg);
-	log("USER|RPOP: %s", Errmsg);
+	if (Debug) printf("zmailwatch(USER|RPOP): %s\n", Errmsg);
 	pop_command("QUIT");
 	pop_close();
 	return(1);
@@ -158,7 +171,7 @@ check_mail(host, user)
 
     if (pop_stat(&nmsgs, &nbytes) == NOTOK) {
 	error(Errmsg);
-	log("pop_stat: %s", Errmsg);
+	if (Debug) printf("zmailwatch(pop_stat): %s\n", Errmsg);
 	pop_command("QUIT");
 	pop_close();
 	return(1);
@@ -174,7 +187,7 @@ check_mail(host, user)
 	strcpy(tempname, "/tmp/pmXXXXXX");
 	mbfi = mkstemp(tempname);
 	if (mbfi < 0) {
-	    log("mkstemp");
+	    if (Debug) printf("zmailwatch: mkstemp\n");
 	    pop_command("QUIT");
 	    pop_close();
 	    return(1);
@@ -231,7 +244,7 @@ get_message(i, mbf)
 
     if (pop_retr(i, mbx_write, mbf) != OK) {
 	error(Errmsg);
-	log("pop_retr: %s", Errmsg);
+	if (Debug) printf("zmailwatch(pop_retr): %s\n", Errmsg);
 	pop_command("QUIT");
 	pop_close();
 	return(1);
@@ -274,220 +287,13 @@ free_mailsav(ms)
     free(ms);
 }
 
-pop_init(host)
-    char *host;
-{
-    static struct hostent *hp = NULL;
-    static struct servent *sp = NULL;
-    static struct sockaddr_in sin;
-    static int initialized = 0;
-    int lport = IPPORT_RESERVED - 1;
-    char response[128];
-    char *get_errmsg();
-
-    if (!initialized) {
-	hp = gethostbyname(host);
-	if (hp == NULL) {
-	    sprintf(Errmsg, "MAILHOST unknown: %s", host);
-	    return(NOTOK);
-	}
-
-	sp = getservbyname("pop", "tcp");
-	if (sp == 0) {
-	    strcpy(Errmsg, "tcp/pop: unknown service");
-	    return(NOTOK);
-	}
-
-	sin.sin_family = hp->h_addrtype;
-	bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
-	sin.sin_port = sp->s_port;
-
-	initialized = 1;
-    }
-
-    Pfd = rresvport(&lport);
-    if (Pfd < 0) {
-	sprintf(Errmsg, "error creating socket: %s", get_errmsg());
-	return(NOTOK);
-    }
-
-    if (connect(Pfd, (char *)&sin, sizeof sin) < 0) {
-	sprintf(Errmsg, "error during connect: %s", get_errmsg());
-	close(Pfd);
-	return(NOTOK);
-    }
-
-    sfi = fdopen(Pfd, "r");
-    sfo = fdopen(Pfd, "w");
-    if (sfi == NULL || sfo == NULL) {
-	sprintf(Errmsg, "error in fdopen: %s", get_errmsg());
-	close(Pfd);
-	return(NOTOK);
-    }
-
-    if (getline(response, sizeof response, sfi) != OK || (*response != '+')) {
-	strcpy(Errmsg, response);
-	return(NOTOK);
-    }
-
-    return(OK);
-}
+/* Pop stuff */
 
 pop_close()
 {
     if (sfi != NULL) fclose(sfi);
     if (sfi != NULL) fclose(sfo);
     close(Pfd);
-}
-
-pop_command(fmt, a, b, c, d)
-    char *fmt;
-{
-    char buf[128];
-
-    sprintf(buf, fmt, a, b, c, d);
-
-    if (Debug) fprintf(stderr, "---> %s\n", buf);
-    if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
-
-    if (getline(buf, sizeof buf, sfi) != OK) {
-	strcpy(Errmsg, buf);
-	return(NOTOK);
-    }
-
-    if (Debug) fprintf(stderr, "<--- %s\n", buf);
-    if (*buf != '+') {
-	strcpy(Errmsg, buf);
-	return(NOTOK);
-    }
-    else {
-	return(OK);
-    }
-}
-
-    
-pop_stat(nmsgs, nbytes)
-    int *nmsgs, *nbytes;
-{
-    char buf[128];
-
-    if (Debug) fprintf(stderr, "---> STAT\n");
-    if (putline("STAT", Errmsg, sfo) == NOTOK) return(NOTOK);
-
-    if (getline(buf, sizeof buf, sfi) != OK) {
-	strcpy(Errmsg, buf);
-	return(NOTOK);
-    }
-
-    if (Debug) fprintf(stderr, "<--- %s\n", buf);
-    if (*buf != '+') {
-	strcpy(Errmsg, buf);
-	return(NOTOK);
-    }
-    else {
-	sscanf(buf, "+OK %d %d", nmsgs, nbytes);
-	return(OK);
-    }
-}
-
-pop_retr(msgno, action, arg)
-    int (*action)();
-{
-    char buf[128];
-    int end_of_header;
-
-    sprintf(buf, "RETR %d", msgno);
-    if (Debug) fprintf(stderr, "%s\n", buf);
-    if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
-
-    if (getline(buf, sizeof buf, sfi) != OK) {
-	strcpy(Errmsg, buf);
-	return(NOTOK);
-    }
-
-    end_of_header = 0;
-    while (1) {
-	switch (multiline(buf, sizeof buf, sfi)) {
-	case OK:
-	    if (!end_of_header) {
-		(*action)(buf, arg);
-		if (*buf == 0) end_of_header = 1;
-	    }
-	    break;
-	case DONE:
-	    return (OK);
-	case NOTOK:
-	    strcpy(Errmsg, buf);
-	    return (NOTOK);
-	}
-    }
-}
-
-getline(buf, n, f)
-    char *buf;
-    register int n;
-    FILE *f;
-{
-    register char *p;
-    register int c;
-
-    p = buf;
-    while (--n > 0 && (c = fgetc(f)) != EOF)
-        if ((*p++ = c) == '\n') break;
-
-    if (ferror(f)) {
-	strcpy(buf, "error on connection");
-	return (NOTOK);
-    }
-
-    if (c == EOF && p == buf) {
-	strcpy(buf, "connection closed by foreign host");
-	return (DONE);
-    }
-
-    *p = NULL;
-    if (*--p == '\n') *p = NULL;
-    if (*--p == '\r') *p = NULL;
-    return(OK);
-}
-
-multiline(buf, n, f)
-    register char *buf;
-    register int n;
-    FILE *f;
-{
-    if (getline(buf, n, f) != OK) return (NOTOK);
-    if (*buf == '.') {
-	if (*(buf+1) == NULL) {
-	    return (DONE);
-	}
-	else {
-	    strcpy(buf, buf+1);
-	}
-    }
-    return(OK);
-}
-
-putline(buf, err, f)
-    char *buf;
-    char *err;
-    FILE *f;
-{
-    fprintf(f, "%s\r\n", buf);
-    fflush(f);
-    if (ferror(f)) {
-	strcpy(err, "lost connection");
-	return(NOTOK);
-    }
-    return(OK);
-}
-
-mbx_write(line, mbf)
-    char *line;
-    FILE *mbf;
-{
-    fputs(line, mbf);
-    fputc(0x0a, mbf);
 }
 
 struct mailsav *
@@ -581,7 +387,7 @@ display_mail_header(ms, mi)
 	if (Mailsav[mi] != NULL) free_mailsav(Mailsav[mi]);
 	MailIndex = mi;
 	Mailsav[mi] = ms;
-	log("new mail");
+	if (Debug) printf("zmailwatch: new mail\n");
     }
     else {
 	free_mailsav(ms);
@@ -649,25 +455,6 @@ char *
     return(s);
 }
 
-char *Months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-		 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
-log(message, a1, a2)
-char *message;
-{
-    struct tm *tm;
-    int clock;
-    char buf[64];
-
-    clock = time(0);
-    tm = localtime(&clock);
-    sprintf(buf, message, a1, a2);
-    fprintf(logf, "%s %2d %02d:%02d:%02d -- %s\n",
-	    Months[tm->tm_mon], tm->tm_mday, 
-	    tm->tm_hour, tm->tm_min, tm->tm_sec,
-	    buf);
-}
-
 /*
  * Report the syntax for calling zmailwatch.
  */
@@ -676,4 +463,414 @@ syntax(call)
 {
     printf ("Usage: %s [-dl] [-i <interval>] [-help]\n", call);
     exit(0);
+}
+
+/*
+ * These are the necessary KPOP routines snarfed from
+ * the GNU movemail program.
+ */
+
+/* Interface from movemail to Athena's post-office protocol.
+   Copyright (C) 1986 Free Software Foundation, Inc.
+
+This file is part of GNU Emacs.
+
+GNU Emacs is distributed in the hope that it will be useful,
+but without any warranty.  No author or distributor
+accepts responsibility to anyone for the consequences of using it
+or for whether it serves any particular purpose or works at all,
+unless he says so in writing.
+
+Everyone is granted permission to copy, modify and redistribute
+GNU Emacs, but only under the conditions described in the
+document "GNU Emacs copying permission notice".   An exact copy
+of the document is supposed to have been given to you along with
+GNU Emacs so that you can know how you may redistribute it all.
+It should be in a file named COPYING.  Among other things, the
+copyright notice and this notice must be preserved on all copies.  */
+
+#include <sys/types.h>
+#include <sys/file.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <stdio.h>
+#include "../src/config.h"
+#ifdef KPOP
+#include <krb.h>
+#endif KPOP
+
+#ifdef USG
+#include <fcntl.h>
+/* Cancel substitutions made by config.h for Emacs.  */
+#undef open
+#undef read
+#undef write
+#endif /* USG */
+
+#define NOTOK (-1)
+#define OK 0
+#define DONE 1
+
+char *progname;
+FILE *sfi;
+FILE *sfo;
+char Errmsg[80];
+#ifdef KPOP
+char *PrincipalHostname(), *index();
+#endif KPOP
+
+static int debug = 0;
+
+popmail(user, outfile)
+char *user;
+char *outfile;
+{
+    char *host;
+    int nmsgs, nbytes;
+    char response[128];
+    register int i;
+    int mbfi;
+    FILE *mbf;
+    char *getenv();
+    int mbx_write();
+    char *get_errmsg();
+#ifdef HESIOD
+    struct hes_postoffice *p;
+#endif HESIOD
+
+    host = getenv("MAILHOST");
+#ifdef HESIOD
+    if (host == NULL) {
+    	p = hes_getmailhost(user);
+    	if (p != NULL && strcmp(p->po_type, "POP") == 0)
+		host = p->po_host;
+	else
+		fatal("no POP server listed in Hesiod");
+    }
+#endif HESIOD
+    if (host == NULL) {
+	fatal("no MAILHOST defined");
+    }
+
+    if (pop_init(host) == NOTOK) {
+	error(Errmsg);
+	return(1);
+    }
+
+    if ((getline(response, sizeof response, sfi) != OK) || (*response != '+')){
+	error(response);
+	return(1);
+    }
+
+#ifdef KPOP
+    if (pop_command("USER %s", user) == NOTOK || 
+	pop_command("PASS %s", user) == NOTOK) {
+#else !KPOP
+    if (pop_command("USER %s", user) == NOTOK || 
+	pop_command("RPOP %s", user) == NOTOK) {
+#endif KPOP
+	error(Errmsg);
+	pop_command("QUIT");
+	return(1);
+    }
+
+    if (pop_stat(&nmsgs, &nbytes) == NOTOK) {
+	error(Errmsg);
+	pop_command("QUIT");
+	return(1);
+    }
+
+    if (!nmsgs)
+      {
+	pop_command("QUIT");
+	return(0);
+      }
+
+    setuid (getuid());
+
+    mbfi = open (outfile, O_WRONLY | O_CREAT | O_EXCL, 0666);
+    if (mbfi < 0)
+      {
+	pop_command("QUIT");
+	error("Error in open: %s, %s", get_errmsg(), outfile);
+	return(1);
+      }
+
+    if ((mbf = fdopen(mbfi, "w")) == NULL)
+      {
+	pop_command("QUIT");
+	error("Error in fdopen: %s", get_errmsg());
+	close(mbfi);
+	unlink(outfile);
+	return(1);
+      }
+
+    for (i = 1; i <= nmsgs; i++) {
+	mbx_delimit_begin(mbf);
+	if (pop_retr(i, mbx_write, mbf) != OK) {
+	    error(Errmsg);
+	    pop_command("QUIT");
+	    close(mbfi);
+	    return(1);
+	}
+	mbx_delimit_end(mbf);
+	fflush(mbf);
+    }
+
+    for (i = 1; i <= nmsgs; i++) {
+	if (pop_command("DELE %d", i) == NOTOK) {
+	    error(Errmsg);
+	    pop_command("QUIT");
+	    close(mbfi);
+	    return(1);
+	}
+    }
+
+    pop_command("QUIT");
+    close(mbfi);
+    return(0);
+}
+
+pop_init(host)
+char *host;
+{
+    register struct hostent *hp;
+    register struct servent *sp;
+    int lport = IPPORT_RESERVED - 1;
+    struct sockaddr_in sin;
+    register int s;
+#ifdef KPOP
+    KTEXT ticket = (KTEXT)NULL;
+    int rem;
+#endif KPOP
+    char *get_errmsg();
+
+    hp = gethostbyname(host);
+    if (hp == NULL) {
+	sprintf(Errmsg, "MAILHOST unknown: %s", host);
+	return(NOTOK);
+    }
+
+#ifdef KPOP
+    sp = getservbyname("knetd", "tcp");
+    if (sp == 0) {
+	strcpy(Errmsg, "tcp/knetd: unknown service");
+	return(NOTOK);
+    }
+#else !KPOP
+    sp = getservbyname("pop", "tcp");
+    if (sp == 0) {
+	strcpy(Errmsg, "tcp/pop: unknown service");
+	return(NOTOK);
+    }
+#endif KPOP
+
+    sin.sin_family = hp->h_addrtype;
+    bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
+    sin.sin_port = sp->s_port;
+#ifdef KPOP
+    s = socket(AF_INET, SOCK_STREAM, 0);
+#else !KPOP
+    s = rresvport(&lport);
+#endif KPOP
+    if (s < 0) {
+	sprintf(Errmsg, "error creating socket: %s", get_errmsg());
+	return(NOTOK);
+    }
+
+    if (connect(s, (char *)&sin, sizeof sin) < 0) {
+	sprintf(Errmsg, "error during connect: %s", get_errmsg());
+	close(s);
+	return(NOTOK);
+    }
+#ifdef KPOP
+    ticket = (KTEXT)malloc( sizeof(KTEXT_ST) );
+    rem=KSUCCESS;
+    rem = SendKerberosData(s, ticket, "pop", hp->h_name);
+    if (rem != KSUCCESS) {
+	sprintf(Errmsg, "kerberos error: %s",krb_err_txt[rem]);
+	close(s);
+	return(NOTOK);
+    }
+#endif KPOP
+
+    sfi = fdopen(s, "r");
+    sfo = fdopen(s, "w");
+    if (sfi == NULL || sfo == NULL) {
+	sprintf(Errmsg, "error in fdopen: %s", get_errmsg());
+	close(s);
+	return(NOTOK);
+    }
+
+    return(OK);
+}
+
+pop_command(fmt, a, b, c, d)
+char *fmt;
+{
+    char buf[4096];
+    char errmsg[64];
+
+    sprintf(buf, fmt, a, b, c, d);
+
+    if (debug) fprintf(stderr, "---> %s\n", buf);
+    if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
+
+    if (getline(buf, sizeof buf, sfi) != OK) {
+	strcpy(Errmsg, buf);
+	return(NOTOK);
+    }
+
+    if (debug) fprintf(stderr, "<--- %s\n", buf);
+    if (*buf != '+') {
+	strcpy(Errmsg, buf);
+	return(NOTOK);
+    } else {
+	return(OK);
+    }
+}
+
+    
+pop_stat(nmsgs, nbytes)
+int *nmsgs, *nbytes;
+{
+    char buf[4096];
+
+    if (debug) fprintf(stderr, "---> STAT\n");
+    if (putline("STAT", Errmsg, sfo) == NOTOK) return(NOTOK);
+
+    if (getline(buf, sizeof buf, sfi) != OK) {
+	strcpy(Errmsg, buf);
+	return(NOTOK);
+    }
+
+    if (debug) fprintf(stderr, "<--- %s\n", buf);
+    if (*buf != '+') {
+	strcpy(Errmsg, buf);
+	return(NOTOK);
+    } else {
+	sscanf(buf, "+OK %d %d", nmsgs, nbytes);
+	return(OK);
+    }
+}
+
+pop_retr(msgno, action, arg)
+int (*action)();
+{
+    char buf[4096];
+
+    sprintf(buf, "RETR %d", msgno);
+    if (debug) fprintf(stderr, "%s\n", buf);
+    if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
+
+    if (getline(buf, sizeof buf, sfi) != OK) {
+	strcpy(Errmsg, buf);
+	return(NOTOK);
+    }
+
+    while (1) {
+	switch (multiline(buf, sizeof buf, sfi)) {
+	case OK:
+	    (*action)(buf, arg);
+	    break;
+	case DONE:
+	    return (OK);
+	case NOTOK:
+	    strcpy(Errmsg, buf);
+	    return (NOTOK);
+	}
+    }
+}
+
+getline(buf, n, f)
+char *buf;
+register int n;
+FILE *f;
+{
+    register char *p;
+    int c;
+
+    p = buf;
+    while (--n > 0 && (c = fgetc(f)) != EOF)
+      if ((*p++ = c) == '\n') break;
+
+    if (ferror(f)) {
+	strcpy(buf, "error on connection");
+	return (NOTOK);
+    }
+
+    if (c == EOF && p == buf) {
+	strcpy(buf, "connection closed by foreign host");
+	return (DONE);
+    }
+
+    *p = NULL;
+    if (*--p == '\n') *p = NULL;
+    if (*--p == '\r') *p = NULL;
+    return(OK);
+}
+
+multiline(buf, n, f)
+char *buf;
+register int n;
+FILE *f;
+{
+    if (getline(buf, n, f) != OK) return (NOTOK);
+    if (*buf == '.') {
+	if (*(buf+1) == NULL) {
+	    return (DONE);
+	} else {
+	    strcpy(buf, buf+1);
+	}
+    }
+    return(OK);
+}
+
+char *
+get_errmsg()
+{
+    extern int errno, sys_nerr;
+    extern char *sys_errlist[];
+    char *s;
+
+    if (errno < sys_nerr)
+      s = sys_errlist[errno];
+    else
+      s = "unknown error";
+    return(s);
+}
+
+putline(buf, err, f)
+char *buf;
+char *err;
+FILE *f;
+{
+    fprintf(f, "%s\r\n", buf);
+    fflush(f);
+    if (ferror(f)) {
+	strcpy(err, "lost connection");
+	return(NOTOK);
+    }
+    return(OK);
+}
+
+mbx_write(line, mbf)
+char *line;
+FILE *mbf;
+{
+    fputs(line, mbf);
+    fputc(0x0a, mbf);
+}
+
+mbx_delimit_begin(mbf)
+FILE *mbf;
+{
+    fputs("\f\n0,unseen,,\n", mbf);
+}
+
+mbx_delimit_end(mbf)
+FILE *mbf;
+{
+    putc('\037', mbf);
 }
