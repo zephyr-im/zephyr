@@ -20,12 +20,186 @@ static char rcsid_ZParseNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZParseNotice(buffer,len,notice)
-	ZPacket_t	buffer;
-	int		len;
-	ZNotice_t	*notice;
+Code_t ZParseNotice(buffer, len, notice)
+    char *buffer;
+    int len;
+    ZNotice_t *notice;
 {
-	extern int ZCheckAuthentication();
+    char *ptr, *end;
+    int maj, numfields, i;
+    unsigned int temp[3];
 
-	return (Z_InternalParseNotice(buffer,len,notice));
+    bzero(notice, sizeof(ZNotice_t));
+	
+    ptr = buffer;
+    end = buffer+len;
+
+    notice->z_packet = buffer;
+    
+    notice->z_version = ptr;
+    if (strncmp(ptr, ZVERSIONHDR, strlen(ZVERSIONHDR)))
+	return (ZERR_VERS);
+    ptr += strlen(ZVERSIONHDR);
+    maj = atoi(ptr);
+    if (maj != ZVERSIONMAJOR)
+	return (ZERR_VERS);
+    ptr += strlen(ptr)+1;
+
+    if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp,
+		   sizeof(int)) == ZERR_BADFIELD)
+	return (ZERR_BADPKT);
+    numfields = ntohl(*temp);
+    ptr += strlen(ptr)+1;
+
+    numfields -= 2;
+    if (numfields < 0)
+	numfields = 0;
+
+    if (numfields) {
+	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
+		       sizeof(int)) == ZERR_BADFIELD)
+	    return (ZERR_BADPKT);
+	notice->z_kind = (ZNotice_Kind_t)ntohl((ZNotice_Kind_t)*temp);
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	return (ZERR_BADPKT);
+	
+    if (numfields) {
+	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
+		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
+	    return (ZERR_BADPKT);
+	bcopy((char *)temp, (char *)&notice->z_uid, sizeof(ZUnique_Id_t));
+	notice->z_time.tv_sec = ntohl(notice->z_uid.tv.tv_sec);
+	notice->z_time.tv_usec = ntohl(notice->z_uid.tv.tv_usec);
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	return (ZERR_BADPKT);
+	
+    if (numfields) {
+	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
+		       sizeof(u_short)) ==
+	    ZERR_BADFIELD)
+	    return (ZERR_BADPKT);
+	notice->z_port = *((u_short *)temp);
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	return (ZERR_BADPKT);
+
+    if (numfields) {
+	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
+		       sizeof(int)) == ZERR_BADFIELD)
+	    return (ZERR_BADPKT);
+	notice->z_auth = *temp;
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	return (ZERR_BADPKT);
+	
+    if (numfields) {
+	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
+		       sizeof(int)) == ZERR_BADFIELD)
+	    return (ZERR_BADPKT);
+	notice->z_authent_len = ntohl(*temp);
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	return (ZERR_BADPKT);
+
+    if (numfields) {
+	notice->z_ascii_authent = ptr;
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	return (ZERR_BADPKT);
+
+    if (numfields) {
+	notice->z_class = ptr;
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	notice->z_class = "";
+	
+    if (numfields) {
+	notice->z_class_inst = ptr;
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	notice->z_class_inst = "";
+
+    if (numfields) {
+	notice->z_opcode = ptr;
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	notice->z_opcode = "";
+
+    if (numfields) {
+	notice->z_sender = ptr;
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	notice->z_sender = "";
+
+    if (numfields) {
+	notice->z_recipient = ptr;
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	notice->z_recipient = "";
+
+    if (numfields) {
+	notice->z_default_format = ptr;
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	notice->z_default_format = "";
+	
+    if (numfields) {
+	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
+		       sizeof(ZChecksum_t))
+	    == ZERR_BADFIELD)
+	    return (ZERR_BADPKT);
+	notice->z_checksum = ntohl(*temp);
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	notice->z_checksum = 0;
+
+    if (numfields) {
+	notice->z_multinotice = ptr;
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	notice->z_multinotice = "";
+
+    for (i=0;i<Z_MAXOTHERFIELDS && numfields;i++,numfields--) {
+	notice->z_other_fields[i] = ptr;
+	ptr += strlen(ptr)+1;
+    }
+    notice->z_num_other_fields = i;
+    
+    for (i=0;i<numfields;i++)
+	ptr += strlen(ptr)+1;
+	
+    notice->z_message = (caddr_t) ptr;
+    notice->z_message_len = len-(ptr-buffer);
+
+    return (ZERR_NONE);
 }
