@@ -40,7 +40,7 @@ char *realmname;
 	}
 	*cp1 = '\0';
 
-	sprintf(list_file, "%s/%s", SYSCONFDIR, REALM_LIST_FILE);
+	sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, REALM_LIST_FILE);
 
 	if ((rlm_file = fopen(list_file, "r")) == (FILE *) 0) {
 		return(expand);
@@ -390,7 +390,7 @@ realm_init()
   char list_file[128];
   char rlmprinc[ANAME_SZ+INST_SZ+REALM_SZ+3];
 
-  sprintf(list_file, "%s/%s", SYSCONFDIR, REALM_LIST_FILE);
+  sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, REALM_LIST_FILE);
   rlmnames = get_realm_lists(list_file);
   if (!rlmnames) {
     zdbug((LOG_DEBUG, "No other realms"));
