@@ -18,7 +18,7 @@ LOC_SUBDIRS = et ss
 #ifdef BuildServer
 SERVER=server
 #endif
-SUBDIRS= ${LOC_SUBDIRS} include lib libdyn clients ${SERVER} zhm zwgc ozwgc man
+SUBDIRS= ${LOC_SUBDIRS} include lib libdyn clients ${SERVER} zhm zwgc man #ozwgc
 /* Need to make sure `all' is the first target */
 all::
 /**/# we need to remove these here; it is not appropriate to remove them
