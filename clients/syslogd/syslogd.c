@@ -78,6 +78,7 @@ char	ctty[] = "/dev/console";
 #define	dprintf		if (Debug) printf
 
 #define UNAMESZ         ANAME_SZ+INST_SZ+REALM_SZ /* 8 isn't good enough anymore */
+#define UTMPNAMESZ	8
 #define MAXUNAMES	20	/* maximum number of user names */
 #define MAXFNAME	200	/* max file pathname length */
 
@@ -333,6 +334,7 @@ main(argc, argv)
 	znotice.z_kind = UNSAFE;
 	znotice.z_class = "SYSLOG";
 	znotice.z_class_inst = LocalHostName;
+	znotice.z_default_format = "Syslog message from $instance, level $opcode:\n$message";
 	(void) ZInitialize ();
 
 	for (;;) {
@@ -658,7 +660,7 @@ logmsg(pri, msg, from, flags)
 			break;
 			
  	        case F_ZEPHYR:
-			(void) sprintf(line, "%.15s (%s) %s",
+			(void) sprintf(line, "%.15s [%s] %s",
 				       iov[0].iov_base,
 				       iov[2].iov_base,
 				       iov[4].iov_base);
@@ -749,7 +751,7 @@ wallmsg(f, iov)
 					break;
 				}
 				if (strncmp(f->f_un.f_uname[i], ut.ut_name,
-				    UNAMESZ) == 0)
+					    UTMPNAMESZ) == 0)
 					break;
 			}
 			if (i >= MAXUNAMES)
@@ -758,7 +760,7 @@ wallmsg(f, iov)
 
 		/* compute the device name */
 		p = "/dev/12345678";
-		strcpyn(&p[5], ut.ut_line, UNAMESZ);
+		strcpyn(&p[5], ut.ut_line, UTMPNAMESZ);
 
 		/*
 		 * Might as well fork instead of using nonblocking I/O
@@ -1126,9 +1128,9 @@ cfline(line, f)
 		for (i = 0; i < MAXUNAMES && *p; i++) {
 			for (q = p; *q && *q != ','; )
 				q++;
-			(void) strncpy(f->f_un.f_uname[i], p, UNAMESZ);
-			if ((q - p) > UNAMESZ)
-				f->f_un.f_uname[i][UNAMESZ] = '\0';
+			(void) strncpy(f->f_un.f_uname[i], p, UTMPNAMESZ);
+			if ((q - p) > UTMPNAMESZ)
+				f->f_un.f_uname[i][UTMPNAMESZ] = '\0';
 			else
 				f->f_un.f_uname[i][q - p] = '\0';
 			while (*q == ',' || *q == ' ')
