@@ -199,7 +199,7 @@ Code_t Z_ReadWait()
      */
     if (!__Zephyr_server) {
 	if (notice.z_kind != HMACK && notice.z_kind != SERVACK &&
-	    notice.z_kind != SERVNAK) {
+	    notice.z_kind != SERVNAK && notice.z_kind != CLIENTACK) {
 	    ZNotice_t tmpnotice;
 	    ZPacket_t pkt;
 	    int len;
