@@ -91,10 +91,8 @@ Code_t ZUnsetVariable(var)
 	strcpy(varfilebackup,varfile);
 	strcat(varfilebackup,".backup");
 	
-	if (!(fpout = fopen(varfilebackup,"w"))) {
-		fclose(fpin);
+	if (!(fpout = fopen(varfilebackup,"w")))
 		return (errno);
-	}
 	if (fpin = fopen(varfile,"r")) {
 		while (fgets(varbfr,sizeof varbfr,fpin) != (char *) 0) {
 			if (varbfr[strlen(varbfr)-1] < ' ')
