@@ -26,6 +26,7 @@
  * 	menuForm - the form holding the menu list/button
  * 		menuClose - the Close Window button for the dest list
  * 		signature - button to change signature
+ *              clearOnSend
  * 		closeOnSend
  * 		pings
  * 		verbose
@@ -69,6 +70,8 @@ static void Quit(), SendMessage(), OpenSend(), CloseSend(),
      DeleteDest(), HighlightDest(), SelectDest(), OpenMenu(),
      ToggleOption(), Signature(), CloseMenu(), CreateDest();
 
+static void set_editor_width(), set_sendclose_width();
+
 static XtActionsRec actionTable[] = {
      /* sendWindow actions */
      {"OpenSend", (XtActionProc) OpenSend},
@@ -111,8 +114,8 @@ Widget destForm, destScroll, destList;
 Widget editPane, editTitle, editForm, editSend, editClear,
      editPrev, editNext, editor;
 Widget menuWindow, menuForm, menuClose, signature, 
-     closeOnSend, pings, verbose, authentic, yankDest, addGlobals,
-     classInst, commandMask, exitProgram;
+     clearOnSend, closeOnSend, pings, verbose, authentic,
+     yankDest, addGlobals, classInst, commandMask, exitProgram;
 
 void go()
 {
@@ -162,8 +165,7 @@ void build_interface(argc, argv)
      XtAppAddActions(app_con, actionTable, XtNumber(actionTable));
 
      /* Create the icon */
-     icon = XtVaCreateManagedWidget("icon", commandWidgetClass, toplevel,
-				    NULL);
+     icon = XVCMW("icon", commandWidgetClass, toplevel, NULL);
 
      /* Create the menu */
      menuWindow = XtVaCreatePopupShell("menuWindow", transientShellWidgetClass,
@@ -171,6 +173,7 @@ void build_interface(argc, argv)
      menuForm = XVCMW("menuForm", formWidgetClass, menuWindow, NULL);
      menuClose = XVCMW("menuClose", commandWidgetClass, menuForm, NULL);
      signature = XVCMW("signature", commandWidgetClass, menuForm, NULL);
+     clearOnSend = XVCMW("clearOnSend", toggleWidgetClass, menuForm, NULL);
      closeOnSend = XVCMW("closeOnSend", toggleWidgetClass, menuForm, NULL);
      pings = XVCMW("pings", toggleWidgetClass, menuForm, NULL);
      verbose = XVCMW("verbose", toggleWidgetClass, menuForm, NULL);
@@ -205,9 +208,11 @@ void build_interface(argc, argv)
      XtAppAddInput(app_con, ZGetFD(), (XtPointer)XtInputReadMask, zeph_dispatch, NULL);
 
      if (defs.track_logins) {
-	  XtAppAddWorkProc(app_con, login_scan_work, NULL);
+	  XtAppAddWorkProc(app_con, (XtWorkProc)login_scan_work, NULL);
      }
 
+     set_editor_width();
+     set_sendclose_width();
      XtRealizeWidget(toplevel);
 }
 
@@ -381,4 +386,36 @@ static void CloseMenu(w, e, p, n)
    Cardinal *n;
 {
      XtPopdown(menuWindow);
+}
+
+static void set_editor_width (void)
+{
+  int w, c; char m = 'm';
+  XFontStruct *fs = (XFontStruct *) NULL;
+
+  c = defs.columns;
+  /* get the font structure. */
+  XtVaGetValues(editor, XtNfont, &fs, NULL);
+  if (c < 1 || fs == (XFontStruct *) NULL) return;
+
+  /* set the editor width */
+  w = c * XTextWidth(fs, &m, 1);
+  XtVaSetValues(editor, XtNwidth, (Dimension)w, NULL);
+  
+  /* set the destList to have 3/8ths the width of the editor */
+  /* an other idea would be to make it have 3/8ths as many characters,
+     which makes a difference when the editor and destList are in
+     different fonts.
+     however, I prefer this way. */
+  XtVaSetValues(destForm, XtNwidth, (Dimension)(w*3/8), NULL);
+}
+
+static void set_sendclose_width (void)
+{
+  /* make the Close Window button the width of the form */
+  Dimension wi = 0;
+  XtRealizeWidget (sendWindow);
+  XtVaGetValues(sendForm, XtNwidth, &wi, NULL);
+  XtUnrealizeWidget (sendWindow);
+  XtVaSetValues(sendClose, XtNwidth, wi, NULL);
 }
