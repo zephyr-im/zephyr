@@ -20,9 +20,9 @@ char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nP
 #endif SABER
 #endif lint
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 2.2";
+char version[] = "Zephyr Server (DEBUG) 2.3";
 #else
-char version[] = "Zephyr Server 2.2";
+char version[] = "Zephyr Server 2.3";
 #endif DEBUG
 /*
  * Server loop for Zephyr.
