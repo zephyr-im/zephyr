@@ -7,9 +7,9 @@
  *
  *      $Source$
  *      $Author$
- *      $Header$
+ *      $Zephyr: /mit/zephyr/src.rw/zhm/RCS/zhm.h,v 1.13 90/10/19 07:11:48 raeburn Exp $
  *
- *      Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *      Copyright (c) 1987, 1991 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
  *      "mit-copyright.h". 
  */
@@ -49,11 +49,13 @@ extern void init_queue(), retransmit_queue();
 
 #ifdef vax
 #define MACHINE "vax"
+#define use_etext
 #define ok
 #endif /* vax */
 
 #ifdef ibm032
 #define MACHINE "rt"
+#define adjust_size(size)	size -= 0x10000000
 #define ok
 #endif /* ibm032 */
 
@@ -62,6 +64,7 @@ extern void init_queue(), retransmit_queue();
 #define ok
 #endif /* NeXT */
 
+#ifdef sun
 #ifdef SUN2_ARCH
 #define MACHINE "sun2"
 #define ok
@@ -72,19 +75,38 @@ extern void init_queue(), retransmit_queue();
 #define ok
 #endif /* SUN3_ARCH */
 
-#ifdef SUN4_ARCH
+#if defined (SUN4_ARCH) || defined (sparc)
 #define MACHINE "sun4"
+#define use_etext
 #define ok
 #endif /* SUN4_ARCH */
 
+#ifndef ok
+#if defined (m68k)
+#define MACHINE "sun (unknown 68k)"
+#else
+#define MACHINE "sun (unknown)"
+#endif
+#define ok
+#endif /* ! ok */
+#endif /* sun */
+
 #if defined(ultrix) && defined(mips)
 #define MACHINE "decmips"
+#define adjust_size(size)	size -= 0x10000000
 #define ok
 #endif /* ultrix && mips */
 
 #if defined(AIX) && defined(i386)
 #define	MACHINE	"ps2"
+#define adjust_size(size)	size -= 0x800000
 #define ok
+#endif
+
+#ifdef use_etext
+extern int etext;
+#define adjust_size(size)	size -= (unsigned int) &etext;
+#undef use_etext
 #endif
 
 #ifndef ok
@@ -92,4 +114,4 @@ extern void init_queue(), retransmit_queue();
 #endif
 #undef ok
 
-#endif !__HM_H__
+#endif
