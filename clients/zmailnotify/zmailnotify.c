@@ -504,7 +504,6 @@ register int n;
 FILE *f;
 {
     register char *p;
-    int c;
 
     p = fgets(buf, n, f);
 
@@ -519,8 +518,8 @@ FILE *f;
     }
 
     p = buf + strlen(buf);
-    if (*--p == '\n') *p = NULL;
-    if (*--p == '\r') *p = NULL;
+    if (*--p == '\n') *p = '\0';
+    if (*--p == '\r') *p = '\0';
     return(OK);
 }
 
@@ -531,7 +530,7 @@ FILE *f;
 {
     if (getline(buf, n, f) != OK) return (NOTOK);
     if (*buf == '.') {
-	if (*(buf+1) == NULL) {
+	if (*(buf+1) == '\0') {
 	    return (DONE);
 	} else {
 	    (void) strcpy(buf, buf+1);
