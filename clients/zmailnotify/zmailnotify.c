@@ -444,7 +444,7 @@ char *host;
     authopts = KOPT_DO_OLDSTYLE;
     rem = krb_sendsvc(s,"pop");
     if (rem != KSUCCESS) {
-	(void) sprintf(Errmsg, "kerberos error: %s", krb_get_err_txt(rem));
+	(void) sprintf(Errmsg, "kerberos error: %s", krb_get_err_text(rem));
 	(void) close(s);
 	return(NOTOK);
     }
@@ -464,7 +464,7 @@ char *host;
     free(host_save);
     free(ticket);
     if (rem != KSUCCESS) {
-	(void) sprintf(Errmsg, "kerberos error: %s",krb_get_err_txt(rem));
+	(void) sprintf(Errmsg, "kerberos error: %s",krb_get_err_text(rem));
 	(void) close(s);
 	return(NOTOK);
     }
