@@ -68,9 +68,10 @@ Z_SendLocation(class, opcode, auth, format)
     char *ttyp;
     struct hostent *hent;
     short wg_port = ZGetWGPort();
-    int gotone = 0;
     register int i;
-    struct timeval tv;
+    int zfd;
+    fd_set fdmask;
+    struct timeval tv, t0;
 
     (void) bzero((char *)&notice, sizeof(notice));
     notice.z_kind = ACKED;
@@ -133,22 +134,35 @@ Z_SendLocation(class, opcode, auth, format)
     if ((retval = ZSendList(&notice, bptr, 3, auth)) != ZERR_NONE)
 	return (retval);
 
-    for (i=0;i<HM_TIMEOUT*2;i++) {
-	tv.tv_sec = 0;
-	tv.tv_usec = 500000;
-	if (select(0, (fd_set *) 0, (fd_set *) 0, (fd_set *) 0, &tv) < 0)
-	    return (errno);
-	retval = ZCheckIfNotice(&retnotice, (struct sockaddr_in *)0,
-				ZCompareUIDPred, (char *)&notice.z_uid);
-	if (retval == ZERR_NONE) {
-	    gotone = 1;
-	    break;
+    tv.tv_sec = HM_TIMEOUT;
+    tv.tv_usec = 0;
+    FD_ZERO (&fdmask);
+    zfd = ZGetFD();
+    FD_SET (zfd, &fdmask);
+    gettimeofday (&t0, 0);
+    t0.tv_sec += HM_TIMEOUT;
+    while (1) {
+	i = select (zfd + 1, &fdmask, (fd_set *) 0, (fd_set *) 0, &tv);
+	if (i > 0) {
+	    retval = ZCheckIfNotice (&retnotice, (struct sockaddr_in*) 0,
+				     ZCompareUIDPred, (char *)&notice.z_uid);
+	    if (retval == ZERR_NONE)
+		break;
+	    if (retval != ZERR_NONOTICE)
+		return retval;
+	} else if (i == 0)
+	    return ETIMEDOUT;	/* timeout */
+	else if (errno != EINTR)
+	    return errno;
+	gettimeofday (&tv, 0);
+	tv.tv_usec = t0.tv_usec - tv.tv_usec;
+	if (tv.tv_usec < 0) {
+	    tv.tv_usec += 1000000;
+	    tv.tv_sec = t0.tv_sec - tv.tv_sec - 1;
+	} else {
+	    tv.tv_sec = t0.tv_sec - tv.tv_sec;
 	}
-	if (retval != ZERR_NONOTICE)
-	    return (retval);
     }
-    if (!gotone)
-	return(ETIMEDOUT);
 
     if (retnotice.z_kind == SERVNAK) {
 	if (!retnotice.z_message_len) {
