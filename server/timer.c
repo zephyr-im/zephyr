@@ -1,3 +1,18 @@
+/* This file is part of the Project Athena Zephyr Notification System.
+ * It contains functions for managing multiple timeouts.
+ *
+ *	Created by:	John T. Kohl
+ *	Derived from timer_manager_ by Ken Raeburn
+ *
+ *	$Source$
+ *	$Author$
+ *
+ */
+
+#ifndef lint
+static char rcsid_timer_c[] = "$Header$";
+#endif lint
+
 /*
  * timer_manager_ -- routines for handling timers in login_shell
  * (and elsewhere)
@@ -6,23 +21,36 @@
  * Massachusetts Institute of Technology
  *
  * written by Ken Raeburn
+
+Permission to use, copy, modify, and distribute this
+software and its documentation for any purpose and without
+fee is hereby granted, provided that the above copyright
+notice appear in all copies and that both that copyright
+notice and this permission notice appear in supporting
+documentation, and that the name of M.I.T. and the Student
+Information Processing Board not be used in
+advertising or publicity pertaining to distribution of the
+software without specific, written prior permission.
+M.I.T. and the Student Information Processing Board
+make no representations about the suitability of
+this software for any purpose.  It is provided "as is"
+without express or implied warranty.
+
  */
 
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <signal.h>
-#include "timer_manager_.h"
+#include "zserver.h"
 
-#define NOW (time((time_t *)NULL))
 /* Maximum simultaneous triggers.. */
+/* This is how many alarms we will process between each select() poll */
 #define MAXSIMUL (16)
 
+long nexttimo = 0L;			/* the Unix time of the next
+					   alarm */
 static timer timers = NULL;
 static long right_now;
 
 char *calloc(), *malloc(), *realloc();
-static int timer_handler();
 static void timer_botch();
 static void insert_timer();
 
@@ -34,9 +62,10 @@ static void insert_timer();
  * creates a "timer" and adds it to the current list, returns "timer"
  */
 
-timer timer_set_rel (time_rel, proc)
+timer timer_set_rel (time_rel, proc, arg)
      long time_rel;
      void (*proc)();
+     caddr_t arg;
 {
 	timer new_t;
 	right_now = NOW;
@@ -46,24 +75,24 @@ timer timer_set_rel (time_rel, proc)
 	ALARM_FUNC(new_t) = proc;
 	ALARM_NEXT(new_t) = NULL;
 	ALARM_PREV(new_t) = NULL;
-	if (add_timer(new_t) != 0) {
-		free((char *)new_t);
-		return(NULL);
-	}
+	ALARM_ARG(new_t)  = arg;
+	add_timer(new_t);
 	return(new_t);
 }
 
 /*
- * timer_set_abs (time_abs, proc)
+ * timer_set_abs (time_abs, proc, arg)
  *   time_abs: alarm time, absolute
  *   proc: routine to call when timer expires
+ *   arg:  argument to routine
  *
  * functions like timer_set_rel
  */
 
-timer timer_set_abs (time_abs, proc)
+timer timer_set_abs (time_abs, proc, arg)
      long time_abs;
      void (*proc)();
+     caddr_t arg;
 {
 	timer new_t;
 
@@ -73,15 +102,13 @@ timer timer_set_abs (time_abs, proc)
 	ALARM_FUNC(new_t) = proc;
 	ALARM_NEXT(new_t) = NULL;
 	ALARM_PREV(new_t) = NULL;
-	if (add_timer(new_t) != 0) {
-		free((char *)new_t);
-		return(NULL);
-	}
+	ALARM_ARG(new_t)  = arg;
+	add_timer(new_t);
 	return(new_t);
 }
 
 /*
- * reset_timer
+ * timer_reset
  *
  * args:
  *   tmr: timer to be removed from the list
@@ -90,26 +117,26 @@ timer timer_set_abs (time_abs, proc)
  *
  */
 
-reset_timer(tmr)
+void
+timer_reset(tmr)
      timer tmr;
 {
 	if (!ALARM_PREV(tmr) || !ALARM_NEXT(tmr)) {
-#ifdef DEBUG
-		fprintf(stderr, "reset_timer() of unscheduled timer\n");
-#endif
+		if (zdebug)
+			syslog(LOG_DEBUG, "reset_timer() of unscheduled timer\n");
 		return(-1);
 	}
 	if (tmr == timers) {
-#ifdef DEBUG
-		fprintf(stderr, "reset_timer of timer head\n");
-#endif
+		if (zdebug)
+			syslog(LOG_DEBUG, "reset_timer of timer head\n");
 		return(-1);
 	}
 	right_now = NOW;
 	remque(tmr);
 	ALARM_PREV(tmr) = NULL;
 	ALARM_NEXT(tmr) = NULL;
-	return(reschedule_timer());
+	free(tmr);
+	return;
 }
 
 
@@ -125,28 +152,18 @@ reset_timer(tmr)
  *   -1 if error (errno set) -- old time table may have been destroyed
  *
  */
-int
+static void
 add_timer(new_t)
      timer new_t;
 {
 	if (ALARM_PREV(new_t) || ALARM_NEXT(new_t)) {
-#ifdef DEBUG
-	        fprintf(stderr, "add_timer of enqueued timer\n");
-#endif
+		if (zdebug)
+			syslog(LOG_DEBUG, "add_timer of enqueued timer\n");
 		return(-1);
 	}
 	right_now = NOW;
 	insert_timer(new_t);
-	return(reschedule_timer());
-}
-
-int
-add_timer_rel(tm, new_t)
-     long tm;
-     timer new_t;
-{
-	ALARM_TIME(new_t) = tm + NOW;
-	return(add_timer(new_t));
+	return;
 }
 
 /*
@@ -166,7 +183,7 @@ insert_timer(new_t)
 		timers = (timer) malloc(TIMER_SIZE);
 		ALARM_NEXT(timers) = timers;
 		ALARM_PREV(timers) = timers;
-		ALARM_TIME(timers) = (long) 0;
+		ALARM_TIME(timers) = 0L;
 		ALARM_FUNC(timers) = timer_botch;
 	}
 	for (t = ALARM_NEXT(timers); t != timers; t = ALARM_NEXT(t)) {
@@ -179,23 +196,19 @@ insert_timer(new_t)
 }
 
 /*
- * reschedule_timer -- checks for next timer execution time
- * and schedules itimer alarm for that time
- *
- * returns 0 on success, -1 on error
+ * timer_process -- checks for next timer execution time
+ * and execute 
  *
  */
 
-static int
-reschedule_timer()
+void
+timer_process()
 {
 	register int i;
 	register struct _timer *t;
-	struct itimerval it;
 	void (*queue[MAXSIMUL])();
+	caddr_t queue_arg[MAXSIMUL];
 	int nqueue=0;
-
-	if ((int)signal(SIGALRM, timer_handler) == -1) return(-1);
 
 	for (t=ALARM_NEXT(timers); t != timers && right_now >= ALARM_TIME(t); 
 	     t=ALARM_NEXT(t)) {
@@ -206,6 +219,7 @@ reschedule_timer()
 		register timer s;
      
 		if (nqueue>MAXSIMUL) break;
+		queue_arg[nqueue] = ALARM_ARG(t);
 		queue[nqueue++]=ALARM_FUNC(t);
 		remque(t); 
 		s = t;
@@ -213,61 +227,24 @@ reschedule_timer()
 	        ALARM_PREV(s) = NULL;
 		ALARM_NEXT(s) = NULL;
 	}
-	set_timeval(it.it_interval, (long)0);
-	set_timeval(it.it_value, 
-		    ALARM_TIME(t)?(long)(ALARM_TIME(t) - right_now) : (long) 0
-		    );
-	setitimer(ITIMER_REAL, &it, (struct itimerval *)NULL);
+	/* note that in the case that there are no timers, the ALARM_TIME
+	   is set to 0L, which is what the main loop expects as the
+	   nexttimo when we have no timout work to do */
+	nexttimout = ALARM_TIME(t);
+	
 	for (i=0; i < nqueue; i++)
-		(queue[i])();
-	return(0);
-}
-
-static
-timer_handler()
-{
-	right_now = NOW;
-	return(reschedule_timer());
-}
-
-suspend_timers()
-{
-	struct itimerval it;
-	set_timeval(it.it_value, 0);
-	setitimer(ITIMER_REAL, &it, (struct itimerval *)NULL);
-}
-
-restart_timers()
-{
-	reschedule_timer();
-}
-
-
-/* sleep routine to replace library sleep routine, which steals SIGALRM */
-
-static int stay_asleep;
-
-static void
-wake_up()
-{
-	stay_asleep = 0;
-}
-
-sleep(n_sec)
-     unsigned n_sec;
-{
-	stay_asleep = 1;
-	if (timer_set_rel((long)n_sec, wake_up) == NULL) return;
-	while(stay_asleep) sigpause(0);
+		(queue[i])(queue_arg[i]);
+	return;
 }
 
 static void
 timer_botch()
 {
-	fprintf(stderr, "Timer botch\n");
-	exit(42);
+	syslog(LOG_DEBUG, "Timer botch\n");
+	abort();
 }
 
+void
 print_timers()
 {
 	register timer t;
