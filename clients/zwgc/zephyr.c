@@ -155,7 +155,14 @@ void zephyr_init(notice_handler)
      */
     temp = get_zwgc_port_number_filename();
     errno = 0;
-    port_file = fopen(temp, "w+");
+    port_file = fopen(temp, "r");
+    if (port_file) {
+	fprintf(stderr, "zwgc: windowgram file already exists.  If you are\n");
+	fprintf(stderr, "zwgc: not already running zwgc, delete %s\n", temp);
+	fprintf(stderr, "zwgc: and try again.\n");
+	exit(1);
+    }
+    port_file = fopen(temp, "w");
     if (port_file) {
 	fprintf(port_file, "%d\n", port);
 	fclose(port_file);
