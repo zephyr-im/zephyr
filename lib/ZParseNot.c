@@ -22,23 +22,34 @@ Code_t ZParseNotice(buffer,len,notice,auth)
 	ZNotice_t	*notice;
 	int		*auth;
 {
-	int hdrlen;
 	char *ptr;
+	int i;
+	unsigned int temp[3];
 
-	hdrlen = *((short *)buffer);
-
-	ptr = buffer+2;
-
-	if (*ptr++ != ZVERSION)
+	ptr = buffer;
+	
+	if (Z_ReadField(&ptr,temp,1))
+		return (ZERR_BADPKT);
+	
+	if (*temp != ZVERSION)
 		return (ZERR_VERS);
 
-	notice->z_kind = (ZNotice_Kind_t)*ptr++;
-	bcopy(ptr,notice->z_checksum,sizeof(ZChecksum_t));
-	ptr += sizeof(ZChecksum_t);
-	bcopy(ptr,&notice->z_uid,sizeof(ZUnique_Id_t));
-	ptr += sizeof(ZUnique_Id_t);
-	notice->z_port = *((short *)ptr);
-	ptr += sizeof(short);
+	if (Z_ReadField(&ptr,temp,1))
+		return (ZERR_BADPKT);
+	notice->z_kind = (ZNotice_Kind_t)*temp;
+
+	if (Z_ReadField(&ptr,temp,1))
+		return (ZERR_BADPKT);
+	notice->z_port = (short)*temp;
+	
+	if (Z_ReadField(&ptr,temp,2))
+		return (ZERR_BADPKT);
+	bcopy(temp,notice->z_checksum,sizeof(ZChecksum_t));
+
+	if (Z_ReadField(&ptr,temp,3))
+		return (ZERR_BADPKT);
+	bcopy(temp,&notice->z_uid,sizeof(ZUnique_Id_t));
+
 	notice->z_class = ptr;
 	ptr += strlen(ptr)+1;
 	notice->z_class_inst = ptr;
@@ -50,11 +61,37 @@ Code_t ZParseNotice(buffer,len,notice,auth)
 	notice->z_recipient = ptr;
 	ptr += strlen(ptr)+1;
 
-	if (ptr-buffer != hdrlen)
-		return(ZERR_BADPKT);
-
 	notice->z_message = (caddr_t) ptr;
-	notice->z_message_len = len-hdrlen;
+	notice->z_message_len = len-(ptr-buffer);
 
 	*auth = 0;
+
+	return (ZERR_NONE);
+}
+
+int Z_ReadField(ptr,temp,num)
+	char **ptr;
+	int *temp;
+	int num;
+{
+	int i;
+	char *space;
+
+	for (i=0;i<num;i++) {
+		space = (char *)index(*ptr,' ');
+		if ((*ptr)[0] != '0' || (*ptr)[1] != 'x')
+			return (1);
+		sscanf(*ptr+2,"%x",temp+i);
+		if (space)
+			*ptr = space+1;
+		else
+			*ptr += strlen(*ptr);
+		if (!*ptr && i != num-1)
+			return (1);
+	}
+
+	if (**ptr)
+		return (1);
+	(*ptr)++;
+	return (0);
 }

@@ -45,15 +45,7 @@ Code_t ZReceivePacket(buffer,buffer_len,ret_len)
 	
 	bcopy(__Q_Head->packet,buffer,*ret_len);
 
-	__Q_Length--;
-
-	old_head = __Q_Head;
-	if (__Q_Length)
-		__Q_Head = __Q_Head->next;
-	else
-		__Q_Head = __Q_Tail = NULL;
-	
-	free (old_head);
+	Z_RemQueue(__Q_Head);
 
 	return (retval);
 }
