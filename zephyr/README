@@ -1,0 +1,24 @@
+This is a snapshot of the Project Athena Zephyr notification system.
+Zephyr allows users to send messages to other users or to groups of
+users.  Users can view incoming Zephyr messages as windowgrams
+(transient X windows) or as text on a terminal. Zephyr can optionally
+make use of the Kerberos version 4 security library or the Hesiod
+service name resolution library.
+
+Bug reports or patches should go to bug-zephyr@mit.edu.  Please do not
+send questions about snapshots; they are not supported.
+
+To find out how to configure, build, and install Zephyr, read the file
+INSTALL.
+
+To find out how to operate a Zephyr service, read the file OPERATING.
+
+To find out how to use an existing Zephyr service, read the file
+USING.
+
+Please read the file NOTES before making any modifications to the
+source tree.
+
+--Greg Hudson
+ghudson@mit.edu
+

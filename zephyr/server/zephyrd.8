@@ -1,0 +1,123 @@
+.\"	$Id$
+.\"
+.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
+.\" specifies the terms and conditions for redistribution.
+.\"
+.TH ZEPHYRD 8 "July 1, 1988" "MIT Project Athena"
+.ds ]W MIT Project Athena
+.SH NAME
+zephyrd \- Zephyr server daemon
+.SH SYNOPSIS
+.I /usr/etc/zephyrd
+[
+.BI \-d
+]
+.SH DESCRIPTION
+.I zephyrd
+is the central server for the Zephyr Notification System.
+It maintains a location database of all currently logged-in users, and a
+subscription database for each user's Zephyr clients.
+.PP
+.I zephyrd 
+communicates with daemons running on other Zephyr server hosts, to
+provide a reliable service.
+.PP
+While running, any unusual conditions are recorded via 
+.I syslog(3)
+to facility local6 at various levels.
+The
+.BI \-d
+option enables logging of additional debugging information.
+.PP
+When a
+.B zephyrd
+is executed, it requests a list of server machines from Hesiod and
+initializes its state from any
+\fIzephyrd\fRs executing on the other known servers.  This initialization
+is only performed after the \fIzephyrd\fRs have authenticated themselves
+to each other via Kerberos.
+The server then enters a dispatch loop, servicing requests from clients and
+other servers.
+.SH SIGNALS
+.B SIGUSR1
+enables logging of additional debugging information.
+.br
+.B SIGUSR2
+disables the logging of additional debugging information.
+.br
+.B SIGHUP
+causes
+.I zephyrd
+to re-read the default subscription file and to re-query Hesiod about
+valid peers.  Any peers which are not responding and no longer
+mentioned in Hesiod are flushed; any peers not previously named by
+Hesiod are added.
+.br
+.B SIGINT \fRand\fB SIGTERM
+cause
+.I zephyrd
+to gracefully shut down.
+.br
+.B SIGFPE
+causes
+.I zephyrd
+to dump the location and subscription databases to
+.I /var/tmp/zephyr.db
+in an ASCII format.
+.SH ACCESS CONTROL
+Certain notice classes are restricted by the Zephyr server.  Each such
+class has access control lists enumerating who may transmit (xmt-*.acl) or
+subscribe to that particular class.  Subscriptions may be
+restricted either absolutely (sub-*.acl files), or by instance restrictions.
+iws-*.acl files control subscriptions to wildcarded instances.
+iui-*.acl files control subscriptions to instances which are not the
+Kerberos principal identity of the subscriber.
+If an access control list of a given type is absent, there is no
+restriction of that type on the class, except that any notices of the
+class must be authenticated.
+The class registry lists all classes which are restricted.
+.SH FILES
+.TP 10
+.I /usr/athena/lib/zephyr/class-registry.acl:
+List of classes which are restricted
+.TP
+.I /usr/athena/lib/zephyr/iws-*.acl:
+Access Control Lists for instance-wildcard restrictions
+.TP
+.I /usr/athena/lib/zephyr/iui-*.acl:
+Access Control Lists for instance-identity restrictions
+.TP
+.I /usr/athena/lib/zephyr/sub-*.acl:
+Access Control Lists for subscribing
+.TP
+.I /usr/athena/lib/zephyr/xmt-*.acl:
+Access Control Lists for transmitting
+.TP
+.I /usr/athena/lib/zephyr/srvtab:
+Kerberos Service keys
+.TP
+.I /usr/athena/lib/zephyr/ztkts:
+Current Kerberos tickets for exchange with other servers 
+.TP
+.I /usr/tmp/zephyr.db:
+File containing an ASCII dump of the database.
+.SH BUGS
+The current implementation of the Zephyr server (\fIzephyrd(8)\fR) makes
+no distinction between realm-announced, net-visible and net-announced
+exposure levels.
+.SH SEE ALSO
+zephyr(1), zhm(8), kerberosintro(1), hesiod(3), access_control_lists(?),
+syslog(3)
+.br
+Athena Technical Plan, Sections E.4.1 (Zephyr Notification Service) and
+E.2.1 (Kerberos Authentication and Authorization System)
+.SH AUTHOR
+.PP
+John T. Kohl, MIT Project Athena and Digital Equipment Corporation
+.SH RESTRICTIONS
+Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+All Rights Reserved.
+.br
+.I zephyr(1)
+specifies the terms and conditions for redistribution.

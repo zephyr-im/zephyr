@@ -1,0 +1,109 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(server/server.c)
+
+test -d h || mkdir h
+test -d h/zephyr || mkdir h/zephyr
+
+test -z "$lbindir" && lbindir='${bindir}'
+test -z "$lsbindir" && lsbindir='${sbindir}'
+AC_SUBST(lbindir)
+AC_SUBST(lsbindir)
+
+AC_CANONICAL_SYSTEM
+AC_DEFINE_UNQUOTED(MACHINE_TYPE, "$host")
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_YACC
+AC_PROG_LEX
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+
+AC_MSG_CHECKING(location of temporary directory)
+if test -d /var/tmp; then
+	found_tmp=/var/tmp/
+elif test -d /usr/tmp; then
+	found_tmp=/usr/tmp/
+else
+	found_tmp=/tmp/
+fi
+AC_DEFINE_UNQUOTED(FOUND_TMP, "${found_tmp}")
+AC_MSG_RESULT(${found_tmp})
+
+dnl Checks for header files.
+AC_PATH_XTRA
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS(fcntl.h paths.h termios.h sgtty.h unistd.h malloc.h)
+AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/file.h sys/utsname.h)
+AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h)
+
+if test "$no_x" != "yes"; then
+	XCLIENTS=xzwrite
+	ZWGC_LIBX11=-lX11
+fi
+AC_SUBST(XCLIENTS)
+AC_SUBST(ZWGC_LIBX11)
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_SIGNAL
+AC_TYPE_UID_T
+AC_CHECK_SIZEOF(short)
+AC_CHECK_SIZEOF(int)
+AC_CHECK_SIZEOF(long)
+AC_MSG_CHECKING(for 32-bit integer type)
+if test "$ac_cv_sizeof_long" = 4; then
+	int32=long
+elif test "$ac_cv_sizeof_int" = 4; then
+	int32=int
+elif test "$ac_cv_sizeof_short" = 4; then
+	int32=short
+else
+	AC_WARN([Can't find 32-bit type, using long])
+	int32=long
+fi
+AC_DEFINE_UNQUOTED(ZEPHYR_INT32, ${int32})
+AC_MSG_RESULT(${int32})
+
+AC_CHECK_LIB(w, wslen)
+AC_CHECK_LIB(dl, dlopen)
+
+AC_SEARCH_LIBS(gethostbyname, nsl)
+AC_SEARCH_LIBS(socket, socket)
+
+# Hesiod needs -lresolv on Sun systems for res_send.
+if test "$hesiod" != "no"; then
+	AC_CHECK_LIB(44bsd, strerror)
+	AC_CHECK_LIB(resolv, res_send)
+fi
+
+AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
+AC_CHECK_LIB(src, srcsrpy, [SLIB=-lsrc; AC_DEFINE(HAVE_SRC)])
+AC_SUBST(TLIB)
+AC_SUBST(RLIB)
+AC_SUBST(SLIB)
+
+ATHENA_KRB4
+ATHENA_HESIOD
+ATHENA_REGEXP
+ATHENA_ARES
+ATHENA_UTIL_COM_ERR
+ATHENA_UTIL_SS
+LIBS="$KRB4_LIBS $HESIOD_LIBS $LIBS"
+
+dnl Checks for library functions.
+AC_PROG_GCC_TRADITIONAL
+AC_FUNC_VPRINTF
+AC_FUNC_GETPGRP
+AC_FUNC_SETPGRP
+AC_CHECK_FUNCS(putenv strchr memcpy memmove waitpid getlogin strerror random)
+AC_CHECK_FUNCS(lrand48 gethostid getsid getpgid krb_get_err_text krb_log)
+
+AC_CONFIG_HEADER(h/config.h)
+AC_OUTPUT(Makefile clients/Makefile clients/xzwrite/Makefile
+	  clients/zaway/Makefile clients/zctl/Makefile
+	  clients/zleave/Makefile clients/zlocate/Makefile
+	  clients/zmailnotify/Makefile clients/znol/Makefile
+	  clients/zpopnotify/Makefile clients/zshutdown_notify/Makefile
+	  clients/zstat/Makefile clients/zwrite/Makefile lib/Makefile
+	  libdyn/Makefile server/Makefile zhm/Makefile zwgc/Makefile)

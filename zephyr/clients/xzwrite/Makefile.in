@@ -1,0 +1,65 @@
+SHELL = /bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+datadir=@datadir@
+sysconfdir=@sysconfdir@
+sbindir=@sbindir@
+lsbindir=@lsbindir@
+
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
+bindir=${exec_prefix}/bin
+
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+BUILDTOP=../..
+VPATH=@srcdir@
+CC=@CC@
+INSTALL=@INSTALL@
+at=@
+
+CPPFLAGS=@CPPFLAGS@
+CFLAGS=@CFLAGS@
+ALL_CFLAGS=${CFLAGS} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
+	-I${BUILDTOP}/h @X_CFLAGS@ ${CPPFLAGS}
+LDFLAGS=-L${BUILDTOP}/lib -L${BUILDTOP}/libdyn @X_LIBS@ @LDFLAGS@
+LIBS=-lzephyr -ldyn -lXaw -lXmu -lXt @X_PRE_LIBS@ -lX11 -lXext @X_EXTRA_LIBS@ \
+     @LIBS@ -lcom_err
+
+OBJS=	interface.o resource.o destlist.o util.o bfgets.o gethomedir.o \
+	dest_window.o xzwrite.o edit_window.o zephyr.o GetString.o Popup.o \
+	yank.o menu_window.o logins.o
+
+all: xzwrite XZwrite
+
+xzwrite: ${OBJS} ${BUILDTOP}/lib/libzephyr.a ${BUILDTOP}/libdyn/libdyn.a
+	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+
+.c.o:
+	${CC} -c ${ALL_CFLAGS} $<
+
+XZwrite: XZwrite.in
+	rm -f XZwrite
+	sed -e 's,$(at)datadir$(at),$(datadir),' < ${srcdir}/XZwrite.in \
+		> XZwrite
+
+check:
+
+install: xzwrite XZwrite
+	${INSTALL} -m 755 -s xzwrite ${DESTDIR}${bindir}
+	${INSTALL} -m 644 ${srcdir}/xzwrite.1 ${DESTDIR}${mandir}/man1
+	${INSTALL} -m 644 XZwrite ${DESTDIR}${datadir}/zephyr
+	${INSTALL} -m 644 ${srcdir}/xzwrite.bitmap ${DESTDIR}${datadir}/zephyr
+
+clean:
+	rm -f ${OBJS} xzwrite
+
+${OBJS}: xzwrite.h xzwrite-proto.h ${top_srcdir}/h/sysdep.h
+${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h
+${OBJS}: ${BUILDTOP}/h/zephyr/zephyr_err.h
+destlist.o logins.o xzwrite.o zephyr.o: ${top_srcdir}/h/dyn.h
+
+.PHONY: all check install clean
+
