@@ -441,11 +441,19 @@ static void detach()
   /* detach from terminal and fork. */
   register int i;
 
-  /* to try to get SIGHUP on user logout */
-#if defined(_POSIX_VERSION) && !defined(ultrix)
-  (void) setpgid(0, tcgetpgrp(1));
-#else
-  (void) setpgrp(0, getpgrp(getppid()));
+  /* Attempt to join the process group of the session leader.  This
+   * will get us a HUP if the session leader is in the foreground at
+   * logout time (which is often the case) or if the shell is running
+   * under telnetd or xterm (both of which HUP the process group of
+   * their child process).  If we have getsid(), that's the best way
+   * of finding the session leader; otherwise use the process group of
+   * the parent process, which is a good guess. */
+#if defined(HAVE_GETSID)
+  setpgid(0, getsid(0));
+#elif defined(HAVE_GETPGID)
+  setpgid(0, getpgid(getppid()));
+#elif !defined(GETPGRP_VOID)
+  setpgid(0, getpgrp(getppid()));
 #endif
 
   /* fork off and let parent exit... */
