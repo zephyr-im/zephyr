@@ -8,13 +8,19 @@
 /**/#	$Header$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${HES_LIB} ${KRB_LIB} ${DES_LIB}
+#if defined(DO_SYSLOG) && defined(SYSLOG_COMPAT42)
+SYSLOG_LIB= ../clients/syslogd/syslog.o
+#else
+SYSLOG_LIB=
+#endif
+LIBS= ${SYSLOG_LIB} ${ZEPHYR_LIB} ${COMERR_LIB} ${HES_LIB} ${KRB_LIB} \
+	${DES_LIB}
 LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${HES_LINTLIB} \
 	${KRB_LINTLIB} ${DES_LINTLIB}
+
 HDRS=	zserver.h \
 	zsrv_conf.h \
-	timer.h \
-	zsrv_err.h
+	timer.h
 
 SRCS=	access.c \
 	bdump.c \
@@ -45,6 +51,10 @@ OBJS= 	zsrv_err.o \
 	uloc.o \
 	kstuff.o
 
+OTHERSRCS= zsrv_err.et
+CONFIG_FILES= default.subscriptions
+SRCDIR= ${SRCTOP}/server
+CODE= ${SRCS} ${HDRS} ${OTHERSRCS} ${CONFIG_FILES} Imakefile
 
 DEFINES=-DOLD_COMPAT -DNEW_COMPAT
 normal_obj_rule()
