@@ -5,6 +5,7 @@ exec_prefix=@exec_prefix@
 datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
+lsbindir=@lsbindir@
 
 includedir=${prefix}/include
 mandir=${prefix}/man
@@ -21,7 +22,7 @@ RANLIB=@RANLIB@
 COMPILE_ET=@COMPILE_ET@
 
 DEBUG=-O
-CFLAGS=@CPPFLAGS@ ${DEBUG} -I${srcdir} -I${top_srcdir}/h -I${BUILDTOP}/h -I.
+CFLAGS=${DEBUG} -I${srcdir} -I${top_srcdir}/h -I${BUILDTOP}/h -I. @CPPFLAGS@
 YFLAGS=-d
 
 OBJS=	ss_err.o data.o help.o error.o execute_cmd.o invocation.o list_rqs.o \

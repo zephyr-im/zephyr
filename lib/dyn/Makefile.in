@@ -5,6 +5,7 @@ exec_prefix=@exec_prefix@
 datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
+lsbindir=@lsbindir@
 
 includedir=${prefix}/include
 mandir=${prefix}/man
@@ -18,7 +19,7 @@ CC=@CC@
 RANLIB=@RANLIB@
 
 DEBUG=-O
-CFLAGS=@CPPFLAGS@ ${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h
+CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @CPPFLAGS@
 
 OBJS =	dyn_append.o dyn_create.o dyn_debug.o dyn_delete.o dyn_insert.o \
 	dyn_paranoid.o dyn_put.o dyn_realloc.o dyn_size.o

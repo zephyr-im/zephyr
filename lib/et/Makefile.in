@@ -5,6 +5,7 @@ exec_prefix=@exec_prefix@
 datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
+lsbindir=@lsbindir@
 
 includedir=${prefix}/include
 mandir=${prefix}/man
@@ -21,7 +22,7 @@ INSTALL=@INSTALL@
 RANLIB=@RANLIB@
 
 DEBUG=-O
-CFLAGS=@CPPFLAGS@ ${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h -I${srcdir} -I.
+CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h -I${srcdir} -I. @CPPFLAGS@
 
 OBJS=	com_err.o error_message.o et_name.o init_et.o
 

@@ -5,6 +5,7 @@ exec_prefix=@exec_prefix@
 datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
+lsbindir=@lsbindir@
 
 includedir=${prefix}/include
 mandir=${prefix}/man
@@ -20,7 +21,7 @@ RANLIB=@RANLIB@
 COMPILE_ET=@COMPILE_ET@
 
 DEBUG=-O
-CFLAGS=@CPPFLAGS@ ${DEBUG} -DCONFDIR=\"${confdir}\" -I${top_srcdir}/h \
+CFLAGS=${DEBUG} -DCONFDIR=\"${confdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h @CPPFLAGS@
 
 OBJS =	zephyr_err.o ZAsyncLocate.o ZCkAuth.o ZCkIfNot.o ZClosePort.o \
