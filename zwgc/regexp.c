@@ -13,19 +13,13 @@
  */
 
 #include <sysdep.h>
+#include <regex.h>
 
 #if (!defined(lint) && !defined(SABER))
 static const char rcsid_regexp_c[] = "$Id$";
 #endif
 
-#ifdef SOLARIS
-#include <libgen.h>
-#endif
-
 #include "regexp.h"
-
-#ifdef HAVE_REGCOMP
-#include <regex.h>
 
 int ed_regexp_match_p(test_string, pattern)
      string test_string;
@@ -51,57 +45,3 @@ int ed_regexp_match_p(test_string, pattern)
     regfree(&RE);
     return(retval == 0 ? 1 : 0);
 }
-
-#else
-char *re_comp();
-int re_exec();
-
-int ed_regexp_match_p(test_string, pattern)
-     string test_string;
-     string pattern;
-{
-    char *comp_retval;
-    int exec_retval;
-
-    if (comp_retval = re_comp(pattern)) {
-	fprintf(stderr,"%s in regex %s\n",comp_retval,pattern);
-	return(0);
-    }
-    if ((exec_retval=re_exec(test_string)) == -1) {
-	fprintf(stderr,"Internal error in re_exec()");
-	return(0);
-    }
-
-    return(exec_retval);
-}
-#endif
-
-#if !defined(HAVE_RE_COMP) && !defined(HAVE_REGCOMP)
-
-#ifdef HAVE_LIBGEN_H
-#include <libgen.h>
-#endif
-
-static char *re;
-
-char *re_comp(s)
-    char *s;
-{
-    if(!s)
-	return 0;
-    if(re)
-	free(re);
-
-    if(!(re = regcmp(s, (char *)0)))
-	return "Bad argument to re_comp";
-
-    return 0;
-}
-
-int re_exec(s)
-    char *s;
-{
-    return regex(re, s) != 0;
-}
-
-#endif
