@@ -21,6 +21,8 @@ static char rcsid_class_c[] = "$Id$";
 
 #include "zserver.h"			/* includes zephyr/zephyr.h */
 
+#include <ctype.h>			/* for isupper, tolower */
+
 /*
  * Class manager subsystem.
  *
