@@ -183,7 +183,7 @@ void init_hm()
 	    bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
       }
 
-      send_boot_notice();
+      send_boot_notice(HM_BOOT);
 
       (void)signal (SIGALRM, handle_timeout);
       (void)signal (SIGTERM, die_gracefully);
@@ -199,7 +199,10 @@ char *upcase(s)
       return(r);
 }
 
-send_boot_notice()
+/* Argument is whether we are actually booting, or just attaching
+   after a server switch */
+send_boot_notice(op)
+     char *op;
 {
       ZNotice_t notice;
       Code_t ret;
@@ -209,7 +212,7 @@ send_boot_notice()
       notice.z_port = cli_port;
       notice.z_class = ZEPHYR_CTL_CLASS;
       notice.z_class_inst = ZEPHYR_CTL_HM;
-      notice.z_opcode = HM_BOOT;
+      notice.z_opcode = op;
       notice.z_sender = "sender";
       notice.z_recipient = "";
       notice.z_message_len = 0;
@@ -227,7 +230,9 @@ send_boot_notice()
       (void)alarm(SERV_TIMEOUT);
 }
 
-send_flush_notice()
+/* Argument is whether we are detaching or really going down */
+send_flush_notice(op)
+     char *op;
 {
       ZNotice_t notice;
       Code_t ret;
@@ -237,12 +242,12 @@ send_flush_notice()
       notice.z_port = cli_port;
       notice.z_class = ZEPHYR_CTL_CLASS;
       notice.z_class_inst = ZEPHYR_CTL_HM;
-      notice.z_opcode = HM_FLUSH;
+      notice.z_opcode = op;
       notice.z_sender = "sender";
       notice.z_recipient = "";
       notice.z_message_len = 0;
 
-      /* Tell server to look the other way */
+      /* Tell server to lose us */
       if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("hm", ret, "setting destination");
@@ -434,9 +439,9 @@ new_server()
 
       no_server = 1;
       syslog (LOG_INFO, "Server went down, finding new server.");
-      send_flush_notice();
+      send_flush_notice(HM_DETACH);
       find_next_server();
-      send_boot_notice();
+      send_boot_notice(HM_ATTACH);
 }
 
 void handle_timeout()
@@ -458,7 +463,7 @@ void handle_timeout()
 void die_gracefully()
 {
       syslog(LOG_INFO, "Terminate signal caught...");
-      send_flush_notice();
+      send_flush_notice(HM_FLUSH);
       closelog();
       exit(0);
 }
