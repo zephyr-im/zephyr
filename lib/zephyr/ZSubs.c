@@ -80,10 +80,6 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     /* array for one item so we can cancel, however. */
   
     list = (char **)malloc((unsigned)((nitems==0)?1:nitems)*3*sizeof(char *));
-    if (!nitems)
-	return ZERR_NONE;
-
-    list = (char **)malloc((unsigned)nitems*3*sizeof(char *));
     if (!list)
         return (ENOMEM);
 
