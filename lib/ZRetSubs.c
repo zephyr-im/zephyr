@@ -107,7 +107,7 @@ static Code_t Z_RetSubs(notice, nsubs, auth_routine)
 	while (!nrecv || !gimmeack) {
 		tv.tv_sec = 0;
 		tv.tv_usec = 500000;
-		for (i=0;i<HM_TIMEOUT*2;i++) { /* 30 secs in 1/2 sec
+		for (i=0;i<SRV_TIMEOUT*2;i++) { /* 30 secs in 1/2 sec
 						  intervals */
 			gotone = 0;
 			read = setup;
