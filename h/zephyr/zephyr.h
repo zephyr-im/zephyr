@@ -92,8 +92,8 @@ extern "C" {
 #define z_sender_addr	z_uid.zuid_addr
 	struct		timeval z_time;
 	u_short		z_port;
-	int			z_auth;
-	int			z_authent_len;
+	int		z_auth;
+	int		z_authent_len;
 	char		*z_ascii_authent;
 	char		*z_class;
 	char		*z_class_inst;
@@ -103,11 +103,11 @@ extern "C" {
 	char		*z_default_format;
 	char		*z_multinotice;
 	ZUnique_Id_t	z_multiuid;
-	ZChecksum_t		z_checksum;
-	int			z_num_other_fields;
+	ZChecksum_t	z_checksum;
+	int		z_num_other_fields;
 	char		*z_other_fields[Z_MAXOTHERFIELDS];
 	caddr_t		z_message;
-	int			z_message_len;
+	int		z_message_len;
     } ZNotice_t;
 
     /* Subscription structure */
@@ -143,7 +143,7 @@ extern "C" {
     /* Port number */
     extern int __Zephyr_port;
 
-    /* Destination (HM) addr */
+    /* Destination (hostmanager, usually) addr */
     extern struct sockaddr_in __HM_addr;
 
     /* for ZQLength */
@@ -223,6 +223,9 @@ extern "C" {
     /* Hostmanager wait time (in secs) */
 #define HM_TIMEOUT		10
 
+    /* Server wait time (in secs) */
+#define	SRV_TIMEOUT		30
+
 #define ZAUTH (ZMakeAuthentication)
 #define ZNOAUTH ((Z_AuthProc)0)
 
@@ -241,6 +244,8 @@ extern "C" {
     const int ZERR_NONE = 0;
 
     const int HM_TIMEOUT = 10;
+
+    const int SRV_TIMEOUT = 30;
 
     const Z_AuthProc ZAUTH = &ZMakeAuthentication;
     const Z_AuthProc ZNOAUTH = 0;
