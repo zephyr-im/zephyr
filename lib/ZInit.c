@@ -36,9 +36,9 @@ Code_t ZInitialize()
     struct in_addr servaddr;
     struct sockaddr_in sin;
     int s, sinsize = sizeof(sin);
-#ifdef HAVE_KRB4
     Code_t code;
     ZNotice_t notice;
+#ifdef HAVE_KRB4
     char *krealm = NULL;
     int krbval;
     char d1[ANAME_SZ], d2[INST_SZ];
