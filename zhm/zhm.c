@@ -117,7 +117,10 @@ char *argv[];
 		    (notice.z_kind == HMCTL)) {
 		      server_manager(&notice);
 		} else {
-		      if (bcmp(loopback, &from.sin_addr, 4) == 0) {
+		      if ((bcmp(loopback, &from.sin_addr, 4) == 0) &&
+			  ((notice.z_kind == UNSAFE) ||
+			   (notice.z_kind == UNACKED) ||
+			   (notice.z_kind == ACKED))) {
 			    /* Client program... */
 			    transmission_tower(&notice, packet);
 			    DPR2 ("Pending = %d\n", ZPending());
@@ -403,12 +406,13 @@ void set_sig_type(sig)
 server_manager(notice)
      ZNotice_t *notice;
 {
-      DPR ("A notice came in from the server.\n");
-      if (bcmp(&serv_sin.sin_addr, &from.sin_addr, 4) != 0) {
+      if ((bcmp(&serv_sin.sin_addr, &from.sin_addr, 4) != 0) ||
+	  (serv_sin.sin_port != from.sin_port)) {
 	    syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
 	    /* Sent a notice back saying this hostmanager isn't theirs */
       } else {
 	    /* This is our server, handle the notice */
+	    DPR ("A notice came in from the server.\n");
 	    nserv++;
 	    switch(notice->z_kind) {
 		case HMCTL:
