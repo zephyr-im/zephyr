@@ -709,6 +709,7 @@ ZServerDesc_t *server;
 	ZClient_t *client;
 	ZHostList_t *host;
 	Code_t retval;
+	int wantdefs;
 
 	/*
 	 * ZEPHYR_CTL Opcodes expected are:
@@ -749,13 +750,15 @@ ZServerDesc_t *server;
 	if (host && host->zh_locked)
 		return(ZSRV_REQUEUE);
 
-	if (!strcmp(opcode, CLIENT_SUBSCRIBE)) {
+	wantdefs = strcmp(opcode, CLIENT_SUBSCRIBE_NODEFS);
+	if (!wantdefs || !strcmp(opcode, CLIENT_SUBSCRIBE)) {
 		/* subscription notice */
 		if (!(client = client_which_client(who, notice))) {
 			if ((retval = client_register(notice,
 						      who,
 						      &client,
-						      server)) != ZERR_NONE)
+						      server,
+						      wantdefs)) != ZERR_NONE)
 			{
 				syslog(LOG_WARNING,
 				       "subscr. register failed: %s",
