@@ -136,7 +136,7 @@ char *find_message(notice,fp)
 	gotone = 0;
 	lastwasnt = 0;
 	
-	while (fgets(bfr,sizeof bfr,fp) > 0) {
+	while (fgets(bfr,sizeof bfr,fp) != (char *)0) {
 		if (*bfr == '>') {
 			if (lastwasnt)
 				gotone = 0;
