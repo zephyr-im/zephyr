@@ -48,14 +48,28 @@ struct hostlist {
 	ZServerDesc_t *server;
 };
 
+typedef struct _losinghost {
+	struct _losinghost *q_forw;
+	struct _losinghost *q_back;
+	ZHostList_t *lh_host;
+	timer lh_timer;
+	ZClient_t *lh_client;
+} losinghost;
+
+#define	NULLLH		((struct _losinghost *) 0)
 #define	NULLHLT		((struct hostlist *) 0)
 
 static struct hostlist *all_hosts;
 
 static int num_hosts;			/* number of hosts in all_hosts */
+#define	LOSE_TIMO	(10)		/* timeout for a losing host to respond by  */
+static int lose_timo = LOSE_TIMO;
 
+static losinghost *losing_hosts = NULLLH; /* queue of pings for hosts we
+					     doubt are really there */
 
 static void host_detach(), flush(), deathgram(), insert_host(), remove_host();
+static void host_not_losing(), host_lost(), ping();
 static Code_t host_attach();
 static int cmp_hostlist();
 
@@ -75,6 +89,10 @@ struct sockaddr_in *who;
 
 
 	zdbug1("hm_disp");
+	if (notice->z_kind == HMACK) {
+		host_not_losing(notice, auth, who);
+		return;
+	}
 	owner = hostm_find_server(&who->sin_addr);
 	if (!strcmp(opcode, HM_BOOT)) {
 		zdbug2("boot %s",inet_ntoa(who->sin_addr));
@@ -122,8 +140,22 @@ ZHostList_t *host;
 ZServerDesc_t *server;
 {
 	register ZClientList_t *clist = NULLZCLT, *clt;
+	losinghost *lhp, *lhp2;
 
 	zdbug1("hostm_flush");
+
+	if (losing_hosts)
+		for (lhp = losing_hosts->q_forw;
+		     lhp != losing_hosts;
+		     lhp = lhp->q_forw)
+			if (lhp->lh_host == host) {
+				lhp2 = lhp->q_back;
+				timer_reset(lhp->lh_timer);
+				xremque(lhp);
+				xfree(lhp);
+				lhp = lhp2;
+			}
+
 	if ((clist = host->zh_clients) != NULLZCLT)
 		for (clt = clist->q_forw; clt != clist; clt = clist->q_forw)
 			/* client_deregister frees this client & subscriptions */
@@ -158,6 +190,82 @@ hostm_shutdown()
 	/* XXX tell other servers */
 
 	return;
+}
+
+
+void
+hostm_losing(client, host)
+ZClient_t *client;
+ZHostList_t *host;
+{
+	losinghost *newhost;
+
+	zdbug1("losing host");
+	if (losing_hosts == NULLLH) {
+		if ((losing_hosts = (losinghost *) xmalloc(sizeof(losinghost))) == NULLLH) {
+			syslog(LOG_ERR, "no mem losing host");
+			return;
+		}
+		losing_hosts->q_forw = losing_hosts->q_back = losing_hosts;
+	}
+	if ((newhost = (losinghost *) xmalloc(sizeof(losinghost))) == NULLLH) {
+		syslog(LOG_ERR, "no mem losing host 2");
+		return;
+	}
+
+	/* send a ping */
+	ping(&host->zh_addr);
+	newhost->lh_host = host;
+	newhost->lh_client = client;
+	newhost->lh_timer = timer_set_rel(lose_timo, host_lost, (caddr_t) newhost);
+	xinsque(newhost, losing_hosts);
+	return;
+}
+
+static void
+host_lost(which)
+losinghost *which;
+{
+	ZServerDesc_t *server;
+
+	zdbug2("lost host %s", inet_ntoa(which->lh_host->zh_addr.sin_addr));
+
+	if ((server = hostm_find_server(&which->lh_host->zh_addr.sin_addr)) == NULLZSDT) {
+		zdbug1("no server");
+		xremque(which);
+		xfree(which);
+		return;
+	}
+	xremque(which);
+	hostm_flush(which->lh_host, server);
+	xfree(which);
+	return;
+}
+
+static void
+host_not_losing(notice, auth, who)
+ZNotice_t *notice;
+int auth;
+struct sockaddr_in *who;
+{
+	losinghost *lhp, *lhp2;
+
+	if (!losing_hosts)
+		return;
+	for (lhp = losing_hosts->q_forw;
+	     lhp != losing_hosts;
+	     lhp = lhp->q_forw)
+		if (lhp->lh_host->zh_addr.sin_addr.s_addr == who->sin_addr.s_addr) {
+			lhp2 = lhp->q_back;
+			timer_reset(lhp->lh_timer);
+			zdbug3("lost client %s/%d",
+			       inet_ntoa(lhp->lh_client->zct_sin.sin_addr),
+			       ntohs(lhp->lh_client->zct_sin.sin_port))
+			client_deregister(lhp->lh_client, lhp->lh_host);
+			xremque(lhp);
+			xfree(lhp);
+			lhp = lhp2;
+		}
 }
 
 /*
@@ -462,3 +570,44 @@ struct sockaddr_in *sin;
 	}
 	return;
 }
+
+static void
+ping(sin)
+struct sockaddr_in *sin;
+{
+	Code_t retval;
+	int shutlen;
+	ZNotice_t shutnotice;
+	ZPacket_t shutpack;
+
+	zdbug2("ping %s",inet_ntoa(sin->sin_addr));
+
+	/* fill in the shutdown notice */
+
+	shutnotice.z_kind = HMCTL;
+	shutnotice.z_port = sock_sin.sin_port;
+	shutnotice.z_class = HM_CTL_CLASS;
+	shutnotice.z_class_inst = HM_CTL_SERVER;
+	shutnotice.z_opcode = SERVER_PING;
+	shutnotice.z_sender = HM_CTL_SERVER;
+	shutnotice.z_recipient = "foo";
+	shutnotice.z_message = NULL;
+	shutnotice.z_message_len = 0;
+	
+	shutlen = sizeof(shutpack);
+	if ((retval = ZFormatNotice(&shutnotice, shutpack, shutlen, &shutlen, 0)) != ZERR_NONE) {
+		syslog(LOG_ERR, "hm_ping format: %s",error_message(retval));
+		return;
+	}
+	if ((retval = ZSetDestAddr(sin)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "hm_ping set addr: %s",
+		       error_message(retval));
+		return;
+	}
+	if ((retval = ZSendPacket(shutpack, shutlen)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "hm_ping xmit: %s", error_message(retval));
+		return;
+	}
+	return;
+}
+
