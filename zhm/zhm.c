@@ -27,7 +27,7 @@ static char rcsid_hm_c[] = "$Id$";
 
 #ifdef HESIOD
 #include <hesiod.h>
-#endif HESIOD
+#endif /* HESIOD */
 
 #ifndef PIDFILE
 #define	PIDFILE	"/etc/athena/zhm.pid"
@@ -187,7 +187,7 @@ char *argv[];
 	 srandom(time((long *) 0));
 	 (void) strcpy(prim_serv, serv_list[random() % j]);
      }
-#endif HESIOD	       
+#endif /* HESIOD */
      if (*prim_serv == NULL) {
 	 printf("No valid primary server found, exiting.\n");
 	 exit(ZERR_SERVNAK);
@@ -353,7 +353,7 @@ void init_hm()
 	     fprintf(fp, "%d\n", getpid());
 	     (void) fclose(fp);
      }
-#endif DEBUG
+#endif /* DEBUG */
 
      if (hmdebug) {
 	  syslog(LOG_INFO, "Debugging on.");
@@ -456,7 +456,7 @@ send_stats(notice, sin)
      list[7] = (char *)malloc(64);
      (void)sprintf(list[7], "%ld", time((time_t *)0) - starttime);
      size = (unsigned int)sbrk(0);
-#ifdef ibm032
+#if defined(ibm032) || defined(mips)
      size -= 0x10000000;
 #endif
 #ifdef i386
