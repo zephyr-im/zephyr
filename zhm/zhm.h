@@ -17,6 +17,21 @@
 #include <zephyr/mit-copyright.h>
 #include <internal.h>
 #include <sys/socket.h>
+#include <sys/time.h>
+#include "timer.h"
+
+/* These macros are for insertion into and deletion from a singly-linked list
+ * with back pointers to the previous element's next pointer.  In order to
+ * make these macros act like expressions, they use the comma operator for
+ * sequenced evaluations of assignment, and "a && b" for "evaluate assignment
+ * b if expression a is true". */
+#define LIST_INSERT(head, elem) \
+	((elem)->next = *(head), \
+	 (*head) && ((*(head))->prev_p = &(elem)->next), \
+	 (*head) = (elem), (elem)->prev_p = (head))
+#define LIST_DELETE(elem) \
+	(*(elem)->prev_p = (elem)->next, \
+	 (elem)->next && ((elem)->next->prev_p = (elem)->prev_p))
 
 #ifdef DEBUG
 #define DPR(a) fprintf(stderr, a); fflush(stderr)
@@ -48,9 +63,10 @@ Code_t add_notice_to_queue __P((ZNotice_t *, char *, struct sockaddr_in *,
 Code_t remove_notice_from_queue __P((ZNotice_t *, ZNotice_Kind_t *,
 				     struct sockaddr_in *));
 void retransmit_queue __P((struct sockaddr_in *));
+void disable_queue_retransmits __P((void));
 int queue_len __P((void));
-void resend_notices __P((struct sockaddr_in *));
 
+struct sockaddr_in serv_sin;
 extern int rexmit_times[];
 
 #ifdef vax
