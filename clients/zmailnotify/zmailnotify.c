@@ -463,6 +463,7 @@ char *host;
 		       0, (MSG_DAT *) 0, (CREDENTIALS *) 0,
 		       (bit_64 *) 0, (struct sockaddr_in *)0,
 		       (struct sockaddr_in *)0,"ZMAIL0.0");
+    free(ticket);
     if (rem != KSUCCESS) {
 	(void) sprintf(Errmsg, "kerberos error: %s",krb_err_txt[rem]);
 	(void) close(s);
