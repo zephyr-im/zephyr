@@ -4,9 +4,10 @@
  *	Created by:	John T. Kohl
  *
  *	$Source$
+ *	$Id$
  *	$Author$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -15,7 +16,7 @@
  
 #ifndef lint
 #ifndef SABER
-static const char rcsid_bdump_c[] = "$Header$";
+static const char rcsid_bdump_c[] = "$Zephyr: /mit/zephyr/src/server/RCS/bdump.C,v 1.37 91/01/28 15:31:53 raeburn Exp Locker: raeburn $";
 #endif /* SABER */
 #endif /* lint */
  
@@ -763,7 +764,7 @@ sbd_loop(struct sockaddr_in *from)
 		
 			(void) sprintf(buf,
 				       "bdump:%s '%s' '%s' '%s' '%s' '%s'",
-				       pktypes[(int) bd_notice.z_kind],
+				       ZNoticeKinds[(int) bd_notice.z_kind],
 				       bd_notice.z_class,
 				       bd_notice.z_class_inst,
 				       bd_notice.z_opcode,
@@ -978,7 +979,7 @@ bdump_recv_loop(ZServerDesc_t *server)
 
 			(void) sprintf(buf,
 				       "bdump:%s '%s' '%s' '%s' '%s' '%s'",
-				       pktypes[(int) notice.z_kind],
+				       ZNoticeKinds[(int) notice.z_kind],
 				       notice.z_class,
 				       notice.z_class_inst,
 				       notice.z_opcode,
