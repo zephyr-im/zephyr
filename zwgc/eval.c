@@ -160,7 +160,7 @@ string eval_expr(expr)
 	    break;
 
 	  case VERBATIM_OPCODE:
-	    return(verbatim(first));
+	    return(verbatim(first,0));
 
 	  case GETENV_OPCODE:
 	    result = getenv(first);
