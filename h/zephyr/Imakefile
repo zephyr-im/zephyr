@@ -7,7 +7,7 @@
 /**/#	$Author$
 /**/#	$Zephyr: /mit/zephyr/src/include/zephyr/RCS/Imakefile,v 1.4 91/03/21 12:16:56 raeburn Exp $
 /**/#
-SRCDIR= ${SRCTOP}/include/zephyr
+
 HDRS= acl.h mit-copyright.h zephyr.h zephyr_conf.h zephyr_internal.h zsyslog.h
 CODE= ${HDRS} Imakefile
 
@@ -26,8 +26,7 @@ HaveHesiod=yes
 #define export_as(var,name)	name=$(var) ; export name
 #define export_var(var)		export_as(var,var)
 
-zephyr_paths.h:
-	@ export_as(ATHETCDIR,ETCATHDIR) ; \
+zephyr_paths.h: Makefile
 	export_as(ZLIBDIR,LIBDIR) ; \
 	export_as(ATHBINDIR,CLIENTDIR) ; \
 	export_var(HaveKerberos) ; \
