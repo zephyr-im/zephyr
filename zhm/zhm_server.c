@@ -23,6 +23,7 @@ int serv_loop = 0;
 extern u_short cli_port;
 extern struct sockaddr_in serv_sin, from;
 extern int timeout_type, hmdebug, nservchang, booting, nserv, no_server;
+extern int deactivated;
 extern char **serv_list, **cur_serv_list;
 extern char cur_serv[], prim_serv[];
 
@@ -233,3 +234,16 @@ send_back(notice)
       }
 }
 
+new_server(sugg_serv)
+     char *sugg_serv;
+{
+      no_server = 1;
+      syslog (LOG_INFO, "Server went down, finding new server.");
+      send_flush_notice(HM_DETACH);
+      find_next_server(sugg_serv);
+      if (booting) {
+	    send_boot_notice(HM_BOOT);
+	    deactivated = 0;
+      } else
+	send_boot_notice(HM_ATTACH);
+}
