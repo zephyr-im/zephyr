@@ -3,8 +3,7 @@
  *
  *      Created by:     Marc Horowitz
  *
- *      $Source$
- *      $Author$
+ *      $Id$
  *
  *      Copyright (c) 1996 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file

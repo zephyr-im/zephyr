@@ -5,9 +5,7 @@
  *
  *	Created by:	John T. Kohl
  *
- *	$Source$
- *	$Author$
- *	$Zephyr: /mit/zephyr/src/server/RCS/zserver.h,v 1.34 91/03/08 12:53:24 raeburn Exp $
+ *	$Id$
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file

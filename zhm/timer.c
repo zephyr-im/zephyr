@@ -4,8 +4,7 @@
  *      Created by:     John T. Kohl
  *      Derived from timer_manager_ by Ken Raeburn
  *
- *      $Source$
- *      $Author$
+ *      $Id$
  *
  */
 

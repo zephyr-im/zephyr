@@ -3,8 +3,7 @@
  *
  *	Created by:	John T. Kohl
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *
  *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file

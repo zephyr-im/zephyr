@@ -3,14 +3,12 @@
  *
  *	Created by:	Robert French
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *
  *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
-/* $Header$ */
 
 #ifndef lint
 static char rcsid_ZFormatNotice_c[] = "$Id$";

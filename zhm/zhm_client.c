@@ -3,8 +3,7 @@
  *
  *      Created by:     David C. Jedlinsky
  *
- *      $Source$
- *      $Author$
+ *      $Id$
  *
  *      Copyright (c) 1987 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
@@ -15,7 +14,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_hm_client_c[] = "$Header$";
+static char rcsid_hm_client_c[] = "$Id$";
 #endif /* SABER */
 #endif /* lint */
 

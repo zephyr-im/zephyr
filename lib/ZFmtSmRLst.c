@@ -3,17 +3,15 @@
  *
  *	Created by:	John T. Kohl
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *
  *	Copyright (c) 1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
-/* $Header$ */
 
 #ifndef lint
-static char rcsid_ZFormatRawNoticeList_c[] = "$Header$";
+static char rcsid_ZFormatRawNoticeList_c[] = "$Id$";
 #endif
 
 #include <internal.h>

@@ -3,8 +3,7 @@
  *
  *      Created by:     David Jedlinsky
  *
- *      $Source$
- *      $Author$
+ *      $Id$
  *
  *      Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
@@ -16,7 +15,7 @@
 #include <zephyr/zephyr.h>
 
 #ifndef lint
-static char rcsid_zlocate_c[] = "$Header$";
+static char rcsid_zlocate_c[] = "$Id$";
 #endif /* lint */
 
 /*

@@ -4,8 +4,7 @@
  *
  *      Created by:     Marc Horowitz <marc@athena.mit.edu>
  *
- *      $Source$
- *      $Author$
+ *      $Id$
  *
  *      Copyright (c) 1989 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
@@ -13,7 +12,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_browser_c[] = "$Header$";
+static char rcsid_browser_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>

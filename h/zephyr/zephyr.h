@@ -3,8 +3,6 @@
  *
  *	Created by:	Robert French
  *
- *	$Source$
- *	$Author$
  *	$Id$
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of
