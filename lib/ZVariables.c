@@ -27,6 +27,10 @@ static char rcsid_ZVariables_c[] = "$Header$";
 extern char *getenv();
 extern uid_t getuid();
 
+static int get_localvarfile();
+static char *get_varval();
+static int varline();
+
 char *ZGetVariable(var)
     char *var;
 {
