@@ -43,6 +43,7 @@ char *srv_head[20] = {
 };
 
 int serveronly = 0,hmonly = 0;
+int outoftime = 0;
 u_short hm_port,srv_port;
 
 main(argc, argv)
@@ -55,7 +56,7 @@ main(argc, argv)
 	char hostname[MAXHOSTNAMELEN];
 	char *host = NULL;
 	char *srv_name;
-	char optchar;
+	int optchar;
 	struct servent *sp;
 	int ml, i, nitems;
 	extern char *optarg;
@@ -130,7 +131,8 @@ do_stat(host)
 		return;
 	}
 
-	hm_stat(host,srv_host);
+	if (hm_stat(host,srv_host))
+		return;
 
 	if (!hmonly)
 		srv_stat(srv_host);
@@ -147,6 +149,7 @@ hm_stat(host,server)
 	struct tm *tim;
 	ZNotice_t notice;
 	ZPacket_t packet;
+	extern int timeout();
 	
 	bzero(&sin,sizeof(struct sockaddr_in));
 
@@ -174,6 +177,7 @@ hm_stat(host,server)
 	notice.z_opcode = HM_GIMMESTATS;
 	notice.z_sender = "";
 	notice.z_recipient = "";
+	notice.z_default_format = "";
 	notice.z_message_len = 0;
 	
 	if ((ret = ZSetDestAddr(&sin)) != ZERR_NONE) {
@@ -185,12 +189,21 @@ hm_stat(host,server)
 		exit(-1);
 	}
 
-	if ((ret = ZReceiveNotice(packet, sizeof packet, &notice,
-				  NULL, NULL)) != ZERR_NONE) {
+	signal(SIGALRM,timeout);
+	outoftime = 0;
+	alarm(10);
+	if (((ret = ZReceiveNotice(packet, sizeof packet, &notice,
+				   NULL)) != ZERR_NONE) &&
+	    ret != EINTR) {
 		com_err("zstat", ret, "receiving notice");
-		exit(1);
+		return (1);
 	}
-
+	alarm(0);
+	if (outoftime) {
+		fprintf(stderr,"No response after 10 seconds.\n");
+		return (1);
+	}
+	
 	mp = notice.z_message;
 	for (nf=0;mp<notice.z_message+notice.z_message_len;nf++) {
 		line[nf] = mp;
@@ -203,7 +216,7 @@ hm_stat(host,server)
 		if (!strncmp("Time",head[i],4)) {
 			runtime = atol(line[i]);
 			tim = gmtime(&runtime);
-			printf("%s %d days, %02d:%02d:%02d", head[i],
+			printf("%s %d days, %02d:%02d:%02d\n", head[i],
 				tim->tm_yday,
 				tim->tm_hour,
 				tim->tm_min,
@@ -229,6 +242,7 @@ srv_stat(host)
 	ZPacket_t packet;
 	long runtime;
 	struct tm *tim;
+	extern int timeout();
 	
 	bzero(&sin,sizeof(struct sockaddr_in));
 
@@ -256,6 +270,7 @@ srv_stat(host)
 	notice.z_opcode = ADMIN_STATUS;
 	notice.z_sender = "";
 	notice.z_recipient = "";
+	notice.z_default_format = "";
 	notice.z_message_len = 0;
 	
 	if ((ret = ZSetDestAddr(&sin)) != ZERR_NONE) {
@@ -267,12 +282,21 @@ srv_stat(host)
 		exit(-1);
 	}
 
-	if ((ret = ZReceiveNotice(packet, sizeof packet, &notice,
-				  NULL, NULL)) != ZERR_NONE) {
+	signal(SIGALRM,timeout);
+	outoftime = 0;
+	alarm(10);
+	if (((ret = ZReceiveNotice(packet, sizeof packet, &notice,
+				   NULL)) != ZERR_NONE) &&
+	    ret != EINTR) {
 		com_err("zstat", ret, "receiving notice");
-		exit(1);
+		return (1);
 	}
-
+	alarm(0);
+	if (outoftime) {
+		fprintf(stderr,"No response after 10 seconds.\n");
+		return (1);
+	} 
+	
 	mp = notice.z_message;
 	for (nf=0;mp<notice.z_message+notice.z_message_len;nf++) {
 		line[nf] = mp;
@@ -296,6 +320,8 @@ srv_stat(host)
 			printf("%s\n",line[i]);
 		} else printf("%s\n",line[i]);
 	}
+	printf("\n");
+	
 	close(sock);
 }
 
@@ -304,4 +330,9 @@ usage(s)
 {
 	fprintf(stderr,"usage: %s [-s] [-h] [host ...]\n",s);
 	exit(1);
+}
+
+timeout()
+{
+	outoftime = 1;
 }
