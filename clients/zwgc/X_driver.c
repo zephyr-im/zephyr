@@ -374,7 +374,7 @@ int X_driver_init(drivername, notfirst, pargc, argv)
 
     xshowinit();
     x_gram_init(dpy);
-    xselInitAtoms(dpy);
+    xicccmInitAtoms(dpy);
     
     mux_add_input_source(ConnectionNumber(dpy), x_get_input, dpy);
 

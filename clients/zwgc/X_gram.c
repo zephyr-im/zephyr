@@ -29,6 +29,7 @@ static char rcsid_X_gram_c[] = "$Id$";
 #include "new_string.h"
 #include "xrevstack.h"
 #include "xerror.h"
+#include "xselect.h"
 
 extern XContext desc_context;
 extern char *app_instance;
@@ -49,6 +50,7 @@ static int reset_saver;
 static int border_width = 1;
 static int cursor_code = XC_sailboat;
 static int set_transient;
+static int enable_delete;
 static char *title_name,*icon_name;
 static Cursor cursor;
 static Window group_leader; /* In order to have transient windows,
@@ -71,10 +73,11 @@ static unsigned long xattributes_mask;
  * and for individual zgrams:
  *
  * WM_TRANSIENT_FOR         XSetTransientForHint(dpy,w,main_window);
+ * WM_PROTOCOLS		    XSetWMProtocols(dpy,w,protocols,cnt);
  */
 
 /* set all properties defined in ICCCM.  If main_window == 0,
- * XSetTransientForHint is not called.
+ * per-zgram initialization is not done.
  */
 
 /*ARGSUSED*/
@@ -94,8 +97,12 @@ void x_set_icccm_hints(dpy,w,name,icon_name,psizehints,pwmhints,main_window)
    XSetClassHint(dpy,w,&classhint);
    /* in order for some wm's to iconify, the window shouldn't be transient.
       e.g. Motif wm */
-   if (set_transient && main_window)
-     XSetTransientForHint(dpy,w,main_window);
+   if (main_window != None) {
+      if (set_transient)
+	  XSetTransientForHint(dpy,w,main_window);
+      if (enable_delete)
+	  XSetWMProtocols(dpy,w,&XA_WM_DELETE_WINDOW,1);
+   }
 }
 
 void x_gram_init(dpy)
@@ -130,6 +137,8 @@ void x_gram_init(dpy)
     reset_saver =  get_bool_resource("resetSaver", "ResetSaver", 1);
     /* The default here should be 1, but mwm sucks */
     set_transient = get_bool_resource("transient", "Transient", 0);
+    /* This should go away, or become default 1, after a release cycle */
+    enable_delete = get_bool_resource("enableDelete", "EnableDelete", 0);
 
     temp = get_string_resource("borderWidth", "BorderWidth");
     /* <<<>>> */

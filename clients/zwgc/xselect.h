@@ -19,10 +19,14 @@
 #ifndef _XSELECT_H_
 #define _XSELECT_H_
 
-extern void xselInitAtoms();
+extern void xicccmInitAtoms();
 extern int xselGetOwnership();
 extern int xselProcessSelection();
 extern void xselOwnershipLost();
 extern void xselGiveUpOwnership();
+
+extern int xwmprotoDelete();
+
+extern Atom XA_WM_PROTOCOLS,XA_WM_DELETE_WINDOW;
 
 #endif
