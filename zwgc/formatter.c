@@ -228,8 +228,9 @@ char opener;
 /* the char * that str points to is free'd by this function.
  * if you want to keep it, save it yourself
  */
-string verbatim(str)
+string verbatim(str, bracketsonly)
      string str;
+     int bracketsonly;
 {
    char *temp,*temp2;
    int bracketnum,len;
@@ -285,14 +286,15 @@ string verbatim(str)
       }
    }
 
-   temp=lbreak(&str,allmaskable_set);
+   temp=lbreak(&str,bracketsonly?allbracket_set:allmaskable_set);
    while(*str) {
       bracketnum=(int) (strchr(brackets,str[0])-brackets);
       temp=string_Concat2(temp,openbracket[bracketnum]);
       temp=string_Concat2(temp,temp2=lany(&str," "));
       free(temp2);
       temp=string_Concat2(temp,closebracket[bracketnum]);
-      temp=string_Concat2(temp,temp2=lbreak(&str,allmaskable_set));
+      temp=string_Concat2(temp,temp2=lbreak(&str,bracketsonly?
+					  allbracket_set:allmaskable_set));
       free(temp2);
    }
    free(str);  /* str is "" at this point, anyway */
@@ -337,11 +339,12 @@ string protect(str)
 	    templen += len;
 	    free(temp2);
 	 } else {
-	    /* if the block is top level text, verbatim it and add to temp */
+	    /* if the block is top level text, verbatim brackets only
+	       (not @'s) and add text to temp */
 
 	    temp2 = string_CreateFromData(str,len);
 	    str += len;
-	    temp3 = verbatim(temp2);
+	    temp3 = verbatim(temp2,1);
 	    temp = string_Concat2(temp,temp3);
 	    templen += strlen(temp3);
 	    free(temp3);
