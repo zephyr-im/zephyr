@@ -187,7 +187,7 @@ void build_interface(argc, argv)
      XtSetKeyboardFocus(sendForm, editor);
      getString = InitGetString(toplevel, "getStringWindow");
 
-     XtAppAddInput(app_con, ZGetFD(), XtInputReadMask, zeph_dispatch, NULL);
+     XtAppAddInput(app_con, ZGetFD(), (XtPointer)XtInputReadMask, zeph_dispatch, NULL);
 
      if (defs.track_logins) {
 	  XtAppAddWorkProc(app_con, login_scan_work, NULL);
