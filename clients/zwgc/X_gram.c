@@ -178,20 +178,22 @@ void x_gram_init(dpy)
     classhint.res_name=string_Copy(temp);
     classhint.res_class="Zwgc";
 
-    group_leader=XCreateSimpleWindow(dpy,DefaultRootWindow(dpy),0,0,100,100,0,
-				     default_bordercolor,default_bgcolor);
-    sizehints.x = 0;
-    sizehints.y = 0;
-    sizehints.width = 100;
-    sizehints.height = 100;
-    sizehints.flags = PPosition | PSize;
+    if (set_transient) {
+       group_leader=XCreateSimpleWindow(dpy,DefaultRootWindow(dpy),0,0,100,100,
+					0,default_bordercolor,default_bgcolor);
+       sizehints.x = 0;
+       sizehints.y = 0;
+       sizehints.width = 100;
+       sizehints.height = 100;
+       sizehints.flags = PPosition | PSize;
 
-    wmhints.input = False;
-    wmhints.initial_state = DontCareState;
-    wmhints.flags = InputHint | StateHint;
+       wmhints.input = False;
+       wmhints.initial_state = DontCareState;
+       wmhints.flags = InputHint | StateHint;
 
-    x_set_icccm_hints(dpy,group_leader,"ZwgcGroup","ZwgcGroup",&sizehints,
-		      &wmhints,0);
+       x_set_icccm_hints(dpy,group_leader,"ZwgcGroup","ZwgcGroup",&sizehints,
+			 &wmhints,0);
+    }
 }
 
 void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
@@ -243,11 +245,18 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
 
     wmhints.input = True;
     wmhints.initial_state = NormalState;
-    wmhints.window_group = group_leader;
-    wmhints.flags = InputHint | StateHint | WindowGroupHint;
+    if (set_transient) {
+       wmhints.window_group = group_leader;
+       wmhints.flags = InputHint | StateHint | WindowGroupHint;
 
-    x_set_icccm_hints(dpy,w,title_name,icon_name,&sizehints,&wmhints,
-		      group_leader);
+       x_set_icccm_hints(dpy,w,title_name,icon_name,&sizehints,&wmhints,
+			 group_leader);
+    } else {
+       wmhints.flags = InputHint | StateHint;
+
+       x_set_icccm_hints(dpy,w,title_name,icon_name,&sizehints,&wmhints,0);
+    }
+       
 
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
     XSelectInput(dpy, w, ExposureMask|ButtonReleaseMask|ButtonPressMask
