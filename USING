@@ -75,4 +75,3 @@ once using "zctl add message \* \*".  (If users do this, they can tell
 zwgc to filter out messages from certain instances; see the man page
 for zwgc.)  If users want to have semi-private group conversations,
 they use separate classes, as described earlier.
-

@@ -52,4 +52,3 @@ You can send a SIGFPE signal to the server process to make it dump its
 subscription database to /var/tmp/zephyr.db.  (If /var/tmp didn't
 exist when Zephyr was built, the subscription database will be dumped
 in /usr/tmp or /tmp instead.)
-
