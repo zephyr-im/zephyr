@@ -58,7 +58,6 @@ ZSubscription_t *__subscriptions_list;
 int __subscriptions_num;
 int __subscriptions_next;
 void (*__Z_debug_print) Zproto((const char *fmt, va_list args, void *closure));
-pointer __Z_debug_print_closure;
 
 #define min(a,b) ((a)<(b)?(a):(b))
 
@@ -870,7 +869,7 @@ Zconst char *Zconst ZNoticeKinds[] = { "UNSAFE", "UNACKED", "ACKED", "HMACK",
 					 "CLIENTACK", "STAT", };
 
 #undef Z_debug
-#ifdef Z_Varargs
+#ifdef Z_varargs
 void Z_debug (va_alist) va_dcl
 {
     va_list pvar;
