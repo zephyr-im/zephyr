@@ -17,10 +17,10 @@ static char rcsid_main_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
+#include <zephyr/zephyr.h>
 
 #include <stdio.h>
 #include <signal.h>
-#include <zephyr/zephyr.h>
 #include "new_memory.h"
 #include "zwgc.h"
 #include "parser.h"
@@ -46,7 +46,7 @@ static void setup_signals(), detach();
 int zwgc_debug = 0;
 #endif
 
-static char *zwgc_version_string = "0.4.5";
+static char *zwgc_version_string = "0.4.6";
 
 /*
  * description_filename_override - <<<>>>
@@ -85,7 +85,7 @@ static void fake_startup_packet()
 
     var_set_variable("version", zwgc_version_string);
 
-    bzero(&notice, sizeof(notice));
+    _BZERO(&notice, sizeof(notice));
 
     notice.z_version = "";
     notice.z_class = "WG_CTL_CLASS";
@@ -355,7 +355,7 @@ static void signal_exit()
    multiple SIGCHLD's at once, and don't process in time. */
 static void signal_child()
 {
-#if defined(NO_UNION_WAIT) || defined(_POSIX_SOURCE)
+#if defined(POSIX)
   int status;
 #else
   union wait status;
@@ -364,7 +364,11 @@ static void signal_child()
   int pid, old_errno = errno;
 
   do {
+#ifdef POSIX
+      pid = waitpid(-1, &status, WNOHANG);
+#else
       pid = wait3(&status, WNOHANG, (struct rusage *)0);
+#endif
   } while (pid != 0 && pid != -1);
   errno = old_errno;
 }
@@ -372,21 +376,50 @@ static void signal_child()
 static void setup_signals(dofork)
      int dofork;
 {
-   if (dofork) {
-      /* Ignore keyboard signals if forking.  Bad things will happen. */
-      signal(SIGINT, SIG_IGN);
-      signal(SIGTSTP, SIG_IGN);
-      signal(SIGQUIT, SIG_IGN);
-   } else {
-      /* clean up on SIGINT.  exiting on logout is the user's problem, now. */
-      signal(SIGINT, signal_exit);
-   }
+#ifdef POSIX
+    struct sigaction sa;
 
-   /* behavior never changes */
-   signal(SIGTERM, signal_exit);
-   signal(SIGHUP, signal_exit);
-   signal(SIGCHLD, signal_child);
-   signal(SIGPIPE, SIG_IGN);		/* so that Xlib gets an error */
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    
+    if (dofork) {
+	sa.sa_handler = SIG_IGN;
+	sigaction(SIGINT, &sa, (struct sigaction *)0);
+	sigaction(SIGTSTP, &sa, (struct sigaction *)0);
+	sigaction(SIGQUIT, &sa, (struct sigaction *)0);
+    } else {
+	/* clean up on SIGINT; exiting on logout is the user's problem, now. */
+	sa.sa_handler = signal_exit;
+	sigaction(SIGINT, &sa, (struct sigaction *)0);
+    }
+
+    /* behavior never changes */
+    sa.sa_handler = signal_exit;
+    sigaction(SIGTERM, &sa, (struct sigaction *)0);
+    sigaction(SIGHUP, &sa, (struct sigaction *)0);
+
+    sa.sa_handler = signal_child;
+    sigaction(SIGCHLD, &sa, (struct sigaction *)0);
+
+    sa.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &sa, (struct sigaction *)0);
+#else
+    if (dofork) {
+	/* Ignore keyboard signals if forking.  Bad things will happen. */
+	signal(SIGINT, SIG_IGN);
+	signal(SIGTSTP, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+    } else {
+	/* clean up on SIGINT; exiting on logout is the user's problem, now. */
+	signal(SIGINT, signal_exit);
+    }
+    
+    /* behavior never changes */
+    signal(SIGTERM, signal_exit);
+    signal(SIGHUP, signal_exit);
+    signal(SIGCHLD, signal_child);
+    signal(SIGPIPE, SIG_IGN);		/* so that Xlib gets an error */
+#endif
 }
 
 /* detach() taken from old zwgc, with lots of stuff ripped out */
