@@ -340,18 +340,6 @@ static void init_hm()
      loopback[2] = 0;
      loopback[3] = 1;
       
-     /* kill old hm if it exists */
-     fp = fopen(PidFile, "r");
-     if (fp != NULL) {
-	  (void)fscanf(fp, "%d\n", &oldpid);
-	  if (oldpid > 1) {
-	      while (!kill(oldpid, SIGTERM))
-		  sleep(1);
-	      syslog(LOG_INFO, "Killed old image.");
-	  }
-	  (void) fclose(fp);
-     }
-
      if (inetd) {
 	     (void) ZSetFD(0);		/* fd 0 is on the socket,
 					   thanks to inetd */
