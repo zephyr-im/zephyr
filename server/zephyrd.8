@@ -2,16 +2,52 @@
 .\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
 .\" specifies the terms and conditions for redistribution.
 .\"
-.\"	@(#)zephyrd.8	6.1 (MIT) 7/9/87
+.\"	$Source$
+.\"	$Header$
 .\"
-.TH ZEPHYRD 8 "July 9, 1987"
+.TH ZEPHYRD 8 "July 27, 1987"
+.FM quote "MIT Project Athena"
 .SH NAME
 zephyrd \- Zephyr server daemon
 .SH SYNOPSIS
-.B zephyrd
+.I /usr/etc/zephyrd
 .SH DESCRIPTION
+.I zephyrd
+is the central server for the Zephyr Notification System.
+It maintains a location database of all currently logged-in users, and a
+subscription database for each user's Zephyr clients.
+.PP
+.I zephyrd 
+communicates with daemons running on other Zephyr server hosts, to
+provide a reliable service.
+.PP
+When a
+.B zephyrd
+is executed, it requests a list of server machines from Hesiod and
+initializes its state from any
+\fIzephyrd\fRs executing on the other known servers.  This initialization
+is only performed after the \fIzephyrd\fRs have authenticated themselves
+to each other via Kerberos.
+The server then enters a dispatch loop, servicing requests from clients and
+other servers.
+.SH ACCESS CONTROL
+Certain notice classes are restricted by the Zephyr server.  Each such
+class has an access control list enumerating who may transmit or
+subscribe to that particular class.
+.SH FILES
+/usr/athena/lib/zephyr/sub-*.acl	Access Control Lists for subscribing
+.br
+/usr/athena/lib/zephyr/xmt-*.acl	Access Control Lists for transmitting
+.br
+/usr/athena/lib/zephyr/srvtab		Kerberos Service keys
+.br
+/usr/athena/lib/zephyr/ztkts		Current kerberos tickets for exchange with other servers 
+.br
 .SH SEE ALSO
-zephyr(1), hm(8)
+zephyr(1), zhm(8), kerberos(?), hesiod(?)
+.br
+Athena Technical Plan, Sections E.4.1 (Zephyr Notification Service) and
+E.2.1 (Kerberos Authentication and Authorization System)
 .SH AUTHOR
 .PP
 John T. Kohl, MIT Project Athena
