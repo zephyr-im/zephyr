@@ -127,7 +127,6 @@ subscr_subscribe(who, notice)
 {
 	ZSubscr_t *subs;
 	
-
 	if (!who->zct_subs) {
 		/* allocate a subscription head */
 		if (!(subs = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t))))
@@ -500,13 +499,10 @@ subscr_cancel_client(client)
 #if 0
 		zdbug((LOG_DEBUG,"sub_can %s",
 		       subs->zst_dest.classname->string));
-#endif
 		if (class_deregister(client, subs) != ZERR_NONE) {
-#if 0
 			zdbug((LOG_DEBUG,"sub_can_clt: not registered!"));
-#endif
 		}
-
+#endif
 		xremque(subs);
 		free_zstring(subs->zst_dest.classname);
 		free_zstring(subs->zst_dest.inst);
