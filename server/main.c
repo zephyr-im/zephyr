@@ -3,7 +3,8 @@
  *
  *	Created by:	John T. Kohl
  *
- *	$Id$
+ *	$Source$
+ *	$Author$
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
@@ -300,6 +301,7 @@ main(argc, argv)
     timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
 #endif
 
+    realm_wakeup();
 #ifdef DEBUG_MALLOC
     malloc_inuse(&m_size);
 #endif
@@ -380,9 +382,14 @@ initialize()
     krb_set_tkt_string(tkt_file);
 #endif
     realm_init();
-
+    
     ZSetServerState(1);
     ZInitialize();		/* set up the library */
+#ifdef HAVE_KRB4
+    /* Override what Zinitialize set for ZGetRealm() */
+    if (*my_realm) 
+      strcpy(__Zephyr_realm, my_realm);
+#endif
     init_zsrv_err_tbl();	/* set up err table */
 
     ZSetFD(srv_socket);		/* set up the socket as the input fildes */
@@ -502,7 +509,11 @@ bye(sig)
     int sig;
 {
     server_shutdown();		/* tell other servers */
+#ifdef REALM_MGMT
+    realm_shutdown();		/* tell other realms */
+#endif
     hostm_shutdown();		/* tell our hosts */
+    kill_realm_pids();
 #ifdef HAVE_KRB4
     dest_tkt();
 #endif
@@ -624,17 +635,43 @@ static RETSIGTYPE
 reap(sig)
     int sig;
 {
+    int pid, i = 0;
     int oerrno = errno;
-
+    Realm *rlm;
 #ifdef _POSIX_VERSION
     int waitb;
-    while (waitpid(-1, &waitb, WNOHANG) == 0) ;
 #else
     union wait waitb;
-    while (wait3 (&waitb, WNOHANG, (struct rusage*) 0) == 0) ;
+#endif
+#if 1
+    zdbug((LOG_DEBUG,"reap()"));
+#endif
+#ifdef _POSIX_VERSION
+    while ((pid = waitpid(-1, &waitb, WNOHANG)) == 0) 
+      { i++; if (i > 10) break; }
+#else
+    while ((pid = wait3 (&waitb, WNOHANG, (struct rusage*) 0)) == 0) 
+      { i++; if (i > 10) break; }
 #endif
 
     errno = oerrno;
+ 
+    if (pid) {
+      if (WIFSIGNALED(waitb) == 0) {
+	if (WIFEXITED(waitb) != 0) {
+	  rlm = realm_get_realm_by_pid(pid);
+	  if (rlm) {
+	    rlm->child_pid = 0;
+	    rlm->have_tkt = 1;
+	  }
+	}
+      } else {
+	rlm = realm_get_realm_by_pid(pid);
+	if (rlm) {
+	  rlm->child_pid = 0;
+	}
+      }
+    }
 }
 
 static void
