@@ -82,6 +82,11 @@ extern void init_queue(), retransmit_queue();
 #define ok
 #endif /* ultrix && mips */
 
+#if defined(AIX) && defined(i386)
+#define	MACHINE	"ps2"
+#define ok
+#endif
+
 #ifndef ok
 #define MACHINE "unknown"
 #endif ok
