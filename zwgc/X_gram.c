@@ -120,7 +120,7 @@ void x_gram_init(dpy)
     if (temp = get_string_resource("borderColor","BorderColor"))
       default_bordercolor = x_string_to_color(temp,default_bordercolor);
 
-    temp = get_string_resource("timeToLive","TimeToLive");
+    temp = get_string_resource("minTimeToLive","MinTimeToLive");
     if (temp && atoi(temp)>=0)
        ttl = atoi(temp);
 
