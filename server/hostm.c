@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -150,7 +150,7 @@ hostm_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who,
 	owner = hostm_find_server(&who->sin_addr);
 	if (!strcmp(opcode, HM_ATTACH)) {
 #if 0
-		zdbug((LOG_DEBUG,"attach %s",inet_ntoa(who->sin_addr)));
+		zdbug((LOG_DEBUG,"attach %s",inet_ntoa(who)));
 #endif
 		if (owner == server) {
 #if 0
@@ -180,8 +180,10 @@ hostm_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who,
 			ack(notice, who);
 		}
 	} else if (!strcmp(opcode, HM_BOOT)) {
-#if 0
-		zdbug((LOG_DEBUG, "boot %s",inet_ntoa(who->sin_addr)));
+#if 1
+		if (zdebug)
+		    syslog (LOG_DEBUG, "boot %s (server %s)",
+			    inet_ntoa(*who), server->addr);
 #endif
 		/* Booting is just like flushing and attaching */
 		if (owner)		/* if owned, flush */
@@ -196,8 +198,10 @@ hostm_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who,
 			ack(notice, who);
 		}
 	} else if (!strcmp(opcode, HM_FLUSH)) {
-#if 0
-		zdbug((LOG_DEBUG, "hm_flush %s",inet_ntoa(who->sin_addr)));
+#if 1
+		if (zdebug)
+		    syslog(LOG_DEBUG, "hm_flush %s (server %s)",
+			   inet_ntoa(*who), server->addr);
 #endif
 		if (!owner)
 			return(ZERR_NONE);
@@ -207,7 +211,7 @@ hostm_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who,
 			server_forward(notice, auth, who);
 	} else if (!strcmp(opcode, HM_DETACH)) {
 #if 0
-		zdbug((LOG_DEBUG, "hm_detach %s",inet_ntoa(who->sin_addr)));
+		zdbug((LOG_DEBUG, "hm_detach %s",inet_ntoa(who)));
 #endif
 		/* ignore it */
 	} else {
@@ -237,8 +241,8 @@ hostm_flush(ZHostList_t *host, ZServerDesc_t *server)
 	    return;
 	}
 
-#if 0
-	zdbug((LOG_DEBUG,"hostm_flush"));
+#if 1
+	zdbug ((LOG_DEBUG,"hostm_flush %s", inet_ntoa (host->zh_addr)));
 #endif
 
 	if (losing_hosts)
@@ -379,13 +383,15 @@ host_lost(void* arg)
 
 	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
-#if 0
-	zdbug((LOG_DEBUG,"lost host %s",
-	       inet_ntoa(which->lh_host->zh_addr.sin_addr)));
+	server = hostm_find_server(&which->lh_host->zh_addr.sin_addr);
+#if 1
+	zdbug ((LOG_DEBUG,"lost host %s (server %s)",
+		inet_ntoa(which->lh_host->zh_addr),
+		server ? server->addr : "<NONE>"));
 #endif
 
-	if (!(server = hostm_find_server(&which->lh_host->zh_addr.sin_addr))) {
-#if 0
+	if (!server) {
+#if 1
 		zdbug((LOG_DEBUG,"no server"));
 #endif
 		xremque(which);
@@ -449,10 +455,11 @@ host_not_losing(struct sockaddr_in *who)
 			/* go back, since remque will change things */
 			lhp2 = lhp->q_back;
 			timer_reset(lhp->lh_timer);
-#if 0
-			zdbug((LOG_DEBUG,"lost client %s/%d",
-			       inet_ntoa(lhp->lh_client->zct_sin.sin_addr),
-			       ntohs(lhp->lh_client->zct_sin.sin_port)));
+#if 1
+			if (zdebug || 1)
+			    syslog (LOG_DEBUG,"lost client %s/%d",
+				    inet_ntoa(lhp->lh_client->zct_sin),
+				    ntohs(lhp->lh_client->zct_sin.sin_port));
 #endif
 			/* deregister all subscriptions, and flush locations
 			   associated with the client. */
@@ -496,7 +503,7 @@ hostm_lose_ignore(ZClient_t *client)
 			timer_reset(lhp->lh_timer);
 #if 0
 			zdbug((LOG_DEBUG,"hm_l_ign client %s/%d",
-			       inet_ntoa(client->zct_sin.sin_addr),
+			       inet_ntoa(client->zct_sin),
 			       ntohs(client->zct_sin.sin_port)));
 #endif
 			xremque(lhp);
@@ -652,7 +659,7 @@ hostm_deathgram(struct sockaddr_in *sin, ZServerDesc_t *server)
 	char *shutpack;
 
 #if 0
-	zdbug((LOG_DEBUG,"deathgram %s",inet_ntoa(sin->sin_addr)));
+	zdbug((LOG_DEBUG,"deathgram %s",inet_ntoa(*sin)));
 #endif
 
 	/* fill in the shutdown notice */
@@ -668,7 +675,7 @@ hostm_deathgram(struct sockaddr_in *sin, ZServerDesc_t *server)
 	shutnotice.z_num_other_fields = 0;
 
 	if (server) {
-		shutnotice.z_message = inet_ntoa(server->zs_addr.sin_addr);
+		shutnotice.z_message = server->addr;
 		shutnotice.z_message_len = strlen(shutnotice.z_message) + 1;
 #if 0
 		zdbug((LOG_DEBUG, "suggesting %s",shutnotice.z_message));
@@ -714,7 +721,7 @@ ping(struct sockaddr_in *sin)
 	char *shutpack;
 
 #if 0
-	zdbug((LOG_DEBUG,"ping %s",inet_ntoa(sin->sin_addr)));
+	zdbug((LOG_DEBUG,"ping %s",inet_ntoa(*sin)));
 #endif
 
 	/* fill in the shutdown notice */
@@ -833,14 +840,9 @@ insert_host(ZHostList_t *host, ZServerDesc_t *server)
 	register int i = 0;
 	int omask;
 
-#if defined (DEBUG) && 0
-	char buf[512];
-	if (zdebug) {
-		(void) strcpy(buf, inet_ntoa(host->zh_addr.sin_addr));
-		syslog(LOG_DEBUG,"insert_host %s %s",
-		       buf,
-		       inet_ntoa(server->zs_addr.sin_addr));
-	}
+#if 0
+	zdbug ((LOG_DEBUG,"insert_host %s %s",
+		inet_ntoa(host->zh_addr), server->addr));
 #endif
 	if (hostm_find_host(&host->zh_addr.sin_addr))
 		return;
@@ -882,14 +884,12 @@ insert_host(ZHostList_t *host, ZServerDesc_t *server)
 #if defined (DEBUG) && 0
         if (zdebug) {
                 register int i = 0;
-                char buf[512];
-                for (i = 0; i < num_hosts; i++) {
-                        (void) strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr));
-                        syslog(LOG_DEBUG, "%d: %s %s",i,buf,
-                               inet_ntoa(otherservers[all_hosts[i].server_index].zs_addr.sin_addr));
-                }
+		for (i = 0; i < num_hosts; i++)
+		    syslog(LOG_DEBUG, "%d: %s %s",i,
+			   inet_ntoa ((all_hosts[i].host)->zh_addr),
+			   otherservers[all_hosts[i].server_index]->addr);
         }
-#endif DEBUG
+#endif
 	return;
 }
 
@@ -905,7 +905,7 @@ remove_host(ZHostList_t *host)
 	int omask;
 
 #if 0
-	zdbug((LOG_DEBUG,"remove_host %s", inet_ntoa(host->zh_addr.sin_addr)));
+	zdbug((LOG_DEBUG,"remove_host %s", inet_ntoa(host->zh_addr)));
 #endif
 	if (!hostm_find_host(&host->zh_addr.sin_addr))
 		return;
@@ -957,7 +957,7 @@ hostm_dump_hosts(FILE *fp)
 	register int i;
 	for (i = 0; i < num_hosts; i++) {
 		(void) fprintf(fp, "%s/%d:\n", 
-			       inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr),
+			       inet_ntoa((all_hosts[i].host)->zh_addr),
 			       all_hosts[i].server_index);
 		client_dump_clients(fp,(all_hosts[i].host)->zh_clients);
 	}
