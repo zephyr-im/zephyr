@@ -11,9 +11,10 @@ LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB} ${DES_LIB}
 LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB}
 SRCS = zstat.c
 OBJS = zstat.o
+HDRS = zserver.h
 
 SRCDIR= ${SRCTOP}/clients/zstat
-CODE= ${SRCS} Imakefile
+CODE= ${SRCS} ${HDRS} Imakefile
 
 /* dummy rule so 'make' means 'make all' */
 all::
