@@ -6,15 +6,13 @@
  *
  *      $Source$
  *      $Author$
+ *	$Id$
  *
  *      Copyright (c) 1989 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
  *      "mit-copyright.h".
  */
 
-#if (!defined(lint) && !defined(SABER))
-static char rcsid_pointer_h[] = "$Header$";
-#endif
 
 #include <zephyr/mit-copyright.h>
 
