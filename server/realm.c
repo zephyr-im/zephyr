@@ -1,7 +1,6 @@
 #include "zserver.h"
 #include <sys/socket.h>
 
-#define min(a,b) ((a)<(b)?(a):(b))
 extern int __My_length;
 extern char *__My_addr;
 

@@ -396,6 +396,7 @@ extern struct in_addr my_addr;	/* my inet address */
 #define	ack(a,b)	clt_ack(a,b,SENT)
 #define	nack(a,b)	clt_ack(a,b,NOT_SENT)
 
+#define	min(a,b)	((a) < (b) ? (a) : (b))
 #define	max(a,b)	((a) > (b) ? (a) : (b))
 
 #define START_CRITICAL_CODE
