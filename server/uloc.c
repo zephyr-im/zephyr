@@ -39,6 +39,9 @@ static char rcsid_uloc_s_c[] = "$Header$";
  * void uloc_hflush(addr)
  *	struct in_addr *addr;
  *
+ * void uloc_send_locations(server, host)
+ *	ZServerDesc_t *server;
+ *	ZHostList_t *host;
  */
 
 /*
@@ -46,6 +49,12 @@ static char rcsid_uloc_s_c[] = "$Header$";
  * We maintain an array of ZLocation_t sorted by user (so we can do
  * binary searches), growing and shrinking it as necessary.
  */
+
+/* WARNING: make sure this is the same as the number of strings you */
+/* plan to hand back to the user in response to a locate request, */
+/* else you will lose.  See ulogin_locate() and uloc_send_locations() */  
+#define	NUM_FIELDS	2
+
 
 typedef enum _login_type {
 	INVISIBLE,
@@ -63,11 +72,6 @@ typedef struct _ZLocation_t {
 	struct in_addr zlt_addr;	/* IP addr of this loc */
 } ZLocation_t;
 
-/* WARNING: make sure this is the same as the number of strings you */
-/* plan to hand back to the user in response to a locate request, */
-/* else you will lose.  See ulogin_locate() */  
-#define	NUM_FIELDS	2
-
 #define	NULLZLT		((ZLocation_t *) 0)
 #define	NOLOC		(1)
 #define	QUIET		(-1)
@@ -79,7 +83,7 @@ static int uloc_compare(), ulogin_setup(), ulogin_parse(), ul_equiv();
 static int ulogin_remove_user(), ulogin_hide_user();
 
 static ZLocation_t *locations = NULLZLT; /* ptr to first in array */
-static int num_locs = 0;		 /* number in array */
+static int num_locs = 0;		/* number in array */
 
 /*
  * Dispatch a LOGIN notice.
@@ -232,6 +236,7 @@ struct in_addr *addr;
 		zdbug((LOG_DEBUG,"no more locs"));
 		xfree(loc);
 		locations = NULLZLT;
+		num_locs = new_num;
 		return;
 	}
 	locations = loc;
@@ -248,6 +253,37 @@ struct in_addr *addr;
 	}
 #endif DEBUG
 	/* all done */
+	return;
+}
+
+/*
+ * Send the locations for host for a brain dump
+ */
+
+void
+uloc_send_locations(host)
+ZHostList_t *host;
+{
+	register ZLocation_t *loc;
+	register int i;
+	register struct in_addr *haddr = &host->zh_addr.sin_addr;
+	char *lyst[NUM_FIELDS];
+
+	for (i = 0, loc = locations; i < num_locs; i++, loc++) {
+		if (loc->zlt_addr.s_addr != haddr->s_addr)
+			continue;
+		lyst[0] = loc->zlt_machine;
+#ifdef notdef
+		lyst[1] = loc->zlt_tty;
+		lyst[2] = loc->zlt_time;
+#else
+		lyst[1] = loc->zlt_time;
+#endif notdef
+		bdump_send_list_tcp(ACKED, bdump_sin.sin_port, LOGIN_CLASS,
+			      loc->zlt_user,
+			      (loc->zlt_visible == VISIBLE) ? LOGIN_USER_LOGIN : LOGIN_QUIET_LOGIN,
+			      myname, "", lyst, NUM_FIELDS);
+	}
 	return;
 }
 
@@ -675,6 +711,7 @@ rep:
 			answer[i*NUM_FIELDS + 1] = matches[i]->zlt_time;
 		}
 
+	xfree(matches);
 	/* if it's too long, chop off one at a time till it fits */
 	while ((retval = ZFormatRawNoticeList(&reply,
 					      answer,
