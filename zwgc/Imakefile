@@ -1,0 +1,103 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+
+SUBDIRS= Memory String Dictionary
+LIBS = $(X11_LIB) $(ZEPHYR_LIB) $(KRB_LIB) $(DES_LIB) $(COMERR_LIB) -ltermcap
+LINTLIBS = $(X11_LINTLIB) $(ZEPHYR_LINTLIB) $(KRB_LINTLIB) $(DES_LINTLIB) \
+	$(COMERR_LINTLIB) -ltermcap
+SRCS = parser.y lexer.c node.c exec.c buffer.c main.c zephyr.c X_driver.c\
+          substitute.c port.c xshow.c \
+          mux.c eval.c subscriptions.c notice.c xcut.c regexp.c\
+	  character_class.c text_operations.c file.c error.c variables.c\
+	  formatter.c X_fonts.c X_gram.c tty_filter.c standard_ports.c\
+	  xselect.c xmark.c xrevstack.c
+OBJS = parser.o lexer.o node.o exec.o buffer.o main.o zephyr.o X_driver.o\
+          substitute.o port_dictionary.o port.o xshow.o pointer_dictionary.o\
+          mux.o eval.o subscriptions.o notice.o xcut.o regexp.o\
+	  character_class.o text_operations.o file.o error.o variables.o\
+	  formatter.o X_fonts.o X_gram.o tty_filter.o standard_ports.o\
+	  xselect.o xmark.o xrevstack.o
+HDRS = exec.h node.h zwgc.h parser.h port.h\
+		xshow.h pointer.h substitute.h eval.h zephyr.h lexer.h\
+		subscriptions.h notice.h regexp.h character_class.h\
+		text_operations.h file.h error.h mux.h variables.h\
+		formatter.h main.h\
+		X_driver.h X_fonts.h X_gram.h xselect.h \
+		buffer.h xmark.h
+
+LINCLUDES = -IMemory -IString -IDictionary
+GENERATORS= generate_stack_instance stack.h
+
+SRCDIR= ${SRCTOP}/zwgc/zwgc.dev
+CODE= ${GENERATORS} ${HDRS} ${SRCS} Imakefile
+
+LIB=.
+LIBRARIES = $(LIB)/String/new_string.o $(LIB)/Dictionary/string_dictionary.o\
+            $(LIB)/Dictionary/string_dictionary_aux.o\
+	    $(LIB)/Dictionary/int_dictionary.o\
+	    $(LIB)/Memory/new_memory.o
+
+GENERATED= port_dictionary.c port_dictionary.h \
+	pointer_dictionary.c pointer_dictionary.h \
+	char_stack.h \
+	string_stack.h \
+	xmode_stack.h \
+	y.tab.h
+	
+
+DEPENDSRCS= ${CODE} ${GENERATED}
+#DEFINES=-DREVSTACK
+
+CC = /mit/gnu/vaxbin/gcc
+
+normal_obj_rule()
+
+OUTPUT=testprog
+
+do_subdirs($(SUBDIRS)) /* gotta do the subdirs first! */
+
+program($(OUTPUT),$(OBJS),,$(LIBRARIES) $(LIBS),$(USRETCDIR))
+
+depend:: ${DEPENDSRCS}
+	
+YFLAGS=-d
+
+y.tab.h: parser.o
+# use implicit yacc rule for the following:
+parser.o: parser.y
+
+#
+# /* How to generate a port dictionary: */
+#
+port_dictionary.c port_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
+	Dictionary/generate_dictionary_instance port port.h
+
+#
+# /* How to generate a pointer dictionary: */
+#
+pointer_dictionary.c pointer_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
+	Dictionary/generate_dictionary_instance pointer pointer.h
+
+#
+# /* How to generate a char stack: */
+#
+char_stack.h: stack.h
+	./generate_stack_instance char
+#
+# /* How to generate a string stack: */
+#
+string_stack.h: stack.h
+	./generate_stack_instance string
+#
+# /* How to generate a xmode stack: */
+#
+xmode_stack.h: stack.h
+	./generate_stack_instance xmode
+
