@@ -131,7 +131,7 @@ void xselInitAtoms(dpy)
      *(ZAtom[i].patom)=XInternAtom(dpy,ZAtom[i].name,False);
    for (i=0;i<NumRequestAtoms;i++)
      if (pRequestAtoms[i]) 
-       RequestAtoms[i]=*(pRequestAtoms[i]);
+       RequestAtoms[i] = *(pRequestAtoms[i]);
 }
 
 int xselGetOwnership(dpy,w,time)
