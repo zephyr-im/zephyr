@@ -29,4 +29,15 @@ extern char *subscriptions_filename_override;
 
 extern void usage();
 
+/* USRDESC points to a file (relative to user's homedir) which has a user's
+   description file */
+
+#define USRDESC ".zwgc.desc"
+
+/* DEFDESC points to where the system default description is stored */
+
+#ifndef DEFDESC
+#define DEFDESC "/etc/athena/zwgc.desc"
+#endif
+
 #endif
