@@ -1158,6 +1158,8 @@ uloc_dump_locs(fp)
 	dump_quote(locations[i].machine->string, fp);
 	fputs("' '", fp);
 	dump_quote(locations[i].time, fp);
+	fputs("' '", fp);
+	dump_quote(locations[i].tty->string, fp);
 	fputs("' ", fp);
 	switch (locations[i].exposure) {
 	  case OPSTAFF_VIS:
