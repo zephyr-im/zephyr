@@ -117,7 +117,7 @@ main(argc,argv)
 	ptr += strlen(ptr);
     }
 
-    _BZERO((char *)&notice, sizeof(notice));
+    (void) memset((char *)&notice, 0, sizeof(notice));
 
     notice.z_kind = N_KIND;
     notice.z_port = 0;
