@@ -28,10 +28,13 @@
 #include "access.h"
 #include "acl.h"
 
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
 /* Kerberos-specific library interfaces used only by the server. */
 extern C_Block __Zephyr_session;
 #define ZGetSession() (__Zephyr_session)
+void ZSetSession(krb5_keyblock *keyblock);
+void ZSetSessionDES(C_Block *key);
+
 Code_t ZFormatAuthenticNotice __P((ZNotice_t*, char*, int, int*, C_Block));
 #endif
 

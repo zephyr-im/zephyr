@@ -163,7 +163,8 @@ Code_t ZCheckZcodeAuthentication(notice, from)
         }
         /* HOLDING: creds, asn1_data, cksumbuf.data */
 
-	valid = Z_krb5_verify_cksum(keyblock, &cksumbuf, cksumtype, asn1_data, asn1_len);
+	valid = Z_krb5_verify_cksum(keyblock, &cksumbuf, cksumtype,
+				    asn1_data, asn1_len);
 
         free(asn1_data);
         krb5_free_creds(Z_krb5_ctx, creds);

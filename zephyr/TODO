@@ -5,7 +5,7 @@ Milestone 1 (done)
 	  successfully receive new-style checksums, but this code won't be
 	  tested for a while.
 
-Milestone 2 (written, not tested)
+Milestone 2 (done)
 	  * server will accept new-style checksums and authenticators, as
 	  well as old-style.  It will never send them, and "bad things"
 	  will happen if non-DES enctypes get used.
@@ -13,10 +13,10 @@ Milestone 2 (written, not tested)
 	  are no brain-dump issues to deal with.  This is aesthetically
 	  unpleasing, however.
 
-Milestone 3
+Milestone 3 (done)
 	  * client sends only new-style messages
 
-Milestone 3.5
+Milestone 3.5 (in progress)
 	  * refactor checksumming code
 
 Milestone 4

@@ -159,15 +159,8 @@ ZCheckRealmAuthentication(notice, from, realm)
     krb5_keyblock *keyblock; 
     krb5_enctype enctype; 
     krb5_cksumtype cksumtype; 
-    krb5_data cksumbuf; 
-#if HAVE_KRB5_C_MAKE_CHECKSUM 
-    krb5_checksum checksum; 
-    krb5_boolean valid; 
-#else 
-    krb5_crypto cryptctx; 
-    Checksum checksum; 
-    size_t xlen; 
-#endif 
+    krb5_data cksumbuf;
+    int valid;
     char *cksum0_base, *cksum1_base, *cksum2_base; 
     char *svcinst, *x, *y; 
     char *asn1_data, *key_data; 
@@ -241,24 +234,18 @@ ZCheckRealmAuthentication(notice, from, realm)
         return ZAUTH_FAILED;
     }
 
-    /* HOLDING: authbuf, authctx */
-#ifndef HAVE_KRB5_TICKET_ENC_PART2
-    if (tkt == 0 || tkt->client == 0) {
-       if (tkt) krb5_free_ticket(Z_krb5_ctx, tkt);
-       free(authbuf);
-       krb5_auth_con_free(Z_krb5_ctx, authctx);
-       return ZAUTH_FAILED;
+    /* HOLDING: authbuf, authctx, tkt */
+    
+    if (tkt == 0 || !Z_tktprincp(tkt)) {
+	if (tkt)
+	    krb5_free_tickets(Z_krb5_ctx, tkt);
+	free(authbuf);
+	krb5_auth_con_free(Z_krb5_ctx, authctx);
+	return ZAUTH_FAILED;
     }
-    princ = tkt->client;
-#else
-    if (tkt == 0 || tkt->enc_part2 == 0) {
-        if (tkt) krb5_free_ticket(Z_krb5_ctx, tkt);
-        free(authbuf);
-        krb5_auth_con_free(Z_krb5_ctx, authctx);
-        return ZAUTH_FAILED;
-    }
-    princ = tkt->enc_part2->client;
-#endif
+
+    princ = Z_tktprinc(tkt);
+
     if (princ == 0) {
         krb5_free_ticket(Z_krb5_ctx, tkt);
         free(authbuf);
@@ -309,50 +296,16 @@ ZCheckRealmAuthentication(notice, from, realm)
     }
     
     /* HOLDING: authctx, authenticator, keyblock */
-    /* Figure out what checksum type to use */ 
-#if HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
-    key_data = keyblock->contents; 
-    key_len  = keyblock->length; 
-    enctype  = keyblock->enctype; 
-    result = Z_krb5_lookup_cksumtype(enctype, &cksumtype); 
-    if (result) { 
-        krb5_free_keyblock(Z_krb5_ctx, keyblock);
+    /* Figure out what checksum type to use */
+    key_data = Z_keydata(keyblock);
+    key_len = Z_keylen(keyblock);
+    result = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
+    if (result) {
+	krb5_free_keyblock(Z_krb5_ctx, keyblock);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
-        return (ZAUTH_FAILED); 
-    } 
-#else 
-    key_data = keyblock->keyvalue.data; 
-    key_len  = keyblock->keyvalue.length; 
-    { 
-       unsigned int len; 
-       ENCTYPE *val; 
-       int i = 0; 
- 
-       result  = krb5_keytype_to_enctypes(Z_krb5_ctx, keyblock->keytype, 
-                                          &len, &val); 
-       if (result) { 
-	   krb5_free_keyblock(Z_krb5_ctx, keyblock);
-           krb5_auth_con_free(Z_krb5_ctx, authctx); 
-           krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT); 
-           return (ZAUTH_FAILED);  
-       } 
- 
-       do { 
-           if (i == len) break;
-           result = Z_krb5_lookup_cksumtype(val[i], &cksumtype); 
-           i++;
-       } while (result != 0); 
-
-       if (result) { 
-	   krb5_free_keyblock(Z_krb5_ctx, keyblock);
-           krb5_auth_con_free(Z_krb5_ctx, authctx); 
-           krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT); 
-           return (ZAUTH_FAILED);  
-       } 
-       enctype = val[i-1]; 
-    } 
-#endif 
+        return (ZAUTH_FAILED);
+    }
     /* HOLDING: authctx, authenticator, keyblock */
  
     /* Assemble the things to be checksummed */ 
@@ -399,15 +352,17 @@ ZCheckRealmAuthentication(notice, from, realm)
       /* try old-format checksum (covers cksum0 only) */ 
  
       ZChecksum_t our_checksum; 
- 
-      our_checksum = des_quad_cksum(cksum0_base, NULL, cksum0_len, 0, 
-                                    key_data); 
+
+      our_checksum = compute_rlm_checksum(notice, key_data);
+
+      krb5_free_keyblock(Z_krb5_ctx, keyblock);
+      krb5_auth_con_free(Z_krb5_ctx, authctx);
+      krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
+      
       if (our_checksum == notice->z_checksum) { 
-	  krb5_free_keyblock(Z_krb5_ctx, keyblock);
-          krb5_auth_con_free(Z_krb5_ctx, authctx);
-          krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
           return ZAUTH_YES; 
-      } 
+      } else
+	  return ZAUTH_FAILED;
     } 
 
     /* HOLDING: authctx, authenticator */
@@ -450,58 +405,19 @@ ZCheckRealmAuthentication(notice, from, realm)
         return ZAUTH_FAILED; 
     } 
     /* HOLDING: asn1_data, cksumbuf.data */ 
- 
-#if HAVE_KRB5_C_MAKE_CHECKSUM 
-    /* Verify the checksum -- MIT crypto API */ 
-    memset(&checksum, 0, sizeof(checksum)); 
-    checksum.length = asn1_len; 
-    checksum.contents = asn1_data; 
-    checksum.checksum_type = cksumtype;
-    result = krb5_c_verify_checksum(Z_krb5_ctx, 
-                                    keyblock, Z_KEYUSAGE_SRV_CKSUM, 
-                                    &cksumbuf, &checksum, &valid); 
+
+    valid = Z_krb5_verify_cksum(keyblock, &cksumbuf, cksumtype, asn1_data, asn1_len);
+
     free(asn1_data); 
     krb5_auth_con_free(Z_krb5_ctx, authctx);
     krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
     krb5_free_keyblock(Z_krb5_ctx, keyblock);
     free(cksumbuf.data); 
-    if (!result && valid) 
+    
+    if (valid) 
         return (ZAUTH_YES); 
     else 
         return (ZAUTH_FAILED); 
-#else 
-    /* Verify the checksum -- heimdal crypto API */ 
-    checksum.checksum.length = asn1_len;
-    checksum.checksum.data = asn1_data;
-    checksum.cksumtype = cksumtype;
-
-    /* HOLDING: authctx, authenticator, cksumbuf.data, asn1_data */
-
-    result = krb5_crypto_init(Z_krb5_ctx, keyblock, enctype, &cryptctx); 
-    if (result) { 
-        krb5_auth_con_free(Z_krb5_ctx, authctx);
-        krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
-	krb5_free_keyblock(Z_krb5_ctx, keyblock);
-	free(asn1_data);
-        free(cksumbuf.data); 
-        return result; 
-    } 
-    /* HOLDING: authctx, authenticator, cryptctx, cksumbuf.data, checksum */ 
-    result = krb5_verify_checksum(Z_krb5_ctx, cryptctx, 
-                                  Z_KEYUSAGE_SRV_CKSUM, 
-                                  cksumbuf.data, cksumbuf.length, 
-                                  &checksum); 
-    krb5_free_keyblock(Z_krb5_ctx, keyblock);
-    krb5_crypto_destroy(Z_krb5_ctx, cryptctx); 
-    krb5_auth_con_free(Z_krb5_ctx, authctx);
-    krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
-    free(asn1_data);
-    free(cksumbuf.data); 
-    if (result) 
-        return (ZAUTH_FAILED); 
-    else 
-        return (ZAUTH_YES); 
-#endif
 #else
     return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
 #endif
@@ -605,7 +521,8 @@ ZCheckAuthentication(notice, from)
     /* HOLDING: authbuf, authctx, tkt */
 
     if (tkt == 0 || !Z_tktprincp(tkt)) {
-       if (tkt) krb5_free_ticket(Z_krb5_ctx, tkt);
+       if (tkt)
+	   krb5_free_ticket(Z_krb5_ctx, tkt);
        free(authbuf);
        krb5_auth_con_free(Z_krb5_ctx, authctx);
        return ZAUTH_FAILED;
@@ -674,7 +591,7 @@ ZCheckAuthentication(notice, from)
     } 
     /* HOLDING: authctx, authenticator, keyblock */
 
-    memcpy(__Zephyr_session, key_data, sizeof(C_Block)); /* XXX */
+    ZSetSession(keyblock);
  
     /* Assemble the things to be checksummed */ 
     /* first part is from start of packet through z_default_format: 
@@ -829,7 +746,7 @@ ZCheckAuthentication4(notice, from)
     result = krb_rd_req(&authent, SERVER_SERVICE, instance,
 			from->sin_addr.s_addr, &dat, srvtab_file);
     if (result == RD_AP_OK) {
-	memcpy(__Zephyr_session, dat.session, sizeof(C_Block));
+	ZSetSessionDES(dat.session);
 	sprintf(srcprincipal, "%s%s%s@%s", dat.pname, dat.pinst[0] ? "." : "",
 		dat.pinst, dat.prealm);
 	if (strcmp(srcprincipal, notice->z_sender))
@@ -913,6 +830,27 @@ void sweep_ticket_hash_table(arg)
     }
     timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
 }
+
+#ifdef HAVE_KRB5
+void
+ZSetSession(krb5_keyblock *keyblock) {
+#if 0
+    krb5_error_code result;
+
+    result = krb5_copy_keyblock_contents(Z_krb5_ctx, keyblock, __Zephyr_session_keyblock);
+    if (result) /*XXX we're out of memory? */
+	;
+#else
+    memcpy(__Zephyr_session, Z_keydata(keyblock), sizeof(C_Block));
+#endif
+}
+#endif
+#ifdef HAVE_KRB4
+void
+ZSetSessionDES(C_Block *key) {
+    memcpy(__Zephyr_session, key, sizeof(C_Block));
+}
+#endif
 
 #endif /* HAVE_KRB4 */
 
