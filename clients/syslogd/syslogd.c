@@ -851,12 +851,12 @@ wallmsg(f, iov)
 	register struct filed *f;
 	struct iovec *iov;
 {
-	register char *p;
 	register int i;
 	int ttyf, len;
 	FILE *uf;
 	static int reenter = 0;
 	struct utmp ut;
+	static char p[6+sizeof(ut.ut_line)] = "/dev/";
 	char greetings[200];
 
 	if (reenter++)
@@ -898,7 +898,7 @@ wallmsg(f, iov)
 						break;
 					}
 					if (strncmp(f->f_un.f_uname[i],
-					    ut.ut_name, UTMPNAMESZ) == 0)
+					    ut.ut_name, sizeof(ut.ut_name)) == 0)
 						break;
 				}
 				if (i >= MAXUNAMES)
@@ -906,8 +906,7 @@ wallmsg(f, iov)
 			}
 
 			/* compute the device name */
-			p = "/dev/12345678";
-			strncpy(&p[5], ut.ut_line, UTMPNAMESZ);
+			strncpy(&p[5], ut.ut_line, sizeof(ut.ut_line));
 
 			if (f->f_type == F_WALL) {
 				iov[0].iov_base = greetings;
@@ -1107,7 +1106,7 @@ init()
 		 * spaces and newline character.
 		 */
 		for (p = cline; isspace(*p); ++p);
-		if (*p == NULL || *p == '#')
+		if (*p == '\0' || *p == '#')
 			continue;
 		for (p = index(cline, '\0'); isspace(*--p););
 		*++p = '\0';
