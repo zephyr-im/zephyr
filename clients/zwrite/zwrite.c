@@ -51,7 +51,7 @@ main(argc, argv)
     if (argc < 2)
 	usage(whoami);
 
-    bzero((char *) &notice, sizeof(ZNotice_t));
+    bzero((char *) &notice, sizeof(notice));
 
     auth = ZAUTH;
     verbose = quiet = msgarg = nrecips = nocheck = 0;
