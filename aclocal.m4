@@ -182,7 +182,10 @@ fi])
 dnl ----- Kerberos 4 -----
 
 AC_DEFUN(ATHENA_KRB4_CHECK,
-[if test "$krb4" != yes; then
+[AC_CHECK_FUNC(gethostbyname, :, AC_CHECK_LIB(nsl, gethostbyname))
+AC_CHECK_FUNC(socket, :, AC_CHECK_LIB(socket, socket))
+AC_CHECK_LIB(gen, compile)
+if test "$krb4" != yes; then
 	CPPFLAGS="$CPPFLAGS -I$krb4/include"
 	if test -d "$krb4/include/kerberosIV"; then
 		CPPFLAGS="$CPPFLAGS -I$krb4/include/kerberosIV"
@@ -223,7 +226,10 @@ fi])
 dnl ----- Kerberos 5 -----
 
 AC_DEFUN(ATHENA_KRB5_CHECK,
-[if test "$krb5" != yes; then
+[AC_CHECK_FUNC(gethostbyname, :, AC_CHECK_LIB(nsl, gethostbyname))
+AC_CHECK_FUNC(socket, :, AC_CHECK_LIB(socket, socket))
+AC_CHECK_LIB(gen, compile)
+if test "$krb5" != yes; then
 	CPPFLAGS="$CPPFLAGS -I$krb5/include"
 	LDFLAGS="$LDFLAGS -L$krb5/lib"
 fi
