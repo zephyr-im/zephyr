@@ -41,9 +41,12 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
 				    &hdrlen, &ptr)) != ZERR_NONE)
 	return (retval);
 
+#ifdef NOENCRYPTION
+    newnotice.z_checksum = 0;
+#else
     newnotice.z_checksum = (ZChecksum_t)quad_cksum(buffer, NULL, ptr - buffer,
 						   0, session);
-
+#endif
     if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len,
 				    &hdrlen, (char **) 0)) != ZERR_NONE)
 	return (retval);
