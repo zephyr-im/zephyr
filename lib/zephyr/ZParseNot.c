@@ -28,7 +28,6 @@ Code_t ZParseNotice(buffer,len,notice,auth,from)
 	unsigned int temp[3];
 	AUTH_DAT dat;
 	KTEXT_ST authent;
-	Key_schedule sess_sched;
 	ZChecksum_t our_checksum;
 	CREDENTIALS cred;
 	
@@ -61,6 +60,11 @@ Code_t ZParseNotice(buffer,len,notice,auth,from)
 	notice->z_auth = *temp;
 	ptr += strlen(ptr)+1;
 
+	if (ZReadAscii(ptr,temp,sizeof(int)) == ZERR_BADFIELD)
+		return (ZERR_BADPKT);
+	notice->z_authent_len = *temp;
+	ptr += strlen(ptr)+1;
+	
 	notice->z_ascii_authent = ptr;
 	ptr += strlen(ptr)+1;
 	notice->z_class = ptr;
@@ -92,14 +96,16 @@ Code_t ZParseNotice(buffer,len,notice,auth,from)
 	}
 	
 	if (__Zephyr_server) {
-		if (ZReadAscii(notice->z_ascii_authent,&authent,
+		if (ZReadAscii(notice->z_ascii_authent,authent.dat,
 			       notice->z_authent_len) == ZERR_BADFIELD) {
 			*auth = 0;
 			return (ZERR_NONE);
 		}
+		authent.length = notice->z_authent_len;
 		result = rd_ap_req(&authent,SERVER_SERVICE,
 				   SERVER_INSTANCE,from->sin_addr.s_addr,
-				   dat,SERVER_SRVTAB);
+				   &dat,SERVER_SRVTAB);
+		bcopy(dat.session,__Zephyr_session,sizeof(C_Block));
 		*auth = (result == RD_AP_OK);
 		return (ZERR_NONE);
 	}

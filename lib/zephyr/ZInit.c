@@ -24,7 +24,8 @@ Code_t ZInitialize()
 	char addr[4];
 	
 	init_zeph_err_tbl();
-
+	init_krb_err_tbl();
+	
 	bzero(&__HM_addr,sizeof(__HM_addr));
 
 	__HM_addr.sin_family = AF_INET;
@@ -45,5 +46,8 @@ Code_t ZInitialize()
 
 	__HM_set = 0;
 	
+	if (get_krbrlm(__Zephyr_realm,1) != KSUCCESS)
+		strcpy(__Zephyr_realm,"NOREALM");
+
 	return (ZERR_NONE);
 }

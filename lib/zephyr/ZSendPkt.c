@@ -42,7 +42,7 @@ Code_t ZSendPacket(packet,len)
 	if (sendto(ZGetFD(),packet,len,0,&dest,sizeof(dest)) < 0)
 		return (errno);
 
-	ZParseNotice(packet,len,&notice,&auth);
+	ZParseNotice(packet,len,&notice,0,0);
 
 	if (notice.z_kind == UNSAFE || notice.z_kind == HMACK ||
 	    notice.z_kind == SERVACK || __HM_set)
@@ -54,7 +54,7 @@ Code_t ZSendPacket(packet,len)
 	for (i=0;i<12;i++) {
 		select(0,&t1,&t2,&t3,&tv);
 		retval = ZCheckIfNotice(ackpack,sizeof ackpack,&notice,
-					&auth,findack,&notice.z_uid);
+					&auth,findack,(char *)&notice.z_uid);
 		if (retval == ZERR_NONE)
 			return (ZERR_NONE);
 		if (retval != ZERR_NONOTICE)
