@@ -40,7 +40,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 
 	if ((retval = ZMakeAscii(asciiport,sizeof(asciiport),
 				 (unsigned char *)&port,
-				 sizeof(u_short))) != ZERR_NONE)
+				 sizeof(u_short), 2)) != ZERR_NONE)
 		return (retval);
 
 	(void) memset((char *)&notice, 0, sizeof(notice));

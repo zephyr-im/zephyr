@@ -13,20 +13,29 @@
 /* $Header$ */
 
 #include <internal.h>
+#include <assert.h>
 
 #ifndef lint
 static const char rcsid_ZMakeAscii_c[] = "$Id$";
 #endif
 
-Code_t ZMakeAscii(ptr, len, field, num)
+Code_t ZMakeAscii(ptr, len, field, num, proto_num)
     register char *ptr;
     int len;
     unsigned char *field;
     int num;
+    int proto_num;
 {
     int i;
     register char *itox_chars = "0123456789ABCDEF";
 
+    assert(num >= proto_num);
+
+    /* Skip higher-order bytes if field length is greater than proto length. */
+    if (num > proto_num) {
+	field += (num - proto_num);
+	num = proto_num;
+    }
     for (i=0;i<num;i++) {
 	/* we need to add "0x" if we are between 4 byte pieces */
 	if ((i & 3) == 0) {

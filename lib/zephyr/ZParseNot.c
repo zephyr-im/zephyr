@@ -120,7 +120,7 @@ Code_t ZParseNotice(buffer, len, notice)
     next_field (ptr);
 
     if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i)) == ZERR_BADFIELD)
+		   sizeof(temp.i), 4) == ZERR_BADFIELD)
 	BAD_PACKET;
     numfields = ntohl((u_long) temp.i);
     next_field (ptr);
@@ -149,7 +149,7 @@ Code_t ZParseNotice(buffer, len, notice)
 
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		       sizeof(temp.i)) == ZERR_BADFIELD)
+		       sizeof(temp.i), 4) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_kind = (ZNotice_Kind_t)ntohl((u_long) temp.i);
 	numfields--;
@@ -160,7 +160,7 @@ Code_t ZParseNotice(buffer, len, notice)
 	
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.uid,
-		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
+		       sizeof(ZUnique_Id_t), 12) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_uid = temp.uid;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_uid.tv.tv_sec);
@@ -173,7 +173,7 @@ Code_t ZParseNotice(buffer, len, notice)
 	
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.us,
-		       sizeof(u_short)) ==
+		       sizeof(u_short), 2) ==
 	    ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_port = temp.us;
@@ -185,7 +185,7 @@ Code_t ZParseNotice(buffer, len, notice)
 
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		       sizeof(int)) == ZERR_BADFIELD)
+		       sizeof(int), 4) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_auth = temp.i;
 	numfields--;
@@ -197,7 +197,7 @@ Code_t ZParseNotice(buffer, len, notice)
 	
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		       sizeof(int)) == ZERR_BADFIELD)
+		       sizeof(int), 4) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_authent_len = ntohl((u_long) temp.i);
 	numfields--;
@@ -264,7 +264,7 @@ Code_t ZParseNotice(buffer, len, notice)
 	
 /*XXX*/
     if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.sum,
-		   sizeof(ZChecksum_t))
+		   sizeof(ZChecksum_t), 4)
 	== ZERR_BADFIELD)
 	BAD_PACKET;
     notice->z_checksum = ntohl((u_long) temp.sum);
@@ -281,7 +281,7 @@ Code_t ZParseNotice(buffer, len, notice)
 
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.uid,
-		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
+		       sizeof(ZUnique_Id_t), 12) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_multiuid = temp.uid;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_multiuid.tv.tv_sec);

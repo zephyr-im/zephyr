@@ -706,34 +706,34 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 
     temp.i = htonl((u_long) (Z_NUMFIELDS+notice->z_num_other_fields));
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i)) == ZERR_FIELDLEN)
+		   sizeof(temp.i), 4) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	
     temp.i = htonl((u_long) notice->z_kind);
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i)) == ZERR_FIELDLEN)
+		   sizeof(temp.i), 4) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid, 
-		   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
+		   sizeof(ZUnique_Id_t), 12) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_port, 
-		   sizeof(u_short)) == ZERR_FIELDLEN)
+		   sizeof(u_short), 2) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_auth, 
-		   sizeof(int)) == ZERR_FIELDLEN)
+		   sizeof(int), 4) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
     temp.i = htonl((u_long) notice->z_authent_len);
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i)) == ZERR_FIELDLEN)
+		   sizeof(temp.i), 4) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
@@ -765,7 +765,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	*cstart = ptr;
     temp.sum = htonl(notice->z_checksum);
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.sum,
-		   sizeof(temp.sum)) == ZERR_FIELDLEN)
+		   sizeof(temp.sum), 4) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
     if (cend)
@@ -775,21 +775,13 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	return (ZERR_HEADERLEN);
 
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid, 
-		   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
+		   sizeof(ZUnique_Id_t), 12) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	
     for (i=0;i<notice->z_num_other_fields;i++)
 	if (Z_AddField(&ptr, notice->z_other_fields[i], end))
 	    return (ZERR_HEADERLEN);
-    
-#ifdef notdef
-    temp = htonl(notice->z_checksum);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
-		   sizeof(ZChecksum_t)) == ZERR_FIELDLEN)
-	return (ZERR_HEADERLEN);
-    ptr += strlen(ptr)+1;
-#endif
     
     *len = ptr-buffer;
 	

@@ -17,6 +17,7 @@ static char rcsid_ZReadAscii_c[] = "$Header$";
 #endif /* lint */
 
 #include <internal.h>
+#include <assert.h>
 
 #if 0
 static __inline__
@@ -35,17 +36,23 @@ Z_cnvt_xtoi (char c)
 
 #define Z_cnvt_xtoi(c)  ((temp=(c)-'0'),(temp<10)?temp:((temp-='A'-'9'-1),(temp<16)?temp:-1))
 
-Code_t ZReadAscii(ptr, len, field, num)
+Code_t ZReadAscii(ptr, len, field, num, proto_num)
     char *ptr;
     int len;
     unsigned char *field;
     int num;
+    int proto_num;
 {
     int i;
     unsigned int hexbyte;
     register int c1, c2;
     register unsigned int temp;
 
+    assert(num >= proto_num);
+    while (num > proto_num) {
+	*field++ = 0;
+	num--;
+    }
     for (i=0;i<num;i++) {
 	if (*ptr == ' ') {
 	    ptr++;
