@@ -36,7 +36,8 @@ LINCLUDES = -IMemory -IString -IDictionary
 GENERATORS= generate_stack_instance stack.h
 
 SRCDIR= ${SRCTOP}/zwgc/zwgc.dev
-CODE= ${GENERATORS} ${HDRS} ${SRCS} Imakefile
+CONFIG_FILES= zwgc.desc  zephyr.vars
+CODE= ${GENERATORS} ${HDRS} ${SRCS} ${CONFIG_FILES} Imakefile
 
 LIB=.
 LIBRARIES = $(LIB)/String/new_string.o $(LIB)/Dictionary/string_dictionary.o\
@@ -58,7 +59,7 @@ DEPENDSRCS= ${CODE} ${GENERATED}
 /*
  * The pathname for the installed default description file.
  */
-ZWGCDESC=$(ETCATHDIR)/zwgc.desc
+ZWGCDESC=$(ACLDIR)/zwgc.desc
 
 DEFINES=-DREVSTACK -DDEFDESC=\"$(ZWGCDESC)\"
 
@@ -72,6 +73,12 @@ program($(OUTPUT),$(OBJS),,$(LIBRARIES) $(LIBS),$(USRETCDIR))
 
 depend:: ${DEPENDSRCS}
 	
+install::
+	$(RM) $(DESTDIR)$(ACLDIR)/zwgc.desc
+	$(CP) zwgc.desc $(DESTDIR)$(ACLDIR)/zwgc.desc
+	$(RM) $(DESTDIR)$(ETCATHDIR)/zephyr.vars
+	$(CP) zephyr.vars $(DESTDIR)$(ETCATHDIR)/zephyr.vars
+
 YFLAGS=-d
 
 y.tab.h: parser.o
