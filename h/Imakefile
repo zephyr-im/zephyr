@@ -1,0 +1,16 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+#define have_subdirs
+#define no_curdir_lint
+
+SRCDIR= ${SRCTOP}/include
+CODE= Imakefile
+
+SUBDIRS= zephyr
