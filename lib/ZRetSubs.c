@@ -30,7 +30,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	ZNotice_t notice,retnotice;
 	ZPacket_t buffer;
 	char *ptr,*end,*ptr2;
-	char subs_recvd[MAXSUBPACKETS],asciiport[50];
+	char asciiport[50];
 	
 	retval = ZFlushSubscriptions();
 
