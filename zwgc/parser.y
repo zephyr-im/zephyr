@@ -30,6 +30,8 @@ static char rcsid_parser_y[] = "$Id$";
 #include "node.h"
 #include "zwgc.h"
 
+static void yyerror();
+
 /*
  * the_program - local variable used to communicate the program's node
  *               representation from the program action to the parse_file
