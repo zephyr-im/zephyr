@@ -1,3 +1,12 @@
+zephyr (2.1.20010518.SNAPSHOT-2) unstable; urgency=low
+
+  * On linux/alpha, timeval is 16 bytes.  Unfortunately, the protocol is
+    defined in terms of sizeof(struct timeval). Ooops. closes: #99158
+  * streamline server config script
+  * have client config script check for existence of /etc/zephyr/servers.list
+
+ -- Karl Ramm <kcr@debian.org>  Wed, 25 Jul 2001 06:00:47 -0400
+
 zephyr (2.1.20010518.SNAPSHOT-1) unstable; urgency=low
 
   * fix typo in zephyr-server config script

@@ -14,3 +14,11 @@ Description: You should never see this
  before the postinst is run.  Thus we may read the wrong value before the 
  edited value is written out in postinst.
  If this is false we skip reading config files until postinst runs.
+
+Template: zephyr-clients/need-servers
+Type: note
+Description: You have no zephyr servers specified for the client
+ The zephyr-clients package for whatever reason does not
+ have any zephyr servers configured.  Please edit the file
+ /etc/default/zephyr-clients and add  the names of your zephyr
+ servers, seperated by spaces to the zhm_args variable.
