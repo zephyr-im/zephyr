@@ -242,8 +242,9 @@ void xcut(dpy,event,desc_context)
       case ButtonPress:
 	if (current_pressop != PRESSOP_NONE) {
 	   current_pressop = PRESSOP_STOP;
-	} else if (event->xbutton.button==Button4 ||
-		   event->xbutton.button==Button5) {
+	} else if ((event->xbutton.button==Button4 ||
+		    event->xbutton.button==Button5) &&
+		   !get_bool_resource("scrollDelete","ScrollDelete",0)) {
 	  /* Ignore scroll wheel movement. */
 	  break;
 	} else if ( (event->xbutton.state)&ShiftMask ) {
