@@ -817,7 +817,6 @@ hostm_dump_hosts(fp)
 FILE *fp;
 {
 	register int i;
-	char buf[512], scratch[64];
 	for (i = 0; i < num_hosts; i++) {
 		(void) fprintf(fp, "%s/%d:\n", 
 			       inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr),
