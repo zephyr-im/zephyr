@@ -49,5 +49,8 @@ Code_t ZInitialize()
 	if (get_krbrlm(__Zephyr_realm,1) != KSUCCESS)
 		(void)strcpy(__Zephyr_realm,"NOREALM");
 
+	/* Get the sender so we can cache it */
+	(void) ZGetSender();
+	
 	return (ZERR_NONE);
 }
