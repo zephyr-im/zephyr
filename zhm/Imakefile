@@ -23,6 +23,13 @@ HDRS= zhm.h
 SRCDIR= ${SRCTOP}/zhm
 CODE= ${HDRS} ${SRCS} Imakefile
 
+/*
+ * The pathname for the pid file.
+ */
+ZHMPIDFILE=$(ETCATHDIR)/zhm.pid
+
+DEFINES=-DPIDFILE=\"$(ZHMPIDFILE)\"
+
 normal_obj_rule()
 
 program(zhm,${OBJS},,${LIBS},${ETCATHDIR})
