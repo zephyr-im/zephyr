@@ -58,4 +58,6 @@ time_t time();
 extern timer timer_set_rel(), timer_set_abs();
 extern void timer_reset(), timer_process();
 
+#define	timer_when(x)	ALARM_TIME(x)
+
 extern long nexttimo;			/* Unix time of next timout */
