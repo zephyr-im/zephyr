@@ -195,6 +195,7 @@ Code_t ZParseNotice(buffer, len, notice)
     }
     else
 	BAD;
+    notice->z_checked_auth = ZAUTH_UNSET;
 	
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,

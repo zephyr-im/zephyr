@@ -26,7 +26,7 @@ Code_t ZReceiveNotice(notice, from)
 {
     char *buffer;
     struct _Z_InputQ *nextq;
-    int len;
+    int len, auth;
     Code_t retval;
 
     if ((retval = Z_WaitForComplete()) != ZERR_NONE)
@@ -44,7 +44,11 @@ Code_t ZReceiveNotice(notice, from)
     
     (void) memcpy(buffer, nextq->packet, len);
 
+    auth = nextq->auth;
     Z_RemQueue(nextq);
     
-    return (ZParseNotice(buffer, len, notice));
+    if ((retval = ZParseNotice(buffer, len, notice)) != ZERR_NONE)
+	return (retval);
+    notice->z_checked_auth = auth;
+    return ZERR_NONE;
 }

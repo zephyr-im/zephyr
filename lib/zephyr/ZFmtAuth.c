@@ -28,7 +28,7 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
     C_Block session;
 {
     ZNotice_t newnotice;
-    char *ptr;
+    char *ptr
     int retval, hdrlen;
 
     newnotice = *notice;
@@ -37,7 +37,7 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
     newnotice.z_ascii_authent = "";
 
     if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len,
-				    &hdrlen, &ptr)) != ZERR_NONE)
+				    &hdrlen, &ptr, NULL)) != ZERR_NONE)
 	return (retval);
 
 #ifdef NOENCRYPTION
@@ -47,7 +47,7 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
 	(ZChecksum_t)des_quad_cksum(buffer, NULL, ptr - buffer, 0, session);
 #endif
     if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len,
-				    &hdrlen, (char **) 0)) != ZERR_NONE)
+				    &hdrlen, NULL, NULL)) != ZERR_NONE)
 	return (retval);
 
     ptr = buffer+hdrlen;
