@@ -14,7 +14,7 @@
  */
 
 /* This entire module goes out the window in saber */
-#ifndef SABER
+#if !defined(SABER) && (defined(DEBUG) || defined(DEBUG_MEMORY))
 
 #ifndef memory_MODULE
 #define memory_MODULE
