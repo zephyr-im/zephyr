@@ -120,11 +120,17 @@ char *argv[];
     if (optind < argc) {
 	if ((hp = gethostbyname(argv[optind++])) == NULL) {
 	    printf("Unknown server name: %s\n", argv[optind-1]);
-	} else
-	    strcpy(prim_serv, hp->h_name);
+	} else {
+	    strncpy(prim_serv, hp->h_name, sizeof(prim_serv));
+	    prim_serv[sizeof(prim_serv) - 1] = '\0';
+	}
 
 	/* argc-optind is the # of other servers on the command line */
 	serv_list = (char **) malloc((argc - optind + 2) * sizeof(char *));
+	if (serv_list == NULL) {
+	    printf("Out of memory.\n");
+	    exit(-5);
+	}
 	serv_list[numserv++] = prim_serv;
 	for (; optind < argc; optind++) {
 	    if ((hp = gethostbyname(argv[optind])) == NULL) {
@@ -267,8 +273,10 @@ static void choose_server()
 		
 		if ((c = strchr(*clust_info, ' ')) == 0) {
 		    printf("Hesiod error getting primary server info.\n");
-		} else
-		    strcpy(prim_serv, c+1);
+		} else {
+		    strncpy(prim_serv, c+1, sizeof(prim_serv));
+		    prim_serv[sizeof(prim_serv) - 1] = '\0';
+		}
 		break;
 	    }
 	    if (!strncasecmp("ZCLUSTER", *clust_info, 9)) {
@@ -292,6 +300,10 @@ static void choose_server()
 	if (zcluster == NULL) {
 	    if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
 		strcpy(zcluster, "zephyr");
+	    else {
+		printf("Out of memory.\n");
+		exit(-5);
+	    }
 	}
 	while ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
 	    syslog(LOG_ERR, "No servers or no hesiod");
@@ -299,6 +311,10 @@ static void choose_server()
 	    sleep(30);
 	}
 	clust_info = (char **) malloc(2 * sizeof(char *));
+	if (clust_info == NULL) {
+	    printf("Out of memory.\n");
+	    exit(-5);
+	}
 	if (prim_serv[0])
 	    clust_info[numserv++] = prim_serv;
 	for (i = 0; serv_list[i]; i++)
@@ -307,6 +323,10 @@ static void choose_server()
 	if (!prim_serv[0] || strcasecmp(prim_serv, serv_list[i])) {
 	    clust_info = (char **) realloc(clust_info,
 					   (numserv+2) * sizeof(char *));
+	    if (clust_info == NULL) {
+		printf("Out of memory.\n");
+		exit(-5);
+	    }
 	    clust_info[numserv++] = strsave(serv_list[i]);
 	}
 	clust_info[numserv] = NULL;
@@ -316,7 +336,8 @@ static void choose_server()
     
     if (!prim_serv[0] && numserv) {
 	srandom(time(NULL));
-	strcpy(prim_serv, serv_list[random() % numserv]);
+	strncpy(prim_serv, serv_list[random() % numserv], sizeof(prim_serv));
+	prim_serv[sizeof(prim_serv) - 1] = '\0';
     }
 }
 
@@ -341,8 +362,10 @@ static void init_hm()
      }
      init_queue();
 
-     if (*prim_serv == '\0')
-	 strcpy(prim_serv, *serv_list);
+     if (*prim_serv == '\0') {
+	 strncpy(prim_serv, *serv_list, sizeof(prim_serv));
+	 prim_serv[sizeof(prim_serv) - 1] = '\0';
+     }
   
      loopback[0] = 127;
      loopback[1] = 0;
@@ -395,8 +418,9 @@ static void init_hm()
 	  find_next_server(NULL);
      } else {
 	  DPR2("Server = %s\n", prim_serv);
-	  strcpy(cur_serv, prim_serv);
-	  memcpy(&serv_sin.sin_addr, hp->h_addr, hp->h_length);
+	  strncpy(cur_serv, prim_serv, sizeof(cur_serv));
+	  cur_serv[sizeof(cur_serv) - 1] = '\0';	
+	  memcpy(&serv_sin.sin_addr, hp->h_addr, 4);
      }
 
      send_boot_notice(HM_BOOT);
@@ -475,23 +499,57 @@ static void send_stats(notice, sin)
      newnotice.z_kind = HMACK;
 
      list[0] = (char *) malloc(MAXHOSTNAMELEN);
+     if (list[0] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
      strcpy(list[0], cur_serv);
      list[1] = (char *) malloc(64);
+     if (list[1] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
      sprintf(list[1], "%d", queue_len());
      list[2] = (char *) malloc(64);
+     if (list[2] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
      sprintf(list[2], "%d", nclt);
      list[3] = (char *) malloc(64);
+     if (list[3] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
      sprintf(list[3], "%d", nserv);
      list[4] = (char *) malloc(64);
+     if (list[4] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
      sprintf(list[4], "%d", nservchang);
      list[5] = (char *) malloc(64);
-     strcpy(list[5], rcsid_hm_c);
+     if (list[5] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     strncpy(list[5], rcsid_hm_c, 64);
+     list[5][63] = '\0';
+     
      list[6] = (char *) malloc(64);
+     if (list[6] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
      if (no_server)
 	  sprintf(list[6], "yes");
      else
 	  sprintf(list[6], "no");
      list[7] = (char *) malloc(64);
+     if (list[7] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
      sprintf(list[7], "%ld", time((time_t *)0) - starttime);
 #ifdef adjust_size
      size = (unsigned long)sbrk(0);
@@ -500,9 +558,18 @@ static void send_stats(notice, sin)
      size = -1;
 #endif
      list[8] = (char *)malloc(64);
+     if (list[8] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
      sprintf(list[8], "%ld", size);
      list[9] = (char *)malloc(32);
-     strcpy(list[9], MACHINE_TYPE);
+     if (list[9] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     strncpy(list[9], MACHINE_TYPE, 32);
+     list[9][31] = '\0';
 
      /* Since ZFormatRaw* won't change the version number on notices,
 	we need to set the version number explicitly.  This code is taken

@@ -76,7 +76,8 @@ void transmission_tower(notice, packet, pak_len)
 	    com_err("hm", ret, "while sending raw notice");
 	}
     }
-    add_notice_to_queue(notice, packet, &gsin, pak_len);
+    if (add_notice_to_queue(notice, packet, &gsin, pak_len) != ZERR_NONE)
+        syslog(LOG_INFO, "Hey! Insufficient memory to add notice to queue!");
 }
 
 Code_t
