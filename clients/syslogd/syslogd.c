@@ -82,7 +82,6 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #include <netdb.h>
 
 #include <zephyr/zephyr.h>
-#include <krb.h>
 
 #ifdef ultrix
 #define sighandler_type void
