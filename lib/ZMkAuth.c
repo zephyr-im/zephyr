@@ -20,7 +20,16 @@ static char rcsid_ZMakeAuthentication_c[] = "$Id$";
 #include <zephyr/zephyr_internal.h>
 #ifdef KERBEROS
 #include "krb_err.h"
+static int last_authent_time = 0;
+static KTEXT_ST last_authent;
 #endif
+
+Code_t ZResetAuthentication () {
+#ifdef KERBEROS
+    last_authent_time = 0;
+#endif
+    return ZERR_NONE;
+}
 
 Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     ZNotice_t *notice;
@@ -29,13 +38,21 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     int *len;
 {
 #ifdef KERBEROS
-    int retval, result;
+    int retval, result, now;
     KTEXT_ST authent;
 
-    if ((result = krb_mk_req(&authent, SERVER_SERVICE, 
-			     SERVER_INSTANCE, __Zephyr_realm, 0))
-	!= MK_AP_OK)
-	return (result+krb_err_base);
+    if (last_authent_time == 0
+	|| (now = time(0), now - last_authent_time > 120)) {
+	result = krb_mk_req(&authent, SERVER_SERVICE, 
+			    SERVER_INSTANCE, __Zephyr_realm, 0);
+	if (result != MK_AP_OK)
+	    return (result+krb_err_base);
+	last_authent_time = now;
+	last_authent = authent;
+    }
+    else {
+	authent = last_authent;
+    }
     notice->z_auth = 1;
     notice->z_authent_len = authent.length;
     notice->z_ascii_authent = (char *)malloc((unsigned)authent.length*3);
