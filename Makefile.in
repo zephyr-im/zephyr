@@ -19,10 +19,10 @@ INSTALL=@INSTALL@
 SUBDIRS=lib clients server zhm
 
 all:
-	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} ${MFLAGS} $@) || exit 1; done
+	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
 check clean:
-	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} ${MFLAGS} $@) || exit 1; done
+	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
 install:
 	${ENSUREDIR} ${DESTDIR}${prefix} 755
@@ -43,7 +43,7 @@ install:
 		${DESTDIR}${includedir}/zephyr
 	${INSTALL} -m 644 h/zephyr/zephyr.h ${DESTDIR}${includedir}/zephyr
 	${INSTALL} -m 644 h/zephyr/zephyr_err.h ${DESTDIR}${includedir}/zephyr
-	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} ${MFLAGS} $@) || exit 1; done
+	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
 .PHONY: all check install clean
 
