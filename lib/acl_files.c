@@ -54,7 +54,6 @@ static char rcsid_acl_files_c[] = "$Id$";
 
 extern int errno;
 
-extern char *malloc(), *calloc();
 extern time_t time();
 
 /* Canonicalize a principal name */
@@ -341,7 +340,7 @@ char *el;
 
     hv = hashval(el) % h->size;
     while(h->tbl[hv] != NULL && strcmp(h->tbl[hv], el)) hv = (hv+1) % h->size;
-    s = malloc(strlen(el)+1);
+    s = (char *) malloc(strlen(el)+1);
     strcpy(s, el);
     h->tbl[hv] = s;
     h->entries++;
