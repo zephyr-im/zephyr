@@ -87,7 +87,7 @@ main(argc,argv)
 		}
 		if (!strcmp(notice.z_sender,ZGetSender()))
 			continue;
-		if (!strcmp(notice.z_message,"Automated reply:\n"))
+		if (!strcmp(notice.z_message,"Automated reply:"))
 			continue;
 		if (fp) {
 			if (!(ptr = find_message(&notice,fp)))
@@ -105,7 +105,7 @@ main(argc,argv)
 		notice.z_sender = 0;
 		notice.z_default_format = 0;
 		     
-		msg[0] = "Automated reply:\n";
+		msg[0] = "Automated reply:";
 		msg[1] = ptr;
 		
 		notice.z_message_len = strlen(notice.z_message)+1;
