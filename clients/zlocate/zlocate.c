@@ -73,110 +73,107 @@ main(argc,argv)
 	int argc;
 	char *argv[];
 {
-   char user[BUFSIZ],*whichuser;
-   ZAsyncLocateData_t ald;
-   int retval,i,numlocs,loc,auth;
-   ZNotice_t notice;
-   
-   whoami = argv[0];
-   auth = -1;
-
-   argv++;
-   argc--;
-
-   for (i=0; i < argc; i++)
-      if (argv[i][0] == '-')
-	 switch (argv[i][1]) {
-	  case 'a':
-	    if (auth != -1) usage();
-	    auth = 1;
-	    break;
-	  case 'd':
-	    if (auth != -1) usage();
-	    auth = 0;
-	    break;
-	  case 'p':
-	    parallel = 1;
-	    break;
-	  case '1':
-	    oneline = 1;
-	    break;
-	  default:
-	    usage();
-	    break;
-	 }
-      else
-	 numusers++;
-
-   if (numusers == 0)
-     usage();
-
-   if (auth == -1) auth = 1;
-   
-   if ((retval = ZInitialize()) != ZERR_NONE) {
-      com_err(whoami,retval,"while initializing");
-      exit(1);
-   } 
-
-#if 0
-   {
-     int len,len2;
-     ZOpenPort((u_short*)0);
-     if(getsockopt(ZGetFD(), SOL_SOCKET, SO_RCVBUF, (char *)&len, &len2) == -1)
-       perror("getsockopt");
-     fprintf(stderr, "socket RCVBUF is %x\n", len);
-     len = 56 * 1024;
-     if(setsockopt(ZGetFD(), SOL_SOCKET, SO_RCVBUF, (char *)&len, sizeof(int)) == -1)
-       perror("setsockopt");
-   }
+    char user[BUFSIZ],*whichuser;
+    ZAsyncLocateData_t ald;
+    int retval,i,numlocs,loc,auth;
+    ZNotice_t notice;
+#ifdef POSIX
+    struct sigaction sa;
 #endif
+   
+    whoami = argv[0];
+    auth = -1;
 
-   numleft = numusers;
+    argv++;
+    argc--;
 
-   i = 0;
-   for (loc = 0; loc < argc; loc++) {
-      if (argv[loc][0] == '-') continue;
+    for (i=0; i < argc; i++)
+	if (argv[i][0] == '-')
+	    switch (argv[i][1]) {
+	    case 'a':
+		if (auth != -1) usage();
+		auth = 1;
+		break;
+	    case 'd':
+		if (auth != -1) usage();
+		auth = 0;
+		break;
+	    case 'p':
+		parallel = 1;
+		break;
+	    case '1':
+		oneline = 1;
+		break;
+	    default:
+		usage();
+		break;
+	    }
+	else
+	    numusers++;
 
-      (void) strcpy(user,argv[loc]);
-      if (!index(user,'@')) {
-	 (void) strcat(user,"@");
-	 (void) strcat(user,ZGetRealm());
-      } 
-      if (parallel) {
-	 if ((retval = ZRequestLocations(user, &ald, i ? UNSAFE : UNACKED,
-					 auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
-	    com_err(whoami,retval,"requesting location of %s",user);
-	    exit(1);
-	 }
-	 i = 1;
-      } else {
-	 if ((retval = ZLocateUser(user,&numlocs,auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
-	    com_err(whoami,retval,"while locating user %s",user);
-	    exit(1);
-	 }
-	 print_locs(user,numlocs);
-      }
-   }
+    if (numusers == 0)
+	usage();
 
-   if (parallel) {
-      signal (SIGALRM, timeout);
-      while (numleft-- > 0) {
-	 alarm(SRV_TIMEOUT);
-	 if ((retval = ZReceiveNotice(&notice, NULL)) != ZERR_NONE) {
-	    com_err(whoami,retval,"while searching notice queue");
-	    continue;
-	 }
-	 if ((retval = ZParseLocations(&notice, (ZAsyncLocateData_t *)NULL,
-				       &numlocs, &whichuser)) != ZERR_NONE) {
-	     com_err(whoami,retval,"while parsing locations");
-	     continue;
-	 }
-	 if (numlocs >= 0) {
-	     print_locs(whichuser,numlocs);
-	     free(whichuser);
-	 }
-	 ZFreeNotice(&notice);
-      }
-   }
-   return(0);
+    if (auth == -1) auth = 1;
+   
+    if ((retval = ZInitialize()) != ZERR_NONE) {
+	com_err(whoami,retval,"while initializing");
+	exit(1);
+    } 
+
+    numleft = numusers;
+
+    i = 0;
+    for (loc = 0; loc < argc; loc++) {
+	if (argv[loc][0] == '-') continue;
+
+	(void) strcpy(user,argv[loc]);
+	if (!index(user,'@')) {
+	    (void) strcat(user,"@");
+	    (void) strcat(user,ZGetRealm());
+	} 
+	if (parallel) {
+	    if ((retval = ZRequestLocations(user, &ald, i ? UNSAFE : UNACKED,
+					    auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
+		com_err(whoami,retval,"requesting location of %s",user);
+		exit(1);
+	    }
+	    i = 1;
+	} else {
+	    if ((retval = ZLocateUser(user,&numlocs,auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
+		com_err(whoami,retval,"while locating user %s",user);
+		exit(1);
+	    }
+	    print_locs(user,numlocs);
+	}
+    }
+
+    if (parallel) {
+#ifdef POSIX
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sa.sa_handler = timeout;
+	sigaction(SIGALRM, &sa, (struct sigaction *)0);
+#else
+	signal (SIGALRM, timeout);
+#endif
+	while (numleft-- > 0) {
+	    alarm(SRV_TIMEOUT);
+	    if ((retval = ZReceiveNotice(&notice, NULL)) != ZERR_NONE) {
+		com_err(whoami,retval,"while searching notice queue");
+		continue;
+	    }
+	    if ((retval = ZParseLocations(&notice, (ZAsyncLocateData_t *)NULL,
+					  &numlocs, &whichuser)) != ZERR_NONE) {
+		com_err(whoami,retval,"while parsing locations");
+		continue;
+	    }
+	    if (numlocs >= 0) {
+		print_locs(whichuser,numlocs);
+		free(whichuser);
+	    }
+	    ZFreeNotice(&notice);
+	}
+    }
+    return(0);
 }
