@@ -373,7 +373,7 @@ void zwgc_startup()
       return;
 
     if (saved_subscriptions) {
-	TRAP(ZSubscribeTo(saved_subscriptions,number_of_saved_subscriptions,0),
+	TRAP(ZSubscribeToSansDefaults(saved_subscriptions,number_of_saved_subscriptions,0),
 	     "while resubscribing to zephyr messages");
 	free(saved_subscriptions);
 	saved_subscriptions = NULL;
