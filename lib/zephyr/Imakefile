@@ -11,11 +11,17 @@
 
 LINTLIBS= ${KRB_LINTLIB} ${DES_LINTLIB} ${COMERR_LINTLIB}
 
+/**/#dummy target so that 'make' does a make all.
+all:: libzephyr.a
+
 #ifdef KERBEROS
-RSRCS= ${SRCS} ${HDRS} krb_err.et zephyr_err.et
-#else
-RSRCS= ${SRCS} ${HDRS} zephyr_err.et
+KERR_O= krb_err.o
+KERR_ET=krb_err.et
+make_error_table(krb_err)
 #endif
+
+RSRCS= ${SRCS} ${HDRS} ${KERR_ET} zephyr_err.et
+
 HDRS= \
 	../include/zephyr/zephyr.h \
 	../include/zephyr/zephyr_conf.h \
@@ -72,9 +78,8 @@ SRCS=	\
 	acl_files.c \
 	strcasecmp.c
 
-#ifdef KERBEROS
 OLIST=	\
-	krb_err.o \
+	${KERR_O} \
 	zephyr_err.o \
 	ZCheckAuthentication.o \
 	ZCheckIfNotice.o \
@@ -124,67 +129,8 @@ OLIST=	\
 	ZVariables.o \
 	Zinternal.o \
 	acl_files.o
-#else /* !KERBEROS */
-OLIST=	\
-	zephyr_err.o \
-	ZCheckAuthentication.o \
-	ZCheckIfNotice.o \
-	ZClosePort.o \
-	ZCompareUID.o \
-	ZCompareUIDPred.o \
-	ZFlushLocations.o \
-	ZFlushSubscriptions.o \
-	ZFormatAuthenticNotice.o \
-	ZFormatNotice.o \
-	ZFormatNoticeList.o \
-	ZFormatRawNotice.o \
-	ZFormatRawNoticeList.o \
-	ZFormatSmallRawNotice.o \
-	ZFormatSmallRawNoticeList.o \
-	ZFreeNotice.o \
-	ZGetLocations.o \
-	ZGetSender.o \
-	ZGetSubscriptions.o \
-	ZGetWGPort.o \
-	ZIfNotice.o \
-	ZInitialize.o \
-	ZLocateUser.o \
-	ZLocations.o \
-	ZMakeAscii.o \
-	ZMakeAuthentication.o \
-	ZNewLocateUser.o \
-	ZOpenPort.o \
-	ZParseNotice.o \
-	ZPeekIfNotice.o \
-	ZPeekNotice.o \
-	ZPeekPacket.o \
-	ZPending.o \
-	ZReadAscii.o \
-	ZReceiveNotice.o \
-	ZReceivePacket.o \
-	ZRetrieveSubscriptions.o \
-	ZSendList.o \
-	ZSendNotice.o \
-	ZSendPacket.o \
-	ZSendRawNotice.o \
-	ZSendRawList.o \
-	ZSetDestAddr.o \
-	ZSetFD.o \
-	ZSetServerState.o \
-	ZSubscriptions.o \
-	ZVariables.o \
-	Zinternal.o \
-	acl_files.o
-#endif /* KERBEROS */
 
-/**/#dummy target so that 'make' does a make all.
-all:: libzephyr.a
-
-#ifdef KERBEROS
-KRB_OTHERSRCS= krb_err.et
-#endif /* KERBEROS */
-
-OTHERSRCS= zephyr_err.et ${KRB_OTHERSRCS}
+OTHERSRCS= zephyr_err.et ${KERR_ET}
 SRCDIR= ${SRCTOP}/lib
 CODE= ${SRCS} ${OTHERSRCS} Imakefile
 
@@ -199,9 +145,6 @@ library_obj_rule()
 install_library_target(zephyr,${OLIST},${SRCS},${LINTLIBS})
 
 make_error_table(zephyr_err)
-#ifdef KERBEROS
-make_error_table(krb_err)
-#endif
 
 all::
 	$(RM) ../libs/libzephyr.a ../libs/libzephyr_p.a
