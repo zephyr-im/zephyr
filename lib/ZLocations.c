@@ -19,6 +19,8 @@
 #include <pwd.h>
 #include <sys/file.h>
 
+uid_t getuid();
+
 Code_t ZSetLocation()
 {
 	char bfr[BUFSIZ];
@@ -26,8 +28,8 @@ Code_t ZSetLocation()
 	struct passwd *pw;
 	
         quiet = 0;
-	/*NOSTRICT*/
-	if (pw = getpwuid(getuid())) {
+	/* XXX a uid_t is a u_short (now), but getpwuid wants an int. AARGH! */
+	if (pw = getpwuid((int) getuid())) {
 		(void) sprintf(bfr,"%s/.hideme",pw->pw_dir);
 		quiet = !access(bfr,F_OK);
 	} 
