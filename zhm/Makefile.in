@@ -29,7 +29,7 @@ OBJS=	timer.o queue.o zhm.o zhm_client.o zhm_server.o
 all: zhm
 
 zhm: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
-	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+	${BUILDTOP}/athstatic ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<
