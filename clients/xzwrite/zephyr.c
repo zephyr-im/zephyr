@@ -256,33 +256,6 @@ static int zeph_send_notice(notice, auth)
      return SEND_OK;
 }
 
-#ifdef DEBUG
-/* debugging function */
-void zeph_display_subscriptions()
-{
-     ZSubscription_t sub;
-     int n, retval, i = 1;
-
-     retval = ZRetrieveSubscriptions((unsigned short) 0, &n);
-     if (retval != ZERR_NONE) {
-	  Warning(error_message(retval), " while retrieving subscriptions.",
-		  NULL);
-	  return;
-     }
-
-     printf("Retrieving %d subscriptions.\n", n);
-
-     while (ZGetSubscriptions(&sub, &i) == ZERR_NONE) {
-	  if (i != 1)
-	       Warning("Subscriptions skipped while printing.", NULL);
-	  
-	  printf("<%s,%s,%s>\n", sub.class, (*sub.zsub_classinst) ?
-		 sub.zsub_classinst : "**", (*sub.zsub_recipient) ?
-		 sub.zsub_recipient : "**");
-     }
-}
-#endif
-
 void log_message(dest, msg)
    Dest	dest;
    char	*msg;
