@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -16,7 +16,7 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_main_c[] =
-    "$Id$";
+    "$Zephyr: main.C,v 1.45 91/03/08 14:09:46 raeburn Exp $";
 #endif
 #endif
 
@@ -75,6 +75,12 @@ extern "C" {
 #include <sys/wait.h>
 }
 
+#if !defined(__SABER__) && (defined (vax) || defined (ibm032))
+#define MONCONTROL moncontrol
+#else
+#define MONCONTROL (void)
+#endif
+
 #define	EVER		(;;)		/* don't stop looping */
 
 static int do_net_setup(void), initialize(void);
@@ -107,8 +113,7 @@ int nfildes;				/* number to look at in select() */
 struct sockaddr_in sock_sin;		/* address of the socket */
 struct timeval nexthost_tv;		/* time till next timeout for select */
 
-static ZNotAcked_t not_acked_head;
-ZNotAcked_t *nacklist = &not_acked_head; /* list of packets waiting for acks */
+ZNotAcked_t *nacklist;			/* list of packets waiting for ack's */
 
 u_short hm_port;			/* the port # of the host manager */
 
@@ -321,6 +326,19 @@ initialize(void)
 
 	server_init();
 
+#if 0
+	if (!(nacklist = (ZNotAcked_t *) xmalloc(sizeof(ZNotAcked_t)))) {
+		/* unrecoverable */
+		syslog(LOG_CRIT, "nacklist malloc");
+		abort();
+	}
+#else
+	{
+	    static ZNotAcked_t not_acked_head;
+	    nacklist = &not_acked_head;
+	}
+#endif
+	bzero((caddr_t) nacklist, sizeof(ZNotAcked_t));
 	nacklist->q_forw = nacklist->q_back = nacklist;
 
 	nexttimo = 1L;	/* trigger the timers when we hit
@@ -478,9 +496,9 @@ dump_db(int sig)
 	pid = -1;
 #else
 	if (fork_for_dump) {
-	    moncontrol (0);
+	    MONCONTROL (0);
 	    pid = fork ();
-	    moncontrol (1);
+	    MONCONTROL (1);
 	}
 	else
 	    pid = -1;
@@ -534,13 +552,11 @@ reap(int sig)
 static void
 do_reset(void)
 {
-	int oerrno;
-	int omask;
+	int oerrno = errno;
 #if 0
 	zdbug((LOG_DEBUG,"do_reset()"));
 #endif
-	omask = sigblock (sigmask (SIGHUP));
-	oerrno = errno;
+	SignalBlock no_hups (sigmask (SIGHUP));
 
 	/* reset various things in the server's state */
 	subscr_reset();
@@ -549,7 +565,6 @@ do_reset(void)
 	syslog (LOG_INFO, "restart completed");
 	doreset = 0;
 	errno = oerrno;
-	sigsetmask (omask);
 }
 
 #ifndef DEBUG
@@ -564,13 +579,9 @@ detach(void)
 	register int i, size = getdtablesize();
 
 	/* profiling seems to get confused by fork() */
-#ifndef __SABER__
-	moncontrol (0);
-#endif
+	MONCONTROL (0);
 	i = fork ();
-#ifndef __SABER__
-	moncontrol (1);
-#endif
+	MONCONTROL (1);
 	if (i) {
 		if (i < 0)
 			perror("fork");
@@ -583,7 +594,6 @@ detach(void)
 	i = open("/dev/tty", O_RDWR, 666);
 	(void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
 	(void) close(i);
-
 }
 #endif
 
