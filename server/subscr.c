@@ -49,7 +49,7 @@ static char rcsid_subscr_s_c[] = "$Header$";
  *	ZNotice_t *notice;
  *	struct sockaddr_in *who;
  *
- * void subscr_send_subs(client)
+ * Code_t subscr_send_subs(client)
  *	ZClient_t *client;
  */
 
@@ -463,7 +463,7 @@ struct sockaddr_in *who;
  * Send the client's subscriptions
  */
 
-void
+Code_t
 subscr_send_subs(client)
 ZClient_t *client;
 {
@@ -489,7 +489,7 @@ ZClient_t *client;
 					  lyst, num)) != ZERR_NONE ) {
 		syslog(LOG_ERR, "subscr_send_subs newclt: %s",
 		       error_message(retval));
-		return;
+		return(retval);
 	}
 	
 	if (!client->zct_subs)
@@ -514,7 +514,7 @@ ZClient_t *client;
 			    != ZERR_NONE) {
 				syslog(LOG_ERR, "subscr_send_subs subs: %s",
 				       error_message(retval));
-				return;
+				return(retval);
 			}
 			i = 0;
 		}
@@ -527,10 +527,10 @@ ZClient_t *client;
 		    != ZERR_NONE) {
 			syslog(LOG_ERR, "subscr_send_subs subs: %s",
 			       error_message(retval));
-			return;
+			return(retval);
 		}
 	}
-	return;
+	return(ZERR_NONE);
 }
 
 /*
@@ -665,12 +665,11 @@ register ZNotice_t *notice;
 	register ZSubscr_t *subs = NULLZST, *subs2;
 	register char *recip, *class, *classinst;
 	register char *cp = notice->z_message;
-	char *buf;
 
 	/* parse the data area for the subscriptions */
 	while (cp < notice->z_message + notice->z_message_len) {
-		class = buf = cp;
-		if (*buf == '\0')
+		class = cp;
+		if (*cp == '\0')
 			/* we've exhausted the subscriptions */
 			return(subs);
 		/* we lowercase the class and class instance
@@ -681,19 +680,18 @@ register ZNotice_t *notice;
 			cp++;
 		}
 		cp = class;
-		zdbug((LOG_DEBUG,"class %s",cp));
 		ADVANCE(1);
-		classinst = buf = cp;
+		classinst = cp;
 		while (*cp) {
 			if (isupper(*cp))
 				*cp = tolower(*cp);
 			cp++;
 		}
 		cp = classinst;
-		zdbug((LOG_DEBUG,"clinst %s",cp));
 		ADVANCE(2);
 		recip = cp;
-		zdbug((LOG_DEBUG,"recip %s",cp));
+		zdbug((LOG_DEBUG,"CLS: %s INST: %s RCPT: %s",
+		       class, classinst, cp));
 		cp += (strlen(cp) + 1);
 		if (cp > notice->z_message + notice->z_message_len) {
 			syslog(LOG_WARNING, "malformed sub 3");
