@@ -29,5 +29,5 @@ Code_t ZSetLocation()
 	notice.z_recipient = "";
 	notice.z_message_len = 0;
 
-	return (ZSendNotice(&notice));
+	return (ZSendNotice(&notice,1));
 }
