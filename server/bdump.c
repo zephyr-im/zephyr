@@ -21,10 +21,6 @@ static char rcsid_bdump_s_c[] = "$Header$";
 
 #include "zserver.h"
 #include <sys/socket.h>
-#ifdef lint
-/* so it shuts up about struct iovec */
-#include <sys/uio.h>
-#endif lint
 #include <signal.h>
 
 /*
@@ -300,7 +296,7 @@ ZServerDesc_t *server;
 #endif KERBEROS
 
 	if (zdebug)
-		(LOG_DEBUG, "bdump avail %s",inet_ntoa(who->sin_addr));
+		syslog(LOG_DEBUG, "bdump avail %s",inet_ntoa(who->sin_addr));
 
 	/* version number 1 is the same as no version number */
 	if (strcmp(notice->z_class_inst, "1")
@@ -630,8 +626,12 @@ ZServerDesc_t *server;
 {
 	Code_t retval;
 
-	/* if we have no hosts in the 'limbo' state (on the limbo server),
-	   ask for the other server to send us the limbo state. */
+	/* 
+	 * if we have no hosts in the 'limbo' state (on the limbo server),
+	 * ask for the other server to send us the limbo state.
+	 * Thus we keep track of all the hosts which haven't spoken in a while,
+	 * even in the face of server failure.
+	 */
 	if (otherservers[limbo_server_idx()].zs_hosts->q_forw ==
 	    otherservers[limbo_server_idx()].zs_hosts) {
 		if ((retval = bdump_ask_for(ADMIN_LIMBO)) != ZERR_NONE)
@@ -778,7 +778,13 @@ ZServerDesc_t *server;
 			}
 			who_valid = 1;
 			/* 1 = tell it we are authentic */
-			hostm_dispatch(&notice, 1, &current_who, server);
+			if ((retval = hostm_dispatch(&notice, 1,
+						    &current_who, server))
+			     != ZERR_NONE) {
+				syslog(LOG_ERR,"brl hm_disp failed: %s",
+				       error_message(retval));
+				return(retval);
+			}
 		} else if (!strcmp(notice.z_opcode, ADMIN_DONE)) {
 			/* end of brain dump */
 			return(ZERR_NONE);
@@ -787,7 +793,13 @@ ZServerDesc_t *server;
 			return(ZSRV_HNOTFOUND);
 		} else if (!strcmp(notice.z_class, LOGIN_CLASS)) {
 			/* 1 = tell it we are authentic */
-			ulogin_dispatch(&notice, 1, &current_who, server);
+			if ((retval = ulogin_dispatch(&notice, 1,
+						     &current_who, server))
+			     != ZERR_NONE) {
+				syslog(LOG_ERR, "brl ul_disp failed: %s",
+				       error_message(retval));
+				return(retval);
+			}
 		} else if (!strcmp(notice.z_opcode, ADMIN_NEWCLT)) {
 			/* register a new client */
 			notice.z_port = htons((u_short)atoi(notice.z_message));
