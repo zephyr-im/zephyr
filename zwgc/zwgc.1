@@ -344,7 +344,7 @@ True if either of
 .IR expr1 " or " expr2
 are true.
 .TP
-.BI "! " expr1
+\fB! \fIexpr1\fR, \fBnot \fIexpr1\fR
 The logical negation of
 .I expr1.
 
@@ -515,14 +515,14 @@ Supported @ commands are:
 .\" @em
 .\" Emphasis.  Use underline if available, else reverse video.
 .TQ 15
-@bold
+@roman
+Roman (plain) letters (turns off all special modes).
+.TQ
+@b or @bold
 Bold letters.  If not available, reverse video, else underline.
 .TQ
-@italic
+@i or @italic
 Italic letters (underlining, if available).
-.TQ
-@roman
-Roman (plain) letters (no special modes).
 .TQ
 @beep
 "bl" termcap entry, else "^G" (beep the terminal)
@@ -557,11 +557,20 @@ formatted according to @ commands embedded in the string.  Supported
 @roman
 turns off @italic and @bold
 .TQ
-@bold
+@b or @bold
 turns on boldface
 .TQ
-@italic
+@i or @italic
 turns on italics
+.TQ
+@l or @left
+left aligned
+.TQ
+@c or @center
+center aligned
+.TQ
+@r or @right
+right aligned
 .TQ
 @large
 large type size
@@ -574,15 +583,6 @@ small type size
 .TQ
 @beep
 Ring the X bell once
-.TQ
-@l or @left
-left aligned
-.TQ
-@c or @center
-center aligned
-.TQ
-@r or @right
-right aligned
 .TP
 @font
 sets the current font to the font specified in the contents of the
