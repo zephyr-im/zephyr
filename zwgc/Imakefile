@@ -18,7 +18,7 @@ LIBS2= -lc -lPW
 LIBS2 = -lgen
 #endif
 
-LIBS = $(ZLIBS) $(LIB_X) $(TERMCAP) $(LIBS2)
+LIBS = $(ZLIB) $(LIB_X) $(TERMCAP) $(LIBS2)
 
 SRCS = parser.y lexer.c node.c exec.c buffer.c main.c zephyr.c X_driver.c\
           substitute.c port.c xshow.c \
@@ -26,12 +26,14 @@ SRCS = parser.y lexer.c node.c exec.c buffer.c main.c zephyr.c X_driver.c\
 	  character_class.c text_operations.c file.c error.c variables.c\
 	  formatter.c X_fonts.c X_gram.c tty_filter.c standard_ports.c\
 	  xselect.c xmark.c xrevstack.c xerror.c
+
 OBJS = parser.o lexer.o node.o exec.o buffer.o main.o zephyr.o X_driver.o\
           substitute.o port_dictionary.o port.o xshow.o pointer_dictionary.o\
           mux.o eval.o subscriptions.o notice.o xcut.o regexp.o\
 	  character_class.o text_operations.o file.o error.o variables.o\
 	  formatter.o X_fonts.o X_gram.o tty_filter.o standard_ports.o\
-	  xselect.o xmark.o xrevstack.o xerror.o ulong_dictionary.o
+	  xselect.o xmark.o xrevstack.o xerror.o ulong_dictionary.o \
+	  $(LIBRARIES)
 
 LIBRARIES = ./String/new_string.o\
 	    ./Dictionary/string_dictionary.o\
@@ -61,7 +63,7 @@ foreach_subdirs(clean,$(SUBDIRS))
 foreach_subdirs(all,$(SUBDIRS))
 foreach_subdirs(depend,$(SUBDIRS))
 
-SimpleProgram(zwgc,$(OBJS) $(LIBRARIES),$(LIBS),$(ATHBINDIR))
+zprogram(zwgc,$(LIBS))
 install_man(zwgc.1,zwgc.1)
 
 #ifdef ATHENA_COMPAT
@@ -86,27 +88,27 @@ y.tab.h: parser.o
 
 /**/# How to generate a port dictionary:
 port_dictionary.c port_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ./Dictionary port port.h
+	./generate_instance ./Dictionary dictionary port port.h
 
 /**/# How to generate a pointer dictionary:
 pointer_dictionary.c pointer_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ./Dictionary pointer pointer.h
+	./generate_instance ./Dictionary dictionary pointer pointer.h
 
 /**/# How to generate a ulong dictionary:
 ulong_dictionary.c ulong_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ./Dictionary ulong ulong.h
+	./generate_instance ./Dictionary dictionary ulong ulong.h
 
 /**/# How to generate a char stack:
 char_stack.h: stack.h
-	./generate_stack_instance . char
+	./generate_instance . stack char
 
 /**/# How to generate a string stack:
 string_stack.h: stack.h
-	./generate_stack_instance . string
+	./generate_instance . stack string
 
 /**/# How to generate a xmode stack:
 xmode_stack.h: stack.h
-	./generate_stack_instance . xmode
+	./generate_instance . stack xmode
 
 clean::
 	$(RM) $(GENERATED)
