@@ -39,7 +39,8 @@ main(argc,argv)
 	struct passwd *pwd;
 	char anyonename[BUFSIZ],name[BUFSIZ],cleanname[BUFSIZ],*envptr;
 	int onoff = ON,quiet = 0,justlist = 0;
-	int retval,arg,ind,wgport,one,numlocs,i;
+	int retval,arg,ind,one,numlocs,i;
+	short wgport;
 
 	if ((retval = ZInitialize()) != ZERR_NONE) {
 		com_err(argv[0],retval,"initializing");
