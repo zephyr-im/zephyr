@@ -55,5 +55,8 @@ inline int access_check(ZString sender, ZAcl_t *acl, ZAccess_t accesstype) {
 /* found in access.c */
 extern void access_init (void), access_reinit (void);
 
+/* found in acl_files.c */
+extern "C" int acl_load (char *);
+
 /* external data relevant */
 extern int zdebug;
