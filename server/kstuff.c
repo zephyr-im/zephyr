@@ -69,7 +69,7 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
 	 */
 	(void) strcpy(instance,"*");	/* let Kerberos fill it in */
 
-	return(rd_ap_req(&ticket,service,instance,haddr,kdata, srvtab ? srvtab : ""));
+	return(krb_rd_req(&ticket,service,instance,haddr,kdata, srvtab ? srvtab : ""));
 }
 
 /*
@@ -96,7 +96,7 @@ char *service, *host;			/* service name, foreign host */
     if (rem != KSUCCESS)
       return(rem);
 
-    rem = mk_ap_req( ticket, service, host, krb_realm, (u_long)0 );
+    rem = krb_mk_req( ticket, service, host, krb_realm, (u_long)0 );
     if (rem != KSUCCESS)
       return(rem);
 
