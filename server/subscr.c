@@ -50,8 +50,9 @@ static char rcsid_subscr_s_c[] = "$Header$";
  *	int auth;
  *	struct sockaddr_in *who;
  *
- * Code_t subscr_send_subs(client)
+ * Code_t subscr_send_subs(client, version)
  *	ZClient_t *client;
+ *	char *version;
  */
 
 #include "zserver.h"
@@ -579,9 +580,14 @@ struct sockaddr_in *who;
  * Send the client's subscriptions
  */
 
+/* version is currently unused; if necessary later versions may key off it
+   to determine what to send to the peer (protocol changes) */
+
+/*ARGSUSED*/
 Code_t
-subscr_send_subs(client)
+subscr_send_subs(client, version)
 ZClient_t *client;
+char *version;
 {
 	register int i = 0;
 	register ZSubscr_t *sub;
