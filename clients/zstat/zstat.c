@@ -51,7 +51,7 @@ RETSIGTYPE timeout()
 }
 
 int serveronly = 0,hmonly = 0;
-u_short hm_port,srv_port;
+u_short srv_port;
 
 main(argc, argv)
 	int argc;
@@ -94,9 +94,6 @@ main(argc, argv)
 		exit(1);
 	}
 
-	sp = getservbyname(HM_SVCNAME,"udp");
-	hm_port = (sp) ? sp->s_port : HM_SVC_FALLBACK;
-
 	sp = getservbyname(SERVER_SVCNAME,"udp");
 	srv_port = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
 
@@ -135,10 +132,12 @@ do_stat(host)
 hm_stat(host,server)
 	char *host,*server;
 {
+	struct in_addr inaddr;
+	Code_t code;
+
 	char *line[20],*mp;
 	int sock,i,nf,ret;
 	struct hostent *hp;
-	struct sockaddr_in sin;
 	time_t runtime;
 	struct tm *tim;
 	ZNotice_t notice;
@@ -146,68 +145,21 @@ hm_stat(host,server)
 	struct sigaction sa;
 #endif
 	
-	(void) memset((char *)&sin, 0, sizeof(struct sockaddr_in));
-
-	sin.sin_port = hm_port;
-
-	if ((sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("socket:");
-		exit(-1);
-	}
-	
-	sin.sin_family = AF_INET;
-
-	if ((sin.sin_addr.s_addr = inet_addr(host)) == (unsigned)(-1)) {
+	if ((inaddr.s_addr = inet_addr(host)) == (unsigned)(-1)) {
 	    if ((hp = gethostbyname(host)) == NULL) {
 		fprintf(stderr,"Unknown host: %s\n",host);
 		exit(-1);
 	    }
-	    (void) memcpy((char *) &sin.sin_addr, hp->h_addr, hp->h_length);
+	    (void) memcpy((char *) &inaddr, hp->h_addr, hp->h_length);
 
 	    printf("Hostmanager stats: %s\n", hp->h_name);
 	} else {
 	    printf("Hostmanager stats: %s\n", host);
 	}
 	
-	(void) memset((char *)&notice, 0, sizeof(notice));
-	notice.z_kind = STAT;
-	notice.z_port = 0;
-	notice.z_class = HM_STAT_CLASS;
-	notice.z_class_inst = HM_STAT_CLIENT;
-	notice.z_opcode = HM_GIMMESTATS;
-	notice.z_sender = "";
-	notice.z_recipient = "";
-	notice.z_default_format = "";
-	notice.z_message_len = 0;
-	
-	if ((ret = ZSetDestAddr(&sin)) != ZERR_NONE) {
-		com_err("zstat", ret, "setting destination");
-		exit(-1);
-	}
-	if ((ret = ZSendNotice(&notice, ZNOAUTH)) != ZERR_NONE) {
-		com_err("zstat", ret, "sending notice");
-		exit(-1);
-	}
-#ifdef _POSIX_VERSION
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	sa.sa_handler = timeout;
-	(void) sigaction(SIGALRM, &sa, (struct sigaction *)0);
-#else
-	(void) signal(SIGALRM,timeout);
-#endif
-	outoftime = 0;
-	(void) alarm(10);
-	if (((ret = ZReceiveNotice(&notice, (struct sockaddr_in *) 0))
-	     != ZERR_NONE) &&
-	    ret != EINTR) {
-		com_err("zstat", ret, "receiving notice");
-		return (1);
-	}
-	(void) alarm(0);
-	if (outoftime) {
-		fprintf(stderr,"No response after 10 seconds.\n");
-		return (1);
+	if ((code = ZhmStat(&inaddr, &notice)) != ZERR_NONE) {
+	    com_err("zstat", ret, "getting hostmanager status");
+	    exit(-1);
 	}
 	
 	mp = notice.z_message;
