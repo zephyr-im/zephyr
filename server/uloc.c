@@ -419,10 +419,12 @@ ulocate_dispatch(notice, auth, who, server)
 			nack(notice, who);
 		return(ZERR_NONE);
 	}
+#if 0
 	if (server == me_server) {
 		server_forward(notice, auth, who);
 		ack(notice, who);
 	}
+#endif
 	return(ZERR_NONE);
 }
 
