@@ -20,18 +20,16 @@ static char rcsid_ZPeekNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZPeekNotice(buffer,buffer_len,notice,from)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	ZNotice_t	*notice;
-	struct		sockaddr_in *from;
+Code_t ZPeekNotice(notice, from)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
 {
-	int len;
-	Code_t retval;
+    char *buffer;
+    int len;
+    Code_t retval;
+	
+    if ((retval = ZPeekPacket(&buffer, &len, from)) != ZERR_NONE)
+	return (retval);
 
-	if ((retval = ZPeekPacket(buffer,buffer_len,&len,from)) !=
-	    ZERR_NONE)
-		return (retval);
-
-	return (ZParseNotice(buffer,len,notice));
+    return (ZParseNotice(buffer, len, notice));
 }

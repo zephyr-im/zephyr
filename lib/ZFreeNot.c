@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for the ZCompareUIDPred function.
+ * It contains source for the ZFreeNotice function.
  *
  *	Created by:	Robert French
  *
@@ -13,16 +13,15 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZCompareUIDPred_c[] = "$Header$";
+static char rcsid_ZSendPacket_c[] = "$Header$";
 #endif lint
 
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
 
-int ZCompareUIDPred(notice, uid)
+Code_t ZFreeNotice(notice)
     ZNotice_t *notice;
-    ZUnique_Id_t *uid;
 {
-    return (ZCompareUID(&notice->z_uid, uid));
+    free(notice->z_packet);
 }

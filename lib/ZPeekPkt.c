@@ -20,32 +20,37 @@ static char rcsid_ZPeekPacket_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZPeekPacket(buffer,buffer_len,ret_len,from)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	int		*ret_len;
-	struct		sockaddr_in *from;
+Code_t ZPeekPacket(buffer, ret_len, from)
+    char **buffer;
+    int *ret_len;
+    struct sockaddr_in *from;
 {
-	int retval;
-	
-	if (ZGetFD() < 0)
-		return (ZERR_NOPORT);
+    int retval;
+    struct _Z_InputQ *nextq;
+    
+    if (ZGetFD() < 0)
+	return (ZERR_NOPORT);
 
-	if (!ZQLength())
-		if ((retval = Z_ReadWait()) != ZERR_NONE)
-			return (retval);
+    if (ZQLength()) {
+	if ((retval = Z_ReadEnqueue()) != ZERR_NONE)
+	    return (retval);
+    }
+    else {
+	if ((retval = Z_ReadWait()) != ZERR_NONE)
+	    return (retval);
+    }
 
-	if (buffer_len < __Q_Head->packet_len) {
-		*ret_len = buffer_len;
-		retval = ZERR_PKTLEN;
-	}
-	else {
-		*ret_len = __Q_Head->packet_len;
-		retval = ZERR_NONE;
-	}
+    nextq = Z_GetFirstComplete();
+
+    *ret_len = nextq->packet_len;
+    
+    if (!(*buffer = malloc(*ret_len)))
+	return (ENOMEM);
+
+    bcopy(nextq->packet, *buffer, *ret_len);
+
+    if (from)
+	*from = nextq->from;
 	
-	bcopy(__Q_Head->packet,buffer,*ret_len);
-	bcopy((char *)&__Q_Head->from,(char *)from,sizeof(struct sockaddr_in));
-	
-	return (retval);
+    return (ZERR_NONE);
 }

@@ -20,29 +20,27 @@ static char rcsid_ZSendList_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZSendList(notice,list,nitems,cert_routine)
-	ZNotice_t	*notice;
-	char		*list[];
-	int		nitems;
-	int		(*cert_routine)();
+Code_t ZSendList(notice, list, nitems, cert_routine)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+    int (*cert_routine)();
 {
-	Code_t retval;
-	char *buffer;
-	int len;
+    Code_t retval;
+    ZNotice_t newnotice;
+    char *buffer;
+    int len;
 
-	buffer = (char *)malloc(Z_MAXPKTLEN);
-	if (!buffer)
-		return (ENOMEM);
-
-	if ((retval = ZFormatNoticeList(notice,list,nitems,buffer,
-					Z_MAXPKTLEN,&len,cert_routine))
-	    != ZERR_NONE) {
-		free(buffer);
-		return (retval);
-	}
-
-	retval = ZSendPacket(buffer,len);
-	free(buffer);
-
+    if ((retval = ZFormatNoticeList(notice, list, nitems, &buffer, 
+				    &len, cert_routine)) != ZERR_NONE)
 	return (retval);
+
+    if ((retval = ZParseNotice(buffer, len, &newnotice)) != ZERR_NONE)
+	return (retval);
+    
+    retval = Z_SendFragmentedNotice(&newnotice, len);
+
+    free(buffer);
+
+    return (retval);
 }

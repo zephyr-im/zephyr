@@ -20,54 +20,48 @@ static char rcsid_ZPeekIfNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZPeekIfNotice(buffer,buffer_len,notice,from,predicate,args)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	ZNotice_t	*notice;
-	struct		sockaddr_in *from;
-	int		(*predicate)();
-	char		*args;
+Code_t ZPeekIfNotice(notice, from, predicate, args)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+    int (*predicate)();
+    char *args;
 {
-	ZNotice_t tmpnotice;
-	int qcount,retval;
-	struct _Z_InputQ *qptr;
+    ZNotice_t tmpnotice;
+    Code_t retval;
+    char *buffer;
+    struct _Z_InputQ *qptr;
 
-	if (__Q_Length)
-		retval = Z_ReadEnqueue();
-	else
-		retval = Z_ReadWait();
+    if (ZQLength())
+	retval = Z_ReadEnqueue();
+    else
+	retval = Z_ReadWait();
 	
-	if (retval != ZERR_NONE)
+    if (retval != ZERR_NONE)
+	return (retval);
+	
+    qptr = (struct _Z_InputQ *) Z_GetFirstComplete();
+    
+    for (;;) {
+	while (qptr) {
+	    if ((retval = ZParseNotice(qptr->packet, qptr->packet_len, 
+				       &tmpnotice)) != ZERR_NONE)
 		return (retval);
-	
-	qptr = __Q_Head;
-	qcount = __Q_Length;
-
-	for (;;qcount--) {
-		if ((retval = ZParseNotice(qptr->packet,qptr->packet_len,
-					   &tmpnotice))
-		    != ZERR_NONE)
-			return (retval);
-		if ((predicate)(&tmpnotice,args)) {
-			if (qptr->packet_len > buffer_len)
-				return (ZERR_PKTLEN);
-			bcopy(qptr->packet,buffer,qptr->packet_len);
-			if (from)
-				*from = qptr->from;
-			if ((retval = ZParseNotice(buffer,qptr->packet_len,
-						   notice))
-			    != ZERR_NONE)
-				return (retval);
-			return (ZERR_NONE);
-		} 
-		/* Grunch! */
-		if (qcount == 1) {
-			if ((retval = Z_ReadWait()) != ZERR_NONE)
-				return (retval);
-			qcount++;
-			qptr = __Q_Tail;
-		} 
-		else
-			qptr = qptr->next;
+	    if ((predicate)(&tmpnotice, args)) {
+		if (!(buffer = malloc(qptr->packet_len)))
+		    return (ENOMEM);
+		bcopy(qptr->packet, buffer, qptr->packet_len);
+		if (from)
+		    *from = qptr->from;
+		if ((retval = ZParseNotice(buffer, qptr->packet_len, 
+					   notice)) != ZERR_NONE) {
+		    free(buffer);
+		    return (retval);
+		}
+		return (ZERR_NONE);
+	    }
+	    qptr = Z_GetNextComplete(qptr);
 	}
+	if ((retval = Z_ReadWait()) != ZERR_NONE)
+	    return (retval);
+    }
 }

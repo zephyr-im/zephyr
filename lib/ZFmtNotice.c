@@ -18,7 +18,7 @@ static char rcsid_ZFormatNotice_c[] = "$Header$";
 
 #include <zephyr/mit-copyright.h>
 
-#include <zephyr/zephyr.h>
+#include <zephyr/zephyr_internal.h>
 
 Code_t ZFormatNotice(notice, buffer, ret_len, cert_routine)
     ZNotice_t *notice;
@@ -27,7 +27,6 @@ Code_t ZFormatNotice(notice, buffer, ret_len, cert_routine)
     int (*cert_routine)();
 {
     char header[Z_MAXHEADERLEN];
-    char *ptr;
     int hdrlen;
     Code_t retval;
 
@@ -37,11 +36,10 @@ Code_t ZFormatNotice(notice, buffer, ret_len, cert_routine)
 
     *ret_len = hdrlen+notice->z_message_len;
 
-    if (!(*buffer = malloc(*ret_len)))
+    if (!(*buffer = (char *)malloc(*ret_len)))
 	return (ENOMEM);
 
-    notice->z_packet = *buffer;
-    
+    bcopy(header, *buffer, hdrlen);
     bcopy(notice->z_message, *buffer+hdrlen, notice->z_message_len);
 
     return (ZERR_NONE);

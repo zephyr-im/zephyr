@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for the internal Zephyr routines.
+ * It contains source for the ZMakeAscii function.
  *
  *	Created by:	Robert French
  *
@@ -20,28 +20,28 @@ static char rcsid_ZMakeAscii_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZMakeAscii(ptr,len,field,num)
-	char *ptr;
-	int len;
-	unsigned char *field;
-	int num;
+Code_t ZMakeAscii(ptr, len, field, num)
+    char *ptr;
+    int len;
+    unsigned char *field;
+    int num;
 {
-	int i;
+    int i;
 
-	for (i=0;i<num;i++) {
-		if (!(i%4)) {
-			if (len < 3+(i!=0))
-				return (ZERR_FIELDLEN);
-			(void) sprintf(ptr,"%s0x",i?" ":"");
-			ptr += 2+(i!=0);
-			len -= 2+(i!=0);
-		} 
-		if (len < 3)
-			return (ZERR_FIELDLEN);
-		(void) sprintf(ptr,"%02x",field[i]);
-		ptr += 2;
-		len -= 2;
-	}
+    for (i=0;i<num;i++) {
+	if (!(i%4)) {
+	    if (len < 3+(i!=0))
+		return (ZERR_FIELDLEN);
+	    (void) sprintf(ptr, "%s0x", i?" ":"");
+	    ptr += 2+(i!=0);
+	    len -= 2+(i!=0);
+	} 
+	if (len < 3)
+	    return (ZERR_FIELDLEN);
+	(void) sprintf(ptr, "%02x", field[i]);
+	ptr += 2;
+	len -= 2;
+    }
 
-	return (ZERR_NONE);
+    return (ZERR_NONE);
 }

@@ -38,7 +38,7 @@ Code_t ZParseNotice(buffer, len, notice)
     
     notice->z_version = ptr;
     if (strncmp(ptr, ZVERSIONHDR, strlen(ZVERSIONHDR)))
-	return (ZERR_VERS);
+/*	return (ZERR_VERS);*/ abort();
     ptr += strlen(ZVERSIONHDR);
     maj = atoi(ptr);
     if (maj != ZVERSIONMAJOR)
@@ -51,15 +51,16 @@ Code_t ZParseNotice(buffer, len, notice)
     numfields = ntohl(*temp);
     ptr += strlen(ptr)+1;
 
-    numfields -= 2;
+    /*XXX 3 */
+    numfields -= 2; /* numfields, version, and checksum */
     if (numfields < 0)
-	numfields = 0;
+	return (ZERR_BADPKT);
 
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
 		       sizeof(int)) == ZERR_BADFIELD)
 	    return (ZERR_BADPKT);
-	notice->z_kind = (ZNotice_Kind_t)ntohl((ZNotice_Kind_t)*temp);
+	notice->z_kind = (ZNotice_Kind_t)ntohl(*temp);
 	numfields--;
 	ptr += strlen(ptr)+1;
     }
@@ -169,17 +170,14 @@ Code_t ZParseNotice(buffer, len, notice)
     else
 	notice->z_default_format = "";
 	
-    if (numfields) {
-	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
-		       sizeof(ZChecksum_t))
-	    == ZERR_BADFIELD)
-	    return (ZERR_BADPKT);
-	notice->z_checksum = ntohl(*temp);
-	numfields--;
-	ptr += strlen(ptr)+1;
-    }
-    else
-	notice->z_checksum = 0;
+/*XXX*/
+    if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
+		   sizeof(ZChecksum_t))
+	== ZERR_BADFIELD)
+	return (ZERR_BADPKT);
+    notice->z_checksum = ntohl(*temp);
+    numfields--;
+    ptr += strlen(ptr)+1;
 
     if (numfields) {
 	notice->z_multinotice = ptr;
@@ -191,6 +189,7 @@ Code_t ZParseNotice(buffer, len, notice)
 
     for (i=0;i<Z_MAXOTHERFIELDS && numfields;i++,numfields--) {
 	notice->z_other_fields[i] = ptr;
+	numfields--;
 	ptr += strlen(ptr)+1;
     }
     notice->z_num_other_fields = i;
@@ -198,6 +197,16 @@ Code_t ZParseNotice(buffer, len, notice)
     for (i=0;i<numfields;i++)
 	ptr += strlen(ptr)+1;
 	
+#ifdef notdef
+    if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
+		   sizeof(ZChecksum_t))
+	== ZERR_BADFIELD)
+	return (ZERR_BADPKT);
+    notice->z_checksum = ntohl(*temp);
+    numfields--;
+    ptr += strlen(ptr)+1;
+#endif
+    
     notice->z_message = (caddr_t) ptr;
     notice->z_message_len = len-(ptr-buffer);
 

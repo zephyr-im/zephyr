@@ -18,24 +18,22 @@ static char rcsid_ZFormatRawNoticeList_c[] = "$Header$";
 
 #include <zephyr/mit-copyright.h>
 
-#include <zephyr/zephyr.h>
+#include <zephyr/zephyr_internal.h>
 
-Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len, 
-			    cert_routine)
+Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len)
     ZNotice_t *notice;
     char *list[];
     int nitems;
     char **buffer;
     int *ret_len;
-    int (*cert_routine)();
 {
     char header[Z_MAXHEADERLEN];
     int hdrlen, i, size;
-    char *ptr, *end;
+    char *ptr;
     Code_t retval;
 
-    if ((retval = Z_FormatRawHeader(notice, header, sizeof(header), &hdrlen,
-				    cert_routine)) != ZERR_NONE)
+    if ((retval = Z_FormatRawHeader(notice, header, sizeof(header), &hdrlen))
+	!= ZERR_NONE)
 	return (retval);
 
     size = 0;
@@ -47,6 +45,8 @@ Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len,
     if (!(*buffer = malloc(*ret_len)))
 	return (ENOMEM);
 
+    bcopy(header, *buffer, hdrlen);
+    
     ptr = *buffer+hdrlen;
 
     for (;nitems;nitems--, list++) {

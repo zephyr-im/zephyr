@@ -22,25 +22,25 @@ static char rcsid_ZGetSubscriptions_c[] = "$Header$";
 
 #define min(a,b) ((a)<(b)?(a):(b))
 	
-Code_t ZGetSubscriptions(subscription,numsubs)
-	ZSubscription_t *subscription;
-	int *numsubs;
+Code_t ZGetSubscriptions(subscription, numsubs)
+    ZSubscription_t *subscription;
+    int *numsubs;
 {
-	int i;
+    int i;
 	
-	if (!__subscriptions_list)
-		return (ZERR_NOSUBSCRIPTIONS);
+    if (!__subscriptions_list)
+	return (ZERR_NOSUBSCRIPTIONS);
 
-	if (__subscriptions_next == __subscriptions_num)
-		return (ZERR_NOMORESUBSCRIPTIONS);
+    if (__subscriptions_next == __subscriptions_num)
+	return (ZERR_NOMORESUBSCRIPTIONS);
 	
-	for (i=0;i<min(*numsubs,__subscriptions_num-__subscriptions_next);i++)
-		subscription[i] = __subscriptions_list[i+__subscriptions_next];
+    for (i=0;i<min(*numsubs, __subscriptions_num-__subscriptions_next);i++)
+	subscription[i] = __subscriptions_list[i+__subscriptions_next];
 
-	if (__subscriptions_num-__subscriptions_next < *numsubs)
-		*numsubs = __subscriptions_num-__subscriptions_next;
+    if (__subscriptions_num-__subscriptions_next < *numsubs)
+	*numsubs = __subscriptions_num-__subscriptions_next;
 
-	__subscriptions_next += *numsubs;
+    __subscriptions_next += *numsubs;
 	
-	return (ZERR_NONE);
+    return (ZERR_NONE);
 }
