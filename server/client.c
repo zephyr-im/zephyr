@@ -91,15 +91,14 @@ client_register(notice, host, client_p, wantdefaults)
 	memset(&client->session_key, 0, sizeof(client->session_key));
 #endif
 	client->last_msg = 0;
-	client->last_check = 0;
 	client->last_send = 0;
 	client->addr.sin_family = AF_INET;
 	client->addr.sin_addr.s_addr = host->s_addr;
 	client->addr.sin_port = notice->z_port;
 	client->subs = NULL;
 	client->principal = make_string(notice->z_sender, 0);
-	LIST_INSERT(client_bucket[INET_HASH(&client->addr.sin_addr,
-					    notice->z_port)], client);
+	LIST_INSERT(&client_bucket[INET_HASH(&client->addr.sin_addr,
+					     notice->z_port)], client);
     }
 
     /* Add default subscriptions only if this is not resulting from a brain
