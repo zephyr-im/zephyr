@@ -101,7 +101,7 @@ static void ulogin_locate(), ulogin_add_user(), ulogin_flush_user();
 static ZLocation_t *ulogin_find();
 static int ulogin_setup(), ulogin_parse(), ul_equiv(), ulogin_expose_user();
 static exposure_type ulogin_remove_user();
-static void login_sendit(), sense_logout();
+static void login_sendit(), sense_logout(), free_loc();
 static char **ulogin_marshal_locs();
 
 static ZLocation_t *locations = NULLZLT; /* ptr to first in array */
@@ -443,6 +443,7 @@ struct in_addr *addr;
 			       locations[i].zlt_user,
 			       locations[i].zlt_machine,
 			       locations[i].zlt_tty);
+		free_loc(&locations[i]);
 		i++;
 	}
 
@@ -499,6 +500,7 @@ struct sockaddr_in *sin;
 			       locations[i].zlt_user,
 			       locations[i].zlt_machine,
 			       locations[i].zlt_tty);
+		free_loc(&locations[i]);
 		i++;
 	}
 
@@ -928,6 +930,8 @@ int *err_return;
 		i++;
 	}
 
+	/* free up this one */
+	free_loc(&locations[i]);
 	i++;				/* skip over this one */
 
 	/* copy the rest */
@@ -1003,8 +1007,10 @@ ZNotice_t *notice;
 		i++;
 	}
 
-	for (j = 0; j < num_match; j++)
-		i++;				/* skip over the matches */
+	for (j = 0; j < num_match; j++) {
+	    free_loc(&locations[i]);
+	    i++;			/* skip over the matches */
+	}
 
 	/* copy the rest */
 	while (i <= num_locs) {
@@ -1202,7 +1208,8 @@ register int *found;
 			answer[i*NUM_FIELDS + 2] = matches[i]->zlt_tty;
 		}
 
-	xfree(matches);
+	if (matches)
+	    xfree(matches);
 	return(answer);
 }
 
@@ -1234,23 +1241,27 @@ struct sockaddr_in *who;
 	if (retval != ZERR_NONE) {
 		syslog(LOG_ERR, "old_ulog_locate format: %s",
 		       error_message(retval));
-		xfree(answer);
+		if (answer)
+		    xfree(answer);
 		return;
 	}
 	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "old_ulog_locate set addr: %s",
 		       error_message(retval));
-		xfree(answer);
+		if (answer)
+		    xfree(answer);
 		return;
 	}
 	if ((retval = ZSendPacket(reppacket, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "old_ulog_locate xmit: %s",
 		       error_message(retval));
-		xfree(answer);
+		if (answer)
+		    xfree(answer);
 		return;
 	}
 	zdbug((LOG_DEBUG,"ulog_loc acked"));
-	xfree(answer);
+	if (answer)
+	    xfree(answer);
 	return;
 }
 #endif /* OLD_COMPAT || NEW_COMPAT */
@@ -1296,4 +1307,15 @@ register FILE *fp;
 		(void) putc('\n', fp);
 	}
 	return;
+}
+
+static void
+free_loc(loc)
+register ZLocation_t *loc;
+{
+    xfree(loc->zlt_user);
+    xfree(loc->zlt_machine);
+    xfree(loc->zlt_tty);
+    xfree(loc->zlt_time);
+    return;
 }
