@@ -50,7 +50,7 @@ Code_t ZSendPacket(packet,len)
 
 	if (notice.z_kind == UNSAFE || notice.z_kind == HMACK ||
 	    notice.z_kind == SERVACK || notice.z_kind == CLIENTACK ||
-	    __Zephyr_server || __HM_set)
+	    notice.z_kind == HMCTL || __Zephyr_server || __HM_set)
 		return (ZERR_NONE);
 	
 	tv.tv_sec = 0;
