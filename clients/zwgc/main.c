@@ -47,7 +47,7 @@ static void setup_signals(), detach();
 int zwgc_debug = 0;
 #endif
 
-static char *zwgc_version_string = "0.4.7";
+static char *zwgc_version_string = "1.0";
 
 /*
  * description_filename_override - <<<>>>
