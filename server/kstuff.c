@@ -333,8 +333,8 @@ ZCheckAuthentication(notice, from)
 	}
     }
     
-    if (result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
-			      __Zephyr_realm, &cred)) {
+    if ((result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
+			      __Zephyr_realm, &cred)) != KSUCCESS) {
 	syslog (LOG_DEBUG, "krb_get_cred failed (%s) ->AUTH_NO (from %s)",
 		krb_err_txt [result], inet_ntoa (from->sin_addr));
 	return (ZAUTH_NO);

@@ -163,7 +163,7 @@ main(argc, argv)
 	extern int optind;
 
 	/* set name */
-	if (programname = rindex(argv[0],'/'))
+	if ((programname = rindex(argv[0],'/')) != NULL)
 		programname++;
 	else programname = argv[0];
 

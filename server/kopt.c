@@ -317,7 +317,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
         if (read_service_key(service,instance,realm,(int) s_kvno,
                             fn,(char *)skey))
             return(RD_AP_UNDEC);
-        if (status = krb_set_key((char *)skey,0))
+        if ((status = krb_set_key((char *)skey,0)) != 0)
 	    return(status);
 #endif /* !NOENCRYPTION */
         (void) strcpy(st_rlm,realm);
