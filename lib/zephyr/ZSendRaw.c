@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for ZReceiveNotice function.
+ * It contains source for the ZSendRawNotice function.
  *
  *	Created by:	Robert French
  *
@@ -16,19 +16,25 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZReceiveNotice(buffer,buffer_len,notice,auth,from)
-	ZPacket_t	buffer;
-	int		buffer_len;
+Code_t ZSendRawNotice(notice)
 	ZNotice_t	*notice;
-	int		*auth;
-	struct		sockaddr_in *from;
 {
-	int len;
 	Code_t retval;
-	
-	if ((retval = ZReceivePacket(buffer,buffer_len,&len,from)) !=
-	    ZERR_NONE)
-		return (retval);
+	char *buffer;
+	int len;
 
-	return (ZParseNotice(buffer,len,notice,auth));
+	buffer = (char *)malloc(Z_MAXPKTLEN);
+	if (!buffer)
+		return (ENOMEM);
+
+	if ((retval = ZFormatRawNotice(notice,buffer,Z_MAXPKTLEN,&len)) !=
+	    ZERR_NONE) {
+		free(buffer);
+		return (retval);
+	}
+
+	retval = ZSendPacket(buffer,len);
+	free(buffer);
+
+	return (retval);
 }

@@ -24,7 +24,7 @@ Code_t ZSendPacket(packet,len)
 	int findack();
 	
 	Code_t retval;
-	struct sockaddr_in sin;
+	struct sockaddr_in dest;
 	struct timeval tv;
 	int auth,t1,t2,t3,i;
 	ZPacket_t ackpack;
@@ -37,22 +37,21 @@ Code_t ZSendPacket(packet,len)
 		if ((retval = ZOpenPort(0)) != ZERR_NONE)
 			return (retval);
 
-	if ((retval = Z_GetHMPortAddr()) != ZERR_NONE)
-		return (retval);
-
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(__HM_port);
-	bcopy(__HM_addr,&sin.sin_addr,__HM_length);
-
-	if (sendto(ZGetFD(),packet,len,0,&sin,sizeof(sin)) < 0)
+	dest = ZGetDestAddr();
+	
+	if (sendto(ZGetFD(),packet,len,0,&dest,sizeof(dest)) < 0)
 		return (errno);
 
 	ZParseNotice(packet,len,&notice,&auth);
 
+	if (notice.z_kind == UNSAFE || notice.z_kind == HMACK ||
+	    notice.z_kind == SERVACK || __HM_set)
+		return (ZERR_NONE);
+	
 	tv.tv_sec = 0;
 	tv.tv_usec = 400000;
 	
-	for (i=0;i<4;i++) {
+	for (i=0;i<12;i++) {
 		select(0,&t1,&t2,&t3,&tv);
 		retval = ZCheckIfNotice(ackpack,sizeof ackpack,&notice,
 					&auth,findack,&notice.z_uid);
@@ -64,10 +63,9 @@ Code_t ZSendPacket(packet,len)
 	return (ZERR_HMDEAD);
 }
 
-int findack(notice,uid)
+static int findack(notice,uid)
 	ZNotice_t *notice;
 	ZUnique_Id_t *uid;
 {
-	printf("FOO\n");
-	return (!ZCompareUID(uid,&notice->z_uid));
+	return (ZCompareUID(uid,&notice->z_uid));
 }

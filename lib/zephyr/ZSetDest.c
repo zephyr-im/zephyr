@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for ZPeekNotice function.
+ * It contains source for the ZSetDestAddr function.
  *
  *	Created by:	Robert French
  *
@@ -16,19 +16,12 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZPeekNotice(buffer,buffer_len,notice,auth,from)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	ZNotice_t	*notice;
-	int		*auth;
-	struct		sockaddr_in *from;
+Code_t ZSetDestAddr(addr)
+	struct	sockaddr_in *addr;
 {
-	int len;
-	Code_t retval;
+	__HM_addr = *addr;
 
-	if ((retval = ZPeekPacket(buffer,buffer_len,&len,from)) !=
-	    ZERR_NONE)
-		return (retval);
-
-	return (ZParseNotice(buffer,len,notice,auth));
+	__HM_set = 1;
+	
+	return (ZERR_NONE);
 }
