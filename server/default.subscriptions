@@ -1,2 +1,2 @@
 operations,message,*
-message,personal,%me%
+message,*,%me%
