@@ -24,13 +24,6 @@ static char rcsid_znol_c[] = "$Id$";
 #define ON 1
 #define OFF 0
 
-#ifdef POSIX
-#include <stdlib.h>
-#else
-extern char *getenv(), *malloc();
-#endif
-extern uid_t getuid();
-
 main(argc,argv)
 	int argc;
 	register char *argv[];
@@ -156,7 +149,7 @@ main(argc,argv)
 
 		subs[ind].zsub_class = LOGIN_CLASS;
 		(void) strcpy(name,cleanname);
-		if (!index(name,'@')) {
+		if (!strchr(name,'@')) {
 			cp = name + strlen(name);
 			*cp++ = '@';
 			(void) strcpy(cp,ZGetRealm());
