@@ -447,7 +447,8 @@ ZClient_t *client;
 	pnotice->z_opcode = ADMIN_KILL_CLT;
 	pnotice->z_sender = myname;	/* myname is the hostname */
 	pnotice->z_recipient = "";
-	pnotice->z_default_format = 0;
+	pnotice->z_default_format = "";
+	pnotice->z_num_other_fields = 0;
 
 	/* XXX */
 	auth = 0;
@@ -1073,9 +1074,10 @@ int auth;
 	pnotice->z_opcode = opcode;
 	pnotice->z_sender = myname;	/* myname is the hostname */
 	pnotice->z_recipient = "";
-	pnotice->z_default_format = 0;
+	pnotice->z_default_format = "";
 	pnotice->z_message = (caddr_t) NULL;
 	pnotice->z_message_len = 0;
+	pnotice->z_num_other_fields = 0;
 
 	/* XXX for now, we don't do authentication */
 	auth = 0;
@@ -1131,25 +1133,26 @@ int auth;
 	pnotice->z_opcode = opcode;
 	pnotice->z_sender = myname;	/* myname is the hostname */
 	pnotice->z_recipient = "";
-	pnotice->z_default_format = 0;
+	pnotice->z_default_format = "";
 	pnotice->z_message = (caddr_t) NULL;
 	pnotice->z_message_len = 0;
+	pnotice->z_num_other_fields = 0;
 
 	/* XXX for now, we don't do authentication */
 	auth = 0;
 
 	if ((retval = ZFormatNoticeList(pnotice, lyst, num, &pack, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "snd_msg format: %s", error_message(retval));
+		syslog(LOG_WARNING, "snd_msg_lst format: %s", error_message(retval));
 		return;
 	}
 	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "snd_msg set addr: %s",
+		syslog(LOG_WARNING, "snd_msg_lst set addr: %s",
 		       error_message(retval));
 		xfree(pack);		/* free allocated storage */
 		return;
 	}
 	if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "snd_msg xmit: %s", error_message(retval));
+		syslog(LOG_WARNING, "snd_msg_lst xmit: %s", error_message(retval));
 		xfree(pack);		/* free allocated storage */
 		return;
 	}
