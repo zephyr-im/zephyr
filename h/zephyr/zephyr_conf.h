@@ -15,6 +15,20 @@
 #ifndef __ZEPHYR_CONF_H__
 #define __ZEPHYR_CONF_H__
 
+#ifdef POSIX
+#define POSIX_FLOCK
+#define POSIX_SIGNALS
+#define HAVE_UNISTD_H
+#define HAVE_STDLIB_H
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr_paths.h>
 
