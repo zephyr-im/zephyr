@@ -16,6 +16,9 @@ Milestone 2 (written, not tested)
 Milestone 3
 	  * client sends only new-style messages
 
+Milestone 3.5
+	  * offer to Derrick.
+
 Milestone 4
 	  * server sends only newstyle messages, and can't brain dump the
 	  new keys.  (this tests the codepath opened in milestone 1)
@@ -30,7 +33,8 @@ Milestone 6
 	  * zhm can figure out what sort of realm it's talking to, and
 	  communicate this to the client.
 
--send to derrick-
+Milestone 6.5
+	  * Send this to Derrick.
 
 Milestone 7
 	  * brain dump via krb5, encrypted
