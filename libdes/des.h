@@ -17,6 +17,13 @@
 
 #include <mit-copyright.h>
 
+#ifndef KRB_INT32
+#define KRB_INT32 long
+#endif
+#ifndef KRB_UINT32
+#define KRB_UINT32 unsigned KRB_INT32
+#endif
+
 typedef unsigned char des_cblock[8];	/* crypto-block size */
 /* Key schedule */
 typedef struct des_ks_struct { union { long pad; des_cblock _;} __; } des_key_schedule[16];
