@@ -113,6 +113,7 @@ struct _Destlist {
 
 struct _ZRealm_server {
     struct sockaddr_in	addr;		/* server's address */
+    int                 dontsend;       /* private server, do not send */
 };
 
 struct _ZRealm {

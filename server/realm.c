@@ -103,11 +103,13 @@ realm_next_idx_by_idx(realm, idx)
     while (a > 0) { a--; srvr++; }
 
     for (srvr, b = idx; b < realm->count; b++, srvr++)
-	return(b);
+	if (!srvr->dontsend)
+	    return(b);
 
     /* recycle */
     if (idx != 0)
 	for (srvr = realm->srvrs, b = 0; b < idx; b++, srvr++)
+	    if (!srvr->dontsend)
 	    return(b);
 
     return 0;
@@ -482,6 +484,7 @@ realm_init(void)
     ZRealm *rlm;
     int ii, jj, found;
     struct in_addr *addresses;
+    char *nosend;
     struct hostent *hp;
     char realm_list_file[128];
     char rlmprinc[MAX_PRINCIPAL_SIZE];
@@ -506,10 +509,11 @@ realm_init(void)
     for (ii = 0; ii < nrealms; ii++) {
 	rlm = &otherrealms[ii];
 	strcpy(rlm->name, rlmnames[ii].name);
+	nosend = malloc(rlmnames[ii].nused * sizeof(char));
 
 	addresses = (struct in_addr *)malloc(rlmnames[ii].nused *
 					     sizeof(struct in_addr));
-	if (!addresses) {
+	if (!addresses || !nosend) {
 	    syslog(LOG_CRIT, "malloc failed in realm_init");
 	    abort();
 	}
@@ -517,7 +521,12 @@ realm_init(void)
 	/* convert names to addresses */
 	found = 0;
 	for (jj = 0; jj < rlmnames[ii].nused; jj++) {
-	    hp = gethostbyname(rlmnames[ii].servers[jj]);
+	    if (*rlmnames[ii].servers[jj] == '/')
+		nosend[found] = 1;
+	    else
+		nosend[found] = 0;
+
+	    hp = gethostbyname((rlmnames[ii].servers[jj])+nosend[found]);
 	    if (hp) {
 		memmove(&addresses[found], hp->h_addr,
 			sizeof(struct in_addr));
@@ -541,6 +550,7 @@ realm_init(void)
 	    /* use the server port */
 	    srvr->addr.sin_port = srv_addr.sin_port;
 	    srvr->addr.sin_family = AF_INET;
+	    srvr->dontsend = nosend[jj];
 	}
 	client = (Client *) malloc(sizeof(Client));
 	if (!client) {
@@ -577,6 +587,7 @@ realm_init(void)
 	rlm->have_tkt = 1;
 	free(rlmnames[ii].servers);
 	free(addresses);
+	free(nosend);
     }
     free(rlmnames);
 }
@@ -863,13 +874,21 @@ realm_set_server(struct sockaddr_in *sin,
 		 ZRealm *realm)
 {
     ZRealm *rlm;
+    int idx;
 
     rlm = realm_which_realm(sin);
     /* Not exactly */
     if (!rlm || (rlm != realm))
 	return ZSRV_NORLM;
-    realm->idx = realm_get_idx_by_addr(realm, sin);
-    zdbug((LOG_DEBUG, "rlm_pick_srv: switched servers (%s)", inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
+    idx = realm_get_idx_by_addr(realm, sin);
+
+    /* Not exactly */
+    if (realm->srvrs[idx].dontsend != 0)
+	return ZSRV_NORLM;
+
+    realm->idx = idx;
+
+    zdbug((LOG_DEBUG, "rlm_pick_srv: switched servers (%s)", inet_ntoa((realm->srvrs[realm->idx].addr).sin_addr)));
 
     return 0;
 }
