@@ -76,6 +76,8 @@ static char const rcsid_error_table_y[] =
     "$Header$";
 #endif
 
+#include "et_lex.lex.c"
+
 extern FILE *hfile, *cfile;
 
 static long gensym_n = 0;
@@ -228,4 +230,3 @@ set_table_num(string)
 	table_number = table_number << ERRCODE_RANGE;
 }
 
-#include "et_lex.lex.c"
