@@ -249,7 +249,7 @@ string verbatim(str, bracketsonly)
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='<';
-	 _BCOPY(str,temp+2,len);
+	 (void) memcpy(temp+2,str,len);
 	 temp[len+2]='>';
 	 temp[len+3]='\0';
 	 free(str);
@@ -259,7 +259,7 @@ string verbatim(str, bracketsonly)
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='[';
-	 _BCOPY(str,temp+2,len);
+	 (void) memcpy(temp+2,str,len);
 	 temp[len+2]=']';
 	 temp[len+3]='\0';
 	 free(str);
@@ -269,7 +269,7 @@ string verbatim(str, bracketsonly)
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='{';
-	 _BCOPY(str,temp+2,len);
+	 (void) memcpy(temp+2,str,len);
 	 temp[len+2]='}';
 	 temp[len+3]='\0';
 	 free(str);
@@ -279,7 +279,7 @@ string verbatim(str, bracketsonly)
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='(';
-	 _BCOPY(str,temp+2,len);
+	 (void) memcpy(temp+2,str,len);
 	 temp[len+2]=')';
 	 temp[len+3]='\0';
 	 free(str);
@@ -427,7 +427,7 @@ static int text_length(text,terminator)
 	 return(len);
 
       if (*(text+1)=='@')
-	 _BCOPY(text+2,text+1,strlen(text+1));
+	 (void) memmove(text+1,text+2,strlen(text+1));
       else if (env_length(text+1) != -1)
 	return(len);
 
