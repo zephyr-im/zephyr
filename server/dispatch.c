@@ -693,7 +693,11 @@ rexmit(arg)
 	register ZClient_t *client;
 
 #if 1
-	zdbug((LOG_DEBUG,"rexmit"));
+	syslog(LOG_DEBUG, "rexmit %s/%d #%d(%d) time %d(%d)",
+	       inet_ntoa(nackpacket->na_addr.sin_addr),
+	       ntohs(nackpacket->na_addr.sin_port),
+	       nackpacket->na_rexmits + 1, num_rexmits,
+	       NOW, nackpacket->na_abstimo);
 #endif
 
 	if (++(nackpacket->na_rexmits) > num_rexmits ||
@@ -1038,7 +1042,6 @@ control_dispatch(notice, auth, who, server)
 					inet_ntoa (who->sin_addr),
 					ntohs (who->sin_port)));
 #endif
-				hostm_lose_ignore(client);
 				(void) client_deregister(client, host, 0);
 			}
 
