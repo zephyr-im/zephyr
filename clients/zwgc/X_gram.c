@@ -47,6 +47,7 @@ unsigned long default_bordercolor;
 static int reset_saver;
 static int border_width = 1;
 static int cursor_code = XC_sailboat;
+static int set_transient = 0;
 static char *title_name,*icon_name;
 static Cursor cursor;
 static Window group_leader; /* In order to have transient windows,
@@ -88,11 +89,10 @@ void x_set_icccm_hints(dpy,w,name,icon_name,psizehints,pwmhints,main_window)
    XSetNormalHints(dpy,w,psizehints);
    XSetWMHints(dpy,w,pwmhints);
    XSetClassHint(dpy,w,&classhint);
-#ifdef DO_TRANSIENT_WINDOWS
    /* in order for some wm's to iconify, the window shouldn't be transient.
       e.g. Motif wm */
-   if (main_window) XSetTransientForHint(dpy,w,main_window);
-#endif /* DO_TRANSIENT_WINDOWS */
+   if (set_transient && main_window)
+     XSetTransientForHint(dpy,w,main_window);
 }
 
 void x_gram_init(dpy)
@@ -121,6 +121,8 @@ void x_gram_init(dpy)
 
     reverse_stack = get_bool_resource("reverseStack", "ReverseStack", 0);
     reset_saver =  get_bool_resource("resetSaver", "ResetSaver", 1);
+    /* The default here should be 1, but mwm sucks */
+    set_transient = get_bool_resource("transient", "Transient", 0);
 
     temp = get_string_resource("borderWidth", "BorderWidth");
     /* <<<>>> */
