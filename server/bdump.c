@@ -853,9 +853,9 @@ char *vers;
 	     host != server->zs_hosts;
 	     host = host->q_forw) {
 		/* for each host */
+#ifdef CONCURRENT
 		host->zh_locked = 1;
 
-#ifdef CONCURRENT
 		readable = initial;
 		tv.tv_sec = tv.tv_usec = 0;
 
