@@ -32,13 +32,14 @@ SUBDIR	= et et/lib et/compile_et ss ss/lib ss/make_commands clients \
 
 # Empty directories which also need to be built.
 
-MTDIR	= et/profiled lib/profiled libs
+MTDIR	= et/lib/profiled ss/lib/profiled lib/profiled libs
 
 # Directories which need only be linked into the sources
 
 LINKDIR = server/acldir
 
 all:
+	rm -f ${DESTDIR}/Makefile ${DESTDIR}/Imakefile
 	${CP} ${SRCDIR}/Makefile ${DESTDIR}
 	${LN} ${SRCDIR}/Imakefile ${DESTDIR}
 	chmod +w ${DESTDIR}/Makefile
@@ -52,8 +53,10 @@ all:
 	for i in imake makedepend config; do \
 		rm -rf ${DESTDIR}/$$i; \
 		cp -r ${SRCDIR}/$$i ${DESTDIR}; \
-#special hack for libss
-	ln -s lib ${DESTDIR}/ss/ss
+		rm -rf ${DESTDIR}/$$i/RCS; \
 	done
+#special hack for libss
+	rm -f ${DESTDIR}/ss/ss
+	ln -s lib ${DESTDIR}/ss/ss
 	
 	
