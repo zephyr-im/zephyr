@@ -137,13 +137,14 @@ void build_interface(argc, argv)
 #ifdef HAVE_PUTENV
 				  strlen("XFILESEARCHPATH=") +
 #endif
-				  strlen(DATADIR) + 5);
+				  strlen(DATADIR) + 12);
 	  if (path2 != NULL) {
 #ifdef HAVE_PUTENV
-	       sprintf(path2, "XFILESEARCHPATH=%s:%s/%%N", path1, DATADIR);
+	       sprintf(path2, "XFILESEARCHPATH=%s:%s/zephyr/%%N", path1,
+		       DATADIR);
 	       putenv(path2);
 #else
-	       sprintf(path2, "%s:%s/%N", path1, DATADIR);
+	       sprintf(path2, "%s:%s/zephyr/%%N", path1, DATADIR);
 	       setenv("XFILESEARCHPATH", path2, 1);
 	       free(path2);
 #endif

@@ -265,7 +265,7 @@ int open_display_and_load_resources(pargc, argv)
       return(1);
 
     /* Read in our application-specific resources: */
-    sprintf(dbasename, "%s/zwgc_resources", DATADIR);
+    sprintf(dbasename, "%s/zephyr/zwgc_resources", DATADIR);
     temp_db1 = XrmGetFileDatabase(dbasename);
 
     /*
