@@ -3,21 +3,19 @@
  *
  *	Created by:	Robert French
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1993 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
 
 #include <zephyr/mit-copyright.h>
-
 #include <zephyr/zephyr.h>
 
 #ifndef lint
-static char rcsid_zwmnotify_c[] =
-    "$Header$";
+static char rcsid_zmailnotify_c[] =
+    "$Id$";
 #endif
 
 #include <sys/uio.h>
@@ -25,7 +23,6 @@ static char rcsid_zwmnotify_c[] =
 #include <sys/file.h>
 #include <fcntl.h>
 #include <pwd.h>
-#include <stdio.h>
 #include <errno.h>
 #include <netdb.h>
 #include <hesiod.h>
@@ -64,214 +61,206 @@ char *prog = "zmailnotify";
 main(argc, argv)
     char *argv[];
 {
-	FILE *lock;
-	int nmsgs;
-	char *user,response[512],lockfile[100];
-	char *host,*dir;
-	char *auth_cmd;
-	int i,nbytes,retval,uselock;
-	struct passwd *pwd;
-	struct _mail mymail;
-#ifdef HESIOD
-	struct hes_postoffice *p;
+    FILE *lock;
+    int nmsgs;
+    char *user,response[512],lockfile[100];
+    char *host,*dir;
+    char *auth_cmd;
+    int i,nbytes,retval,uselock;
+    struct passwd *pwd;
+    struct _mail mymail;
+#ifdef Z_HaveHesiod
+    struct hes_postoffice *p;
 #endif
 
-	if (argv[0] && *argv[0])
-	    prog = argv[0];
+    if (argv[0] && *argv[0])
+	prog = argv[0];
 	
-	if ((retval = ZInitialize()) != ZERR_NONE) {
-		com_err(prog,retval,"while initializing");
-		exit(1);
-	}
+    if ((retval = ZInitialize()) != ZERR_NONE) {
+	com_err(prog,retval,"while initializing");
+	exit(1);
+    }
 
-	dir = (char *)getenv("HOME");
-	user = (char *)getenv("USER");
-	if (!user || !dir) {
-		pwd = (struct passwd *)getpwuid((int) getuid());
-		if (!pwd) {
-			fprintf(stderr,"%s: Can't figure out who you are!\n",
-				prog);
-			exit(1);
-		}
-		if (!user)
-			user = pwd->pw_name;
-		if (!dir)
-			dir = pwd->pw_dir;
+    dir = (char *)getenv("HOME");
+    user = (char *)getenv("USER");
+    if (!user || !dir) {
+	pwd = (struct passwd *)getpwuid((int) getuid());
+	if (!pwd) {
+	    fprintf(stderr,"%s: Can't figure out who you are!\n",
+		    prog);
+	    exit(1);
 	}
+	if (!user)
+	    user = pwd->pw_name;
+	if (!dir)
+	    dir = pwd->pw_dir;
+    }
 
-	(void) sprintf(lockfile,"%s/.maillock",dir);
+    (void) sprintf(lockfile,"%s/.maillock",dir);
 	
-	host = (char *)getenv("MAILHOST");
-#ifdef HESIOD
-	if (host == NULL) {
-		p = hes_getmailhost(user);
-		if (p != NULL && strcmp(p->po_type, "POP") == 0)
-			host = p->po_host;
-		else {
-			fprintf(stderr,
-				"%s: no POP server listed in Hesiod for %s\n",
-				prog, user);
-			exit(1);
-		} 
-	}
+    host = (char *)getenv("MAILHOST");
+#ifdef Z_HaveHesiod
+    if (host == NULL) {
+	p = hes_getmailhost(user);
+	if (p != NULL && strcmp(p->po_type, "POP") == 0)
+	    host = p->po_host;
+	else {
+	    fprintf(stderr,
+		    "%s: no POP server listed in Hesiod for %s\n",
+		    prog, user);
+	    exit(1);
+	} 
+    }
 #endif
-	if (host == NULL) {
-		fprintf(stderr,"%s: no MAILHOST defined\n", prog);
-		exit(1);
-	}
+    if (host == NULL) {
+	fprintf(stderr,"%s: no MAILHOST defined\n", prog);
+	exit(1);
+    }
 
-	lock = fopen(lockfile,"w");
+    lock = fopen(lockfile,"w");
 #ifdef POSIX
-	if (lock) {
-	  struct flock fl;
+    if (lock) {
+	struct flock fl;
 
-	  /* lock the whole file exclusively */
-	  fl.l_type = F_WRLCK;
-	  fl.l_whence = SEEK_SET;
-	  fl.l_start = 0;
-	  fl.l_len = 0;
-	  (void) fcntl(fileno(lock),F_SETLKW,&fl);
-	}
+	/* lock the whole file exclusively */
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_SET;
+	fl.l_start = 0;
+	fl.l_len = 0;
+	(void) fcntl(fileno(lock),F_SETLKW,&fl);
+    }
 #else
-#ifndef NO_FLOCK
-	if (lock)
-		(void) flock(fileno(lock),LOCK_EX);
-#endif /* ! NO_FLOCK */
-#endif /* POSIX_SOURCE */
+    if (lock)
+	(void) flock(fileno(lock),LOCK_EX);
+#endif
 
-	if (pop_init(host) == NOTOK) {
-		fprintf(stderr,"%s: %s\n",prog, Errmsg);
-		exit(1);
-	}
+    if (pop_init(host) == NOTOK) {
+	fprintf(stderr,"%s: %s\n",prog, Errmsg);
+	exit(1);
+    }
 
-	if ((getline(response, sizeof response, sfi) != OK) ||
-	    (*response != '+')) {
-		fprintf(stderr,"%s: %s\n",prog,response);
-		exit(1);
-	}
+    if ((getline(response, sizeof response, sfi) != OK) ||
+	(*response != '+')) {
+	fprintf(stderr,"%s: %s\n",prog,response);
+	exit(1);
+    }
 
 #ifdef KPOP
-	auth_cmd = "PASS %s";
+    auth_cmd = "PASS %s";
 #else
-	auth_cmd = "RPOP %s";
+    auth_cmd = "RPOP %s";
 #endif
-	if (pop_command("USER %s", user) == NOTOK
-	    || pop_command(auth_cmd, user) == NOTOK)
-	    fatal_pop_err ();
+    if (pop_command("USER %s", user) == NOTOK
+	|| pop_command(auth_cmd, user) == NOTOK)
+	fatal_pop_err ();
 
-	if (pop_stat(&nmsgs, &nbytes) == NOTOK)
-	    fatal_pop_err ();
+    if (pop_stat(&nmsgs, &nbytes) == NOTOK)
+	fatal_pop_err ();
 
-	if (!nmsgs) {
-		if (lock) {
-#ifdef POSIX
-		  struct flock fl;
-
-		  /* unlock the whole file */
-		  fl.l_type = F_UNLCK;
-		  fl.l_whence = SEEK_SET;
-		  fl.l_start = 0;
-		  fl.l_len = 0;
-		  (void) fcntl(fileno(lock),F_SETLKW,&fl);
-#else
-#ifndef NO_FLOCK
-			(void) flock(fileno(lock),LOCK_UN);
-#endif /* ! NO_FLOCK */
-#endif /* POSIX */
-			(void) fclose(lock);
-		} 
-		(void) unlink(lockfile);
-		(void) pop_command("QUIT");
-		pop_close();
-		exit (0);
-	}
-
-	uselock = 0;
-        if (lock) {
-		uselock = 1;
-		mymail.to = (char *)malloc(BUFSIZ);
-		mymail.from = (char *)malloc(BUFSIZ);
-		mymail.subj = (char *)malloc(BUFSIZ);
-		if (fgets(mymail.from,BUFSIZ,lock) != NULL)
-		    mymail.from[strlen(mymail.from)-1] = 0;
-		else
-		    mymail.from[0]=0;
-		if (fgets(mymail.to,BUFSIZ,lock) != NULL)
-		    mymail.to[strlen(mymail.to)-1] = 0;
-		else
-		    mymail.to[0] = 0;
-		if (fgets(mymail.subj,BUFSIZ,lock) != NULL)
-		    mymail.subj[strlen(mymail.subj)-1] = 0;
-		else
-		    mymail.subj[0] = 0;
-	}
-	else {
-		lock = fopen(lockfile,"w");
-#ifdef POSIX
-		if (lock) {
-		  struct flock fl;
-
-		  /* lock the whole file exclusively */
-		  fl.l_type = F_WRLCK;
-		  fl.l_whence = SEEK_SET;
-		  fl.l_start = 0;
-		  fl.l_len = 0;
-		  (void) fcntl(fileno(lock),F_SETLKW,&fl);
-		}
-#else
-#ifndef NO_FLOCK
-		if (lock)
-			(void) flock(fileno(lock),LOCK_EX);
-#endif /* ! NO_FLOCK */
-#endif /* POSIX_SOURCE */
-		uselock = 0;
-	}
-	
-	for (i=nmsgs;i>0;i--) {
-		if (nmsgs-i == MAXMAIL)
-			break;
-		if (get_mail(i,&maillist[nmsgs-i]))
-			exit (1);
-		if (uselock && (!strcmp(maillist[nmsgs-i].to,mymail.to) &&
-				!strcmp(maillist[nmsgs-i].from,mymail.from) &&
-				!strcmp(maillist[nmsgs-i].subj,mymail.subj)))
-			break;
-	}
-
-	(void) pop_command("QUIT");
-	pop_close();
-
-	i++;
-	for (;i<=nmsgs;i++)
-		mail_notify(&maillist[nmsgs-i]);
-	i--;
+    if (!nmsgs) {
 	if (lock) {
 #ifdef POSIX
-	  struct flock fl;
+	    struct flock fl;
 
-	  /* unlock the whole file */
-	  fl.l_type = F_UNLCK;
-	  fl.l_whence = SEEK_SET;
-	  fl.l_start = 0;
-	  fl.l_len = 0;
-	  (void) fcntl(fileno(lock),F_SETLKW,&fl);
+	    /* unlock the whole file */
+	    fl.l_type = F_UNLCK;
+	    fl.l_whence = SEEK_SET;
+	    fl.l_start = 0;
+	    fl.l_len = 0;
+	    (void) fcntl(fileno(lock),F_SETLKW,&fl);
 #else
-#ifndef NO_FLOCK
-		(void) flock(fileno(lock),LOCK_UN);
-#endif /* ! NO_FLOCK */
-#endif /* POSIX */
-		(void) fclose(lock);
+	    (void) flock(fileno(lock),LOCK_UN);
+#endif
+	    (void) fclose(lock);
 	} 
-	lock = fopen(lockfile,"w");
-	if (!lock)
-		exit (1);
-	fprintf(lock,"%s\n%s\n%s\n",
-		maillist[nmsgs-i].from,
-		maillist[nmsgs-i].to,
-		maillist[nmsgs-i].subj);
-	(void) fclose(lock);
+	(void) unlink(lockfile);
+	(void) pop_command("QUIT");
+	pop_close();
+	exit (0);
+    }
 
-	exit(0);
+    uselock = 0;
+    if (lock) {
+	uselock = 1;
+	mymail.to = (char *)malloc(BUFSIZ);
+	mymail.from = (char *)malloc(BUFSIZ);
+	mymail.subj = (char *)malloc(BUFSIZ);
+	if (fgets(mymail.from,BUFSIZ,lock) != NULL)
+	    mymail.from[strlen(mymail.from)-1] = 0;
+	else
+	    mymail.from[0]=0;
+	if (fgets(mymail.to,BUFSIZ,lock) != NULL)
+	    mymail.to[strlen(mymail.to)-1] = 0;
+	else
+	    mymail.to[0] = 0;
+	if (fgets(mymail.subj,BUFSIZ,lock) != NULL)
+	    mymail.subj[strlen(mymail.subj)-1] = 0;
+	else
+	    mymail.subj[0] = 0;
+    }
+    else {
+	lock = fopen(lockfile,"w");
+#ifdef POSIX
+	if (lock) {
+	    struct flock fl;
+
+	    /* lock the whole file exclusively */
+	    fl.l_type = F_WRLCK;
+	    fl.l_whence = SEEK_SET;
+	    fl.l_start = 0;
+	    fl.l_len = 0;
+	    (void) fcntl(fileno(lock),F_SETLKW,&fl);
+	}
+#else
+	if (lock)
+	    (void) flock(fileno(lock),LOCK_EX);
+#endif
+	uselock = 0;
+    }
+	
+    for (i=nmsgs;i>0;i--) {
+	if (nmsgs-i == MAXMAIL)
+	    break;
+	if (get_mail(i,&maillist[nmsgs-i]))
+	    exit (1);
+	if (uselock && (!strcmp(maillist[nmsgs-i].to,mymail.to) &&
+			!strcmp(maillist[nmsgs-i].from,mymail.from) &&
+			!strcmp(maillist[nmsgs-i].subj,mymail.subj)))
+	    break;
+    }
+
+    (void) pop_command("QUIT");
+    pop_close();
+
+    i++;
+    for (;i<=nmsgs;i++)
+	mail_notify(&maillist[nmsgs-i]);
+    i--;
+    if (lock) {
+#ifdef POSIX
+	struct flock fl;
+
+	/* unlock the whole file */
+	fl.l_type = F_UNLCK;
+	fl.l_whence = SEEK_SET;
+	fl.l_start = 0;
+	fl.l_len = 0;
+	(void) fcntl(fileno(lock),F_SETLKW,&fl);
+#else
+	(void) flock(fileno(lock),LOCK_UN);
+#endif
+	(void) fclose(lock);
+    } 
+    lock = fopen(lockfile,"w");
+    if (!lock)
+	exit (1);
+    fprintf(lock,"%s\n%s\n%s\n",
+	    maillist[nmsgs-i].from,
+	    maillist[nmsgs-i].to,
+	    maillist[nmsgs-i].subj);
+    (void) fclose(lock);
+
+    exit(0);
 }
 
 void fatal_pop_err ()
