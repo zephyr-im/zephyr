@@ -46,7 +46,7 @@ Code_t ZSrvSendRawList(notice, list, nitems, send_routine)
     if ((retval = ZParseNotice(buffer, len, &newnotice)) != ZERR_NONE)
 	return (retval);
     
-    retval = Z_SendFragmentedNotice(&newnotice, len, send_routine);
+    retval = Z_SendFragmentedNotice(&newnotice, len, NULL, send_routine);
 
     free(buffer);
 

@@ -44,7 +44,8 @@ Code_t ZSrvSendNotice(notice, cert_routine, send_routine)
     if ((retval = ZParseNotice(buffer, len, &newnotice)) != ZERR_NONE)
 	return (retval);
     
-    retval = Z_SendFragmentedNotice(&newnotice, len, send_routine);
+    retval = Z_SendFragmentedNotice(&newnotice, len, cert_routine,
+				    send_routine);
 
     free(buffer);
 
