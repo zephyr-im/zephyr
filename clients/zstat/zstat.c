@@ -6,7 +6,7 @@
  *      $Source$
  *      $Author$
  *
- *      Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *      Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
  *      "mit-copyright.h". 
  */
@@ -27,7 +27,7 @@ static char rcsid_zstat_c[] = "$Header$";
 		     
 extern long atol();
 
-char *head[20] = { "Current server =",
+char *hm_head[] = { "Current server =",
 		     "Items in queue:",
 		     "Client packets received:",
 		     "Server packets received:",
@@ -38,12 +38,14 @@ char *head[20] = { "Current server =",
 		     "Size:",
 		     "Machine type:"
 };
-char *srv_head[20] = { 
+#define	HM_SIZE	(sizeof(hm_head) / sizeof (char *))
+char *srv_head[] = { 
 	"Current server version =",
 	"Packets handled:",
 	"Uptime:",
 	"Server states:",
 };
+#define	SRV_SIZE	(sizeof(srv_head) / sizeof (char *))
 
 int serveronly = 0,hmonly = 0;
 int outoftime = 0;
@@ -167,6 +169,7 @@ hm_stat(host,server)
 
 	printf("Hostmanager stats: %s\n",hp->h_name);
 	
+	(void) bzero((char *)&notice, sizeof(notice));
 	notice.z_kind = STAT;
 	notice.z_port = 0;
 	notice.z_class = HM_STAT_CLASS;
@@ -211,18 +214,18 @@ hm_stat(host,server)
 
 	printf("HostManager protocol version = %s\n",notice.z_version);
 
-	for (i=0;i<nf;i++) {
-		if (!strncmp("Time",head[i],4)) {
+	for (i=0; (i < nf) && (i < HM_SIZE); i++) {
+		if (!strncmp("Time",hm_head[i],4)) {
 			runtime = atol(line[i]);
 			tim = gmtime(&runtime);
-			printf("%s %d days, %02d:%02d:%02d\n", head[i],
+			printf("%s %d days, %02d:%02d:%02d\n", hm_head[i],
 				tim->tm_yday,
 				tim->tm_hour,
 				tim->tm_min,
 				tim->tm_sec);
 		}
 		else
-			printf("%s %s\n",head[i],line[i]);
+			printf("%s %s\n",hm_head[i],line[i]);
 	}
 
 	printf("\n");
@@ -263,7 +266,8 @@ srv_stat(host)
 
 	printf("Server stats: %s\n",hp->h_name);
 	
-	notice.z_kind = UNACKED;
+	(void) bzero((char *)&notice, sizeof(notice));
+	notice.z_kind = UNSAFE;
 	notice.z_port = 0;
 	notice.z_class = ZEPHYR_ADMIN_CLASS;
 	notice.z_class_inst = "";
@@ -305,7 +309,7 @@ srv_stat(host)
 
 	printf("Server protocol version = %s\n",notice.z_version);
 	
-	for (i=0; i<nf; i++) {
+	for (i=0; i < nf; i++) {
 		if (i < 2)
 			printf("%s %s\n",srv_head[i],line[i]);
 		else if (i == 2) { /* uptime field */
