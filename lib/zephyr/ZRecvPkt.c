@@ -20,39 +20,36 @@ static char rcsid_ZReceivePacket_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-#define min(a,b) ((a)<(b)?(a):(b))
-	
-Code_t ZReceivePacket(buffer,buffer_len,ret_len,from)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	int		*ret_len;
-	struct		sockaddr_in *from;
+Code_t ZReceivePacket(buffer, ret_len, from)
+    ZPacket_t buffer;
+    int *ret_len;
+    struct sockaddr_in *from;
 {
-	int retval;
+    int retval;
+    struct _Z_InputQ *nextq;
+    
+    if (ZGetFD() < 0)
+	return (ZERR_NOPORT);
+
+    if (ZQLength()) {
+	if ((retval = Z_ReadEnqueue()) != ZERR_NONE)
+	    return (retval);
+    }
+    else {
+	if ((retval = Z_ReadWait()) != ZERR_NONE)
+	    return (retval);
+    }
+
+    nextq = (struct _Z_InputQ *) Z_GetFirstComplete();
+
+    *ret_len = nextq->packet_len;
+    
+    bcopy(nextq->packet, buffer, *ret_len);
+
+    if (from)
+	*from = nextq->from;
 	
-	if (ZGetFD() < 0)
-		return (ZERR_NOPORT);
+    (void) Z_RemQueue(nextq);
 
-	if (!ZQLength())
-		if ((retval = Z_ReadWait()) != ZERR_NONE)
-			return (retval);
-
-	if (buffer_len < __Q_Head->packet_len) {
-		*ret_len = buffer_len;
-		retval = ZERR_PKTLEN;
-	}
-	else {
-		*ret_len = __Q_Head->packet_len;
-		retval = ZERR_NONE;
-	}
-
-	if (ret_len)
-		bcopy(__Q_Head->packet,buffer,*ret_len);
-	if (from)
-		bcopy((char *)&__Q_Head->from,(char *)from,
-		      sizeof(struct sockaddr_in));
-	
-	(void) Z_RemQueue(__Q_Head);
-
-	return (retval);
+    return (ZERR_NONE);
 }

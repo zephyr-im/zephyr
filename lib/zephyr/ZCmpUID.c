@@ -18,10 +18,10 @@ static char rcsid_ZCompareUID_c[] = "$Header$";
 
 #include <zephyr/mit-copyright.h>
 
-#include <zephyr/zephyr.h>
+#include <zephyr/zephyr_internal.h>
 
-int ZCompareUID(uid1,uid2)
-	ZUnique_Id_t *uid1,*uid2;
+int ZCompareUID(uid1, uid2)
+    ZUnique_Id_t *uid1, *uid2;
 {
-	return (!bcmp((char *)uid1,(char *)uid2,sizeof (*uid1)));
+    return (!bcmp((char *)uid1, (char *)uid2, sizeof (*uid1)));
 }
