@@ -121,11 +121,9 @@ int operator== (const ZDestination& d1, const ZDestination& d2) {
 	    && d1.recip == d2.recip);
 }
 
-#ifndef __GNUG__
 ZDestination::~ZDestination () {
     /* implicit destruction of ZString objects... */
 }
-#endif
 
 /* register the client as interested in class */
 
