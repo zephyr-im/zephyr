@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_standard_ports_c[] = "$Header$";
+static char rcsid_standard_ports_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -129,7 +129,6 @@ static struct standard_port_info {
 
     { NULL,           2, NULL,            FILTER,      NULL,         0} };
 
-#ifdef notdef
 /*
  * <<<>>>
  */
@@ -145,7 +144,6 @@ static struct standard_port_info *get_standard_port_info(port_name)
 
     return(NULL);
 }
-#endif
 
 /*
  *
@@ -156,26 +154,26 @@ void init_standard_ports(pargc, argv)
      char **argv;
 {
     struct standard_port_info *p;
-#ifdef notdef
     string first_working_port = "";
     string default_port = "";
+    char **new, **current;
 
     /*
      * Process argument list handling "-disable <port>" and
      * "-default <output port>" arguments:
      */
     for (new=current=argv+1; *current; current++) {
-        if (string_Eq(*current, "-disable")) {
+        if (string_Eq((string) *current, "-disable")) {
             current++; *pargc -= 2;
             if (!*current)
               usage();
-            if (p = get_standard_port_info(*current))
+            if (p = get_standard_port_info((string) *current))
               p->port_setup_status = 2;
-        } else if (string_Eq(*current, "-default")) {
+        } else if (string_Eq((string) *current, "-default")) {
             current++; *pargc -= 2;
             if (!*current)
               usage();
-            default_port = *current;
+            default_port = (string) *current;
         } else
           *(new++) = *current;
     }
@@ -190,32 +188,13 @@ void init_standard_ports(pargc, argv)
         if (p->port_setup_status==2)
           continue;
 
-        if (p->port_init && p->port_init(pargc, argv)) {
+        if (p->port_init && (*(p->port_init))(pargc, argv)) {
             p->port_setup_status = 2;
             continue;
         }
 
         if (!*first_working_port)
           first_working_port = p->port_name;
-    }
-
-    if (!get_standard_port_info(default_port))
-      default_port = first_working_port;
-
-    var_set_variable("output_driver", default_port);
-#endif
-
-    var_set_variable("output_driver", "X");
-    X_driver_init(pargc, argv);
-    tty_filter_init();
-
-    /*
-     * <<<>>>
-     */
-    for (p=standard_port_info_table; p->port_name; p++) {
-	if (p->port_setup_status == 2)
-	  continue;
-	
 	switch (p->type) {
 	  case INPUT_DESC:
 	    create_port_from_files(p->port_name, fdopen(p->setup_arg, "r"),0);
@@ -234,4 +213,10 @@ void init_standard_ports(pargc, argv)
 	    break;
 	}
     }
+
+    if (!get_standard_port_info(default_port))
+      default_port = first_working_port;
+
+    var_set_variable("output_driver", default_port);
+
 }
