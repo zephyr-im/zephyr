@@ -658,45 +658,29 @@ void
 server_recover(client)
      ZClient_t *client;
 {
-	ZServerDesc_t *server;
-	char *lyst[2];
-	char buf[512];
+	ZHostList_t *host;
 
-#if 0
-	zdbug((LOG_DEBUG,"server recover"));
+#if 1
+	syslog(LOG_DEBUG, "server_recover %s/%d",
+	       inet_ntoa(client->zct_sin.sin_addr),
+	       ntohs(client->zct_sin.sin_port));
 #endif
-	if ((server = hostm_find_server(&client->zct_sin.sin_addr)) !=
-	    NULLZSDT) {
-		if (server == limbo_server) {
-			/* We can't verify whether the host is losing without
-			 * knowing what server it thinks it's talking to, so
-			 * we will assume the host is not losing and flush
-			 * the client. */
-			server_kill_clt(client);
-			client_deregister(client,
-				hostm_find_host(&client->zct_sin.sin_addr), 1);
-			return;
-		} else if (server == me_server) {
-			/* send a ping, set up a timeout, and return */
-			hostm_losing(client, hostm_find_host(&client->zct_sin.sin_addr));
-			return;
-		} else {
-			/* some other server */
-			syslog(LOG_DEBUG,
-			       "Sending ADMIN_LOST_HOST to %s for %s/%d",
-			       server->addr,
-			       inet_ntoa(client->zct_sin.sin_addr),
-			       ntohs(client->zct_sin.sin_port));
-			lyst[0] = inet_ntoa(client->zct_sin.sin_addr);
-			(void) sprintf(buf, "%d", ntohs(client->zct_sin.sin_port));
-			lyst[1] = buf;
-			send_msg_list(&server->zs_addr, ADMIN_LOST_CLT,
-				      lyst, 2, 0, server - otherservers);
-			return;
-		}
-	} else
+
+	/* This used to send an ADMIN_LOST_HOST message to the server
+	 * which the host manager is talking to, which would cause it
+	 * to call hostm_losing() and send a ping to the host manager.
+	 * We've found that this single-ping algorithm for determining
+	 * whether a host is down causes the servers to lose hosts too
+	 * often by accident, so we now always assume that the client
+	 * is dead.  This means a fair amount of server code has been
+	 * rendered unnecessary, but I haven't deleted it yet. --GBH */
+	host = hostm_find_host(&client->zct_sin.sin_addr);
+	if (host != NULLZHLT) {
+		server_kill_clt(client);
+		client_deregister(client, host, 1);
+	} else {
 		syslog(LOG_ERR, "srv_recover: no host for client");
-	return;
+	}
 }
 
 /*
@@ -773,27 +757,28 @@ kill_clt(notice, server)
 #endif
 	if (extract_addr(notice, &who) != ZERR_NONE)
 		return(ZERR_NONE);	/* XXX */
-	if (!(host = hostm_find_host(&who.sin_addr))) {
+	host = hostm_find_host(&who.sin_addr);
+	if (!host) {
 		syslog(LOG_NOTICE, "kill_clt: no such host (%s, from %s)",
 		       inet_ntoa (who.sin_addr), server->addr);
 		return(ZERR_NONE);	/* XXX */
 	}
 	if (host->zh_locked)
 		return(ZSRV_REQUEUE);
-	if (!(client = client_which_client(&who, notice))) {
+	client = client_which_client(&who, notice);
+	if (!client) {
 		syslog(LOG_NOTICE, "kill_clt: no such client (%s/%d) from %s",
 		       inet_ntoa (who.sin_addr), ntohs (who.sin_port),
 		       server->addr);
 		return(ZERR_NONE);	/* XXX */
 	}
-#if 0
+#if 1
 	if (zdebug || 1)
 		syslog(LOG_DEBUG, "kill_clt clt_dereg %s/%d from %s",
 		       inet_ntoa (who.sin_addr), ntohs (who.sin_port),
 		       server->addr);
 #endif
 
-	hostm_lose_ignore(client);
 	/* remove the locations, too */
 	client_deregister(client, host, 1);
 	return(ZERR_NONE);
@@ -801,36 +786,43 @@ kill_clt(notice, server)
 
 /*
  * Another server asked us to initiate recovery protocol with the hostmanager
+ * (This currently only happens with old servers.)
  */
 static Code_t
 recover_clt(notice, server)
      register ZNotice_t *notice;
      ZServerDesc_t *server;
 {
-	struct sockaddr_in who;
-	ZClient_t *client;
-	ZHostList_t *host;
 	Code_t status;
+	struct sockaddr_in who;
+	ZHostList_t *host;
+	ZClient_t *client;
 
-	if ((status = extract_addr(notice, &who)) != ZERR_NONE)
+	status = extract_addr(notice, &who);
+	if (status != ZERR_NONE)
 		return(status);
-	if (!(host = hostm_find_host(&who.sin_addr))) {
+
+	host = hostm_find_host(&who.sin_addr);
+	if (host == NULLZHLT) {
 		syslog(LOG_NOTICE,
 		       "recover_clt: host not found (%s, from %s)",
 		       inet_ntoa (who.sin_addr), server->addr);
-		return(ZERR_NONE);	/* XXX */
+		return(ZERR_NONE);
 	}
-	if (host->zh_locked)
-		return(ZSRV_REQUEUE);
-	if (!(client = client_which_client(&who, notice))) {
+
+	client = client_which_client(&who, notice);
+	if (!client) {
 		syslog(LOG_NOTICE,
 		       "recover_clt: client not found (%s/%d, from %s)",
 		       inet_ntoa (who.sin_addr), ntohs (who.sin_port),
 		       server->addr);
 		return(ZERR_NONE);	/* XXX */
 	}
-	hostm_losing(client, host);
-	return(ZERR_NONE);
+
+	/* This used to send a ping to the host manager to see if the host
+	 * was dead; now we always assume that the client is dead. */
+	server_kill_clt(client);
+	client_deregister(client, host, 1);
 }
 
 /*
