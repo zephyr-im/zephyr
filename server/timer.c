@@ -203,6 +203,8 @@ add_timer(new)
     }
     HEAP_ASSIGN(pos, new);
     num_timers++;
+
+    return new;
 }
 
 void
@@ -233,7 +235,7 @@ struct timeval *
 timer_timeout(tvbuf)
     struct timeval *tvbuf;
 {
-    if (num_timers == 0) {
+    if (num_timers > 0) {
 	tvbuf->tv_sec = heap[0]->abstime - NOW;
 	tvbuf->tv_usec = 0;
 	return tvbuf;

@@ -9,7 +9,7 @@
  *
  */
 
-#include "zhm.h"
+#include "zserver.h"
 
 #ifndef SABER
 #ifndef lint
@@ -128,7 +128,7 @@ Timer *timer_set_rel(time_rel, proc, arg)
     new_t = (Timer *) malloc(sizeof(*new_t));
     if (new_t == NULL)
 	return(NULL);
-    new_t->abstime = time_rel + time(NULL);
+    new_t->abstime = time_rel + NOW;
     new_t->func = proc;
     new_t->arg = arg;
     return add_timer(new_t);
@@ -203,6 +203,8 @@ add_timer(new)
     }
     HEAP_ASSIGN(pos, new);
     num_timers++;
+
+    return new;
 }
 
 void
@@ -213,7 +215,7 @@ timer_process()
     void *arg;
     int valid = 0;
 
-    if (num_timers == 0 || heap[0]->abstime > time(NULL))
+    if (num_timers == 0 || heap[0]->abstime > NOW)
 	return;
 
     /* Remove the first timer from the heap, remembering its
@@ -224,7 +226,7 @@ timer_process()
     t->func = timer_botch;
     t->arg = NULL;
     timer_reset(t);
-
+	
     /* Run the function. */
     func(arg);
 }
@@ -233,8 +235,8 @@ struct timeval *
 timer_timeout(tvbuf)
     struct timeval *tvbuf;
 {
-    if (num_timers == 0) {
-	tvbuf->tv_sec = heap[0]->abstime - time(NULL);
+    if (num_timers > 0) {
+	tvbuf->tv_sec = heap[0]->abstime - NOW;
 	tvbuf->tv_usec = 0;
 	return tvbuf;
     } else {
