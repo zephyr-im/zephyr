@@ -9,7 +9,6 @@
 #include <sys/file.h>
 #ifdef POSIX
 #include <fcntl.h>
-#include <dirent.h>
 #endif
 #include <sys/wait.h>
 #include "ss_internal.h"
@@ -88,7 +87,11 @@ got_it:
 }
 
 #include <sys/types.h>
+#ifndef POSIX	
 #include <sys/dir.h>
+#else
+#include <dirent.h>
+#endif /* POSIX */
 
 void ss_add_info_dir(sci_idx, info_dir, code_ptr)
     int sci_idx;
