@@ -19,7 +19,7 @@
 #include <string.h>
 #include <sys/file.h>
 #include <sys/param.h>
-#ifdef SOLARIS
+#ifdef POSIX
 #include <sys/utsname.h>
 #endif
 #ifndef lint
@@ -62,7 +62,7 @@ main(argc,argv)
 	struct hostent *hent;
 	char ssline[BUFSIZ],oldsubsname[BUFSIZ],*envptr;
 	int retval,code,i;
-#ifdef SOLARIS
+#ifdef POSIX
 	struct utsname name;
 #endif
 
@@ -92,7 +92,7 @@ main(argc,argv)
 			com_err(argv[0], errno, "renaming .subscriptions");
 	}
 
-#ifdef SOLARIS
+#ifdef POSIX
 	uname(&name);
 	strcpy(ourhost, name.nodename);
 #else
