@@ -114,11 +114,7 @@ match "message"
 
 	print "@center(@bold("+$aval+") "+$type+" message at "+$time+
 		" on "+$date+" from "+$fromhost+")\n"+$ftext+"\n\n"
-	if (downcase($opcode) == "pretty") then
-		print $body
-	else
-		print verbatim($body)
-	endif
+	print $body
 	put
 	exit
 
@@ -141,11 +137,7 @@ match "login"
 
 default
 	print "(Authentication: @bold("+$aval+") from host: "+$fromhost+")\n"
-	if (downcase($opcode) == "verbatim") then
-		print verbatim(substitute($default))
-	else
-		print substitute($default)
-	endif
+	print substitute($default)
 	put
 	exit
 
