@@ -77,12 +77,12 @@ clean::
 .SUFFIXES:	.ct
 
 std_rqs.c: mk_cmds std_rqs.ct
-	./mk_cmds $*.ct
+	./mk_cmds std_rqs.ct
 
 ss_err.o ss_err.h : ss_err.et
 	$(ETDIR)compile_et ss_err.et
 	rm -f ss_err.o profiled/ss_err.o
-	cc -O -c ss_err.c
+	$(CC) $(CFLAGS) -c ss_err.c
 	cp ss_err.o profiled/ss_err.o
 
 ct.tab.c ct.tab.h: ct.y
@@ -114,7 +114,7 @@ test:	test.o commands.o $(LIB)
 	${CC} ${CFLAGS} -o test test.o commands.o $(LIB) $(COMERR)
 
 commands.c: mk_cmds commands.ct
-	./mk_cmds $*.ct
+	./mk_cmds commands.ct
 
 dist:	archives
 tags:	TAGS
