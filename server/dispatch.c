@@ -307,9 +307,6 @@ register ZNotAcked_t *nackpacket;
 		/* possibly dead client */
 
 		client = nackpacket->na_client;
-		syslog(LOG_WARNING, "lost client %s %d",
-		       inet_ntoa(client->zct_sin.sin_addr),
-		       ntohs(client->zct_sin.sin_port));
 
 		/* unlink & free packet */
 		xremque(nackpacket);
