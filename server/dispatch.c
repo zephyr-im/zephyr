@@ -209,8 +209,8 @@ handle_packet()
 		/* we need to parse twice--once to get
 		   the source addr, second to check
 		   authentication */
-		_BZERO((caddr_t) &input_sin,
-		      sizeof(input_sin));
+		(void) memset((caddr_t) &input_sin, 0,
+			      sizeof(input_sin));
 		input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
 		input_sin.sin_port = new_notice.z_port;
 		input_sin.sin_family = AF_INET;
@@ -380,8 +380,8 @@ sendit(notice, auth, who)
 	    return;
 	  }
 	}
-	if (bcmp(&notice->z_sender_addr.s_addr, &who->sin_addr.s_addr,
-		 sizeof(notice->z_sender_addr.s_addr))) {
+	if (memcmp(&notice->z_sender_addr.s_addr, &who->sin_addr.s_addr,
+		   sizeof(notice->z_sender_addr.s_addr))) {
 	    /* someone is playing games... */
 	    /* inet_ntoa returns pointer to static area */
 	    /* max size is 255.255.255.255 */
@@ -491,7 +491,7 @@ xmit_frag(notice, buf, len, waitforack)
 		return(ENOMEM);
 	}
 
-	(void) _BCOPY(buf, savebuf, len);
+	(void) memcpy(savebuf, buf, len);
 
 	nacked->na_rexmits = 0;
 	nacked->na_packet = savebuf;
@@ -935,10 +935,10 @@ control_dispatch(notice, auth, who, server)
 			return(ZERR_NONE);
 		}
 #ifdef KERBEROS
-		_BCOPY((caddr_t) ZGetSession(), /* in case it's changed */
-		      (caddr_t) client->zct_cblock,
-		      sizeof(C_Block));
-#endif /* KERBEROS */
+		/* in case it's changed */
+		(void) memcpy((caddr_t) client->zct_cblock, (caddr_t) ZGetSession(), 
+			      sizeof(C_Block));
+#endif
 		if ((retval = subscr_subscribe(client,notice)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "subscr failed: %s",
 			       error_message(retval));
