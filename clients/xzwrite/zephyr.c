@@ -8,8 +8,8 @@ extern Defaults defs;
 
 /* ARGSUSED */
 void zeph_dispatch(client_data, source, input_id)
-   caddr_t client_data;
-   int source;
+   XtPointer client_data;
+   int *source;
    XtInputId *input_id;
 {
      ZNotice_t notice;
