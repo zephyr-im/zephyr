@@ -80,16 +80,30 @@ extern ZSubscription_t *__subscriptions_list;
 extern int __subscriptions_num;
 extern int __subscriptions_next;
 
+#ifdef Z_HaveKerberos
 extern int krb_err_base;
+#endif
+
+#ifdef NO_MALLOC_ZERO
+#ifdef __STDC__
+extern void * (*Z_malloc) ();
+#else
+extern char * (*Z_malloc) ();
+#endif
+#undef malloc
+#define malloc(N) ((*Z_malloc)(N))
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#ifndef NO_MALLOC_ZERO
 #if defined(__STDC__) || defined(__cplusplus)
     extern void *malloc (unsigned);
 #else
     extern char *malloc();
+#endif
 #endif
     extern time_t time Zproto((time_t *));
     extern long random();
