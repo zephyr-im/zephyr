@@ -918,6 +918,9 @@ struct sockaddr_in *who;
 #ifdef sun
 	(void) strcat(buf, "SUN");
 #endif sun
+#ifdef mips
+	(void) strcat(buf, "MIPS");
+#endif mips
 	vers = strsave(buf);
 
 	(void) sprintf(buf, "%d pkts", npackets);
@@ -1035,8 +1038,9 @@ char *file;
 		if (newline = index(buf, '\n'))
 			*newline = '\0';
 
-		if (nused >= nhosts) {
+		if (nused+1 >= nhosts) {
 			/* get more pointer space if necessary */
+			/* +1 to leave room for null pointer */
 			ret_list = (char **)realloc((char *)ret_list,
 						    (unsigned) nhosts * 2);
 			nhosts = nhosts * 2;
@@ -1044,6 +1048,7 @@ char *file;
 		ret_list[nused++] = strsave(buf);
 	}
 	(void) fclose(fp);
+	ret_list[nused] = (char *)0;
 	return(ret_list);
 }
 
@@ -1052,14 +1057,14 @@ char *file;
  */
 static void
 free_server_list(list)
-char **list;
+register char **list;
 {
 	register int i;
 
 	if (!nhosts)			/* nothing allocated */
 		return;
-	for (i = 0; i < nhosts; i++)
-		xfree(list[i]);
+	for (; *list; list++)
+	    xfree(*list);
 	xfree(list);
 	return;
 }
