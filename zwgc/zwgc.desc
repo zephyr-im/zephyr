@@ -79,7 +79,7 @@ match "WG_CTL_CLASS"
 #match "MAIL"
 #	case $instance
 #	match "pop"
-#		exec "/usr/athena/bin/zmailnotify"
+#		exec "zmailnotify"
 #		exit
 #	endcase
 #	print "(Authentication: @bold("+$aval+"))\n"
