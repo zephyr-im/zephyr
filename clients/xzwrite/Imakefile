@@ -34,5 +34,5 @@ program(xzwrite,${OBJS},,${LIBS},${CLIENTDIR})
 manpage(1,xzwrite.1)
 
 install::
-	$(RM) $(ACLDIR)/XZwrite
-	$(CP) XZwrite $(ACLDIR)/XZwrite
+	$(RM) $(DESTDIR)$(ACLDIR)/XZwrite
+	$(CP) XZwrite $(DESTDIR)$(ACLDIR)/XZwrite
