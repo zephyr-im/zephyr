@@ -144,6 +144,7 @@ client_flush_host(host)
 		client_deregister(client, 1);
 	}
     }
+    uloc_hflush(host);
 }
 
 /*
