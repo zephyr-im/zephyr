@@ -94,7 +94,7 @@ static long lose_timo = LOSE_TIMO;
 static losinghost *losing_hosts = NULLLH; /* queue of pings for hosts we
 					     doubt are really there */
 
-static void host_detach(), flush(), insert_host(), remove_host();
+static void host_detach(), insert_host(), remove_host();
 static void host_not_losing(), host_lost(), ping();
 static Code_t host_attach();
 static int cmp_hostlist();
@@ -339,7 +339,7 @@ losinghost *which;
 }
 
 /*
- * The host responded to the ping, so we flush any clients on this host.
+ * The host responded to the ping, so we flush the losing clients on this host.
  */
 
 static void
@@ -370,36 +370,6 @@ struct sockaddr_in *who;
 			lhp = lhp->q_forw;
 }
 
-
-/*
- * Flush the info for this host, but maintain ownership.
- */
-
-static void
-flush(who, server)
-struct sockaddr_in *who;
-ZServerDesc_t *server;
-{
-	register ZHostList_t *hlp = server->zs_hosts;
-	register ZHostList_t *hlp2;
-	Code_t retval;
-
-	zdbug((LOG_DEBUG,"flush %s",inet_ntoa(who->sin_addr)));
-
-	for (hlp2 = hlp->q_forw; hlp2 != hlp; hlp2 = hlp2->q_forw) {
-		if (hlp2->zh_addr.sin_addr.s_addr == who->sin_addr.s_addr)
-			/* here he is */
-			break;
-	}
-	if (hlp2 == hlp) {		/* not here */
-		syslog(LOG_WARNING, "(h)flush: wrong server");
-		return;
-	}
-	hostm_flush(hlp2, server);
-	if ((retval = host_attach(who, server)) != ZERR_NONE)
-		syslog(LOG_ERR, "flush h_attach: %s",
-		       error_message(retval));
-}
 
 /*
  * transfer this host to server's ownership.  The caller must update the
