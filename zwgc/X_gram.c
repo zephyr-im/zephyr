@@ -25,6 +25,7 @@ static const char rcsid_X_gram_c[] = "$Id$";
 #include "xmark.h"
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
+#include <X11/Xatom.h>
 #include "zwgc.h"
 #include "X_driver.h"
 #include "X_fonts.h"
@@ -62,6 +63,10 @@ static Window group_leader; /* In order to have transient windows,
 static XClassHint classhint;
 static XSetWindowAttributes xattributes;
 static unsigned long xattributes_mask;
+static int set_all_desktops = True;
+static Atom net_wm_desktop = None;
+static Atom net_wm_window_type = None;
+static Atom net_wm_window_type_utility = None;
 
 /* ICCCM note:
  *
@@ -218,6 +223,14 @@ void x_gram_init(dpy)
 			      |LeaveWindowMask|Button1MotionMask
 			      |Button3MotionMask|StructureNotifyMask);
     xattributes_mask = (CWBackPixel|CWBorderPixel|CWEventMask|CWCursor);
+
+    set_all_desktops = get_bool_resource("allDesktops", "AllDesktops", True);
+    net_wm_desktop = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
+    net_wm_window_type = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+    net_wm_window_type_utility = XInternAtom(dpy,
+					     "_NET_WM_WINDOW_TYPE_UTILITY",
+					     False);
+
     temp = get_string_resource ("backingStore", "BackingStore");
     if (!temp)
 	return;
@@ -261,6 +274,7 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     XSizeHints sizehints;
     XWMHints wmhints;
     XSetWindowAttributes attributes;
+    unsigned long all_desktops = 0xFFFFFFFF;
     extern void x_get_input();
 
     /*
@@ -311,6 +325,13 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
        x_set_icccm_hints(dpy,w,title_name,icon_name,&sizehints,&wmhints,0);
     }
        
+    if (net_wm_window_type != None && net_wm_window_type_utility != None)
+	XChangeProperty(dpy, w, net_wm_window_type, XA_ATOM, 32,
+			PropModeReplace,
+			(unsigned char *) &net_wm_window_type_utility, 1);
+    if (set_all_desktops && net_wm_desktop != None)
+	XChangeProperty(dpy, w, net_wm_desktop, XA_CARDINAL, 32,
+			PropModeReplace, (unsigned char *) &all_desktops, 1);
 
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
 
