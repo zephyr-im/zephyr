@@ -451,7 +451,7 @@ subscr_marshal_subs(notice, auth, who, found)
 {
     ZNotice_t reply;
     char **answer = NULL;
-    int temp;
+    unsigned short temp;
     Code_t retval;
     Client *client;
     Destlist *subs, *sub;
@@ -478,17 +478,15 @@ subscr_marshal_subs(notice, auth, who, found)
 	   of the client for which the sender desires the subscription
 	   list.  The port field is the port of the sender. */
 
-	retval = ZReadAscii(notice->z_message, notice->z_message_len,
-			    (unsigned char *) &temp, sizeof(u_short), 2);
+	retval = ZReadAscii16(notice->z_message, notice->z_message_len, &temp);
 	if (retval != ZERR_NONE) {
 	    syslog(LOG_WARNING, "subscr_marshal read port num: %s",
 		   error_message(retval));
 	    return(NULL);
 	}
 
-	/* Blech blech blech */
 	reply = *notice;
-	reply.z_port = *((u_short *)&temp);
+	reply.z_port = htons(temp);
 
 	client = client_which_client(&who->sin_addr, &reply);
 
@@ -776,8 +774,7 @@ subscr_send_subs(client)
     des_ecb_encrypt(client->session_key, cblock, serv_ksched.s, DES_ENCRYPT);
 #endif
 
-    retval = ZMakeAscii(buf, sizeof(buf), cblock, sizeof(C_Block),
-			sizeof(C_Block));
+    retval = ZMakeAscii(buf, sizeof(buf), cblock, sizeof(C_Block));
     if (retval != ZERR_NONE) {
 #if 0
 	zdbug((LOG_DEBUG,"zmakeascii failed: %s", error_message(retval)));

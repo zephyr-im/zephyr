@@ -16,7 +16,7 @@
 #include "zserver.h"
 #include "version.h"
 
-const char zephyr_version[] = "Zephyr sytem version 2.0";
+const char zephyr_version[] = "Zephyr system version 2.0";
 
 #ifdef DEBUG
 const char version[] = "Zephyr server (DEBUG) $Revision$";

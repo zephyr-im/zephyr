@@ -579,14 +579,18 @@ bdump_send_list_tcp(kind, addr, class_name, inst, opcode, sender, recip, lyst,
     char *class_name, *inst, *opcode, *sender, *recip, **lyst;
 {
     ZNotice_t notice;
-    char *pack;
+    char *pack, addrbuf[100];
     int packlen, count;
     Code_t retval;
     u_short length;
 
+    retval = ZMakeAscii(addrbuf, sizeof(addrbuf),
+			(unsigned char *) &addr->sin_addr,
+			sizeof(struct in_addr));
+    if (retval != ZERR_NONE)
+	return retval;
     notice.z_kind = kind;
  
-    memcpy(&notice.z_sender_addr, &addr->sin_addr, sizeof(struct sockaddr_in));
     notice.z_port = addr->sin_port;
     notice.z_class = class_name;
     notice.z_class_inst = inst;
@@ -594,7 +598,8 @@ bdump_send_list_tcp(kind, addr, class_name, inst, opcode, sender, recip, lyst,
     notice.z_sender = sender;
     notice.z_recipient = recip;
     notice.z_default_format = "";
-    notice.z_num_other_fields = 0;
+    notice.z_num_other_fields = 1;
+    notice.z_other_fields[0] = addrbuf;
  
     retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen, ZNOAUTH);
     if (retval != ZERR_NONE)
@@ -820,9 +825,22 @@ bdump_recv_loop(server)
 	    syslog(LOG_DEBUG, buf);
 	}
 #endif /* DEBUG */
+	if (notice.z_num_other_fields >= 1) {
+	    retval = ZReadAscii(notice.z_other_fields[0],
+				strlen(notice.z_other_fields[0]),
+				(unsigned char *) &who.sin_addr,
+				sizeof(struct in_addr));
+	    if (retval != ZERR_NONE) {
+		syslog(LOG_ERR, "brl zreadascii failed: %s",
+		       error_message(retval));
+		return retval;
+	    }
+	} else {
+	    who.sin_addr.s_addr = notice.z_sender_addr.s_addr;
+	}
 	who.sin_family = AF_INET;
-	who.sin_addr.s_addr = notice.z_sender_addr.s_addr;
 	who.sin_port = notice.z_port;
+
 	if (strcmp(notice.z_opcode, ADMIN_DONE) == 0) {
 	    /* end of brain dump */
 	    return ZERR_NONE;
@@ -847,8 +865,7 @@ bdump_recv_loop(server)
 	    if (*notice.z_class_inst) {
 		/* a C_Block is there */
 		cp = notice.z_message + strlen(notice.z_message) + 1;
-		retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(C_Block),
-				    sizeof(C_Block));
+		retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(C_Block));
 		if (retval != ZERR_NONE) {
 		    syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
 			   error_message(retval), cp);
