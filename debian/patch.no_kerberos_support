@@ -150,3 +150,40 @@ diff -u -r1.2 -r1.3
 +    return(retval);
  }
 
+Index: server/realm.c
+===================================================================
+RCS file: /afs/1ts.org/project/debian/repository/zephyr/server/realm.c,v
+retrieving revision 1.4
+diff -u -r1.4 realm.c
+--- server/realm.c	12 Jul 2002 00:20:52 -0000	1.4
++++ server/realm.c	12 Jul 2002 01:32:41 -0000
+@@ -481,12 +481,14 @@
+ 	zdbug((LOG_DEBUG, "rlm_deathgram: suggesting %s to %s", 
+ 	       (server) ? server->addr_str : "nothing", realm->name));
+ 
++#ifdef HAVE_KRB4
+ 	if (!ticket_lookup(realm->name))
+ 	    if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
+ 		syslog(LOG_WARNING, "rlm_deathgram failed: %s", 
+ 		       error_message(retval));
+ 		return;
+ 	    }
++#endif
+ 
+ 	if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH)) 
+ 	    != ZERR_NONE) 
+@@ -575,12 +577,14 @@
+ 	    snotice.z_message = NULL;
+ 	    snotice.z_message_len = 0;
+ 
++#ifdef HAVE_KRB4
+ 	    if (!ticket_lookup(realm->name))
+ 		if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
+ 		    syslog(LOG_WARNING, "rlm_wakeup failed: %s", 
+ 			   error_message(retval));
+ 		    continue;
+ 		}
++#endif
+ 
+ 	    if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH)) 
+ 		!= ZERR_NONE) 
