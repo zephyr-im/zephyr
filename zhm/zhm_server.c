@@ -105,33 +105,44 @@ char *sugg_serv;
 	  } while ((done == 0) && (*++parse != NULL));
      }
      if (done) {
-	  if (hmdebug)
-	       syslog(LOG_DEBUG, "Suggested server: %s\n", sugg_serv);
-	  hp = gethostbyname(sugg_serv);
-	  DPR2 ("Server = %s\n", sugg_serv);
-	  (void)strcpy(cur_serv, sugg_serv);
-     } else {		  
-	  if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
-	       serv_loop = 0;
-	       hp = gethostbyname(prim_serv);
-	       DPR2 ("Server = %s\n", prim_serv);
-	       (void)strcpy(cur_serv, prim_serv);
-	  } else
-	  do {
-	       if (*++cur_serv_list == NULL) {
-		    /* Exit if we are rebooting, and cannot find a server */
-		    if (rebootflag)
-			 die_gracefully();
-		    cur_serv_list = serv_list;
-	       }
-	       if (strcmp(*cur_serv_list, cur_serv)) {
-		    hp = gethostbyname(*cur_serv_list);
-		    DPR2 ("Server = %s\n", *cur_serv_list);
-		    (void)strcpy(cur_serv, *cur_serv_list);
-		    done = 1;
+	  if ((hp = gethostbyname(sugg_serv)) != NULL) {
+	       DPR2 ("Server = %s\n", sugg_serv);	
+	       (void)strcpy(cur_serv, sugg_serv);
+	       if (hmdebug)
+		    syslog(LOG_DEBUG, "Suggested server: %s\n", sugg_serv);
+	  } else {
+	       done = 0; 
+	       sleep(1);
+	  }
+     }
+     if (!done)
+	  do {		  
+	       if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
+		    serv_loop = 0;
+		    if ((hp = gethostbyname(prim_serv)) != NULL) {
+			 DPR2 ("Server = %s\n", prim_serv);
+			 (void)strcpy(cur_serv, prim_serv);
+			 done = 1;
+		    } else
+			 sleep(1);
+	       } else {
+		    if (*++cur_serv_list == NULL) {
+			 /* Exit if we are rebooting, */
+			 /* and cannot find a server. */
+			 if (rebootflag)
+			      die_gracefully();
+			 cur_serv_list = serv_list;
+		    }
+		    if (strcmp(*cur_serv_list, cur_serv)) {
+			 if ((hp = gethostbyname(*cur_serv_list)) != NULL){
+			      DPR2 ("Server = %s\n", *cur_serv_list);
+			      (void)strcpy(cur_serv, *cur_serv_list);
+			      done = 1;
+			 } else
+			      sleep(1);
+		    }
 	       }
 	  } while (done == 0);
-     }
      bcopy(hp->h_addr, (char *)&serv_sin.sin_addr, hp->h_length);
      nservchang++;
 }
