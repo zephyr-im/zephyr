@@ -17,6 +17,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <sys/param.h>			/* for MAXHOSTNAMELEN */
+#include <com_err.h>
 
 #ifndef lint
 static char rcsid_zpopnotify_c[] = "$Header$";
@@ -29,13 +30,11 @@ main(argc,argv)
 	int argc;
 	char *argv[];
 {
-	char *rindex();
-	
 	ZNotice_t notice;
 	struct hostent *hent;
 	int retval;
 	register int i;
-	char *whoami,*ptr,myhost[MAXHOSTNAMELEN],mysender[BUFSIZ];
+	char *whoami,myhost[MAXHOSTNAMELEN],mysender[BUFSIZ];
 	char *lines[2];
 	
 	whoami = argv[0];
