@@ -85,13 +85,6 @@ SimpleProgram(name,$(OBJS) $(ZLIB),libs $(ZLIBS),$(ATHBINDIR)) @@\
 create_depend($(SRCS))
 
 
-/*
- * Other site-specific rules, defines, and overrides.
- */
-#ifdef ultrix
-#define SYSLOG_COMPAT42
-#endif
-
 #ifdef UseInstalled
 ATHBINDIR = /mit/zephyr/@sys/bin
 ATHLIBDIR = /mit/zephyr/@sys/lib
