@@ -12,7 +12,7 @@
  * C.  Grump grump...
  */
 #if ! __GNUC__
-#if !defined(__osf__)
+#if !defined(__osf__) && !defined(sgi)
 #define VARARGS 1
 #endif
 #endif
