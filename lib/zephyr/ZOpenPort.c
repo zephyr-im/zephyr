@@ -27,7 +27,7 @@ Code_t ZOpenPort(port)
 
 	if ((__Zephyr_fd = socket(AF_INET,SOCK_DGRAM,0)) < 0) {
 		__Zephyr_fd = -1;
-		return (ZERR_UNIX);
+		return (errno);
 	}
 
 	bindin.sin_family = AF_INET;
@@ -51,7 +51,7 @@ Code_t ZOpenPort(port)
 								+1);
 			}
 			else
-				return (ZERR_UNIX);
+				return (errno);
 		}
 	} while (retval < 0 && port);
 
