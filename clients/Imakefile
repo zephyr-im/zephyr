@@ -19,6 +19,10 @@ SYSLOGD= syslogd
 SYSLOGD=
 #endif
 
+#ifndef X11_NO_XAW
+XZWRITE=xzwrite
+#endif
+
 #if defined(HESIOD) && defined(KERBEROS)
 ZMAILNOTIFY= zmailnotify
 #else /* !HESIOD || !KERBEROS */
@@ -29,7 +33,7 @@ ZMAILNOTIFY=
 
 SUBDIRS = zaway zctl zleave zlocate \
 	$(ZMAILNOTIFY) znol zpopnotify zshutdown_notify zstat zwrite \
-	$(SYSLOGD) xzwrite
+	$(SYSLOGD) $(XZWRITE)
 
 #ifdef OLD_ATHENA_COMPAT
 SHELLSCRIPTS= zlogout zhide zwgc
