@@ -116,19 +116,24 @@ static int get_localvarfile(bfr)
     char *envptr;
     struct passwd *pwd;
 
-    envptr = getenv("HOME");
+    envptr = getenv("ZEPHYR_VARS");
     if (envptr)
-	(void) strcpy(bfr, envptr);
+    	(void) strcpy(bfr, envptr);
     else {
-	if (!(pwd = getpwuid((int) getuid()))) {
-	    fprintf(stderr, "Zephyr internal failure: Can't determine your home directory.\n");
-	    return (1);
+    	envptr = getenv("HOME");
+	if (envptr)
+	    (void) strcpy(bfr, envptr);
+	else {
+	    if (!(pwd = getpwuid((int) getuid()))) {
+		fprintf(stderr, "Zephyr internal failure: Can't determine your home directory.\n");
+		return (1);
+	    }
+	    (void) strcpy(bfr, pwd->pw_dir);
 	}
-	(void) strcpy(bfr, pwd->pw_dir);
-    }
 
-    (void) strcat(bfr, "/");
-    (void) strcat(bfr, ".zephyr.vars");
+	(void) strcat(bfr, "/");
+	(void) strcat(bfr, ".zephyr.vars");
+    }
     return (0);
 } 
 	
