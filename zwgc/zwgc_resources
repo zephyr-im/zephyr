@@ -1,0 +1,95 @@
+!
+! Zwgc2 application specific global resources:
+!
+
+*style*fontfamily.default: default
+*style.message.personal*fontfamily.title: huge
+
+*style*geometry:		+0+0
+
+!
+! The following is the adobe-courier font family.  Availiable sizes are
+! 80, 100, 120, 140, 180, and 240.  This family used to be courier.
+!
+
+*fontfamily.default.small.roman:	-adobe-courier-medium-r-*-80-*-m-*
+*fontfamily.default.small.bold:		-adobe-courier-bold-r-*-80-*-m-*
+*fontfamily.default.small.italic:	-adobe-courier-medium-o-*-80-*-m-*
+*fontfamily.default.small.bolditalic:	-adobe-courier-bold-o-*-80-*-m-*
+
+*fontfamily.default.medium.roman:	-adobe-courier-medium-r-*-120-*-m-*
+*fontfamily.default.medium.bold:	-adobe-courier-bold-r-*-120-*-m-*
+*fontfamily.default.medium.italic:	-adobe-courier-medium-o-*-120-*-m-*
+*fontfamily.default.medium.bolditalic:	-adobe-courier-bold-o-*-120-*-m-*
+
+*fontfamily.default.large.roman:	-adobe-courier-medium-r-*-240-*-m-*
+*fontfamily.default.large.bold:		-adobe-courier-bold-r-*-240-*-m-*
+*fontfamily.default.large.italic:	-adobe-courier-medium-o-*-240-*-m-*
+*fontfamily.default.large.bolditalic:	-adobe-courier-bold-o-*-240-*-m-*
+
+!
+! The following is the adobe-courier font family.  Availiable sizes are
+! 80, 100, 120, 140, 180, and 240.  This family used to be courier.
+!
+
+*fontfamily.courier.small.roman:	*adobe-courier-medium-r-*-80-*-m-*
+*fontfamily.courier.small.bold:		*adobe-courier-bold-r-*-80-*-m-*
+*fontfamily.courier.small.italic:	*adobe-courier-medium-o-*-80-*-m-*
+*fontfamily.courier.small.bolditalic:	*adobe-courier-bold-o-*-80-*-m-*
+
+*fontfamily.courier.medium.roman:	*adobe-courier-medium-r-*-120-*-m-*
+*fontfamily.courier.medium.bold:	*adobe-courier-bold-r-*-120-*-m-*
+*fontfamily.courier.medium.italic:	*adobe-courier-medium-o-*-120-*-m-*
+*fontfamily.courier.medium.bolditalic:	*adobe-courier-bold-o-*-120-*-m-*
+
+*fontfamily.courier.large.roman:	*adobe-courier-medium-r-*-240-*-m-*
+*fontfamily.courier.large.bold:		*adobe-courier-bold-r-*-240-*-m-*
+*fontfamily.courier.large.italic:	*adobe-courier-medium-o-*-240-*-m-*
+*fontfamily.courier.large.bolditalic:	*adobe-courier-bold-o-*-240-*-m-*
+
+!
+! The following is the adobe-times font family.  Availiable sizes are
+! 80, 100, 120, 140, 180, and 240.  This family used to be times-roman.
+!
+*fontfamily.times.small.roman:		*adobe-times-medium-r-*-80-*-p-*
+*fontfamily.times.small.bold:		*adobe-times-bold-r-*-80-*-p-*
+*fontfamily.times.small.italic:		*adobe-times-medium-i-*-80-*-p-*
+*fontfamily.times.small.bolditalic:	*adobe-times-bold-i-*-80-*-p-*
+
+*fontfamily.times.medium.roman:		*adobe-times-medium-r-*-120-*-p-*
+*fontfamily.times.medium.bold:		*adobe-times-bold-r-*-120-*-p-*
+*fontfamily.times.medium.italic:	*adobe-times-medium-i-*-120-*-p-*
+*fontfamily.times.medium.bolditalic:	*adobe-times-bold-i-*-120-*-p-*
+
+*fontfamily.times.large.roman:		*adobe-times-medium-r-*-240-*-p-*
+*fontfamily.times.large.bold:		*adobe-times-bold-r-*-240-*-p-*
+*fontfamily.times.large.italic:		*adobe-times-medium-i-*-240-*-p-*
+*fontfamily.times.large.bolditalic:	*adobe-times-bold-i-*-240-*-p-*
+
+!
+! The following is the adobe-helvetica font family.  Availiable sizes are
+! 80, 100, 120, 140, 180, and 240.  This family used to be helvetica.
+!
+*fontfamily.helvetica.small.roman:	*adobe-helvetica-medium-r-*-80-*-p-*
+*fontfamily.helvetica.small.bold:	*adobe-helvetica-bold-r-*-80-*-p-*
+*fontfamily.helvetica.small.italic:	*adobe-helvetica-medium-o-*-80-*-p-*
+*fontfamily.helvetica.small.bolditalic:	*adobe-helvetica-bold-o-*-80-*-p-*
+
+*fontfamily.helvetica.medium.roman:	*adobe-helvetica-medium-r-*-120-*-p-*
+*fontfamily.helvetica.medium.bold:	*adobe-helvetica-bold-r-*-120-*-p-*
+*fontfamily.helvetica.medium.italic:	*adobe-helvetica-medium-o-*-120-*-p-*
+*fontfamily.helvetica.medium.bolditalic:*adobe-helvetica-bold-o-*-120-*-p-*
+
+*fontfamily.helvetica.large.roman:	*adobe-helvetica-medium-r-*-240-*-p-*
+*fontfamily.helvetica.large.bold:	*adobe-helvetica-bold-r-*-240-*-p-*
+*fontfamily.helvetica.large.italic:	*adobe-helvetica-medium-o-*-240-*-p-*
+*fontfamily.helvetica.large.bolditalic:	*adobe-helvetica-bold-o-*-240-*-p-*
+
+!
+! Quick hack...
+!
+
+*fontfamily.huge*roman:		*bitstream-charter-medium-r-*-33-*-p-*
+*fontfamily.huge*bold:		*bitstream-charter-bold-r-*-33-*-p-*
+*fontfamily.huge*italic:	*bitstream-charter-medium-i-*-33-*-p-*
+*fontfamily.huge*bolditalic:	*bitstream-charter-bold-i-*-33-*-p-*
