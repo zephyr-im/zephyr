@@ -404,7 +404,7 @@ ZClient_t *client;
 	pnotice->z_opcode = ADMIN_KILL_CLT;
 	pnotice->z_sender = myname;	/* myname is the hostname */
 	pnotice->z_recipient = "";
-
+	pnotice->z_default_format = 0;
 
 	/* XXX */
 	auth = 0;
@@ -951,6 +951,7 @@ int auth;
 	pnotice->z_opcode = opcode;
 	pnotice->z_sender = myname;	/* myname is the hostname */
 	pnotice->z_recipient = "";
+	pnotice->z_default_format = 0;
 	pnotice->z_message = (caddr_t) NULL;
 	pnotice->z_message_len = 0;
 
@@ -1005,6 +1006,7 @@ int auth;
 	pnotice->z_opcode = opcode;
 	pnotice->z_sender = myname;	/* myname is the hostname */
 	pnotice->z_recipient = "";
+	pnotice->z_default_format = 0;
 	pnotice->z_message = (caddr_t) NULL;
 	pnotice->z_message_len = 0;
 
