@@ -1,21 +1,25 @@
-/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#	Copyright 1988, 1993 Massachusetts Institute of Technology.
 /**/#
 /**/#	For copying and distribution information, see the file
 /**/#	"mit-copyright.h". 
 /**/#
-/**/#	$Source$
-/**/#	$Author$
 /**/#	$Id$
-/**/#
 
-SUBDIRS= Memory String Dictionary
+#ifdef _AIX
+TERMCAP = -lcurses
+#else
+TERMCAP = -ltermcap
+#endif
+
 #ifdef macII
 LIBS2= -lc -lPW
 #endif
-LIBS = $(X11_LIB) $(ZEPHYR_LIB) $(KRB_LIB) $(DES_LIB) $(COMERR_LIB) -ltermcap \
-	$(LIBS2)
-LINTLIBS = $(X11_LINTLIB) $(ZEPHYR_LINTLIB) $(KRB_LINTLIB) $(DES_LINTLIB) \
-	$(COMERR_LINTLIB) -ltermcap
+#ifdef SOLARIS
+LIBS2 = -lgen
+#endif
+
+LIBS = $(ZLIBS) $(LIB_X) $(TERMCAP) $(LIBS2)
+
 SRCS = parser.y lexer.c node.c exec.c buffer.c main.c zephyr.c X_driver.c\
           substitute.c port.c xshow.c \
           mux.c eval.c subscriptions.c notice.c xcut.c regexp.c\
@@ -28,27 +32,12 @@ OBJS = parser.o lexer.o node.o exec.o buffer.o main.o zephyr.o X_driver.o\
 	  character_class.o text_operations.o file.o error.o variables.o\
 	  formatter.o X_fonts.o X_gram.o tty_filter.o standard_ports.o\
 	  xselect.o xmark.o xrevstack.o xerror.o ulong_dictionary.o
-HDRS = exec.h node.h zwgc.h parser.h port.h\
-		xshow.h pointer.h substitute.h eval.h zephyr.h lexer.h\
-		subscriptions.h notice.h regexp.h character_class.h\
-		text_operations.h file.h error.h mux.h variables.h\
-		formatter.h main.h\
-		X_driver.h X_fonts.h X_gram.h xselect.h \
-		buffer.h xmark.h xrevstack.h xerror.h ulong.h
 
-LINCLUDES = -IMemory -IString -IDictionary
-GENERATORS= ./generate_stack_instance stack.h
-
-SRCDIR= ${SRCTOP}/zwgc
-BUILDDIR= ${BUILDTOP}/zwgc
-CONFIG_FILES= zwgc.desc  zephyr.vars zwgc_resources
-CODE= ${GENERATORS} ${HDRS} ${SRCS} ${CONFIG_FILES} Imakefile
-
-LIB=.
-LIBRARIES = $(LIB)/String/new_string.o $(LIB)/Dictionary/string_dictionary.o\
-            $(LIB)/Dictionary/string_dictionary_aux.o\
-	    $(LIB)/Dictionary/int_dictionary.o\
-	    $(LIB)/Memory/new_memory.o
+LIBRARIES = ./String/new_string.o\
+	    ./Dictionary/string_dictionary.o\
+            ./Dictionary/string_dictionary_aux.o\
+	    ./Dictionary/int_dictionary.o\
+	    ./Memory/new_memory.o
 
 GENERATED= port_dictionary.c port_dictionary.h \
 	pointer_dictionary.c pointer_dictionary.h \
@@ -58,84 +47,75 @@ GENERATED= port_dictionary.c port_dictionary.h \
 	xmode_stack.h \
 	y.tab.h
 	
+DEPENDSRCS= $(SRCS) $(GENERATED)
 
-DEPENDSRCS= ${CODE} ${GENERATED}
+XDEFS =	-I./Memory -I./String -I./Dictionary -DREVSTACK \
+	-DDEFDESC=\"$(ZLIBDIR)/zwgc.desc\" \
+	-DAPPDEFDATABASE=\"$(ZLIBDIR)/zwgc_resources\" \
+	-DZWGCPATH=\"$(ATHBINDIR)/zwgc\"
 
-/*
- * The pathnames for the installed default description file & applications
- * default file.
- */
-ZWGCDESC=$(ACLDIR)/zwgc.desc
-APPDEF=$(ACLDIR)/zwgc_resources
+SUBDIRS = Memory String Dictionary
 
-DEFINES=-DREVSTACK -DDEFDESC=\"$(ZWGCDESC)\" -DAPPDEFDATABASE=\"$(APPDEF)\" \
-	-DZWGCPATH=\"$(CLIENTDIR)/zwgc\"
+do_subdirs_imakefile($(SUBDIRS))
+foreach_subdirs(clean,$(SUBDIRS))
+foreach_subdirs(all,$(SUBDIRS))
+foreach_subdirs(depend,$(SUBDIRS))
 
-normal_obj_rule()
-
-OUTPUT=zwgc
-
-do_subdirs($(SUBDIRS)) /* gotta do the subdirs first! */
-
-program($(OUTPUT),$(OBJS),,$(LIBRARIES) $(LIBS),$(CLIENTDIR))
+SimpleProgram(zwgc,$(OBJS) $(LIBRARIES),$(LIBS),$(ATHBINDIR))
+install_man(zwgc.1,zwgc.1)
 
 #ifdef ATHENA_COMPAT
-/* On Athena, zwgc has been in /usr/etc on VAXes and RTs and some people
-   run in with a full pathname.  For compatbility, make a link. */
+/**/# On Athena, zwgc has been in /usr/etc on VAXes and RTs and some people
+/**/# run in with a full pathname.  For compatbility, make a link.
 install::
 	$(RM) $(DESTDIR)/usr/etc/zwgc
 	ln $(DESTDIR)$(CLIENTDIR)/zwgc $(DESTDIR)/usr/etc/zwgc || ln -s $(CLIENTDIR)/zwgc $(DESTDIR)/usr/etc/zwgc 
 #endif
 
-depend:: ${DEPENDSRCS}
-	
-install::
-	-mkdir $(DESTDIR)$(ACLDIR)
-	$(RM) $(DESTDIR)$(ACLDIR)/zwgc.desc
-	$(CP) zwgc.desc $(DESTDIR)$(ACLDIR)/zwgc.desc
-	$(CHMOD) 644 $(DESTDIR)$(ACLDIR)/zwgc.desc
-	$(RM) $(DESTDIR)$(ETCATHDIR)/zephyr.vars
-	$(CP) zephyr.vars $(DESTDIR)$(ETCATHDIR)/zephyr.vars
-	$(RM) $(DESTDIR)$(ACLDIR)/zwgc_resources
-	$(CP) zwgc_resources $(DESTDIR)$(ACLDIR)/zwgc_resources
+create_depend($(DEPENDSRCS))
+
+install_file(zwgc.desc,$(ZLIBDIR))
+install_file(zwgc_resources,$(ZLIBDIR))
+install_file(zephyr.vars,$(ATHCONFDIR))
 
 YFLAGS=-d
 
-y.tab.h: parser.o
-# use implicit yacc rule for the following:
+/**/# use implicit yacc rule for the following:
 parser.o: parser.y
+y.tab.h: parser.o
 
-#
-# /* How to generate a port dictionary: */
-#
+/**/# How to generate a port dictionary:
 port_dictionary.c port_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ${BUILDDIR}/Dictionary port port.h
+	Dictionary/generate_dictionary_instance ./Dictionary port port.h
 
-#
-# /* How to generate a pointer dictionary: */
-#
+/**/# How to generate a pointer dictionary:
 pointer_dictionary.c pointer_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ${BUILDDIR}/Dictionary pointer pointer.h
+	Dictionary/generate_dictionary_instance ./Dictionary pointer pointer.h
 
-#
-# /* How to generate a ulong dictionary: */
-#
+/**/# How to generate a ulong dictionary:
 ulong_dictionary.c ulong_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ${BUILDDIR}/Dictionary ulong ulong.h
+	Dictionary/generate_dictionary_instance ./Dictionary ulong ulong.h
 
-#
-# /* How to generate a char stack: */
-#
+/**/# How to generate a char stack:
 char_stack.h: stack.h
-	./generate_stack_instance ${BUILDDIR} char
-#
-# /* How to generate a string stack: */
-#
-string_stack.h: stack.h
-	./generate_stack_instance ${BUILDDIR} string
-#
-# /* How to generate a xmode stack: */
-#
-xmode_stack.h: stack.h
-	./generate_stack_instance ${BUILDDIR} xmode
+	./generate_stack_instance . char
 
+/**/# How to generate a string stack:
+string_stack.h: stack.h
+	./generate_stack_instance . string
+
+/**/# How to generate a xmode stack:
+xmode_stack.h: stack.h
+	./generate_stack_instance . xmode
+
+clean::
+	$(RM) $(GENERATED)
+
+eval.o: port.h string_stack.h
+exec.o: port.h string_stack.h
+main.o: port.h string_stack.h
+port.o: port_dictionary.h
+standard_ports.o: port.h string_stack.h 
+text_operations.o: char_stack.h
+xshow.o: pointer_dictionary.h xmode_stack.h
+X_driver.o: ulong_dictionary.h
