@@ -38,7 +38,7 @@ main(argc,argv)
 	FILE *fp;
 	struct passwd *pwd;
 	char anyonename[BUFSIZ],name[BUFSIZ],cleanname[BUFSIZ],*envptr;
-	int onoff = ON,quiet = 0,justlist = 0;
+	int onoff = ON,quiet = 0,justlist = 0,useronly = 0, filenamed = 0;
 	int retval,arg,ind,one,numlocs,i;
 	short wgport;
 
@@ -80,27 +80,42 @@ main(argc,argv)
 		if (!strcmp(argv[arg],"-f")) {
 			if (arg == argc-1) {
 				fprintf(stderr,"No file name specified\n");
-				exit (1);
+				goto usage;
 			}
 			(void) strcpy(anyonename,argv[++arg]);
+			filenamed = 1;
 			continue;
 		}
-		printf("Usage: %s [on|off] [-q] [-l] [-f file]\n",argv[0]);
+		if (!strcmp(argv[arg],"-u")) {
+		    if (arg == argc-1) {
+			fprintf(stderr,"No username specified\n");
+			goto usage;
+		    }
+		    (void) strcpy(cleanname,argv[++arg]);
+		    useronly = 1;
+		    continue;
+		}
+	    usage:
+		fprintf(stderr,"Usage: %s [on|off] [-q | -l] [-f file | -u username]\n", argv[0]);
 		exit (1);
 	}
 
 	if (quiet && justlist) {
 		fprintf(stderr,"-q and -l cannot both be used\n");
-		exit (1);
+		goto usage;
 	} 
-
+	if (useronly && filenamed) {
+		fprintf(stderr,"-u and -f cannot both be used\n");
+		goto usage;
+	} 
 	if (!justlist)
 		if ((wgport = ZGetWGPort()) == -1) {
 			com_err(argv[0],errno,"while getting WindowGram port");
 			exit(1);
 		}
 	
-	if (!(fp = fopen(anyonename,"r"))) {
+
+	if (!useronly && !(fp = fopen(anyonename,"r"))) {
 		fprintf(stderr,"Can't open %s for input\n",anyonename);
 		exit (1);
 	}
@@ -108,16 +123,20 @@ main(argc,argv)
 	ind = 0;
 	
 	for (;;) {
-		if (!fgets(cleanname,sizeof cleanname,fp))
+		if (!useronly) {
+		    if (!fgets(cleanname,sizeof cleanname,fp))
 			break;
-		if (cleanname[0] == '#') /* ignore comment lines */
+		    if (cleanname[0] == '#') /* ignore comment lines */
 			continue;	
-		/* Get rid of old-style nol entries, just in case */
-		cleanname[strlen(cleanname)-1] = '\0';
-		while (cleanname[strlen(cleanname)-1] == ' ')
+		    /* Get rid of old-style nol entries, just in case */
+		    cleanname[strlen(cleanname)-1] = '\0';
+		    while (cleanname[strlen(cleanname)-1] == ' ')
 			cleanname[strlen(cleanname)-1] = '\0';
-		if (*cleanname == '@' || !*cleanname)
+		    if (*cleanname == '@' || !*cleanname)
 			continue;
+		} else if (ind)
+		    break;		/* only do the one name */
+
 		subs[ind].class = LOGIN_CLASS;
 		(void) strcpy(name,cleanname);
 		if (!index(name,'@')) {
@@ -184,6 +203,8 @@ main(argc,argv)
 			exit(1);
 		} 
 
-	(void) fclose(fp);		/* file is open read-only,
+	if (!useronly)
+	    (void) fclose(fp);		/* file is open read-only,
 					   ignore errs */
+	exit(0);
 }
