@@ -2,6 +2,8 @@
 
 ec  ZERR_PKTLEN,
 	"Packet too long or buffer too small"
+ec  ZERR_HEADERLEN,
+	"Notice header too large"
 ec  ZERR_ILLVAL,
 	"Illegal value in notice"
 ec  ZERR_HMPORT,
