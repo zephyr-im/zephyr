@@ -11,22 +11,24 @@
  *	"mit-copyright.h". 
  */
 
-#include <zephyr/mit-copyright.h>
-
 #include <zephyr/zephyr.h>
 
 #include <pwd.h>
 #include <string.h>
 
 #ifndef lint
-static char rcsid_znol_c[] = "$Header$";
-#endif lint
+static char rcsid_znol_c[] = "$Id$";
+#endif 
 
 #define SUBSATONCE 7
 #define ON 1
 #define OFF 0
 
+#ifdef _POSIX_SOURCE
+#include <stdlib.h>
+#else
 extern char *getenv(), *malloc();
+#endif
 extern uid_t getuid();
 
 main(argc,argv)
@@ -143,15 +145,18 @@ main(argc,argv)
 		} else if (ind)
 		    break;		/* only do the one name */
 
-		subs[ind].class = LOGIN_CLASS;
+		subs[ind].zsub_class = LOGIN_CLASS;
 		(void) strcpy(name,cleanname);
 		if (!index(name,'@')) {
 			(void) strcat(name,"@");
 			(void) strcat(name,ZGetRealm());
 		}
-		subs[ind].classinst = malloc((unsigned)(strlen(name)+1));
-		(void) strcpy(subs[ind].classinst,name);
-		subs[ind++].recipient = "";
+		if ((subs[ind].zsub_classinst = malloc((unsigned)(strlen(name)+1))) == NULL) {
+			fprintf (stderr, "znol: out of memory");
+			exit (1);
+		}
+		(void) strcpy(subs[ind].zsub_classinst, name);
+		subs[ind++].zsub_recipient = "";
 
 		if (!quiet && onoff == ON) {
 			if ((retval = ZLocateUser(name,&numlocs))
@@ -193,7 +198,7 @@ main(argc,argv)
 					exit(1);
 				} 
 			for (ind=0;ind<SUBSATONCE;ind++)
-				free(subs[ind].classinst);
+				free(subs[ind].zsub_classinst);
 			ind = 0;
 		}
 	}
