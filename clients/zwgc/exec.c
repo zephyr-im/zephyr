@@ -34,6 +34,10 @@ static char rcsid_exec_c[] = "$Id$";
 #include "variables.h"
 #include "notice.h"
 
+#if !defined(__STDC__) && !defined(const)
+#define const
+#endif
+
 static int exec_subtree(), exec_fields();
 
 /****************************************************************************/
@@ -351,7 +355,7 @@ static int exec_exec(node)
 
 static struct _Opstuff {
     int (*exec)();
-} opstuff[] = {
+} const opstuff[] = {
     { exec_noop },                         /* string_constant */
     { exec_noop },                         /* varref */
     { exec_noop },                         /* varname */
