@@ -351,7 +351,10 @@ ZClient_t *client;
 
 	packlen = sizeof(ZPacket_t);
 
-	if (auth) {			/* we are distributing authentic */
+	if (auth && client) {		/*
+					  we are distributing authentic and
+					  we have a pointer to auth info
+					 */
 		if ((retval = ZFormatAuthenticNotice(notice,
 						     noticepack,
 						     packlen,
