@@ -5,13 +5,13 @@
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Header$
+/**/#	$Id$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB} ${DES_LIB} $(DYN_LIB) \
+LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} $(DYN_LIB) ${COMERR_LIB} \
 	-lXaw -lXmu -lXt -lXext -lX11
-LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB} \
-	${DES_LINTLIB} $(DYN_LINTLIB)
+LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB} \
+	$(DYN_LINTLIB) ${COMERR_LINTLIB}
 
 SRCS	= interface.c resource.c destlist.c util.c bfgets.c \
 	gethomedir.c dest_window.c xzwrite.c edit_window.c zephyr.c\
