@@ -20,16 +20,16 @@ static char rcsid_ZCheckIfNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZCheckIfNotice(buffer,buffer_len,notice,auth,predicate,args)
+Code_t ZCheckIfNotice(buffer,buffer_len,notice,from,predicate,args)
 	ZPacket_t	buffer;
 	int		buffer_len;
 	ZNotice_t	*notice;
-	int		*auth;
+	struct		sockaddr_in *from;
 	int		(*predicate)();
 	char		*args;
 {
 	ZNotice_t tmpnotice;
-	int qcount,retval,tmpauth;
+	int qcount,retval;
 	struct _Z_InputQ *qptr;
 
 	if ((retval = Z_ReadEnqueue()) != ZERR_NONE)
@@ -40,17 +40,17 @@ Code_t ZCheckIfNotice(buffer,buffer_len,notice,auth,predicate,args)
 	
 	for (;qcount;qcount--) {
 		if ((retval = ZParseNotice(qptr->packet,qptr->packet_len,
-					   &tmpnotice,auth?&tmpauth:0,
-					   &qptr->from))
+					   &tmpnotice))
 		    != ZERR_NONE)
 			return (retval);
 		if ((predicate)(&tmpnotice,args)) {
 			if (qptr->packet_len > buffer_len)
 				return (ZERR_PKTLEN);
 			bcopy(qptr->packet,buffer,qptr->packet_len);
+			if (from)
+				*from = qptr->from;
 			if ((retval = ZParseNotice(buffer,qptr->packet_len,
-						   notice,auth,
-						   &qptr->from))
+						   notice))
 			    != ZERR_NONE)
 				return (retval);
 			return (Z_RemQueue(qptr));

@@ -20,15 +20,12 @@ static char rcsid_ZParseNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZParseNotice(buffer,len,notice,auth,from)
+Code_t ZParseNotice(buffer,len,notice)
 	ZPacket_t	buffer;
 	int		len;
 	ZNotice_t	*notice;
-	int		*auth;
-	struct		sockaddr_in *from;
 {
 	extern int ZCheckAuthentication();
 
-	return (Z_InternalParseNotice(buffer,len,notice,auth,from,
-				      ZCheckAuthentication));
+	return (Z_InternalParseNotice(buffer,len,notice));
 }

@@ -125,9 +125,8 @@ Z_ReadWait()
 	}
 	
 	if (!__Zephyr_server &&
-	    Z_InternalParseNotice(newqueue->packet, newqueue->packet_len,
-				  &notice,(int *)0,(struct sockaddr_in *)0,
-				  (int (*)())0) == ZERR_NONE) {
+	    ZParseNotice(newqueue->packet, newqueue->packet_len,
+			 &notice) == ZERR_NONE) {
 		if (notice.z_kind != HMACK && notice.z_kind != SERVACK &&
 		    notice.z_kind != SERVNAK) {
 			notice.z_kind = CLIENTACK;
@@ -198,7 +197,7 @@ Z_FormatRawHeader(notice,buffer,buffer_len,len)
 	int		*len;
 {
 	unsigned int temp;
-	char newrecip[BUFSIZ];
+	char newrecip[BUFSIZ],version[BUFSIZ];
 	char *ptr,*end;
 
 	if (!notice->z_class)
@@ -213,15 +212,25 @@ Z_FormatRawHeader(notice,buffer,buffer_len,len)
 	if (!notice->z_recipient)
 		notice->z_recipient = "";
 
+	if (!notice->z_default_format)
+		notice->z_default_format = "";
+
 	ptr = buffer;
 	end = buffer+buffer_len;
 
-	temp = htonl(ZVERSION);
+	sprintf(version,"%s%d.%d",ZVERSIONHDR,ZVERSIONMAJOR,ZVERSIONMINOR);
+	if (buffer_len < strlen(version)+1)
+		return (ZERR_PKTLEN);
+
+	strcpy(ptr,version);
+	ptr += strlen(ptr)+1;
+
+	temp = htonl(ZNUMFIELDS);
 	if (ZMakeAscii(ptr,end-ptr,(unsigned char *)&temp,
 		       sizeof(int)) == ZERR_FIELDLEN)
 		return (ZERR_PKTLEN);
 	ptr += strlen(ptr)+1;
-
+	
 	temp = htonl((int)notice->z_kind);
 	if (ZMakeAscii(ptr,end-ptr,(unsigned char *)&temp,
 		       sizeof(int)) == ZERR_FIELDLEN)
@@ -269,7 +278,9 @@ Z_FormatRawHeader(notice,buffer,buffer_len,len)
 		if (Z_AddField(&ptr,newrecip,end))
 			return (ZERR_PKTLEN);
 	}		
-
+	if (Z_AddField(&ptr,notice->z_default_format,end))
+		return (ZERR_PKTLEN);
+	
 	temp = htonl(notice->z_checksum);
 	if (ZMakeAscii(ptr,end-ptr,(unsigned char *)&temp,
 		       sizeof(ZChecksum_t)) == ZERR_FIELDLEN)
@@ -324,187 +335,145 @@ Z_RemQueue(qptr)
 	return (ZERR_NONE);
 }
 
-Code_t Z_InternalParseNotice(buffer,len,notice,auth,from,auth_routine)
+Code_t Z_InternalParseNotice(buffer,len,notice)
 	ZPacket_t	buffer;
 	int		len;
 	ZNotice_t	*notice;
-	int		*auth;
-	struct		sockaddr_in *from;
-	int		(*auth_routine)();
 {
 	char *ptr,*end;
+	int maj,numfields,i;
 	unsigned int temp[3];
+
+	bzero(notice,sizeof(ZNotice_t));
 	
 	ptr = buffer;
 	end = buffer+len;
 	
-	if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,sizeof(int)) == ZERR_BADFIELD)
-		return (ZERR_BADPKT);
-	ptr += strlen(ptr)+1;
-	
-	if (ntohl(*temp) != ZVERSION)
+	notice->z_version = ptr;
+	if (strncmp(ptr,ZVERSIONHDR,strlen(ZVERSIONHDR)))
 		return (ZERR_VERS);
-
-	if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,sizeof(int)) == ZERR_BADFIELD)
-		return (ZERR_BADPKT);
-	notice->z_kind = (ZNotice_Kind_t)ntohl((ZNotice_Kind_t)*temp);
-	ptr += strlen(ptr)+1;
-	
-	if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,sizeof(ZUnique_Id_t)) ==
-	    ZERR_BADFIELD)
-		return (ZERR_BADPKT);
-	bcopy((char *)temp,(char *)&notice->z_uid,sizeof(ZUnique_Id_t));
-	ptr += strlen(ptr)+1;
-	notice->z_time.tv_sec = ntohl(notice->z_uid.tv.tv_sec);
-	notice->z_time.tv_usec = ntohl(notice->z_uid.tv.tv_usec);
-	
-	if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,sizeof(u_short)) ==
-	    ZERR_BADFIELD)
-		return (ZERR_BADPKT);
-	notice->z_port = *((u_short *)temp);
-	ptr += strlen(ptr)+1;
-	
-	if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,sizeof(int)) == ZERR_BADFIELD)
-		return (ZERR_BADPKT);
-	notice->z_auth = *temp;
+	ptr += strlen(ZVERSIONHDR);
+	maj = atoi(ptr);
+	if (maj != ZVERSIONMAJOR)
+		return (ZERR_VERS);
 	ptr += strlen(ptr)+1;
 
 	if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,sizeof(int)) == ZERR_BADFIELD)
 		return (ZERR_BADPKT);
-	notice->z_authent_len = ntohl(*temp);
+	numfields = ntohl(*temp);
 	ptr += strlen(ptr)+1;
+
+	numfields -= 2;
+	if (numfields < 0)
+		numfields = 0;
+
+	if (numfields) {
+		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
+			       sizeof(int)) == ZERR_BADFIELD)
+			return (ZERR_BADPKT);
+		notice->z_kind = (ZNotice_Kind_t)ntohl((ZNotice_Kind_t)*temp);
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
+
+	if (numfields) {
+		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
+			       sizeof(ZUnique_Id_t)) ==
+		    ZERR_BADFIELD)
+			return (ZERR_BADPKT);
+		bcopy((char *)temp,(char *)&notice->z_uid,sizeof(ZUnique_Id_t));
+		notice->z_time.tv_sec = ntohl(notice->z_uid.tv.tv_sec);
+		notice->z_time.tv_usec = ntohl(notice->z_uid.tv.tv_usec);
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
+
+	if (numfields) {
+		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
+			       sizeof(u_short)) ==
+		    ZERR_BADFIELD)
+			return (ZERR_BADPKT);
+		notice->z_port = *((u_short *)temp);
+		numfields--;
+		ptr += strlen(ptr)+1;
+	} 
+
+	if (numfields) {
+		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
+			       sizeof(int)) == ZERR_BADFIELD)
+			return (ZERR_BADPKT);
+		notice->z_auth = *temp;
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
+
+	if (numfields) {
+		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
+			       sizeof(int)) == ZERR_BADFIELD)
+			return (ZERR_BADPKT);
+		notice->z_authent_len = ntohl(*temp);
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
+
+	if (numfields) {
+		notice->z_ascii_authent = ptr;
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
+
+	if (numfields) {
+		notice->z_class = ptr;
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
 	
-	notice->z_ascii_authent = ptr;
-	ptr += strlen(ptr)+1;
-	notice->z_class = ptr;
-	ptr += strlen(ptr)+1;
-	notice->z_class_inst = ptr;
-	ptr += strlen(ptr)+1;
-	notice->z_opcode = ptr;
-	ptr += strlen(ptr)+1;
-	notice->z_sender = ptr;
-	ptr += strlen(ptr)+1;
-	notice->z_recipient = ptr;
-	ptr += strlen(ptr)+1;
+	if (numfields) {
+		notice->z_class_inst = ptr;
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
 
-	if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
-		       sizeof(ZChecksum_t))
-	    == ZERR_BADFIELD)
-		return (ZERR_BADPKT);
-	notice->z_checksum = ntohl(*temp);
-	ptr += strlen(ptr)+1;
+	if (numfields) {
+		notice->z_opcode = ptr;
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
 
+	if (numfields) {
+		notice->z_sender = ptr;
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
+
+	if (numfields) {
+		notice->z_recipient = ptr;
+		numfields--;
+		ptr += strlen(ptr)+1;
+	} 
+
+	if (numfields) {
+		notice->z_default_format = ptr;
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
+	
+	if (numfields) {
+		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
+			       sizeof(ZChecksum_t))
+		    == ZERR_BADFIELD)
+			return (ZERR_BADPKT);
+		notice->z_checksum = ntohl(*temp);
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
+
+	for (i=0;i<numfields;i++)
+		ptr += strlen(ptr)+1;
+	
 	notice->z_message = (caddr_t) ptr;
 	notice->z_message_len = len-(ptr-buffer);
 
-	if (!auth)
-		return (ZERR_NONE);
-	if (!from || !auth_routine) {
-		*auth = 0;
-		return (ZERR_NONE);
-	} 
-		
-	*auth = (auth_routine)(notice,buffer,from);
 	return (ZERR_NONE);
 }
 
-/* XXX The following two routines are a TEMPORARY kludge */
-
-Z_NoAuthIfNotice(buffer,buffer_len,notice,predicate,args)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	ZNotice_t	*notice;
-	int		(*predicate)();
-	char		*args;
-{
-	ZNotice_t tmpnotice;
-	int qcount,retval;
-	struct _Z_InputQ *qptr;
-
-	if (__Q_Length)
-		retval = Z_ReadEnqueue();
-	else
-		retval = Z_ReadWait();
-	
-	if (retval != ZERR_NONE)
-		return (retval);
-	
-	qptr = __Q_Head;
-	qcount = __Q_Length;
-
-	for (;;qcount--) {
-		if ((retval = Z_InternalParseNotice(qptr->packet,
-						    qptr->packet_len,
-						    &tmpnotice,(int *)0,
-						    (struct sockaddr_in *)0,
-						    (int (*)())0))
-		    != ZERR_NONE)
-			return (retval);
-		if ((predicate)(&tmpnotice,args)) {
-			if (qptr->packet_len > buffer_len)
-				return (ZERR_PKTLEN);
-			bcopy(qptr->packet,buffer,qptr->packet_len);
-			if ((retval = Z_InternalParseNotice(buffer,
-							    qptr->packet_len,
-							    notice,(int *)0,
-							    (struct sockaddr_in *)0,
-							    (int (*)())0))
-			    != ZERR_NONE)
-				return (retval);
-			return (Z_RemQueue(qptr));
-		} 
-		/* Grunch! */
-		if (qcount == 1) {
-			if ((retval = Z_ReadWait()) != ZERR_NONE)
-				return (retval);
-			qcount++;
-			qptr = __Q_Tail;
-		} 
-		else
-			qptr = qptr->next;
-	}
-}
-
-Code_t Z_NoAuthCheckIfNotice(buffer,buffer_len,notice,predicate,args)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	ZNotice_t	*notice;
-	int		(*predicate)();
-	char		*args;
-{
-	ZNotice_t tmpnotice;
-	int qcount,retval;
-	struct _Z_InputQ *qptr;
-
-	if ((retval = Z_ReadEnqueue()) != ZERR_NONE)
-		return (retval);
-	
-	qptr = __Q_Head;
-	qcount = __Q_Length;
-	
-	for (;qcount;qcount--) {
-		if ((retval = Z_InternalParseNotice(qptr->packet,
-						    qptr->packet_len,
-						    &tmpnotice,(int *)0,
-						    (struct sockaddr_in *)0,
-						    (int (*)())0))
-		    != ZERR_NONE)
-			return (retval);
-		if ((predicate)(&tmpnotice,args)) {
-			if (qptr->packet_len > buffer_len)
-				return (ZERR_PKTLEN);
-			bcopy(qptr->packet,buffer,qptr->packet_len);
-			if ((retval = Z_InternalParseNotice(buffer,
-							    qptr->packet_len,
-							    notice,(int *)0,
-							    (struct sockaddr_in *)0,
-							    (int (*)())0))
-			    != ZERR_NONE)
-				return (retval);
-			return (Z_RemQueue(qptr));
-		} 
-		qptr = qptr->next;
-	}
-
-	return (ZERR_NONOTICE);
-}
