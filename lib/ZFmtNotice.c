@@ -38,8 +38,8 @@ Code_t ZFormatNotice(notice, buffer, ret_len, cert_routine)
     if (!(*buffer = (char *) malloc((unsigned)*ret_len)))
 	return (ENOMEM);
 
-    bcopy(header, *buffer, hdrlen);
-    bcopy(notice->z_message, *buffer+hdrlen, notice->z_message_len);
+    _BCOPY(header, *buffer, hdrlen);
+    _BCOPY(notice->z_message, *buffer+hdrlen, notice->z_message_len);
 
     return (ZERR_NONE);
 }

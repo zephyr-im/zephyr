@@ -27,6 +27,10 @@ static char copyright[] =
 #include <sys/ioctl.h>
 #include <utmp.h>
 
+#ifdef SOLARIS
+#include <sys/filio.h>
+#endif
+
 #ifdef __STDC__
 typedef void *pointer;
 #else
@@ -87,7 +91,7 @@ Code_t Z_GetMyAddr()
 
     __My_length = myhost->h_length;
 
-    bcopy(myhost->h_addr, __My_addr, myhost->h_length);
+    _BCOPY(myhost->h_addr, __My_addr, myhost->h_length);
 
     return (ZERR_NONE);
 } 
@@ -245,7 +249,7 @@ Code_t Z_ReadWait()
 	    __HM_addr = olddest;
 	}
 	if (filter_idx == -1) {
-	    bzero((char *) old_uids,
+	    _BZERO((char *) old_uids,
 		  Z_FILTERDEPTH*(sizeof(struct _filter)));
 	    old_uids[0].uid = notice.z_uid;
 	    old_uids[0].kind = notice.z_kind;
@@ -265,7 +269,7 @@ Code_t Z_ReadWait()
      * Parse apart the z_multinotice field - if the field is blank for
      * some reason, assume this packet stands by itself.
      */
-    slash = index(notice.z_multinotice, '/');
+    slash = strchr(notice.z_multinotice, '/');
     if (slash) {
 	part = atoi(notice.z_multinotice);
 	partof = atoi(slash+1);
@@ -320,7 +324,7 @@ Code_t Z_ReadWait()
 		qptr->header = (char *) malloc((unsigned) qptr->header_len);
 		if (!qptr->header)
 		    return (ENOMEM);
-		bcopy(packet, qptr->header, qptr->header_len);
+		_BCOPY(packet, qptr->header, qptr->header_len);
 	    }
 	    return (Z_AddNoticeToEntry(qptr, &notice, part));
 	}
@@ -340,7 +344,7 @@ Code_t Z_ReadWait()
     qptr = (struct _Z_InputQ *)malloc(sizeof(struct _Z_InputQ));
     if (!qptr)
 	return (ENOMEM);
-    bzero((char *)qptr, sizeof(struct _Z_InputQ));
+    _BZERO((char *)qptr, sizeof(struct _Z_InputQ));
 
     /* Insert the entry at the end of the queue */
     qptr->next = NULL;
@@ -372,7 +376,7 @@ Code_t Z_ReadWait()
 	qptr->header = (char *) malloc((unsigned) qptr->header_len);
 	if (!qptr->header)
 	    return ENOMEM;
-	bcopy(packet, qptr->header, qptr->header_len);
+	_BCOPY(packet, qptr->header, qptr->header_len);
     }
 
     /*
@@ -390,15 +394,15 @@ Code_t Z_ReadWait()
 	else if (!(qptr->msg = (char *) malloc((unsigned) notice.z_message_len)))
 	    return(ENOMEM);
 	else
-	    bcopy(notice.z_message, qptr->msg, notice.z_message_len);
+	    _BCOPY(notice.z_message, qptr->msg, notice.z_message_len);
 	qptr->msg_len = notice.z_message_len;
 	__Q_Size += notice.z_message_len;
 	qptr->packet_len = qptr->header_len+qptr->msg_len;
 	if (!(qptr->packet = (char *) malloc((unsigned) qptr->packet_len)))
 	    return (ENOMEM);
-	bcopy(qptr->header, qptr->packet, qptr->header_len);
+	_BCOPY(qptr->header, qptr->packet, qptr->header_len);
 	if(qptr->msg)
-	    bcopy(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
+	    _BCOPY(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
 	return (ZERR_NONE);
     }
 
@@ -446,7 +450,7 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
     lasthole = (struct _Z_Hole *) 0;
 
     /* copy in the message body */
-    (void) bcopy(notice->z_message, qptr->msg+part, notice->z_message_len);
+    (void) _BCOPY(notice->z_message, qptr->msg+part, notice->z_message_len);
 
     /* Search for a hole that overlaps with the current fragment */
     while (hole) {
@@ -527,8 +531,8 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
 	qptr->packet_len = qptr->header_len+qptr->msg_len;
 	if (!(qptr->packet = (char *) malloc((unsigned) qptr->packet_len)))
 	    return (ENOMEM);
-	bcopy(qptr->header, qptr->packet, qptr->header_len);
-	bcopy(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
+	_BCOPY(qptr->header, qptr->packet, qptr->header_len);
+	_BCOPY(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
     }
     
     return (ZERR_NONE);
@@ -556,7 +560,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     if ((retval = Z_GetMyAddr()) != ZERR_NONE)
 	return (retval);
 
-    bcopy(__My_addr, (char *)&notice->z_uid.zuid_addr, __My_length);
+    _BCOPY(__My_addr, (char *)&notice->z_uid.zuid_addr, __My_length);
 
     notice->z_multiuid = notice->z_uid;
 
@@ -659,7 +663,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
 	return (ZERR_HEADERLEN);
     if (Z_AddField(&ptr, notice->z_sender, end))
 	return (ZERR_HEADERLEN);
-    if (index(notice->z_recipient, '@') || !*notice->z_recipient) {
+    if (strchr(notice->z_recipient, '@') || !*notice->z_recipient) {
 	if (Z_AddField(&ptr, notice->z_recipient, end))
 	    return (ZERR_HEADERLEN);
     }
@@ -835,7 +839,7 @@ Code_t Z_SendFragmentedNotice(notice, len, send_func)
 		htonl((u_long) partnotice.z_uid.tv.tv_usec);
 	    if ((retval = Z_GetMyAddr()) != ZERR_NONE)
 		return (retval);
-	    bcopy(__My_addr, (char *)&partnotice.z_uid.zuid_addr,
+	    _BCOPY(__My_addr, (char *)&partnotice.z_uid.zuid_addr,
 		  __My_length);
 	}
 	partnotice.z_message = notice->z_message+offset;
