@@ -28,7 +28,7 @@ Description: The original "Instant Message" system libraries with Kerberos
 Package: zephyr-clients
 Replaces: zephyr-client
 Architecture: any
-Depends: ${shlibs:Depends}, debianutils (>= 1.6)
+Depends: ${shlibs:Depends}, debianutils (>= 1.6), debconf
 Description: The original "Instant Message" system client
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
  Zephyr allows users to send messages to other users or to groups of
@@ -37,7 +37,7 @@ Description: The original "Instant Message" system client
 
 Package: zephyr-server
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, debconf
 Description: The original "Instant Message" system-server without Kerberos
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
  Zephyr allows users to send messages to other users or to groups of
@@ -46,7 +46,7 @@ Description: The original "Instant Message" system-server without Kerberos
 
 Package: zephyr-server-krb
 Architecture: any
-Depends: ${shlibs:Depends}, libzephyr3-krb
+Depends: ${shlibs:Depends}, debconf, libzephyr3-krb
 Conflicts: zephyr-server
 Description: The original "Instant Message" system-server with Kerberos
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.

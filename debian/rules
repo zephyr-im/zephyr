@@ -76,8 +76,8 @@ install: build
 		mv debian/tmp-krb/usr/lib/libzephyr.so debian/tmp-krb/usr/lib/libzephyr.so.$(SONAME)
 	ln -s libzephyr.so.$(SONAME) debian/tmp-krb/usr/lib/libzephyr.so
 	mkdir -p debian/tmp/etc/zephyr/acl
-	set -x; for i in debian/acl/*; do install -c -m 544 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
-	install -c -m 544 debian/zephyr.vars debian/tmp/etc/zephyr
+	set -x; for i in debian/acl/*; do install -c -m 644 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
+	install -c -m 644 debian/zephyr.vars debian/tmp/etc/zephyr
 	cp -pr debian/tmp/etc/zephyr/acl debian/tmp-krb/etc/zephyr
 
 # Build architecture-independent files here.

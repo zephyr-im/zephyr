@@ -11,6 +11,9 @@ zephyr (2.1.20000421.SNAPSHOT-9) unstable; urgency=low
   * rename /etc/init.d/zephyr-clients to /etc/init.d/zhm
   * rename /etc/init.d/zephyr-server to /etc/init.d/zephyrd
   * rename /etc/init.d/zephyr-server-krb to /etc/init.d/zephyr.d
+  * fix build dependencies
+  * make config files in /etc/zephyr not installed executable
+  * cleanup debhelper examples
 
  -- Karl Ramm <kcr@debian.org>  Sun,  1 Apr 2001 01:34:22 -0500
 
