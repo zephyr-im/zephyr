@@ -67,6 +67,7 @@ static void free_subscriptions(), free_sub();
 /* else you will lose.  See subscr_sendlist() */  
 #define	NUM_FIELDS	3
 
+#define	WILDCARD_INSTANCE	"*"
 /*
  * subscribe the client to types described in notice.
  */
@@ -97,11 +98,31 @@ ZNotice_t *notice;
 	     subs = subs->q_forw) {
 		/* for each new subscription */
 
-		if ((acl = class_get_acl(subs->zst_class)) &&
-		    !access_check(notice, acl, SUBSCRIBE)) {
-			syslog(LOG_WARNING, "subscr unauth %s %s",
-			       notice->z_sender, subs->zst_class);
-			continue;
+		acl = class_get_acl(subs->zst_class);
+		if (acl) {
+			if (!access_check(notice, acl, SUBSCRIBE)) {
+				syslog(LOG_WARNING, "subscr unauth %s %s",
+				       notice->z_sender, subs->zst_class);
+				continue; /* the for loop */
+			}
+			if (!strcmp(WILDCARD_INSTANCE, subs->zst_classinst)) {
+				if (!access_check(notice, acl, INSTWILD)) {
+					syslog(LOG_WARNING,
+					       "subscr unauth wild %s %s.*",
+					       notice->z_sender,
+					       subs->zst_class);
+					continue;
+				}
+			} else if (!strcmp(notice->z_sender, subs->zst_classinst)) {
+				if (!access_check(notice, acl, INSTUID)) {
+					syslog(LOG_WARNING,
+					       "subscr unauth uid %s %s.%s",
+					       notice->z_sender,
+					       subs->zst_class,
+					       subs->zst_classinst);
+					continue;
+				}
+			}
 		}
 		for (subs2 = who->zct_subs->q_forw;
 		     subs2 != who->zct_subs;
@@ -612,26 +633,17 @@ ZAcl_t *acl;
 	for (subs = client->zct_subs->q_forw;
 	     subs != client->zct_subs;
 	     subs = subs->q_forw) {
-		/* for each subscription, do regex matching */
-		/* we don't regex the class, since wildcard
-		   matching on the class is disallowed. */
+		/* for each subscription, do matching */
 		relation = strcmp(notice->z_class, subs->zst_class);
 		if (relation > 0)	/* past the last possible one */
 			return(0);
 		if (relation < 0)
 			continue;	/* no match */
-		/* an ACL on this class means we don't do any wildcarding. */
-		if (acl) {
-			if (strcmp(notice->z_class_inst, subs->zst_classinst))
-				continue;
-		} else {
-			if (strcmp(subs->zst_classinst, "*") &&
-			    strcmp(subs->zst_classinst, notice->z_class_inst))
-				continue;
-		}
+		if (strcmp(subs->zst_classinst, WILDCARD_INSTANCE) &&
+		    strcmp(subs->zst_classinst, notice->z_class_inst))
+			continue;
 		if (strcmp(notice->z_recipient, subs->zst_recipient))
 			continue;
-		
 		return(1);
 	}
 	/* fall through */
