@@ -160,7 +160,7 @@ clean:
 		ss_err.h ss_err.c ct.tab.c ct.tab.h cmd_tbl.c \
 		lex.yy.c y.tab.c \
 		libss.a libss_p.a llib-lss.ln mk_cmds \
-		ss.ar ss.tar \
+		ss.ar ss.tar std_rqs.c \
 		TAGS test profiled/*.o
 
 # 'make depend' code
