@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains code for the "zwmnotify" command.
+ * It contains code for the "zmailnotify" command.
  *
  *	Created by:	Robert French
  *
@@ -50,7 +50,7 @@ char Errmsg[80];
 char *PrincipalHostname(), *index();
 #endif KPOP
 
-#define MAXMAIL 8
+#define MAXMAIL 4
 
 struct _mail {
 	char *from;
@@ -76,7 +76,7 @@ main()
 #endif HESIOD
 
 	if ((retval = ZInitialize()) != ZERR_NONE) {
-		com_err("zwmnotify",retval,"while initializing");
+		com_err("zmailnotify",retval,"while initializing");
 		exit(1);
 	}
 
@@ -311,7 +311,7 @@ mail_notify(mail)
 	fields[2] = mail->subj;
       
 	if ((retval = ZSendList(&notice,fields,3,ZNOAUTH)) != ZERR_NONE)
-		com_err("zwmnotify",retval,"while sending notice");
+		com_err("zmailnotify",retval,"while sending notice");
 }
 
 /*
