@@ -53,9 +53,6 @@ install:
 	${INSTALL} -m 644 ${srcdir}/zephyrd.8 ${DESTDIR}${mandir}/man8
 	${INSTALL} -m 644 ${srcdir}/default.subscriptions \
 		${DESTDIR}${sysconfdir}/zephyr
-	rm -f ${DESTDIR}${sysconfdir}/zephyr/acl/?*.acl
-	cp ${srcdir}/acl/?*.acl ${DESTDIR}${sysconfdir}/zephyr/acl
-	chmod 644 ${DESTDIR}${sysconfdir}/zephyr/acl/*
 
 clean:
 	rm -f ${OBJS} zephyrd zsrv_err.[ch]
