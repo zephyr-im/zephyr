@@ -57,6 +57,7 @@ static char rcsid_subscr_c[] = "$Header$";
  *	ZClient_t *who;
  *
  * void subscr_reset();
+ *
  */
 
 #include "zserver.h"
@@ -246,6 +247,7 @@ ZClient_t *who;
 void
 subscr_reset()
 {
+	zdbug((LOG_DEBUG, "subscr_reset()"));
 	xfree(default_notice.z_message);
 	defaults_read = 0;
 }
@@ -263,6 +265,7 @@ char *person;
 	register ZSubscr_t *subs2;
 
 	if (!defaults_read) {
+		zdbug((LOG_DEBUG, "reading default subscription file"));
 		fd = open(DEFAULT_SUBS_FILE, O_RDONLY, 0666);
 		if (fd < 0) {
 			syslog(LOG_ERR, "can't open %s:%m", DEFAULT_SUBS_FILE);
@@ -318,6 +321,7 @@ char *person;
 		default_notice.z_message = def_sub_area;
 		default_notice.z_message_len = statbuf.st_size + 1;
 		default_notice.z_auth = 1;
+		defaults_read = 1;
 	}
 	/* needed later for access_check() */
 	default_notice.z_sender = person;
@@ -325,11 +329,15 @@ char *person;
 	/* replace any non-* recipients with "person" */
 
 	for (subs2 = subs->q_forw; subs2 != subs; subs2 = subs2->q_forw)
-		/* if not a wildcard, replace it */
-		if (strcmp(subs2->zst_recipient, WILDCARD_INSTANCE)) {
+		/* if not a wildcard, replace it with person */
+		if (strcmp(subs2->zst_recipient, "*")) {
 			xfree(subs2->zst_recipient);
 			subs2->zst_recipient = strsave(person);
+		} else {		/* replace with null recipient */
+			xfree(subs2->zst_recipient);
+			subs2->zst_recipient = strsave("");
 		}
+			
 	return(subs);
 }
 
@@ -385,8 +393,14 @@ ZNotice_t *notice;
 				/* now that the remque adjusted the linked
 				   list, we go forward again */
 				subs2 = subs3->q_forw;
-			} else
+			} else {
+				zdbug((LOG_DEBUG, "not %s.%s.%s",
+				       subs2->zst_class,
+				       subs2->zst_classinst,
+				       subs2->zst_recipient));
 				subs2 = subs2->q_forw;
+				       
+			}
 		}
 	/* make sure we are still registered for all the
 	   classes */
@@ -401,10 +415,13 @@ ZNotice_t *notice;
 			}
 	(void) sigsetmask(omask);
 	free_subscriptions(subs);
-	if (found)
+	if (found) {
+		zdbug((LOG_DEBUG, "found & removed"));
 		return(ZERR_NONE);
-	else
+	} else {
+		zdbug((LOG_DEBUG, "not found"));
 		return(ZSRV_NOSUB);
+	}
 }
 
 /*
@@ -677,10 +694,11 @@ register int *found;
 	int temp;
 	Code_t retval;
 	ZClient_t *client;
-	register ZSubscr_t *subs = NULLZST, *subs2;
+	register ZSubscr_t *subs, *subs2 = NULLZST;
 	register int i;
 	int defsubs = 0;
 
+	zdbug((LOG_DEBUG, "subscr_marshal"));
 	*found = 0;
 
 	/* Note that the following code is an incredible crock! */
@@ -717,6 +735,7 @@ register int *found;
 		if (client)
 			subs2 = client->zct_subs;
 	} else if (!strcmp(notice->z_opcode, CLIENT_GIMMEDEFS)) {
+		zdbug((LOG_DEBUG, "gimmedefs"));
 		/* subscr_copy_def_subs allocates new pointer rings, so
 		   it must be freed when finished.
 		   the string areas pointed to are static, however.*/
@@ -728,7 +747,7 @@ register int *found;
 		return((char **) 0);
 	}
 
-	if (subs) {
+	if (subs2) {
 
 		/* check authenticity here.  The user must be authentic to get
 		   a list of subscriptions. If he is not subscribed to
@@ -782,6 +801,7 @@ struct sockaddr_in *who;
 	struct sockaddr_in send_to_who;
 	register int i;
 
+	zdbug((LOG_DEBUG, "new_old_compat_subscr_sendlist"));
 	reply = *notice;
 	reply.z_kind = SERVACK;
 	reply.z_authent_len = 0; /* save some space */
@@ -858,6 +878,7 @@ struct sockaddr_in *who;
 	int packlen, i, found = 0;
 	char **answer = (char **) NULL;
 
+	zdbug((LOG_DEBUG, "old_compat_subscr_sendlist"));
 	if (client && client->zct_subs) {
 
 		/* check authenticity here.  The user must be authentic to get
