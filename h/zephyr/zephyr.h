@@ -206,6 +206,8 @@ extern int ZMakeAuthentication();
 #define EXPOSE_REALMANN		"REALM-ANNOUNCED"/* Opcode: Realm announced */
 #define EXPOSE_NETVIS		"NET-VISIBLE"	/* Opcode: Net visible */
 #define EXPOSE_NETANN		"NET-ANNOUNCED"	/* Opcode: Net announced */
+#define	LOGIN_USER_LOGIN	"USER_LOGIN"	/* Opcode: user login
+						   (from server) */
 #define LOGIN_USER_LOGOUT	"USER_LOGOUT"	/* Opcode: User logout */
 #define	LOGIN_USER_FLUSH	"USER_FLUSH"	/* Opcode: flush all locs */
 
