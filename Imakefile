@@ -11,7 +11,7 @@
 #endif
 
 UTILS = $(D_IMAKE) $(D_ET) $(D_SS)
-#define ISUBDIRS $(UTILS) h lib libdyn clients server zhm zwgc /* man */
+#define ISUBDIRS $(UTILS) h libdes lib libdyn clients server zhm zwgc
 
 create_dir($(ZLIBDIR))
 
