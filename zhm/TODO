@@ -1,0 +1,9 @@
+
+Search for all occurences of (void) typecasting, and see whether I
+should be checking return values.  Make sure all mallocs are checked
+for return values.
+
+Set system up to handle SERVNAK returns if we cannot reach a server.
+
+Set to handle emergency notices.
+
