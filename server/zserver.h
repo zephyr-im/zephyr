@@ -290,7 +290,8 @@ extern char *pktypes[];			/* names of the packet types */
 #define	LOGIN_ACL	"login.acl"
 #define	LOCATE_ACL	"locate.acl"
 #define	MATCH_ALL_ACL	"matchall.acl"
-#define	ZEPHYR_SRVTAB	"/usr/athena/lib/zephyr/srvtab"
+/* SERVER_SRVTAB is defined in zephyr.h */
+#define	ZEPHYR_SRVTAB	SERVER_SRVTAB
 #define	ZEPHYR_TKFILE	"/usr/athena/lib/zephyr/ztkts"
 
 /* debugging macros */
