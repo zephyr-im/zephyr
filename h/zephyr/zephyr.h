@@ -156,7 +156,7 @@ extern int errno;
 
 	/* Random declarations */
 extern char *ZGetSender(), *ZGetVariable();
-extern short ZGetWGPort();
+extern int ZGetWGPort();
 
 	/* Successful function return */
 #define ZERR_NONE		0
@@ -164,18 +164,10 @@ extern short ZGetWGPort();
 	/* Hostmanager wait time (in secs) */
 #define HM_TIMEOUT		30
 
-	/* Kerberos information */
-#define SERVER_SERVICE		"zephyr"
-#define SERVER_INSTANCE		"zephyr"
-#define SERVER_SRVTAB		"/usr/athena/lib/zephyr/srvtab"
-
-	/* Kerberos defines for ZFormatNotice, et al. */
+	/* Defines for ZFormatNotice, et al. */
 extern int ZMakeAuthentication();
 #define ZAUTH ZMakeAuthentication
 #define ZNOAUTH (int (*)())0
-
-	/* General filenames */
-#define DEFAULT_VARS_FILE	"/etc/athena/zephyr.vars"
 
 	/* Packet strings */
 
