@@ -18,6 +18,13 @@
 #include <zephyr/mit-copyright.h>
 
 /* Kerberos information */
+/* If you are not using Kerberos, comment out the following three lines.
+   These provide default definitions so that users compiling Zephyr
+   programs don't need to put -DKERBEROS on their compile lines. */
+#ifndef KERBEROS
+#define KERBEROS
+#endif
+
 #define SERVER_SERVICE		"zephyr"
 #define SERVER_INSTANCE		"zephyr"
 #define SERVER_SRVTAB		"/usr/athena/lib/zephyr/srvtab"
@@ -28,6 +35,15 @@
 /* Service names */
 #define	HM_SVCNAME	"zephyr-hm"
 #define	SERVER_SVCNAME	"zephyr-clt"
+
+#ifdef ultrix
+/* If you are using Ultrix versions prior to 3.0, uncomment the following
+   three lines  so that users don't need to specify -DULTRIX22 on their
+   compile lines. */
+/* #ifndef ULTRIX22 */
+/* #define ULTRIX22 */
+/* #endif */
+#endif /* ultrix */
 
 #if defined(ultrix) && defined(ULTRIX22)
 /* Ultrix 3.0 and beyond have these defined in standard places */
