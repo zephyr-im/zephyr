@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987, 1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -15,7 +15,8 @@
 
 #ifndef lint
 #ifndef SABER
-static const char rcsid_dispatch_c[] = "$Id$";
+static const char rcsid_dispatch_c[] =
+    "$Id$";
 #endif
 #endif
 
@@ -79,8 +80,35 @@ extern const ZString class_hm (HM_CTL_CLASS, 1);
 extern const ZString class_ulogin (LOGIN_CLASS, 1);
 extern const ZString class_ulocate (LOCATE_CLASS, 1);
 
-static void dispatch(register ZNotice_t *notice, int auth,
-		     struct sockaddr_in *who, int from_server);
+static void dispatch(ZNotice_t *, int, sockaddr_in *, int);
+
+statistic interserver_notices ("inter-server notices");
+statistic hm_packets ("hostmanager packets");
+statistic control_notices ("client control notices");
+statistic message_notices ("message notices");
+statistic login_notices ("login notices");
+statistic i_s_ctls ("inter-server control notices");
+statistic i_s_logins ("inter-server login notices");
+statistic i_s_admins ("inter-server admin notices");
+statistic i_s_locates ("inter-server locate notices");
+statistic locate_notices ("locate notices");
+statistic admin_notices ("admin notices");
+
+static void dump_stats (void *arg) {
+    hm_packets.log ();
+    control_notices.log ();
+    message_notices.log ();
+    login_notices.log ();
+    locate_notices.log ();
+    admin_notices.log ();
+    interserver_notices.log ();
+    i_s_ctls.log ();
+    i_s_logins.log ();
+    i_s_admins.log ();
+    i_s_locates.log ();
+    /* log stuff once an hour */
+    (void) timer_set_rel (6*60*60, dump_stats, arg);
+}
 
 /*
  * Handle an input packet.
@@ -90,6 +118,13 @@ static void dispatch(register ZNotice_t *notice, int auth,
 void
 handle_packet(void)
 {
+	{
+	    static int first_time = 1;
+	    if (first_time) {
+		first_time = 0;
+		(void) timer_set_rel (5*60, dump_stats, 0);
+	    }
+	}
 	Code_t status;
 	ZPacket_t input_packet;		/* from the network */
 	ZNotice_t new_notice;		/* parsed from input_packet */
@@ -197,6 +232,7 @@ handle_packet(void)
 		       ntohs(whoisit.sin_port));
 		return;
 	}
+	message_notices++;
 	dispatch(&new_notice, authentic, &whoisit, from_server);
 	return;
 }
@@ -207,7 +243,6 @@ handle_packet(void)
 static void
 dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who, int from_server) {
 	Code_t status;
-	int dispatched = 0;
 	Notice notice = n;
 
 	current_msg++;
@@ -238,54 +273,47 @@ dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who, int from_server) {
 	    syslog (LOG_DEBUG, "%s", buf);
 	}
 #endif
-#if 0
-	if (bdumping) {
-	    zdbug ((LOG_DEBUG, "from %s/%d, class %s\n",
-		    inet_ntoa (who->sin_addr), who->sin_port,
-		    notice.dest.classname.value ()));
-	    if (!server_which_server(who) && !class_is_admin (notice)) {
-		syslog (LOG_DEBUG, "brain-dumping, dropping packet");
-		return;
-	    }
-	}
-#endif
+
 	if (notice.notice->z_kind == CLIENTACK) {
 		nack_cancel(notice.notice, who);
 		return;
 	}
+
+	struct sockaddr_in who2 = *who;
+	if (0 && from_server) {
+	    /* incorporate server_dispatch here */
+	}
 	if (from_server) {
-		status = server_dispatch(notice.notice, auth, who);
-		dispatched = 1;
+	    interserver_notices++;
+	    status = server_dispatch(notice.notice, auth, who);
 	} else if (class_is_hm(notice)) {
-		status = hostm_dispatch(notice.notice, auth, who, me_server);
-		dispatched = 1;
+	    hm_packets++;
+	    status = hostm_dispatch(notice.notice, auth, who, me_server);
 	} else if (class_is_control(notice)) {
-		status = control_dispatch(notice.notice, auth, who, me_server);
-		dispatched = 1;
+	    control_notices++;
+	    status = control_dispatch(notice.notice, auth, who, me_server);
 	} else if (class_is_ulogin(notice)) {
-		status = ulogin_dispatch(notice.notice, auth, who, me_server);
-		dispatched = 1;
+	    login_notices++;
+	    status = ulogin_dispatch(notice.notice, auth, who, me_server);
 	} else if (class_is_ulocate(notice)) {
-		status = ulocate_dispatch(notice.notice, auth, who, me_server);
-		dispatched = 1;
+	    locate_notices++;
+	    status = ulocate_dispatch(notice.notice, auth, who, me_server);
 	} else if (class_is_admin(notice)) {
-		status = server_adispatch(notice.notice, auth, who, me_server);
-		dispatched = 1;
+	    admin_notices++;
+	    status = server_adispatch(notice.notice, auth, who, me_server);
+	} else {
+	    sendit (notice.notice, auth, who);
+	    return;
 	}
 
-	if (dispatched) {
-		if (status == ZSRV_REQUEUE) {
+	if (status == ZSRV_REQUEUE) {
 #ifdef CONCURRENT
-			server_self_queue(notice.notice, auth, who);
+	    server_self_queue(notice.notice, auth, who);
 #else
-			syslog(LOG_ERR, "requeue while not concurr");
-			abort();
+	    syslog(LOG_ERR, "requeue while not concurr");
+	    abort();
 #endif
-		}
-		return;
 	}
-	/* oh well, do the dirty work */
-	sendit(notice.notice, auth, who);
 }
 
 /*
@@ -293,7 +321,7 @@ dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who, int from_server) {
  */
 
 void
-sendit(register ZNotice_t *notice, int auth, struct sockaddr_in *who)
+sendit(ZNotice_t *notice, int auth, struct sockaddr_in *who)
 {
 	int acked = 0;
 	ZAcl_t *acl;
@@ -451,7 +479,7 @@ xmit_frag(ZNotice_t *notice, char *buf, int len, int waitforack)
  */
 
 void
-xmit(register ZNotice_t *notice, struct sockaddr_in *dest, int auth, ZClient_t *client)
+xmit(ZNotice_t *notice, struct sockaddr_in *dest, int auth, ZClient_t *client)
 {
 	caddr_t noticepack;
 	register ZNotAcked_t *nacked;
@@ -760,7 +788,8 @@ nack_cancel(register ZNotice_t *notice, struct sockaddr_in *who)
  */
 
 Code_t
-control_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDesc_t *server)
+control_dispatch(ZNotice_t *notice, int auth, sockaddr_in *who,
+		 ZServerDesc_t *server)
 {
 	register char *opcode = notice->z_opcode;
 	ZClient_t *client;
@@ -866,6 +895,19 @@ control_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDe
 					clt_ack(notice, who, AUTH_FAILED);
 				return(ZERR_NONE);
 			}
+#if 1
+			if (zdebug) {
+			    if (server == me_server)
+				syslog (LOG_DEBUG,
+					"subscription cancel for %s\n",
+					inet_ntoa (who->sin_addr));
+			    else
+				syslog (LOG_DEBUG,
+					"subscription cancel for %s from %s\n",
+					inet_ntoa (who->sin_addr),
+					server->addr);
+			}
+#endif
 			(void) subscr_cancel(who, notice);
 		} else {
 			nack(notice, who);
@@ -884,10 +926,11 @@ control_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDe
 			if (host) {
 				/* don't flush locations here, let him
 				   do it explicitly */
-#if 0
+#if 1
 				if (zdebug)
 					syslog(LOG_DEBUG,
-					       "cancelsub clt_dereg");
+					       "cancelsub clt_dereg %s",
+					       inet_ntoa (who->sin_addr));
 #endif
 				hostm_lose_ignore(client);
 				(void) client_deregister(client, host, 0);
