@@ -1,0 +1,61 @@
+#!/bin/sh
+#
+# author: "Jr" Spidell
+# date  : 4/25/92
+#
+USAGE="zsubscriptions <user>"
+DBFILE=/usr/tmp/zephyr.db       # where zephyrd dumps its data after a kill -FPE
+
+# test for root
+if test "`whoami`" != root
+ then
+   echo "you must be root to run this script"
+   exit
+fi
+
+# test for no options
+if test $# -eq 0
+then USAGE="yes"
+     echo "no options given."
+     echo $USAGE
+     echo ""
+     exit
+fi
+
+# test for server node
+if test -z "`ps aux | grep zephyrd | grep -v grep | awk '{print $2}'`"
+ then echo "you must be on a zephyr server (ie cap, fred)"
+      exit
+fi
+
+# root doesn't have this in its path
+path=$PATH
+PATH=$path":/usr/local/bin:/bin:/usr/athena:"
+
+# dump the database
+kill -FPE `ps aux | grep zephyrd | grep -v grep | awk '{print $2}'`
+
+user=$1
+
+nawk ' BEGIN {user=""}
+      {if ((NF > 1) && (NF < 4))
+       {
+        if (NF == 2)
+         {
+          user=$2
+          next
+         }
+        print user,$0
+       }
+      }' /net/cap/usr/tmp/zephyr.db  | \
+sed s/.cca.cr.rockwell.com//g | sed s/"("//g | sed s/")"//g |\
+sed s/"'"//g | sed s/":"//g > /tmp/users
+
+echo ""
+echo "$user is subscribed to recieve the following message types:"
+echo ""
+
+nawk ' {if ($1 == uname)
+       {printf ("%-20s%-20s%-20s\n",$2,$3,$4)}}' uname=$user /tmp/users
+
+echo ""
