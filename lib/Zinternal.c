@@ -644,7 +644,6 @@ Z_AddField(ptr, field, end)
     return (0);
 }
 
-#ifdef notdef
 struct _Z_InputQ *Z_GetFirstComplete()
 {
     struct _Z_InputQ *qptr;
@@ -668,35 +667,6 @@ struct _Z_InputQ *Z_GetNextComplete(qptr)
 	if (qptr->complete)
 	    return (qptr);
 	qptr = qptr->next;
-    }
-
-    return (NULL);
-}
-#endif
-
-struct _Z_InputQ *Z_GetFirstComplete()
-{
-    struct _Z_InputQ *qptr;
-
-    qptr = __Q_Tail;
-
-    while (qptr) {
-	if (qptr->complete)
-	    return (qptr);
-	qptr = qptr->prev;
-    }
-
-    return (NULL);
-}
-
-struct _Z_InputQ *Z_GetNextComplete(qptr)
-    struct _Z_InputQ *qptr;
-{
-    qptr = qptr->prev;
-    while (qptr) {
-	if (qptr->complete)
-	    return (qptr);
-	qptr = qptr->prev;
     }
 
     return (NULL);
