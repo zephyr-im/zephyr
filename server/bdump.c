@@ -15,7 +15,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_brain_dump_c[] = "$Header$";
+static char rcsid_bdump_s_c[] = "$Header$";
 #endif SABER
 #endif lint
 
@@ -33,18 +33,18 @@ static timer bdump_timer;
 /*
  * External functions are:
  *
- * void offer_brain_dump(who)
+ * void bdump_offer(who)
  *	strut sockaddr_in *who;
  *
- * void send_brain_dump()
+ * void bdump_send()
  *
- * void get_brain_dump(notice, auth, who, server)
+ * void bdump_get(notice, auth, who, server)
  *	ZNotice_t *notice;
  *	int auth;
  *	struct sockaddr_in *who;
  *	ZServerDesc_t *server;
  *
- * void bdump_send_list_tcp(kind, port, class, inst, opcode,
+ * Code_t bdump_send_list_tcp(kind, port, class, inst, opcode,
  *			    sender, recip, lyst, num)
  *	ZNotice_Kind_t kind;
  *	u_short port;
@@ -62,7 +62,7 @@ static timer bdump_timer;
  */
 
 void
-offer_brain_dump(who)
+bdump_offer(who)
 struct sockaddr_in *who;
 {
 	Code_t retval;
@@ -120,17 +120,20 @@ struct sockaddr_in *who;
  */
 
 void
-send_brain_dump()
+bdump_send()
 {
 	int sock;
 	struct sockaddr_in from;
 	ZServerDesc_t *server;
 	int fromlen = sizeof(from);
 
-	zdbug((LOG_DEBUG, "send_brain_dump"));
+	zdbug((LOG_DEBUG, "bdump_send"));
 	/* accept the connection, and send the brain dump */
 	sock = accept(bdump_socket, &from, &fromlen);
 
+	from.sin_port = sock_sin.sin_port; /* we don't care what port
+					    it came from, and we need to
+					    fake out server_which_server() */
 	server = server_which_server(&from);
 	if (!server) {
 		syslog(LOG_ERR,"unknown server?");
@@ -170,7 +173,7 @@ send_brain_dump()
 
 /*ARGSUSED*/
 void
-get_brain_dump(notice, auth, who, server)
+bdump_get(notice, auth, who, server)
 ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
@@ -221,7 +224,7 @@ ZServerDesc_t *server;
  * Send a list off as the specified notice
  */
 
-void
+Code_t
 bdump_send_list_tcp(kind, port, class, inst, opcode, sender, recip, lyst, num)
 ZNotice_Kind_t kind;
 u_short port;
@@ -249,26 +252,27 @@ int num;
 
 	packlen = sizeof(pack);
 	
-	if ((retval = ZFormatNoticeList(pnotice, lyst, num, pack, packlen, &packlen, ZNOAUTH)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "sl format: %s", error_message(retval));
-		return;
-	}
+	if ((retval = ZFormatNoticeList(pnotice, lyst, num, pack, packlen, &packlen, ZNOAUTH)) != ZERR_NONE)
+		return(retval);
 	
 	length = htons((u_short) packlen);
 
-	if ((count = write(ZGetFD(), (caddr_t) &length, sizeof(length))) != sizeof(length)) {
+	if ((count = write(ZGetFD(), (caddr_t) &length, sizeof(length))) != sizeof(length))
 		if (count < 0)
-			syslog(LOG_WARNING, "slt xmit/len: %m");
-		else
+			return(count);
+		else {
 			syslog(LOG_WARNING, "slt xmit: %d vs %d",sizeof(length),count);
-	}
+			return(ZSRV_PKSHORT);
+		}
 
 	if ((count = write(ZGetFD(), pack, packlen)) != packlen)
 		if (count < 0)
-			syslog(LOG_WARNING, "slt xmit: %m");
-		else
+			return(count);
+		else {
 			syslog(LOG_WARNING, "slt xmit: %d vs %d",packlen, count);
-	return;
+			return(ZSRV_PKSHORT);
+		}
+	return(ZERR_NONE);
 }
 
 static void
@@ -297,7 +301,7 @@ struct sockaddr_in *from;
 		if (zdebug) {
 			char buf[4096];
 		
-			(void) sprintf(buf, "disp:%s '%s' '%s' '%s' '%s' '%s'",
+			(void) sprintf(buf, "bdump:%s '%s' '%s' '%s' '%s' '%s'",
 				       pktypes[(int) bd_notice.z_kind],
 				       bd_notice.z_class,
 				       bd_notice.z_class_inst,
@@ -419,7 +423,7 @@ struct sockaddr_in *target;
 		if (zdebug) {
 			char buf[4096];
 		
-			(void) sprintf(buf, "disp:%s '%s' '%s' '%s' '%s' '%s'",
+			(void) sprintf(buf, "bdump:%s '%s' '%s' '%s' '%s' '%s'",
 				       pktypes[(int) notice.z_kind],
 				       notice.z_class,
 				       notice.z_class_inst,
@@ -527,6 +531,7 @@ send_host_register(host)
 ZHostList_t *host;
 {
 	char buf[512], *addr, *lyst[2];
+	Code_t retval;
 
 	zdbug((LOG_DEBUG, "bdump_host_register"));
 	addr = inet_ntoa(host->zh_addr.sin_addr);
@@ -535,9 +540,8 @@ ZHostList_t *host;
 	lyst[1] = buf;
 
 	/* myname is the hostname */
-	bdump_send_list_tcp(HMCTL, bdump_sin.sin_port, ZEPHYR_CTL_CLASS,
-		    ZEPHYR_CTL_HM, HM_BOOT, myname, "", lyst, 2);
-
+	if ((retval = bdump_send_list_tcp(HMCTL, bdump_sin.sin_port, ZEPHYR_CTL_CLASS, ZEPHYR_CTL_HM, HM_BOOT, myname, "", lyst, 2)) != ZERR_NONE)
+		syslog(LOG_ERR, "shr send: %s",error_message(retval));
 	return;
 }
 
