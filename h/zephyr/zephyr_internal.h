@@ -16,6 +16,8 @@
 #define __ZINTERNAL_H__
 
 #include <zephyr/zephyr.h>
+#include <strings.h>			/* for strcpy, etc. */
+#include <sys/types.h>			/* for time_t, uid_t, etc */
 
 struct _Z_InputQ {
 	struct		_Z_InputQ *next;
@@ -32,12 +34,14 @@ extern int __Zephyr_open;
 extern int __HM_set;
 extern int __Zephyr_server;
 
-extern char **__locate_list;
+extern ZLocations_t *__locate_list;
 extern int __locate_num;
 extern int __locate_next;
 
-extern int Z_UIDpred();
+extern int krb_err_base;
 
-#define Z_QLength() (__Q_Length)
+extern char *malloc();
+extern time_t time();
+extern long random();
 
 #endif !__ZINTERNAL_H__
