@@ -169,7 +169,7 @@ bdump_offer(who)
  
     bdump_timer = timer_set_rel(20L, close_bdump, NULL);
     FD_SET(bdump_socket, &interesting);
-    nfildes = max(bdump_socket, srv_socket) + 1;
+    nfds = max(bdump_socket, srv_socket) + 1;
 
     addr = inet_ntoa(bdump_sin.sin_addr);
     sprintf(buf, "%d", ntohs(bdump_sin.sin_port));
@@ -267,7 +267,7 @@ bdump_send()
 	/* shut down the listening socket and the timer. */
 	FD_CLR(bdump_socket, &interesting);
 	close(bdump_socket);
-	nfildes = srv_socket + 1;
+	nfds = srv_socket + 1;
 	bdump_socket = -1;
 	timer_reset(bdump_timer);
     }
@@ -402,7 +402,7 @@ bdump_get_v12 (notice, auth, who, server)
 	   socket and the timer. */
 	FD_CLR(bdump_socket, &interesting);
 	close(bdump_socket);
-	nfildes = srv_socket+1;
+	nfds = srv_socket+1;
 	bdump_socket = -1;
 	timer_reset(bdump_timer);
     }
@@ -762,7 +762,7 @@ close_bdump(arg)
     if (bdump_socket >= 0) {
 	FD_CLR(bdump_socket, &interesting);
 	close(bdump_socket);
-	nfildes = srv_socket + 1;
+	nfds = srv_socket + 1;
 	bdump_socket = -1;
 #if 1
 	zdbug((LOG_DEBUG, "bdump not used"));
