@@ -29,7 +29,7 @@ static const char *rcsid_zshutdown_notify_c =
 #define N_DEF_FORMAT	"From $sender:\n@bold(Shutdown message from $1 at $time)\n@center(System going down, message is:)\n\n$2\n\n@center(@bold($3))"
 #define N_FIELD_CNT	3
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 #define SVC_NAME	"rcmd"
 #endif
 
@@ -52,7 +52,7 @@ main(argc,argv)
     char msgbuff[BUFSIZ], message[Z_MAXPKTLEN], *ptr;
     char scratch[BUFSIZ];
     char *msg[N_FIELD_CNT];
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     char tkt_filename[MAXPATHLEN];
     char rlm[REALM_SZ];
     char hn2[MAXHOSTNAMELEN];
@@ -73,7 +73,7 @@ main(argc,argv)
     sprintf(scratch, warning, hostname);
     msg[2] = scratch;
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     (void) sprintf(tkt_filename, "/tmp/tkt_zshut_%d", getpid());
     krb_set_tkt_string(tkt_filename);
 
@@ -128,7 +128,7 @@ main(argc,argv)
     notice.z_default_format = N_DEF_FORMAT;
 
     retval = ZSendList(&notice, msg, N_FIELD_CNT, ZAUTH);
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     (void) dest_tkt();
 #endif
 

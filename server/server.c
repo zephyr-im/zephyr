@@ -92,7 +92,7 @@ static Code_t server_register();
 #endif
 
 static struct in_addr *get_server_addrs __P((int *number));
-#ifndef ZEPHYR_USES_HESIOD
+#ifndef HAVE_HESIOD
 static char **get_server_list __P((char *file));
 static void free_server_list __P((char **list));
 #endif
@@ -956,7 +956,7 @@ send_stats(who)
 
 /*
  * Get a list of server addresses.
-#ifdef ZEPHYR_USES_HESIOD
+#ifdef HAVE_HESIOD
  * This list is retrieved from Hesiod.
 #else
  * This list is read from a file.
@@ -976,7 +976,7 @@ get_server_addrs(number)
     struct in_addr *addr;
     struct hostent *hp;
 
-#ifdef ZEPHYR_USES_HESIOD
+#ifdef HAVE_HESIOD
     /* get the names from Hesiod */
     server_hosts = hes_resolve("zephyr","sloc");
     if (!server_hosts)
@@ -1004,13 +1004,13 @@ get_server_addrs(number)
 	}
     }
     *number = i;
-#ifndef ZEPHYR_USES_HESIOD
+#ifndef HAVE_HESIOD
     free_server_list(server_hosts);
 #endif
     return addrs;
 }
 
-#ifndef ZEPHYR_USES_HESIOD
+#ifndef HAVE_HESIOD
 
 static int nhosts = 0;
 

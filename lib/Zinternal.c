@@ -46,7 +46,7 @@ ZSubscription_t *__subscriptions_list;
 int __subscriptions_num;
 int __subscriptions_next;
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 C_Block __Zephyr_session;
 #endif
 char __Zephyr_realm[REALM_SZ];

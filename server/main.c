@@ -91,10 +91,10 @@ unsigned short hm_srv_port;		/* host manager server sending port */
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 
-#ifndef ZEPHYR_USES_HESIOD
+#ifndef HAVE_HESIOD
 char list_file[128];
 #endif
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 char srvtab_file[128];
 char my_realm[REALM_SZ];
 static char tkt_file[128];
@@ -139,10 +139,10 @@ main(argc, argv)
     extern char *optarg;
     extern int optind;
 
-#ifndef ZEPHYR_USES_HESIOD
+#ifndef HAVE_HESIOD
     sprintf(list_file, "%s/%s", SYSCONFDIR, SERVER_LIST_FILE);
 #endif
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     sprintf(srvtab_file, "%s/%s", SYSCONFDIR, ZEPHYR_SRVTAB);
     sprintf(tkt_file, "%s/%s", SYSCONFDIR, ZEPHYR_TKFILE);
 #endif
@@ -168,7 +168,7 @@ main(argc, argv)
 	    nofork = 1;
 	    break;
 	  case 'k':
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 	    strncpy(my_realm, optarg, REALM_SZ);
 #endif
 	    break;
@@ -186,7 +186,7 @@ main(argc, argv)
 	}
     }
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     /* if there is no readable srvtab and we are not standalone, there
        is no possible way we can succeed, so we exit */
 
@@ -206,7 +206,7 @@ main(argc, argv)
 	    exit(1);
 	}
     }
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 
 #ifndef DEBUG
     if (!nofork)
@@ -297,7 +297,7 @@ main(argc, argv)
     /* Reinitialize t_local now that initialization is done. */
     gettimeofday(&t_local, NULL);
     uptime = NOW;
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
 #endif
 
@@ -375,7 +375,7 @@ initialize()
 
     server_init();
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     krb_set_tkt_string(tkt_file);
 #endif
     realm_init();
@@ -502,7 +502,7 @@ bye(sig)
 {
     server_shutdown();		/* tell other servers */
     hostm_shutdown();		/* tell our hosts */
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     dest_tkt();
 #endif
     syslog(LOG_NOTICE, "goodbye (sig %d)", sig);

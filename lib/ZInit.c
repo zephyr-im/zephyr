@@ -20,7 +20,7 @@ static char rcsid_ZInitialize_c[] =
 #include <internal.h>
 
 #include <sys/socket.h>
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 #include <krb_err.h>
 #endif
 
@@ -28,7 +28,7 @@ Code_t ZInitialize()
 {
     struct servent *hmserv;
     char addr[4];
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     Code_t code;
     ZNotice_t notice;
     char *krealm;
@@ -61,7 +61,7 @@ Code_t ZInitialize()
     __Q_Tail = NULL;
     __Q_Head = NULL;
     
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 
     /* if the application is a server, there might not be a zhm.  The
        code will fall back to something which might not be "right",

@@ -18,11 +18,11 @@
 
 /* Path names are relative to CONFDIR, except for the class registry. */
 
-#ifndef ZEPHYR_USES_HESIOD
+#ifndef HAVE_HESIOD
 #define SERVER_LIST_FILE	"server.list"
 #endif
 #define REALM_LIST_FILE		"realm.list"
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 #define ZEPHYR_SRVTAB		"srvtab"
 #define ZEPHYR_TKFILE		"ztkts"
 #endif

@@ -7,17 +7,15 @@
 #include <netdb.h>
 
 #ifdef HAVE_KRB4
-#define ZEPHYR_USES_KERBEROS
 #include <krb.h>
 #include <krb_err.h>
 #endif
 
 #ifdef HAVE_HESIOD
-#define ZEPHYR_USES_HESIOD
 #include <hesiod.h>
 #endif
 
-#ifndef ZEPHYR_USES_KERBEROS
+#ifndef HAVE_KRB4
 #define REALM_SZ	MAXHOSTNAMELEN
 #define INST_SZ		0		/* no instances w/o Kerberos */
 #define ANAME_SZ	9		/* size of a username + null */

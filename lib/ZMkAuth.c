@@ -18,14 +18,14 @@
 static const char rcsid_ZMakeAuthentication_c[] = "$Id$";
 #endif
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 #include <krb_err.h>
 static long last_authent_time = 0L;
 static KTEXT_ST last_authent;
 #endif
 
 Code_t ZResetAuthentication () {
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     last_authent_time = 0L;
 #endif
     return ZERR_NONE;
@@ -37,7 +37,7 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     int buffer_len;
     int *len;
 {
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     int result;
     time_t now;
     KTEXT_ST authent;

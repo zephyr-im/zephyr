@@ -22,11 +22,11 @@ static const char rcsid_zmailnotify_c[] =
 #include <sys/socket.h>
 #include <pwd.h>
 #include <netdb.h>
-#ifdef ZEPHYR_USES_HESIOD
+#ifdef HAVE_HESIOD
 #include <hesiod.h>
 #endif
 
-#ifndef ZEPHYR_USES_KERBEROS
+#ifndef HAVE_KRB4
 #undef KPOP
 #endif
 
@@ -72,7 +72,7 @@ main(argc, argv)
     int i,nbytes,retval,uselock;
     struct passwd *pwd;
     struct _mail mymail;
-#ifdef ZEPHYR_USES_HESIOD
+#ifdef HAVE_HESIOD
     struct hes_postoffice *p;
 #endif
 
@@ -104,7 +104,7 @@ main(argc, argv)
     (void) sprintf(lockfile,"%s/.maillock",dir);
 	
     host = (char *)getenv("MAILHOST");
-#ifdef ZEPHYR_USES_HESIOD
+#ifdef HAVE_HESIOD
     if (host == NULL) {
 	p = hes_getmailhost(user);
 	if (p != NULL && strcmp(p->po_type, "POP") == 0)
