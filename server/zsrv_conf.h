@@ -18,20 +18,25 @@
 
 /* Magic path names */
 #ifndef HESIOD
-#define SERVER_LIST_FILE	"/usr/athena/lib/zephyr/server.list"
+#define SERVER_LIST_FILE	Z_LIBDIR "/server.list"
 #endif /* !HESIOD */
 
 /* ACL's for pre-registered classes */
 /* Directory containing acls and other info */
-#define	ZEPHYR_ACL_DIR	"/usr/athena/lib/zephyr/"
+#define	ZEPHYR_ACL_DIR		Z_LIBDIR "/"
 /* name of the class registry */
 #define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
 
+#ifdef KERBEROS
 /* name of file to hold the tickets for keys to exchange with other servers */
-#define	ZEPHYR_TKFILE	"/usr/athena/lib/zephyr/ztkts"
+#define	ZEPHYR_TKFILE		Z_LIBDIR "/ztkts"
+
+/* pathname of Kerberos srvtab file */
+#define SERVER_SRVTAB		Z_LIBDIR "/srvtab"
+#endif
 
 /* default subscription file */
-#define	DEFAULT_SUBS_FILE	"/usr/athena/lib/zephyr/default.subscriptions"
+#define	DEFAULT_SUBS_FILE	Z_LIBDIR "/default.subscriptions"
 
 /* client defines */
 #define	REXMIT_SECS	((long) 20)	/* rexmit delay on normal notices */
