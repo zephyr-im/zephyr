@@ -21,12 +21,14 @@ static char rcsid_brain_dump_c[] = "$Header$";
 
 #include "zserver.h"
 
+/*ARGSUSED*/
 void
 get_brain_dump(who)
 struct sockaddr_in *who;
 {
 }
 
+/*ARGSUSED*/
 void
 send_brain_dump(who)
 struct sockaddr_in *who;
