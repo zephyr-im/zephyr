@@ -57,6 +57,5 @@ depend::
 	(cd et; make ${MFLAGS} depend)
 	(cd et; make ${MFLAGS} all)
 	(cd ss; make ${MFLAGS} depend)
-	(cd ss/lib; make ${MFLAGS} ss.h)
 #endif /* LOCAL_LIBS */
 
