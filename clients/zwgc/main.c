@@ -35,7 +35,7 @@ static char rcsid_main_c[] = "$Header$";
 #include "variables.h"
 
 extern void notice_handler();
-extern void setup_signals();
+static void setup_signals();
 
 /*
  * Global zwgc-wide variables:
