@@ -45,9 +45,6 @@ static char rcsid_dispatch_c[] = "$Header$";
 
 static void xmit(), rexmit(), nack_cancel();
 static int is_server();
-#ifdef DEBUG
-static void dump_nack();
-#endif DEBUG
 
 /* patchable magic numbers controlling the retransmission rate and count */
 int num_rexmits = NUM_REXMITS;
@@ -103,19 +100,19 @@ struct sockaddr_in *who;
 		server_dispatch(notice, auth, who);
 		return;
 	} else if (class_is_hm(notice)) {
-		hostm_dispatch(notice, auth, who);
+		hostm_dispatch(notice, auth, who, me_server);
 		return;
 	} else if (class_is_control(notice)) {
-		control_dispatch(notice, auth, who);
+		control_dispatch(notice, auth, who, me_server);
 		return;
 	} else if (class_is_ulogin(notice)) {
-		ulogin_dispatch(notice, auth, who);
+		ulogin_dispatch(notice, auth, who, me_server);
 		return;
 	} else if (class_is_ulocate(notice)) {
-		ulocate_dispatch(notice, auth, who);
+		ulocate_dispatch(notice, auth, who, me_server);
 		return;
 	} else if (class_is_admin(notice)) {
-		server_adispatch(notice, auth, who);
+		server_adispatch(notice, auth, who, me_server);
 		return;
 	}
 
@@ -178,9 +175,6 @@ ZClient_t *client;
 	for (nacked = nacklist->q_forw;
 	     nacked != nacklist;)
 		if (nacked->na_client == client) {
-			zdbug((LOG_DEBUG,"nack_rel: punt 0x%x, 0x%x",
-			       nacked,
-			       nacked->na_timer));
 			/* go back, since remque will change things */
 			nack2 = nacked->q_back;
 			timer_reset(nacked->na_timer);
@@ -299,32 +293,8 @@ int auth;
 					 (caddr_t) nacked);
 	/* chain in */
 	xinsque(nacked, nacklist);
-#ifdef DEBUG
-	if (zdebug)
-		dump_nack();
-#endif DEBUG
 
 }
-
-#ifdef DEBUG
-/*
- * log the nack queue
- */
-
-static void
-dump_nack()
-{
-	register ZNotAcked_t *nacked;
-
-	   
-	if (zdebug)
-		for (nacked = nacklist->q_forw;
-		     nacked != nacklist;
-		     nacked = nacked->q_forw)
-			syslog(LOG_DEBUG, "nck 0x%x, tmr 0x%x, clt 0x%x",
-			       nacked, nacked->na_timer, nacked->na_client);
-}
-#endif DEBUG
 
 /*
  * Retransmit the packet specified.  If we have timed out or retransmitted
@@ -355,10 +325,6 @@ register ZNotAcked_t *nackpacket;
 		xfree(nackpacket->na_packet);
 		xfree(nackpacket);
 
-#ifdef DEBUG
-		if (zdebug)
-			dump_nack();
-#endif DEBUG
 		/* initiate recovery */
 		server_recover(client);
 		return;
@@ -385,11 +351,6 @@ requeue:
 	nackpacket->na_timer = timer_set_rel(rexmit_secs,
 					     rexmit,
 					     (caddr_t) nackpacket);
-
-#ifdef DEBUG
-		if (zdebug)
-			dump_nack();
-#endif DEBUG
 	return;
 
 }
@@ -487,11 +448,6 @@ struct sockaddr_in *who;
 		return;
 	}
 
-	zdbug((LOG_DEBUG,"nack_can: 0x%x %d %d",
-	       notice->z_uid.zuid_addr.s_addr,
-	       notice->z_uid.tv.tv_sec,
-	       notice->z_uid.tv.tv_usec));
-
 	/* search the not-yet-acked list for this packet, and
 	   flush it. */
 	for (nacked = nacklist->q_forw;
@@ -500,17 +456,10 @@ struct sockaddr_in *who;
 		if ((nacked->na_client == client))
 			if (ZCompareUID((caddr_t) &nacked->na_uid,
 				  (caddr_t) &notice->z_uid)) {
-				zdbug((LOG_DEBUG,"nack_canceled"));
 				timer_reset(nacked->na_timer);
 				xfree(nacked->na_packet);
 				xremque(nacked);
 				return;
-			} else {
-				zdbug((LOG_DEBUG,
-				       "nack_can: not this one 0x%x %d %d",
-				       nacked->na_uid.zuid_addr.s_addr,
-				       nacked->na_uid.tv.tv_sec,
-				       nacked->na_uid.tv.tv_usec));
 			}
 	zdbug((LOG_DEBUG,"nack not found"));
 	return;
