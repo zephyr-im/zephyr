@@ -79,6 +79,8 @@ static char rcsid_class_c[] =
 
 static ZClass_t *class_bucket[HASHSIZE]; /* the hash table of pointers */
 
+#define CLASS_HASHVAL(cl,in) (cl->hash_val ^ in->hash_val) % HASHSIZE
+
 #ifdef __STDC__
 # define        P(s) s
 #else
@@ -123,7 +125,7 @@ int order_dest_strings(d1, d2)
   i = strcmp(d1->recip->string, d2->recip->string);
   if (i != 0)
     return(i);
-  syslog(LOG_WARNING,"order_dest_strings equual");
+  syslog(LOG_WARNING,"order_dest_strings equal");
   return(1); /* be arbitrary */
 }
 
@@ -147,8 +149,8 @@ class_register(client, subs)
 	register ZClass_t *ptr, *ptr2;
 	unsigned long hashval;
 
-	set_ZDestination_hash(&subs->zst_dest);
-	hashval = subs->zst_dest.hash_value;
+	hashval = CLASS_HASHVAL(subs->zst_dest.classname, subs->zst_dest.inst);
+
 	if (!(ptr = class_bucket[hashval])) {
 		/* not registered */
 		
@@ -198,9 +200,8 @@ class_deregister(client, subs)
 	int retval = -1;
 	unsigned long hashval;
 
-	set_ZDestination_hash(&subs->zst_dest);
-	hashval = subs->zst_dest.hash_value % HASHSIZE;
-#if 1
+	hashval = CLASS_HASHVAL(subs->zst_dest.classname, subs->zst_dest.inst);
+#if 0
 	zdbug((LOG_DEBUG, "class_dereg: %s %s",
 		subs->zst_dest.classname->string,
 		subs->zst_dest.inst->string));
@@ -213,7 +214,7 @@ class_deregister(client, subs)
 		/* walk down the list, looking for a match */
 		if (ZDest_eq(&ptr2->zct_dest,&subs->zst_dest)) {
 			if ((retval = remove_client(ptr2, client)) == EMPTY_CLASS) {
-#if 1
+#if 0
 				zdbug((LOG_DEBUG,"empty class"));
 #endif
 				/* Don't free up restricted classes. */
@@ -251,8 +252,7 @@ class_lookup(subs)
 	ZSubscr_t wc_sub;
 	unsigned long hashval;
 
-	set_ZDestination_hash(&subs->zst_dest);
-	hashval = subs->zst_dest.hash_value;
+	hashval = CLASS_HASHVAL(subs->zst_dest.classname, subs->zst_dest.inst);
 
 	if (ptr = class_bucket[hashval])
 		/* go search the list for the class */
@@ -267,7 +267,8 @@ class_lookup(subs)
 	wc_sub = *subs;
 	wc_sub.zst_dest.inst = wildcard_instance;
 	set_ZDestination_hash(&wc_sub.zst_dest);
-	hashval = wc_sub.zst_dest.hash_value;
+
+	hashval = CLASS_HASHVAL(wc_sub.zst_dest.classname, wc_sub.zst_dest.inst);
 	if (ptr = class_bucket[hashval])
 		/* go search the list for the class */
 		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
@@ -338,15 +339,14 @@ class_get_acl(class_name)
 	register ZClass_t *ptr, *ptr2;
 	unsigned long hashval;
 
-	
-	hashval = class_name->hash_val % HASHSIZE;
-
+	hashval = CLASS_HASHVAL(class_name, empty);
 	if (!(ptr = class_bucket[hashval]))
 		return(NULLZACLT);
 
 	/* walk down the list, looking for a match */
-	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
-	    if (ptr2->zct_dest.classname == class_name)
+	for (ptr2 = ptr->q_back; ptr2 != ptr; ptr2 = ptr2->q_back)
+	    if ((ptr2->zct_dest.classname == class_name) &&
+		(ptr2->zct_dest.inst == empty))
 		return(ptr2->zct_acl);
 
 	/* fell off the end, no match ==> not restricted */
@@ -369,13 +369,16 @@ class_restrict(class_name, acl)
 	unsigned long hashval;
 
 	d = make_zstring(class_name,1);
-	hashval = d->hash_val % HASHSIZE;
+	hashval = CLASS_HASHVAL(d,empty);
 
-	if (!(ptr = class_bucket[hashval]))
-		return(ZSRV_NOCLASS);
+	if (!(ptr = class_bucket[hashval])) {
+	  free_zstring(d);
+	  return(ZSRV_NOCLASS);
+	}
 	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
 		/* walk down the list, looking for a match */
-		if (ptr2->zct_dest.classname == d) {
+		if ((ptr2->zct_dest.classname == d) &&
+		    (ptr2->zct_dest.inst == empty)){
 			if (ptr2->zct_acl)
 				return ZSRV_CLASSRESTRICTED;
 			ptr2->zct_acl = acl;
@@ -404,7 +407,7 @@ class_setup_restricted(class_name, acl)
 	unsigned long hashval;
 
 	d = make_zstring(class_name,1);
-	hashval = d->hash_val % HASHSIZE;
+	hashval = CLASS_HASHVAL(d,empty);
 
 	if (!(ptr = class_bucket[hashval])) {
 		/* not registered */
@@ -424,11 +427,13 @@ class_setup_restricted(class_name, acl)
 		ptr->q_back = ptr2;
 
 		class_bucket[hashval] = ptr2;
+		free_zstring(d);
 		return(ZERR_NONE);
 	} else {
 	    for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
 		/* walk down the list, looking for a match */
-		if (ptr2->zct_dest.classname == d) {
+		if ((ptr2->zct_dest.classname == d) &&
+		    (ptr2->zct_dest.inst == empty)) {
 		  free_zstring(d);
 		  return(ZSRV_CLASSXISTS);
 		}
@@ -437,6 +442,7 @@ class_setup_restricted(class_name, acl)
 	      return(ENOMEM);
 	    }
 
+	    free_zstring(d);
 	    ptr2->zct_acl = acl;
 	    xinsque(ptr2, ptr);
 	    return(ZERR_NONE);
@@ -459,12 +465,9 @@ class_alloc(classname,inst)
 	    return(NULLZCT);
 
 	ptr->q_forw = ptr->q_back = ptr;
-	ptr->zct_dest.classname = classname;
-	ptr->zct_dest.classname->ref_count++;
-	ptr->zct_dest.inst = inst;
-	ptr->zct_dest.inst->ref_count++;
-	ptr->zct_dest.recip = empty;
-	ptr->zct_dest.recip->ref_count++;
+	ptr->zct_dest.classname = dup_zstring(classname);
+	ptr->zct_dest.inst = dup_zstring(inst);
+	ptr->zct_dest.recip = dup_zstring(empty);
 	set_ZDestination_hash(&ptr->zct_dest);
 
 	if (!(clist = (ZClientList_t *) xmalloc (sizeof (ZClientList_t)))) {
