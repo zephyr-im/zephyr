@@ -1,0 +1,81 @@
+.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
+.\" specifies the terms and conditions for redistribution.
+.\"
+.\"	@(#)zaway.1	6.1 (MIT) 7/9/87
+.\"
+.TH ZAWAY 1 "August 6, 1987"
+.SH NAME
+zaway \- tell other people that you aren't around
+.SH SYNOPSIS
+.B zaway
+[
+.BI file
+]
+.SH DESCRIPTION
+.I Zaway
+provides a way for you to automatically send replies when other people
+contact you using
+.I zwrite(1).
+Zaway subscribes itself to class "MESSAGE", instance "*", so that it can
+monitor your incoming messages.  It does not affect the operation of any
+of client receiving messages.  Zaway uses a message file (which defaults
+to $HOME/.away) to describe what reponses should be sent to which
+senders.  The general format of this file
+is:
+.PP
+.nf
+	>name
+	>name
+	message
+	>name
+	message
+.fi
+.PP
+Any number of user names may be specified preceeding the message to send
+to those senders.  If a user name appears more than once, the message will
+be a concatenation of each of the appropriate messages.  There are
+two special names: "*" indicates that the following message should be
+sent to all senders and "%" indicates that the following message should
+only be sent if the user name has not matched yet.  If no file is specified,
+and no default file can be found, the message:
+
+I'm sorry, but I am currently away from the terminal and am
+not able to receive your message.
+
+If a user name does not match any of those listed in the file, and no
+"*" or "%" field is specified, no return message is sent.
+.SH SAMPLE FILE
+.nf
+>eichin
+>tony
+Hi there guys!  I'm in the other room right now.
+I'll be back in 5 minutes or so.
+>jruser
+Sorry, but I'm gone for the day...
+>%
+Hello...I'm not sure who you are.  I'll be back soon,
+though.
+>*
+
+This message comes to you compliments of zaway!
+.fi
+
+Note that the final "compliments" message will be included in all messages,
+whereas the "I'm not sure" message will only be included in messages that
+are not from "eichin", "tony", or "jruser".
+.SH FILES
+$HOME/.away
+.SH SEE ALSO
+zephyr(1), zwgc(1), hm(8), zephyrd(8)
+.br
+`Zephyr Notification Service'
+.SH AUTHOR
+.PP
+Robert S. French (MIT-Project Athena)
+.sp
+Copyright (c) 1987 by the Massachusetts Institute of Technology
+.br
+See
+.I zephyr(1)
+for a full copyright notice.
