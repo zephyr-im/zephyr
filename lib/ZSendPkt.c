@@ -16,7 +16,6 @@
 
 #include <zephyr/zephyr_internal.h>
 #include <sys/socket.h>
-#include <sys/time.h>
 
 Code_t ZSendPacket(packet,len)
 	ZPacket_t	packet;
@@ -26,7 +25,8 @@ Code_t ZSendPacket(packet,len)
 	
 	Code_t retval;
 	struct sockaddr_in sin;
-	int auth,t1,t2,t3;
+	struct timeval tv;
+	int auth,t1,t2,t3,i;
 	ZPacket_t ackpack;
 	ZNotice_t notice;
 	
@@ -54,7 +54,7 @@ Code_t ZSendPacket(packet,len)
 	
 	for (i=0;i<4;i++) {
 		select(0,&t1,&t2,&t3,&tv);
-		retval = ZCheckIfNotice(ackpack,sizeof ackpack,&acknotice,
+		retval = ZCheckIfNotice(ackpack,sizeof ackpack,&notice,
 					&auth,findack,&notice.z_uid);
 		if (retval == ZERR_NONE)
 			return (ZERR_NONE);
