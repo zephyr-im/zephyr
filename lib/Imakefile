@@ -47,6 +47,7 @@ SRCS=	\
 	ZLocations.c \
 	ZMakeAscii.c \
 	ZMakeAuthentication.c \
+	ZNewLocateUser.c \
 	ZOpenPort.c \
 	ZParseNotice.c \
 	ZPeekIfNotice.c \
@@ -100,6 +101,7 @@ OLIST=	\
 	ZLocations.o \
 	ZMakeAscii.o \
 	ZMakeAuthentication.o \
+	ZNewLocateUser.o \
 	ZOpenPort.o \
 	ZParseNotice.o \
 	ZPeekIfNotice.o \
@@ -150,6 +152,7 @@ OLIST=	\
 	ZLocations.o \
 	ZMakeAscii.o \
 	ZMakeAuthentication.o \
+	ZNewLocateUser.o \
 	ZOpenPort.o \
 	ZParseNotice.o \
 	ZPeekIfNotice.o \
