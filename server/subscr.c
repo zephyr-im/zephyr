@@ -71,6 +71,13 @@ static char rcsid_subscr_c[] = "$Id$";
 # define P(s) ()
 #endif
 
+#ifdef KERBEROS
+#ifndef NOENCRYPTION
+C_Block	serv_key;
+Sched	serv_ksched;
+#endif
+#endif
+
 /* for compatibility when sending subscription information to old clients */
 
 static void check_sub_order P((ZSubscr_t *subs, int wc));
@@ -150,15 +157,25 @@ subscr_subscribe_real(who, newsubs, notice)
      register ZSubscr_t *newsubs;
      ZNotice_t *notice;
 {
-	int omask;
 	Code_t retval;
 	ZAcl_t *acl;
 	ZSTRING *sender;
 	ZSubscr_t *subs2, *subs3, *subs;
 	int relation;
+#ifdef POSIX
+	sigset_t mask, omask;
+#else
+	int omask;
+#endif
 
 	sender = make_zstring(notice->z_sender,0);
+#ifdef POSIX
+	(void) sigemptyset(&mask);
+	(void) sigaddset(&mask, SIGFPE);
+	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
+#else
 	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
+#endif
 	for (subs = newsubs->q_forw;
 	     subs != newsubs;
 	     subs = subs->q_forw) {
@@ -228,7 +245,11 @@ subscr_subscribe_real(who, newsubs, notice)
 
 		if (!(subs3 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
 			free_subscriptions(newsubs);
+#ifdef POSIX
+			(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
 			(void) sigsetmask(omask);
+#endif
 			return(ENOMEM);
 		}
 
@@ -240,10 +261,14 @@ subscr_subscribe_real(who, newsubs, notice)
 		set_ZDestination_hash(&subs3->zst_dest);
 
 		if ((retval = class_register(who, subs)) != ZERR_NONE) {
-		  xfree(subs3);
-			free_subscriptions(newsubs);
-			(void) sigsetmask(omask);
-			return(retval);
+		    xfree(subs3);
+		    free_subscriptions(newsubs);
+#ifdef POSIX
+		    (void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
+		    (void) sigsetmask(omask);
+#endif
+		    return(retval);
 		}
 
 		/* subs2 was adjusted above */
@@ -251,7 +276,11 @@ subscr_subscribe_real(who, newsubs, notice)
  duplicate:
 		;
 	}
+#ifdef POSIX
+	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
 	(void) sigsetmask(omask);
+#endif
 
 	free_subscriptions(newsubs);
 	return(ZERR_NONE);
@@ -400,8 +429,12 @@ subscr_cancel(sin, notice)
 	register ZSubscr_t *subs, *subs2, *subs3, *subs4;
 	Code_t retval;
 	int found = 0;
-	int omask;
 	int relation;
+#ifdef POSIX
+	sigset_t mask, omask;
+#else
+	int omask;
+#endif
 
 #if 0
 	zdbug((LOG_DEBUG,"subscr_cancel"));
@@ -416,7 +449,13 @@ subscr_cancel(sin, notice)
 		return(ZERR_NONE);	/* no subscr -> no error */
 
 	
+#ifdef POSIX
+	(void) sigemptyset(&mask);
+	(void) sigaddset(&mask, SIGFPE);
+	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
+#else
 	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
+#endif
 	for (subs4 = subs->q_forw; subs4 != subs; subs4 = subs4->q_forw) {
 	    for (subs2 = who->zct_subs->q_forw;
 		 subs2 != who->zct_subs;) {
@@ -454,12 +493,20 @@ subscr_cancel(sin, notice)
 	       subs2 = subs2->q_forw)
 	    if ((retval = class_register(who, subs2)) != ZERR_NONE) {
 	      free_subscriptions(subs);
+#ifdef POSIX
+	      (void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
 	      (void) sigsetmask(omask);
+#endif
 	      return(retval);
 	    }
 	}
 
+#ifdef POSIX
+	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
 	(void) sigsetmask(omask);
+#endif
 	free_subscriptions(subs);
 	if (found) {
 #if 0
@@ -483,7 +530,11 @@ subscr_cancel_client(client)
      ZClient_t *client;
 {
 	register ZSubscr_t *subs;
+#ifdef POSIX
+	sigset_t mask, omask;
+#else
 	int omask;
+#endif
 
 #if 0
 	zdbug((LOG_DEBUG,"subscr_cancel_client %s",
@@ -492,7 +543,13 @@ subscr_cancel_client(client)
 	if (!client->zct_subs)
 		return;
 	
+#ifdef POSIX
+	(void) sigemptyset(&mask);
+	(void) sigaddset(&mask, SIGFPE);
+	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
+#else
 	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
+#endif
 	for (subs = client->zct_subs->q_forw;
 	     subs != client->zct_subs;
 	     subs = client->zct_subs->q_forw) {
@@ -520,7 +577,11 @@ subscr_cancel_client(client)
 	xfree(subs);
 	client->zct_subs = NULLZST;
 
+#ifdef POSIX
+	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
 	(void) sigsetmask(omask);
+#endif
 	return;
 }
 
@@ -536,18 +597,32 @@ struct in_addr *addr;
 {
 	register ZHostList_t *hosts;
 	register ZClientList_t *clist = NULLZCLT, *clt;
+#ifdef POSIX
+	sigset_t mask, omask;
+#else
 	int omask;
+#endif
 
 	/* find the host */
 	if (!(hosts = hostm_find_host(addr)))
 		return(ZSRV_HNOTFOUND);
 	clist = hosts->zh_clients;
 
+#ifdef POSIX
+	(void) sigemptyset(&mask);
+	(void) sigaddset(&mask, SIGFPE);
+	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
+#else
 	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
+#endif
 	/* flush each one */
 	for (clt = clist->q_forw; clt != clist; clt = clt->q_forw)
 		(void) subscr_cancel_client(clt->zclt_client);
+#ifdef POSIX
+	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
 	(void) sigsetmask(omask);
+#endif
 	return(ZERR_NONE);
 }
 #endif
@@ -1049,6 +1124,7 @@ subscr_send_subs(client, vers)
 	register ZSubscr_t *sub;
 #ifdef KERBEROS	
 	char buf[512];
+	C_Block cblock;
 #endif /* KERBEROS */
 	char buf2[512];
 	char *lyst[7 * NUM_FIELDS];
@@ -1063,7 +1139,13 @@ subscr_send_subs(client, vers)
 	lyst[num++] = buf2;
 
 #ifdef KERBEROS
-	if ((retval = ZMakeAscii(buf, sizeof(buf), client->zct_cblock,
+#ifdef NOENCRYPTION
+	(void) memcpy((caddr_t)cblock, (caddr_t)client->zct_cblock, sizeof(C_Block));
+#else
+	des_ecb_encrypt(client->zct_cblock, cblock, serv_ksched.s, DES_ENCRYPT);
+#endif
+
+	if ((retval = ZMakeAscii(buf, sizeof(buf), cblock,
 				 sizeof(C_Block))) != ZERR_NONE) {
 #if 0
 		zdbug((LOG_DEBUG,"zmakeascii failed: %s",
