@@ -174,16 +174,19 @@ depend:: zephyr_err.h
 		$(CP) zephyr_err.h ../include/zephyr/zephyr_err.h; \
 	fi
 
+IDIR=${DESTDIR}${ATHINCDIR}
+SDIR=../include/zephyr
 install::
-	-mkdir ${DESTDIR}/usr/include/zephyr
-	install -c -m 0644 ../include/zephyr/zephyr.h ${DESTDIR}/usr/include/zephyr/zephyr.h
-	install -c -m 0644 ../include/zephyr/zephyr_conf.h ${DESTDIR}/usr/include/zephyr/zephyr_conf.h
-	install -c -m 0644 ../include/zephyr/zephyr_internal.h ${DESTDIR}/usr/include/zephyr/zephyr_internal.h
-	install -c -m 0644 zephyr_err.h ${DESTDIR}/usr/include/zephyr/zephyr_err.h
+	-mkdir ${IDIR}
+	-mkdir ${IDIR}/zephyr
+	install -c -m 0644 ${SDIR}/zephyr.h ${IDIR}/zephyr/zephyr.h
+	install -c -m 0644 ${SDIR}/zephyr_conf.h ${IDIR}/zephyr/zephyr_conf.h
+	install -c -m 0644 ${SDIR}/zephyr_internal.h ${IDIR}/zephyr/zephyr_internal.h
+	install -c -m 0644 zephyr_err.h ${IDIR}/zephyr/zephyr_err.h
 #ifdef KERBEROS
-	install -c -m 0644 krb_err.h ${DESTDIR}/usr/include/zephyr/krb_err.h
+	install -c -m 0644 krb_err.h ${IDIR}/zephyr/krb_err.h
 #endif /* KERBEROS */
-	install -c -m 0644 ../include/zephyr/mit-copyright.h ${DESTDIR}/usr/include/zephyr/mit-copyright.h
+	install -c -m 0644 ${SDIR}/mit-copyright.h ${IDIR}/zephyr/mit-copyright.h
 
 /* this is to install the lint lib  This must end */
 /* up in the resulting Makefile AFTER the other lint lib stuff. */
