@@ -255,7 +255,7 @@ static string z_auth_to_ascii(z_auth)
 char *decode_notice(notice)
      ZNotice_t *notice;
 {
-    char *temp;
+    char *temp, *realm;
     string time, notyear, year, date_string, time_string;
     struct hostent *fromhost;
 
@@ -291,7 +291,8 @@ char *decode_notice(notice)
      * which delivered the message.
      */
     if ((temp = strchr(notice->z_sender,'@')) &&
-	string_Eq(temp+1, ZGetRhs(notice->z_dest_realm)))
+	(realm = ZGetRhs(notice->z_dest_realm)) &&
+	string_Eq(temp+1, realm))
       var_set_variable_then_free_value("sender",
 				string_CreateFromData(notice->z_sender,
 						      temp-notice->z_sender));
