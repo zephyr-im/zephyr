@@ -26,7 +26,7 @@ static char rcsid_acl_files_c[] = "$Id$";
 /*** Routines for manipulating access control list files ***/
 
 #include <zephyr/zephyr.h>
-#include <strings.h>
+#include <string.h>
 #include <sys/file.h>
 #include <fcntl.h>
 #include <sys/stat.h>

@@ -57,7 +57,7 @@ static char rcsid_main_c[] =
    <stdio.h>
    <sys/file.h>
    <syslog.h>
-   <strings.h>
+   <string.h>
    <signal.h>
    timer.h
    zsrv_err.h
