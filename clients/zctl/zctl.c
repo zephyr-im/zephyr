@@ -105,13 +105,13 @@ main(argc,argv)
 #endif
 
 	if (!(hent = gethostbyname(ourhost))) {
-		fprintf(stderr,"%s: Can't get canonical name for host %s",
-			argv[0], ourhost);
-		exit (1);
-	}
+		fprintf(stderr,"%s: Can't resolve hostname %s; %s may be "
+			"wrong in subscriptions",argv[0],ourhost,
+			TOKEN_CANONNAME);
+		strncpy(ourhostcanon,ourhost,sizeof(ourhostcanon)-1);
+	} else
+		strncpy(ourhostcanon,hent->h_name,sizeof(ourhostcanon)-1);
 
-	(void) strcpy(ourhostcanon,hent->h_name);
-	
 	sci_idx = ss_create_invocation("zctl","",0,&zctl_cmds,&code);
 	if (code) {
 		ss_perror(sci_idx,code,"while creating invocation");
