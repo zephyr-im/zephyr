@@ -868,7 +868,7 @@ hostm_dispatch(notice, auth, who, server)
     Server *owner;
     char *opcode = notice->z_opcode;
     Code_t retval;
-    int i, remove = 0;
+    int i, add = 0, remove = 0;
 
 #if 0
     zdbug((LOG_DEBUG,"hm_disp"));
@@ -882,37 +882,22 @@ hostm_dispatch(notice, auth, who, server)
 	zdbug((LOG_DEBUG, "bogus HM packet"));
 #endif
 	clt_ack(notice, who, AUTH_FAILED);
-    } else if (strcmp(opcode, HM_BOOT) == 0 || strcmp(opcode, HM_FLUSH) == 0) {
+    } else if (strcmp(opcode, HM_FLUSH) == 0) {
+	client_flush_host(&who->sin_addr);
+	if (server == me_server)
+	    server_forward(notice, auth, who);
+    } else if (strcmp(opcode, HM_BOOT) == 0) {
 	client_flush_host(&who->sin_addr);
 	if (server == me_server) {
 	    server_forward(notice, auth, who);
-	    if (strcmp(opcode, HM_BOOT) == 0)
-		ack(notice, who);
+	    ack(notice, who);
+	    add = 1;
 	}
     } else if (strcmp(opcode, HM_ATTACH) == 0) {
 	if (server == me_server) {
 	    server_forward(notice, auth, who);
 	    ack(notice, who);
-	    for (i = 0; i < num_hosts; i++) {
-		if (hosts[i].s_addr == who->sin_addr.s_addr)
-		    break;
-	    }
-	    if (i == num_hosts) {
-		if (hosts_size == 0) {
-		    hosts = (struct in_addr *) malloc(HOSTS_SIZE_INIT *
-						  sizeof(struct in_addr));
-		    if (!hosts)
-			return ENOMEM;
-		    hosts_size = HOSTS_SIZE_INIT;
-		} else if (num_hosts == hosts_size) {
-		    hosts = (struct in_addr *) realloc(hosts, hosts_size * 2 *
-						       sizeof(struct in_addr));
-		    if (!hosts)
-			return ENOMEM;
-		    hosts_size *= 2;
-		}
-		hosts[num_hosts++] = who->sin_addr;
-	    }
+	    add = 1;
 	} else {
 	    remove = 1;
 	}
@@ -922,7 +907,28 @@ hostm_dispatch(notice, auth, who, server)
 	syslog(LOG_WARNING, "hm_dispatch: unknown opcode %s", opcode);
     }
 
-    if (remove) {
+    if (add) {
+	for (i = 0; i < num_hosts; i++) {
+	    if (hosts[i].s_addr == who->sin_addr.s_addr)
+		break;
+	}
+	if (i == num_hosts) {
+	    if (hosts_size == 0) {
+		hosts = (struct in_addr *) malloc(HOSTS_SIZE_INIT *
+						  sizeof(struct in_addr));
+		if (!hosts)
+		    return ENOMEM;
+		hosts_size = HOSTS_SIZE_INIT;
+	    } else if (num_hosts == hosts_size) {
+		hosts = (struct in_addr *) realloc(hosts, hosts_size * 2 *
+						   sizeof(struct in_addr));
+		if (!hosts)
+		    return ENOMEM;
+		hosts_size *= 2;
+	    }
+	    hosts[num_hosts++] = who->sin_addr;
+	}
+    } else if (remove) {
 	for (i = 0; i < num_hosts; i++) {
 	    if (hosts[i].s_addr == who->sin_addr.s_addr) {
 		memmove(&hosts[i], &hosts[i + 1], num_hosts - (i + 1));
@@ -1046,7 +1052,7 @@ control_dispatch(notice, auth, who, server)
 		    syslog(LOG_DEBUG,
 			   "subscription cancel for %s/%d from %s\n",
 			   inet_ntoa(who->sin_addr), ntohs(who->sin_port),
-			   server->add_str);
+			   server->addr_str);
 		}
 	    }
 #endif
