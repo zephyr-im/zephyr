@@ -274,7 +274,10 @@ int open_display_and_load_resources(pargc, argv)
     /*
      * Get resources from the just opened display:
      */
-    temp_db2 = XrmGetStringDatabase(dpy->xdefaults);
+    if (dpy->zdefaults != NULL)
+	temp_db2 = XrmGetStringDatabase(dpy->xdefaults);
+    else
+	temp_db2 = NULL;
 
     /*
      * Merge the 4 sets of resources together such that when searching
