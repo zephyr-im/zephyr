@@ -38,7 +38,7 @@ Code_t ZPeekPacket(buffer, ret_len, from)
     if (!(*buffer = (char *) malloc((unsigned) *ret_len)))
 	return (ENOMEM);
 
-    bcopy(nextq->packet, *buffer, *ret_len);
+    _BCOPY(nextq->packet, *buffer, *ret_len);
 
     if (from)
 	*from = nextq->from;

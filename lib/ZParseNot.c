@@ -99,7 +99,7 @@ Code_t ZParseNotice(buffer, len, notice)
 #define BAD	goto badpkt
 #endif
 
-    bzero((char *)notice, sizeof(ZNotice_t));
+    _BZERO((char *)notice, sizeof(ZNotice_t));
 	
     ptr = buffer;
     end = buffer+len;

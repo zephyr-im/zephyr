@@ -37,7 +37,7 @@ Code_t ZFormatSmallRawNotice(notice, buffer, ret_len)
     if (*ret_len > Z_MAXPKTLEN)
 	return (ZERR_PKTLEN);
 
-    bcopy(notice->z_message, buffer+hdrlen, notice->z_message_len);
+    _BCOPY(notice->z_message, buffer+hdrlen, notice->z_message_len);
 
     return (ZERR_NONE);
 }

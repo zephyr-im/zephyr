@@ -57,7 +57,7 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
     if (newnotice.z_message_len+hdrlen > buffer_len)
 	return (ZERR_PKTLEN);
 
-    bcopy(newnotice.z_message, ptr, newnotice.z_message_len);
+    _BCOPY(newnotice.z_message, ptr, newnotice.z_message_len);
 
     *len = hdrlen+newnotice.z_message_len;
 

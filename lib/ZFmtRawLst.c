@@ -45,13 +45,13 @@ Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len)
     if (!(*buffer = (char *) malloc((unsigned) *ret_len)))
 	return (ENOMEM);
 
-    bcopy(header, *buffer, hdrlen);
+    _BCOPY(header, *buffer, hdrlen);
     
     ptr = *buffer+hdrlen;
 
     for (;nitems;nitems--, list++) {
 	i = strlen(*list)+1;
-	bcopy(*list, ptr, i);
+	_BCOPY(*list, ptr, i);
 	ptr += i;
     }
 
