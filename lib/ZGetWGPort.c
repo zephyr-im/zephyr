@@ -23,11 +23,11 @@ static char rcsid_ZGetWGPort_c[] = "$Header$";
 extern char *getenv();
 extern uid_t getuid();
 
-int ZGetWGPort()
+u_short ZGetWGPort()
 {
     char *envptr, name[128];
     FILE *fp;
-    int wgport;
+    u_short wgport;
 	
     envptr = getenv("WGFILE");
     if (!envptr) {
