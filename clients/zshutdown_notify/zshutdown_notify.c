@@ -67,11 +67,6 @@ main(argc,argv)
     msg[1] = message;
     msg[2] = warning;
 
-    if ((retval = ZInitialize()) != ZERR_NONE) {
-	com_err(argv[0], retval, "while initializing");
-	exit(1);
-    } 
-
     if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
 	com_err(argv[0], errno, "while finding hostname");
 	exit(1);
@@ -104,6 +99,11 @@ main(argc,argv)
 	exit(1);
     }
 #endif
+
+    if ((retval = ZInitialize()) != ZERR_NONE) {
+	com_err(argv[0], retval, "while initializing");
+	exit(1);
+    } 
 
     ptr = message;
 
