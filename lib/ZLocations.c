@@ -38,27 +38,28 @@ Code_t ZSetLocation()
 	} 
 
 	return (Z_SendLocation(LOGIN_CLASS,quiet?LOGIN_QUIET_LOGIN:
-			       LOGIN_USER_LOGIN));
+			       LOGIN_USER_LOGIN,ZAUTH));
 }
 
 Code_t ZUnsetLocation()
 {
-	return (Z_SendLocation(LOGIN_CLASS,LOGIN_USER_LOGOUT));
+	return (Z_SendLocation(LOGIN_CLASS,LOGIN_USER_LOGOUT,ZNOAUTH));
 }
 
 Code_t ZHideLocation()
 {
-	return (Z_SendLocation(LOCATE_CLASS,LOCATE_HIDE));
+	return (Z_SendLocation(LOCATE_CLASS,LOCATE_HIDE,ZAUTH));
 }
 
 Code_t ZUnhideLocation()
 {
-	return (Z_SendLocation(LOCATE_CLASS,LOCATE_UNHIDE));
+	return (Z_SendLocation(LOCATE_CLASS,LOCATE_UNHIDE,ZAUTH));
 }
 
-Z_SendLocation(class,opcode)
+Z_SendLocation(class,opcode,auth)
 	char *class;
 	char *opcode;
+	int (*auth)();
 {
 	char *ttyname(),*ctime();
 
@@ -92,7 +93,7 @@ Z_SendLocation(class,opcode)
 	bptr[1] = ctime(&ourtime);
 	bptr[1][strlen(bptr[1])-1] = '\0';
 	
-	if ((retval = ZSendList(&notice,bptr,2,ZAUTH)) != ZERR_NONE)
+	if ((retval = ZSendList(&notice,bptr,2,auth)) != ZERR_NONE)
 		return (retval);
 
 	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,(int *)0,
