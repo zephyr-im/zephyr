@@ -88,7 +88,19 @@ char **argv;
 	    /* only complain if initializing tty mode, and would be first
 	       available port */
 	    ERROR("$TERM not set.  tty mode will be plain.\n");
-    } else {
+    }
+#ifdef _AIX
+    /* 
+     * This is a temporary KLUDGE to get around the problem where some people
+     * might start zwgc in their ~/.startup.X and it hangs on the RISC/6000.
+     * Apparently, the call to tgetent() with the Athena console window causes
+     * the process to get stopped on tty access.  Since the terminal type is
+     * "dumb" (set by tcsh), we can pretty much assume there isn't anything
+     * to setup from the termcap information.
+     */
+    else if (!strcmp(term, "dumb")) { }
+#endif
+    else {
 	tgetent(tc_buf, term);
     
 	/* Step 1: get all of {rv,bold,u,bell,blink} that are available. */
