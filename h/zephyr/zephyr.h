@@ -25,16 +25,21 @@
 #include <stdio.h>
 #include <krb.h>
 
-#define ZVERSION	0
+#define ZVERSIONHDR	"ZEPH"
+#define ZVERSIONMAJOR	0
+#define ZVERSIONMINOR	0
 
 /* Types */
 
+	/* Maximum packet length */
+#define Z_MAXPKTLEN	        1024
+
 	/* Packet */
-typedef char ZPacket_t[BUFSIZ];
+typedef char ZPacket_t[Z_MAXPKTLEN];
 
 	/* Packet type */
 typedef enum { UNSAFE, UNACKED, ACKED, HMACK, HMCTL, SERVACK, SERVNAK,
-		       CLIENTACK } ZNotice_Kind_t;
+		       CLIENTACK, STAT } ZNotice_Kind_t;
 
 	/* Unique ID format */
 typedef struct _ZUnique_Id_t {
@@ -45,10 +50,15 @@ typedef struct _ZUnique_Id_t {
 	/* Checksum */
 typedef u_long ZChecksum_t;
 
+#define ZNUMFIELDS	15
+
 	/* Notice definition */
 typedef struct _ZNotice_t {
+	char		*z_version;
 	ZNotice_Kind_t	z_kind;
 	ZUnique_Id_t	z_uid;
+#define z_sender_addr	z_uid.zuid_addr
+	struct		timeval z_time;
 	u_short		z_port;
 	int		z_auth;
 	int		z_authent_len;
@@ -58,6 +68,7 @@ typedef struct _ZNotice_t {
 	char		*z_opcode;
 	char		*z_sender;
 	char		*z_recipient;
+	char		*z_default_format;
 	ZChecksum_t	z_checksum;
 	caddr_t		z_message;
 	int		z_message_len;
@@ -68,10 +79,17 @@ typedef struct _ZSubscription_t {
 	char		*recipient;
 	char		*class;
 	char		*classinst;
-}  ZSubscription_t;
+} ZSubscription_t;
 
 	/* Function return code */
 typedef int Code_t;
+
+	/* Locations structure */
+typedef struct _ZLocations_t {
+	char		*host;
+	char		*time;
+	char		*tty;
+} ZLocations_t;
 
 	/* Socket file descriptor */
 extern int __Zephyr_fd;
@@ -79,7 +97,7 @@ extern int __Zephyr_fd;
 	/* Port number */
 extern int __Zephyr_port;
 
-	/* Desintation (HM) addr */
+	/* Destination (HM) addr */
 extern struct sockaddr_in __HM_addr;
 
 	/* Kerberos error table base */
@@ -88,6 +106,9 @@ extern int krb_err_base;
 	/* Session key for last parsed packet - server only */
 extern C_Block __Zephyr_session;
 
+	/* ZCompareUIDPred definition */
+extern int ZCompareUIDPred();
+
 	/* ZGetSession() macro */
 #define ZGetSession() (__Zephyr_session)
 	
@@ -95,6 +116,7 @@ extern C_Block __Zephyr_session;
 #define ZGetFD() (__Zephyr_fd)
 
 	/* ZQLength macro */
+extern int __Q_Length;
 #define ZQLength() (__Q_Length)
 
 	/* ZGetDestAddr() macro */
@@ -103,9 +125,6 @@ extern C_Block __Zephyr_session;
 	/* ZGetRealm() macro */
 extern char __Zephyr_realm[];
 #define ZGetRealm() (__Zephyr_realm)
-
-	/* Maximum packet length */
-#define Z_MAXPKTLEN	        1024
 
 	/* Maximum queue length */
 #define Z_MAXQLEN		30
@@ -127,10 +146,16 @@ extern char *ZGetSender();
 #define SERVER_INSTANCE		"zephyr"
 #define SERVER_SRVTAB		"/site/zephyr/srvtab"
 
+	/* Kerberos defines for ZFormatNotice, et al. */
+extern int ZMakeAuthentication();
+#define ZAUTH ZMakeAuthentication
+#define ZNOAUTH (int (*)())0
+
 	/* Packet strings */
 
 #define ZSRVACK_SENT		"SENT"	/* SERVACK codes */
 #define ZSRVACK_NOTSENT		"LOST"
+#define ZSRVACK_FAIL		"FAIL"
 
 	/* Server internal class */
 #define ZEPHYR_ADMIN_CLASS	"ZEPHYR_ADMIN"	/* Class */
@@ -142,10 +167,14 @@ extern char *ZGetSender();
 #define CLIENT_SUBSCRIBE	"SUBSCRIBE"	/* Opcode: Subscribe */
 #define CLIENT_UNSUBSCRIBE	"UNSUBSCRIBE"	/* Opcode: Unsubsubscribe */
 #define CLIENT_CANCELSUB	"CLEARSUB"	/* Opcode: Clear all subs */
+#define CLIENT_GIMMESUBS	"GIMME"		/* Opcode: Give me subs */
+#define CLIENT_INCOMPSUBS	"INCOMP"	/* Opcode: ret - didn't fit */
 
 #define ZEPHYR_CTL_HM		"HM"		/* Inst: From HM */
 #define HM_BOOT			"BOOT"		/* Opcode: Boot msg */
 #define HM_FLUSH		"FLUSH"		/* Opcode: Flush me */
+#define HM_DETACH		"DETACH"	/* Opcode: Detach me */
+#define HM_ATTACH		"ATTACH"	/* Opcode: Attach me */
 
 	/* Control codes send to a HostManager */
 #define	HM_CTL_CLASS		"HM_CTL"	/* Class */
@@ -154,6 +183,12 @@ extern char *ZGetSender();
 #define SERVER_SHUTDOWN		"SHUTDOWN"	/* Opcode: Server shutdown */
 #define SERVER_PING		"PING"		/* Opcode: PING */
 
+	/* HM Statistics */
+#define HM_STAT_CLASS		"HM_STAT"	/* Class */
+
+#define HM_STAT_CLIENT		"HMST_CLIENT"	/* Inst: From client */
+#define HM_GIMMESTATS		"GIMMESTATS"	/* Opcode: get stats */
+	
 	/* Login class messages */
 #define LOGIN_CLASS		"LOGIN"		/* Class */
 
