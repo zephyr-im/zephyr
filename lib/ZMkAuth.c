@@ -17,6 +17,9 @@ static char rcsid_ZMakeAuthentication_c[] = "$Header$";
 #endif lint
 
 #include <zephyr/mit-copyright.h>
+#ifdef KERBEROS
+#include "krb_err.h"
+#endif
 
 #include <zephyr/zephyr_internal.h>
 
