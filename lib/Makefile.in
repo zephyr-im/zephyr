@@ -4,10 +4,10 @@ SUPPORT_LIBS=@SUPPORT_LIBS@
 SUBDIRS=${SUPPORT_LIBS} dyn zephyr
 
 all:
-	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} ${MFLAGS} $@) || exit 1; done
+	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
 check install clean:
-	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} ${MFLAGS} $@) || exit 1; done
+	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
 .PHONY: all check install clean
 
