@@ -1,0 +1,7 @@
+#!/bin/csh -f
+rm -f lib_headers
+foreach i (Z*.c)
+	echo $i
+	awk -f decl.awk $i >> lib_headers
+	echo "" >> lib_headers
+end
