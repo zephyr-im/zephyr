@@ -43,7 +43,6 @@
 
 #define MAXRETRIES 2
 
-extern char *malloc();
 extern Code_t send_outgoing();
 extern void init_queue(), retransmit_queue();
 
