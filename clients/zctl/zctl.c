@@ -11,8 +11,6 @@
  *	"mit-copyright.h". 
  */
 
-#include <zephyr/mit-copyright.h>
-
 #include <zephyr/zephyr.h>
 #include <ss/ss.h>
 #include <com_err.h>
@@ -22,8 +20,8 @@
 #include <sys/file.h>
 #include <sys/param.h>
 #ifndef lint
-static char *rcsid_zctl_c = "$Header$";
-#endif lint
+static char *rcsid_zctl_c = "$Id$";
+#endif
 
 #define SUBSATONCE 7
 #define SUB 0
@@ -161,7 +159,7 @@ flush_locations(argc,argv)
 
 wgc_control(argc,argv)
 	int argc;
-	char *argv[];
+	register char **argv;
 {
 	int retval;
 	short newport;
@@ -276,7 +274,7 @@ show_var(argc,argv)
 
 set_var(argc,argv)
 	int argc;
-	char *argv[];
+	register char **argv;
 {
 	int retval,setting_exp,i;
 	char *exp_level,*newargv[1];
@@ -424,9 +422,9 @@ subscribe(argc,argv)
 		return;
 	}
 	
-	sub.class = argv[1];
-	sub.classinst = argv[2];
-	sub.recipient = (argc == 3)?ZGetSender():argv[3];
+	sub.zsub_class = argv[1];
+	sub.zsub_classinst = argv[2];
+	sub.zsub_recipient = (argc == 3)?ZGetSender():argv[3];
 
 	fix_macros(&sub,&sub2,1);
 	
@@ -464,9 +462,9 @@ sub_file(argc,argv)
 			  "Do not use `!' as the first character of a class.\n\tIt is reserved for internal use with un-subscriptions.");
 		return;
 	}
-	sub.class = argv[1];
-	sub.classinst = argv[2];
-	sub.recipient = (argc == 3)?TOKEN_ME:TOKEN_WILD;
+	sub.zsub_class = argv[1];
+	sub.zsub_classinst = argv[2];
+	sub.zsub_recipient = (argc == 3)?TOKEN_ME:TOKEN_WILD;
 
 
 	if (make_exist(subsname))
@@ -511,7 +509,7 @@ int unsub;
 	} 
 	fprintf(fp,"%s%s,%s,%s\n",
 		unsub ? "!" : "",
-		subs->class, subs->classinst, subs->recipient);
+		subs->zsub_class, subs->zsub_classinst, subs->zsub_recipient);
 	if (fclose(fp) == EOF) {
 		(void) sprintf(errbuf, "while closing %s", subsname);
 		ss_perror(sci_idx, errno, errbuf);
@@ -541,7 +539,8 @@ int unsub;
 		fprintf(stderr,
 			"Couldn't find %sclass %s instance %s recipient %s in\n\tfile %s\n",
 			unsub ? "un-subscription " : "",
-			subs->class,subs->classinst,subs->recipient,subsname);
+			subs->zsub_class, subs->zsub_classinst,
+			subs->zsub_recipient, subsname);
 	fix_macros(subs,&sub2,1);
 	if ((retval = ZUnsubscribeTo(&sub2,1,(u_short)wgport)) !=
 	    ZERR_NONE)
@@ -571,9 +570,9 @@ int which;
 	}
 
 	(void) sprintf(ourline,"%s,%s,%s",
-		       subs->class,
-		       subs->classinst,
-		       subs->recipient);
+		       subs->zsub_class,
+		       subs->zsub_classinst,
+		       subs->zsub_recipient);
 
 	if (!(fp = fopen(subsname,"r"))) {
 		(void) sprintf(errbuf,"while opening %s for read",subsname);
@@ -704,27 +703,33 @@ load_subs(argc,argv)
 			   any un-subscriptions in that file */
 			if (type == UNSUB)
 				continue;
-			unsubs[unind].class =
+			unsubs[unind].zsub_class =
 				malloc((unsigned)(strlen(subline)));
+			/* XXX check malloc return */
 			/* skip the leading '!' */
-			(void) strcpy(unsubs[unind].class,subline+1);
-			unsubs[unind].classinst =
+			(void) strcpy(unsubs[unind].zsub_class,subline+1);
+			unsubs[unind].zsub_classinst =
 				malloc((unsigned)(strlen(comma+1)+1));
-			(void) strcpy(unsubs[unind].classinst,comma+1);
-			unsubs[unind].recipient =
+			/* XXX check malloc return */
+			(void) strcpy(unsubs[unind].zsub_classinst,comma+1);
+			unsubs[unind].zsub_recipient =
 				malloc((unsigned)(strlen(comma2+1)+1));
-			(void) strcpy(unsubs[unind].recipient,comma2+1);
+			/* XXX check malloc return */
+			(void) strcpy(unsubs[unind].zsub_recipient,comma2+1);
 			unind++;
 		} else {
-			subs[ind].class =
+			subs[ind].zsub_class =
 				malloc((unsigned)(strlen(subline)+1));
-			(void) strcpy(subs[ind].class,subline);
-			subs[ind].classinst =
+			/* XXX check malloc return */
+			(void) strcpy(subs[ind].zsub_class,subline);
+			subs[ind].zsub_classinst =
 				malloc((unsigned)(strlen(comma+1)+1));
-			(void) strcpy(subs[ind].classinst,comma+1);
-			subs[ind].recipient =
+			/* XXX check malloc return */
+			(void) strcpy(subs[ind].zsub_classinst,comma+1);
+			subs[ind].zsub_recipient =
 				malloc((unsigned)(strlen(comma2+1)+1));
-			(void) strcpy(subs[ind].recipient,comma2+1);
+			/* XXX check malloc return */
+			(void) strcpy(subs[ind].zsub_recipient,comma2+1);
 			ind++;
 		}
 		if (ind == SUBSATONCE) {
@@ -739,9 +744,9 @@ load_subs(argc,argv)
 				goto cleanup;
 			}
 			for (i=0;i<ind;i++) {
-				free(subs[i].class);
-				free(subs[i].classinst);
-				free(subs[i].recipient);
+				free(subs[i].zsub_class);
+				free(subs[i].zsub_classinst);
+				free(subs[i].zsub_recipient);
 			} 
 			ind = 0;
 		}
@@ -753,9 +758,9 @@ load_subs(argc,argv)
 				goto cleanup;
 			}
 			for (i=0;i<unind;i++) {
-				free(unsubs[i].class);
-				free(unsubs[i].classinst);
-				free(unsubs[i].recipient);
+				free(unsubs[i].zsub_class);
+				free(unsubs[i].zsub_classinst);
+				free(unsubs[i].zsub_recipient);
 			} 
 			unind = 0;
 		}
@@ -861,11 +866,12 @@ current(argc,argv)
 			return;
 		} 
 		if (save)
-			fprintf(fp,"%s,%s,%s\n",subs.class,subs.classinst,
-				subs.recipient);
+			fprintf(fp,"%s,%s,%s\n",subs.zsub_class,
+				subs.zsub_classinst, subs.zsub_recipient);
 		else
 			printf("Class %s Instance %s Recipient %s\n",
-			       subs.class,subs.classinst,subs.recipient);
+			       subs.zsub_class, subs.zsub_classinst,
+			       subs.zsub_recipient);
 	}
 
 	if (save) {
@@ -914,14 +920,15 @@ fix_macros(subs,subs2,num)
 
 	for (i=0;i<num;i++) {
 		subs2[i] = subs[i];
-		fix_macros2(subs[i].class,&subs2[i].class);
-		fix_macros2(subs[i].classinst,&subs2[i].classinst);
-		fix_macros2(subs[i].recipient,&subs2[i].recipient);
+		fix_macros2(subs[i].zsub_class,&subs2[i].zsub_class);
+		fix_macros2(subs[i].zsub_classinst,&subs2[i].zsub_classinst);
+		fix_macros2(subs[i].zsub_recipient,&subs2[i].zsub_recipient);
 	}
 }
 
 fix_macros2(src,dest)
-	char *src,**dest;
+	register char *src;
+	char **dest;
 {
 	if (!strcmp(src,TOKEN_HOSTNAME)) {
 		*dest = ourhost;
