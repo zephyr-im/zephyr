@@ -41,7 +41,7 @@ Code_t ZLocateUser(user,nlocs)
 	notice.z_recipient = "";
 	notice.z_message_len = 0;
 
-	if ((retval = ZSendNotice(&notice)) != ZERR_NONE)
+	if ((retval = ZSendNotice(&notice,0)) != ZERR_NONE)
 		return (retval);
 
 	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,&auth,
