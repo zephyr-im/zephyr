@@ -98,14 +98,14 @@ main(argc,argv)
 		else {
 			ptr = malloc(sizeof(DEFAULT_MSG)+1);
 			if (!ptr) {
-				com_err(argv[0],errno,"while getting default message");
+				com_err(argv[0],ENOMEM,"while getting default message");
 				exit(1);
 			}
 			(void) strcpy(ptr,DEFAULT_MSG);
 		}
 		notice.z_recipient = notice.z_sender;
 		notice.z_sender = 0;
-		notice.z_default_format = 0;
+		notice.z_default_format = "";
 		     
 		msg[0] = "Automated reply:";
 		msg[1] = ptr;
