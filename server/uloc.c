@@ -1338,7 +1338,7 @@ register FILE *fp;
 			fputs("/NET_ANN/", fp);
 			break;
 		default:
-			fprintf(fp, "/?? %d ??/", locations[i].zlt_exposure);
+			fprintf(fp, "/? %d ?/", locations[i].zlt_exposure);
 			break;
 		}
 		fputs(inet_ntoa(locations[i].zlt_addr), fp);
