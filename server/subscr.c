@@ -73,6 +73,7 @@ static char rcsid_subscr_c[] = "$Id$";
 
 /* for compatibility when sending subscription information to old clients */
 
+static void check_sub_order P((ZSubscr_t *subs, int wc));
 #ifdef OLD_COMPAT
 #define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
 #define	OLD_CLIENT_INCOMPSUBS	"INCOMP"
@@ -164,7 +165,7 @@ subscr_subscribe_real(who, newsubs, notice)
 	     subs = subs->q_forw) {
 		/* for each new subscription */
 
-#if 1
+#if 0
 		zdbug ((LOG_DEBUG, "subscr: %s/%s/%s",
 			subs->zst_dest.classname->string,
 			subs->zst_dest.inst->string,
@@ -172,7 +173,7 @@ subscr_subscribe_real(who, newsubs, notice)
 #endif
 
 		if (!bdumping
-		    && (subs->zst_dest.recip != NULL)
+		    && (subs->zst_dest.recip != empty)
 		    && (subs->zst_dest.recip != sender)) {
 		    syslog(LOG_WARNING, "subscr unauth %s recipient %s",
 			   sender->string,
@@ -209,13 +210,15 @@ subscr_subscribe_real(who, newsubs, notice)
 		     subs2 != who->zct_subs;
 		     subs2 = subs2->q_forw) {
 			/* for each existing subscription */
-		  relation = compare_subs(subs2,subs);
+		  relation = compare_subs(subs2,subs,0);
+		  if (relation == 0)
+		    goto duplicate;
 		  if (relation > 0) /* we have passed last possible one */
 		    break;
 		  if (relation < 0) /* nope... */
 		    continue;
-		  goto duplicate;
 		}
+
 		/* subs2 now points to the first class which is greater
 		   than the new class. We need to back up so that the
 		   insertion below goes BEFORE this one (i.e. after the
@@ -231,12 +234,10 @@ subscr_subscribe_real(who, newsubs, notice)
 		}
 
 		subs3->q_forw = subs3->q_back = subs3;
-		subs3->zst_dest.classname = subs->zst_dest.classname;
-		subs3->zst_dest.classname->ref_count++;
-		subs3->zst_dest.inst = subs->zst_dest.inst;
-		subs3->zst_dest.inst->ref_count++;
-		subs3->zst_dest.recip = subs->zst_dest.recip;
-		subs3->zst_dest.recip->ref_count++;
+		subs3->zst_dest.classname =
+		  dup_zstring(subs->zst_dest.classname);
+		subs3->zst_dest.inst = dup_zstring(subs->zst_dest.inst);
+		subs3->zst_dest.recip = dup_zstring(subs->zst_dest.recip);
 		set_ZDestination_hash(&subs3->zst_dest);
 
 		if ((retval = class_register(who, subs)) != ZERR_NONE) {
@@ -308,7 +309,7 @@ subscr_copy_def_subs(person)
 	register ZSubscr_t *subs2;
 
 	if (!defaults_read) {
-#if 1
+#if 0
 		zdbug((LOG_DEBUG, "reading default subscription file"));
 #endif
 		fd = open(DEFAULT_SUBS_FILE, O_RDONLY, 0666);
@@ -380,7 +381,7 @@ subscr_copy_def_subs(person)
 			subs2->zst_dest.recip = make_zstring(person,0);
 		} else {		/* replace with null recipient */
 		  free_zstring(subs2->zst_dest.recip);
-			subs2->zst_dest.recip = empty;
+		  subs2->zst_dest.recip = dup_zstring(empty);
 		}
 		set_ZDestination_hash(&(subs2->zst_dest));
 	}
@@ -403,7 +404,7 @@ subscr_cancel(sin, notice)
 	int omask;
 	int relation;
 
-#if 1
+#if 0
 	zdbug((LOG_DEBUG,"subscr_cancel"));
 #endif
 	if (!(who = client_which_client(sin, notice)))
@@ -422,13 +423,15 @@ subscr_cancel(sin, notice)
 		 subs2 != who->zct_subs;) {
 		/* for each existing subscription */
 		/* is this what we are canceling? */
-	      relation = compare_subs(subs4, subs2);
+	      relation = compare_subs(subs2, subs4,0);
 	      if (relation < 0) {
 		subs2 = subs2->q_forw;
 		continue;
 	      }
 	      if (relation > 0)
+		/* We have passed last possible one */
 		break;
+
 	      /* go back, since remque will change things */
 	      subs3 = subs2->q_back;
 	      xremque(subs2);
@@ -496,10 +499,10 @@ subscr_cancel_client(client)
 	     subs = client->zct_subs->q_forw) {
 #if 0
 		zdbug((LOG_DEBUG,"sub_can %s",
-		       subs->zst_dest.classname.value()));
+		       subs->zst_dest.classname->string));
 #endif
 		if (class_deregister(client, subs) != ZERR_NONE) {
-#if 1
+#if 0
 			zdbug((LOG_DEBUG,"sub_can_clt: not registered!"));
 #endif
 		}
@@ -746,7 +749,7 @@ subscr_marshal_subs(notice, auth, who, found)
 	register int i;
 	int defsubs = 0;
 
-#if 1
+#if 0
 	zdbug((LOG_DEBUG, "subscr_marshal"));
 #endif
 	*found = 0;
@@ -812,8 +815,8 @@ subscr_marshal_subs(notice, auth, who, found)
 			return((char **) 0);
 		}
 		if (!defsubs) {
-		    if (client && !strcmp (client->zct_principal->string,
-					   notice->z_sender)) {
+		    if (client && (strcmp(client->zct_principal->string,
+					   notice->z_sender) != 0)) {
 			zdbug ((LOG_DEBUG,
 			"subscr_marshal: %s requests subs for %s at %s/%d",
 				notice->z_sender,
@@ -1167,13 +1170,14 @@ cl_match(notice_subs, client)
 	for (subs = client->zct_subs->q_forw;
 	     subs != client->zct_subs;
 	     subs = subs->q_forw) {
-	  relation = compare_subs(notice_subs, subs);
-	  if (relation > 0)
+	  relation = compare_subs(notice_subs, subs, 1);
+
+/*
+	  if (relation < 0)
 	    return(0);
+*/
 	  if (relation == 0)
 	    return(1);
-	  if (relation < 0)
-	    continue;
 	}
 	/* fall through */
 	return(0);
@@ -1248,11 +1252,11 @@ extract_subscriptions(notice)
 				syslog(LOG_WARNING, "ex_subs: no mem");
 				return(NULLZST);
 			}
+			subs->q_forw = subs->q_back = subs;
 			subs->zst_dest.classname = subs->zst_dest.inst =
 			  subs->zst_dest.recip = NULL;
 			subs->zst_dest.hash_value = 0;
 		}
-		subs->q_forw = subs->q_back = subs;
 		if (!(subs2 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
 			syslog(LOG_WARNING, "ex_subs: no mem 2");
 			return(subs);
@@ -1297,19 +1301,73 @@ subscr_dump_subs(fp, subs)
 }
 
 int
-compare_subs(s1,s2)
+compare_subs(s1,s2,do_wildcard)
      ZSubscr_t *s1, *s2;
+     int do_wildcard;
 {
-  if (s1->zst_dest.hash_value > s2->zst_dest.hash_value)
-    return 1;
-  if (s1->zst_dest.hash_value < s2->zst_dest.hash_value)
-    return -1;
+  int neq;
+  int sub_is_wildcard;
 
-  if ((s1->zst_dest.classname == s2->zst_dest.classname) &&
-      (s1->zst_dest.inst == s2->zst_dest.inst) &&
-      (s1->zst_dest.recip == s2->zst_dest.recip))
-    return 0;
+#if 0
+  zdbug((LOG_DEBUG,"compare_subs: %s/%s/%s to %s/%s/%s",
+	 s1->zst_dest.classname->string, s1->zst_dest.inst->string, s1->zst_dest.recip->string,
+	 s2->zst_dest.classname->string, s2->zst_dest.inst->string, s2->zst_dest.recip->string));
+#endif
+  /* wildcard must be in s2 in order for it to match */
 
-  return(strcasecmp(s1->zst_dest.classname->string,
-		    s2->zst_dest.classname->string));
+  if (do_wildcard)
+    sub_is_wildcard = (s2->zst_dest.inst == wildcard_instance);
+  else
+    sub_is_wildcard = 0;
+
+  if (!sub_is_wildcard) {
+    if (s1->zst_dest.hash_value > s2->zst_dest.hash_value)
+      return 1;
+    if (s1->zst_dest.hash_value < s2->zst_dest.hash_value)
+      return -1;
+  }
+
+  if (s1->zst_dest.classname != s2->zst_dest.classname)
+    return(strcasecmp(s1->zst_dest.classname->string,
+		      s2->zst_dest.classname->string));
+
+  neq = (s1->zst_dest.inst != s2->zst_dest.inst);
+  if ((!do_wildcard && neq) ||
+      (!sub_is_wildcard && neq))
+    return(strcasecmp(s1->zst_dest.inst->string,
+		      s2->zst_dest.inst->string));
+
+  if (s1->zst_dest.recip != s2->zst_dest.recip)
+    return(strcasecmp(s1->zst_dest.recip->string,
+		      s2->zst_dest.recip->string));
+
+  return(0);
+}
+
+static void
+check_sub_order(subs,wc)
+     ZSubscr_t *subs;
+     int wc;
+{
+  ZSubscr_t *subs2;
+  int relation;
+
+  for (subs2 = subs->q_forw;
+       subs2->q_forw != subs;
+       subs2 = subs2->q_forw) {
+
+    /* for each existing subscription */
+    relation = compare_subs(subs2,subs2->q_forw,wc);
+    if (relation > 0) {
+      syslog(LOG_DEBUG, "s_check failed: %s/%s/%s <=> %s/%s/%s = %d",
+	     subs2->zst_dest.classname->string,
+	     subs2->zst_dest.inst->string,
+	     subs2->zst_dest.recip->string,
+	     subs2->q_forw->zst_dest.classname->string,
+	     subs2->q_forw->zst_dest.inst->string,
+	     subs2->q_forw->zst_dest.recip->string,
+	     relation);
+    }
+    
+  }
 }
