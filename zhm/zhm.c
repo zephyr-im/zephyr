@@ -42,7 +42,7 @@ int use_hesiod = 0;
 #define srandom srand48
 #endif
 
-int hmdebug, rebootflag, errflg, dieflag, inetd, oldpid;
+int hmdebug, rebootflag, errflg, dieflag, inetd, oldpid, nofork;
 int no_server = 1, nservchang, nserv, nclt;
 int booting = 1, timeout_type, deactivated = 1;
 long starttime;
@@ -96,7 +96,7 @@ char *argv[];
 	  exit(-1);
      }
      prim_serv[0] = '\0';
-     while ((opt = getopt(argc, argv, "drhi")) != EOF)
+     while ((opt = getopt(argc, argv, "drhin")) != EOF)
 	  switch(opt) {
 	  case 'd':
 	       hmdebug++;
@@ -115,13 +115,16 @@ char *argv[];
 	       inetd++;
 	       dieflag++;
 	       break;
+	  case 'n':
+	       nofork = 1;
+	       break;
 	  case '?':
 	  default:
 	       errflg++;
 	       break;
 	  }
      if (errflg) {
-	  fprintf(stderr, "Usage: %s [-d] [-h] [-r] [server]\n", argv[0]);
+	  fprintf(stderr, "Usage: %s [-d] [-h] [-r] [-n] [server]\n", argv[0]);
 	  exit(2);
      }
 
@@ -395,7 +398,7 @@ void init_hm()
      }
 
 #ifndef DEBUG
-     if (!inetd)
+     if (!inetd && !nofork)
 	     detach();
   
      /* Write pid to file */
