@@ -8,6 +8,7 @@ Standards-Version: 3.1.1
 Package: libzephyr3
 Architecture: any
 Depends: ${shlibs:Depends}
+Conflicts: libzephyr3-krb
 Description: The original "Instant Message" system libraries without Kerberos
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
  Zephyr allows users to send messages to other users or to groups of
@@ -38,6 +39,7 @@ Description: The original "Instant Message" system client
 Package: zephyr-server
 Architecture: any
 Depends: ${shlibs:Depends}, debconf
+Conflicts: zephyr-server-krb
 Description: The original "Instant Message" system-server without Kerberos
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
  Zephyr allows users to send messages to other users or to groups of
