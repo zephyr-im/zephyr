@@ -201,6 +201,7 @@ extern int ZMakeAuthentication();
 
 /* Class Instance is principal of user who is logging in or logging out */
 
+#define EXPOSE_NONE		"NONE"		/* Opcode: Not visible */
 #define EXPOSE_OPSTAFF		"OPSTAFF"	/* Opcode: Opstaff visible */
 #define EXPOSE_REALMVIS		"REALM_VISIBLE"	/* Opcode: Realm visible */
 #define EXPOSE_REALMANN		"REALM_ANNOUNCE"/* Opcode: Realm announced */
