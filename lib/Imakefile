@@ -5,7 +5,7 @@
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Zephyr: /mit/zephyr/src/lib/RCS/Imakefile,v 1.11 91/01/07 13:32:27 raeburn Exp $
+/**/#	$Zephyr: /mit/zephyr/src/lib/RCS/Imakefile,v 1.13 91/03/29 03:37:38 raeburn Exp $
 /**/#
 #define no_curdir_lint
 
@@ -36,9 +36,11 @@ RSRCS= ${SRCS} ${HDRS} ${KERR_ET} zephyr_err.et
 HDRS= \
 	../include/zephyr/zephyr.h \
 	../include/zephyr/zephyr_conf.h \
+	../include/zephyr/zephyr_paths.h \
 	../include/zephyr/zephyr_internal.h
 
 SRCS=	$(K_C) $(STRCASE_C) $(INET_NTOA_C) \
+	ZAsyncLocate.c \
 	ZCheckAuthentication.c \
 	ZCheckIfNotice.c \
 	ZClosePort.c \
@@ -59,7 +61,6 @@ SRCS=	$(K_C) $(STRCASE_C) $(INET_NTOA_C) \
 	ZGetWGPort.c \
 	ZIfNotice.c \
 	ZInitialize.c \
-	ZLocateUser.c \
 	ZLocations.c \
 	ZMakeAscii.c \
 	ZMakeAuthentication.c \
@@ -90,6 +91,7 @@ SRCS=	$(K_C) $(STRCASE_C) $(INET_NTOA_C) \
 
 OLIST=	${K_O} ${STRCASE_O} ${INET_NTOA_O} \
 	zephyr_err.o \
+	ZAsyncLocate.o \
 	ZCheckAuthentication.o \
 	ZCheckIfNotice.o \
 	ZClosePort.o \
@@ -110,7 +112,6 @@ OLIST=	${K_O} ${STRCASE_O} ${INET_NTOA_O} \
 	ZGetWGPort.o \
 	ZIfNotice.o \
 	ZInitialize.o \
-	ZLocateUser.o \
 	ZLocations.o \
 	ZMakeAscii.o \
 	ZMakeAuthentication.o \
@@ -190,6 +191,7 @@ install::
 	-mkdir ${IDIR}/zephyr
 	install -c -m 0644 ${SDIR}/zephyr.h ${IDIR}/zephyr/zephyr.h
 	install -c -m 0644 ${SDIR}/zephyr_conf.h ${IDIR}/zephyr/zephyr_conf.h
+	install -c -m 0644 ${SDIR}/zephyr_paths.h ${IDIR}/zephyr/zephyr_paths.h
 	install -c -m 0644 ${SDIR}/zephyr_internal.h ${IDIR}/zephyr/zephyr_internal.h
 	install -c -m 0644 zephyr_err.h ${IDIR}/zephyr/zephyr_err.h
 #ifdef KERBEROS
