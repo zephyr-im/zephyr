@@ -7,10 +7,14 @@
 /**/#	$Author$
 /**/#	$Header$
 /**/#
+
 LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB} ${DES_LIB}
 LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB}
 SRCS = zshutdown_notify.c
 OBJS = zshutdown_notify.o
+
+SRCDIR= ${SRCTOP}/clients/zshutdown_notify
+CODE= ${SRCS} Imakefile
 
 normal_obj_rule()
 
