@@ -21,9 +21,6 @@
 
 #include <errno.h>
 #include <sys/types.h>
-#ifndef IPPROTO_MAX	/* Make sure not already included */
-#include <netinet/in.h>
-#endif
 #include <sys/time.h>
 #include <stdio.h>
 
@@ -33,6 +30,10 @@ extern "C" {
 
 #ifdef KERBEROS
 #include <krb.h>
+#endif
+
+#ifndef IPPROTO_MAX	/* Make sure not already included */
+#include <netinet/in.h>
 #endif
 
 #if defined(__STDC__) || defined(__cplusplus)
@@ -110,16 +111,14 @@ extern "C" {
     typedef struct _ZSubscriptions_t {
 	char	*recipient;
 #ifdef __cplusplus
-	char	*z_class;
+	char	*zsub_class;
 #else
-	char	*class;
+	char	*class;		/* compat */
 #endif
 	char	*classinst;
 	/* Please use these preferred names; those above will go away soon. */
 #define zsub_recipient	recipient
-#ifdef __cplusplus
-#define zsub_class	z_class
-#else
+#ifndef __cplusplus
 #define zsub_class	class
 #endif
 #define zsub_classinst	classinst
@@ -144,8 +143,17 @@ extern "C" {
     /* Destination (HM) addr */
     extern struct sockaddr_in __HM_addr;
 
+    /* for ZQLength */
+    extern int __Q_CompleteLength;
+
+    /* for ZGetRealm */
+    extern char __Zephyr_realm[];
+
     /* Kerberos error table base */
     extern int krb_err_base;
+
+    /* UNIX error codes */
+    extern int errno;
 
 #ifdef KERBEROS
     /* Session key for last parsed packet - server only */
@@ -156,32 +164,55 @@ extern "C" {
     extern int ZCompareUIDPred Zproto((ZNotice_t *, ZUnique_Id_t *)),
 	       ZCompareMultiUIDPred Zproto((ZNotice_t *, ZUnique_Id_t *));
 
+    /* Defines for ZFormatNotice, et al. */
+    typedef Code_t (*Z_AuthProc) Zproto((ZNotice_t*, char *, int, int *));
+    extern Code_t ZMakeAuthentication Zproto((ZNotice_t*, char *,int, int*));
+
+    /* Random declarations */
+    extern char *ZGetSender Zproto((void)), *ZGetVariable Zproto((char *));
+    extern int ZGetWGPort Zproto((void));
+    extern Code_t ZSetDestAddr Zproto ((struct sockaddr_in *));
+    extern Code_t ZFormatNoticeList Zproto((ZNotice_t*, char**, int,
+					    char **, int*, Z_AuthProc));
+    extern Code_t ZParseNotice Zproto((char*, int, ZNotice_t *));
+    extern Code_t ZReadAscii Zproto((char*, int, unsigned char*, int));
+    extern Code_t ZSendPacket Zproto((char*, int, int));
+    extern Code_t ZFormatNotice Zproto((ZNotice_t*, char**, int*, Z_AuthProc));
+    extern Code_t ZInitialize Zproto ((void));
+    extern Code_t ZSetServerState Zproto((int));
+    extern Code_t ZSetFD Zproto ((int));
+    extern Code_t ZFormatSmallRawNotice Zproto ((ZNotice_t*, ZPacket_t, int*));
+    extern int ZCompareUID Zproto ((ZUnique_Id_t*, ZUnique_Id_t*));
+    extern Code_t ZSrvSendRawList Zproto ((ZNotice_t*, char*[], int,
+					   Code_t (*)(ZNotice_t *, char *,
+						      int, int)));
+    extern Code_t ZMakeAscii Zproto ((char*, int, unsigned char*, int));
+    extern Code_t ZReceivePacket Zproto ((ZPacket_t, int*,
+					  struct sockaddr_in*));
+    extern Code_t ZCheckAuthentication Zproto ((ZNotice_t*,
+						struct sockaddr_in*));
+    extern Code_t ZFormatAuthenticNotice Zproto ((ZNotice_t*, char*, int,
+						  int*, C_Block));
+    extern Code_t ZFormatRawNotice Zproto ((ZNotice_t *, char**, int *));
+
     /* ZGetSession() macro */
 #define ZGetSession() (__Zephyr_session)
 
+#ifndef __cplusplus
     /* ZGetFD() macro */
 #define ZGetFD() (__Zephyr_fd)
 
     /* ZQLength macro */
-    extern int __Q_CompleteLength;
 #define ZQLength() (__Q_CompleteLength)
 
     /* ZGetDestAddr() macro */
 #define ZGetDestAddr() (__HM_addr)
 
     /* ZGetRealm() macro */
-    extern char __Zephyr_realm[];
 #define ZGetRealm() (__Zephyr_realm)
 
     /* Maximum queue length */
 #define Z_MAXQLEN 		30
-
-    /* UNIX error codes */
-    extern int errno;
-
-    /* Random declarations */
-    extern char *ZGetSender Zproto((void)), *ZGetVariable Zproto((char *));
-    extern int ZGetWGPort Zproto((void));
 
     /* Successful function return */
 #define ZERR_NONE		0
@@ -189,11 +220,30 @@ extern "C" {
     /* Hostmanager wait time (in secs) */
 #define HM_TIMEOUT		30
 
-    /* Defines for ZFormatNotice, et al. */
-    extern Code_t ZMakeAuthentication Zproto((ZNotice_t*, char *,int, int*));
-    typedef Code_t (*Z_AuthProc) Zproto((ZNotice_t*, char *, int, int *));
-#define ZAUTH ZMakeAuthentication
-#define ZNOAUTH (Z_AuthProc)0
+#define ZAUTH (ZMakeAuthentication)
+#define ZNOAUTH ((Z_AuthProc)0)
+
+#else /* C++ */
+
+    inline int ZGetFD () { return __Zephyr_fd; }
+
+    inline int ZQLength () { return __Q_CompleteLength; }
+
+    inline const sockaddr_in& ZGetDestAddr () { return __HM_addr; }
+
+    inline const char* ZGetRealm () { return __Zephyr_realm; }
+
+    const int Z_MAXQLEN = 30;
+
+    const int ZERR_NONE = 0;
+
+    const int HM_TIMEOUT = 30;
+
+    const Z_AuthProc ZAUTH = &ZMakeAuthentication;
+    const Z_AuthProc ZNOAUTH = 0;
+
+#endif
+
 
     /* Packet strings */
 
@@ -277,4 +327,4 @@ extern "C" {
 }
 #endif
 
-#endif /* !__ZEPHYR_H__ */
+#endif !__ZEPHYR_H__
