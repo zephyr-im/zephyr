@@ -53,9 +53,9 @@ static Code_t send_host_register(), sbd_loop(), gbd_loop(), send_normal_tcp();
 static int get_tgt();
 
 static timer bdump_timer;
-static long ticket_time;
+static long ticket_time = 0L;
 static char my_realm[REALM_SZ] = "\0";
- 
+static int bdump_inited = 0;
 
 int bdumping = 0;
 
@@ -198,10 +198,14 @@ bdump_send()
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sbd_loop failed: %s",
 		       error_message(retval));
+		cleanup(server, sock);
+		return;
 	} else {
 		if ((retval = gbd_loop(server)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "gbd_loop failed: %s",
 			       error_message(retval));
+			cleanup(server, sock);
+			return;
 		} else {
 			zdbug((LOG_DEBUG, "sbd finished"));
 			if (server != limbo_server) {
@@ -217,6 +221,7 @@ bdump_send()
 	(void) ZSetFD(srv_socket);
 	(void) close(sock);
 	(void) signal(SIGPIPE, SIG_DFL);
+	bdump_inited = 1;
 	bdumping = 0;
 	return;
 }
@@ -255,18 +260,18 @@ ZServerDesc_t *server;
 
 	if ((retval = extract_sin(notice, &from)) != ZERR_NONE) {
 		syslog(LOG_ERR, "gbd sin: %s", error_message(retval));
+		(void) signal(SIGPIPE, SIG_DFL);
 		bdumping = 0;
 		return;
 	}
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		syslog(LOG_ERR, "gbd socket: %m");
-		bdumping = 0;
+		cleanup(server, sock);
 		return;
 	}
 	if (connect(sock, &from, sizeof(from))) {
 		syslog(LOG_ERR, "gbd connect: %m");
-		(void) close(sock);
-		bdumping = 0;
+		cleanup(server, sock);
 		return;
 	}
 	zdbug((LOG_DEBUG, "gbd connected"));
@@ -304,11 +309,14 @@ ZServerDesc_t *server;
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "gbd_loop failed: %s",
 		       error_message(retval));
+		cleanup(server, sock);
+		return;
 	} else {
 		zdbug((LOG_DEBUG,"gbdl ok"));
 		if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "sbd_loop failed: %s",
 			       error_message(retval));
+			cleanup(server, sock);
 		} else {
 			zdbug((LOG_DEBUG, "gbd finished"));
 			/* set this guy to be up,
@@ -323,6 +331,7 @@ ZServerDesc_t *server;
 	(void) ZSetFD(srv_socket);
 	(void) close(sock);
 	(void) signal(SIGPIPE, SIG_DFL);
+	bdump_inited = 1;
 	bdumping = 0;
 	return;
 }
@@ -412,7 +421,10 @@ get_tgt()
 			       krb_err_txt[retval]);
 			return(1);
 		}
-	if (ticket_time < NOW - (long) (96 * 5)) {
+	/* have they expired ? */
+	if (ticket_time < NOW - (96L * 5L) + 15L) { /* +15 for leeway */
+		zdbug((LOG_DEBUG,"get new tickets: %d %d %d",
+		       ticket_time, NOW, NOW - (96L * 5L) + 15L));
 		(void) dest_tkt();
 		if ((retval =
 		     get_svc_in_tkt("zephyr","zephyr",my_realm,"zephyr","zephyr",
@@ -520,8 +532,7 @@ ZServerDesc_t *server;
 			return(retval);
 	}
 
-	if (otherservers[me_server_idx].zs_hosts->q_forw ==
-	    otherservers[me_server_idx].zs_hosts) {
+	if (!bdump_inited) {
 		if ((retval = bdump_ask_for(ADMIN_ME)) != ZERR_NONE)
 			return(retval);
 		if ((retval = bdump_recv_loop(me_server, &target)) != ZERR_NONE)
