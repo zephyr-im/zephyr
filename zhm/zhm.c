@@ -283,46 +283,69 @@ static void parse_conf(conffile, confline)
 	    strcpy(filename, conffile);
 
 	if ((file = fopen(filename, "r")) == NULL) {
-	    fprintf(stderr, "Error opening configuration file %s: %s",
-		    filename, strerror(errno));
-	    exit(1);
-	}
-
-	for (lineno = 1; ; lineno++) {
-	    if (fgets(buf, sizeof(buf), file) == NULL) {
-		if (ferror(file)) {
-		    fprintf(stderr, "Error reading configuration file %s: %s",
-			    filename, strerror(errno));
-		    exit(1);
-		}
-
-		break;
-	    }
-
-	    if (realm_list) {
-		realm_list = (realm_info *)
-		    realloc(realm_list, sizeof(realm_info)*(nrealms+1));
-	    } else {
-		realm_list = (realm_info *)
-		    malloc(sizeof(realm_info));
-	    }
-
-	    if (realm_list == NULL) {
-		fprintf(stderr, "Out of memory reading configuration file %s",
+#ifdef ZEPHYR_USES_HESIOD
+	    if ((realm_list = (realm_info *) malloc(sizeof(realm_info)))
+		== NULL) {
+		fprintf(stderr, "Out of memory parsing command line %s",
 			filename);
 		exit(1);
 	    }
 
-	    if (code = Z_ParseRealmConfig(buf,
+	    if (code = Z_ParseRealmConfig("default-realm hesiod zephyr",
 					  &realm_list[nrealms].realm_config)) {
-		fprintf(stderr,
-			"Error in configuration file %s, line %d: %s",
-			filename, lineno, error_message(code));
+		fprintf(stderr, "Internal error parsing hesiod default");
 		exit(1);
 	    }
 
-	    if (realm_list[nrealms].realm_config.realm)
-		nrealms++;
+	    if (realm_list[nrealms].realm_config.realm == NULL) {
+		fprintf(stderr, "Internal error using hesiod default");
+		exit(1);
+	    }
+
+	    nrealms++;
+#else
+	    fprintf(stderr, "Error opening configuration file %s: %s",
+		    filename, strerror(errno));
+	    exit(1);
+#endif
+	} else {
+	    for (lineno = 1; ; lineno++) {
+		if (fgets(buf, sizeof(buf), file) == NULL) {
+		    if (ferror(file)) {
+			fprintf(stderr,
+				"Error reading configuration file %s: %s",
+				filename, strerror(errno));
+			exit(1);
+		    }
+		    break;
+		}
+
+		if (realm_list) {
+		    realm_list = (realm_info *)
+			realloc(realm_list, sizeof(realm_info)*(nrealms+1));
+		} else {
+		    realm_list = (realm_info *)
+			malloc(sizeof(realm_info));
+		}
+
+		if (realm_list == NULL) {
+		    fprintf(stderr,
+			    "Out of memory reading configuration file %s",
+			    filename);
+		    exit(1);
+		}
+
+		if (code = Z_ParseRealmConfig(buf,
+					      &realm_list[nrealms].realm_config)) {
+		    fprintf(stderr,
+			    "Error in configuration file %s, line %d: %s",
+			    filename, lineno, error_message(code));
+		    exit(1);
+		}
+
+		if (realm_list[nrealms].realm_config.realm)
+		    nrealms++;
+	    }
 	}
 
 	if (nrealms == 0) {
@@ -341,6 +364,7 @@ static void parse_conf(conffile, confline)
 	realm_list[i].nchange = 0;
 	realm_list[i].nsrvpkts = 0;
 	realm_list[i].ncltpkts = 0;
+	realm_list[i].queue = NULL;
 	init_realm_queue(&realm_list[i]);
 	realm_list[i].boot_timer = NULL;
     }
@@ -507,8 +531,14 @@ static void send_stats(notice, sin)
 	case BOOTING:
 	    sprintf(list[i*NSTATS+6], "yes (booting)");
 	    break;
+	case ATTACHING:
+	    sprintf(list[i*NSTATS+6], "yes (attaching)");
+	    break;
 	case ATTACHED:
 	    sprintf(list[i*NSTATS+6], "no (attached)");
+	    break;
+	default:
+	    sprintf(list[i*NSTATS+6], "weird value %x", realm_list[i].state);
 	    break;
 	}
 	list[i*NSTATS+7] = (char *) malloc(64);
