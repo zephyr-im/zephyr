@@ -31,7 +31,7 @@
 #include <signal.h>
 #ifdef lint
 #include <sys/uio.h>			/* so it shuts up about struct iovec */
-#endif lint
+#endif /* lint */
 #include "timer.h"
 #include "zsrv_err.h"
 
@@ -51,7 +51,7 @@ typedef struct _ZClient_t {
 	struct _ZSubscr_t *zct_subs;	/* subscriptions */
 #ifdef KERBEROS
 	C_Block zct_cblock;		/* session key for this client */
-#endif KERBEROS
+#endif /* KERBEROS */
 	char	*zct_principal;		/* krb principal of user */
 } ZClient_t;
 
@@ -150,14 +150,14 @@ struct qelem {
 };
 /* Function declarations */
 	
-/* found in access_s.c */
+/* found in access.c */
 extern int access_check();
 
 /* found in brain_dump.c */
 extern void bdump_get(), bdump_send(), bdump_offer();
 extern Code_t bdump_send_list_tcp();
 
-/* found in class_s.c */
+/* found in class.c */
 extern Code_t class_register(), class_deregister(), class_restrict();
 extern Code_t class_setup_restricted();
 extern ZClientList_t *class_lookup();
@@ -166,7 +166,7 @@ extern int class_is_control(), class_is_admin(), class_is_hm();
 extern int class_is_ulogin(), class_is_uloc();
 extern void class_free();
 
-/* found in client_s.c */
+/* found in client.c */
 extern Code_t client_register();
 extern void client_deregister(), client_dump_clients();
 extern ZClient_t *client_which_client();
@@ -179,30 +179,32 @@ extern void handle_packet(), dispatch(), clt_ack(), nack_release(), sendit();
 extern void xmit();
 extern Code_t control_dispatch(), xmit_frag();
 
-/* found in hostm_s.c */
+/* found in hostm.c */
 extern void hostm_flush(), hostm_shutdown(), hostm_losing();
 extern ZHostList_t *hostm_find_host();
 extern ZServerDesc_t *hostm_find_server();
 extern void hostm_transfer(), hostm_deathgram(), hostm_dump_hosts();
 extern Code_t hostm_dispatch();
 
-/* found in server_s.c */
+/* found in server.c */
 extern void server_timo(), server_recover(), server_dump_servers();
 extern void server_init(), server_shutdown();
 extern void server_forward(), server_kill_clt(), server_pending_free();
-extern void server_self_queue(), server_send_queue();
+extern void server_self_queue(), server_send_queue(), server_reset();
 extern int is_server();
 extern ZServerDesc_t *server_which_server();
 extern ZSrvPending_t *server_dequeue();
 extern Code_t server_dispatch(), server_adispatch();
 
-/* found in subscr_s.c */
+
+/* found in subscr.c */
 extern Code_t subscr_cancel(), subscr_subscribe(), subscr_send_subs();;
 extern ZClientList_t *subscr_match_list();
 extern void subscr_free_list(), subscr_cancel_client(), subscr_sendlist();
-extern void subscr_dump_subs();
+extern void subscr_dump_subs(), subscr_reset();
+extern Code_t subscr_def_subs();
 
-/* found in uloc_s.c */
+/* found in uloc.c */
 extern void uloc_hflush(), uloc_flush_client(), uloc_dump_locs();
 extern Code_t ulogin_dispatch(), ulocate_dispatch(), uloc_send_locations();
 
@@ -232,10 +234,10 @@ extern char version[];
 extern u_long npackets;			/* num of packets processed */
 extern long uptime;			/* time we started */
 
-/* found in bdump_s.c */
+/* found in bdump.c */
 extern int bdumping;			/* are we dumping right now? */
 
-/* found in server_s.c */
+/* found in server.c */
 extern ZServerDesc_t *otherservers;	/* array of servers */
 extern int me_server_idx;		/* me (in the array of servers) */
 extern int nservers;			/* number of other servers*/
@@ -243,7 +245,7 @@ extern int nservers;			/* number of other servers*/
 #ifdef DEBUG
 /* found in dispatch.c */
 extern char *pktypes[];			/* names of the packet types */
-#endif DEBUG
+#endif /* DEBUG */
 
 /* useful defines */
 
@@ -320,7 +322,7 @@ extern char *pktypes[];			/* names of the packet types */
 /* Magic path names */
 #ifndef HESIOD
 #define SERVER_LIST_FILE	"/usr/athena/lib/zephyr/server.list"
-#endif !HESIOD
+#endif /* !HESIOD */
 
 /* ACL's for pre-registered classes */
 #define	ZEPHYR_ACL_DIR	"/usr/athena/lib/zephyr/"
@@ -331,11 +333,14 @@ extern char *pktypes[];			/* names of the packet types */
 
 #define	ZEPHYR_TKFILE	"/usr/athena/lib/zephyr/ztkts"
 
+/* default subscription list */
+#define	DEFAULT_SUBS_FILE	"/usr/athena/lib/zephyr/default.subscriptions"
+
 /* debugging macros */
 #ifdef DEBUG
 #define zdbug(s1)	if (zdebug) syslog s1;
-#else !DEBUG
+#else /* !DEBUG */
 #define zdbug(s1)
-#endif DEBUG
+#endif /* DEBUG */
 
-#endif !__ZSERVER_H__
+#endif /* !__ZSERVER_H__ */
