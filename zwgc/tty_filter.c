@@ -80,7 +80,8 @@ char **argv;
     string_dictionary_binding *b;
     int isrealtty = string_Eq(drivername, "tty");
 
-    termcap_dict = string_dictionary_Create(7);
+    if (termcap_dict == (string_dictionary) NULL)
+      termcap_dict = string_dictionary_Create(7);
 
     if (!(term = getenv("TERM"))) {	/* Only use termcap if $TERM.	*/
 	if (isrealtty && !notfirst)
