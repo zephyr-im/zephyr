@@ -6,9 +6,9 @@
  *
  * $Source$
  * $Author$
- * $Id$
+ * $Zephyr: unix.h,v 1.3 91/01/28 15:12:57 raeburn Exp $
  *
- * Copyright (c) 1990 by the Massachusetts Institute of Technology.
+ * Copyright (c) 1990,1991 by the Massachusetts Institute of Technology.
  * For copying and distribution information, see the file
  * "mit-copyright.h".
  */
@@ -71,6 +71,8 @@ extern "C" {
 #endif
     extern int krb_rd_req (...);
     extern int des_quad_cksum (...);
+#else
+    extern int rresvport (...);
 #endif
 
 #ifdef HESIOD
