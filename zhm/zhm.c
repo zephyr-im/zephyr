@@ -111,9 +111,8 @@ char *argv[];
 #ifdef HESIOD
      if (*prim_serv == NULL) {
 	  if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
-	       printf("No hesiod information available.\n");
-	       exit(ZERR_SERVNAK);
-	  }
+	      zcluster = NULL;
+	  } else
 	  for ( ; *clust_info; clust_info++) {
 	       /* Remove the following check once we have changed over to
 		* new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
@@ -261,24 +260,21 @@ void init_hm()
      init_queue();
 
 #ifdef HESIOD
-     if ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
+     while ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
 	  syslog(LOG_ERR, "No servers or no hesiod");
-#endif HESIOD
-	  serv_list = (char **)malloc(2 * sizeof(char *));
-	  serv_list[0] = (char *)malloc(MAXHOSTNAMELEN);
-	  (void)strcpy(serv_list[0], prim_serv);
-	  serv_list[1] = "";
-	  if (*prim_serv == NULL) {
-#ifdef HESIOD
-	       printf("No hesiod, no valid server found, exiting.\n");
+	  /* wait a bit, and try again */
+	  sleep(30);
+      }
 #else
-	       printf("No valid primary server found, exiting.\n");
-#endif HESIOD	       
-	       exit(ZERR_SERVNAK);
-	  }
-#ifdef HESIOD
+     serv_list = (char **)malloc(2 * sizeof(char *));
+     serv_list[0] = (char *)malloc(MAXHOSTNAMELEN);
+     (void)strcpy(serv_list[0], prim_serv);
+     serv_list[1] = "";
+     if (*prim_serv == NULL) {
+	 printf("No valid primary server found, exiting.\n");
+	 exit(ZERR_SERVNAK);
      }
-#endif HESIOD
+#endif HESIOD	       
      
      cur_serv_list = serv_list;
      if (*prim_serv == NULL)
