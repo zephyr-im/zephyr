@@ -501,8 +501,8 @@ ZClient_t *client;
 	if ((retval = bdump_send_list_tcp(SERVACK, bdump_sin.sin_port,
 					  ZEPHYR_ADMIN_CLASS,
 					  num > 1 ? "CBLOCK" : "",
-					  ADMIN_NEWCLT, myname, "",
-					  lyst, num)) != ZERR_NONE ) {
+					  ADMIN_NEWCLT, client->zct_principal,
+					  "", lyst, num)) != ZERR_NONE ) {
 		syslog(LOG_ERR, "subscr_send_subs newclt: %s",
 		       error_message(retval));
 		return(retval);
