@@ -235,7 +235,7 @@ server_init()
 		syslog(LOG_CRIT, "srv_nacklist malloc");
 		abort();
 	}
-	bzero((caddr_t) srv_nacklist, sizeof(ZNotAcked_t));
+	_BZERO((caddr_t) srv_nacklist, sizeof(ZNotAcked_t));
 	srv_nacklist->q_forw = srv_nacklist->q_back = srv_nacklist;
 
 	return;
@@ -291,8 +291,8 @@ server_reset()
 		return;
 	}
 
-	(void) bzero((char *)ok_list_old, nservers * sizeof(int));
-	(void) bzero((char *)ok_list_new, num_servers * sizeof(int));
+	(void) _BZERO((char *)ok_list_old, nservers * sizeof(int));
+	(void) _BZERO((char *)ok_list_new, num_servers * sizeof(int));
 
 	/* reset timers--pointers will move */
 	for (j = 1; j < nservers; j++) {	/* skip limbo */
@@ -347,7 +347,7 @@ server_reset()
 			servers[0] = otherservers[0]; /* copy limbo */
 
 			srv = (int*) xmalloc (nservers * sizeof (int));
-			bzero (srv, nservers * sizeof (int));
+			_BZERO (srv, nservers * sizeof (int));
 
 			/* copy the kept servers */
 			for (j = 1; j < nservers; j++) { /* skip limbo */
@@ -534,7 +534,7 @@ server_dispatch(notice, auth, who)
 		return(ZERR_NONE);
 	}
 	/* set up a who for the real origin */
-	bzero((caddr_t) &newwho, sizeof(newwho));
+	_BZERO((caddr_t) &newwho, sizeof(newwho));
 	newwho.sin_family = AF_INET;
 	newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
 	newwho.sin_port = notice->z_port;
@@ -592,16 +592,30 @@ server_register(notice, auth, who)
 	ZServerDesc_t *temp;
 	register int i;
 	long timerval;
-	int old_mask;
+#ifdef POSIX
+	sigset_t mask, omask;
+#else
+	int omask;
+#endif
 
-	old_mask = sigblock(sigmask(SIGFPE));
+#ifdef POSIX
+	(void) sigemptyset(&mask);
+	(void) sigaddset(&mask, SIGFPE);	/* don't let db dumps start */
+	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
+#else
+	omask = sigblock(sigmask(SIGFPE));
+#endif
 
 	if (who->sin_port != sock_sin.sin_port) {
 #if 0
 		zdbug((LOG_DEBUG, "srv_register wrong port %d",
 		       ntohs(who->sin_port)));
 #endif
-		sigsetmask(old_mask);
+#ifdef POSIX
+		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
+		(void) sigsetmask(omask);
+#endif
 		return 1;
 	}
 	/* Not yet... talk to ken about authenticators */
@@ -610,18 +624,26 @@ server_register(notice, auth, who)
 #if 0
 		zdbug((LOG_DEBUG, "srv_register unauth"));
 #endif
-		sigsetmask(old_mask);
+#ifdef POSIX
+		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
+		(void) sigsetmask(omask);
+#endif
 		return 1;
 	}
-#endif notdef
+#endif /* notdef */
 	/* OK, go ahead and set him up. */
 	temp = (ZServerDesc_t *)xmalloc((unsigned) ((nservers + 1) * sizeof(ZServerDesc_t)));
 	if (!temp) {
 		syslog(LOG_CRIT, "srv_reg malloc");
-		sigsetmask(old_mask);
+#ifdef POSIX
+		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
+		(void) sigsetmask(omask);
+#endif
 		return 1;
 	}
-	bcopy((caddr_t) otherservers, (caddr_t) temp, nservers * sizeof(ZServerDesc_t));
+	_BCOPY((caddr_t) otherservers, (caddr_t) temp, nservers * sizeof(ZServerDesc_t));
 	xfree(otherservers);
 	otherservers = temp;
 	/* don't reschedule limbo's timer, so start i=1 */
@@ -644,7 +666,11 @@ server_register(notice, auth, who)
 	zdbug((LOG_DEBUG, "srv %s is %s", otherservers[nservers].addr,
 	       srv_states[(int) otherservers[nservers].zs_state]));
 #endif
-	sigsetmask(old_mask);
+#ifdef POSIX
+	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
+	(void) sigsetmask(omask);
+#endif
 	return 0;
 }
 #endif
@@ -1155,7 +1181,7 @@ get_server_addrs(number)
 	for (cpp = server_hosts, addr = addrs, i = 0; *cpp; cpp++) {
 		hp = gethostbyname(*cpp);
 		if (hp) {
-			bcopy((caddr_t)hp->h_addr,
+			_BCOPY((caddr_t)hp->h_addr,
 			      (caddr_t) addr,
 			      sizeof(struct in_addr));
 			addr++, i++;
