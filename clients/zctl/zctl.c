@@ -114,7 +114,7 @@ main(argc,argv)
 		for (i=1;i<argc;i++)
 			(void) sprintf(ssline+strlen(ssline),"%s ",argv[i]);
 		ssline[strlen(ssline)-1] = '\0';
-		ss_execute_line(sci_idx,ssline,&code);
+		code = ss_execute_line(sci_idx,ssline);
 		if (code)
 			ss_perror(sci_idx,code,ssline);
 		exit((code != 0));
