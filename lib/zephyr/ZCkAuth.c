@@ -57,12 +57,12 @@ int ZCheckAuthentication(notice,buffer,from)
 
 	if (result = get_credentials(SERVER_SERVICE,SERVER_INSTANCE,
 				     __Zephyr_realm,&cred))
-		return (result+krb_err_base);
+		return (0);
 
 	our_checksum = (ZChecksum_t)quad_cksum(buffer,NULL,
-					       notice->z_recipient+
-					       strlen(notice->z_recipient)+1-
-					       buffer,0,cred.session);
+					       notice->z_default_format+
+					       strlen(notice->z_default_format)+1-buffer,
+					       0,cred.session);
 
 	return (our_checksum == notice->z_checksum);
 } 

@@ -48,7 +48,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	if ((retval = ZSendNotice(&notice,ZAUTH)) != ZERR_NONE)
 		return (retval);
 
-	if ((retval = Z_NoAuthIfNotice(buffer,sizeof buffer,&retnotice,
+	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,NULL,
 				ZCompareUIDPred,(char *)&notice.z_uid)) !=
 	    ZERR_NONE)
 		return (retval);

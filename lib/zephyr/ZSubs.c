@@ -66,6 +66,7 @@ Z_Subscriptions(sublist,nitems,port,opcode)
 	notice.z_opcode = opcode;
 	notice.z_sender = 0;
 	notice.z_recipient = "";
+	notice.z_default_format = "";
 	notice.z_message_len = 0;
 
 	for (i=0;i<nitems;i++) {
@@ -85,7 +86,8 @@ Z_Subscriptions(sublist,nitems,port,opcode)
 	if (retval != ZERR_NONE)
 		return (retval);
 
-	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,(int *)0,
+	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,
+				(struct sockaddr_in *)0,
 			        ZCompareUIDPred,(char *)&notice.z_uid)) !=
 	    ZERR_NONE)
 		return (retval);

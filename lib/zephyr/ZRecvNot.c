@@ -20,11 +20,10 @@ static char rcsid_ZReceiveNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZReceiveNotice(buffer,buffer_len,notice,auth,from)
+Code_t ZReceiveNotice(buffer,buffer_len,notice,from)
 	ZPacket_t	buffer;
 	int		buffer_len;
 	ZNotice_t	*notice;
-	int		*auth;
 	struct		sockaddr_in *from;
 {
 	int len;
@@ -34,5 +33,5 @@ Code_t ZReceiveNotice(buffer,buffer_len,notice,auth,from)
 	    ZERR_NONE)
 		return (retval);
 
-	return (ZParseNotice(buffer,len,notice,auth,from));
+	return (ZParseNotice(buffer,len,notice));
 }
