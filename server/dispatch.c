@@ -22,6 +22,13 @@ static const char rcsid_dispatch_c[] =
 #endif
 #endif
 
+#define NACKTAB_HASHSIZE		1023
+#define NACKTAB_HASHVAL(sockaddr, uid)	(((sockaddr).sin_addr.s_addr ^ \
+					  (sockaddr).sin_port ^ \
+					  (uid).zuid_addr.s_addr ^ \
+					  (uid).tv.tv_sec ^ \
+					  (uid).tv.tv_usec) % NACKTAB_HASHSIZE)
+
 #ifdef DEBUG
 Zconst char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
 				    "HMCTL", "SERVACK", "SERVNAK", "CLIENTACK",
@@ -76,6 +83,8 @@ Statistic i_s_admins = {0, "inter-server admin notices"};
 Statistic i_s_locates = {0, "inter-server locate notices"};
 Statistic locate_notices = {0, "locate notices"};
 Statistic admin_notices = {0, "admin notices"};
+
+static Unacked *nacktab[NACKTAB_HASHSIZE];
 
 static void
 dump_stats (arg)
@@ -423,27 +432,27 @@ send_to_dest(notice, auth, dest, send_counter)
 }
 
 /*
- * Clean up the not-yet-acked queue and release anything destined
- * for the client.
+ * Release anything destined for the client in the not-yet-acked table.
  */
 
 void
 nack_release(client)
     Client *client;
 {
+    int i;
     Unacked *nacked, *next;
 
-    /* search the not-yet-acked list for anything destined to him, and
-       flush it. */
-    for (nacked = nacklist; nacked; nacked = next) {
-	next = nacked->next;
-	if ((nacked->dest.addr.sin_addr.s_addr
-	     == client->addr.sin_addr.s_addr) &&
-	    (nacked->dest.addr.sin_port == client->addr.sin_port)) {
-	    timer_reset(nacked->timer);
-	    LIST_DELETE(nacked);
-	    free(nacked->packet);
-	    free(nacked);
+    for (i = 0; i < NACKTAB_HASHSIZE; i++) {
+	for (nacked = nacktab[i]; nacked; nacked = next) {
+	    next = nacked->next;
+	    if (nacked->dest.addr.sin_addr.s_addr ==
+		client->addr.sin_addr.s_addr &&
+		nacked->dest.addr.sin_port == client->addr.sin_port) {
+		timer_reset(nacked->timer);
+		LIST_DELETE(nacked);
+		free(nacked->packet);
+		free(nacked);
+	    }
 	}
     }
 }
@@ -462,9 +471,11 @@ xmit_frag(notice, buf, len, waitforack)
     int len;
     int waitforack;
 {
+    struct sockaddr_in sin;
     char *savebuf;
     Unacked *nacked;
     Code_t retval;
+    int hashval;
 
     retval = ZSendPacket(buf, len, 0);
     if (retval != ZERR_NONE) {
@@ -473,7 +484,6 @@ xmit_frag(notice, buf, len, waitforack)
     }
 
     /* now we've sent it, mark it as not ack'ed */
-
     nacked = (Unacked *) malloc(sizeof(Unacked));
     if (!nacked) {
 	/* no space: just punt */
@@ -485,18 +495,20 @@ xmit_frag(notice, buf, len, waitforack)
     if (!savebuf) {
 	/* no space: just punt */
 	syslog(LOG_WARNING, "xmit_frag pack malloc");
+	free(nacked);
 	return ENOMEM;
     }
 
     memcpy(savebuf, buf, len);
 
+    sin = ZGetDestAddr();
     nacked->rexmits = 0;
     nacked->packet = savebuf;
-    nacked->dest.addr = ZGetDestAddr();
+    nacked->dest.addr = sin;
     nacked->packsz = len;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-    LIST_INSERT(nacklist, nacked);
+    LIST_INSERT(&nacktab[NACKTAB_HASHVAL(sin, nacked->uid)], nacked);
     return(ZERR_NONE);
 }
 
@@ -596,7 +608,7 @@ xmit(notice, dest, auth, client)
     nacked->packsz = packlen;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-    LIST_INSERT(nacklist, nacked);
+    LIST_INSERT(&nacktab[NACKTAB_HASHVAL(*dest, nacked->uid)], nacked);
 }
 
 /*
@@ -609,28 +621,28 @@ void
 rexmit(arg)
     void *arg;
 {
-    Unacked *packet = (Unacked *) arg;
+    Unacked *nacked = (Unacked *) arg;
     int retval;
     ZNotice_t dummy_notice;
     Client *client;
 
 #if 1
     syslog(LOG_DEBUG, "rexmit %s/%d #%d time %d",
-	   inet_ntoa(packet->dest.addr.sin_addr),
-	   ntohs(packet->dest.addr.sin_port), packet->rexmits + 1, NOW);
+	   inet_ntoa(nacked->dest.addr.sin_addr),
+	   ntohs(nacked->dest.addr.sin_port), nacked->rexmits + 1, NOW);
 #endif
 
-    packet->rexmits++;
-    if (rexmit_times[packet->rexmits] == -1) {
+    nacked->rexmits++;
+    if (rexmit_times[nacked->rexmits] == -1) {
 	/* Unresponsive client, find it in our database. */
-	dummy_notice.z_port = packet->dest.addr.sin_port;
-	client = client_which_client(&packet->dest.addr.sin_addr,
+	dummy_notice.z_port = nacked->dest.addr.sin_port;
+	client = client_which_client(&nacked->dest.addr.sin_addr,
 				     &dummy_notice);
 
-	/* unlink & free packet */
-	LIST_DELETE(packet);
-	free(packet->packet);
-	free(packet);
+	/* unlink & free nacked */
+	LIST_DELETE(nacked);
+	free(nacked->packet);
+	free(nacked);
 
 	/* Kill the client. */
 	if (client) {
@@ -643,21 +655,21 @@ rexmit(arg)
 
     /* retransmit the packet */
 #if 0
-    zdbug((LOG_DEBUG," to %s/%d", inet_ntoa(packet->dest.addr.sin_addr),
-	   ntohs(packet->dest.addr.sin_port)));
+    zdbug((LOG_DEBUG," to %s/%d", inet_ntoa(nacked->dest.addr.sin_addr),
+	   ntohs(nacked->dest.addr.sin_port)));
 #endif
-    retval = ZSetDestAddr(&packet->dest.addr);
+    retval = ZSetDestAddr(&nacked->dest.addr);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "rexmit set addr: %s", error_message(retval));
     } else {
-	retval = ZSendPacket(packet->packet, packet->packsz, 0);
+	retval = ZSendPacket(nacked->packet, nacked->packsz, 0);
 	if (retval != ZERR_NONE)
 	    syslog(LOG_WARNING, "rexmit xmit: %s", error_message(retval));
     }
 
     /* reset the timer */
-    packet->timer = timer_set_rel(rexmit_times[packet->rexmits], rexmit,
-				  packet);
+    nacked->timer = timer_set_rel(rexmit_times[nacked->rexmits], rexmit,
+				  nacked);
     return;
 }
 
@@ -758,23 +770,24 @@ nack_cancel(notice, who)
     struct sockaddr_in *who;
 {
     Unacked *nacked;
+    int hashval;
 
-    /* search the not-yet-acked list for this packet, and flush it. */
+    /* search the not-yet-acked table for this packet, and flush it. */
 #if 0
     zdbug((LOG_DEBUG, "nack_cancel: %s:%08X,%08X",
 	   inet_ntoa(notice->z_uid.zuid_addr),
 	   notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
 #endif
-    for (nacked = nacklist; nacked; nacked = nacked->next) {
-	if (nacked->dest.addr.sin_addr.s_addr == who->sin_addr.s_addr &&
-	    nacked->dest.addr.sin_port == who->sin_port) {
-	    if (ZCompareUID(&nacked->uid, &notice->z_uid)) {
-		timer_reset(nacked->timer);
-		free(nacked->packet);
-		LIST_DELETE(nacked);
-		free(nacked);
-		return;
-	    }
+    hashval = NACKTAB_HASHVAL(*who, notice->z_uid);
+    for (nacked = nacktab[hashval]; nacked; nacked = nacked->next) {
+	if (nacked->dest.addr.sin_addr.s_addr == who->sin_addr.s_addr
+	    && nacked->dest.addr.sin_port == who->sin_port
+	    && ZCompareUID(&nacked->uid, &notice->z_uid)) {
+	    timer_reset(nacked->timer);
+	    free(nacked->packet);
+	    LIST_DELETE(nacked);
+	    free(nacked);
+	    return;
 	}
     }
 
