@@ -41,109 +41,95 @@ if (upcase($opcode) == "PING") then exit endif
 # 'match "forged" to something other than "UNAUTHENTIC".
 case $auth
 match "yes"
-	set aval = "Authentic"
+  set aval = "Authentic"
 match "no","forged"
-	set aval = "@b(@large(UNAUTHENTIC))"
+  set aval = "@b(@large(UNAUTHENTIC))"
 endcase
 
 case $class
 match "WG_CTL_CLASS"
-	exit
-#  
-# MAIL NOTIFICATION
-#
-# To receive mail notifications, you need to do several things:
-# 1) subscribe to MAIL,POP messages.  You do this by typing:
-#	zctl add mail pop
-# to your prompt.  By doing this, you will get a simple notice every
-# time you are logged in and more mail arrives for you at your post office.
-#
-# 2) If you wish to be notified of the sender, recipient and subject of the
-# new mail, remove the pound-signs from the beginning of the 10 lines below
-# between 'match "MAIL"' and 'exit', inclusive, and type the command
-#	zctl add mail popret
-# to your prompt.
-#
-# Note: The use of the following lines is NOT necessary to receive
-# notifications of new mail.  The only effect of uncommenting these
-# lines is to display on your screen the sender, recipient and subject
-# of the mail (In addition, uncommenting these lines will add extra load
-# to the post office servers, making them run slower.).
-# If you do not wish this information to be displayed where other users
-# might possibly read it, or you wish to avoid loading down the post
-# office servers, you need not uncomment these lines.  Just follow step
-# 1 above. 
-#
-#match "MAIL"
-#	case $instance
-#	match "pop"
-#		exec "zmailnotify"
-#		exit
-#	endcase
-#	print "(Authentication: @bold("+$aval+"))\n"
-#	print substitute($default)
-#	put
-#	exit
+  exit
 match "message"
-	if (downcase($recipient) == downcase($user)) then
-		case $instance
-		match "PERSONAL"
-			set type = "Personal"
-		match "URGENT"
-			set type = "Urgent"
-		default
-			set type = $instance
-		endcase
-	else
-		set type = "Instance "+$instance
-	endif
+  if (downcase($recipient) == downcase($user)) then
+    case $instance
+    match "PERSONAL"
+      set type = "Personal"
+    match "URGENT"
+      set type = "Urgent"
+    default
+      set type = $instance
+    endcase
+  else
+    set type = "Instance "+$instance
+  endif
 
-	fields signature body
-	if ($body == "") then
-		set body = $signature
-		set signature = ""
-	endif
-	if ($signature =~ "^[Ff]rom: .*") then
-		set dummy = lany($signature,"From: ")
-	endif
-	if ($signature =~ "\n$") then
-		set dummy = rany($signature,"\n")
-	endif
-	if ($signature == "") then
-		set ftext = "From: @bold("+protect($sender)+")"
-	else
-		set ftext = "From: @bold(@{"+protect($signature)+"} <"+
-			protect($sender)+">)"
-	endif
+  fields signature body
+  if ($body == "") then
+    set body = $signature
+    set signature = ""
+  endif
+  if ($signature =~ "^[Ff]rom: .*") then
+    set dummy = lany($signature,"From: ")
+  endif
+  if ($signature =~ "\n$") then
+    set dummy = rany($signature,"\n")
+  endif
+  if ($signature == "") then
+    set ftext = "From: @bold("+protect($sender)+")"
+  else
+    set ftext = "From: @bold(@{"+protect($signature)+"} <"+
+      protect($sender)+">)"
+  endif
 
-	print "@center(@bold("+$aval+") "+$type+" message at "+$time+
-		" on "+$date+"\n"+$ftext+" on "+$fromhost+"\nTo: "+
-		$recipient+")\n\n"
-	print $body
-	put
-	exit
+  print "@center(@bold("+$aval+") "+$type+" message at "+$time+
+    " on "+$date+"\n"+$ftext+" on "+$fromhost+"\nTo: "+
+    $recipient+")\n\n"
+  print $body
+  put
+  exit
 
 match "login"
-	case $opcode
-	match "USER_LOGIN"
-		set log = "logged in"
-	match "USER_LOGOUT"
-		set log = "logged out"
-	default
-		set log = "unknown opcode"
-	endcase
+  case $opcode	
+  match "USER_LOGIN"
+    set log = "logged in"
+  match "USER_LOGOUT"
+    set log = "logged out"
+  default
+    set log = "unknown opcode"
+  endcase
 
-	fields host when tty
-	print "@center(@bold("+$sender+") "+$log+")\n"
-	print "@center(on @bold("+$host+") on "+$tty+")\n"
-	print "@center(at "+$when+")"
-	put
-	exit
+  fields host when tty
+  print "@center(@bold("+$sender+") "+$log+")\n"
+  print "@center(on @bold("+$host+") on "+$tty+")\n"
+  print "@center(at "+$when+")"
+  put
+  exit
 
 default
-	print "(Authentication: @bold("+$aval+") from host: "+$fromhost+")\n"
-	print substitute($default)
-	put
-	exit
+  if (downcase($class) == "filsys" and downcase($opcode) == "shutdown") then
+    set format = "From $sender:\n@bold(Shutdown message from $1 at $time)\n"+
+      "@center(System going down, message is:)\n\n$2\n\n@center(@bold($3))"
+  elseif (downcase($class) == "filsys") then
+    set format = "@bold(Filesystem Operation Message for $instance:)\n"+
+      "From: @bold($sender) at $time $date\n$message"
+  elseif (downcase($class) == "mail" and downcase($instance) == "popret") then
+    set format = "You have new mail:\n\nFrom: $1\nTo: $2\nSubject: $3"
+  elseif (downcase($class) == "mail") then
+    set format = "From Post Office $1:\n$2"
+  elseif (downcase($class) == "syslog") then
+    set format = "From $sender:\nSyslog message from $instance, level "+
+      "$opcode:\n$message"
+  elseif ($number_of_fields == "1") then
+    set format = "Class $class, Instance $instance:\nTo: @bold($recipient) "+
+      "at $time $date\nFrom: @bold($sender)\n\n$message"
+  else
+    set format = "Class $class, Instance $instance:\nTo: @bold($recipient) "+
+      "at $time $date\nFrom: @bold($1) <$sender>\n\n$2"
+  endif
+
+  print "(Authentication: @bold("+$aval+") from host: "+$fromhost+")\n"
+  print substitute($format)
+  put
+  exit
 
 endcase
