@@ -60,7 +60,7 @@ OBJS=	access.o \
 error_table(zsrv_err)
 SimpleProgram(zephyrd,$(OBJS) $(SYSLOG_OBJ) version.o $(ZLIB) $(ZLIBDES), $(ZLIBS) $(OSLIBS), $(ATHETCDIR))
 install_man(zephyrd.8,zephyrd.8)
-install_file(default.subscriptions,$(ZLIBDIR))
+install_file(default.subscriptions,$(ZETCDIR))
 
 create_dir($(ZACLDIR))
 install::
