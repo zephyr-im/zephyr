@@ -36,18 +36,15 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
     newnotice.z_authent_len = 0;
     newnotice.z_ascii_authent = (char *)"";
 	
-    if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen))
-	!= ZERR_NONE)
+    if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len,
+				    &hdrlen, &ptr)) != ZERR_NONE)
 	return (retval);
 
-    for (hdrlen--;buffer[hdrlen-1];hdrlen--)
-	;
-	
-    newnotice.z_checksum = (ZChecksum_t)quad_cksum(buffer, NULL, hdrlen, 0, 
-						   session);
+    newnotice.z_checksum = (ZChecksum_t)quad_cksum(buffer, NULL, ptr - buffer,
+						   0, session);
 
-    if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen))
-	!= ZERR_NONE)
+    if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len,
+				    &hdrlen, (char **) 0)) != ZERR_NONE)
 	return (retval);
 
     ptr = buffer+hdrlen;
