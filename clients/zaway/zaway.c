@@ -26,19 +26,16 @@ static char rcsid_zaway_c[] = "$Id$";
 #define MESSAGE_CLASS "MESSAGE"
 #define DEFAULT_MSG "I'm sorry, but I am currently away from the terminal and am\nnot able to receive your message.\n"
 
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 #include <stdlib.h>
+#define SIGNAL_RETURN_TYPE void
 #else
 extern char *getenv(), *malloc(), *realloc();
-#endif
 extern uid_t getuid();
-
-#if defined(ultrix) || defined(_POSIX_SOURCE)
-void cleanup();
-#else
-int cleanup();
+#define SIGNAL_RETURN_TYPE int
 #endif
 
+SIGNAL_RETURN_TYPE cleanup();
 u_short port;
 
 main(argc,argv)
@@ -192,12 +189,7 @@ char *find_message(notice,fp)
 	return (ptr);
 }
 
-#if defined(ultrix) || defined(_POSIX_SOURCE)
-void
-#else
-int
-#endif
-cleanup()
+SIGNAL_RETURN_TYPE cleanup()
 {
     ZCancelSubscriptions(port);
     exit(1);
