@@ -14,21 +14,30 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
+#ifndef SABER
 static char rcsid_common_c[] = "$Header$";
+#endif SABER
 #endif lint
 
 #include <stdio.h>
+#include <syslog.h>
+
+extern char *malloc(), *strcpy();
 
 /* common routines for the server */
 
 char *
-strsave(sp) char *sp;
+strsave(sp)
+char *sp;
 {
     register char *ret;
 
-    if((ret = (char *) malloc(strlen(sp)+1)) == NULL)
-      return(NULL);
-    strcpy(ret,sp);
+    if((ret = malloc((unsigned) strlen(sp)+1)) == NULL) {
+	    syslog(LOG_ERR, "no mem strsave'ing");
+	    abort();
+    }
+    (void) strcpy(ret,sp);
     return(ret);
 }
 
+/* some sort of syslog interface */
