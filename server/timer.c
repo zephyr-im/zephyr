@@ -236,19 +236,15 @@ timer_process()
 		 * This one goes off NOW..
 		 * Enqueue the function, and delete the timer.
 		 */
-		register timer s;
 		valid = 1;
-
 		queue_arg = ALARM_ARG(t);
 		queue = ALARM_FUNC(t);
-		s = t;
-		t = ALARM_PREV(t);
-		xremque(s); 
-	        ALARM_PREV(s) = NULL;
-		ALARM_NEXT(s) = NULL;
-		ALARM_FUNC(s) = timer_botch;
-		xfree(s);
-		t = ALARM_NEXT(t);
+		xremque(t); 
+	        ALARM_PREV(t) = NULL;
+		ALARM_NEXT(t) = NULL;
+		ALARM_FUNC(t) = timer_botch;
+		ALARM_ARG(t)  = (caddr_t) NULL;
+		xfree(t);	
 	}
 	/* note that in the case that there are no timers, the ALARM_TIME
 	   is set to 0L, which is what the main loop expects as the
