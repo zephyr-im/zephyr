@@ -95,19 +95,40 @@ clean::
 
 
 /*
+ * Sun SUNOS
+ */
+
+#if defined(sun) && defined(sparc) && !defined(SOLARIS)
+#define NOLINT
+#define LintFlags  -DSUNOS
+#define ProfCcFlags -pg
+#define CDebugFlags -g -O
+#define CcFlags LintFlags -I/mit/x11/include
+#define LdPath -L/usr/openwin/lib -L$(ATHLIBDIR)
+#define CcCmd gcc
+#define LdCmd gcc
+#define AnsiCcCmd gcc
+#define AnsiLdCmd gcc
+#define AfsDir /usr/transarc
+#define XLibs -L/usr/openwin/lib -lX11 -L/usr/local/lib -lXext -lm
+#define XawLibs -lXaw -lXmu -lXt -static XLibs
+#endif
+
+
+/*
  * Sun SOLARIS
  */
-#if defined(sun) && defined(sparc)
+#if defined(sun) && defined(sparc) && defined(SOLARIS)
 
 #define NoBsdArgs \
-	-Dsignal=signal_oops -Dlongjmp=lonjmp_oops -Dsetjmp=setjmp_oops
+        -Dsignal=signal_oops -Dlongjmp=lonjmp_oops -Dsetjmp=setjmp_oops
 #undef NoBsdArgs
 #define NoBsdArgs -I/usr/ucbinclude
 
 #define NOLINT
 #define CcFlags  -DSOLARIS -DPOSIX \
-	-Dsrandom=srand48 -Drandom=lrand48 NoBsdArgs \
-	-I/usr/gcc/include -I/usr/openwin/include
+        -Dsrandom=srand48 -Drandom=lrand48 NoBsdArgs \
+        -I/usr/gcc/include -I/usr/openwin/include \
 #define ProfCcFlags -pg
 #define CDebugFlags -O2
 #define LdPath -L/usr/gcc/lib -L/usr/ccs/lib -L/usr/openwin/lib -L$(ATHLIBDIR)
