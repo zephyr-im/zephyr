@@ -124,7 +124,7 @@ extern C_Block __Zephyr_session;
 #endif
 
 	/* ZCompareUIDPred definition */
-extern int ZCompareUIDPred();
+extern int ZCompareUIDPred(), ZCompareMultiUIDPred();
 
 	/* ZGetSession() macro */
 #define ZGetSession() (__Zephyr_session)
