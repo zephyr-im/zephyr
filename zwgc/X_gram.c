@@ -100,9 +100,9 @@ void x_set_icccm_hints(dpy,w,name,icon_name,psizehints,pwmhints,main_window)
    if (main_window != None) {
       if (set_transient)
 	  XSetTransientForHint(dpy,w,main_window);
-      if (enable_delete)
-	  XSetWMProtocols(dpy,w,&XA_WM_DELETE_WINDOW,1);
    }
+   if (enable_delete)
+      XSetWMProtocols(dpy,w,&XA_WM_DELETE_WINDOW,1);
 }
 
 void x_gram_init(dpy)
