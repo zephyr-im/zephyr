@@ -869,7 +869,7 @@ ulogin_marshal_locs(notice, found, auth)
     char **answer;
     int i = 0;
     String *inst;
-    int local = sender_in_realm(notice);
+    int local = (auth && sender_in_realm(notice));
 
     *found = 0;			/* # of matches */
 
