@@ -34,6 +34,7 @@ main(argc,argv)
 	ZNotice_t notice;
 	struct hostent *hent;
 	int retval;
+	register int i;
 	char *whoami,*ptr,myhost[MAXHOSTNAMELEN],mysender[BUFSIZ];
 	char *lines[2];
 	
@@ -44,16 +45,10 @@ main(argc,argv)
 		exit(1);
 	} 
 
-	if (argc != 2) {
+	if (argc < 2) {
 		usage(whoami);
 		exit(1);
 	}
-
-	ptr = (char *)rindex(argv[1],'/');
-	if (ptr)
-		ptr++;
-	else
-		ptr = argv[1];
 
 	if (gethostname(myhost,MAXHOSTNAMELEN) == -1) {
 		com_err(whoami,errno,"Can't get hostname");
@@ -75,23 +70,30 @@ main(argc,argv)
 	(void) strcpy(mysender,"pop@");
 	(void) strcat(mysender,ZGetRealm());
 
-	(void) bzero((char *)&notice, sizeof(notice));
-	notice.z_kind = UNSAFE;
-	notice.z_class = MAIL_CLASS;
-	notice.z_class_inst = MAIL_INSTANCE;
-	notice.z_opcode = "";
-	notice.z_sender = mysender;
-	notice.z_recipient = ptr;
-	notice.z_default_format = "From Post Office $1:\n$2";
+	for (i = 1; i < argc; i++) {
+	    (void) bzero((char *)&notice, sizeof(notice));
+	    notice.z_kind = UNSAFE;
+	    notice.z_class = MAIL_CLASS;
+	    notice.z_class_inst = MAIL_INSTANCE;
+	    notice.z_opcode = "";
+	    notice.z_sender = mysender;
+	    notice.z_default_format = "From Post Office $1:\n$2";
 	
-	if ((retval = ZSendList(&notice,lines,2,ZNOAUTH)) != ZERR_NONE) {
+	    notice.z_recipient = (char *)rindex(argv[1],'/');
+	    if (notice.z_recipient)
+		notice.z_recipient++;
+	    else
+		notice.z_recipient = argv[i];
+
+	    if ((retval = ZSendList(&notice,lines,2,ZNOAUTH)) != ZERR_NONE) {
 		com_err(whoami,retval,"while sending notice");
 		exit(1);
-	} 
+	    } 
+	}
 }
 
 usage(whoami)
 	char *whoami;
 {
-	printf("Usage: %s username\n",whoami);
+	printf("Usage: %s username [ username ... ]\n",whoami);
 }
