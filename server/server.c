@@ -280,7 +280,7 @@ struct sockaddr_in *who;
 		srv_responded(who);
 		return(ZERR_NONE);
 	}
-	/* XXX set up a who for the real origin */
+	/* set up a who for the real origin */
 	bzero((caddr_t) &newwho, sizeof(newwho));
 	newwho.sin_family = AF_INET;
 	newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
@@ -459,54 +459,13 @@ ZClient_t *client;
 		if (otherservers[i].zs_state == SERV_DEAD)
 			continue;
 
-		if (!(pack = (caddr_t) xmalloc(sizeof(ZPacket_t)))) {
-			syslog(LOG_ERR, "srv_kill_clt malloc");
-			continue;	/* DON'T put on nack list */
-		}
-
-		packlen = sizeof(ZPacket_t);
-		if ((retval = ZFormatNoticeList(pnotice, lyst, 2, pack, packlen, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
+		if ((retval = ZFormatNoticeList(pnotice, lyst, 2, &pack, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "kill_clt format: %s",
 			       error_message(retval));
 			return;
 		}
-		if ((retval = ZSetDestAddr(&otherservers[i].zs_addr))
-		    != ZERR_NONE) {
-			syslog(LOG_WARNING, "kill_clt set addr: %s",
-			       error_message(retval));
-			return;
-		}
-		if ((retval = ZSendPacket(pack, packlen)) != ZERR_NONE) {
-			syslog(LOG_WARNING,
-			       "kill_clt xmit: %s", error_message(retval));
-			return;
-		}
-
-		/* now we've sent it, mark it as not ack'ed */
-		
-		if (!(nacked = (ZNotAcked_t *)xmalloc(sizeof(ZNotAcked_t)))) {
-			/* no space: just punt */
-			syslog(LOG_ERR, "srv_kill_clt nack malloc");
-			xfree(pack);
-			continue;
-		}
-
-		nacked->na_rexmits = 0;
-		nacked->na_packet = pack;
-		nacked->na_srv_idx = i;
-		nacked->na_packsz = packlen;
-		nacked->na_uid = pnotice->z_uid;
-		nacked->q_forw = nacked->q_back = nacked;
-		nacked->na_abstimo = 0;
-
-		/* set a timer to retransmit */
-		nacked->na_timer = timer_set_rel(srv_rexmit_secs,
-						 srv_rexmit,
-						 (caddr_t) nacked);
-		/* chain in */
-		xinsque(nacked, srv_nacklist);
+		srv_forw_reliable(&otherservers[i], pack, packlen, notice);
 	}
-	
 }
 
 /*
@@ -1100,7 +1059,7 @@ int auth;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
-	ZPacket_t pack;
+	char *pack;
 	int packlen;
 	Code_t retval;
 
@@ -1118,24 +1077,27 @@ int auth;
 	pnotice->z_message = (caddr_t) NULL;
 	pnotice->z_message_len = 0;
 
-	packlen = sizeof(pack);
-	
 	/* XXX for now, we don't do authentication */
 	auth = 0;
 
-	if ((retval = ZFormatNotice(pnotice, pack, packlen, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
+	if ((retval = ZFormatNotice(pnotice, &pack, &packlen,
+				    auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "snd_msg format: %s", error_message(retval));
 		return;
 	}
 	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "snd_msg set addr: %s",
 		       error_message(retval));
+		xfree(pack);		/* free allocated storage */
 		return;
 	}
-	if ((retval = ZSendPacket(pack, packlen)) != ZERR_NONE) {
+	/* don't wait for ack */
+	if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "snd_msg xmit: %s", error_message(retval));
+		xfree(pack);		/* free allocated storage */
 		return;
 	}
+	xfree(pack);			/* free allocated storage */
 	return;
 }
 
@@ -1155,7 +1117,7 @@ int auth;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
-	ZPacket_t pack;
+	char *pack;
 	int packlen;
 	Code_t retval;
 
@@ -1173,24 +1135,25 @@ int auth;
 	pnotice->z_message = (caddr_t) NULL;
 	pnotice->z_message_len = 0;
 
-	packlen = sizeof(pack);
-	
 	/* XXX for now, we don't do authentication */
 	auth = 0;
 
-	if ((retval = ZFormatNoticeList(pnotice, lyst, num, pack, packlen, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
+	if ((retval = ZFormatNoticeList(pnotice, lyst, num, &pack, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "snd_msg format: %s", error_message(retval));
 		return;
 	}
 	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "snd_msg set addr: %s",
 		       error_message(retval));
+		xfree(pack);		/* free allocated storage */
 		return;
 	}
-	if ((retval = ZSendPacket(pack, packlen)) != ZERR_NONE) {
+x	if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "snd_msg xmit: %s", error_message(retval));
+		xfree(pack);		/* free allocated storage */
 		return;
 	}
+	xfree(pack);			/* free allocated storage */
 	return;
 }
 
@@ -1221,24 +1184,18 @@ struct sockaddr_in *who;
 			   queue it, even if he's dead */
 			continue;
 
-		if (!(pack = (caddr_t) xmalloc(sizeof(ZPacket_t)))) {
-			syslog(LOG_ERR, "srv_forw malloc");
-			continue;	/* DON'T put on nack list */
-		}
-
-		packlen = sizeof(ZPacket_t);
-		if ((retval = ZFormatRawNotice(notice, pack, packlen, &packlen)) != ZERR_NONE) {
+		if ((retval = ZFormatRawNotice(notice, &pack, &packlen)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "srv_fwd format: %s",
 			       error_message(retval));
-			xfree(pack);
 			continue;
 		}
 		if (otherservers[i].zs_dumping) {
 			server_queue(&(otherservers[i]), packlen, pack,
 				     auth, who);
-			return;
+			xfree(pack);
+			continue;
 		}
-		server_forw_reliable(&otherservers[i],pack, packlen, notice);
+		server_forw_reliable(&otherservers[i], pack, packlen, notice);
 	}
 	return;
 }
@@ -1259,7 +1216,7 @@ ZNotice_t *notice;
 		xfree(pack);
 		return;
 	}
-	if ((retval = ZSendPacket(pack, packlen)) != ZERR_NONE) {
+	if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "srv_fwd xmit: %s", error_message(retval));
 		xfree(pack);
 		return;
@@ -1268,7 +1225,7 @@ ZNotice_t *notice;
 		
 	if (!(nacked = (ZNotAcked_t *)xmalloc(sizeof(ZNotAcked_t)))) {
 		/* no space: just punt */
-		syslog(LOG_ERR, "srv_forw nack malloc");
+		syslog(LOG_ERR, "srv_forw_rel nack malloc");
 		xfree(pack);
 		return;
 	}
@@ -1277,7 +1234,7 @@ ZNotice_t *notice;
 	nacked->na_packet = pack;
 	nacked->na_srv_idx = server - otherservers;
 	nacked->na_packsz = packlen;
-	nacked->na_uid = notice->z_uid;
+	nacked->na_uid = notice->z_multiuid;
 	nacked->q_forw = nacked->q_back = nacked;
 	nacked->na_abstimo = 0;
 
@@ -1343,7 +1300,7 @@ struct sockaddr_in *who;
 	     nacked != srv_nacklist;
 	     nacked = nacked->q_forw)
 		if (&otherservers[nacked->na_srv_idx] == which)
-			if (ZCompareUID(&nacked->na_uid, &notice->z_uid)) {
+			if (ZCompareUID(&nacked->na_uid, &notice->z_multiuid)) {
 				timer_reset(nacked->na_timer);
 				xfree(nacked->na_packet);
 				xremque(nacked);
@@ -1385,7 +1342,7 @@ register ZNotAcked_t *nackpacket;
 
 	}
 	if ((retval = ZSendPacket(nackpacket->na_packet,
-				  nackpacket->na_packsz)) != ZERR_NONE)
+				  nackpacket->na_packsz, 0)) != ZERR_NONE)
 		syslog(LOG_WARNING, "srv_rexmit xmit: %s", error_message(retval));
 
 requeue:
@@ -1515,13 +1472,7 @@ struct sockaddr_in *who;
 	int packlen;
 	Code_t retval;
 
-	if (!(pack = (caddr_t) xmalloc(sizeof(ZPacket_t)))) {
-		syslog(LOG_CRIT, "srv_self_queue malloc");
-		abort();
-	}
-
-	packlen = sizeof(ZPacket_t);
-	if ((retval = ZFormatRawNotice(notice, pack, packlen, &packlen))
+	if ((retval = ZFormatRawNotice(notice, &pack, &packlen))
 	    != ZERR_NONE) {
 		syslog(LOG_CRIT, "srv_self_queue format: %s",
 		       error_message(retval));
