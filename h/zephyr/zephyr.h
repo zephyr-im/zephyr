@@ -16,6 +16,7 @@
 #define __ZEPHYR_H__
 
 #include <zephyr/mit-copyright.h>
+#include <zephyr/zephyr_err.h>
 
 #include <errno.h>
 #include <sys/types.h>
@@ -31,7 +32,7 @@
 typedef char ZPacket_t[BUFSIZ];
 
 	/* Packet type */
-typedef enum { REQUEST, INFORM, NOTIFY, ACKNOWLEDGE } ZNotice_Kind_t;
+typedef enum { UNACK, ACK, HMACK, SERVACK, SERVNAK } ZNotice_Kind_t;
 
 	/* Unique ID format */
 typedef struct _ZUnique_Id_t {
@@ -75,35 +76,11 @@ extern int __Zephyr_port;
 
 	/* Maximum queue length */
 #define Z_MAXQLEN		30
-	
-	/* External UNIX errors */
+
+	/* UNIX error codes */
 extern int errno;
 
-/* XXX some magic numbers--will need tuning */
-#define	SERVER_KEEPALIVE_INTERVAL	(3*60) /* seconds */
-
-/* Error codes */
-
+	/* Successful function return */
 #define ZERR_NONE		0
-
-#define ZERR_UNIX		999
-
-#define ZERR_FIRST		1000
-
-#define ZERR_PKTLEN		1000	/* Packet too long/buffer too small */
-#define ZERR_ILLVAL		1001	/* Illegal parameter */
-#define ZERR_HMPORT		1002	/* Can't get host manager port */
-#define ZERR_NOMEM		1003	/* No memory */
-#define ZERR_PORTINUSE		1004	/* Can't assign port */
-#define ZERR_BADPKT		1005	/* Bad incoming packet */
-#define ZERR_VERS		1006	/* Bad version # in packet */
-#define ZERR_NOPORT		1007	/* No port opened */
-#define ZERR_NONOTICE		1008	/* No notices selected */
-#define ZERR_QLEN		1009	/* Queue too long */
-
-#define ZERR_LAST		1009
-	
-#define	ZERR_S_FIRST		2000	/* internal server error codes */
-#define	ZERR_S_LAST		3000
 
 #endif !__ZEPHYR_H__
