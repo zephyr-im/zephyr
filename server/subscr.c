@@ -1470,10 +1470,17 @@ subscr_check_foreign_subs(notice, who, server, realm, newsubs)
 
     found = 0;
     for (subs = newsubs; subs; subs = next) {
+	Realm *rlm;
 	next=subs->next;
+	if (subs->dest.recip->string[0] != '\0') {
+	  rlm = realm_which_realm(who);
+	  syslog(LOG_WARNING, "subscr bad recip %s by %s (%s)",
+		 subs->dest.recip->string,
+		 sender->string, rlm->name);
+	  continue;
+	}
 	acl = class_get_acl(subs->dest.classname);
 	if (acl) {
-	    Realm *rlm;
 	    rlm = realm_which_realm(who); 
 	    if (rlm && server == me_server) { 
 		if (!realm_sender_in_realm(rlm->name, sender->string)) { 
