@@ -437,11 +437,11 @@ string tty_filter(text, use_fonts)
     desctype *desc;
     int number_of_strs;
     int number_of_lines;
-    tty_str_info *info;
+    tty_str_info *info, *info_head;
     int max_line_width;
 
     desc = disp_get_cmds(text_copy, &number_of_strs, &number_of_lines);
-    info = convert_desc_to_tty_str_info(desc);
+    info_head = info = convert_desc_to_tty_str_info(desc);
     free_desc(desc);
 
 #ifdef DEBUG
@@ -540,7 +540,7 @@ string tty_filter(text, use_fonts)
 	}
     }
 
-    free_info(info);
+    free_info(info_head);
     free(text_copy);
     if (number_of_lines &&
 	(result_so_far[string_Length(result_so_far)-1] != '\n'))
