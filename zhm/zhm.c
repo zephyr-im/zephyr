@@ -29,11 +29,13 @@ static char rcsid_hm_c[] = "$Header$";
 #include <sys/file.h>
 
 int serv_sock, no_server = 1, timeout_type = 0, serv_loop = 0;
+int nserv = 0, nclt = 0, nservchang = 0;
 struct sockaddr_in cli_sin, serv_sin, from;
 struct hostent *hp;
-char **serv_list, **cur_serv, **clust_info;
+char **serv_list, **cur_serv_list, **clust_info;
 u_short cli_port;
 char hostname[MAXHOSTNAMELEN], prim_serv[MAXHOSTNAMELEN], loopback[4];
+char *cur_serv;
 
 extern int errno;
 extern char *index();
@@ -44,7 +46,7 @@ char *upcase();
 main(argc, argv)
 char *argv[];
 {
-    caddr_t packet;
+    ZPacket_t packet;
     ZNotice_t notice;
     Code_t ret;
 
@@ -76,12 +78,10 @@ char *argv[];
     /* Main loop */
     for ever {
 	  DPR ("Waiting for a packet...");
-	  packet = (char *) malloc(Z_MAXPKTLEN);
 	  ret = ZReceiveNotice(packet, Z_MAXPKTLEN, &notice, NULL, &from);
 	  if ((ret != ZERR_NONE) && (ret != EINTR)){
 		Zperr(ret);
 		com_err("hm", ret, "receiving notice");
-		free(packet);
 	  } else if (ret != EINTR) {
 		/* Where did it come from? */
 		DPR ("Got a packet.\n");
@@ -97,16 +97,18 @@ char *argv[];
 		    (notice.z_kind == SERVNAK) ||
 		    (notice.z_kind == HMCTL)) {
 		      server_manager(&notice);
-		      free(packet);
 		} else {
 		      if (bcmp(loopback, &from.sin_addr, 4) == 0) {
 			    /* Client program... */
 			    transmission_tower(&notice, packet);
 			    DPR2 ("Pending = %d\n", ZPending());
 		      } else {
-			    syslog(LOG_INFO, "Unknown notice type: %d",
-				   notice.z_kind);
-			    free(packet);
+			    if (notice.z_kind == STAT) {
+				  send_stats(&notice, &from);
+			    } else {
+				  syslog(LOG_INFO, "Unknown notice type: %d",
+					 notice.z_kind);
+			    }
 		      }
 		}
 	  }
@@ -139,9 +141,9 @@ void init_hm()
 	    strcpy(serv_list[0], prim_serv);
 	    serv_list[1] = "";
       }
-      cur_serv = serv_list;
+      cur_serv_list = serv_list;
       if (!strcmp(prim_serv, ""))
-	(void)strcpy(prim_serv, *cur_serv);
+	(void)strcpy(prim_serv, *cur_serv_list);
       
       loopback[0] = 127;
       loopback[1] = 0;
@@ -189,6 +191,7 @@ void init_hm()
 	    find_next_server();
       } else {
 	    DPR2 ("Server = %s\n", prim_serv);
+	    cur_serv = prim_serv;
 	    bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
       }
 
@@ -295,13 +298,16 @@ find_next_server()
 	    serv_loop = 0;
 	    hp = gethostbyname(prim_serv);
 	    DPR2 ("Server = %s\n", prim_serv);
+	    cur_serv = prim_serv;
       } else {
-	    if (*++cur_serv == NULL)
-	      cur_serv = serv_list;
-	    hp = gethostbyname(*cur_serv);
-	    DPR2 ("Server = %s\n", *cur_serv);
+	    if (*++cur_serv_list == NULL)
+	      cur_serv_list = serv_list;
+	    hp = gethostbyname(*cur_serv_list);
+	    DPR2 ("Server = %s\n", *cur_serv_list);
+	    cur_serv = *cur_serv_list;
       }
       bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
+      nservchang++;
 }
 
 server_manager(notice)
@@ -313,6 +319,7 @@ server_manager(notice)
 	    /* Sent a notice back saying this hostmanager isn't theirs */
       } else {
 	    /* This is our server, handle the notice */
+	    nserv++;
 	    switch(notice->z_kind) {
 		case HMCTL:
 		  hm_control(notice);
@@ -365,8 +372,9 @@ send_back(notice)
 
       if (no_server)
 	(void)alarm(0);
-      if (!strcmp(notice->z_opcode, HM_BOOT)) {
-	    /* ignore message, just a nak from boot */
+      if (!strcmp(notice->z_opcode, HM_BOOT) ||
+	  !strcmp(notice->z_opcode, HM_ATTACH)) {
+	    /* ignore message, just an ack from boot */
       } else {
 	    if (remove_notice_from_queue(notice, &kind,
 					 &repl) != ZERR_NONE) {
@@ -381,7 +389,7 @@ send_back(notice)
 			}
 			if ((ret = ZSendRawNotice(notice)) != ZERR_NONE) {
 			      Zperr(ret);
-			      com_err("hm", ret, "sending NAK");
+			      com_err("hm", ret, "sending ACK");
 			}
 		  }
 	    }
@@ -401,6 +409,7 @@ transmission_tower(notice, packet)
       struct sockaddr_in gsin;
       int tleft;
 
+      nclt++;
       if (notice->z_kind != UNSAFE) {
 	    gack = *notice;
 	    gack.z_kind = HMACK;
@@ -441,11 +450,48 @@ transmission_tower(notice, packet)
       (void)add_notice_to_queue(notice, packet, &gsin);
 }
 
+send_stats(notice, sin)
+     ZNotice_t *notice;
+     struct sockaddr_in *sin;
+{
+      Code_t ret;
+      ZPacket_t bfr;
+      char *list[10];
+      int len, i, nitems = 6;
+
+      if ((ret = ZSetDestAddr(sin)) != ZERR_NONE) {
+	    Zperr(ret);
+	    com_err("hm", ret, "setting destination");
+      }
+      notice->z_kind = HMACK;
+
+      list[0] = (char *)malloc(MAXHOSTNAMELEN);
+      strcpy(list[0], cur_serv);
+      list[1] = (char *)malloc(64);
+      sprintf(list[1], "%d", queue_len());
+      list[2] = (char *)malloc(64);
+      sprintf(list[2], "%d", nclt);
+      list[3] = (char *)malloc(64);
+      sprintf(list[3], "%d", nserv);
+      list[4] = (char *)malloc(64);
+      sprintf(list[4], "%d", nservchang);
+      list[5] = (char *)malloc(64);
+      strcpy(list[5], rcsid_hm_c);
+
+      if ((ret = ZFormatRawNoticeList(notice, list, nitems, bfr,
+				      Z_MAXPKTLEN, &len)) != ZERR_NONE) {
+	    syslog(LOG_INFO, "Couldn't format stats packet");
+      } else
+	if ((ret = ZSendPacket(bfr, len)) != ZERR_NONE) {
+	      Zperr(ret);
+	      com_err("hm", ret, "sending stats");
+	}
+      for(i=0;i<nitems;i++)
+	free(list[i]);
+}
+
 new_server()
 {
-      ZNotice_t notice;
-      Code_t ret;
-
       no_server = 1;
       syslog (LOG_INFO, "Server went down, finding new server.");
       send_flush_notice(HM_DETACH);
