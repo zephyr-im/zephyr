@@ -20,7 +20,7 @@
 #include <ctype.h>
 
 #ifndef lint
-static char rcsid_zwrite_c[] = "$Header$";
+static char rcsid_zwrite_c[] = "$Id$";
 #endif lint
 
 #define DEFAULT_CLASS "MESSAGE"
@@ -30,7 +30,7 @@ static char rcsid_zwrite_c[] = "$Header$";
 
 #define MAXRECIPS 100
 
-int nrecips, msgarg, verbose, quiet;
+int nrecips, msgarg, verbose, quiet, nodot;
 char *whoami, *inst, *class, *recips[MAXRECIPS];
 int (*auth)();
 void un_tabify();
@@ -60,7 +60,7 @@ main(argc, argv)
     bzero((char *) &notice, sizeof(notice));
 
     auth = ZAUTH;
-    verbose = quiet = msgarg = nrecips = nocheck = filsys = 0;
+    verbose = quiet = msgarg = nrecips = nocheck = filsys = nodot = 0;
     tabexpand = 1;
 
     if (class = ZGetVariable("zwrite-class")) {
@@ -148,6 +148,9 @@ main(argc, argv)
 		usage(whoami);
 	    msgarg = arg+1;
 	    break;
+	case 'l':			/* literal */
+	    nodot = 1;
+	    break;
 	default:
 	    usage(whoami);
 	}
@@ -209,9 +212,15 @@ main(argc, argv)
     if (!nocheck && !msgarg && filsys != 1)
 	send_off(&notice, 0);
 	
-    if (!msgarg && isatty(0))
-	printf("Type your message now.  End with control-D or a dot on a line by itself.\n");
+    if (quiet)
+	notice.z_kind = UNACKED;	/* change for real sending */
 
+    if (!msgarg && isatty(0))
+	if (nodot)
+	    printf("Type your message now.  End with the end-of-file character.\n");
+	else
+	    printf("Type your message now.  End with control-D or a dot on a line by itself.\n");
+	
     message = NULL;
     msgsize = 0;
     if (signature) {
@@ -247,7 +256,7 @@ main(argc, argv)
 	    for (;;) {
 		if (!fgets(bfr, sizeof bfr, stdin))
 		    break;
-		if (bfr[0] == '.' &&
+		if (!nodot && bfr[0] == '.' &&
 		    (bfr[1] == '\n' || bfr[1] == '\0'))
 		    break;
 		message = realloc(message, (unsigned)(msgsize+strlen(bfr)));
@@ -305,6 +314,12 @@ send_off(notice, real)
 		    nrecips?notice->z_recipient:inst);
 	    com_err(whoami, retval, bfr);
 	    break;
+	}
+	if (quiet && real) {
+	    if (nrecips)
+		continue;		/* next! */
+	    else
+		break;			/* no more */
 	}
 	if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
 				ZCompareUIDPred, 
@@ -376,7 +391,7 @@ send_off(notice, real)
 usage(s)
     char *s;
 {
-    printf("Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u]\n\
+    printf("Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l]\n\
 \t[-c class] [-i inst] [-f fsname] [user ...] [-m message]\n", s);
     printf("\t-f and -c are mutually exclusive\n\
 \t-f and -i are mutually exclusive\n\
