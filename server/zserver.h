@@ -157,7 +157,7 @@ extern void dispatch(), clt_ack(), nack_release(), sendit();
 extern void hostm_dispatch(), hostm_flush(), hostm_shutdown(), hostm_losing();
 extern ZHostList_t *hostm_find_host();
 extern ZServerDesc_t *hostm_find_server();
-extern void hostm_transfer();
+extern void hostm_transfer(), hostm_deathgram();
 
 /* found in server_s.c */
 extern void server_timo(), server_dispatch(), server_recover();
@@ -199,6 +199,12 @@ extern int nfildes;			/* number to look at in select() */
 extern int zdebug;
 extern char myname[];			/* domain name of this host */
 extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
+extern char version[];
+extern u_long npackets;			/* num of packets processed */
+extern long uptime;			/* time we started */
+
+/* found in bdump_s.c */
+extern int bdumping;			/* are we dumping right now? */
 
 /* found in server_s.c */
 extern ZServerDesc_t *otherservers;	/* array of servers */
@@ -239,9 +245,11 @@ extern char *pktypes[];			/* names of the packet types */
 #define	ADMIN_NEWCLT	"NEXT_CLIENT"	/* Opcode: this is a new client */
 #define	ADMIN_LOST_CLT	"LOST_CLIENT"	/* Opcode: client not ack'ing */
 #define	ADMIN_KILL_CLT	"KILL_CLIENT"	/* Opcode: client is dead, remove */
+#define	ADMIN_STATUS	"STATUS"	/* Opcode: please send status */
 
 #define	ADMIN_LIMBO	"LIMBO"		/* Class inst: please send limbo info*/
 #define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
+#define	ADMIN_ME	"MY_STATE"	/* Class inst: please send my info */
 
 #define	NULLZCT		((ZClass_t *) 0)
 #define	NULLZCNT	((ZClient_t *) 0)
