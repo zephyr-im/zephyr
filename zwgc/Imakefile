@@ -56,7 +56,8 @@ GENERATED= $(GENSRCS) \
 XDEFS =	-I./Memory -I./String -I./Dictionary -DREVSTACK \
 	-DDEFDESC=\"$(ZLIBDIR)/zwgc.desc\" \
 	-DAPPDEFDATABASE=\"$(ZLIBDIR)/zwgc_resources\" \
-	-DZWGCPATH=\"$(ATHBINDIR)/zwgc\" $(OSDEFS)
+	-DZWGCPATH=\"$(ATHBINDIR)/zwgc\" \
+	-DSGI_DESKS $(OSDEFS)
 
 SUBDIRS = Memory String Dictionary
 
