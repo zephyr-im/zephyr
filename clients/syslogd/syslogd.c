@@ -570,17 +570,18 @@ int main(argc, argv)
 		      error "me.";
 #else
 		    {
-		    char null[] = "", *p;
-		    char *logargs[NLOGARGS] = { null, null, null };
+		    char empty[] = "", *p;
+		    char *logargs[NLOGARGS] = { empty, empty, empty };
 
 		    logargs[0]=dat.buf;
-		    p=memchr(logargs[0], 0, sizeof(dat.buf)); /* XXX */
+		    p=memchr(logargs[0], 0, sizeof(dat.buf));
 	            if (p != NULL)
 			logargs[1]=p++;
-		    p=memchr(logargs[1], 0, sizeof(dat.buf)); /* XXX */
+		    p=memchr(logargs[1], 0, sizeof(dat.buf));
 	            if (p != NULL)
 			logargs[2]=p++;
-		    sprintf(line, logargs[0], logargs[1], logargs[2]);
+		    sprintf(line, "%s%s%s", logargs[0], logargs[1],
+			    logargs[2]);
 		    }
 #endif /* NLOGARGS != 3 */
 		    line[strlen(line)-1]=0;
