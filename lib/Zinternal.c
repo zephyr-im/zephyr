@@ -201,7 +201,7 @@ Code_t Z_ReadWait()
 	if (notice.z_kind != HMACK && notice.z_kind != SERVACK &&
 	    notice.z_kind != SERVNAK) {
 	    ZNotice_t tmpnotice;
-	    ZPacket_t packet;
+	    ZPacket_t pkt;
 	    int len;
 
 	    tmpnotice = notice;
@@ -209,10 +209,10 @@ Code_t Z_ReadWait()
 	    tmpnotice.z_message_len = 0;
 	    olddest = __HM_addr;
 	    __HM_addr = from;
-	    if ((retval = ZFormatSmallRawNotice(&tmpnotice, packet, &len))
+	    if ((retval = ZFormatSmallRawNotice(&tmpnotice, pkt, &len))
 		!= ZERR_NONE)
 		return(retval);
-	    if ((retval = ZSendPacket(packet, len, 0)) != ZERR_NONE)
+	    if ((retval = ZSendPacket(pkt, len, 0)) != ZERR_NONE)
 		return (retval);
 	    __HM_addr = olddest;
 	}
