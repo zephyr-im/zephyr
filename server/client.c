@@ -77,6 +77,10 @@ int wantdefaults;
 		abort();
 	}
 
+	if (!notice->z_port) {
+	    /* must be a non-zero port # */
+	    return(ZSRV_BADSUBPORT);
+	}
 	if (!(hlp2 = hostm_find_host(&who->sin_addr))) {
 		/* not here */
 		return(ZSRV_HNOTFOUND);
