@@ -22,11 +22,10 @@ static char rcsid_bdump_s_c[] = "$Header$";
 #include "zserver.h"
 #include <sys/socket.h>
 
-static void close_bdump(), bdump_ask_for(), bdump_recv_loop();
-static void bdump_send_loop(), gbd_loop(), sbd_loop();
-static void send_host_register(), send_subs(), send_done(), send_locations();
-static void send_list(), send_normal_tcp();
-static Code_t get_packet(), extract_sin();
+static void close_bdump();
+static Code_t bdump_send_loop(), bdump_ask_for(), bdump_recv_loop();
+static Code_t get_packet(), extract_sin(), send_done(), send_list();
+static Code_t send_host_register(), sbd_loop(), gbd_loop(), send_normal_tcp();
 
 static timer bdump_timer;
 
@@ -125,6 +124,7 @@ bdump_send()
 	int sock;
 	struct sockaddr_in from;
 	ZServerDesc_t *server;
+	Code_t retval;
 	int fromlen = sizeof(from);
 
 	zdbug((LOG_DEBUG, "bdump_send"));
@@ -141,13 +141,14 @@ bdump_send()
 	}
 	zdbug((LOG_DEBUG, "sbd connected"));
 
-	/* shut down the listening socket and the timer */
-	FD_CLR(bdump_socket, &interesting);
-	(void) close(bdump_socket);
-	nfildes = srv_socket + 1;
-	bdump_socket = 0;
-	timer_reset(bdump_timer);
-
+	if (bdump_socket) {
+		/* shut down the listening socket and the timer */
+		FD_CLR(bdump_socket, &interesting);
+		(void) close(bdump_socket);
+		nfildes = srv_socket + 1;
+		bdump_socket = 0;
+		timer_reset(bdump_timer);
+	}
 
 	/* Now begin the brain dump.  Set the Zephyr port to be the
 	   TCP connection.  This will work since recvfrom and sendto
@@ -159,13 +160,24 @@ bdump_send()
 	/* mutually authenticate */
 #endif notdef
 
-	sbd_loop(&from);
-	gbd_loop(server);
-
-	zdbug((LOG_DEBUG, "sbd finished"));
-	if (server != limbo_server)
-		server->zs_state = SERV_UP;
-
+	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "sbd_loop failed: %s",
+		       error_message(retval));
+	} else {
+		if ((retval = gbd_loop(server)) != ZERR_NONE) {
+			syslog(LOG_WARNING, "gbd_loop failed: %s",
+			       error_message(retval));
+		} else {
+			zdbug((LOG_DEBUG, "sbd finished"));
+			if (server != limbo_server) {
+				/* set this guy to be up,
+				   and schedule a hello */
+				server->zs_state = SERV_UP;
+				timer_reset(server->zs_timer);
+				server->zs_timer = timer_set_rel(0L, server_timo, (caddr_t) server);
+			}
+		}
+	}
 	(void) ZSetFD(srv_socket);
 	(void) close(sock);
 	return;
@@ -210,13 +222,25 @@ ZServerDesc_t *server;
 	/* send the authenticator over */
 	/* and receive mutual authent */
 #endif notdef
-	gbd_loop(server);
-	sbd_loop(&target);
+	if ((retval = gbd_loop(server)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "gbd_loop failed: %s",
+		       error_message(retval));
+	} else {
+		if ((retval = sbd_loop(&target)) != ZERR_NONE) {
+			syslog(LOG_WARNING, "sbd_loop failed: %s",
+			       error_message(retval));
+		} else {
+			zdbug((LOG_DEBUG, "gbd finished"));
+			/* set this guy to be up,
+			   and schedule a hello */
+			server->zs_state = SERV_UP;
+			timer_reset(server->zs_timer);
+			server->zs_timer = timer_set_rel(0L, server_timo, (caddr_t) server);
+		}
+	}
 
 	(void) ZSetFD(srv_socket);
 	(void) close(sock);
-	zdbug((LOG_DEBUG, "gbd done"));
-	server->zs_state = SERV_UP;
 	return;
 }
 
@@ -275,7 +299,7 @@ int num;
 	return(ZERR_NONE);
 }
 
-static void
+static Code_t
 sbd_loop(from)
 struct sockaddr_in *from;
 {
@@ -290,12 +314,12 @@ struct sockaddr_in *from;
 		if ((retval = get_packet(pack, packlen, &packlen)) != ZERR_NONE) {
 			syslog(LOG_ERR, "sbd notice get: %s",
 			       error_message(retval));
-			break;
+			return(retval);
 		}
 		if ((retval = ZParseNotice(pack, packlen, &bd_notice, &auth, from)) != ZERR_NONE) {
 			syslog(LOG_ERR, "sbd notice parse: %s",
 			       error_message(retval));
-			break;
+			return(retval);
 		}
 #ifdef DEBUG
 		if (zdebug) {
@@ -314,12 +338,14 @@ struct sockaddr_in *from;
 		if (!strcmp(bd_notice.z_class_inst, ADMIN_LIMBO)) {
 			/* he wants limbo */
 			zdbug((LOG_DEBUG, "limbo req"));
-			bdump_send_loop(limbo_server);
+			if ((retval = bdump_send_loop(limbo_server)) != ZERR_NONE)
+				return(retval);
 			continue;
 		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_YOU)) {
 			/* he wants my state */
 			zdbug((LOG_DEBUG, "my state req"));
-			bdump_send_loop(me_server);
+			if ((retval = bdump_send_loop(me_server)) != ZERR_NONE)
+				return(retval);
 			break;
 		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_DONE)) {
 			break;
@@ -329,25 +355,30 @@ struct sockaddr_in *from;
 			break;
 		}
 	}
-	return;
+	return(ZERR_NONE);
 }
 
-static void
+static Code_t
 gbd_loop(server)
 ZServerDesc_t *server;
 {
 	struct sockaddr_in target;
+	Code_t retval;
 
 	/* if we have no hosts in the 'limbo' state (on the limbo server),
 	   ask for the other server to send us the limbo state. */
 	if (otherservers[limbo_server_idx()].zs_hosts->q_forw ==
 	    otherservers[limbo_server_idx()].zs_hosts) {
-		bdump_ask_for("LIMBO");
-		bdump_recv_loop(&otherservers[limbo_server_idx()], &target);
+		if ((retval = bdump_ask_for("LIMBO")) != ZERR_NONE)
+			return(retval);
+		if ((retval = bdump_recv_loop(&otherservers[limbo_server_idx()], &target)) != ZERR_NONE)
+			return(retval);
 	}
 
-	bdump_ask_for("YOUR_STATE");
-	bdump_recv_loop(server, &target);
+	if ((retval = bdump_ask_for("YOUR_STATE")) != ZERR_NONE)
+		return(retval);
+	retval = bdump_recv_loop(server, &target);
+	return(retval);
 }
 /*
  * The braindump offer wasn't taken, so we retract it.
@@ -375,22 +406,24 @@ caddr_t arg;
  * inst
  */
 
-static void
+static Code_t
 bdump_ask_for(inst)
 char *inst;
 {
-	/* myname is the hostname */
-	send_normal_tcp(ACKED, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
-		    inst, ADMIN_BDUMP, myname, "", (char *) NULL, 0);
+	Code_t retval;
 
-	return;
+	/* myname is the hostname */
+	retval = send_normal_tcp(ACKED, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
+				 inst, ADMIN_BDUMP, myname, "",
+				 (char *) NULL, 0);
+	return(retval);
 }
 
 /*
  * Start receiving instruction notices from the brain dump socket
  */
 
-static void
+static Code_t
 bdump_recv_loop(server, target)
 ZServerDesc_t *server;
 struct sockaddr_in *target;
@@ -412,12 +445,12 @@ struct sockaddr_in *target;
 		if ((retval = get_packet(packet, len, &len)) != ZERR_NONE) {
 			syslog(LOG_ERR, "brl get pkt: %s",
 			       error_message(retval));
-			break;
+			return(retval);
 		}
 		if ((retval = ZParseNotice(packet, len, &notice, &auth, target)) != ZERR_NONE) {
 			syslog(LOG_ERR, "brl notice parse: %s",
 			       error_message(retval));
-			break;
+			return(retval);
 		}
 #ifdef DEBUG
 		if (zdebug) {
@@ -439,17 +472,17 @@ struct sockaddr_in *target;
 			    ZERR_NONE) {
 				syslog(LOG_ERR, "brl hmctl sin: %s",
 				       error_message(retval));
-				break; /* from the while */
+				return(retval);
 			}
 			who_valid = 1;
 			/* 1 = tell it we are authentic */
 			hostm_dispatch(&notice, 1, &current_who, server);
 		} else if (!strcmp(notice.z_opcode, ADMIN_DONE)) {
 			/* end of brain dump */
-			break;
+			return(ZERR_NONE);
 		} else if (!who_valid) {
 			syslog(LOG_ERR, "brl: no current host");
-			break;
+			return(ZSRV_HNOTFOUND);
 		} else if (!strcmp(notice.z_class, LOGIN_CLASS)) {
 			/* 1 = tell it we are authentic */
 			ulogin_dispatch(&notice, 1, &current_who, server);
@@ -462,7 +495,7 @@ struct sockaddr_in *target;
 						      server)) != ZERR_NONE) {
 				syslog(LOG_ERR,"brl register failed: %s",
 				       error_message(retval));
-				break;
+				return(retval);
 			}
 			if (strlen(notice.z_message) + 1 < notice.z_message_len) {
 				/* a C_Block is there */
@@ -476,14 +509,16 @@ struct sockaddr_in *target;
 			/* a subscription packet */
 			if (!client) {
 				syslog(LOG_ERR, "brl no client");
-				break;
+				return(ZSRV_NOCLT);
 			}
 			if ((retval = subscr_subscribe(client, &notice)) != ZERR_NONE) {
 				syslog(LOG_WARNING, "brl subscr failed: %s",
 				       error_message(retval));
+				return(retval);
 			}
 		} else {
 			syslog(LOG_ERR, "brl bad opcode %s",notice.z_opcode);
+			return(ZSRV_UNKNOWNOPCODE);
 			break;
 		}
 	}
@@ -493,12 +528,13 @@ struct sockaddr_in *target;
  * Send all the state from server to the peer.
  */
 
-static void
+static Code_t
 bdump_send_loop(server)
 register ZServerDesc_t *server;
 {
 	register ZHostList_t *host;
 	register ZClientList_t *clist;
+	Code_t retval;
 
 	zdbug((LOG_DEBUG, "bdump send loop"));
 
@@ -506,8 +542,10 @@ register ZServerDesc_t *server;
 	     host != server->zs_hosts;
 	     host = host->q_forw) {
 		/* for each host */
-		send_host_register(host);
-		uloc_send_locations(host);
+		if ((retval = send_host_register(host)) != ZERR_NONE)
+			return(retval);
+		if ((retval = uloc_send_locations(host)) != ZERR_NONE)
+			return(retval);
 		if (!host->zh_clients)
 			continue;
 		for (clist = host->zh_clients->q_forw;
@@ -516,17 +554,20 @@ register ZServerDesc_t *server;
 			/* for each client */
 			if (!clist->zclt_client->zct_subs)
 				continue;
-			subscr_send_subs(clist->zclt_client);
+			if ((retval = subscr_send_subs(clist->zclt_client))
+			    != ZERR_NONE)
+				return(retval);
 		}
 	}
-	send_done();
+	retval = send_done();
+	return(retval);
 }
 
 /*
  * Send a host boot packet to the other server
  */
 
-static void
+static Code_t
 send_host_register(host)
 ZHostList_t *host;
 {
@@ -542,20 +583,23 @@ ZHostList_t *host;
 	/* myname is the hostname */
 	if ((retval = bdump_send_list_tcp(HMCTL, bdump_sin.sin_port, ZEPHYR_CTL_CLASS, ZEPHYR_CTL_HM, HM_BOOT, myname, "", lyst, 2)) != ZERR_NONE)
 		syslog(LOG_ERR, "shr send: %s",error_message(retval));
-	return;
+	return(retval);
 }
 
 /*
  * Send a sync indicating end of this host
  */
 
-static void
+static Code_t
 send_done()
 {
+	Code_t retval;
+
 	zdbug((LOG_DEBUG, "send_done"));
-	send_normal_tcp(SERVACK, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
-			"", ADMIN_DONE, myname, "", (char *) NULL, 0);
-	return;
+	retval = send_normal_tcp(SERVACK, bdump_sin.sin_port,
+				 ZEPHYR_ADMIN_CLASS, "", ADMIN_DONE, myname,
+				 "", (char *) NULL, 0);
+	return(retval);
 }
 
 
@@ -563,7 +607,7 @@ send_done()
  * Send a list off as the specified notice
  */
 
-static void
+static Code_t
 send_list(kind, port, class, inst, opcode, sender, recip, lyst, num)
 ZNotice_Kind_t kind;
 u_short port;
@@ -592,19 +636,21 @@ int num;
 	
 	if ((retval = ZFormatNoticeList(pnotice, lyst, num, pack, packlen, &packlen, ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sl format: %s", error_message(retval));
-		return;
+		return(retval);
 	}
 	
-	if ((retval = ZSendPacket(pack, packlen)) != ZERR_NONE)
+	if ((retval = ZSendPacket(pack, packlen)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sl xmit: %s", error_message(retval));
-	return;
+		return(retval);
+	}
+	return(ZERR_NONE);
 }
 
 /*
  * Send a message off as the specified notice, via TCP
  */
 
-static void
+static Code_t
 send_normal_tcp(kind, port, class, inst, opcode, sender, recip, message, len)
 ZNotice_Kind_t kind;
 u_short port;
@@ -636,28 +682,35 @@ int len;
 	
 	if ((retval = ZFormatNotice(pnotice, pack, packlen, &packlen, ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sn format: %s", error_message(retval));
-		return;
+		return(retval);
 	}
 
 	length = htons((u_short) packlen);
 
 	if ((count = write(ZGetFD(), (caddr_t) &length, sizeof(length))) != sizeof(length)) {
-		if (count < 0)
+		if (count < 0) {
 			syslog(LOG_WARNING, "snt xmit/len: %m");
-		else
+			return(errno);
+		} else {
 			syslog(LOG_WARNING, "snt xmit: %d vs %d",sizeof(length),count);
+			return(ZSRV_LEN);
+		}
 	}
 
 	if ((count = write(ZGetFD(), pack, packlen)) != packlen)
-		if (count < 0)
+		if (count < 0) {
 			syslog(LOG_WARNING, "snt xmit: %m");
-		else
+			return(errno);
+		} else {
 			syslog(LOG_WARNING, "snt xmit: %d vs %d",packlen, count);
+			return(ZSRV_LEN);
+		}
+	return(ZERR_NONE);
 }
 
 /*
  * get a packet from the TCP socket
- * return 0 if successful, 1 else
+ * return 0 if successful, error code else
  */
 
 static Code_t
@@ -674,7 +727,7 @@ int *retlen;				/* RETURN */
 			return(errno);
 		else {
 			syslog(LOG_ERR, "get_pkt len: %d vs %d", result, sizeof(short));
-			return(ZSRV_PKSHORT);
+			return(ZSRV_LEN);
 		}
 	}
 	
@@ -686,7 +739,7 @@ int *retlen;				/* RETURN */
 			return(errno);
 		else {
 			syslog(LOG_ERR, "get_pkt: %d vs %d",result, length);
-			return(ZSRV_PKSHORT);
+			return(ZSRV_LEN);
 		}
 	}
 	*retlen = (int) length;
