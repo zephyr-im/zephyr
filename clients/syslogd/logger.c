@@ -28,6 +28,7 @@ static char sccsid[] = "@(#)logger.c	6.8 (Berkeley) 6/29/88";
 #include <stdio.h>
 #include <syslog.h>
 #include <ctype.h>
+#include <zephyr/zephyr.h>
 
 extern int errno;
 
@@ -97,7 +98,7 @@ main(argc, argv)
 				if (!--argc)
 					break;
 			} else {
-				bcopy(*argv++, p, len);
+				_BCOPY(*argv++, p, len);
 				p += len;
 				if (!--argc)
 					break;
