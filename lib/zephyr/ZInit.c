@@ -30,6 +30,7 @@ Code_t ZInitialize()
     char addr[4];
 #ifdef ZEPHYR_USES_KERBEROS
     int krbval;
+    char d1[ANAME_SZ], d2[INST_SZ];
 
     initialize_krb_error_table();
 #endif
@@ -54,7 +55,8 @@ Code_t ZInitialize()
     __HM_set = 0;
 
 #ifdef ZEPHYR_USES_KERBEROS
-    if ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)
+    if (krb_get_tf_fullname(TKT_FILE, d1, d2, __Zephyr_realm) != KSUCCESS
+	&& (krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)
 	return (krbval);
 #endif
 
@@ -67,3 +69,4 @@ Code_t ZInitialize()
     
     return (ZERR_NONE);
 }
+
