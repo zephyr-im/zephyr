@@ -15,7 +15,7 @@ CODE=Imakefile
 #ifdef LOCAL_LIBS
 LOC_SUBDIRS = et ss
 #endif /*LOCAL_LIBS*/
-SUBDIRS= ${LOC_SUBDIRS} include lib clients server zhm zwgc ozwgc man
+SUBDIRS= ${LOC_SUBDIRS} include lib libdyn clients server zhm zwgc ozwgc man
 /* Need to make sure `all' is the first target */
 all::
 /**/# we need to remove these here; it is not appropriate to remove them
