@@ -33,7 +33,7 @@ world:
 	make ${MFLAGS} all
 #else
 world:
-	(cd imake; make ${MFLAGS} imake)
+	(cd imake; make ${MFLAGS} clean; make ${MFLAGS} imake)
 	make ${MFLAGS} Makefile
 	make ${MFLAGS} Makefiles
 	make ${MFLAGS} depend
