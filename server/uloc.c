@@ -101,7 +101,7 @@ static int num_locs = 0;		/* number in array */
  * Dispatch a LOGIN notice.
  */
 
-void
+Code_t
 ulogin_dispatch(notice, auth, who, server)
 ZNotice_t *notice;
 int auth;
@@ -110,8 +110,13 @@ ZServerDesc_t *server;
 {
 	exposure_type retval;
 	int err_ret;
+	ZHostList_t *host;
 
 	zdbug((LOG_DEBUG,"ulogin_disp"));
+
+	host = hostm_find_host(&who->sin_addr);
+	if (host && host->zh_locked)
+		return(ZSRV_REQUEUE);
 
 	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGOUT)) {
 		zdbug((LOG_DEBUG,"logout"));
@@ -124,11 +129,11 @@ ZServerDesc_t *server;
 				       ntohs(notice->z_port)));
 				if (server == me_server)
 					clt_ack(notice, who, AUTH_FAILED);
-				return;
+				return(ZERR_NONE);
 			} else if (err_ret == NOLOC) {
 				if (server == me_server)
 					clt_ack(notice, who, NOT_FOUND);
-				return;
+				return(ZERR_NONE);
 			} 
 			syslog(LOG_ERR,"bogus location exposure NONE, %s",
 			       notice->z_sender);
@@ -158,13 +163,13 @@ ZServerDesc_t *server;
 		}
 		if (server == me_server) /* tell the other servers */
 			server_forward(notice, auth, who);
-		return;
+		return(ZERR_NONE);
 	}
 	if (!auth) {
 		zdbug((LOG_DEBUG,"unauthentic ulogin"));
 		if (server == me_server)
 			clt_ack(notice, who, AUTH_FAILED);
-		return;
+		return(ZERR_NONE);
 	}
 #ifdef OLD_COMPAT
 	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
@@ -195,17 +200,17 @@ ZServerDesc_t *server;
 			       ntohs(notice->z_port)));
 			if (server == me_server)
 				clt_ack(notice, who, AUTH_FAILED);
-			return;
+			return(ZERR_NONE);
 		} else if (err_ret == NOLOC) {
 			if (server == me_server)
 				clt_ack(notice, who, NOT_FOUND);
-			return;
+			return(ZERR_NONE);
 		}
 		if (server == me_server) {
 			ack(notice, who);
 			server_forward(notice, auth, who);
 		}
-		return;
+		return(ZERR_NONE);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_OPSTAFF)) {
 		zdbug((LOG_DEBUG,"opstaff"));
 		ulogin_add_user(notice, OPSTAFF_VIS, who);
@@ -236,11 +241,11 @@ ZServerDesc_t *server;
 		syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
 		if (server == me_server)
 			nack(notice, who);
-		return;
+		return(ZERR_NONE);
 	}
 	if (server == me_server)
 		server_forward(notice, auth, who);
-	return;
+	return(ZERR_NONE);
 }
 
 static void
@@ -267,7 +272,7 @@ struct sockaddr_in *who;
  * Dispatch a LOCATE notice.
  */
 
-void
+Code_t
 ulocate_dispatch(notice, auth, who, server)
 ZNotice_t *notice;
 int auth;
@@ -283,30 +288,34 @@ ZServerDesc_t *server;
 		zdbug((LOG_DEBUG,"old locate"));
 		ulogin_locate(notice, who);
 		/* does xmit and ack itself, so return */
-		return;
+		return(ZERR_NONE);
 	}
 #endif /* OLD_COMPAT */
 	if (!auth) {
 		zdbug((LOG_DEBUG,"unauthentic ulocate"));
 		if (server == me_server)
 			clt_ack(notice, who, AUTH_FAILED);
-		return;
+		return(ZERR_NONE);
 	}
 #ifdef OLD_COMPAT
 	if (!strcmp(notice->z_version, OLD_ZEPHYR_VERSION)) {
+		ZHostList_t *host = hostm_find_host(&who->sin_addr);
+		if (host && host->zh_locked) /* process later if locked */
+			return(ZSRV_REQUEUE);
+
 		if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
 			zdbug((LOG_DEBUG,"old hide"));
 			if (ulogin_expose_user(notice, OPSTAFF_VIS)) {
 				if (server == me_server)
 					clt_ack(notice, who, NOT_FOUND);
-				return;
+				return(ZERR_NONE);
 			}
 		} else if (!strcmp(notice->z_opcode, LOCATE_UNHIDE)) {
 			zdbug((LOG_DEBUG,"old unhide"));
 			if (ulogin_expose_user(notice, REALM_VIS)) {
 				if (server == me_server)
 					clt_ack(notice, who, NOT_FOUND);
-				return;
+				return(ZERR_NONE);
 			}
 		}
 	} else
@@ -315,7 +324,7 @@ ZServerDesc_t *server;
 		zdbug((LOG_DEBUG,"locate"));
 		ulogin_locate(notice, who);
 		/* does xmit and ack itself, so return */
-		return;
+		return(ZERR_NONE);
 	} else {
 		syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
 		if (server == me_server)
@@ -325,7 +334,7 @@ ZServerDesc_t *server;
 		server_forward(notice, auth, who);
 		ack(notice, who);
 	}
-	return;
+	return(ZERR_NONE);
 }
 
 /*
@@ -350,6 +359,11 @@ struct in_addr *addr;
 	while (i < num_locs) {
 		if (locations[i].zlt_addr.s_addr != addr->s_addr)
 			loc[new_num++] = locations[i];
+		else if (zdebug)
+			syslog(LOG_DEBUG, "uloc hflushing %s/%s/%s",
+			       locations[i].zlt_user,
+			       locations[i].zlt_machine,
+			       locations[i].zlt_tty);
 		i++;
 	}
 
@@ -398,6 +412,11 @@ struct sockaddr_in *sin;
 		if ((locations[i].zlt_addr.s_addr != sin->sin_addr.s_addr)
 		     && (locations[i].zlt_port != sin->sin_port))
 			loc[new_num++] = locations[i];
+		else if (zdebug)
+			syslog(LOG_DEBUG, "uloc cflushing %s/%s/%s",
+			       locations[i].zlt_user,
+			       locations[i].zlt_machine,
+			       locations[i].zlt_tty);
 		i++;
 	}
 
