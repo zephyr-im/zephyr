@@ -29,7 +29,7 @@ Code_t ZSendNotice(notice)
 
 	len = BUFSIZ;
 
-	if ((retval = ZFormatNotice(notice,buffer,sizeof buffer,&len)) < 0) {
+	if ((retval = ZFormatNotice(notice,buffer,BUFSIZ,&len)) < 0) {
 		free(buffer);
 		return (retval);
 	}
