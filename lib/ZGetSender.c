@@ -14,7 +14,7 @@
 
 #ifndef lint
 static char rcsid_ZGetSender_c[] =
-    "$Zephyr: ZGetSender.c,v 1.7 88/05/13 15:05:07 rfrench Exp $";
+    "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
