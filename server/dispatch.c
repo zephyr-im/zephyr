@@ -74,6 +74,7 @@ ZSTRING *class_control, *class_admin, *class_hm, *class_ulogin,
 
 static void nack_cancel P((register ZNotice_t *, struct sockaddr_in *));
 static void dispatch P((ZNotice_t *, int, struct sockaddr_in *, int));
+static int send_to_dest P((ZNotice_t *, int, ZDestination *dest, int));
 
 #undef P
 
@@ -214,13 +215,11 @@ handle_packet()
 		input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
 		input_sin.sin_port = new_notice.z_port;
 		input_sin.sin_family = AF_INET;
-		authentic = ZCheckAuthentication(&new_notice,
-						 &input_sin);
+		authentic = ZCheckAuthentication(&new_notice, &input_sin);
 		from_server = 1;
 	} else {
 		from_server = 0;
-		authentic = ZCheckAuthentication(&new_notice,
-						 &whoisit);
+		authentic = ZCheckAuthentication(&new_notice, &whoisit);
 	}
 	switch (authentic) {
 	case ZAUTH_YES:
@@ -346,19 +345,20 @@ sendit(notice, auth, who)
      int auth;
      struct sockaddr_in *who;
 {
-	int acked = 0;
+	static int send_counter = 0;
+	int any = 0;
 	ZAcl_t *acl;
-	register ZClientList_t *clientlist, *ptr;
-	ZSTRING *z;
+	ZDestination dest;
+	ZSTRING *class;
 
-	z = make_zstring(notice->z_class,1);
-	if ((acl = class_get_acl(z)) != NULLZACLT) {
-	  free_zstring(z);
+	class = make_zstring(notice->z_class,1);
+	if ((acl = class_get_acl(class)) != NULLZACLT) {
 	    /* if controlled and not auth, fail */
 	    if (!auth) {
 		syslog(LOG_WARNING, "sendit unauthentic %s from %s",
 		       notice->z_class, notice->z_sender);
 		clt_ack(notice, who, AUTH_FAILED);
+		free_zstring(class);
 		return;
 	    }
 	    /* if not auth to transmit, fail */
@@ -366,6 +366,7 @@ sendit(notice, auth, who)
 		syslog(LOG_WARNING, "sendit unauthorized %s from %s",
 		       notice->z_class, notice->z_sender);
 		clt_ack(notice, who, AUTH_FAILED);
+		free_zstring(class);
 		return;
 	    }
 	  /* sender != inst and not auth to send to others --> fail */
@@ -377,6 +378,7 @@ sendit(notice, auth, who)
 		   notice->z_class,
 		   notice->z_class_inst);
 	    clt_ack(notice, who, AUTH_FAILED);
+	    free_zstring(class);
 	    return;
 	  }
 	}
@@ -391,35 +393,79 @@ sendit(notice, auth, who)
 		syslog(LOG_WARNING, "sendit unauthentic fake packet: claimed %s, real %s",
 		       inet_ntoa(notice->z_sender_addr), buffer);
 		clt_ack(notice, who, AUTH_FAILED);
+		free_zstring(class);
 		return;
 	    }
 	    if (ntohl(notice->z_sender_addr.s_addr) != 0) {
 		syslog(LOG_WARNING, "sendit invalid address: claimed %s, real %s",
 		       inet_ntoa(notice->z_sender_addr), buffer);
 		clt_ack(notice, who, AUTH_FAILED);
+		free_zstring(class);
 		return;
 	    }
 	    syslog(LOG_WARNING, "sendit addr mismatch: claimed %s, real %s",
 		   inet_ntoa(notice->z_sender_addr), buffer);
 	}
-	if ((clientlist = subscr_match_list(notice)) != NULLZCLT) {
-		for (ptr = clientlist->q_forw;
-		     ptr != clientlist;
-		     ptr = ptr->q_forw) {
-			/* for each client who gets this notice,
-			   send it along */
-			xmit(notice, &(ptr->zclt_client->zct_sin), auth,
-			     ptr->zclt_client);
-			if (!acked) {
-				acked = 1;
-				ack(notice, who);
-			}
-		}
-		subscr_free_list(clientlist);
-	}
 
-	if (!acked)
+	/* Increment the send counter, used to prevent duplicate sends to
+	 * clients.  On the off-chance that we wrap around to 0, skip over
+	 * it to prevent missing clients which have never had a packet
+	 * sent to them. */
+	send_counter++;
+	if (send_counter == 0)
+		send_counter = 1;
+
+	/* Send to clients subscribed to the triplet itself. */
+	dest.classname = class;
+	dest.inst = make_zstring(notice->z_class_inst, 1);
+	dest.recip = make_zstring(notice->z_recipient, 0);
+	if (send_to_dest(notice, auth, &dest, send_counter))
+		any = 1;
+
+	/* Send to clients subscribed to the triplet with the instance
+	 * substituted with the wildcard instance. */
+	free_zstring(dest.inst);
+	dest.inst = wildcard_instance;
+	if (send_to_dest(notice, auth, &dest, send_counter))
+		any = 1;
+
+	free_zstring(class);
+	free_zstring(dest.recip);
+	if (any)
+		ack(notice, who);
+	else
 		nack(notice, who);
+}
+
+/*
+ * Send to each client in the list.  Avoid duplicates by setting
+ * last_send on each client to send_counter, a nonce which is updated
+ * by sendit() above.
+ */
+
+static int
+send_to_dest(notice, auth, dest, send_counter)
+     ZNotice_t *notice;
+     int auth;
+     ZDestination *dest;
+     int send_counter;
+{
+	register ZClientList_t *list, *p;
+	register ZClient_t *client;
+	register int any = 0;
+
+	list = triplet_lookup(dest);
+	if (list != NULLZCLT) {
+		for (p = list->q_forw; p != list; p = p->q_forw) {
+			client = p->zclt_client;
+			if (client->last_send == send_counter)
+				continue;
+			client->last_send = send_counter;
+			xmit(notice, &(client->zct_sin), auth, client);
+			any = 1;
+		}
+	}
+	return any;
 }
 
 /*
