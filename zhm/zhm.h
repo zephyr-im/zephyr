@@ -74,9 +74,9 @@ extern int rexmit_times[];
 #endif
 #endif
 
-#if defined(ultrix) && defined(mips)
+#if (defined(ultrix) || defined(sgi)) && defined(mips)
 #define adjust_size(size)	size -= 0x10000000
-#endif /* ultrix && mips */
+#endif /* (ultrix || sgi) && mips */
 
 #if defined(__alpha)
 #define adjust_size(size)	size -= 0x140000000
