@@ -153,6 +153,9 @@ struct _Z_InputQ *Z_SearchQueue(uid, kind)
  * Now we delve into really convoluted queue handling and
  * fragmentation reassembly algorithms and other stuff you probably
  * don't want to look at...
+ *
+ * This routine does NOT guarantee a complete packet will be ready when it
+ * returns.
  */
 
 Code_t Z_ReadWait()
@@ -164,7 +167,10 @@ Code_t Z_ReadWait()
     int from_len, packet_len, part, partof;
     char *slash;
     Code_t retval;
-	
+    static ZUnique_Id_t old_uids[Z_FILTERDEPTH];
+    static int filter_idx = -1;
+    register int i;
+
     if (ZGetFD() < 0)
 	return (ZERR_NOPORT);
 	
@@ -182,6 +188,17 @@ Code_t Z_ReadWait()
     /* Parse the notice */
     if ((retval = ZParseNotice(packet, packet_len, &notice)) != ZERR_NONE)
 	return (retval);
+
+    if (filter_idx == -1) {
+	    for (i = 0; i < Z_FILTERDEPTH; i++)
+		    bzero((char *) &old_uids[i], sizeof(Z_Unique_Id_t));
+	    filter_idx = 0;
+    } else {
+	    for (i = 0; i < Z_FILTERDEPTH; i++)
+		    if (ZCompareUID(&notice.z_multiuid, &old_uids[i]))
+			    return(ZERR_NONE);
+	    old_uids[filter_idx++] = notice.z_multiuid;
+    }
 
     /*
      * If we're not a server and the notice is of an appropriate kind,
@@ -299,8 +316,9 @@ Code_t Z_ReadWait()
     /*
      * If this is not a fragmented notice, then don't bother with a
      * hole list.
+     * If we are a Zephyr server, all notices are treated as complete.
      */
-    if (part == 0 && notice.z_message_len == partof) {
+    if (__Zephyr_Server || (part == 0 && notice.z_message_len == partof)) {
 	__Q_CompleteLength++;
 	qptr->holelist = NULL;
 	qptr->complete = 1;
@@ -700,9 +718,10 @@ Z_RemQueue(qptr)
     return (ZERR_NONE);
 }
 
-Code_t Z_SendFragmentedNotice(notice, len)
+Code_t Z_SendFragmentedNotice(notice, len, func)
     ZNotice_t *notice;
     int len;
+    Code_t (*func)();
 {
     ZNotice_t partnotice;
     ZPacket_t buffer;
@@ -743,7 +762,8 @@ Code_t Z_SendFragmentedNotice(notice, len)
 	    free(buffer);
 	    return (retval);
 	}
-	if ((retval = ZSendPacket(buffer, ret_len, waitforack)) != ZERR_NONE) {
+	if ((retval = (*func)(notice, buffer, ret_len, waitforack)) !=
+	    ZERR_NONE) {
 	    free(buffer);
 	    return (retval);
 	}
@@ -753,4 +773,14 @@ Code_t Z_SendFragmentedNotice(notice, len)
     }
 
     return (ZERR_NONE);
+}
+
+/*ARGSUSED*/
+Code_t Z_XmitFragment(notice, buf, len, wait)
+ZNotice_t *notice;
+char *buf
+int len;
+int wait;
+{
+	return(ZSendPacket(buf, len, wait));
 }
