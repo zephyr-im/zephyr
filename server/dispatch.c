@@ -61,19 +61,6 @@ long rexmit_secs = REXMIT_SECS;
 long abs_timo = REXMIT_SECS*NUM_REXMITS + 10;
 int current_msg;
 
-#ifdef DEBUG
-extern const char *pktypes[] = {
-	"UNSAFE",
-	"UNACKED",
-	"ACKED",
-	"HMACK",
-	"HMCTL",
-	"SERVACK",
-	"SERVNAK",
-	"CLIENTACK"
-};
-#endif
-
 extern const ZString class_control (ZEPHYR_CTL_CLASS, 1);
 extern const ZString class_admin (ZEPHYR_ADMIN_CLASS, 1);
 extern const ZString class_hm (HM_CTL_CLASS, 1);
@@ -261,7 +248,7 @@ dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who, int from_server) {
 	    char buf[BUFSIZ];
 	    (void) sprintf (buf,
 		    "disp:%s '%s' '%s' '%s' notice to '%s' from '%s' %s/%d/%d",
-			pktypes[(int) notice.notice->z_kind],
+			ZNoticeKinds[(int) notice.notice->z_kind],
 			notice.dest.classname.value (),
 			notice.dest.inst.value (),
 			notice.notice->z_opcode,
