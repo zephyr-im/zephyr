@@ -9,6 +9,7 @@
 #include <sys/param.h>
 
 #include <zephyr/zephyr.h>
+#include <krb_err.h>
 
 #include "zutils.h"
 
@@ -125,7 +126,7 @@ Code_t set_exposure(zrealm, exposure)
      char *exposure;
 {
     char *exp_level, *realm_exp_level, zvar[1024];
-    Code_t retval;
+    Code_t code, retval;
     int cnt, i;
 
     exp_level = ZParseExposureLevel(exposure);
@@ -164,18 +165,25 @@ Code_t set_exposure(zrealm, exposure)
 	    if (strcmp(realm_exp_level, EXPOSE_NONE) == 0)
 		continue;
 
-	    if ((retval = ZSetLocation(zrealm, exp_level)) != ZERR_NONE)
-		return(retval);
+	    if ((code = ZSetLocation(zrealm, exp_level)) != ZERR_NONE) {
+	       retval = code;
+	       continue;
+	    }
 #ifdef ZCTL
 	    if (strcmp(exp_level,EXPOSE_NONE) == 0) {
-		if (retval = send_wgc_control(USER_SHUTDOWN, NULL, 0))
-		    return(retval);
+		if (code = send_wgc_control(USER_SHUTDOWN, NULL, 0)) {
+		    retval = code;
+		    continue;
+		}
 	    } else {
-		if (retval = send_wgc_control(USER_STARTUP, NULL, 0))
-		    return(retval);
+		if (code = send_wgc_control(USER_STARTUP, NULL, 0)) {
+		    retval = code;
+		    continue;
+		}
 	    }
 #endif
 	}
+	return((retval == KRBET_AD_NOTGT)?ZERR_NONE:retval);
     } else {
 	if ((retval = ZSetLocation(zrealm, exp_level)) != ZERR_NONE)
 	    return(retval);
@@ -432,7 +440,7 @@ Code_t load_all_sub_files(type, basefile)
 	int type;
 	char *basefile;
 {
-    Code_t retval;
+    Code_t retval, code;
     int i, cnt;
     char *realm, *exp;
     char fn[MAXPATHLEN];
@@ -463,16 +471,17 @@ Code_t load_all_sub_files(type, basefile)
 	    printf("For realm %s:\n", realm);
 
 	if ((i == 0) && basefile) {
-	    if ((retval = load_sub_file(type, basefile, realm))
+	    if ((code = load_sub_file(type, basefile, realm))
 		!= ZERR_NONE)
-		return(retval);
+		retval = code;
 	}
 
-	if ((retval = load_sub_file(type, basefile?fn:NULL, realm))
+	if ((code = load_sub_file(type, basefile?fn:NULL, realm))
 	    != ZERR_NONE)
-	    return(retval);
+	    retval = code;
 
 	if (type == LIST)
 		printf("\n");
     }
+    return((retval == KRBET_AD_NOTGT)?ZERR_NONE:retval);
 }
