@@ -22,6 +22,9 @@ static char rcsid_ZInitialize_c[] = "$Header$";
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/param.h>
+#ifdef KERBEROS
+#include "krb_err.h"
+#endif
 
 Code_t ZInitialize()
 {
