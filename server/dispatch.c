@@ -741,7 +741,7 @@ nack_cancel(register ZNotice_t *notice, struct sockaddr_in *who)
 
 	/* search the not-yet-acked list for this packet, and
 	   flush it. */
-#if 1
+#if 0
 	zdbug((LOG_DEBUG, "nack_cancel: %s:%08X,%08X",
 	       inet_ntoa (notice->z_uid.zuid_addr),
 	       notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
@@ -887,12 +887,14 @@ control_dispatch(ZNotice_t *notice, int auth, sockaddr_in *who,
 			if (zdebug) {
 			    if (server == me_server)
 				syslog (LOG_DEBUG,
-					"subscription cancel for %s\n",
-					inet_ntoa (who->sin_addr));
+					"subscription cancel for %s/%d\n",
+					inet_ntoa (who->sin_addr),
+					ntohs (who->sin_port));
 			    else
 				syslog (LOG_DEBUG,
-					"subscription cancel for %s from %s\n",
+				"subscription cancel for %s/%d from %s\n",
 					inet_ntoa (who->sin_addr),
+					ntohs (who->sin_port),
 					server->addr);
 			}
 #endif
@@ -917,8 +919,9 @@ control_dispatch(ZNotice_t *notice, int auth, sockaddr_in *who,
 #if 1
 				if (zdebug)
 					syslog(LOG_DEBUG,
-					       "cancelsub clt_dereg %s",
-					       inet_ntoa (who->sin_addr));
+					       "cancelsub clt_dereg %s/%d",
+					       inet_ntoa (who->sin_addr),
+					       ntohs (who->sin_port));
 #endif
 				hostm_lose_ignore(client);
 				(void) client_deregister(client, host, 0);

@@ -257,16 +257,21 @@ hostm_flush(ZHostList_t *host, ZServerDesc_t *server)
 			} else
 				lhp = lhp->q_forw;
 
-	if ((clist = host->zh_clients))
+	if ((clist = host->zh_clients)) {
+		char buf[16];
+		strcpy (buf, inet_ntoa (host->zh_addr.sin_addr));
 		for (clt = clist->q_forw; clt != clist; clt = clist->q_forw) {
 			/* client_deregister frees this client & subscriptions
 			   & locations and remque()s the client */
-#if 0
+#if 1
 			if (zdebug)
-				syslog(LOG_DEBUG, "hostm_flush clt_dereg");
+			    syslog (LOG_DEBUG, "hostm_flush clt_dereg %s/%d",
+				    buf,
+				    ntohs (clt->zclt_client->zct_sin.sin_port));
 #endif
 			client_deregister(clt->zclt_client, host, 1);
 		}
+	}
 
 	uloc_hflush(&host->zh_addr.sin_addr);
 	host_detach(host, server);
@@ -529,8 +534,10 @@ hostm_transfer(ZHostList_t *host, ZServerDesc_t *server)
 
 	/* we need to unlink and relink him, and change the table entry */
 
-#if 0
-	zdbug((LOG_DEBUG, "hostm_transfer 0x%x to 0x%x", host, server));
+#if 1
+	if (zdebug)
+	    syslog (LOG_DEBUG, "hostm_transfer %s to %s",
+		    inet_ntoa (host->zh_addr.sin_addr), server->addr);
 #endif
 
 	/* is this the same server? */
@@ -563,6 +570,11 @@ host_attach(struct sockaddr_in *who, ZServerDesc_t *server)
 	register ZClientList_t *clist;
 	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
+#if 1
+	if (zdebug)
+	    syslog (LOG_DEBUG, "host_attach %s to %s",
+		    inet_ntoa (who->sin_addr), server->addr);
+#endif
 	/* allocate a header */
 	hlist = new ZHostList_t;
 	if (!hlist) {
@@ -603,9 +615,13 @@ host_detach(register ZHostList_t *host, ZServerDesc_t *server)
 {
 	/* undo what we did in host_attach */
 	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
+	ZServerDesc_t *server2 = hostm_find_server (&host->zh_addr.sin_addr);
 
-	if (hostm_find_server(&host->zh_addr.sin_addr) != server) {
-		syslog(LOG_WARNING, "host_detach: wrong server");
+	if (server2 != server) {
+		syslog(LOG_WARNING,
+		       "host_detach: wrong server: %s from %s, found %s",
+		       inet_ntoa (host->zh_addr.sin_addr),
+		       server->addr, server2->addr);
 		(void) sigsetmask(omask);
 		return;
 	}
