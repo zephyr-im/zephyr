@@ -145,7 +145,8 @@ main(argc,argv)
 		for (;;) {
 			if (!fgets(bfr,sizeof bfr,stdin))
 				break;
-			if (bfr[0] == '.' && bfr[1] == '\0')
+			if (bfr[0] == '.' &&
+			    (bfr[1] == '\n' || bfr[1] == '\0'))
 				break;
 			if (strlen(bfr)+(ptr-message) > Z_MAXPKTLEN-len-FUDGEFACTOR) {
 				if (isatty(0))
