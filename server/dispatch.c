@@ -692,7 +692,8 @@ ZServerDesc_t *server;
 
 	if (!strcmp(notice->z_class_inst, ZEPHYR_CTL_HM))
 		return(hostm_dispatch(notice, auth, who, server));
-	else if (!strcmp(opcode, CLIENT_GIMMESUBS)) {
+	else if (!strcmp(opcode, CLIENT_GIMMESUBS) ||
+		 !strcmp(opcode, CLIENT_GIMMEDEFS)) {
 		/* this special case is before the auth check so that
 		   someone who has no subscriptions does NOT get a SERVNAK
 		   but rather an empty list.  Note we must therefore
