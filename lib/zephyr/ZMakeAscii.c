@@ -20,6 +20,12 @@ static char rcsid_ZMakeAscii_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
+static
+#ifdef __STDC__
+    const
+#endif
+    char itox_chars[] = "0123456789ABCDEF";
+
 Code_t ZMakeAscii(ptr, len, field, num)
     char *ptr;
     int len;
@@ -29,9 +35,11 @@ Code_t ZMakeAscii(ptr, len, field, num)
     int i;
 
     for (i=0;i<num;i++) {
-	if (!(i%4)) {
-	    if (len < 3+(i!=0))
-		return (ZERR_FIELDLEN);
+	/* we need to add "0x" if we are between 4 byte pieces */
+	if (i%4 == 0) {
+	    if (len < (i?4:3))
+		return ZERR_FIELDLEN;
+	    /* except at the beginning, put a space in before the "0x" */
 	    if (i) {
 		*ptr++ = ' ';
 		len--;
@@ -41,22 +49,12 @@ Code_t ZMakeAscii(ptr, len, field, num)
 	    len -= 2;
 	} 
 	if (len < 3)
-	    return (ZERR_FIELDLEN);
-	*ptr++ = Z_cnvt_itox((int) (field[i] >> 4));
-	*ptr++ = Z_cnvt_itox((int) (field[i] & 0xf));
+	    return ZERR_FIELDLEN;
+	*ptr++ = itox_chars[(int) (field[i] >> 4)];
+	*ptr++ = itox_chars[(int) (field[i] & 0xf)];
 	len -= 2;
     }
 
     *ptr = '\0';
-    return (ZERR_NONE);
-}
-
-Z_cnvt_itox(i)
-    int i;
-{
-    i += '0';
-    if (i <= '9')
-	return (i);
-    i += 'A'-'9'-1;
-    return (i);
+    return ZERR_NONE;
 }
