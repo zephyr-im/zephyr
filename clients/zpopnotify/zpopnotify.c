@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -77,7 +77,7 @@ main(argc,argv)
 	notice.z_opcode = "";
 	notice.z_sender = mysender;
 	notice.z_recipient = ptr;
-	notice.z_default_format = "";
+	notice.z_default_format = "From Post Office $1:\n$2";
 	
 	if ((retval = ZSendList(&notice,lines,2,ZNOAUTH)) != ZERR_NONE) {
 		com_err(whoami,retval,"while sending notice");
