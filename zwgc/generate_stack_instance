@@ -1,0 +1,20 @@
+#!/bin/csh -f
+
+set source=/afs/athena.mit.edu/astaff/project/zephyr/@sys/zwgc/zwgc.dev
+
+if (z$1x == zx) then
+	echo "usage: generate_stack_instance <typename> [<include file>]"
+	exit 1
+endif
+if (-r $source/stack.h) then
+else
+	echo "generate_stack_instance: unable to open" $source/stack.h
+	exit 2
+endif
+
+if (z$2x == zx) then
+	echo > $1_stack.h
+else
+	echo "#include" '"'$2'"' > $1_stack.h
+endif
+sed "s/TYPE_T/$1/g" $source/stack.h >> $1_stack.h
