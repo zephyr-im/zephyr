@@ -39,10 +39,10 @@ install:
 	$(ENSUREDIR) $(mandir)/man1 755
 	$(ENSUREDIR) $(mandir)/man3 755
 	$(ENSUREDIR) $(mandir)/man8 755
-	$(INSTALL) -m 644 -c $(srcdir)/h/zephyr/mit-copyright.h \
+	$(INSTALL) -m 644 $(srcdir)/h/zephyr/mit-copyright.h \
 		$(includedir)/zephyr
-	$(INSTALL) -m 644 -c h/zephyr/zephyr.h $(includedir)/zephyr
-	$(INSTALL) -m 644 -c h/zephyr/zephyr_err.h $(includedir)/zephyr
+	$(INSTALL) -m 644 h/zephyr/zephyr.h $(includedir)/zephyr
+	$(INSTALL) -m 644 h/zephyr/zephyr_err.h $(includedir)/zephyr
 	for i in $(SUBDIRS); do (cd $$i; $(MAKE) $(MFLAGS) $@) || exit 1; done
 
 .PHONY: all check install clean

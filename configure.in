@@ -6,24 +6,23 @@ if test ! -d h/zephyr; then mkdir h/zephyr; fi
 
 dnl Command-line option to enable Athena paths.
 AC_ARG_ENABLE(athena,
-	      [  --enable-athena         Use Athena paths],
+	      [  --enable-athena         Use Athena defaults],
 	      [hesiod=yes
 	       kerberos=yes
 	       if test "${prefix}" = "NONE"; then prefix=/usr/athena; fi
-	       datadir=${prefix}/lib/zephyr
-	       confdir=/etc/athena/zephyr
-	       sbindir=${prefix}/etc
-	       lsbindir=/etc/athena
+	       datadir=${datadir-'$(prefix)/lib/zephyr'}
+	       confdir=${confdir-'/etc/athena/zephyr'}
+	       sbindir=${sbindir-'$(exec_prefix)/etc'}
+	       lsbindir=${lsbindir-'/etc/athena'}
 	       COMPILE_ET=compile_et
 	       MK_CMDS=mk_cmds
 	       CPPFLAGS="${CPPFLAGS} -I/usr/athena/include"
 	       LDFLAGS="${LDFLAGS} -L/usr/athena/lib"
 	       INITPROGS=${lsbindir}/zinit],
-	      [if test "${prefix}" = "NONE"; then prefix=/usr/local; fi
-	       datadir=${prefix}/share/zephyr
-	       confdir=${prefix}/etc/zephyr
-	       sbindir=${prefix}/sbin
-	       lsbindir=${prefix}/sbin
+	      [datadir=${datadir-'$(prefix)/share/zephyr'}
+	       confdir=${confdir-'$(prefix)/etc/zephyr'}
+	       sbindir=${sbindir-'$(exec_prefix)/sbin'}
+	       lsbindir=${lsbindir-'$(exec_prefix)/sbin'}
 	       SUPPORT_LIBS="et ss"
 	       ET_LDFLAGS='-L$(BUILDTOP)/lib/et'
 	       ETDEP='$(BUILDTOP)/lib/et/libcom_err.a'
@@ -48,8 +47,9 @@ AC_SUBST(SSDEP)
 AC_SUBST(COMPILE_ET)
 AC_SUBST(MK_CMDS)
 AC_SUBST(INITPROGS)
-AC_DEFINE_UNQUOTED(CONFDIR, "${confdir}")
-AC_DEFINE_UNQUOTED(DATADIR, "${datadir}")
+
+AC_CANONICAL_SYSTEM
+AC_DEFINE_UNQUOTED(MACHINE_TYPE, "$host")
 
 dnl Command-line option to disable Hesiod support
 AC_ARG_WITH(hesiod,
@@ -89,11 +89,11 @@ AC_PROG_RANLIB
 
 AC_MSG_CHECKING(location of temporary directory)
 if test -d /var/tmp; then
-	found_tmp=/var/tmp
+	found_tmp=/var/tmp/
 elif test -d /usr/tmp; then
-	found_tmp=/usr/tmp
+	found_tmp=/usr/tmp/
 else
-	found_tmp=/tmp
+	found_tmp=/tmp/
 fi
 AC_DEFINE_UNQUOTED(FOUND_TMP, "${found_tmp}")
 AC_MSG_RESULT(${found_tmp})
@@ -131,14 +131,26 @@ else
 	AC_WARN([Can't find 32-bit type, using long])
 	int32=long
 fi
-AC_DEFINE_UNQUOTED(INT_32_TYPE, ${int32})
+AC_DEFINE_UNQUOTED(ZEPHYR_INT32, ${int32})
 AC_MSG_RESULT(${int32})
 
 AC_CHECK_LIB(w, wslen)
 AC_CHECK_LIB(dl, dlopen)
-AC_CHECK_LIB(socket, socket)
-AC_CHECK_LIB(nsl, gethostbyname)
-AC_CHECK_LIB(resolv, res_send)
+
+# Hesiod needs -lresolv on Sun systems for res_send.  Check this before
+# -lnsl, so that most name resolution gets done by -lnsl.
+if test "$hesiod" != "no"; then
+	AC_CHECK_LIB(resolv, res_send)
+fi
+
+# If we can't find connect, try looking in -lsocket and -lnsl.  The
+# Irix 5 libc.so has connect and gethostbyname, but Irix 5 also has
+# libsocket.so which has a bad implementation of gethostbyname (it
+# only looks in /etc/hosts), so we only look for -lsocket if we need
+# it.
+AC_FUNC_CHECK(connect, :, [AC_CHECK_LIB(socket, socket)
+			   AC_CHECK_LIB(nsl, gethostbyname)])
+
 AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
 AC_CHECK_LIB(gen, regcmp, [RLIB=-lgen])
 AC_CHECK_LIB(src, srcsrpy, [SLIB=-lsrc; AC_DEFINE(HAVE_SRC)])
