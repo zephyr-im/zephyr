@@ -741,6 +741,9 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	    return (ZERR_HEADERLEN);
     }
     else {
+	if (strlen(notice->z_recipient) + strlen(__Zephyr_realm) + 2 >
+	    sizeof(newrecip))
+	    return (ZERR_HEADERLEN);
 	(void) sprintf(newrecip, "%s@%s", notice->z_recipient, __Zephyr_realm);
 	if (Z_AddField(&ptr, newrecip, end))
 	    return (ZERR_HEADERLEN);

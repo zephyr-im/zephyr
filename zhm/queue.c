@@ -68,8 +68,14 @@ Code_t add_notice_to_queue(notice, packet, repl, len)
     DPR("Adding notice to queue...\n");
     if (!find_notice_in_queue(notice)) {
 	entry = (Queue *) malloc(sizeof(Queue));
+	if (entry == NULL)
+	    return(ZERR_NONOTICE);
 	entry->retries = 0;
 	entry->packet = (char *) malloc(Z_MAXPKTLEN);
+	if (entry->packet == NULL) {
+	    free(entry);
+	    return(ZERR_NONOTICE);
+	}
 	memcpy(entry->packet, packet, Z_MAXPKTLEN);
 	if (ZParseNotice(entry->packet, len, &entry->notice) != ZERR_NONE) {
 	    syslog(LOG_ERR, "ZParseNotice failed, but succeeded before");

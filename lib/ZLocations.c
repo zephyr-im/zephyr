@@ -38,8 +38,10 @@ Code_t ZInitLocationInfo(hostname, tty)
 	if (gethostname(host, MAXHOSTNAMELEN) < 0)
 	    return (errno);
 	hent = gethostbyname(host);
-	if (hent)
-	   (void) strcpy(host, hent->h_name);
+	if (hent) {
+	   (void) strncpy(host, hent->h_name, sizeof(host));
+	   host[sizeof(host) - 1] = '\0';
+	}
     }
     if (tty) {
 	strcpy(mytty, tty);

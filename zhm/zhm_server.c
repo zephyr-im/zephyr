@@ -113,7 +113,8 @@ char *sugg_serv;
      if (done) {
 	  if ((hp = gethostbyname(sugg_serv)) != NULL) {
 	       DPR2 ("Server = %s\n", sugg_serv);	
-	       (void)strcpy(cur_serv, sugg_serv);
+	       (void)strncpy(cur_serv, sugg_serv, MAXHOSTNAMELEN);
+	       cur_serv[MAXHOSTNAMELEN - 1] = '\0';
 	       if (hmdebug)
 		    syslog(LOG_DEBUG, "Suggested server: %s\n", sugg_serv);
 	  } else {
@@ -125,7 +126,8 @@ char *sugg_serv;
 	     serv_loop = 0;
 	     if ((hp = gethostbyname(prim_serv)) != NULL) {
 		 DPR2 ("Server = %s\n", prim_serv);
-		 (void)strcpy(cur_serv, prim_serv);
+		 (void)strncpy(cur_serv, prim_serv, MAXHOSTNAMELEN);
+		 cur_serv[MAXHOSTNAMELEN - 1] = '\0';
 		 done = 1;
 		 break;
 	     }
@@ -135,7 +137,8 @@ char *sugg_serv;
 	 case 1:
 	     if ((hp = gethostbyname(*serv_list)) != NULL) {
 		 DPR2 ("Server = %s\n", *serv_list);
-		 (void)strcpy(cur_serv, *serv_list);
+		 (void)strncpy(cur_serv, *serv_list, MAXHOSTNAMELEN);
+		 cur_serv[MAXHOSTNAMELEN - 1] = '\0';
 		 done = 1;
 		 break;
 	     }
@@ -153,7 +156,8 @@ char *sugg_serv;
 
 	     if ((hp = gethostbyname(new_serv)) != NULL) {
 		 DPR2 ("Server = %s\n", new_serv);
-		 (void)strcpy(cur_serv, new_serv);
+		 (void)strncpy(cur_serv, new_serv, MAXHOSTNAMELEN);
+		 cur_serv[MAXHOSTNAMELEN - 1] = '\0';
 		 done = 1;
 	     } else
 		 sleep(1);
@@ -161,7 +165,7 @@ char *sugg_serv;
 	     break;
 	 }
      }
-     (void) memcpy((char *)&serv_sin.sin_addr, hp->h_addr, hp->h_length);
+     (void) memcpy((char *)&serv_sin.sin_addr, hp->h_addr, 4);
      nservchang++;
 }
 
@@ -199,7 +203,7 @@ ZNotice_t *notice;
 {
     Code_t ret;
     struct hostent *hp;
-    char suggested_server[64];
+    char suggested_server[MAXHOSTNAMELEN];
     unsigned long addr;
      
     DPR("Control message!\n");
@@ -208,7 +212,8 @@ ZNotice_t *notice;
 	    addr = inet_addr(notice->z_message);
 	    hp = gethostbyaddr((char *) &addr, sizeof(addr), AF_INET);
 	    if (hp != NULL) {
-		strcpy(suggested_server, hp->h_name);
+		strncpy(suggested_server, hp->h_name, sizeof(suggested_server));
+		suggested_server[sizeof(suggested_server) - 1] = '\0';
 		new_server(suggested_server);
 	    } else {
 		new_server(NULL);
