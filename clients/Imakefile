@@ -1,4 +1,4 @@
-/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#	Copyright 1988, 1993 Massachusetts Institute of Technology.
 /**/#
 /**/#	For copying and distribution information, see the file
 /**/#	"mit-copyright.h". 
@@ -7,43 +7,14 @@
 /**/#	$Author$
 /**/#	$Header$
 /**/#
-#define have_subdirs
-#define no_curdir_lint
-
-SRCDIR= ${SRCTOP}/clients
-CODE= Imakefile ${SHELLSRC}
-
-#ifdef DO_SYSLOG
-SYSLOGD= syslogd
-#else /* !DO_SYSLOG */
-SYSLOGD=
-#endif
 
 #ifndef X11_NO_XAW
 XZWRITE=xzwrite
 #endif
-
 #if defined(HESIOD) && defined(KERBEROS)
 ZMAILNOTIFY= zmailnotify
-#else /* !HESIOD || !KERBEROS */
-/* zmailnotify will only compile properly with Hesiod and Kerberos, so
-   there is no sense in building it when either is not in use. */
-ZMAILNOTIFY=
-#endif /* HESIOD && KERBEROS */
-
-SUBDIRS = zaway zctl zleave zlocate \
-	$(ZMAILNOTIFY) znol zpopnotify zshutdown_notify zstat zwrite \
-	$(SYSLOGD) $(XZWRITE)
-
-#ifdef OLD_ATHENA_COMPAT
-SHELLSCRIPTS= zlogout zhide zwgc
-SHELLSRC= zlogout.sh zhide.sh zwgc.sh
-
-install_shell_scripts(SHELLSCRIPTS,$(CLIENTDIR))
-
-install::
-	rm -f ${DESTDIR}${CLIENTDIR}/zlogin
-	ln -s zlogout ${DESTDIR}${CLIENTDIR}/zlogin
-#else
-SHELLSRC=
 #endif
+
+#define ISUBDIRS zaway zctl zleave zlocate znol \
+	zmailnotify zpopnotify zshutdown_notify zstat zwrite \
+	syslogd xzwrite

@@ -7,20 +7,9 @@
 /**/#	$Author$
 /**/#	$Id$
 /**/#
-LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} ${COMERR_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB} ${COMERR_LINTLIB}
+
 SRCS = zstat.c
 OBJS = zstat.o
-HDRS = zserver.h
 
-SRCDIR= ${SRCTOP}/clients/zstat
-CODE= ${SRCS} ${HDRS} Imakefile
-
-/* dummy rule so 'make' means 'make all' */
-all::
-
-depend::
-	(cd ../../server; make src)
-normal_obj_rule()
-
-program(zstat,${OBJS},,${LIBS},${CLIENTDIR})
+zprogram(zstat,)
+install_man(zstat.8,zstat.8)
