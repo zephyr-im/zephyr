@@ -126,6 +126,10 @@ u_short hm_port;			/* the port # of the host manager */
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 int zdebug;
+#ifdef DEBUG_MALLOC
+int dump_malloc_stats = 0;
+unsigned long m_size;
+#endif
 #ifdef DEBUG
 int zalone;
 #endif /* DEBUG */
@@ -320,6 +324,9 @@ main(argc, argv)
 
 	/* GO! */
 	uptime = NOW;
+#ifdef DEBUG_MALLOC
+	malloc_inuse(&m_size);
+#endif
 	for EVER {
 		if (doreset)
 			do_reset();
@@ -355,6 +362,15 @@ main(argc, argv)
 		if (nfound < 0) {
 			if (errno != EINTR)
 				syslog(LOG_WARNING, "select error: %m");
+#ifdef DEBUG_MALLOC
+			if (dump_malloc_stats) {
+			  unsigned long foo,histid2;
+			  dump_malloc_stats = 0;
+			  foo = malloc_inuse(&histid2);
+			  printf("Total inuse: %d\n",foo);
+			  malloc_list(2,m_size,histid2);
+			}
+#endif
 			continue;
 		}
 		if (nfound == 0)
@@ -532,6 +548,9 @@ static SIGNAL_RETURN_TYPE
 dbug_on(int sig)
 {
 	syslog(LOG_DEBUG, "debugging turned on");
+#ifdef DEBUG_MALLOC
+	dump_malloc_stats = 1;
+#endif
 	zdebug = 1;
 	SIG_RETURN;
 }
@@ -540,6 +559,9 @@ static SIGNAL_RETURN_TYPE
 dbug_off(int sig)
 {
 	syslog(LOG_DEBUG, "debugging turned off");
+#ifdef DEBUG_MALLOC
+	malloc_inuse(&m_size);
+#endif
 	zdebug = 0;
 	SIG_RETURN;
 }
