@@ -220,6 +220,7 @@ static void queue_timeout(arg)
     Queue *entry = (Queue *) arg;
     Code_t ret;
 
+    entry->timer = NULL;
     ret = ZSetDestAddr(&serv_sin);
     if (ret != ZERR_NONE) {
 	Zperr(ret);
