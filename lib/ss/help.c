@@ -55,9 +55,9 @@ void ss_help (argc, argv, sci_idx, info_ptr)
 	(void) strcat(buffer, "/");
 	(void) strcat(buffer, argv[1]);
 	(void) strcat(buffer, ".info");
-	if ((fd = open(&buffer[0], O_RDONLY)) >= 0) goto got_it;
+	if ((fd = open(&buffer[0], O_RDONLY, 0)) >= 0) goto got_it;
     }
-    if ((fd = open(&buffer[0], O_RDONLY)) < 0) {
+    if ((fd = open(&buffer[0], O_RDONLY, 0)) < 0) {
 	char buf[MAXPATHLEN];
 	strcpy(buf, "No info found for ");
 	strcat(buf, argv[1]);
