@@ -1,0 +1,33 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+
+LIBS= $(ZEPHYR_LIB) $(COMERR_LIB) $(KRB_LIB) $(DES_LIB)
+LINTLIBS=$(ZEPHYR_LINTLIB) $(COMERR_LIB) $(KRB_LIB) $(DES_LIB)
+
+OBJS = new_memory.o
+SRCS = new_memory.c
+HDRS = new_memory.h
+
+SRCDIR= ${SRCTOP}/zwgc/zwgc.dev/Memory
+CODE= ${SRCS} ${HDRS} Imakefile
+
+normal_obj_rule()
+
+all:: memory_spec $(OBJS)
+
+#
+# /* Automatically generate a spec file from the template include file: */
+#
+memory_spec: new_memory.h
+	cat new_memory.h | grep "^.\*" | grep -v "^ \*/" | sed 's/.\*//' > memory_spec
+
+clean::
+	$(RM) $(OBJS) memory_spec
+
