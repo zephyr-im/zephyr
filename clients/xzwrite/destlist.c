@@ -50,7 +50,7 @@ int dest_num()
 void dest_set_current_dest(dest)
    Dest       dest;
 {
-     _BCOPY((char *) dest, (char *) &current_dest, sizeof(DestRec));
+     (void) memcpy((char *) &current_dest, (char *) dest, sizeof(DestRec));
 }
 
 void dest_init()
@@ -218,8 +218,8 @@ static int sort_dest_func(c1, c2)
 
      /* A string with a , in it is always less than one without */
      s1 = *c1; s2 = *c2;
-     i1 = index(s1, ',');
-     i2 = index(s2, ',');
+     i1 = strchr(s1, ',');
+     i2 = strchr(s2, ',');
      if (i1 == NULL && i2 != NULL)
 	  return 1;
      else if (i1 != NULL && i2 == NULL)
@@ -300,7 +300,7 @@ int parse_into_dest(dest, s)
      int	x, y;
 
      /* Check for just recipient */
-     if ((a=index(s, ','))==0) {
+     if ((a=strchr(s, ','))==0) {
 	  if (strlen(s) > ZLEN)
 	       return 0;
 	  strcpy(dest->zclass, DEFAULT_CLASS);
@@ -309,7 +309,7 @@ int parse_into_dest(dest, s)
      }
 
      /* Check for just class,instance or instace,recipient */
-     else if ((b=index((++a), ','))==0) {
+     else if ((b=strchr((++a), ','))==0) {
 	  if (defs.class_inst) {
 	       x = distance(s, a-1);
 	       if (x >= ZLEN)
@@ -374,7 +374,7 @@ void dest_add_reply(notice)
      {
 	  char *r;
 
-	  r = index(notice->z_sender, '@');
+	  r = strchr(notice->z_sender, '@');
 	  if (r && ! strcmp(r+1, ZGetRealm()))
 	       *r = '\0';
      }
