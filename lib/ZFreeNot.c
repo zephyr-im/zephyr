@@ -24,4 +24,5 @@ Code_t ZFreeNotice(notice)
     ZNotice_t *notice;
 {
     free(notice->z_packet);
+    return 0;
 }
