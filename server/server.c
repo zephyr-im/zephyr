@@ -464,7 +464,7 @@ ZClient_t *client;
 			       error_message(retval));
 			return;
 		}
-		srv_forw_reliable(&otherservers[i], pack, packlen, notice);
+		server_forw_reliable(&otherservers[i], pack, packlen, notice);
 	}
 }
 
