@@ -10,6 +10,7 @@ lsbindir=@lsbindir@
 includedir=${prefix}/include
 mandir=@mandir@
 libdir=${exec_prefix}/lib
+LIBS=@LIBS@
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
@@ -43,7 +44,7 @@ libzephyr.a: ${OBJS}
 	${RANLIB} $@
 
 libzephyr.so: $(OBJS)
-	ld -shared -soname libzephyr.so.$(SONAME) -o libzephyr.so $(OBJS) -lkrb4 -ldes425 -lkrb5 -lk5crypto -lc -lcom_err  
+	ld -shared -soname libzephyr.so.$(SONAME) -o libzephyr.so $(OBJS) $(LIBS) -lc -lcom_err  
 
 zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
 	compile_et ${srcdir}/zephyr_err.et

@@ -1,3 +1,9 @@
+zephyr (2.1.20000421.SNAPSHOT-10) unstable; urgency=low
+
+  * libzephyr3 should not depend on krb5, closes: #93187
+
+ --
+
 zephyr (2.1.20000421.SNAPSHOT-9) unstable; urgency=low
 
   * New maintainer, closes: #92061
