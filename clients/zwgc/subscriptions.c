@@ -225,12 +225,12 @@ static void inithosts()
 {
     struct hostent *hent;
     if (gethostname(ourhost,sizeof(ourhost)-1) == -1) {
-	ERROR3("unable to retrieve hostname, %s and %s will be wrong in subscriptions.", TOKEN_HOSTNAME, TOKEN_CANONNAME);
+	ERROR3("unable to retrieve hostname, %s and %s will be wrong in subscriptions.\n", TOKEN_HOSTNAME, TOKEN_CANONNAME);
 	return;
     }
 
     if (!(hent = gethostbyname(ourhost))) {
-	ERROR2("unable to resolve hostname, %s will be wrong in subscriptions.", TOKEN_CANONNAME);
+	ERROR2("unable to resolve hostname, %s will be wrong in subscriptions.\n", TOKEN_CANONNAME);
 	return;
     }
     (void) strncpy(ourhostcanon,hent->h_name, sizeof(ourhostcanon)-1);
