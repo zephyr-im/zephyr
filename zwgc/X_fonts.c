@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_X_fonts_c[] = "$Header$";
+static char rcsid_X_fonts_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -61,8 +61,9 @@ static char *get_family(style,substyle)
    char *family;
 
    desc=string_Concat("style.",style);
-   desc=string_Concat2(desc,".fontfamily.");
+   desc=string_Concat2(desc,".substyle.");
    desc=string_Concat2(desc,substyle);
+   desc=string_Concat2(desc,".fontfamily");
 
    if (!family_dict)
       family_dict = pointer_dictionary_Create(37);
@@ -72,7 +73,7 @@ static char *get_family(style,substyle)
       free(desc);
       return((string) binding->value);
    } else {
-#define STYLE_CLASS "Style.Style1.Style2.Style3.Fontfamily.Substyle"
+#define STYLE_CLASS "StyleKey.Style1.Style2.Style3.SubstyleKey.Substyle.FontfamilyKey"
       family=get_string_resource(desc,STYLE_CLASS);
 #undef STYLE_CLASS
       free(desc);
@@ -108,7 +109,7 @@ static char *get_specific_fontname(family,size,face)
       free(desc);
       return((string) binding->value);
    } else {
-#define FAMILY_CLASS "Fontfamily.FontfamilyName.Size.Face"
+#define FAMILY_CLASS "FontfamilyKey.Fontfamily.Size.Face"
       fontname=get_string_resource(desc,FAMILY_CLASS);
       free(desc);
       if (fontname==NULL)

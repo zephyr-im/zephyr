@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xshow_c[] = "$Header$";
+static char rcsid_xshow_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -33,13 +33,55 @@ static char rcsid_xshow_c[] = "$Header$";
 #define max(a,b)   ((a)>(b)?(a):(b))
 
 XContext desc_context;
-static pointer_dictionary geometry_dict;
+static pointer_dictionary geometry_dict = NULL;
+static pointer_dictionary bgcolor_dict = NULL;
+static pointer_dictionary colorname_dict = NULL;
 
 extern int internal_border_width;
+extern unsigned long default_bgcolor;
+extern unsigned long default_fgcolor;
+extern unsigned long x_string_to_color();
 
 xshowinit()
 {
     desc_context = XUniqueContext();
+}
+
+/*ARGSUSED*/
+char *mode_to_colorname(dpy,style,mode)
+     Display *dpy;
+     char *style;
+     xmode *mode;
+{
+   char *desc;
+   int exists;
+   char *name;
+   pointer_dictionary_binding *binding;
+
+   desc = string_Concat("style.",style);
+   desc = string_Concat2(desc,"style");
+   desc = string_Concat2(desc,".substyle.");
+   desc = string_Concat2(desc,mode->substyle);
+   desc = string_Concat2(desc,".foreground");
+
+   if (!colorname_dict)
+      colorname_dict = pointer_dictionary_Create(37);
+   binding = pointer_dictionary_Define(colorname_dict,desc,&exists);
+
+   if (exists) {
+      free(desc);
+      return((char *) binding->value);
+   } else {
+#define COLNAME_CLASS "StyleKey.Style1.Style2.Style3.SubstyleKey.Substyle.ForegroundKey"
+      name=get_string_resource(desc,COLNAME_CLASS);
+#undef COLNAME_CLASS
+      free(desc);
+      if (name==NULL)
+	 pointer_dictionary_Delete(colorname_dict,binding);
+      else
+	 binding->value=(pointer) name;
+      return(name);  /* If resource returns NULL, return NULL also */
+   }
 }
 
 static char *xres_get_geometry(style)
@@ -48,7 +90,7 @@ static char *xres_get_geometry(style)
    char *desc;
    pointer_dictionary_binding *binding;
    int exists;
-   char *family;
+   char *spec;
 
    desc=string_Concat("style.",style);
    desc=string_Concat2(desc,".geometry");
@@ -61,19 +103,51 @@ static char *xres_get_geometry(style)
       free(desc);
       return((string) binding->value);
    } else {
-#define STYLE_CLASS "Style.Style1.Style2.Style3.Geometry"
-      family=get_string_resource(desc,STYLE_CLASS);
-#undef STYLE_CLASS
+#define GEOM_CLASS "StyleKey.Style1.Style2.Style3.GeometryKey"
+      spec=get_string_resource(desc,GEOM_CLASS);
+#undef GEOM_CLASS
       free(desc);
-      if (family==NULL)
+      if (spec==NULL)
 	 pointer_dictionary_Delete(geometry_dict,binding);
       else
-	 binding->value=(pointer) family;
-      return(family);  /* If resource returns NULL, return NULL also */
+	 binding->value=(pointer) spec;
+      return(spec);  /* If resource returns NULL, return NULL also */
    }
 }
 
-void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines)
+static char *xres_get_bgcolor(style)
+     char *style;
+{
+   char *desc;
+   pointer_dictionary_binding *binding;
+   int exists;
+   char *color;
+
+   desc=string_Concat("style.",style);
+   desc=string_Concat2(desc,".background");
+
+   if (!bgcolor_dict)
+      bgcolor_dict = pointer_dictionary_Create(37);
+   binding = pointer_dictionary_Define(bgcolor_dict,desc,&exists);
+
+   if (exists) {
+      free(desc);
+      return((string) binding->value);
+   } else {
+#define BG_CLASS "StyleKey.Style1.Style2.Style3.BackgroundKey"
+      color=get_string_resource(desc,BG_CLASS);
+#undef BG_CLASS
+      free(desc);
+      if (color==NULL)
+	 pointer_dictionary_Delete(bgcolor_dict,binding);
+      else
+	 binding->value=(pointer) color;
+      return(color);  /* If resource returns NULL, return NULL also */
+   }
+}
+
+void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
+		    beepcount)
      Display *dpy;
      char *style;
      xblock *blocks;
@@ -81,6 +155,7 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines)
      int num;
      xlinedesc *lines;
      int numlines;
+     int beepcount;
 {
     int gram_xalign = 1;
     int gram_yalign = 1;
@@ -98,7 +173,7 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines)
     int lofs, cofs, rofs;
     int ystart,yend;
 
-    char *geometry,xpos[10], ypos[10], xfrom, yfrom;
+    char *bgstr, *geometry, xpos[10], ypos[10], xfrom, yfrom;
 
     gram = (x_gram *)malloc(sizeof(x_gram));
 
@@ -266,6 +341,15 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines)
       gram_ypos = atoi(ypos);
     if (yfrom=='-')
       gram_yalign *= -1;
+
+    if ((bgstr = var_get_variable("X_background")),(bgstr[0]=='\0'))
+      if ((bgstr = xres_get_bgcolor(style))==NULL)
+	if ((bgstr = var_get_variable("default_X_background")),
+	    (bgstr[0]=='\0'))
+	  gram->bgcolor = default_bgcolor;
+    if (bgstr && bgstr[0])
+      gram->bgcolor = x_string_to_color(bgstr,default_bgcolor);
+
     
     gram_xsize = maxwidth+(internal_border_width<<1);
     gram_ysize = yofs+internal_border_width;
@@ -273,12 +357,12 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines)
     gram->blocks = blocks;
     
     x_gram_create(dpy, gram, gram_xalign, gram_yalign, gram_xpos,
-		  gram_ypos, gram_xsize, gram_ysize);
+		  gram_ypos, gram_xsize, gram_ysize, beepcount);
 }
 
 #define MODE_TO_FONT(dpy,style,mode) \
-  get_font((dpy),(style),(mode)->substyle,(mode)->size, \
-	   (mode)->bold+(mode)->italic*2)
+  get_font((dpy),(style),(mode)->font?(mode)->font:(mode)->substyle, \
+	   (mode)->size, (mode)->bold+(mode)->italic*2)
 void xshow(dpy, desc, numstr, numnl)
      Display *dpy;
      desctype *desc;
@@ -294,6 +378,7 @@ void xshow(dpy, desc, numstr, numnl)
     int nextblock=0;
     int line=0,linestart=0;
     char *style;
+    int beepcount = 0;
 
     lines = (xlinedesc *)malloc(sizeof(xlinedesc)*(numnl+1));
 
@@ -304,7 +389,9 @@ void xshow(dpy, desc, numstr, numnl)
     curmode.italic = 0;
     curmode.size = MEDIUM_SIZE;
     curmode.align = LEFTALIGN;
+    curmode.expcolor = 0;
     curmode.substyle = string_Copy("default");
+    curmode.font = NULL;
 
     style = var_get_variable("style");
     if (style[0] == '\0') {
@@ -319,6 +406,8 @@ void xshow(dpy, desc, numstr, numnl)
 	  case DT_ENV:
 	    xmode_stack_push(modes, curmode);
 	    curmode.substyle = string_Copy(curmode.substyle);
+	    if (curmode.font)
+	      curmode.font = string_Copy(curmode.font);
 	    
 #define envmatch(string,length) ((desc->len==(length)) && (strncasecmp(desc->str,(string),(length))==0))
 
@@ -341,10 +430,9 @@ void xshow(dpy, desc, numstr, numnl)
 	      curmode.align = CENTERALIGN;
 	    else if (envmatch("right",5)||envmatch("r",1))
 	      curmode.align = RIGHTALIGN;
-	    else if (envmatch("default",7)) {
-	       free(curmode.substyle);
-	       curmode.substyle = string_Copy("default");
-	    } else if (envmatch("font",4)) {
+	    else if (envmatch("beep",4))
+	      beepcount++;
+	    else if (envmatch("font",4)) {
 	       /* lookahead needed.  desc->next->str should be the
 		  font name, and desc->next->next->code should be
 		  a DT_END*/
@@ -353,14 +441,35 @@ void xshow(dpy, desc, numstr, numnl)
 		   (desc->next->code == DT_STR) &&
 		   (desc->next->next->code==DT_END)) {
 		  curmode.size=SPECIAL_SIZE; /* This is an @font() */
-		  free(curmode.substyle);
-		  curmode.substyle=string_CreateFromData(desc->next->str,
-							 desc->next->len);
+		  curmode.font=string_CreateFromData(desc->next->str,
+						     desc->next->len);
+		  /* skip over the rest of the @font */
+		  desc=desc->next->next;
+	       }
+	    } else if (envmatch("color",5)) {
+	       /* lookahead needed.  desc->next->str should be the
+		  font name, and desc->next->next->code should be
+		  a DT_END*/
+	       if ((desc->next) &&
+		   (desc->next->next) &&
+		   (desc->next->code == DT_STR) &&
+		   (desc->next->next->code==DT_END)) {
+		  char *colorname;
+
+		  colorname=string_CreateFromData(desc->next->str,
+						  desc->next->len);
+		  curmode.color = x_string_to_color(colorname,default_fgcolor);
+		  free(colorname);
+		  curmode.expcolor = 1;
 		  /* skip over the rest of the @font */
 		  desc=desc->next->next;
 	       }
 	    } else if (desc->len > 0) { /* avoid @{...} */
 	       free(curmode.substyle);
+	       if (curmode.font) {
+		  free(curmode.font);
+		  curmode.font = NULL;
+	       }
 	       curmode.substyle = string_CreateFromData(desc->str, desc->len);
 	    }
 	    break;
@@ -370,6 +479,12 @@ void xshow(dpy, desc, numstr, numnl)
 	    auxblocks[nextblock].font = MODE_TO_FONT(dpy,style,&curmode);
 	    auxblocks[nextblock].str = desc->str;
 	    auxblocks[nextblock].len = desc->len;
+	    if (curmode.expcolor)
+	       blocks[nextblock].fgcolor = curmode.color;
+	    else
+	       blocks[nextblock].fgcolor =
+		 x_string_to_color(mode_to_colorname(dpy,style,&curmode),
+				   default_fgcolor);
 	    nextblock++;
 	    break;
 
@@ -403,7 +518,8 @@ void xshow(dpy, desc, numstr, numnl)
     }
     
     free(curmode.substyle);
-    fixup_and_draw(dpy, style, auxblocks, blocks, nextblock, lines, line);
+    fixup_and_draw(dpy, style, auxblocks, blocks, nextblock, lines, line,
+		   beepcount);
     free(lines);
     free(auxblocks);
 }
