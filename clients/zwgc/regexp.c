@@ -23,6 +23,35 @@ static char rcsid_regexp_c[] = "$Id$";
 #include <libgen.h>
 #endif
 
+#ifdef POSIX_REGEXP
+#include <sys/types.h>
+#include <regex.h>
+
+int ed_regexp_match_p(test_string, pattern)
+     string test_string;
+     string pattern;
+{
+    regex_t RE;
+    int retval;
+    char errbuf[512];
+
+    if (retval = regcomp(&RE, pattern, REG_EXTENDED|REG_NOSUB)) {
+	regerror(retval, &RE, errbuf, sizeof(errbuf));
+	fprintf(stderr,"%s in regcomp %s\n",errbuf,pattern);
+	return(0);
+    }
+    retval = regexec(&RE, test_string, 0, NULL, 0);
+    if (retval  && retval != REG_NOMATCH) {
+	regerror(retval, &RE, errbuf, sizeof(errbuf));
+	fprintf(stderr,"%s in regexec %s\n",errbuf,pattern);
+	regfree(&RE);
+	return(0);
+    }
+    regfree(&RE);
+    return(retval == 0 ? 1 : 0);
+}
+
+#else
 extern char *re_comp();
 extern int re_exec();
 
@@ -44,7 +73,7 @@ int ed_regexp_match_p(test_string, pattern)
 
     return(exec_retval);
 }
-
+#endif
 
 /*
  * This is for AUX.
