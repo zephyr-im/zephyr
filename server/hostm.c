@@ -196,6 +196,8 @@ ZServerDesc_t *server;
  * Flush all information about this host.  Remove any losing host entries,
  * deregister all the clients, flush any user locations, and remove the host
  * from its server.
+ * The caller is responsible for informing other servers of this flush
+ * (if appropriate).
  */
 
 void
@@ -232,7 +234,6 @@ ZServerDesc_t *server;
 
 	uloc_hflush(&host->zh_addr.sin_addr);
 	host_detach(&host->zh_addr.sin_addr, server);
-	/* XXX tell other servers */
 	(void) sigsetmask(omask);
 	return;
 }
@@ -332,6 +333,9 @@ host_lost(which)
 losinghost *which;
 {
 	ZServerDesc_t *server;
+	ZNotice_t notice;
+	struct sockaddr_in who;
+
 	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
 	zdbug((LOG_DEBUG,"lost host %s",
@@ -346,9 +350,29 @@ losinghost *which;
 	}
 	xremque(which);
 	hostm_flush(which->lh_host, server);
-	xfree(which);
 
-	/* XXX tell other servers */
+	/* tell other servers to flush this host */
+	notice.z_kind = HMCTL;
+	notice.z_auth = 0;
+	notice.z_port = hm_port;
+	notice.z_class = ZEPHYR_CTL_CLASS;
+	notice.z_class_inst = ZEPHYR_CTL_HM;
+	notice.z_opcode = HM_FLUSH;
+	notice.z_sender = "HM";
+	notice.z_recipient = "";
+	notice.z_default_format = "";
+	notice.z_num_other_fields = 0;
+	notice.z_message_len = 0;
+
+	/* forge a from address */
+	bzero((char *) &who, sizeof(who));
+	who.sin_addr.s_addr = which->lh_host->zh_addr.sin_addr.s_addr;
+	who.sin_port = hm_port;
+	who.sin_family = AF_INET;
+
+	server_forward(&notice, 0, &who); /* unauthentic */
+
+	xfree(which);
 	(void) sigsetmask(omask);
 	return;
 }
@@ -520,7 +544,7 @@ ZServerDesc_t *server;
 	Code_t retval;
 	int shutlen;
 	ZNotice_t shutnotice;
-	ZPacket_t shutpack;
+	char *shutpack;
 
 	zdbug((LOG_DEBUG,"deathgram %s",inet_ntoa(sin->sin_addr)));
 
@@ -544,10 +568,8 @@ ZServerDesc_t *server;
 		shutnotice.z_message_len = 0;
 	}
 
-	shutlen = sizeof(shutpack);
 	if ((retval = ZFormatNotice(&shutnotice,
-				    shutpack,
-				    shutlen,
+				    &shutpack,
 				    &shutlen,
 				    ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_ERR, "hm_shut format: %s",error_message(retval));
@@ -556,12 +578,16 @@ ZServerDesc_t *server;
 	if ((retval = ZSetDestAddr(sin)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "hm_shut set addr: %s",
 		       error_message(retval));
+		xfree(shutpack);	/* free allocated storage */
 		return;
 	}
-	if ((retval = ZSendPacket(shutpack, shutlen)) != ZERR_NONE) {
+	/* don't wait for ack! */
+	if ((retval = ZSendPacket(shutpack, shutlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "hm_shut xmit: %s", error_message(retval));
+		xfree(shutpack);	/* free allocated storage */
 		return;
 	}
+	xfree(shutpack);		/* free allocated storage */
 	return;
 }
 
@@ -576,7 +602,7 @@ struct sockaddr_in *sin;
 	Code_t retval;
 	int shutlen;
 	ZNotice_t shutnotice;
-	ZPacket_t shutpack;
+	char *shutpack;
 
 	zdbug((LOG_DEBUG,"ping %s",inet_ntoa(sin->sin_addr)));
 
@@ -593,10 +619,8 @@ struct sockaddr_in *sin;
 	shutnotice.z_message_len = 0;
 	shutnotice.z_default_format = "";
 	
-	shutlen = sizeof(shutpack);
 	if ((retval = ZFormatNotice(&shutnotice,
-				    shutpack,
-				    shutlen,
+				    &shutpack,
 				    &shutlen,
 				    ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_ERR, "hm_ping format: %s",error_message(retval));
@@ -605,12 +629,16 @@ struct sockaddr_in *sin;
 	if ((retval = ZSetDestAddr(sin)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "hm_ping set addr: %s",
 		       error_message(retval));
+		xfree(shutpack);	/* free allocated storage */
 		return;
 	}
-	if ((retval = ZSendPacket(shutpack, shutlen)) != ZERR_NONE) {
+	/* don't wait for ack */
+	if ((retval = ZSendPacket(shutpack, shutlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "hm_ping xmit: %s", error_message(retval));
+		xfree(shutpack);	/* free allocated storage */
 		return;
 	}
+	xfree(shutpack);	/* free allocated storage */
 	return;
 }
 
