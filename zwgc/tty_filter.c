@@ -55,7 +55,7 @@ static string_dictionary termcap_dict;
    
    @em		Emphasis.  User underline if available, else reverse video.
    @bold	Bold letters.  If not available, reverse video, else underline.
-   @bell	"bl" termcap entry, else "^G"
+   @beep	"bl" termcap entry, else "^G"
 
    Other:
 
@@ -192,9 +192,9 @@ typedef struct _tty_str_info {
     int len;
 
     char alignment; /* 'l', 'c', 'r', or ' ' to indicate newline */
-    int bold_p;
-    int italic_p;
-    int bell_p;
+    int bold_p : 1;
+    int italic_p : 1;
+    int bell_p : 1;
 } tty_str_info;
 
 static void free_info(info)
@@ -245,18 +245,17 @@ static int do_mode_change(current_mode_p, text, text_length)
 static tty_str_info *convert_desc_to_tty_str_info(desc)
      desctype *desc;
 {
-#if defined(SABER) || !defined(__STDC__)
-    /* This is needed due to a bug in saber */
-    tty_str_info current_mode;
-#else
-    tty_str_info current_mode = { NULL, "", 0, 'l', 0 , 0, 0};
-#endif
     tty_str_info *temp;
     tty_str_info *result = NULL;
     tty_str_info *last_result_block = NULL;
-    int isbeep;
+    int isbeep, did_beep = 0;
 
-#if defined(SABER) || !defined(__STDC__)
+#if !defined(SABER) && defined(__STDC__)
+    tty_str_info current_mode = { NULL, "", 0, 'l', 0 , 0, 0};
+#else
+    /* This is needed due to a bug in saber, and lack of pre-ANSI support. */
+    tty_str_info current_mode;
+
     current_mode.next = NULL;
     current_mode.str = "";
     current_mode.len = 0;
@@ -275,10 +274,9 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
 	    *temp = current_mode;
 	    current_mode.next = temp;
 
-	    
-	    if (!(isbeep = do_mode_change(&current_mode, desc->str,
-					  desc->len)))
-		continue;		/* if not a beep */
+	    isbeep = do_mode_change(&current_mode, desc->str, desc->len);
+	    if (!isbeep || did_beep)
+		continue;	/* process one beep, ignore other envs */
 	} else if (desc->code == DT_END) {
 	    /* POP! */
 	    temp = current_mode.next;
@@ -307,6 +305,7 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
 	    } else
 		/* shouldn't get here! */
 		abort();
+	    did_beep++;
 	    continue;
 	}
 	if (desc->code == DT_STR) {
