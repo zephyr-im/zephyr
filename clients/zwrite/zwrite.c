@@ -277,10 +277,10 @@ send_off(notice, real)
 	    continue;
 	}
 	if (retnotice.z_kind == SERVNAK) {
-	    printf("Received authentication failure while sending to %s\n", 
+	    printf("Received authorization failure while sending to %s\n", 
 		   nrecips?notice->z_recipient:inst);
 	    ZFreeNotice(&retnotice);
-	    continue;
+	    break;			/* if auth fails, punt */
 	} 
 	if (retnotice.z_kind != SERVACK || !retnotice.z_message_len) {
 	    printf("Detected server failure while receiving acknowledgement for %s\n", 
