@@ -57,11 +57,13 @@ GENERATED= port_dictionary.c port_dictionary.h \
 DEPENDSRCS= ${CODE} ${GENERATED}
 
 /*
- * The pathname for the installed default description file.
+ * The pathnames for the installed default description file & applications
+ * default file.
  */
 ZWGCDESC=$(ACLDIR)/zwgc.desc
+APPDEF=$(ACLDIR)/zwgc_resources
 
-DEFINES=-DREVSTACK -DDEFDESC=\"$(ZWGCDESC)\"
+DEFINES=-DREVSTACK -DDEFDESC=\"$(ZWGCDESC)\" -DAPPDEFDATABASE=\"$(APPDEF)\"
 
 normal_obj_rule()
 
