@@ -297,8 +297,10 @@ main(argc, argv)
 	sigaction(SIGFPE, &action, NULL);
 	sigaction(SIGXCPU, &action, NULL);
 
+#ifdef SIGEMT
 	action.sa_handler = sig_dump_strings;
 	sigaction(SIGEMT, &action, NULL);
+#endif
 
 	action.sa_handler = reset;
 	sigaction(SIGHUP, &action, NULL);
@@ -310,7 +312,9 @@ main(argc, argv)
 	(void) signal(SIGCHLD, reap);
 	(void) signal(SIGFPE, sig_dump_db);
 	(void) signal(SIGXCPU, sig_dump_db);
+#ifdef SIGEMT
 	(void) signal(SIGEMT, sig_dump_strings);
+#endif
 	(void) signal(SIGHUP, reset);
 #endif /* POSIX */
 
