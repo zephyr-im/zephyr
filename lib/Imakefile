@@ -173,6 +173,14 @@ OLIST=	\
 	acl_files.o
 #endif /* KERBEROS */
 
+#ifdef KERBEROS
+KRB_OTHERSRCS= krb_err.et
+#endif /*KERBEROS*/
+
+OTHERSRCS= zephyr_err.et ${KRB_OTHERSRCS}
+SRCDIR= ${SRCTOP}/lib
+CODE= ${SRCS} ${OTHERSRCS} Imakefile
+
 /**/#dummy target so that 'make' does a make all.
 all:: libzephyr.a
 
@@ -186,9 +194,9 @@ library_obj_rule()
 
 install_library_target(zephyr,${OLIST},${SRCS},${LINTLIBS})
 
-error_table(zephyr_err)
+make_error_table(zephyr_err)
 #ifdef KERBEROS
-error_table(krb_err)
+make_error_table(krb_err)
 #endif
 
 all::
