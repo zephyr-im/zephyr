@@ -71,6 +71,7 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/resource.h>
+#include <sys/uio.h>
 #include <netdb.h>
 #ifdef STREAMS_LOG_DRIVER
 #include <sys/stream.h>
