@@ -1,0 +1,74 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+#define have_subdirs
+#define no_curdir_lint
+
+NEWTOP=.
+SUBDIRS = lib server zhm clients zwgc man
+
+#ifdef LOCAL_LIBS
+LIBSUBDIRS = LIBSUBDIRS_DEFINED
+/**/# We need to make the libraries, which don't have Imakefiles, before
+/**/# we make the rest of the world.
+all::
+	@for d in  $(LIBSUBDIRS); \
+	do \
+		(cd $$d; echo "### Making" all "in" `pwd`;	\
+			$(MAKE) $(MFLAGS) GLOBAL_CDEFS="$(GLOBAL_CDEFS)" all ;\
+			echo "##--- Making" lint "in" `pwd`;	\
+			$(MAKE) $(MFLAGS) GLOBAL_CDEFS="$(GLOBAL_CDEFS)" lint;\
+			echo "### Done with" `pwd`);		\
+	done
+/**/# The libraries also need cleaning
+clean::
+	@for d in  $(LIBSUBDIRS); \
+	do \
+		(cd $$d; echo "### Making" clean "in" `pwd`;	\
+			$(MAKE) $(MFLAGS) clean ;	\
+			echo "### Done with" `pwd`);		\
+	done
+#endif /* LOCAL_LIBS */
+
+/**/# we need to remove these here; it's not appropriate to remove them
+/**/# from lib/Makefile since someone may type 'make clean' there and nuke
+/**/# them by accident.
+
+clean::
+	rm -f libs/libzephyr.a libs/libzephyr_p.a libs/llib-lzephyr.ln
+
+#ifdef OTHER_IMAKE
+world:
+	make ${MFLAGS} Makefile
+	make ${MFLAGS} Makefiles
+	make ${MFLAGS} depend
+	make ${MFLAGS} all
+#else
+world:
+	(cd imake; make ${MFLAGS} imake)
+	make ${MFLAGS} Makefile
+	make ${MFLAGS} Makefiles
+	make ${MFLAGS} depend
+	make ${MFLAGS} all
+#endif
+
+#ifdef LOCAL_makedepend
+/**/# We need to make makedepend before we make depend
+depend::
+	(cd makedepend; make ${MFLAGS} all)
+
+#ifdef LOCAL_LIBS
+/**/# We need to make ss.h so that make depend can find it.
+/**/# and to make ss.h, we need et/compile_et
+depend::
+	(cd et; make ${MFLAGS} compile_et)
+	(cd ss; make ${MFLAGS} ss.h)
+#endif /* LOCAL_LIBS */
+#endif
+
