@@ -50,6 +50,11 @@ static char rcsid_server_s_c[] = "$Header$";
 static void server_hello(), server_flush(), admin_handle();
 static Code_t server_register();
 
+/* parameters controlling the transitions of the FSM's--patchable with adb */
+int timo_up = TIMO_UP;
+int timo_tardy = TIMO_TARDY;
+int timo_dead = TIMO_DEAD;
+
 /* 
  * A server timout has expired.  If enough hello's have been unanswered,
  * change state and act accordingly. Send a "hello" and reset the timer,
@@ -59,15 +64,11 @@ static Code_t server_register();
  * happening here. 
  */
 
-int timo_up = TIMO_UP;
-int timo_tardy = TIMO_TARDY;
-int timo_dead = TIMO_DEAD;
-
 void
 server_timo(which)
 ZServerDesc_t *which;
 {
-	zdbug2("srv_timo: %s", inet_ntoa(which->zs_addr.sin_addr));
+	zdbug((LOG_DEBUG,"srv_timo: %s", inet_ntoa(which->zs_addr.sin_addr)));
 	/* change state and reset if appropriate */
 	switch(which->zs_state) {
 	case SERV_DEAD:			/* leave him dead */
@@ -103,7 +104,7 @@ ZServerDesc_t *which;
 }
 
 /*
- * Deal with incoming data on the socket
+ * Dispatch a notice from some other server
  */
 
 /*ARGSUSED*/
@@ -119,9 +120,7 @@ struct sockaddr_in *who;
 	else if (class_is_control(notice)) {
 		/* XXX set up a who for the real origin */
 		newwho.sin_family = AF_INET;
-/* XXX wait till robby fixes this
 		newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
-*/
 		newwho.sin_port = notice->z_port;
 		control_dispatch(notice, auth, &newwho);
 	} else
@@ -130,14 +129,24 @@ struct sockaddr_in *who;
 	return;
 }
 
+/*
+ * Register a new server (one not in our list).  This MUST be authenticated.
+ */
+
 /*ARGSUSED*/
 static Code_t
-server_register(notice, who)
+server_register(notice, auth, who)
 ZNotice_t *notice;
+int auth;
 struct sockaddr_in *who;
 {
 	return(1);
 }
+
+/*
+ * Recover a host whose client has stopped responding.
+ * The hostm_ module takes care of pings, timeouts, etc.
+ */
 
 void
 server_recover(client)
@@ -145,9 +154,9 @@ ZClient_t *client;
 {
 	ZHostList_t *host;
 
-	zdbug1("server recover");
+	zdbug((LOG_DEBUG,"server recover"));
 	/* XXX */
-	if ((host = hostm_find_host(&client->zct_sin.sin_addr)) != NULLZHLT)
+	if ((host = hostm_find_host(&client->zct_sin.sin_addr)))
 		/* send a ping, set up a timeout, and return */
 		hostm_losing(client, host);
 	else
@@ -155,14 +164,17 @@ ZClient_t *client;
 	return;
 }
 
-/* flush all data associated with the server which */
+/*
+ * Flush all data associated with the server which
+ */
+
 static void
 server_flush(which)
 register ZServerDesc_t *which;
 {
 	register ZHostList_t *hst;
 
-	if (which->zs_hosts == NULLZHLT) /* no data to flush */
+	if (!which->zs_hosts) /* no data to flush */
 		return;
 
 	for (hst = which->zs_hosts->q_forw;
@@ -174,7 +186,9 @@ register ZServerDesc_t *which;
 
 }
 
-/* send a hello to which, updating the count of hello's sent */
+/*
+ * send a hello to which, updating the count of hello's sent
+ */
 
 static void
 server_hello(which)
@@ -195,14 +209,14 @@ ZServerDesc_t *which;
 	phelonotice->z_class_inst = "RUthere";
 	phelonotice->z_opcode = "HELLO";
 	phelonotice->z_sender = myname;	/* myname is the hostname */
-	phelonotice->z_recipient = "you";
+	phelonotice->z_recipient = "you@ATHENA.MIT.EDU";
 	phelonotice->z_message = (caddr_t) NULL;
 	phelonotice->z_message_len = 0;
 
 	packlen = sizeof(hellopack);
 	
 	/* hello's are not authenticated (overhead not needed) */
-	if ((retval = ZFormatNotice(phelonotice, hellopack, packlen, &packlen, 0)) != ZERR_NONE) {
+	if ((retval = ZFormatNotice(phelonotice, hellopack, packlen, &packlen, ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "hello format: %s", error_message(retval));
 		return;
 	}
@@ -219,6 +233,10 @@ ZServerDesc_t *which;
 	return;
 }
 
+/*
+ * Handle an ADMIN message from a server
+ */
+
 /*ARGSUSED*/
 static void
 admin_handle(notice, auth, who)
@@ -230,7 +248,13 @@ struct sockaddr_in *who;
 	return;
 }
 
-/*ARGSUSED*/
+
+/*
+ * Handle an ADMIN message from some random client.
+ * For now, assume it's a registration-type message from some other
+ * previously unknown server
+ */
+
 void
 server_adispatch(notice, auth, who)
 ZNotice_t *notice;
@@ -240,7 +264,7 @@ struct sockaddr_in *who;
 	/* this had better be a HELLO message--start of acquisition
 	   protocol */
 	syslog(LOG_INFO, "disp: new server?");
-	if (server_register(notice, who) != ZERR_NONE)
+	if (server_register(notice, auth, who) != ZERR_NONE)
 		syslog(LOG_INFO, "new server failed");
 	else
 		syslog(LOG_INFO, "new server %s, %d",
