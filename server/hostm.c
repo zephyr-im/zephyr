@@ -337,7 +337,8 @@ losinghost *which;
 	ZNotice_t notice;
 	struct sockaddr_in who;
 	Code_t retval;
-	char **buffer;
+	char *buffer;
+	int len;
 
 	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
