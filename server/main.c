@@ -164,7 +164,6 @@ char **argv;
 #endif DEBUG
 
 	/* open log */
-	/* XXX eventually make this LOG_DAEMON */
 	openlog(programname, LOG_PID, LOG_LOCAL6);
 
 #ifdef DEBUG
