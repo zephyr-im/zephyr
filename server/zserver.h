@@ -286,6 +286,7 @@ extern void subscr_free_list P((ZClientList_t *list)),
     subscr_sendlist P((ZNotice_t *notice, int auth, struct sockaddr_in *who));
 extern void subscr_dump_subs P((FILE *fp, ZSubscr_t *subs)),
     subscr_reset P((void));
+extern int compare_subs P((ZSubscr_t *s1, ZSubscr_t *s2, int do_wildcard));
 extern Code_t subscr_def_subs P((ZClient_t *who));
 
 /* found in uloc.c */
