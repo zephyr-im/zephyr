@@ -821,6 +821,15 @@ WM_DELETE_WINDOW as contents.
 EnableDelete
 Secondary value to enable WM_DELETE_WINDOW protocol on zgrams [default False]
 .TP
+global
+(logical) If true, zwgc creates a _SGI_DESKS_HINTS property on all zgrams, with
+_SGI_DESKS_ALWAYS_GLOBAL as contents. This results in zgrams appearing
+on all desks in SGI's 4Dwm window manager. Otherwise, zgrams appear and
+remain on whatever desk is in use at the time.
+.TP
+Global
+Secondary value to set _SGI_DESKS_HINTS property on zgrams [default True]
+.TP
 minTimeToLive
 Primary value which specifies the minimum amount of time (``minimum time to
 live'') a WindowGram must be on-screen (in milliseconds) until it can
