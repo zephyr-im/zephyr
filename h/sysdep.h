@@ -84,6 +84,10 @@ char *strchr(), *strrchr();
 # define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
+#ifdef HAVE_SYS_CDEFS_H
+#include <sys/cdefs.h>
+#endif
+
 /* Because we have public header files (and our prototypes need to agree with
  * those header files, use __STDC__ to guess whether the compiler can handle
  * stdarg, const, and prototypes. */
