@@ -19,8 +19,9 @@ static char rcsid_hm_c[] = "$Id$";
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
-#include <string.h>
+#include <fcntl.h>
 #include <errno.h>
+#include <string.h>
 /* 
  * warning: sys/param.h may include sys/types.h which may not be protected from
  * multiple inclusions on your system
@@ -29,6 +30,7 @@ static char rcsid_hm_c[] = "$Id$";
 
 #ifdef Z_HaveHesiod
 #include <hesiod.h>
+int use_hesiod = 0;
 #endif
 
 #ifdef macII
@@ -41,7 +43,8 @@ int booting = 1, timeout_type, deactivated = 1;
 long starttime;
 u_short cli_port;
 struct sockaddr_in cli_sin, serv_sin, from;
-char **serv_list, **cur_serv_list;
+int numserv;
+char **serv_list;
 char prim_serv[MAXHOSTNAMELEN], cur_serv[MAXHOSTNAMELEN];
 char *zcluster;
 int sig_type;
@@ -50,10 +53,11 @@ char **clust_info;
 char hostname[MAXHOSTNAMELEN], loopback[4];
 char *PidFile = PIDFILE;
 
-extern char *index(), *sbrk();
+extern char *sbrk();
 extern long time();
 
-void init_hm(), detach(), handle_timeout(), resend_notices(), die_gracefully();
+void choose_server(), init_hm(), detach(),
+    handle_timeout(), resend_notices(), die_gracefully();
 
 #if defined(ultrix) || defined(_POSIX_SOURCE)
 void
@@ -110,94 +114,33 @@ char *argv[];
 	  exit(2);
      }
 
+     numserv = 0;
+
      /* Override server argument? */
      if (optind < argc) {
 	 if ((hp = gethostbyname(argv[optind++])) == NULL) {
 	     printf("Unknown server name: %s\n", argv[optind-1]);
 	 } else
 	     (void) strcpy(prim_serv, hp->h_name);
+
 	 /* argc-optind is the # of other servers on the command line */
 	 serv_list = (char **)malloc((argc-optind + 2) * sizeof(char *));
-	 serv_list[0] = prim_serv;
-	 for (i = 1; optind < argc; optind++) {
+	 serv_list[numserv++] = prim_serv;
+	 for (; optind < argc; optind++) {
 	     if ((hp = gethostbyname(argv[optind])) == NULL) {
 		 printf("Unknown server name '%s', ignoring\n", argv[optind]);
 		 continue;
 	     }
-	     serv_list[i] = strsave(hp->h_name);
-	     i++;
+	     serv_list[numserv++] = strsave(hp->h_name);
 	 }
-	 serv_list[i] = NULL;
+	 serv_list[numserv] = NULL;
      }
 #ifdef Z_HaveHesiod
-     else {
-
-	 if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
-	     zcluster = NULL;
-	 } else
-	     for ( ; *clust_info; clust_info++) {
-		 /* Remove the following check once we have changed over to
-		  * new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
-		  * server
-		  */
-		 if (!strncasecmp("ZEPHYR", *clust_info, 6)) {
-		     register char *c;
-	
-		     if ((c = index(*clust_info, ' ')) == 0) {
-			 printf("Hesiod error getting primary server info.\n");
-		     } else
-			 (void)strcpy(prim_serv, c+1);
-		     break;
-		 }
-		 if (!strncasecmp("ZCLUSTER", *clust_info, 9)) {
-		     register char *c;
-
-		     if ((c = index(*clust_info, ' ')) == 0) {
-			 printf("Hesiod error getting zcluster info.\n");
-		     } else {
-			 if ((zcluster = malloc((unsigned)(strlen(c+1)+1)))
-			     != NULL) {
-			     (void)strcpy(zcluster, c+1);
-			 } else {
-			     printf("Out of memory.\n");
-			     exit(-5);
-			 }
-		     }
-		     break;
-		 }
-	     }
-	  
-	 if (zcluster == NULL) {
-	     if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
-		 (void)strcpy(zcluster, "zephyr");
-	 }
-	 while ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
-	     syslog(LOG_ERR, "No servers or no hesiod");
-	     /* wait a bit, and try again */
-	     sleep(30);
-	 }
-	 clust_info = (char **)malloc(2*sizeof(char *));
-	 if (prim_serv[0]) {
-	     clust_info[0] = prim_serv;
-	     j = 1;
-	 } else
-	     j = 0;
-	 for (i = 0; serv_list[i]; i++)
-	     /* copy in non-duplicates */
-	     /* assume the names returned in the sloc are full domain names */
-	     if (!prim_serv[0] || strcasecmp(prim_serv, serv_list[i])) {
-		 clust_info = (char **) realloc(clust_info,
-						(j+2) * sizeof(char *));
-		 clust_info[j++] = strsave(serv_list[i]);
-	     }
-	 clust_info[j] = NULL;
-	 serv_list = clust_info;
-     }
-     if (!prim_serv[0] && j) {
-	 srandom(time((long *) 0));
-	 (void) strcpy(prim_serv, serv_list[random() % j]);
-     }
+     else
+	 use_hesiod = 1;
 #endif
+
+     choose_server();
      if (*prim_serv == '\0') {
 	 printf("No valid primary server found, exiting.\n");
 	 exit(ZERR_SERVNAK);
@@ -216,10 +159,11 @@ char *argv[];
 	  case SIGHUP:	/* A SIGHUP means we are deactivating the ws. */
 	       sig_type = 0;
 	       if (dieflag) {
-		    die_gracefully();
+		   die_gracefully();
 	       } else {
-		    send_flush_notice(HM_FLUSH);
-		    deactivated = 1;
+		   choose_server();
+		   send_flush_notice(HM_FLUSH);
+		   deactivated = 1;
 	       }
 	       break;
 	  case SIGTERM:
@@ -290,11 +234,97 @@ char *argv[];
      }
 }
 
+void choose_server()
+{
+    int i = 0;
+
+#ifdef Z_HaveHesiod
+    if (use_hesiod) {
+
+	/* Free up any previously used resources */
+	if (prim_serv[0]) 
+	    i = 1;
+	while (i < numserv)
+	    (void) free(serv_list[i]);
+	(void) free(serv_list);
+	
+	numserv = 0;
+	prim_serv[0] = '\0';
+	
+	if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
+	    zcluster = NULL;
+	} else
+	for ( ; *clust_info; clust_info++) {
+	    /* Remove the following check once we have changed over to
+	     * new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
+	     * server
+	     */
+	    if (!strncasecmp("ZEPHYR", *clust_info, 6)) {
+		register char *c;
+		
+		if ((c = strchr(*clust_info, ' ')) == 0) {
+		    printf("Hesiod error getting primary server info.\n");
+		} else
+		    (void)strcpy(prim_serv, c+1);
+		break;
+	    }
+	    if (!strncasecmp("ZCLUSTER", *clust_info, 9)) {
+		register char *c;
+		
+		if ((c = strchr(*clust_info, ' ')) == 0) {
+		    printf("Hesiod error getting zcluster info.\n");
+		} else {
+		    if ((zcluster = malloc((unsigned)(strlen(c+1)+1)))
+			!= NULL) {
+			(void)strcpy(zcluster, c+1);
+		    } else {
+			printf("Out of memory.\n");
+			exit(-5);
+		    }
+		}
+		break;
+	    }
+	}
+	
+	if (zcluster == NULL) {
+	    if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
+		(void)strcpy(zcluster, "zephyr");
+	}
+	while ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
+	    syslog(LOG_ERR, "No servers or no hesiod");
+	    /* wait a bit, and try again */
+	    sleep(30);
+	}
+	clust_info = (char **)malloc(2*sizeof(char *));
+	if (prim_serv[0])
+	    clust_info[numserv++] = prim_serv;
+	for (i = 0; serv_list[i]; i++)
+	    /* copy in non-duplicates */
+	    /* assume the names returned in the sloc are full domain names */
+	if (!prim_serv[0] || strcasecmp(prim_serv, serv_list[i])) {
+	    clust_info = (char **) realloc(clust_info,
+					   (numserv+2) * sizeof(char *));
+	    clust_info[numserv++] = strsave(serv_list[i]);
+	}
+	clust_info[numserv] = NULL;
+	serv_list = clust_info;
+    }
+#endif
+    
+    if (!prim_serv[0] && numserv) {
+	srandom(time((long *) 0));
+	(void) strcpy(prim_serv, serv_list[random() % numserv]);
+    }
+}
+
 void init_hm()
 {
      struct servent *sp;
      Code_t ret;
      FILE *fp;
+#ifdef POSIX
+     struct sigaction sa;
+#endif
 
      starttime = time((time_t *)0);
      OPENLOG("hm", LOG_PID, LOG_DAEMON);
@@ -308,9 +338,8 @@ void init_hm()
      (void)ZSetServerState(1);	/* Aargh!!! */
      init_queue();
 
-     cur_serv_list = serv_list;
      if (*prim_serv == '\0')
-	  (void)strcpy(prim_serv, *cur_serv_list);
+	  (void)strcpy(prim_serv, *serv_list);
   
      loopback[0] = 127;
      loopback[1] = 0;
@@ -369,7 +398,7 @@ void init_hm()
 	  syslog(LOG_INFO, "Debugging on.");
      }
 
-     bzero((char *)&serv_sin, sizeof(struct sockaddr_in));
+     _BZERO((char *)&serv_sin, sizeof(struct sockaddr_in));
      serv_sin.sin_port = sp->s_port;
       
      /* Set up communications with server */
@@ -384,15 +413,24 @@ void init_hm()
      } else {
 	  DPR2 ("Server = %s\n", prim_serv);
 	  (void)strcpy(cur_serv, prim_serv);
-	  bcopy(hp->h_addr, (char *)&serv_sin.sin_addr, hp->h_length);
+	  _BCOPY(hp->h_addr, (char *)&serv_sin.sin_addr, hp->h_length);
      }
 
      send_boot_notice(HM_BOOT);
      deactivated = 0;
-  
+
+#ifdef POSIX
+     sigemptyset(&sa.sa_mask);
+     sa.sa_flags = 0;
+     sa.sa_handler = set_sig_type;
+     sigaction(SIGHUP, &sa, (struct sigaction *)0);
+     sigaction(SIGALRM, &sa, (struct sigaction *)0);
+     sigaction(SIGTERM, &sa, (struct sigaction *)0);
+#else
      (void)signal (SIGHUP,  set_sig_type);
      (void)signal (SIGALRM, set_sig_type);
      (void)signal (SIGTERM, set_sig_type);
+#endif
 }
 
 void detach()
