@@ -30,6 +30,7 @@ install:
 	${ENSUREDIR} ${DESTDIR}${bindir} 755
 	${ENSUREDIR} ${DESTDIR}${libdir} 755
 	${ENSUREDIR} ${DESTDIR}${datadir} 755
+	${ENSUREDIR} ${DESTDIR}${datadir}/zephyr 755
 	${ENSUREDIR} ${DESTDIR}${sysconfdir} 755
 	${ENSUREDIR} ${DESTDIR}${sysconfdir}/acl 755
 	${ENSUREDIR} ${DESTDIR}${sbindir} 755

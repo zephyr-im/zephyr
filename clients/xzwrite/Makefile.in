@@ -49,8 +49,8 @@ check:
 install: xzwrite XZwrite
 	${INSTALL} -m 755 -s xzwrite ${DESTDIR}${bindir}
 	${INSTALL} -m 644 ${srcdir}/xzwrite.1 ${DESTDIR}${mandir}/man1
-	${INSTALL} -m 644 XZwrite ${DESTDIR}${datadir}
-	${INSTALL} -m 644 ${srcdir}/xzwrite.bitmap ${DESTDIR}${datadir}
+	${INSTALL} -m 644 XZwrite ${DESTDIR}${datadir}/zephyr
+	${INSTALL} -m 644 ${srcdir}/xzwrite.bitmap ${DESTDIR}${datadir}/zephyr
 
 clean:
 	rm -f ${OBJS} xzwrite

@@ -120,7 +120,7 @@ static void read_in_description_file()
 
 /*    var_clear_all_variables(); <<<>>> */
 
-    sprintf(defdesc, "%s/%s", DATADIR, DEFDESC);
+    sprintf(defdesc, "%s/zephyr/%s", DATADIR, DEFDESC);
     input_file = locate_file(description_filename_override, USRDESC, defdesc);
     if (input_file)
       program = parse_file(input_file);
