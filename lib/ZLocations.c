@@ -26,7 +26,7 @@ static char rcsid_ZLocations_c[] = "$Header$";
 #include <sys/param.h>
 #include <netdb.h>
 
-uid_t getuid();
+extern char *getenv();
 
 Code_t ZSetLocation(exposure)
     char *exposure;
@@ -86,8 +86,8 @@ Z_SendLocation(class, opcode, auth, format)
     bptr[1] = ctime(&ourtime);
     bptr[1][strlen(bptr[1])-1] = '\0';
 
-    if ((display = (char *)getenv("DISPLAY")) && *display) {
-	strcpy(mytty, display);
+    if ((display = getenv("DISPLAY")) && *display) {
+	(void) strcpy(mytty, display);
 	bptr[2] = mytty;
     }
     else {

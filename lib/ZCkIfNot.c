@@ -34,14 +34,14 @@ Code_t ZCheckIfNotice(notice, from, predicate, args)
     if ((retval = Z_ReadEnqueue()) != ZERR_NONE)
 	return (retval);
 	
-    qptr = (struct _Z_InputQ *)Z_GetFirstComplete();
+    qptr = Z_GetFirstComplete();
     
     while (qptr) {
 	if ((retval = ZParseNotice(qptr->packet, qptr->packet_len, 
 				   &tmpnotice)) != ZERR_NONE)
 	    return (retval);
 	if ((predicate)(&tmpnotice, args)) {
-	    if (!(buffer = malloc(qptr->packet_len)))
+	    if (!(buffer = malloc((unsigned) qptr->packet_len)))
 		return (ENOMEM);
 	    bcopy(qptr->packet, buffer, qptr->packet_len);
 	    if (from)

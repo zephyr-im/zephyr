@@ -59,10 +59,8 @@ static Code_t Z_RetSubs(notice, nsubs)
 	int *nsubs;
 {
 	int i,retval,nrecv,gimmeack;
-	ZNotice_t notice,retnotice;
-	ZPacket_t buffer;
+	ZNotice_t retnotice;
 	char *ptr,*end,*ptr2;
-	char asciiport[50];
 
 	retval = ZFlushSubscriptions();
 
@@ -82,7 +80,7 @@ static Code_t Z_RetSubs(notice, nsubs)
 	notice->z_default_format = "";
 	notice->z_num_other_fields = 0;
 
-	if ((retval = ZSendNotice(&notice,ZAUTH)) != ZERR_NONE)
+	if ((retval = ZSendNotice(notice,ZAUTH)) != ZERR_NONE)
 		return (retval);
 
 	nrecv = 0;
@@ -90,7 +88,7 @@ static Code_t Z_RetSubs(notice, nsubs)
 	__subscriptions_list = (ZSubscription_t *) 0;
 
 	while (!nrecv || !gimmeack) {
-		if ((retval = ZIfNotice(&retnotice,NULL,
+		if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
 					ZCompareMultiUIDPred,
 					(char *)&notice->z_multiuid))
 		    != ZERR_NONE)
@@ -102,7 +100,7 @@ static Code_t Z_RetSubs(notice, nsubs)
 		}	
 
 		if (retnotice.z_kind == SERVACK &&
-		    !strcmp(retnotice.z_opcode,notice->z_opcode))) {
+		    !strcmp(retnotice.z_opcode,notice->z_opcode)) {
 			gimmeack = 1;
 			continue;
 		} 

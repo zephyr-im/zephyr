@@ -28,6 +28,7 @@ int ZReadAscii(ptr, len, field, num)
 {
     int i;
     unsigned int hexbyte;
+    register char c1, c2;
 
     for (i=0;i<num;i++) {
 	if (*ptr == ' ') {
@@ -41,9 +42,11 @@ int ZReadAscii(ptr, len, field, num)
 	    if (len < 0)
 		return (ZERR_BADFIELD);
 	} 
-	hexbyte = (cnvt_xtoi(ptr[0]) << 4) | cnvt_xtoi(ptr[1]);
-	if (hexbyte < 0)
-	    return (ZERR_BADFIELD);
+	c1 = cnvt_xtoi(ptr[0]);
+	c2 = cnvt_xtoi(ptr[1]);
+	if (c1 < 0 || c2 < 0)
+		return(ZERR_BADFIELD);
+	hexbyte = (c1 << 4) | c2;
 	field[i] = hexbyte;
 	ptr += 2;
 	len -= 2;

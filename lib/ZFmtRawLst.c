@@ -42,7 +42,7 @@ Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len)
 
     *ret_len = hdrlen+size;
     
-    if (!(*buffer = malloc(*ret_len)))
+    if (!(*buffer = malloc((unsigned) *ret_len)))
 	return (ENOMEM);
 
     bcopy(header, *buffer, hdrlen);

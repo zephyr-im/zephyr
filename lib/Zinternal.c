@@ -180,7 +180,7 @@ Code_t Z_ReadWait()
     from_len = sizeof(struct sockaddr_in);
 	
     packet_len = recvfrom(ZGetFD(), packet, sizeof(packet), 0, 
-			  &from, &from_len);
+			  (struct sockaddr *)&from, &from_len);
 
     if (packet_len < 0)
 	return (errno);
@@ -261,11 +261,11 @@ Code_t Z_ReadWait()
 	 */
 	if (part == 0 && !qptr->header) {
 	    qptr->header_len = packet_len-notice.z_message_len;
-	    if (!(qptr->header = malloc(qptr->header_len)))
+	    if (!(qptr->header = malloc((unsigned) qptr->header_len)))
 		return (ENOMEM);
 	    bcopy(packet, qptr->header, qptr->header_len);
 	}
-	return (Z_AddNoticeToEntry(qptr, &notice, part, partof));
+	return (Z_AddNoticeToEntry(qptr, &notice, part));
     }
 
     /*
@@ -282,7 +282,7 @@ Code_t Z_ReadWait()
     qptr = (struct _Z_InputQ *)malloc(sizeof(struct _Z_InputQ));
     if (!qptr)
 	return (ENOMEM);
-    bzero(qptr, sizeof(struct _Z_InputQ));
+    bzero((char *)qptr, sizeof(struct _Z_InputQ));
 
     /* Insert the entry at the end of the queue */
     qptr->next = NULL;
@@ -311,7 +311,7 @@ Code_t Z_ReadWait()
      */
     if (__Zephyr_server || part == 0) {
 	qptr->header_len = packet_len-notice.z_message_len;
-	qptr->header = malloc(packet_len-notice.z_message_len);
+	qptr->header = malloc((unsigned) (packet_len-notice.z_message_len));
 	bcopy(packet, qptr->header, qptr->header_len);
     }
 
@@ -325,13 +325,13 @@ Code_t Z_ReadWait()
 	qptr->holelist = NULL;
 	qptr->complete = 1;
 	/* allocate a msg buf for this piece */
-	if (!(qptr->msg = malloc(notice.z_message_len)))
+	if (!(qptr->msg = malloc((unsigned) notice.z_message_len)))
 		return(ENOMEM);
 	qptr->msg_len = notice.z_message_len;
 	__Q_Size += notice.z_message_len;
 	bcopy(notice.z_message, qptr->msg, notice.z_message_len);
 	qptr->packet_len = qptr->header_len+qptr->msg_len;
-	if (!(qptr->packet = malloc(qptr->packet_len)))
+	if (!(qptr->packet = malloc((unsigned) qptr->packet_len)))
 	    return (ENOMEM);
 	bcopy(qptr->header, qptr->packet, qptr->header_len);
 	bcopy(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
@@ -342,7 +342,7 @@ Code_t Z_ReadWait()
      * We know how long the message is going to be (this is better
      * than IP fragmentation...), so go ahead and allocate it all.
      */
-    if (!(qptr->msg = malloc(partof)))
+    if (!(qptr->msg = malloc((unsigned) partof)))
 	return (ENOMEM);
     qptr->msg_len = partof;
     __Q_Size += partof;
@@ -358,17 +358,16 @@ Code_t Z_ReadWait()
     qptr->holelist->next = NULL;
     qptr->holelist->first = 0;
     qptr->holelist->last = partof-1;
-    return (Z_AddNoticeToEntry(qptr, &notice, part, partof));
+    return (Z_AddNoticeToEntry(qptr, &notice, part));
 }
 
 
 /* Fragment management routines - compliments, more or less, of RFC815 */
 
-Code_t Z_AddNoticeToEntry(qptr, notice, part, partof)
+Code_t Z_AddNoticeToEntry(qptr, notice, part)
     struct _Z_InputQ *qptr;
     ZNotice_t *notice;
     int part;
-    int partof;
 {
     int last, oldfirst, oldlast;
     struct _Z_Hole *hole, *lasthole;
@@ -401,7 +400,7 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part, partof)
 	    lasthole->next = hole->next;
 	else
 	    qptr->holelist = hole->next;
-	free(hole);
+	free((char *)hole);
 	/*
 	 * Now create a new hole that is the original hole without the
 	 * current fragment.
@@ -462,7 +461,7 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part, partof)
 	qptr->complete = 1;
 	qptr->timep = 0;		/* don't time out anymore */
 	qptr->packet_len = qptr->header_len+qptr->msg_len;
-	if (!(qptr->packet = malloc(qptr->packet_len)))
+	if (!(qptr->packet = malloc((unsigned) qptr->packet_len)))
 	    return (ENOMEM);
 	bcopy(qptr->header, qptr->packet, qptr->header_len);
 	bcopy(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
@@ -487,17 +486,19 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     notice->z_multinotice = "";
     
     (void) gettimeofday(&notice->z_uid.tv, (struct timezone *)0);
-    notice->z_uid.tv.tv_sec = htonl(notice->z_uid.tv.tv_sec);
-    notice->z_uid.tv.tv_usec = htonl(notice->z_uid.tv.tv_usec);
+    notice->z_uid.tv.tv_sec = htonl((u_long) notice->z_uid.tv.tv_sec);
+    notice->z_uid.tv.tv_usec = htonl((u_long) notice->z_uid.tv.tv_usec);
     
     if ((retval = Z_GetMyAddr()) != ZERR_NONE)
 	return (retval);
 
     bcopy(__My_addr, (char *)&notice->z_uid.zuid_addr, __My_length);
 
-    bcopy(&notice->z_uid, &notice->z_multiuid, sizeof(ZUnique_Id_t));
+    bcopy((char *)&notice->z_uid,
+	  (char *)&notice->z_multiuid, sizeof(ZUnique_Id_t));
 
-    sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR, ZVERSIONMINOR);
+    (void) sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR,
+		   ZVERSIONMINOR);
     notice->z_version = (char *)malloc((unsigned)strlen(version)+1);
     if (!notice->z_version)
 	    return(ENOMEM);
@@ -535,16 +536,16 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
     if (buffer_len < strlen(notice->z_version)+1)
 	return (ZERR_HEADERLEN);
 
-    strcpy(ptr, notice->z_version);
+    (void) strcpy(ptr, notice->z_version);
     ptr += strlen(ptr)+1;
 
-    temp = htonl(ZNUMFIELDS+notice->z_num_other_fields);
+    temp = htonl((u_long) (ZNUMFIELDS+notice->z_num_other_fields));
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
 		   sizeof(int)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	
-    temp = htonl((int)notice->z_kind);
+    temp = htonl((u_long) notice->z_kind);
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
 		   sizeof(int)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
@@ -565,7 +566,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
-    temp = htonl(notice->z_authent_len);
+    temp = htonl((u_long) notice->z_authent_len);
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
 		   sizeof(int)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
@@ -692,7 +693,7 @@ Z_RemQueue(qptr)
     hole = qptr->holelist;
     while (hole) {
 	nexthole = hole->next;
-	free(hole);
+	free((char *)hole);
 	hole = nexthole;
     }
     
@@ -743,15 +744,15 @@ Code_t Z_SendFragmentedNotice(notice, len, func)
     partnotice = *notice;
 
     while (offset < notice->z_message_len || !notice->z_message_len) {
-	sprintf(multi, "%d/%d", offset, notice->z_message_len);
+	(void) sprintf(multi, "%d/%d", offset, notice->z_message_len);
 	partnotice.z_multinotice = multi;
 	if (offset > 0) {
 	    (void) gettimeofday(&partnotice.z_uid.tv,
 				(struct timezone *)0);
 	    partnotice.z_uid.tv.tv_sec =
-		htonl(partnotice.z_uid.tv.tv_sec);
+		htonl((u_long) partnotice.z_uid.tv.tv_sec);
 	    partnotice.z_uid.tv.tv_usec =
-		htonl(partnotice.z_uid.tv.tv_usec);
+		htonl((u_long) partnotice.z_uid.tv.tv_usec);
 	    if ((retval = Z_GetMyAddr()) != ZERR_NONE)
 		return (retval);
 	    bcopy(__My_addr, (char *)&partnotice.z_uid.zuid_addr,

@@ -46,7 +46,8 @@ Code_t ZSendPacket(packet, len, waitforack)
 
     dest = ZGetDestAddr();
 	
-    if (sendto(ZGetFD(), packet, len, 0, &dest, sizeof(dest)) < 0)
+    if (sendto(ZGetFD(), packet, len, 0, (struct sockaddr *)&dest,
+	       sizeof(dest)) < 0)
 	return (errno);
 
     if (!waitforack)
