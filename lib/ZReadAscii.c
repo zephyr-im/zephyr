@@ -46,17 +46,16 @@ Code_t ZReadAscii(ptr, len, field, num)
     register unsigned int temp;
 
     for (i=0;i<num;i++) {
-	if (*ptr == ' ') {
+	if (len >= 1 && *ptr == ' ') {
 	    ptr++;
-	    if (--len < 0)
-		return ZERR_BADFIELD;
-	} 
-	if (ptr[0] == '0' && ptr[1] == 'x') {
+	    len--;
+	}
+	if (len >= 2 && ptr[0] == '0' && ptr[1] == 'x') {
 	    ptr += 2;
 	    len -= 2;
-	    if (len < 0)
-		return ZERR_BADFIELD;
-	} 
+	}
+	if (len < 2)
+	    return ZERR_BADFIELD;
 	c1 = Z_cnvt_xtoi(ptr[0]);
 	if (c1 < 0)
 		return ZERR_BADFIELD;
@@ -67,8 +66,6 @@ Code_t ZReadAscii(ptr, len, field, num)
 	field[i] = hexbyte;
 	ptr += 2;
 	len -= 2;
-	if (len < 0)
-	    return ZERR_BADFIELD;
     }
 
     return *ptr ? ZERR_BADFIELD : ZERR_NONE;
