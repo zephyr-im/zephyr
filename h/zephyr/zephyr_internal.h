@@ -86,7 +86,7 @@ extern int krb_err_base;
 extern "C" {
 #endif
 
-#if defined(__STDC__)
+#if defined(__STDC__) || defined(__cplusplus)
     extern void *malloc (unsigned);
 #else
     extern char *malloc();
@@ -103,4 +103,4 @@ extern "C" {
 }
 #endif
 
-#endif /* !__ZINTERNAL_H__ */
+#endif !__ZINTERNAL_H__
