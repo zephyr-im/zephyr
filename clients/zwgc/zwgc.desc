@@ -44,10 +44,8 @@ if (upcase($opcode) == "PING") then exit endif
 case $auth
 match "yes"
 	set aval = "Authentic"
-match "no"
-	set aval = "UNAUTHENTIC"
-match "forged"
-	set aval = "UNAUTHENTIC"
+match "no","forged"
+	set aval = "@b(@large(UNAUTHENTIC))"
 endcase
 
 case $class
@@ -81,7 +79,7 @@ match "WG_CTL_CLASS"
 #match "MAIL"
 #	case $instance
 #	match "pop"
-#		exec "/usr/athena/zmailnotify"
+#		exec "/usr/athena/bin/zmailnotify"
 #		exit
 #	endcase
 #	print "(Authentication: @bold("+$aval+"))\n"
@@ -120,7 +118,14 @@ match "message"
 		" on "+$date+"\n"+$ftext+" on "+$fromhost+"\nTo: "+
 		$recipient+")\n\n"
 	print $body
-	put
+	case $auth
+	match "yes"
+	  put
+	match "no","forged"
+	  set X_geometry="-0-80"
+	  put
+	  set X_geometry=""
+	endcase
 	exit
 
 match "login"
