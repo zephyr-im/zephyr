@@ -27,7 +27,7 @@ Code_t ZSendList(notice,list,nitems)
 
 	buffer = (char *)malloc(Z_MAXPKTLEN);
 	if (!buffer)
-		return (ZERR_NOMEM);
+		return (ENOMEM);
 
 	if ((retval = ZFormatNoticeList(notice,list,nitems,buffer,
 					Z_MAXPKTLEN,&len)) != ZERR_NONE) {
