@@ -188,7 +188,7 @@ char *argv[];
 	 (void) strcpy(prim_serv, serv_list[random() % j]);
      }
 #endif /* HESIOD */
-     if (*prim_serv == NULL) {
+     if (*prim_serv == '\0') {
 	 printf("No valid primary server found, exiting.\n");
 	 exit(ZERR_SERVNAK);
      }
@@ -299,7 +299,7 @@ void init_hm()
      init_queue();
 
      cur_serv_list = serv_list;
-     if (*prim_serv == NULL)
+     if (*prim_serv == '\0')
 	  (void)strcpy(prim_serv, *cur_serv_list);
   
      loopback[0] = 127;
