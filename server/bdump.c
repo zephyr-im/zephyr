@@ -303,6 +303,15 @@ bdump_send()
 	syslog(LOG_ERR,"bdump_send: SendKerberosData: %s",
 	       error_message (retval));
 	cleanup(server);
+
+	/* XXX For unknown reasons, sometimes we get a TGT which
+	 * produces this error while trying to get a service ticket.
+	 * This workaround forces us to get a new TGT next time
+	 * around.
+	 */
+	if (retval == RD_AP_BADD)
+	    ticket_time = 0;
+
 	return;
     }
 #else  /* !HAVE_KRB4 */
@@ -462,6 +471,15 @@ bdump_get_v12 (notice, auth, who, server)
     if (retval != 0) {
 	syslog(LOG_ERR,"bdump_get: %s", error_message(retval));
 	cleanup(server);
+
+	/* XXX For unknown reasons, sometimes we get a TGT which
+	 * produces this error while trying to get a service ticket.
+	 * This workaround forces us to get a new TGT next time
+	 * around.
+	 */
+	if (retval == RD_AP_BADD)
+	    ticket_time = 0;
+
 	return;
     }
 #if 1
