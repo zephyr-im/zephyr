@@ -18,10 +18,10 @@
 #define error_MODULE
 
 #include <stdio.h>
+#include <errno.h>
+#include <com_err.h>
 
-extern int errno;
 extern int error_code;
-extern void com_err();
 
 #define  FATAL_TRAP(function_call, message) \
                                            { error_code = (function_call);\
