@@ -316,7 +316,8 @@ dispatch(notice, auth, who, from_server)
 	    authflag = 0;
 	if (!bound_for_local_realm(notice)) {
 	    cp = strchr(notice->z_recipient, '@');
-	    if (!cp || !(realm = realm_get_realm_by_name(cp + 1)))
+	    if (!cp ||
+		!(realm = realm_get_realm_by_name(realm_expand_realm(cp + 1))))
 		sendit(notice, authflag, who, 0);
 	    else
 		realm_handoff(notice, authflag, who, realm, 1);
@@ -346,6 +347,7 @@ sendit(notice, auth, who, external)
     int external;
 {
     static int send_counter = 0;
+    char recipbuf[ANAME_SZ + INST_SZ + REALM_SZ + 3], *recipp;
     int any = 0;
     Acl *acl;
     Destination dest;
@@ -420,10 +422,15 @@ sendit(notice, auth, who, external)
     /* Send to clients subscribed to the triplet itself. */
     dest.classname = class;
     dest.inst = make_string(notice->z_class_inst, 1);
-    if (bound_for_local_realm(notice) && *notice->z_recipient == '@')
+    if (bound_for_local_realm(notice) && *notice->z_recipient == '@') {
 	dest.recip = make_string("", 0);
-    else
-	dest.recip = make_string(notice->z_recipient, 0);
+    } else {
+	strncpy(recipbuf, notice->z_recipient, sizeof(recipbuf));
+	recipp = strrchr(&recipbuf, '@');
+	if (recipp)
+	    sprintf(recipp + 1, "%s", realm_expand_realm(recipp + 1));
+	dest.recip = make_string(recipbuf, 0);
+    }
     if (send_to_dest(notice, auth, &dest, send_counter, external))
 	any = 1;
 
