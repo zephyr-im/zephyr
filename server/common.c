@@ -83,7 +83,7 @@ hash(string)
 }
 
 /* Output a name, replacing newlines with \n and single quotes with \q. */
-void subscr_quote(p, fp)
+void dump_quote(p, fp)
     char *p;
     FILE *fp;
 {
