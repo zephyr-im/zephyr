@@ -36,8 +36,10 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 
 extern int tgetent();
 extern char *tgetstr(),*getenv();
+#if 0
 short ospeed;
 char PC;
+#endif
 
 /* Dictionary naming convention:
 
@@ -91,6 +93,7 @@ char **argv;
     int ex;
     string_dictionary_binding *b;
     int isrealtty = string_Eq(drivername, "tty");
+#if 0
 #ifdef HAVE_TERMIOS_H
     struct termios tbuf;
 
@@ -99,6 +102,7 @@ char **argv;
     struct sgttyb sgttyb;
 
     ospeed = (ioctl(0, TIOCGETP, &sgttyb) == 0) ? sgttyb.sg_ospeed : 2400;
+#endif
 #endif
 
     if (termcap_dict == (string_dictionary) NULL)
@@ -129,8 +133,10 @@ char **argv;
 	/* We cheat here, and ignore the padding (if any) specified for
 	   the mode-change strings (it's a real pain to do "right") */
 
+#if 0
 	tmp = tgetstr("pc", &p);
 	PC = (tmp) ? *tmp : 0;
+#endif
 	if (tmp = tgetstr("md",&p)) {	/* bold ? */
 	    EXPAND("B.bold");
 	    tmp = tgetstr("me",&p);
