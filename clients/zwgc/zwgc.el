@@ -32,7 +32,7 @@
 ;	enddoes
 ;
 (defvar zwgc_el-RCS-id)
-(setq zwgc_el-RCS-id "$Header$")
+(setq zwgc_el-RCS-id "$Id$")
 ;
 ;
 
@@ -47,16 +47,21 @@
 
 (defun zwgc-wakeup (proc string)
   "Procedure called when zwgc spits something out"
-  (save-excursion (set-buffer (get-buffer "*zwgc*"))
-		  (goto-char (point-max))
-		  (if (= 7 (string-to-char string))
-		      (progn
-			(ding 1)
-			(message "got one!")
-			(narrow-to-string string))
-		    (insert string)))
-  (Special-pop-up-window (get-buffer "*zwgc*"))
-  )
+  (let (start-limit)
+    (save-excursion (set-buffer (get-buffer "*zwgc*"))
+		    (setq start-limit (point))
+		    (goto-char (point-max))
+		    (if (= 7 (string-to-char string))
+			(progn
+			  (ding 1)
+			  (message "got one!")
+			  (narrow-to-string string))
+		      (insert string))
+		    (search-backward "\007" start-limit t)
+		    (while (search-forward "\015" (point-max) t) ;flush ^M's
+		      (delete-backward-char 1)))
+    (Special-pop-up-window (get-buffer "*zwgc*"))
+    ))
 
 (defun zwgc ()
   "emacs mode for running zwgc in a sub process of emacs. It pops up a
