@@ -31,17 +31,19 @@ Code_t ZResetAuthentication () {
     return ZERR_NONE;
 }
 
-Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
+Code_t ZMakeAuthentication(notice, buffer, buffer_len, phdr_len)
     register ZNotice_t *notice;
     char *buffer;
     int buffer_len;
-    int *len;
+    int *phdr_len;
 {
 #ifdef ZEPHYR_USES_KERBEROS
     int result;
     time_t now;
     KTEXT_ST authent;
+    int cksum_len;
     char *cstart, *cend;
+    char cheat;
     ZChecksum_t checksum;
     CREDENTIALS cred;
     extern unsigned long des_quad_cksum();
@@ -73,24 +75,35 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
 	free(notice->z_ascii_authent);
 	return (result);
     }
-    result = Z_FormatRawHeader(notice, buffer, buffer_len, len, &cstart,
-			       &cend);
+    result = Z_FormatRawHeader(notice, buffer, buffer_len, phdr_len,
+			       &cksum_len, &cstart, &cend);
     free(notice->z_ascii_authent);
     notice->z_authent_len = 0;
     if (result)
 	return(result);
 
     /* Compute a checksum over the header and message. */
+    /* Cheat!  I know that the minor version number is at offset 6
+       into the packet.  Force it to NOREALM, so that when the server
+       ends up verifying the packet, it's ok.  Next time we do this
+       protocol, make it *truly* extensible so I can avoid this
+       crap. */
+
+    cheat = buffer[6];
+    buffer[6] = ('0'+ZVERSIONMINOR_NOREALM);
+
     if ((result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
 			      __Zephyr_realm, &cred)) != 0)
 	return result;
     checksum = des_quad_cksum(buffer, NULL, cstart - buffer, 0, cred.session);
-    checksum ^= des_quad_cksum(cend, NULL, buffer + *len - cend, 0,
+    checksum ^= des_quad_cksum(cend, NULL, buffer + cksum_len - cend, 0,
 			       cred.session);
     checksum ^= des_quad_cksum(notice->z_message, NULL, notice->z_message_len,
 			       0, cred.session);
     notice->z_checksum = checksum;
     ZMakeAscii32(cstart, buffer + buffer_len - cstart, checksum);
+
+    buffer[6] = cheat;
 
     return (ZERR_NONE);
 #else
@@ -98,6 +111,7 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     notice->z_auth = 1;
     notice->z_authent_len = 0;
     notice->z_ascii_authent = "";
-    return (Z_FormatRawHeader(notice, buffer, buffer_len, len, NULL, NULL));
+    return (Z_FormatRawHeader(notice, buffer, buffer_len, phdr_len, &cksum_len,
+			      NULL, NULL));
 #endif
 }

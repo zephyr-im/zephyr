@@ -19,25 +19,15 @@ static char rcsid_hm_server_c[] = "$Header$";
 #endif /* SABER */
 #endif /* lint */
 
+static void send_back __P((realm_info *, ZNotice_t *));
 static void boot_timeout __P((void *));
 
-static Timer *boot_timer = NULL;
-
-int serv_loop = 0;
+extern int hmdebug;
 extern u_short cli_port;
-extern struct sockaddr_in serv_sin, from;
-extern int timeout_type, hmdebug, nservchang, booting, nserv, no_server;
-extern int deactivated, rebootflag;
-extern int numserv;
-extern char **serv_list;
-extern char cur_serv[], prim_serv[];
-extern void die_gracefully();
-extern unsigned long inet_addr();
 
-/* Argument is whether we are actually booting, or just attaching
- * after a server switch */
-send_boot_notice(op)
-char *op;
+static void send_hmctl_notice(ri, op)
+     realm_info *ri;
+     char *op;
 {
      ZNotice_t notice;
      Code_t ret;
@@ -54,244 +44,234 @@ char *op;
      notice.z_num_other_fields = 0;
      notice.z_message_len = 0;
   
-     /* Notify server that this host is here */
-     if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
+     if ((ret = ZSetDestAddr(&ri->sin)) != ZERR_NONE) {
 	  Zperr(ret);
 	  com_err("hm", ret, "setting destination");
      }
      if ((ret = ZSendNotice(&notice, ZNOAUTH)) != ZERR_NONE) {
 	  Zperr(ret);
-	  com_err("hm", ret, "sending startup notice");
-     }
-     boot_timer = timer_set_rel(SERV_TIMEOUT, boot_timeout, NULL);
-}
-
-/* Argument is whether we are detaching or really going down */
-send_flush_notice(op)
-char *op;
-{
-     ZNotice_t notice;
-     Code_t ret;
-     
-     /* Set up server notice */
-     notice.z_kind = HMCTL;
-     notice.z_port = cli_port;
-     notice.z_class = ZEPHYR_CTL_CLASS;
-     notice.z_class_inst = ZEPHYR_CTL_HM;
-     notice.z_opcode = op;
-     notice.z_sender = "HM";
-     notice.z_recipient = "";
-     notice.z_default_format = "";
-     notice.z_num_other_fields = 0;
-     notice.z_message_len = 0;
-
-     /* Tell server to lose us */
-     if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
-	  Zperr(ret);
-	  com_err("hm", ret, "setting destination");
-     }
-     if ((ret = ZSendNotice(&notice, ZNOAUTH)) != ZERR_NONE) {
-	  Zperr(ret);
-	  com_err("hm", ret, "sending flush notice");
+	  com_err("hm", ret, "sending hmctl notice %s", op);
      }
 }
 
-find_next_server(sugg_serv)
-char *sugg_serv;
+static int choose_next_server(ri)
+     realm_info *ri;
 {
-     struct hostent *hp;
-     int done = 0;
-     char **parse = serv_list;
-     char *new_serv;
-  
-     if (sugg_serv) {
-	  do {
-	       if (!strcmp(*parse, sugg_serv))
-		    done = 1;
-	  } while ((done == 0) && (*++parse != NULL));
-     }
-     if (done) {
-	  if ((hp = gethostbyname(sugg_serv)) != NULL) {
-	       DPR2 ("Server = %s\n", sugg_serv);	
-	       (void)strcpy(cur_serv, sugg_serv);
-	       if (hmdebug)
-		    syslog(LOG_DEBUG, "Suggested server: %s\n", sugg_serv);
-	  } else {
-	       done = 0; 
-	  }
-     }
-     while (!done) {
-	 if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
-	     serv_loop = 0;
-	     if ((hp = gethostbyname(prim_serv)) != NULL) {
-		 DPR2 ("Server = %s\n", prim_serv);
-		 (void)strcpy(cur_serv, prim_serv);
-		 done = 1;
-		 break;
-	     }
-	 }
+    int new_server;
 
-	 switch (numserv) {
-	 case 1:
-	     if ((hp = gethostbyname(*serv_list)) != NULL) {
-		 DPR2 ("Server = %s\n", *serv_list);
-		 (void)strcpy(cur_serv, *serv_list);
-		 done = 1;
-		 break;
-	     }
-	     /* fall through */
-	 case 0:
-	     if (rebootflag)
-		 die_gracefully();
-	     else
-		 sleep(1);
-	     break;
-	 default:
-	     do {
-		 new_serv = serv_list[random() % numserv];
-	     } while (!strcmp(new_serv, cur_serv));
-
-	     if ((hp = gethostbyname(new_serv)) != NULL) {
-		 DPR2 ("Server = %s\n", new_serv);
-		 (void)strcpy(cur_serv, new_serv);
-		 done = 1;
-	     } else
-		 sleep(1);
-
-	     break;
-	 }
+     if (ri->current_server < 0) {
+	 new_server = random() % ri->realm_config.nservers;
+     } else if (ri->realm_config.nservers == 1) {
+	 new_server = NO_SERVER;
+     } else if ((new_server = (random() % (ri->realm_config.nservers - 1))) ==
+		ri->current_server) {
+	 new_server = ri->realm_config.nservers - 1;
      }
-     (void) memcpy((char *)&serv_sin.sin_addr, hp->h_addr, hp->h_length);
-     nservchang++;
+
+     return(new_server);
 }
 
-server_manager(notice)
-ZNotice_t *notice;
+void server_manager(notice, from)
+     ZNotice_t *notice;
+     struct sockaddr_in *from;
 {
-    if (memcmp((char *)&serv_sin.sin_addr, (char *)&from.sin_addr, 4) ||
-	(serv_sin.sin_port != from.sin_port)) {
-	syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
-    } else {
-	/* This is our server, handle the notice */
-	if (boot_timer) {
-	    timer_reset(boot_timer);
-	    boot_timer = NULL;
-	}
-	DPR ("A notice came in from the server.\n");
-	nserv++;
-	switch(notice->z_kind) {
-	case HMCTL:
-	    hm_control(notice);
-	    break;
-	case SERVNAK:
-	case SERVACK:
-	    send_back(notice);
-	    break;
-	default:
-	    syslog (LOG_INFO, "Bad notice kind!?");
+    int i;
+    realm_info *ri;
+
+    for (i=0; i<nrealms; i++)
+	if ((memcmp((char *)&realm_list[i].sin.sin_addr,
+		    (char *)&from->sin_addr, 4) == 0) &&
+	    (realm_list[i].sin.sin_port == from->sin_port)) {
+	    ri = &realm_list[i];
 	    break;
 	}
+
+    if (!ri) {
+	syslog(LOG_INFO, "Bad server notice from %s:%u.",
+	       inet_ntoa(from->sin_addr), from->sin_port);
+	return;
+    }
+
+    DPR ("A notice came in from the server.\n");
+
+    if (ri->boot_timer) {
+	timer_reset(ri->boot_timer);
+	ri->boot_timer = NULL;
+    }
+
+    ri->nsrvpkts++;
+
+    switch (ri->state) {
+    case NEED_SERVER:
+	/* there's a server which thinks it cares about us.  it's
+	   wrong.  reboot the hm. */
+	send_hmctl_notice(ri, HM_BOOT);
+
+	ri->state = BOOTING;
+	ri->boot_timer = timer_set_rel(BOOT_TIMEOUT, boot_timeout, ri);
+
+	return;
+    case DEAD_SERVER:
+	/* the server is back from the dead.  reanimate the queue and
+	   pretend it never went away */
+	/* fall through */
+    case BOOTING:
+	/* got the ack. */
+	retransmit_realm(ri);
+	ri->state = ATTACHED;
+	break;
+    }
+
+    switch(notice->z_kind) {
+    case HMCTL:
+	hm_control(ri, notice);
+	break;
+    case SERVNAK:
+    case SERVACK:
+	send_back(ri, notice);
+	break;
+    default:
+	syslog (LOG_INFO, "Bad notice kind %d", notice->z_kind);
+	break;
     }
 }
 
-hm_control(notice)
-ZNotice_t *notice;
+void hm_control(ri, notice)
+     realm_info *ri;
+     ZNotice_t *notice;
 {
     Code_t ret;
     struct hostent *hp;
     char suggested_server[64];
-    unsigned long addr;
+    struct in_addr addr;
      
     DPR("Control message!\n");
     if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN)) {
 	if (notice->z_message_len) {
-	    addr = inet_addr(notice->z_message);
-	    hp = gethostbyaddr((char *) &addr, sizeof(addr), AF_INET);
-	    if (hp != NULL) {
-		strcpy(suggested_server, hp->h_name);
-		new_server(suggested_server);
-	    } else {
-		new_server(NULL);
-	    }
+	    addr.s_addr = inet_addr(notice->z_message);
+	    realm_new_server(ri, &addr);
 	} else {
-	    new_server((char *)NULL);
+	    realm_new_server(ri, NULL);
 	}
     } else if (!strcmp(notice->z_opcode, SERVER_PING)) {
 	notice->z_kind = HMACK;
-	if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
-	    Zperr(ret);
-	    com_err("hm", ret, "setting destination");
-	}
-	if ((ret = send_outgoing(notice)) != ZERR_NONE) {
+	if ((ret = send_outgoing(&ri->sin, notice)) != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("hm", ret, "sending ACK");
-	}
-	if (no_server) {
-	    no_server = 0;
-	    retransmit_queue(&serv_sin);
 	}
     } else {
 	syslog (LOG_INFO, "Bad control message.");
     }
 }
 
-send_back(notice)
-ZNotice_t *notice;
+static void send_back(ri, notice)
+     realm_info *ri;
+     ZNotice_t *notice;
 {
     ZNotice_Kind_t kind;
     struct sockaddr_in repl;
     Code_t ret;
   
-    if (!strcmp(notice->z_opcode, HM_BOOT) ||
-	!strcmp(notice->z_opcode, HM_ATTACH)) {
-	/* ignore message, just an ack from boot, but exit if we
-	 * are rebooting.
-	 */
-	if (rebootflag)
-	    die_gracefully();
-    } else {
-	if (remove_notice_from_queue(notice, &kind, &repl) != ZERR_NONE) {
-	    syslog (LOG_INFO, "Hey! This packet isn't in my queue!");
-	} else {
-	    /* check if client wants an ACK, and send it */
-	    if (kind == ACKED) {
-		DPR2 ("Client ACK port: %u\n", ntohs(repl.sin_port));
-		if ((ret = ZSetDestAddr(&repl)) != ZERR_NONE) {
-		    Zperr(ret);
-		    com_err("hm", ret, "setting destination");
-		}
-		if ((ret = send_outgoing(notice)) != ZERR_NONE) {
-		    Zperr(ret);
-		    com_err("hm", ret, "sending ACK");
-		}
-	    }
-	}
+    if ((strcmp(notice->z_opcode, HM_BOOT) == 0) ||
+	(strcmp(notice->z_opcode, HM_ATTACH) == 0))
+	return;
+
+    if (remove_notice_from_realm(ri, notice, &kind, &repl) != ZERR_NONE) {
+	syslog (LOG_INFO, "Hey! This packet isn't in my queue!");
+	return;
     }
-    if (no_server) {
-	no_server = 0;
-	retransmit_queue(&serv_sin);
+
+    /* check if client wants an ACK, and send it */
+    if (kind == ACKED) {
+	DPR2 ("Client ACK port: %u\n", ntohs(repl.sin_port));
+	if ((ret = send_outgoing(&repl, notice)) != ZERR_NONE) {
+	    Zperr(ret);
+	    com_err("hm", ret, "sending ACK");
+	}
     }
 }
 
-new_server(sugg_serv)
-char *sugg_serv;
+void realm_new_server(ri, addr)
+     realm_info *ri;
+     struct in_addr *addr;
 {
-    no_server = 1;
-    syslog (LOG_INFO, "Server went down, finding new server.");
-    send_flush_notice(HM_DETACH);
-    find_next_server(sugg_serv);
-    if (booting) {
-	send_boot_notice(HM_BOOT);
-	deactivated = 0;
-    } else {
-	send_boot_notice(HM_ATTACH);
+    int i;
+    int new_server;
+
+    if (ri->state == ATTACHED)
+	disable_realm_retransmits(ri);
+
+    if (ri->current_server != NO_SERVER) {
+	syslog(LOG_INFO, "Server went down, finding new server.");
+	ri->nchange++;
+	send_hmctl_notice(ri, HM_DETACH);
     }
-    disable_queue_retransmits();
+
+    if (addr) {
+	ri->current_server = EXCEPTION_SERVER;
+	ri->sin.sin_addr = *addr;
+
+	for (i=0; i<ri->realm_config.nservers; i++)
+	    if (ri->realm_config.server_list[i].addr.s_addr ==
+		ri->sin.sin_addr.s_addr) {
+		ri->current_server = i;
+		break;
+	    }
+    } else if ((new_server = choose_next_server(ri)) == NO_SERVER) {
+	/* the only server went away.  Set a boot timer, try again
+	   later */
+	ri->current_server = NO_SERVER;
+	/* ri->sin doesn't need to be touched */
+
+	ri->state = DEAD_SERVER;
+	ri->boot_timer = timer_set_rel(DEAD_TIMEOUT, boot_timeout, ri);
+
+	return;
+    } else {
+	ri->current_server = new_server;
+	ri->sin.sin_addr =
+	    ri->realm_config.server_list[ri->current_server].addr;
+    }
+
+    send_hmctl_notice(ri, (ri->state == NEED_SERVER)?HM_BOOT:HM_ATTACH);
+
+    if (ri->state != DEAD_SERVER)
+	ri->state = BOOTING;
+    ri->boot_timer = timer_set_rel(BOOT_TIMEOUT, boot_timeout, ri);
+}
+
+void realm_flush(ri)
+     realm_info *ri;
+{
+    init_realm_queue(ri);
+
+    /* to flush, actually do a boot, because this causes an ACK to
+       come back when it completes */
+
+    if (ri->state == ATTACHED) {
+	send_hmctl_notice(ri, HM_BOOT);
+
+	ri->state = BOOTING;
+	ri->boot_timer = timer_set_rel(BOOT_TIMEOUT, boot_timeout, ri);
+    } else {
+	ri->state = NEED_SERVER;
+    }
+}
+
+void realm_reset(ri)
+     realm_info *ri;
+{
+    ri->current_server = NO_SERVER;
+    ri->nchange = 0;
+    ri->nsrvpkts = 0;
+    ri->ncltpkts = 0;
+
+    realm_flush(ri);
 }
 
 static void boot_timeout(arg)
 void *arg;
 {
-    new_server(NULL);
+    realm_new_server((realm_info *) arg, NULL);
 }
 

@@ -23,7 +23,7 @@ static const char rcsid_zstat_c[] = "$Id$";
 #endif
 
 const char *hm_head[] = {
-    "Current server =",
+    "Current server:",
     "Items in queue:",
     "Client packets received:",
     "Server packets received:",
@@ -122,15 +122,12 @@ do_stat(host)
 		return;
 	}
 
-	if (hm_stat(host,srv_host))
-		return;
-
-	if (!hmonly)
-		(void) srv_stat(srv_host);
+	hm_stat(host, !hmonly);
 }
 
-hm_stat(host,server)
-	char *host,*server;
+hm_stat(host, do_server)
+	char *host;
+	int do_server;
 {
 	struct in_addr inaddr;
 	Code_t code;
@@ -168,12 +165,20 @@ hm_stat(host,server)
 		mp += strlen(mp)+1;
 	}
 
-	(void) strcpy(server,line[0]);
+	printf("HostManager protocol version = %s\n\n",notice.z_version);
 
-	printf("HostManager protocol version = %s\n",notice.z_version);
-
-	for (i=0; (i < nf) && (i < HM_SIZE); i++) {
-		if (!strncmp("Time",hm_head[i],4)) {
+	for (i=0; i<nf; i++) {
+		if (((i%(HM_SIZE+1)) == 0) && (i+HM_SIZE<nf)) {
+			printf("Zephyr realm = %s\n", line[i+HM_SIZE]);
+			printf("%s %s\n",hm_head[i%(HM_SIZE+1)],line[i]);
+		} else if (((i%(HM_SIZE+1)) == HM_SIZE) ||
+			   (i == nf-1)) {
+			printf("\n");
+			if (do_server) {
+				srv_stat(line[i-(i%(HM_SIZE+1))]);
+				printf("\n");
+			}
+		} else if ((i%(HM_SIZE+1)) == 7) {
 			runtime = atol(line[i]);
 			tim = gmtime(&runtime);
 			printf("%s %d days, %02d:%02d:%02d\n", hm_head[i],
@@ -181,12 +186,10 @@ hm_stat(host,server)
 				tim->tm_hour,
 				tim->tm_min,
 				tim->tm_sec);
-		}
-		else
+		} else {
 			printf("%s %s\n",hm_head[i],line[i]);
+		}
 	}
-
-	printf("\n");
 	
 	(void) close(sock);
 	ZFreeNotice(&notice);
@@ -297,7 +300,6 @@ srv_stat(host)
 			printf("%s\n",line[i]);
 		} else printf("%s\n",line[i]);
 	}
-	printf("\n");
 	
 	(void) close(sock);
 	ZFreeNotice(&notice);

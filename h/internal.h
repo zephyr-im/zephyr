@@ -54,6 +54,17 @@ struct _Z_InputQ {
     char		*msg;
 };
 
+typedef struct _Z_HostNameAddr {
+   char *name;
+   struct in_addr addr;
+} Z_HostNameAddr;
+
+typedef struct _Z_RealmInfo {
+   char *realm;
+   Z_HostNameAddr *server_list;
+   int nservers;
+} Z_RealmConfig;
+
 extern struct _Z_InputQ *__Q_Head, *__Q_Tail;
 
 extern int __Zephyr_open;	/* 0 if FD opened, 1 otherwise */
@@ -80,10 +91,12 @@ Code_t Z_AddNoticeToEntry __P((struct _Z_InputQ*, ZNotice_t*, int));
 Code_t Z_FormatAuthHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
 Code_t Z_FormatHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
 Code_t Z_FormatRawHeader __P((ZNotice_t *, char*, int,
-			      int*, char **, char **));
+			      int*, int*, char **, char **));
+Code_t Z_FreeRealmConfig(Z_RealmConfig *);
+Code_t Z_ParseRealmConfig(char *, Z_RealmConfig *);
 Code_t Z_ReadEnqueue __P((void));
 Code_t Z_ReadWait __P((void));
-Code_t Z_SendLocation __P((char*, char*, Z_AuthProc, char*));
+Code_t Z_SendLocation __P((char *, char*, char*, Z_AuthProc, char*));
 Code_t Z_SendFragmentedNotice __P((ZNotice_t *notice, int len,
 				   Z_AuthProc cert_func,
 				   Z_SendProc send_func));

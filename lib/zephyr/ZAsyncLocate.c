@@ -18,7 +18,8 @@
 static const char rcsid_ZAsyncLocate_c[] = "$Id$";
 #endif
 
-Code_t ZRequestLocations(user, zald, kind, auth)
+Code_t ZRequestLocations(realm, user, zald, kind, auth)
+     char *realm;
      char *user;
      register ZAsyncLocateData_t *zald;
      ZNotice_Kind_t kind;	/* UNSAFE, UNACKED, or ACKED */
@@ -41,6 +42,7 @@ Code_t ZRequestLocations(user, zald, kind, auth)
     notice.z_recipient = "";
     notice.z_default_format = "";
     notice.z_message_len = 0;
+    notice.z_dest_realm = realm;
 
     if ((retval = ZSendNotice(&notice, auth)) != ZERR_NONE)
 	return(retval);

@@ -606,7 +606,8 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     Z_AuthProc cert_routine;
 {
     Code_t retval;
-    static char version[BUFSIZ]; /* default init should be all \0 */
+    static char version_realm[BUFSIZ]; /* default init should be all \0 */
+    static char version_norealm[BUFSIZ]; /* default init should be all \0 */
     struct sockaddr_in name;
     int namelen = sizeof(name);
 
@@ -638,10 +639,17 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
 
     notice->z_multiuid = notice->z_uid;
 
-    if (!version[0])
-	    (void) sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR,
-			   ZVERSIONMINOR);
-    notice->z_version = version;
+    if (notice->z_dest_realm && *notice->z_dest_realm) {
+	if (!version_realm[0])
+	    (void) sprintf(version_realm, "%s%d.%d", ZVERSIONHDR,
+			   ZVERSIONMAJOR, ZVERSIONMINOR_REALM);
+	notice->z_version = version_realm;
+    } else {
+	if (!version_norealm[0])
+	    (void) sprintf(version_norealm, "%s%d.%d", ZVERSIONHDR,
+			   ZVERSIONMAJOR, ZVERSIONMINOR_NOREALM);
+	notice->z_version = version_norealm;
+    }
 
     return Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine);
 }
@@ -659,17 +667,18 @@ Code_t Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
 	notice->z_ascii_authent = "";
 	notice->z_checksum = 0;
 	return (Z_FormatRawHeader(notice, buffer, buffer_len,
-				  len, NULL, NULL));
+				  len, NULL, NULL, NULL));
     }
     
     return ((*cert_routine)(notice, buffer, buffer_len, len));
 } 
 	
-Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
+Code_t Z_FormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_len,
+			 cstart, cend)
     ZNotice_t *notice;
     char *buffer;
     int buffer_len;
-    int *len;
+    int *hdr_len, *cksum_len;
     char **cstart, **cend;
 {
     char newrecip[BUFSIZ];
@@ -700,7 +709,8 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     (void) strcpy(ptr, notice->z_version);
     ptr += strlen(ptr)+1;
 
-    if (ZMakeAscii32(ptr, end-ptr, Z_NUMFIELDS + notice->z_num_other_fields)
+    if (ZMakeAscii32(ptr, end-ptr,
+		     Z_NUMFIELDS + notice->z_num_other_fields)
 	== ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
@@ -769,8 +779,15 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	if (Z_AddField(&ptr, notice->z_other_fields[i], end))
 	    return (ZERR_HEADERLEN);
     
-    *len = ptr-buffer;
+    if (cksum_len)
+	*cksum_len = ptr-buffer;
+
+    if (notice->z_dest_realm && *notice->z_dest_realm)
+	if (Z_AddField(&ptr, notice->z_dest_realm, end))
+	    return(ZERR_HEADERLEN);
 	
+    *hdr_len = ptr-buffer;
+
     return (ZERR_NONE);
 }
 
@@ -925,6 +942,256 @@ Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
     }
 
     return (ZERR_NONE);
+}
+
+Code_t Z_ParseRealmConfig(str, rc)
+     char *str;
+     Z_RealmConfig *rc;
+{
+    char *ptra, *ptrb;
+    struct hostent *hp;
+    enum { HESIOD, HOSTLIST } listtype;
+    int hostcount;
+#ifdef ZEPHYR_USES_HESIOD
+    char **hes_serv_list;
+#endif
+
+    rc->realm = NULL;
+
+    /* skip whitespace, check for eol or comment */
+
+    ptra = str;
+    while (*ptra && isspace(*ptra)) ptra++;
+
+    if (*ptra == '\0' || *ptra == '#') {
+       /* no realm is ok, it's a blank line */
+       return(ZERR_NONE);
+    }
+
+    /* scan the realm */
+
+    ptrb = ptra;
+    while(*ptrb && !isspace(*ptrb) && *ptrb != '#') ptrb++;
+
+    if ((rc->realm = (char *) malloc(ptrb - ptra + 1)) == NULL)
+	return(ENOMEM);
+
+    strncpy(rc->realm, ptra, ptrb - ptra);
+    rc->realm[ptrb - ptra] = '\0';
+
+    /* skip whitespace, check for eol or comment */
+
+    ptra = ptrb;
+    while (*ptra && isspace(*ptra)) ptra++;
+
+    if (*ptra == '\0' || *ptra == '#') {
+	free(rc->realm);
+	return(ZERR_BADCONFREALM);
+    }
+
+    /* scan the type */
+
+    ptrb = ptra;
+    while(*ptrb && !isspace(*ptrb) && *ptrb != '#') ptrb++;
+
+#ifdef ZEPHYR_USES_HESIOD
+    if (strncasecmp("hesiod", ptra, ptrb - ptra) == 0) {
+	listtype = HESIOD;
+    } else
+#endif
+	if (strncasecmp("hostlist", ptra, ptrb - ptra) == 0) {
+	    listtype = HOSTLIST;
+	} else {
+	    free(rc->realm);
+	    return(ZERR_BADCONF);
+	}
+
+#ifdef ZEPHYR_USES_HESIOD
+    if (listtype == HESIOD) {
+	char *zcluster;
+
+	/* skip whitespace, check for eol or comment */
+
+	ptra = ptrb;
+	while (*ptra && isspace(*ptra)) ptra++;
+
+	if (*ptra == '\0' || *ptra == '#') {
+	    free(rc->realm);
+	    return(ZERR_BADCONFREALM);
+	}
+
+	/* scan for the service name for the sloc lookup */
+
+	ptrb = ptra;
+	while(*ptrb && !isspace(*ptrb) && *ptrb != '#') ptrb++;
+
+	if ((zcluster = (char *) malloc(ptrb - ptra + 1)) == NULL) {
+	    free(rc->realm);
+	    return(ENOMEM);
+	}
+
+	strncpy(zcluster, ptra, ptrb - ptra);
+	zcluster[ptrb - ptra] = '\0';
+
+	/* skip whitespace, check for eol or comment */
+
+	ptra = ptrb;
+	while (*ptra && isspace(*ptra)) ptra++;
+
+	if (*ptra != '\0' && *ptra != '#') {
+	    free(rc->realm);
+	    return(ZERR_BADCONF);
+	}
+
+	/* get the server list from hesiod */
+	
+	if (((hes_serv_list = hes_resolve(zcluster, "sloc")) == NULL) ||
+	    (hes_serv_list[0] == NULL)) {
+	    syslog(LOG_ERR, "No hesiod for realm %s (%s sloc)",
+		   rc->realm, zcluster);
+	    free(zcluster);
+	    free(rc->realm);
+	    /* treat this as an empty line, since other lines may succeed */
+	    rc->realm = NULL;
+	    return(ZERR_NONE);
+	}
+
+	free(zcluster);
+    }
+#endif
+
+    /* scan hosts */
+
+    rc->server_list = NULL;
+    rc->nservers = 0;
+    hostcount = 0;
+
+    while (1) {
+	if (rc->server_list) {
+	    rc->server_list = (Z_HostNameAddr *)
+		realloc(rc->server_list,
+			sizeof(Z_HostNameAddr *)*(rc->nservers+1));
+	} else {
+	    rc->server_list = (Z_HostNameAddr *)
+		malloc(sizeof(Z_HostNameAddr));
+	}
+
+	if (rc->server_list == NULL) {
+	    free(rc->realm);
+	    return(ENOMEM);
+	}
+
+#ifdef ZEPHYR_USES_HESIOD
+	if (listtype == HESIOD) {
+	    if (*hes_serv_list == NULL)
+		break;
+
+	    /* this is clean, but only because hesiod memory management
+	       is gross */
+	    rc->server_list[rc->nservers].name = *hes_serv_list;
+	    serv_list++;
+	} else
+#endif
+	    if (listtype == HOSTLIST) {
+		/* skip whitespace, check for eol or comment */
+
+		ptra = ptrb;
+		while (*ptra && isspace(*ptra)) ptra++;
+
+		if (*ptra == '\0' || *ptra == '#') {
+		    /* end of server list */
+		    break;
+		}
+
+		/* scan a hostname */
+
+		ptrb = ptra;
+		while(*ptrb && !isspace(*ptrb) && *ptrb != '#') ptrb++;
+
+		if ((rc->server_list[rc->nservers].name =
+		     (char *) malloc(ptrb - ptra + 1))
+		    == NULL) {
+		    free(rc->server_list);
+		    free(rc->realm);
+		    return(ENOMEM);
+		}
+
+		strncpy(rc->server_list[rc->nservers].name, ptra, ptrb - ptra);
+		rc->server_list[rc->nservers].name[ptrb - ptra] = '\0';
+	    }
+
+	hostcount++;
+
+	/* now, take the hesiod or hostlist hostname, and resolve it */
+
+	if ((hp = gethostbyname(rc->server_list[rc->nservers].name)) == NULL) {
+	    /* if the address lookup fails authoritatively from a
+	       hostlist, return an error.  Otherwise, syslog.  This
+	       could cause a syslog from a client, but only if a
+	       lookup which succeeded from zhm earlier fails now.
+	       This isn't perfect, but will do. */
+
+	    if (h_errno != TRY_AGAIN && listtype == HOSTLIST) {
+		free(rc->server_list);
+		free(rc->realm);
+		return(ZERR_BADCONFHOST);
+	    } else {
+		syslog(LOG_ERR, "Lookup for server %s for realm %s failed, continuing",
+		       rc->server_list[rc->nservers].name, rc->realm);
+
+		/* in an ideal world, when we need to find a new
+		   server, or when we receive a packet from a server
+		   we don't know, we would redo the lookup, but this
+		   takes a long time, and blocks.  So for now, we'll
+		   only do this when we reread the config info. */
+
+		continue;
+	    }
+	}
+
+	/* XXX this isn't quite right for multihomed servers. In that
+           case, we should add an entry to server_list for each unique
+	   address */
+
+	if (hp->h_length < sizeof(rc->server_list[rc->nservers].addr)) {
+	    syslog(LOG_ERR, "Lookup for server %s for realm %s failed (h_length < %d), continuing",
+		   rc->server_list[rc->nservers].name, rc->realm,
+		   sizeof(rc->server_list[rc->nservers].addr));;
+	    continue;
+	}
+
+	memcpy((char *) &rc->server_list[rc->nservers].addr,
+	       hp->h_addr, sizeof(rc->server_list[rc->nservers].addr));
+
+	rc->nservers++;
+    }
+
+    if (rc->nservers == 0) {
+	if (hostcount) {
+	    /* this means the net was losing.  skip this realm, because
+	       another one might be ok. */
+
+	    free(rc->server_list);
+	    free(rc->realm);
+	    rc->realm = NULL;
+	    return(ZERR_NONE);
+	} else {
+	    /* this means that a hostlist was empty */
+
+	    return(ZERR_BADCONFREALM);
+	}
+    }
+
+    return(ZERR_NONE);
+}
+
+Code_t Z_FreeRealmConfig(rc)
+     Z_RealmConfig *rc;
+{
+    free(rc->server_list);
+    free(rc->realm);
+
+    return(ZERR_NONE);
 }
 
 /*ARGSUSED*/

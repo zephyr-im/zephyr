@@ -19,41 +19,48 @@
 static const char rcsid_ZSubscriptions_c[] = "$Id$";
 #endif
 
-static Code_t Z_Subscriptions __P((register ZSubscription_t *sublist,
+static Code_t Z_Subscriptions __P((char *realm,
+				   register ZSubscription_t *sublist,
 				   int nitems, unsigned int port,
 				   char *opcode, int authit));
 static Code_t subscr_sendoff __P((ZNotice_t *notice, char **lyst, int num,
 				  int authit));
 
-Code_t ZSubscribeTo(sublist, nitems, port)
+Code_t ZSubscribeTo(realm, sublist, nitems, port)
+    char *realm;
     ZSubscription_t *sublist;
     int nitems;
     unsigned int port;
 {
-    return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE, 1));
+    return (Z_Subscriptions(realm, sublist, nitems, port,
+			    CLIENT_SUBSCRIBE, 1));
 }
 
-Code_t ZSubscribeToSansDefaults(sublist, nitems, port)
+Code_t ZSubscribeToSansDefaults(realm, sublist, nitems, port)
+    char *realm;
     ZSubscription_t *sublist;
     int nitems;
     unsigned int port;
 {
-    return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE_NODEFS,
-			    1));
+    return (Z_Subscriptions(realm, sublist, nitems, port,
+			    CLIENT_SUBSCRIBE_NODEFS, 1));
 }
 
-Code_t ZUnsubscribeTo(sublist, nitems, port)
+Code_t ZUnsubscribeTo(realm, sublist, nitems, port)
+    char *realm;
     ZSubscription_t *sublist;
     int nitems;
     unsigned int port;
 {
-    return (Z_Subscriptions(sublist, nitems, port, CLIENT_UNSUBSCRIBE, 1));
+    return (Z_Subscriptions(realm, sublist, nitems, port,
+			    CLIENT_UNSUBSCRIBE, 1));
 }
 
-Code_t ZCancelSubscriptions(port)
+Code_t ZCancelSubscriptions(realm, port)
+    char *realm;
     unsigned int port;
 {
-    return (Z_Subscriptions((ZSubscription_t *)0, 0, port,
+    return (Z_Subscriptions(realm, (ZSubscription_t *)0, 0, port,
 			    CLIENT_CANCELSUB, 0));
 }
 
@@ -64,7 +71,8 @@ Code_t ZCancelSubscriptions(port)
  */
 
 static Code_t
-Z_Subscriptions(sublist, nitems, port, opcode, authit)
+Z_Subscriptions(realm, sublist, nitems, port, opcode, authit)
+    char *realm;
     register ZSubscription_t *sublist;
     int nitems;
     unsigned int port;
@@ -99,6 +107,7 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     notice.z_recipient = "";
     notice.z_default_format = "";
     notice.z_message_len = 0;
+    notice.z_dest_realm = realm;
 
     /* format the header to figure out how long it is */
     retval = Z_FormatHeader(&notice, header, sizeof(header), &hdrlen, ZAUTH);

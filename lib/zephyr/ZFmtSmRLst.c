@@ -30,7 +30,7 @@ Code_t ZFormatSmallRawNoticeList(notice, list, nitems, buffer, ret_len)
     char *ptr;
 
     if ((retval = Z_FormatRawHeader(notice, buffer, Z_MAXHEADERLEN,
-				    &hdrlen, NULL, NULL)) != ZERR_NONE)
+				    &hdrlen, NULL, NULL, NULL)) != ZERR_NONE)
 	return (retval);
 
     size = 0;

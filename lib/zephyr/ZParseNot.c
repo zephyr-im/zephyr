@@ -76,7 +76,7 @@ Code_t ZParseNotice(buffer, len, notice)
 {
     char *ptr, *end;
     unsigned long temp;
-    int maj, numfields, i;
+    int maj, min, numfields, i;
 
 #ifdef __LINE__
     int lineno;
@@ -112,11 +112,14 @@ Code_t ZParseNotice(buffer, len, notice)
     maj = atoi(ptr);
     if (maj != ZVERSIONMAJOR)
 	return (ZERR_VERS);
+    while (*ptr != '.') ptr++;
+    min = atoi(ptr+1);
+    numfields = (min == ZVERSIONMINOR_REALM)?1:0;
     next_field (ptr);
 
     if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	BAD_PACKET;
-    numfields = temp;
+    numfields += temp;
     next_field (ptr);
 
     /*XXX 3 */
@@ -281,6 +284,13 @@ Code_t ZParseNotice(buffer, len, notice)
 	notice->z_other_fields[i] = ptr;
 	next_field (ptr);
     }
+
+    if (i>0) {
+	notice->z_dest_realm = notice->z_other_fields[i-1];
+	notice->z_other_fields[i-1] = NULL;
+	i--;
+    }
+
     notice->z_num_other_fields = i;
     
     for (i=0;i<numfields;i++)

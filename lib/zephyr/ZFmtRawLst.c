@@ -31,7 +31,7 @@ Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len)
     Code_t retval;
 
     if ((retval = Z_FormatRawHeader(notice, header, sizeof(header),
-				    &hdrlen, NULL, NULL)) != ZERR_NONE)
+				    &hdrlen, NULL, NULL, NULL)) != ZERR_NONE)
 	return (retval);
 
     size = 0;

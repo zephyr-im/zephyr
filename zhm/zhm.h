@@ -43,31 +43,74 @@
 #define Zperr(e)
 #endif
 
-#define ever (;;)
+#define BOOT_TIMEOUT 10
+#define DEAD_TIMEOUT 5*60
 
-#define SERV_TIMEOUT 5
-#define BOOTING 1
-#define NOTICES 2
+typedef struct _Queue {
+    struct _realm_info *ri;
+    Timer *timer;
+    int retries;
+    ZNotice_t notice;
+    caddr_t packet;
+    struct sockaddr_in reply;
+    struct _Queue *next, **prev_p;
+} Queue;
 
-/* main.c */
-void die_gracefully __P((void));
+typedef enum _realm_state {
+   NEED_SERVER, /* never had a server, HM_BOOT when we find one.  This can
+		   also be set if a flush was requested when the state
+		   was !=  ATTACHED. */
+   DEAD_SERVER, /* server timed out, no others around.  This is
+		   actually handled in the same way as BOOTING
+		   (although some of the timeouts are different), but
+		   it's handy to know which of the two states the zhm
+		   is in */
+   BOOTING, /* waiting for HM_BOOT/HM_ATTACH SERVACK */
+   ATTACHED /* active and connected */
+} realm_state;
 
-/* zhm_client.c */
-void transmission_tower __P((ZNotice_t *, char *, int));
-Code_t send_outgoing __P((ZNotice_t *));
+typedef struct _realm_info {
+   Z_RealmConfig realm_config;
+
+#define NO_SERVER -1
+#define EXCEPTION_SERVER -2
+   int current_server;
+   struct sockaddr_in sin;
+   realm_state state;
+
+   int nchange;
+   int nsrvpkts;
+   int ncltpkts;
+
+   Queue *queue;
+   Timer *boot_timer;
+} realm_info;
 
 /* queue.c */
-void init_queue __P((void));
-Code_t add_notice_to_queue __P((ZNotice_t *, char *, struct sockaddr_in *,
-				int));
-Code_t remove_notice_from_queue __P((ZNotice_t *, ZNotice_Kind_t *,
-				     struct sockaddr_in *));
-void retransmit_queue __P((struct sockaddr_in *));
-void disable_queue_retransmits __P((void));
-int queue_len __P((void));
+void init_realm_queue __P((realm_info *));
+Code_t add_notice_to_realm __P((realm_info *, ZNotice_t *, char *,
+				struct sockaddr_in *, int));
+Code_t remove_notice_from_realm __P((realm_info *, ZNotice_t *,
+				     ZNotice_Kind_t *, struct sockaddr_in *));
+void retransmit_realm __P((realm_info *));
+void disable_realm_retransmits __P((realm_info *));
+int realm_queue_len __P((realm_info *));
 
-struct sockaddr_in serv_sin;
-extern int rexmit_times[];
+/* zhm.c */
+extern realm_info *realm_list;
+extern int nrealms;
+
+/* zhm_client.c */
+void transmission_tower __P((ZNotice_t *, struct sockaddr_in *, char *, int));
+Code_t send_outgoing __P((struct sockaddr_in *, ZNotice_t *));
+
+/* zhm_server.c */
+void server_manager __P((ZNotice_t *, struct sockaddr_in *));
+void hm_control __P((realm_info *, ZNotice_t *));
+void realm_new_server __P((realm_info *, struct in_addr *addr));
+void realm_flush __P((realm_info *));
+void realm_reset __P((realm_info *));
+
 
 #ifdef vax
 #define use_etext

@@ -795,8 +795,8 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 
   buffer_len = sizeof(ZPacket_t);
 
-  retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen, &ptr, 
-                             NULL);
+  retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen,
+			     NULL, &ptr, NULL);
   if (retval != ZERR_NONE) {
     syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
     free(buffer);
@@ -811,7 +811,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 #endif
 
   retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen, 
-                             NULL, NULL);
+                             NULL, NULL, NULL);
   if (retval != ZERR_NONE) {
     syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
     free(buffer);
@@ -884,7 +884,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
       }
 
       retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, &hdrlen, 
-                                 &ptr, NULL);
+                                 NULL, &ptr, NULL);
       if (retval != ZERR_NONE) {
         syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
         free(buffer);
@@ -900,7 +900,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 #endif
 
       retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, &hdrlen, 
-                                 NULL, NULL);
+                                 NULL, NULL, NULL);
       if (retval != ZERR_NONE) {
         syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
         free(buffer);

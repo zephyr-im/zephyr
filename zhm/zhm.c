@@ -11,6 +11,10 @@
  *      "mit-copyright.h". 
  */
 
+#include <stdio.h>
+#include <errno.h>
+#include <sys/param.h>
+
 #include "zhm.h"
 
 static const char rcsid_hm_c[] = "$Id$";
@@ -29,31 +33,30 @@ int use_hesiod = 0;
 #define PIDDIR "/etc/"
 #endif
 
-int hmdebug, rebootflag, errflg, dieflag, inetd, oldpid, nofork;
-int no_server = 1, nservchang, nserv, nclt;
-int booting = 1, timeout_type, deactivated = 1;
-long starttime;
+int hmdebug = 0;
+time_t starttime;
 u_short cli_port;
-struct sockaddr_in cli_sin, serv_sin, from;
-int numserv;
-char **serv_list = NULL;
-char prim_serv[MAXHOSTNAMELEN], cur_serv[MAXHOSTNAMELEN];
-char *zcluster;
-int deactivating = 0;
-int terminating = 0;
-struct hostent *hp;
-char **clust_info;
-char hostname[MAXHOSTNAMELEN], loopback[4];
+struct sockaddr_in cli_sin;
 char PidFile[128];
+
+char *conffile = NULL;
+char *confline = NULL;
+realm_info *realm_list = NULL;
+int nrealms = 0;
+
+volatile int deactivating = 0;
+volatile int terminating = 0;
 
 static RETSIGTYPE deactivate __P((void));
 static RETSIGTYPE terminate __P((void));
-static void choose_server __P((void));
-static void init_hm __P((void));
+static void init_hm __P((int, int));
+static void parse_conf __P((char *, char *));
 static void detach __P((void));
 static void send_stats __P((ZNotice_t *, struct sockaddr_in *));
+static void die_gracefully __P((void));
 static char *strsave __P((const char *));
 extern int optind;
+extern char *optarg;
 
 static RETSIGTYPE deactivate()
 {
@@ -72,17 +75,15 @@ char *argv[];
     ZPacket_t packet;
     Code_t ret;
     int opt, pak_len, i, j = 0, fd, count;
+    int dieflag = 0, rebootflag = 0, inetd = 0, nofork = 0, errflg = 0;
     fd_set readers;
     struct timeval tv;
+    struct hostent *hp;
+    struct sockaddr_in from;
 
     sprintf(PidFile, "%szhm.pid", PIDDIR);
 
-    if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
-	printf("Can't find my hostname?!\n");
-	exit(-1);
-    }
-    prim_serv[0] = '\0';
-    while ((opt = getopt(argc, argv, "drhin")) != EOF)
+    while ((opt = getopt(argc, argv, "drhinc:")) != EOF)
 	switch(opt) {
 	  case 'd':
 	    hmdebug = 1;
@@ -93,7 +94,7 @@ char *argv[];
 	    break;
 	  case 'r':
 	    /* Reboot host -- send boot notice -- and exit */
-	    rebootflag= 1;
+	    rebootflag = 1;
 	    break;
 	  case 'i':
 	    /* inetd operation: don't do bind ourselves, fd 0 is
@@ -104,59 +105,63 @@ char *argv[];
 	  case 'n':
 	    nofork = 1;
 	    break;
+	  case 'c':
+	    conffile = optarg;
+	    break;
 	  case '?':
 	  default:
 	    errflg++;
 	    break;
 	}
+
+    if (optind < argc) {
+	if (conffile) {
+	    errflg++;
+	} else {
+	    int len;
+	    static const char lr[] = "default-realm hostlist";
+
+	    len = sizeof(lr)+1;
+	    for (i=optind; i < argc; i++)
+		len += strlen(argv[i])+1;
+
+	    if ((confline = (char *) malloc(len)) == NULL) {
+		fprintf(stderr, "Out of memory constructing default realm");
+		exit(1);
+	    }
+	    strcpy(confline, lr);
+	    for (i=optind; i < argc; i++) {
+		strcat(confline, " ");
+		strcat(confline, argv[i]);
+	    }
+	}
+    }
+
     if (errflg) {
-	fprintf(stderr, "Usage: %s [-d] [-h] [-r] [-n] [server]\n", argv[0]);
+	fprintf(stderr, "Usage: %s [-d] [-h] [-r] [-n] [server... | -c conffile ]\n", argv[0]);
 	exit(2);
     }
 
-    numserv = 0;
-
-    /* Override server argument? */
-    if (optind < argc) {
-	if ((hp = gethostbyname(argv[optind++])) == NULL) {
-	    printf("Unknown server name: %s\n", argv[optind-1]);
-	} else
-	    strcpy(prim_serv, hp->h_name);
-
-	/* argc-optind is the # of other servers on the command line */
-	serv_list = (char **) malloc((argc - optind + 2) * sizeof(char *));
-	serv_list[numserv++] = prim_serv;
-	for (; optind < argc; optind++) {
-	    if ((hp = gethostbyname(argv[optind])) == NULL) {
-		printf("Unknown server name '%s', ignoring\n", argv[optind]);
-		continue;
-	    }
-	     serv_list[numserv++] = strsave(hp->h_name);
-	}
-	serv_list[numserv] = NULL;
+    ZSetServerState(1);		/* Aargh!!! */
+    if ((ret = ZInitialize()) != ZERR_NONE) {
+	Zperr(ret);
+	com_err("hm", ret, "initializing");
+	closelog();
+	exit(-1);
     }
-#ifdef ZEPHYR_USES_HESIOD
-    else
-	use_hesiod = 1;
-#endif
 
-    choose_server();
-    if (*prim_serv == '\0') {
-	printf("No valid primary server found, exiting.\n");
-	exit(ZERR_SERVNAK);
-    }
-    init_hm();
+    parse_conf(conffile, confline);
 
-    DPR2("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
-    DPR2("zephyr client port: %u\n", ntohs(cli_port));
-  
-    /* Main loop */
-    for ever {
+    init_hm(inetd, nofork);
+
+    for (;;) {
 	/* Wait for incoming packets or queue timeouts. */
 	DPR("Waiting for a packet...");
+
 	fd = ZGetFD();
 	FD_ZERO(&readers);
 	FD_SET(fd, &readers);
+
 	count = select(fd + 1, &readers, NULL, NULL, timer_timeout(&tv));
 	if (count == -1 && errno != EINTR) {
 	    syslog(LOG_CRIT, "select() failed: %m");
@@ -171,156 +176,177 @@ char *argv[];
 	    if (dieflag) {
 		die_gracefully();
 	    } else {
-		choose_server();
-		send_flush_notice(HM_FLUSH);
-		deactivated = 1;
+		for (i=0; i<nrealms; i++)
+		    realm_reset(&realm_list[i]);
 	    }
 	}
 
 	timer_process();
 
-	if (count > 0) {
-	    ret = ZReceivePacket(packet, &pak_len, &from);
-	    if ((ret != ZERR_NONE) && (ret != EINTR)){
+	if (count == 0)
+	    continue;
+
+	if ((ret = ZReceivePacket(packet, &pak_len, &from)) != ZERR_NONE) {
+	    if (ret != EINTR) {
 		Zperr(ret);
 		com_err("hm", ret, "receiving notice");
-	    } else if (ret != EINTR) {
-		/* Where did it come from? */
-		if ((ret = ZParseNotice(packet, pak_len, &notice))
-		    != ZERR_NONE) {
-		    Zperr(ret);
-		    com_err("hm", ret, "parsing notice");
-		} else {
-		    DPR("Got a packet.\n");
-		    DPR("notice:\n");
-		    DPR2("\tz_kind: %d\n", notice.z_kind);
-		    DPR2("\tz_port: %u\n", ntohs(notice.z_port));
-		    DPR2("\tz_class: %s\n", notice.z_class);
-		    DPR2("\tz_class_inst: %s\n", notice.z_class_inst);
-		    DPR2("\tz_opcode: %s\n", notice.z_opcode);
-		    DPR2("\tz_sender: %s\n", notice.z_sender);
-		    DPR2("\tz_recip: %s\n", notice.z_recipient);
-		    DPR2("\tz_def_format: %s\n", notice.z_default_format);
-		    DPR2("\tz_message: %s\n", notice.z_message);
-		    if (memcmp(loopback, &from.sin_addr, 4) &&
-			((notice.z_kind == SERVACK) ||
-			 (notice.z_kind == SERVNAK) ||
-			 (notice.z_kind == HMCTL))) {
-			server_manager(&notice);
-		    } else {
-			if (!memcmp(loopback, &from.sin_addr, 4) &&
-			    ((notice.z_kind == UNSAFE) ||
-			     (notice.z_kind == UNACKED) ||
-			     (notice.z_kind == ACKED) ||
-			     (notice.z_kind == HMCTL))) {
-			    /* Client program... */
-			    if (deactivated) {
-				send_boot_notice(HM_BOOT);
-				deactivated = 0;
-			    }
-			    transmission_tower(&notice, packet, pak_len);
-			    DPR2("Pending = %d\n", ZPending());
-			} else {
-			    if (notice.z_kind == STAT) {
-				send_stats(&notice, &from);
-			    } else {
-				syslog(LOG_INFO,
-				       "Unknown notice type: %d",
-				       notice.z_kind);
-			    }
-			}	
-		    }
-		}
 	    }
+	    continue;
+	}
+
+	/* Where did it come from? */
+	if ((ret = ZParseNotice(packet, pak_len, &notice)) != ZERR_NONE) {
+	    Zperr(ret);
+	    com_err("hm", ret, "parsing notice");
+
+	    continue;
+	}
+
+	DPR("Got a packet.\n");
+	DPR("notice:\n");
+	DPR2("\tz_kind: %d\n", notice.z_kind);
+	DPR2("\tz_port: %u\n", ntohs(notice.z_port));
+	DPR2("\tz_class: %s\n", notice.z_class);
+	DPR2("\tz_class_inst: %s\n", notice.z_class_inst);
+	DPR2("\tz_opcode: %s\n", notice.z_opcode);
+	DPR2("\tz_sender: %s\n", notice.z_sender);
+	DPR2("\tz_recip: %s\n", notice.z_recipient);
+	DPR2("\tz_def_format: %s\n", notice.z_default_format);
+	DPR2("\tz_message: %s\n", notice.z_message);
+
+	if ((from.sin_addr.s_addr != htonl(INADDR_LOOPBACK)) &&
+	    ((notice.z_kind == SERVACK) ||
+	     (notice.z_kind == SERVNAK) ||
+	     (notice.z_kind == HMCTL))) {
+	    server_manager(&notice, &from);
+	} else if ((from.sin_addr.s_addr == htonl(INADDR_LOOPBACK)) &&
+		   ((notice.z_kind == UNSAFE) ||
+		    (notice.z_kind == UNACKED) ||
+		    (notice.z_kind == ACKED) ||
+		    (notice.z_kind == HMCTL))) {
+	    transmission_tower(&notice, &from, packet, pak_len);
+	    DPR2("Pending = %d\n", ZPending());
+	} else if (notice.z_kind == STAT) {
+	    send_stats(&notice, &from);
+	} else {
+	    syslog(LOG_INFO, "Unknown notice type: %d",
+		   notice.z_kind);
 	}
     }
 }
 
-static void choose_server()
+static void parse_conf(conffile, confline)
+     char *conffile;
+     char *confline;
 {
-    int i = 0;
+    struct servent *sp;
+    int zsrvport;
+    char filename[MAXPATHLEN];
+    FILE *file;
+    int lineno;
+    char buf[1024];
+    Code_t code;
+    int i;
 
-#ifdef ZEPHYR_USES_HESIOD
-    if (use_hesiod) {
+    /* this isn't a wonderful place to put this, but the alternatives
+       don't seem any better */
 
-	/* Free up any previously used resources */
-	if (prim_serv[0]) 
-	    i = 1;
-	while (i < numserv)
-	    free(serv_list[i++]);
-	if (serv_list)
-	    free(serv_list);
-	
-	numserv = 0;
-	prim_serv[0] = '\0';
-	
-	if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
-	    zcluster = NULL;
-	} else
-	for ( ; *clust_info; clust_info++) {
-	    /* Remove the following check once we have changed over to
-	     * new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
-	     * server
-	     */
-	    if (!strncasecmp("ZEPHYR", *clust_info, 6)) {
-		register char *c;
-		
-		if ((c = strchr(*clust_info, ' ')) == 0) {
-		    printf("Hesiod error getting primary server info.\n");
-		} else
-		    strcpy(prim_serv, c+1);
-		break;
-	    }
-	    if (!strncasecmp("ZCLUSTER", *clust_info, 9)) {
-		register char *c;
-		
-		if ((c = strchr(*clust_info, ' ')) == 0) {
-		    printf("Hesiod error getting zcluster info.\n");
-		} else {
-		    if ((zcluster = malloc((unsigned)(strlen(c+1)+1)))
-			!= NULL) {
-			strcpy(zcluster, c+1);
-		    } else {
-			printf("Out of memory.\n");
-			exit(-5);
-		    }
+    sp = getservbyname(SERVER_SVCNAME, "udp");
+    zsrvport = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
+
+    if (confline) {
+	if ((realm_list = (realm_info *) malloc(sizeof(realm_info))) == NULL) {
+	    fprintf(stderr, "Out of memory parsing command line %s",
+		    filename);
+	    exit(1);
+	}
+
+	if (code = Z_ParseRealmConfig(confline,
+				      &realm_list[nrealms].realm_config)) {
+	    fprintf(stderr, "Error in command line: %s", error_message(code));
+	    exit(1);
+	}
+
+	if (realm_list[nrealms].realm_config.realm == NULL) {
+	    fprintf(stderr,
+		    "the command line did not contain any valid realms.");
+	    exit(1);
+	}
+
+	nrealms++;
+    } else {
+	if (conffile == NULL)
+	    sprintf(filename, "%s/zhm.conf", SYSCONFDIR);
+	else
+	    strcpy(filename, conffile);
+
+	if ((file = fopen(filename, "r")) == NULL) {
+	    fprintf(stderr, "Error opening configuration file %s: %s",
+		    filename, strerror(errno));
+	    exit(1);
+	}
+
+	for (lineno = 1; ; lineno++) {
+	    if (fgets(buf, sizeof(buf), file) == NULL) {
+		if (ferror(file)) {
+		    fprintf(stderr, "Error reading configuration file %s: %s",
+			    filename, strerror(errno));
+		    exit(1);
 		}
+
 		break;
 	    }
+
+	    if (realm_list) {
+		realm_list = (realm_info *)
+		    realloc(realm_list, sizeof(realm_info)*(nrealms+1));
+	    } else {
+		realm_list = (realm_info *)
+		    malloc(sizeof(realm_info));
+	    }
+
+	    if (realm_list == NULL) {
+		fprintf(stderr, "Out of memory reading configuration file %s",
+			filename);
+		exit(1);
+	    }
+
+	    if (code = Z_ParseRealmConfig(buf,
+					  &realm_list[nrealms].realm_config)) {
+		fprintf(stderr,
+			"Error in configuration file %s, line %d: %s",
+			filename, lineno, error_message(code));
+		exit(1);
+	    }
+
+	    if (realm_list[nrealms].realm_config.realm)
+		nrealms++;
 	}
-	
-	if (zcluster == NULL) {
-	    if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
-		strcpy(zcluster, "zephyr");
+
+	if (nrealms == 0) {
+	    fprintf(stderr,
+		    "Configuration file %s did not contain any valid realms.");
+	    exit(1);
 	}
-	while ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
-	    syslog(LOG_ERR, "No servers or no hesiod");
-	    /* wait a bit, and try again */
-	    sleep(30);
-	}
-	clust_info = (char **) malloc(2 * sizeof(char *));
-	if (prim_serv[0])
-	    clust_info[numserv++] = prim_serv;
-	for (i = 0; serv_list[i]; i++)
-	    /* copy in non-duplicates */
-	    /* assume the names returned in the sloc are full domain names */
-	if (!prim_serv[0] || strcasecmp(prim_serv, serv_list[i])) {
-	    clust_info = (char **) realloc(clust_info,
-					   (numserv+2) * sizeof(char *));
-	    clust_info[numserv++] = strsave(serv_list[i]);
-	}
-	clust_info[numserv] = NULL;
-	serv_list = clust_info;
     }
-#endif
-    
-    if (!prim_serv[0] && numserv) {
-	srandom(time(NULL));
-	strcpy(prim_serv, serv_list[random() % numserv]);
+
+    for (i=0; i<nrealms; i++) {
+	realm_list[i].current_server = NO_SERVER;
+	realm_list[i].sin.sin_len = sizeof(struct in_addr);
+	realm_list[i].sin.sin_family = AF_INET;
+	realm_list[i].sin.sin_port = zsrvport;
+	realm_list[i].state = NEED_SERVER;
+	realm_list[i].nchange = 0;
+	realm_list[i].nsrvpkts = 0;
+	realm_list[i].ncltpkts = 0;
+	init_realm_queue(&realm_list[i]);
+	realm_list[i].boot_timer = NULL;
     }
 }
 
-static void init_hm()
+static void init_hm(inetd, nofork)
+     int inetd;
+     int nofork;
 {
      struct servent *sp;
      Code_t ret;
@@ -328,27 +354,12 @@ static void init_hm()
 #ifdef _POSIX_VERSION
      struct sigaction sa;
 #endif
+     struct hostent *hp;
+     int i;
 
      starttime = time((time_t *)0);
      OPENLOG("hm", LOG_PID, LOG_DAEMON);
   
-     ZSetServerState(1);	/* Aargh!!! */
-     if ((ret = ZInitialize()) != ZERR_NONE) {
-	 Zperr(ret);
-	 com_err("hm", ret, "initializing");
-	 closelog();
-	 exit(-1);
-     }
-     init_queue();
-
-     if (*prim_serv == '\0')
-	 strcpy(prim_serv, *serv_list);
-  
-     loopback[0] = 127;
-     loopback[1] = 0;
-     loopback[2] = 0;
-     loopback[3] = 1;
-      
      if (inetd) {
 	 ZSetFD(0);		/* fd 0 is on the socket, thanks to inetd */
      } else {
@@ -362,12 +373,9 @@ static void init_hm()
 	     exit(ret);
 	 }
      }
+
      cli_sin = ZGetDestAddr();
 
-     sp = getservbyname(SERVER_SVCNAME, "udp");
-     memset(&serv_sin, 0, sizeof(struct sockaddr_in));
-     serv_sin.sin_port = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
-      
 #ifndef DEBUG
      if (!inetd && !nofork)
 	 detach();
@@ -384,23 +392,10 @@ static void init_hm()
 	  syslog(LOG_INFO, "Debugging on.");
      }
 
-     /* Set up communications with server */
-     /* target is SERVER_SVCNAME port on server machine */
+     /* Initiate communication with each realm */
 
-     serv_sin.sin_family = AF_INET;
-  
-     /* who to talk to */
-     if ((hp = gethostbyname(prim_serv)) == NULL) {
-	  DPR("gethostbyname failed\n");
-	  find_next_server(NULL);
-     } else {
-	  DPR2("Server = %s\n", prim_serv);
-	  strcpy(cur_serv, prim_serv);
-	  memcpy(&serv_sin.sin_addr, hp->h_addr, hp->h_length);
-     }
-
-     send_boot_notice(HM_BOOT);
-     deactivated = 0;
+     for (i=0; i<nrealms; i++)
+	 realm_new_server(&realm_list[i], NULL);
 
 #ifdef _POSIX_VERSION
      sigemptyset(&sa.sa_mask);
@@ -463,7 +458,7 @@ static void send_stats(notice, sin)
      Code_t ret;
      char *bfr;
      char *list[20];
-     int len, i, nitems = 10;
+     int len, i, nitems;
      unsigned long size;
 
      newnotice = *notice;
@@ -475,24 +470,24 @@ static void send_stats(notice, sin)
      newnotice.z_kind = HMACK;
 
      list[0] = (char *) malloc(MAXHOSTNAMELEN);
-     strcpy(list[0], cur_serv);
+     strcpy(list[0], realm_list[0].realm_config.server_list[realm_list[0].current_server].name);
      list[1] = (char *) malloc(64);
-     sprintf(list[1], "%d", queue_len());
+     sprintf(list[1], "%d", realm_queue_len(&realm_list[0]));
      list[2] = (char *) malloc(64);
-     sprintf(list[2], "%d", nclt);
+     sprintf(list[2], "%d", realm_list[0].ncltpkts);
      list[3] = (char *) malloc(64);
-     sprintf(list[3], "%d", nserv);
+     sprintf(list[3], "%d", realm_list[0].nsrvpkts);
      list[4] = (char *) malloc(64);
-     sprintf(list[4], "%d", nservchang);
+     sprintf(list[4], "%d", realm_list[0].nchange);
      list[5] = (char *) malloc(64);
      strcpy(list[5], rcsid_hm_c);
      list[6] = (char *) malloc(64);
-     if (no_server)
+     if (realm_list[0].state == NO_SERVER)
 	  sprintf(list[6], "yes");
      else
 	  sprintf(list[6], "no");
      list[7] = (char *) malloc(64);
-     sprintf(list[7], "%ld", time((time_t *)0) - starttime);
+     sprintf(list[7], "%ld", (long) (time((time_t *)0) - starttime));
 #ifdef adjust_size
      size = (unsigned long)sbrk(0);
      adjust_size (size);
@@ -503,13 +498,17 @@ static void send_stats(notice, sin)
      sprintf(list[8], "%ld", size);
      list[9] = (char *)malloc(32);
      strcpy(list[9], MACHINE_TYPE);
+     list[10] = (char *)malloc(64);
+     strcpy(list[10], realm_list[0].realm_config.realm);
+
+     nitems = 11;
 
      /* Since ZFormatRaw* won't change the version number on notices,
 	we need to set the version number explicitly.  This code is taken
 	from Zinternal.c, function Z_FormatHeader */
      if (!*version)
 	     sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR,
-		     ZVERSIONMINOR);
+		     ZVERSIONMINOR_NOREALM);
      newnotice.z_version = version;
 
      if ((ret = ZFormatRawNoticeList(&newnotice, list, nitems, &bfr,
@@ -526,13 +525,18 @@ static void send_stats(notice, sin)
 	  free(list[i]);
 }
 
-void die_gracefully()
+static void die_gracefully()
 {
-     syslog(LOG_INFO, "Terminate signal caught...");
-     send_flush_notice(HM_FLUSH);
-     unlink(PidFile);
-     closelog();
-     exit(0);
+    int i;
+
+    syslog(LOG_INFO, "Terminate signal caught...");
+
+    for (i=0; i<nrealms; i++)
+	realm_flush(&realm_list[i]);
+
+    unlink(PidFile);
+    closelog();
+    exit(0);
 }
 
 static char *strsave(sp)

@@ -36,6 +36,7 @@ AC_ARG_ENABLE(athena,
 	       cp ${srcdir}/lib/ss/*.h h/ss])
 
 AC_SUBST(confdir)
+AC_SUBST(sysconfdir)
 AC_SUBST(datadir)
 AC_SUBST(sbindir)
 AC_SUBST(lsbindir)

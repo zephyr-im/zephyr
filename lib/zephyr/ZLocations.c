@@ -56,22 +56,25 @@ Code_t ZInitLocationInfo(hostname, tty)
     return (ZERR_NONE);
 }
 
-Code_t ZSetLocation(exposure)
+Code_t ZSetLocation(realm, exposure)
+    char *realm;
     char *exposure;
 {
-    return (Z_SendLocation(LOGIN_CLASS, exposure, ZAUTH, 
+    return (Z_SendLocation(realm, LOGIN_CLASS, exposure, ZAUTH, 
 			   "$sender logged in to $1 on $3 at $2"));
 }
 
-Code_t ZUnsetLocation()
+Code_t ZUnsetLocation(realm)
+    char *realm;
 {
-    return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_LOGOUT, ZNOAUTH, 
+    return (Z_SendLocation(realm, LOGIN_CLASS, LOGIN_USER_LOGOUT, ZNOAUTH, 
 			   "$sender logged out of $1 on $3 at $2"));
 }
 
-Code_t ZFlushMyLocations()
+Code_t ZFlushMyLocations(realm)
+    char *realm;
 {
-    return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_FLUSH, ZAUTH, ""));
+    return (Z_SendLocation(realm, LOGIN_CLASS, LOGIN_USER_FLUSH, ZAUTH, ""));
 }
 
 char *ZParseExposureLevel(text)
@@ -93,7 +96,8 @@ char *ZParseExposureLevel(text)
 	return(NULL);
 }
 
-Code_t Z_SendLocation(class, opcode, auth, format)
+Code_t Z_SendLocation(realm, class, opcode, auth, format)
+    char *realm;
     char *class;
     char *opcode;
     Z_AuthProc auth;
@@ -119,6 +123,7 @@ Code_t Z_SendLocation(class, opcode, auth, format)
     notice.z_recipient = "";
     notice.z_num_other_fields = 0;
     notice.z_default_format = format;
+    notice.z_dest_realm = realm;
 
     bptr[0] = host;
     ourtime = time((time_t *)0);

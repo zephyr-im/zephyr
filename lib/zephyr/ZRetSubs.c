@@ -24,9 +24,11 @@ static Code_t Z_RetSubs ();
 
 /* Need STDC definition when possible for unsigned short argument. */
 #ifdef __STDC__
-Code_t ZRetrieveSubscriptions(unsigned short port, int *nsubs)
+Code_t ZRetrieveSubscriptions(char *realm,
+			      unsigned short port, int *nsubs)
 #else
-Code_t ZRetrieveSubscriptions(port,nsubs)
+Code_t ZRetrieveSubscriptions(realm,port,nsubs)
+        ZCONST char *realm;
 	unsigned short port;
 	int *nsubs;
 #endif
@@ -46,11 +48,13 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	notice.z_message = asciiport;
 	notice.z_message_len = strlen(asciiport)+1;
 	notice.z_opcode = CLIENT_GIMMESUBS;
+	notice.z_dest_realm = realm;
 
 	return(Z_RetSubs(&notice, nsubs, ZAUTH));
 }
 
-Code_t ZRetrieveDefaultSubscriptions(nsubs)
+Code_t ZRetrieveDefaultSubscriptions(realm, nsubs)
+	char *realm;
 	int *nsubs;
 {
 	ZNotice_t notice;
@@ -59,6 +63,7 @@ Code_t ZRetrieveDefaultSubscriptions(nsubs)
 	notice.z_message = (char *) 0;
 	notice.z_message_len = 0;
 	notice.z_opcode = CLIENT_GIMMEDEFS;
+	notice.z_dest_realm = realm;
 
 	return(Z_RetSubs(&notice, nsubs, ZNOAUTH));
 

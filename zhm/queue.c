@@ -19,45 +19,33 @@ static char rcsid_queue_c[] = "$Header$";
 #endif /* SABER */
 #endif /* lint */
 
-typedef struct _Queue {
-    Timer *timer;
-    int retries;
-    ZNotice_t notice;
-    caddr_t packet;
-    struct sockaddr_in reply;
-    struct _Queue *next, **prev_p;
-} Queue;
+static const int rexmit_times[] = { 2, 2, 4, 4, 8, -1 };
 
-static Queue *hm_queue;
-static int retransmits_enabled = 0;
-
-static Queue *find_notice_in_queue __P((ZNotice_t *notice));
-static Code_t dump_queue __P((void));
+static Queue *find_notice_in_realm __P((realm_info *ri, ZNotice_t *notice));
 static void queue_timeout __P((void *arg));
 
-int rexmit_times[] = { 2, 2, 4, 4, 8, -1 };
-
 #ifdef DEBUG
-Code_t dump_queue();
+Code_t dump_realm_queue(realm_info *);
 #endif
 
-void init_queue()
+void init_realm_queue(realm_info *ri)
 {
     Queue *q;
 
-    while (hm_queue) {
-	q = hm_queue;
+    while (ri->queue) {
+	q = ri->queue;
 	if (q->timer)
 	    timer_reset(q->timer);
 	free(q->packet);
-	hm_queue = q->next;
+	ri->queue = q->next;
 	free(q);
     }
 
     DPR("Queue initialized and flushed.\n");
 }
 
-Code_t add_notice_to_queue(notice, packet, repl, len)
+Code_t add_notice_to_realm(ri, notice, packet, repl, len)
+    realm_info *ri;
     ZNotice_t *notice;
     char * packet;
     struct sockaddr_in *repl;
@@ -66,8 +54,9 @@ Code_t add_notice_to_queue(notice, packet, repl, len)
     Queue *entry;
 
     DPR("Adding notice to queue...\n");
-    if (!find_notice_in_queue(notice)) {
+    if (!find_notice_in_realm(ri, notice)) {
 	entry = (Queue *) malloc(sizeof(Queue));
+	entry->ri = ri;
 	entry->retries = 0;
 	entry->packet = (char *) malloc(Z_MAXPKTLEN);
 	memcpy(entry->packet, packet, Z_MAXPKTLEN);
@@ -76,15 +65,16 @@ Code_t add_notice_to_queue(notice, packet, repl, len)
 	    free(entry->packet);
 	} else {
 	    entry->reply = *repl;
-	    LIST_INSERT(&hm_queue, entry);
+	    LIST_INSERT(&ri->queue, entry);
 	}
-	entry->timer = (retransmits_enabled) ?
-	    timer_set_rel(rexmit_times[0], queue_timeout, entry) : NULL;
+	entry->timer = (ri->state == ATTACHED) ?
+	   timer_set_rel(rexmit_times[0], queue_timeout, entry) : NULL;
     }
     return(ZERR_NONE);
 }
 
-Code_t remove_notice_from_queue(notice, kind, repl)
+Code_t remove_notice_from_realm(ri, notice, kind, repl)
+    realm_info *ri;
     ZNotice_t *notice;
     ZNotice_Kind_t *kind;
     struct sockaddr_in *repl;
@@ -92,7 +82,7 @@ Code_t remove_notice_from_queue(notice, kind, repl)
     Queue *entry;
 
     DPR("Removing notice from queue...\n");
-    entry = find_notice_in_queue(notice);
+    entry = find_notice_in_realm(ri, notice);
     if (entry == NULL)
 	return(ZERR_NONOTICE);
 
@@ -102,25 +92,20 @@ Code_t remove_notice_from_queue(notice, kind, repl)
     free(entry->packet);
     LIST_DELETE(entry);
 #ifdef DEBUG
-    dump_queue();
+    dump_realm_queue(ri);
 #endif /* DEBUG */
     return(ZERR_NONE);
 }
 
 /* We have a server; transmit all of our packets. */
-void retransmit_queue(sin)
-    struct sockaddr_in *sin;
+void retransmit_realm(ri)
+    realm_info *ri;
 {
     Queue *entry;
     Code_t ret;
 
     DPR("Retransmitting queue to new server...\n");
-    ret = ZSetDestAddr(sin);
-    if (ret != ZERR_NONE) {
-	Zperr (ret);
-	com_err("queue", ret, "setting destination");
-    }
-    for (entry = hm_queue; entry; entry = entry->next) {
+    for (entry = ri->queue; entry; entry = entry->next) {
 	DPR("notice:\n");
 	DPR2("\tz_kind: %d\n", entry->notice.z_kind);
 	DPR2("\tz_port: %u\n", ntohs(entry->notice.z_port));
@@ -129,7 +114,7 @@ void retransmit_queue(sin)
 	DPR2("\tz_opcode: %s\n", entry->notice.z_opcode);
 	DPR2("\tz_sender: %s\n", entry->notice.z_sender);
 	DPR2("\tz_recip: %s\n", entry->notice.z_recipient);
-	ret = send_outgoing(&entry->notice);
+	ret = send_outgoing(&ri->sin, &entry->notice);
 	if (ret != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("queue", ret, "sending raw notice");
@@ -137,36 +122,36 @@ void retransmit_queue(sin)
 	entry->timer = timer_set_rel(rexmit_times[0], queue_timeout, entry);
 	entry->retries = 0;
     }
-    retransmits_enabled = 1;
 }
 
 /* We lost our server; nuke all of our timers. */
-void disable_queue_retransmits()
+void disable_realm_retransmits(ri)
+    realm_info *ri;
 {
     Queue *entry;
 
-    for (entry = hm_queue; entry; entry = entry->next) {
+    for (entry = ri->queue; entry; entry = entry->next) {
 	if (entry->timer)
 	    timer_reset(entry->timer);
 	entry->timer = NULL;
     }
-    retransmits_enabled = 0;
 }
 
 #ifdef DEBUG
-static Code_t dump_queue()
+static Code_t dump_realm_queue(ri)
+    realm_info *ri;
 {
     Queue *entry;
     caddr_t mp;
     int ml;
 
     DPR("Dumping queue...\n");
-    if (!hm_queue) {
+    if (!ri->queue) {
 	printf("Queue is empty.\n");
 	return;
     }
 
-    for (entry = hm_queue; entry; entry = entry->next) {
+    for (entry = ri->queue; entry; entry = entry->next) {
 	printf("notice:\n");
 	printf("\tz_kind: %d\n", entry->notice.z_kind);
 	printf("\tz_port: %u\n", ntohs(entry->notice.z_port));
@@ -186,22 +171,24 @@ static Code_t dump_queue()
 }
 #endif /* DEBUG */
 
-int queue_len()
+int realm_queue_len(ri)
+    realm_info *ri;
 {
     int length = 0;
     Queue *entry;
 
-    for (entry = hm_queue; entry; entry = entry->next)
+    for (entry = ri->queue; entry; entry = entry->next)
 	length++;
     return length;
 }
 
-static Queue *find_notice_in_queue(notice)
+static Queue *find_notice_in_realm(ri, notice)
+    realm_info *ri;
     ZNotice_t *notice;
 {
     Queue *entry;
 
-    for (entry = hm_queue; entry; entry = entry->next) {
+    for (entry = ri->queue; entry; entry = entry->next) {
 	if (ZCompareUID(&entry->notice.z_uid, &notice->z_uid))
 	    return entry;
     }
@@ -214,14 +201,13 @@ static void queue_timeout(arg)
     Queue *entry = (Queue *) arg;
     Code_t ret;
 
-    ret = ZSetDestAddr(&serv_sin);
     if (ret != ZERR_NONE) {
 	Zperr(ret);
 	com_err("queue", ret, "setting destination");
     }
     entry->retries++;
     if (rexmit_times[entry->retries] == -1) {
-	new_server(NULL);
+	realm_new_server(entry->ri, NULL);
 	return;
     }
     DPR("Resending notice:\n");
@@ -232,7 +218,7 @@ static void queue_timeout(arg)
     DPR2("\tz_opcode: %s\n", entry->notice.z_opcode);
     DPR2("\tz_sender: %s\n", entry->notice.z_sender);
     DPR2("\tz_recip: %s\n", entry->notice.z_recipient);
-    ret = send_outgoing(&entry->notice);
+    ret = send_outgoing(&entry->ri->sin, &entry->notice);
     if (ret != ZERR_NONE) {
 	Zperr(ret);
 	com_err("queue", ret, "sending raw notice");
