@@ -1,0 +1,9 @@
+# $Id$
+
+echo In ${package}: imake -DTOPDIR=`pwd` -I./config &&
+imake -DTOPDIR=`pwd` -I./config &&
+echo In ${package}: make Makefiles && make Makefiles &&
+echo In ${package}: make clean && make clean &&
+echo In ${package}: make all && make all &&
+echo In ${package}: make install && make install DESTDIR=$srvd &&
+echo In ${package}: make install.man && make install.man DESTDIR=$srvd
