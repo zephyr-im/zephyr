@@ -94,7 +94,7 @@ timer timer_set_rel (time_rel, proc, arg)
 	ALARM_PREV(new_t) = NULL;
 	ALARM_ARG(new_t)  = arg;
 	add_timer(new_t);
-	zdbug2("timer_set_rel()'ing 0x%x",new_t);
+	zdbug((LOG_DEBUG,"timer_set_rel()'ing 0x%x",new_t));
 	return(new_t);
 }
 
@@ -122,7 +122,7 @@ timer timer_set_abs (time_abs, proc, arg)
 	ALARM_PREV(new_t) = NULL;
 	ALARM_ARG(new_t)  = arg;
 	add_timer(new_t);
-	zdbug2("timer_set_abs()'ing 0x%x",new_t);
+	zdbug((LOG_DEBUG,"timer_set_abs()'ing 0x%x",new_t));
 	return(new_t);
 }
 
@@ -141,24 +141,24 @@ timer_reset(tmr)
      timer tmr;
 {
 	if (!ALARM_PREV(tmr) || !ALARM_NEXT(tmr)) {
-		zdbug1("timer_reset() of unscheduled timer\n");
+		zdbug((LOG_DEBUG,"timer_reset() of unscheduled timer\n"));
 		abort();
 	}
 	if (tmr == timers) {
-		zdbug1("timer_reset of timer head\n");
+		zdbug((LOG_DEBUG,"timer_reset of timer head\n"));
 		abort();
 	}
-	zdbug2("timer_reset()'ing 0x%x",tmr);
+	zdbug((LOG_DEBUG,"timer_reset()'ing 0x%x",tmr));
 	xremque(tmr);
 	ALARM_PREV(tmr) = NULL;
 	ALARM_NEXT(tmr) = NULL;
 	xfree(tmr);
 	if (timers == NULL) {
-		zdbug1("reset with no timers\n");
+		zdbug((LOG_DEBUG,"reset with no timers\n"));
 		abort();
 	}
 	nexttimo = ALARM_TIME(ALARM_NEXT(timers));
-	zdbug2("nexttimo %d", nexttimo);
+	zdbug((LOG_DEBUG,"nexttimo %d", nexttimo));
 	return;
 }
 
@@ -180,7 +180,7 @@ add_timer(new_t)
      timer new_t;
 {
 	if (ALARM_PREV(new_t) || ALARM_NEXT(new_t)) {
-		zdbug1("add_timer of enqueued timer\n");
+		zdbug((LOG_DEBUG,"add_timer of enqueued timer\n"));
 		abort();
 	}
 	insert_timer(new_t);
@@ -211,13 +211,13 @@ insert_timer(new_t)
 		if (ALARM_TIME(t) > ALARM_TIME(new_t)) {
 			xinsque(new_t, ALARM_PREV(t));
 			nexttimo = ALARM_TIME(ALARM_NEXT(timers));
-			zdbug2("nexttimo %d", nexttimo);
+			zdbug((LOG_DEBUG,"nexttimo %d", nexttimo));
 			return;
 		}
 	}
 	xinsque(new_t, ALARM_PREV(timers));
 	nexttimo = ALARM_TIME(ALARM_NEXT(timers));
-	zdbug2("nexttimo %d", nexttimo);
+	zdbug((LOG_DEBUG,"nexttimo %d", nexttimo));
 	return;
 }
 
@@ -235,7 +235,7 @@ timer_process()
 	caddr_t queue_arg;
 	int valid = 0;
 
-	zdbug1("timer_process");
+	zdbug((LOG_DEBUG,"timer_process"));
 	right_now = NOW;
 	t=ALARM_NEXT(timers);
 	if (t != timers && right_now >= ALARM_TIME(t)) {
@@ -261,10 +261,10 @@ timer_process()
 	   is set to 0L, which is what the main loop expects as the
 	   nexttimo when we have no timout work to do */
 	nexttimo = ALARM_TIME(t);
-	zdbug2("nexttimo %d", nexttimo);
+	zdbug((LOG_DEBUG,"nexttimo %d", nexttimo));
 	
 	if (valid) {
-		zdbug3("firing 0x%x(0x%x)", queue, queue_arg);
+		zdbug((LOG_DEBUG,"firing 0x%x(0x%x)", queue, queue_arg));
 		(queue)(queue_arg);
 	}
 	return;
