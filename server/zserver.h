@@ -177,7 +177,7 @@ extern char *strsave();
 /* found in dispatch.c */
 extern void handle_packet(), dispatch(), clt_ack(), nack_release(), sendit();
 extern void xmit();
-extern Code_t control_dispatch();
+extern Code_t control_dispatch(), xmit_frag();
 
 /* found in hostm_s.c */
 extern void hostm_flush(), hostm_shutdown(), hostm_losing();
