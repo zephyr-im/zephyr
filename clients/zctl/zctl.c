@@ -124,6 +124,7 @@ main(argc,argv)
 	       ZVERSIONMAJOR,ZVERSIONMINOR);
 	
 	ss_listen(sci_idx,&code);
+	exit(0);
 }
 
 set_file(argc,argv)
