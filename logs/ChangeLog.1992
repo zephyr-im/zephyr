@@ -1,0 +1,1670 @@
+Wed Aug 26 00:20:18 1992  Lucien W. Van Elsen  (lwvanels at fionavar)
+
+	* server/access.c:
+	* server/bdump.c:
+	* server/common.c:
+	* server/kopt.c:
+	* server/main.c:
+	* server/timer.c: Add support for K&R C
+
+	* lib/ZSubs.c: Fix typo introduced in 1.16
+
+	* clients/zmailnotify/zmailnotify.c: fix memory leak
+
+	* clients/zstat/zstat.c: fix memory leak
+
+	* zwgc/X_fonts.c: (Font_to_hex) off by one; alloc'ing one too few
+	  bytes.
+
+	* zwgc/tty_filter.c: (tty_filter_init) multiple calls caused memory
+	  leak.
+
+	* zwgc/xshow.c: (xshow) style string could be leaked
+
+Tue Aug 25 22:21:36 1992  Marc Horowitz  (marc at deathtongue)
+
+	* sometime in the past, changes were made to zwgc to support the
+	  WM_DELETE_WINDOW WM protocol on xgrams
+
+	* zwgc/X_gram.c: Today, I fixed a bug which prevented
+	  WM_DELETE_WINDOW from working unless transient was turned on.
+
+Thu Aug 20 14:48:15 1992  Lucien W. Van Elsen  (lwvanels at fionavar)
+
+	* clients/zctl/zctl.c: fix memory leak
+
+	* clients/zmailnotify/zmailnotify.c: fix memory leak
+
+	* ss/lib/execute_cmd.c: fix memory leak
+
+Fri Aug 14 08:08:07 1992  Lucien W. Van Elsen  (lwvanels at fionavar)
+
+	* server/kopt.c:
+	* server/uloc.c:
+	* server/access.c:
+	* server/bdump.c:
+	* server/kstuff.c:
+	* server/main.c:
+	* server/class.c:
+	* server/server.c: saber complains about pure assignment statements
+	  in ifs- 
+
+	* server/dispatch.c: saber complaints fixed
+	  be sure to initialize srv_idx in nacked structure.
+
+	* server/hostm.c: (host_not_losing): client_deregister free's client
+	  structure, so call to server_kill_clt should be called first.
+
+	* server/client.c: removed useless ops in client_deregister- client
+	  & clients are both local automatic to the routine, so setting them
+	  to null before returning is pointless. 
+
+Mon Aug 10 09:20:52 1992  Lucien W. Van Elsen  (lwvanels at fionavar)
+
+	* lib/ZNewLocU.c: fix leak in ZLocateUser
+
+	* lib/acl_files.c: removed extra definitions of malloc/calloc
+
+	* server/uloc.c: fix leaks in ulogin_setup and ulogin_find
+
+	* server/main.c: added support for debugging malloc
+
+	* server/client.c: fix leak in client_deregister
+
+Sat Aug  8 19:41:37 1992  Lucien W. Van Elsen  (lwvanels at fionavar)
+
+	* zwgc/xrevstack.h: add defs for unlinked and unlink_gram
+
+	* include/zephyr/zephyr.h: remove C++ stuff
+	  fix ZRequestLocations prototype (jfc's changes)
+
+	* clients/syslogd/syslogd.c: Initial support for AIX; mostly signal
+	  handling and SRCMGR stuff. 
+
+	* lib/Zinternal.c: Ifdef additional stuff out on Z_DEBUG
+	  make sure to cast results of malloc (jfc's change)
+
+	* lib/ZSendPkt.c: move definition of wait_for_hmack to be local to
+	file instead of function (jfc's change)
+
+	* config/config.Imakefile: AIX has flock
+	  remove C++ defines
+	  fix lint defs for AIX
+
+Fri Aug  7 11:11:10 1992  Lucien W. Van Elsen  (lwvanels at fionavar)
+
+	* zwgc/Imakefile: fixed typo with BUILDDIR;
+	  removed extra dependency on y.tab.c (removed in build by default
+	  rules)
+
+Wed Aug  5 08:13:55 1992  Lucien W. Van Elsen  (lwvanels at fionavar)
+
+	* clients/xzwrite/destlist.c: fix off-by-one error in sorting
+	  routine reported by jik
+
+	* clients/xzwrite/destlist.c: added nec. space to nonexistant
+	  destinations file warning.
+
+Wed Jul 15 15:13:02 EDT 1992  Ken Raeburn  (raeburn at cygnus.com)
+
+	* lib/*.c: Renamed to make "ar" and 14-character-filename systems
+	happy.
+	* lib/Imakefile: Updated to reflect this.
+
+Mon Jul 13 13:01:43 1992  Lucien W. Van Elsen  (lwvanels at fionavar)
+
+	* zwgc/Imakefile:
+	* zwgc/Dictionary/Imakefile:
+	  generate dictionaries referencing through BUILDTOP instead of
+	  SRCTOP; sources in /source were referring to zephyr locker...
+;
+Tue Mar  3 15:20:57 1992  Lucien W. Van Elsen  (lwvanels at fionavar)
+
+	* zwgc/Imakefile: Add y.tab.c to list of generated files
+
+Sat Feb 15 18:10:43 1992  Lucien W. Van Elsen  (lwvanels at godtree)
+
+	* clients/zmailnotify/zmailnotify.c: use POP3 TOP command instead of
+	  RETR if HAVE_POP3_TOP is defined; reduces load on server by not
+	  getting whole message just for subject lines.
+
+	* clients/zmailnotify/zmailnotify.c: added POSIX file locking,
+	  ifdef'd on _POSIX_SOURCE
+
+Thu Feb 13 02:38:10 1992  Lucien W. Van Elsen  (lwvanels at godtree)
+
+	* server/subscr.c: fix compare_subs to deal with wildcards correctly
+	  and still maintain sort order.
+
+Fri Jan 17 04:15:46 1992  Lucien W. Van Elsen  (lwvanels at godtree)
+
+	* server/hostm.c: pass sockaddr_in.sin_addr, not sockaddr_in to
+	  inet_ntoa 
+
+	* server/class.c: when searching class_bucket hash table for class,
+	  check instance as well
+
+	  class acls are stored in <class,*>
+	  use macro to generate hash value
+	  Use dup_zstring to duplicate zstrings instead of frobbing struct
+
+Fri Jan 17 02:43:04 1992  Lucien W. Van Elsen  (lwvanels at godtree)
+
+    	* server/dispatch.c: Add more information to some error messages;
+	  turn off other debugging info 
+
+	* server/client.c: turn off other debugging info (for speed)
+	  clt_free only called once; inline.
+
+	* server/hostm.c: turn off extra debugging info (for speed)
+	  fix calls to inet_ntoa to pass correct struct.
+
+	* server/zserver.h: add prototype for compare_subs
+
+	* server/server.c: turn of extra debugging info (for speed)
+
+	* server/main.c: add stub function for init'ing db from file on startup
+	  turn off other debugging info (for speed)
+	  always increment reference counts when dup'ing zstrings.
+
+	* server/kstuff.c: free the associated zstring when freeing up
+	  AuthEnt struct 
+
+	* server/subscr.c: turn off other debugging info (for speed)
+	  always increment reference counts when dup'ing zstrings.
+	  fix calls to compare_subs to take new do_wildcard arg
+	  added additional logic to compare_subs to deal with wildcards
+
+	* server/bdump.c: add ability to specify primary bdump protocol
+	  version on command line ifdef out 1A bdump code
+
+	* server/zsrv_conf.h: fix spelling error in ZEPHYR_TKFILE
+
+	* server/kopt.c: add ability to force using libc strlen on RT; asm
+	  version doesn't work when compiled -g. 
+
+	* server/uloc.c: turn off other debugging info (for speed)
+	  remove unused debugging code
+	  only downcase usernames
+	  free all temporary zstrings
+
+	* server/access.c: add extra error checking on acl_load; if acl
+	  can't be loaded, deny access.
+
+	* server/zstring.c:
+	* zstring.h: Don't store len in zstring; v. infreq. used.
+
+Mon Dec 30 14:01:54 1991  John F. Carr (jfc @ Achates)
+
+	* zwgc/tty_filter.c: Ignore @color and @font.
+
+Wed Dec  4 13:22:51 1991  Lucien W. Van Elsen  (lwvanels at godtree)
+
+	   Converted back to ANSI C (with ifdef's for standard C)
+	* server/dispatch.c:
+	* server/client.c:
+	* server/hostm.c:
+	* server/zserver.h:
+	* server/version.c:
+	* server/server.c:
+	* server/timer.c:
+	* server/timer.h:
+	* server/zalloc.c:
+	* server/class.c:
+	* server/main.c:
+	* server/kstuff.c:
+	* server/subscr.c:
+	* server/bdump.c:
+	* server/zsrv_conf.h:
+	* server/Imakefile:
+	* server/common.c:
+	* server/access.h:
+	* server/acl_files.c:
+	* server/kopt.c:
+	* server/unix.h:
+	* server/uloc.c:
+	* server/zalloc.h:
+	* server/access.c:
+	* server/zstring.c:
+	* server/zstring.h:
+
+	* server/new_version.csh: (new) shell script to generate version
+	  number/compile time/builder
+
+	* config/Imake.rules: added saber_program and osaber_program
+	targets; no longer try to make tags for c++ style files.
+
+	* config/config.Imakefile: Now build server on all platforms
+	  make sure there is a link for /usr/etc/zwgc on all platforms, for
+	    compatability
+	  Now build syslogd under AIX
+	  Build xzwrite on AIX now; athena widgets available
+	  Use "new" (post-filsys reorg) paths on all platforms, not just new
+	    ones
+	  Build with ansi compiler (c89) on the RS/6000's
+	  Don't link against bsd compatability library anymore for RS/6000-
+	    unnecessary
+	  Always give -L/usr/athena/lib
+	  Give etags the -t flag to generate tags for structures/typedefs
+
+	* lib/ZSubscriptions.c: can't optimize away a call to
+	  Z_Subscriptions with nitems=0; that's how ZCancelSubs works-
+
+
+	  Minor ANSI C fixes- (typecasts and nothing after #endif)
+	* lib/ZOpenPort.c:       
+	* lib/ZFormatNotice.c:
+	* lib/ZPeekNotice.c:
+	* lib/ZPeekPacket.c:
+	* lib/ZPending.c:
+	* lib/ZSendList.c:
+	* lib/ZReceiveNotice.c:
+	* lib/ZReceivePacket.c:
+	* lib/ZSendNotice.c:
+	* lib/ZCheckIfNotice.c:
+	* lib/ZIfNotice.c:
+	* lib/ZPeekIfNotice.c:
+	* lib/ZFormatNoticeList.c:
+	* lib/ZFlushLocations.c:
+	* lib/ZGetLocations.c:
+	* lib/ZFormatRawNotice.c:
+	* lib/ZLocateUser.c:
+	* lib/ZSendRawNotice.c:
+	* lib/ZSetDestAddr.c:
+	* lib/ZFormatSmallRawNoticeList.c:
+	* lib/ZSetServerState.c:
+	* lib/ZCompareUIDPred.c:
+	* lib/ZFormatRawNoticeList.c:
+	* lib/ZGetSubscriptions.c:
+	* lib/ZGetWGPort.c:
+	* lib/ZVariables.c:
+	* lib/ZFreeNotice.c:
+	* lib/ZFormatSmallRawNotice.c:
+	* lib/ZSendRawList.c:
+	* lib/acl_files.c:
+	* lib/ZAsyncLocate.c:
+
+	* zhm/zhm.h: Give standard machine name for rs/6000
+
+	* zhm/queue.c: ANSI style #endif's
+
+	* zhm/zhm_client.c: ANSI style #endif's
+
+	* zhm/zhm_server.c: ANSI style #endif's
+
+	* Imakefile: don't make ozwgc anymore
+
+	* clients/syslogd/Imakefile: link against -src for AIX
+
+	* clients/zleave/zleave.c: ANSI style #endif's
+
+	* clients/zmailnotify/Imakefile: only make links on install target,
+	  not all
+
+	* clients/zpopnotify/zpopnotify.c: ansi style #endifs
+
+	* clients/zshutdown_notify/zshutdown_notify.c: ansi style endifs
+
+	* clients/zwrite/zwrite.c: ansi style endifs
+
+	* include/zephyr/acl.h: take out c++ stuff
+
+	* include/zephyr/zephyr_internal.h: take out c++ stuff
+
+	* zwgc/Dictionary/Imakefile: need target for string_dictionary.h
+
+	* zwgc/Imakefile: fix pathnames; make sure directory exists before
+	  installing in it.
+
+	* zwgc/formatter.c: include string.h and use strchr instead of index.
+
+Mon Jul  1 00:29:21 1991    (lwvanels at godtree)
+
+	* zwgc/zwgc.desc: change /usr/athena to /usr/athena/bin in path
+	  move unauthentic personal messages to lower right.
+
+	* zwgc/standard_ports.c: Made "no X display" warning message
+	  shorter and quieter.
+
+Mon May 13 13:11:54 1991  Ken Raeburn  (raeburn at lycus)
+
+	* server/bdump.C (bdump_get): Log offered dump version number as
+	string, not number.
+
+	* server/client.C (client_register): Log a message when adding a new
+	client to the database.
+
+	* server/dispatch.C: Added more information to severeal log
+	messages.
+	* server/hostm.c: Ditto.
+	* server/server.C: Ditto.
+
+	* server/subscr.C: Disabled a couple of debugging messages.
+	(subscr_marshal_subs): For "zctl ret", require authentication as the
+	correct user.
+
+	* server/uloc.C (ulogin_flush_user): Increment counter while
+	deleting a range of locations.
+	(ulogin_dump_locs): Enlarge buffer, and use staatic pointers reset
+	each time through loop.
+
+Thu Apr 11 23:51:08 1991  Ken Raeburn  (raeburn at watch.com)
+
+	* zwgc/X_gram.c (set_transient): Default initializer is sufficient.
+	(xattributes, xattributes_mask): Static copy of attributes to set on
+	all windows.
+	(x_gram_init): Initialize it, looking up *backingStore resource.
+	(x_gram_create): Call XCreateWindow with new attributes, instead of
+	XCreateSimpleWindow.  Input event selection is also done with
+	attributes; don't call XSelectInput.  Delay call to
+	XResetScreenSaver until needed.  Call XReconfigureWMWindow instead
+	of duplicating code already in Xt library.
+	(x_gram_expose): Default initialization suffices for partregion.
+
+Tue Apr  2 22:37:44 1991  Ken Raeburn  (raeburn at portnoy.MIT.EDU)
+
+	* server/uloc.C (ulogin_find): Now returns pointer to array element,
+	which is ZLocation_t*, so that offsets work.  Callers changed.
+
+Fri Mar 29 03:19:17 1991  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* config/Imake.template: Include config.Imakefile before testing
+	values defined there.
+	(GLOBAL_LINTFLAGS): Default `-bh', can override in config.Imakefile.
+
+	* config/config.Imakefile (GLOBALCDEFS): Re-arrange handling and
+	documentation.  New flag -DNO_MALLOC_ZERO indicates malloc(0)
+	returns null pointer.  STRCASE stuff moved elsewhere.
+	[_AIX && i386]: Changed many tests to just _AIX.
+	(X11_NO_XAW): New symbol; defined if Athena widgets unavailable.
+	(NO_LINT): Define on RS/6000.
+	(GLOBAL_LINTFLAGS): Override with BSD defaults.
+	(LINTLIBFLAG): Default to SysV; specify Vax/BSD, RT/ACIS, and Sun
+	explcitly.
+	(STRCASE): Define if str[n]casecmp not available.
+	(CfrontCpp): No longer define.
+	(MiscCcFlags) [_AIX && _IBMR2]: Use -Q (function inlining) on
+	RS/6000.
+
+	* include/zephyr/zephyr_internal.h (krb_err_base): Declare only if
+	Z_HaveKerberos.
+	[NO_MALLOC_ZERO] (Z_malloc): New variable, pointer to memory
+	allocation function.
+	[NO_MALLOC_ZERO] (malloc): Define as macro; call Z_malloc with 1 if
+	arg is 0, arg otherwise.  Declare malloc only if not NO_MALLOC_ZERO.
+
+	* lib/Zinternal.c (function versions of library macros): No longer
+	use inline function referring to original macro; duplicate the
+	definition.
+	[NO_MALLOC_ZERO] (Z_malloc): New variable; initialize to address of
+	malloc.
+
+	* lib/ZNewLocateUser.c: Inclusion of sys/select.h for AIX is no
+	longer necessary.
+	(ZNewLocateUser): Guard against zero-length allocations.  Save
+	string length rather than recomputing.
+
+	* lib/ZParseNotce.c (ZParseNotice): Redefine macro BAD to reduce
+	lint warnings.
+
+	* lib/Imakefile (K_*): Renamed from KERR_*.
+	(K_O, K_C, OBJS, SRCS): Compile ZFormatAuthenticNotice only when
+	using Kerberos.
+
+Thu Mar 28 21:42:22 1991  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* lib/inet_ntoa.c: New file, broken of with hacked-up version of
+	inet_ntoa routine.
+	lib/Zinternal.c: Removed inet_ntoa and inclusion of strcasecmp.c.
+	lib/Imakefile: Compile strcasecmp separately, if STRCASE is defined.
+	Compile inet_ntoa on sparc under gcc.
+
+Tue Mar 26 20:35:09 1991  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* From eichin@watch.com:
+	server/dispatch.C (nack_cancel): Enable "nack not found" message,
+	and dump some useful information with it.
+	(pktypes): Deleted in favor of library's ZNoticeKinds.
+	(dispatch): Use ZNoticeKinds for debug message.
+	server/zserver.h (relational operators on ZDestination): Declare
+	explicit int return type.
+	(pktypes): Declaration deleted.
+	server/bdump.C (bdump_recv_loop, sbd_loop): Use ZNoticeKinds instead
+	of pktypes.
+
+Mon Mar 25 03:18:56 1991  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* lib/ZParseNotice.c (ZParseNotice): A bcopy->assignment change was
+	done backwards.
+
+Sun Mar 24 14:27:40 1991  John Carr  (jfc at Achates.mit.edu)
+
+	* zwgc/X_driver.c: Support X11 R5 per-screen resources.
+
+Sat Mar 23 09:18:14 1991  John Carr  (jfc at Achates.mit.edu)
+
+	* config/config.Imakefile: X11R3+ is now the default; define X11R2
+	for older systems.  Add LDFLAGS; use this for -Z and
+	-L/usr/athena/lib.
+	* config/Imake.rules: program() macro uses LDFLAGS.
+	* ozwgc/Imakefile: include text extents fix if X11R2 is defined,
+	instead of if !X11R3.
+	* clients/xzwrite/interface.c: arg 3 to XtAppAddInput is type
+	XtPointer.
+	* clients/xzwrite/zephyr.c, xzwrite-proto.h: fix arguments to
+	zeph_dispatch().
+	* clients/xzwrite/edit_window.c: NULL != 0
+
+Fri Mar 22 18:19:42 1991  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* lib/ZCheckAuthentication.c (ZCheckAuthentication): Use Z_LIBDIR to
+	compute pathname of srvtab file, instead of SERVER_SRVTAB (which is
+	no longer available).
+	* server/zsrv_conf.h: Added warning near SERVER_SRVTAB about keeping
+	ZCheckAuthentication consistent.
+
+	* include/zephyr/zephyr.h (ZGetSession): Removed C function
+	declaration, since some C compilers can't handle the array return
+	type.
+	(Z_debug): Omit prototype (old-style decl instead) if varargs is in
+	use.
+	(ZNoticeKinds): Explicitly extern, for C++.
+
+Mon Mar 18 15:36:21 1991  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* tools/makeconfig (SUBDIR): clients/zinit no longer exists.
+
+Mon Mar 18 00:14:53 1991  Ken Raeburn  (raeburn at watch.com)
+
+	* include/zephyr/zephyr.h (varargs/stdarg): Include only if va_start
+	isn't already defined.
+
+Sun Mar 17 14:21:11 1991  Ken Raeburn  (raeburn at watch.com)
+
+	* zhm/zhm.c: Removed explicit versions of default static
+	initializers.
+	(PIDFILE): Deleted default value; get it from Imakefile.
+	[HESIOD]: Conditionalize on Z_HaveHesiod instead.
+
+	* lib/ZWaitForNotice.c (Z_WaitForNotice): New file.  Moved
+	select/CheckIfNotice loop here.  Modified to call ZCheckIfNotice
+	before starting select loop.
+	lib/ZLocations.c (Z_SendLocation): Call it.
+	lib/ZSendPacket.c (ZSendPacket): Ditto.
+	lib/ZRetrieveSubscriptions.c (Z_RetSubs): Ditto.
+	lib/ZNewLocateUser.c (ZNewLocateUser): Ditto.
+	lib/Imakefile: Include ZWaitForNotice.{c,o}.
+
+	* include/zephyr/zephyr.h (Zconst): Define as "const" or empty.
+
+	* lib/Zinternal.c (ZNoticeKinds): String array of names for notice
+	kinds.
+	include/zephyr/zephyr.h: Declare it.
+
+Fri Mar 15 11:08:22 1991  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* lib/ZFormatNoticeList.c (ZFormatNoticeList): Changed signature
+	slightly to match prototype.
+
+Thu Mar 14 15:24:11 1991  Ken Raeburn  (raeburn at watch.com)
+
+	* server/dispatch.C (sendit): Compare Internet addresses as u_long
+	values, rather than calling bcmp.
+
+	* server/uloc.C (class ZLocation_t): All char* members are now type
+	ZString, to simplify memory allocation problems.  All references
+	changed.  Constructor and destructor deleted, since they are no
+	longer needed.
+
+	* server/zalloc.C (zalloc_count): Renamed from "count".
+	(zmemset): Renamed from "memset".
+
+	* lib/Zinternal.c (inet_ntoa): Provide this for Sun-4 compiles with
+	gcc version 1.
+
+	* include/zephyr/zephyr.h (ZGetSession): Declare as external before
+	defining macro; include these only if Kerberos is enabled.
+	(ZGetFD): Macro modified to not return an lvalue.  Also declared as
+	external routine.
+	(ZQLength, ZGetDestAddr, ZGetRealm, ZSetDebug): Ditto.
+	* lib/Zinternal.c: Define addressable functions for these macros.
+
+Wed Mar 13 10:26:41 1991  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* server/main.C (nacklist): Initialize it statically.
+	(initialize): ...not here.
+
+	* server/zserver.h (class SignalBlock): Removed.
+	* server/main.C, server/server.C: All uses of SignalBlock converted
+	back to explicit calls to sigblock/sigsetmask.
+
+Tue Mar 12 12:17:10 1991  Ken Raeburn  (raeburn at watch.com)
+
+	* lib/ZParseNotice.c (ZParseNotice): Call Z_debug if fields are
+	missing, or if the version string (minor) is empty.
+	* lib/Zinternal.c (Z_ReadWait): Call Z_debug if packet is all nulls.
+
+	* include/zephyr/zephyr.h (ZSetDebug): New routine/macro, sets the
+	routine responsible for printing debugging messages from the
+	library.
+	(__Z_debug_print,..._closure): Variables used by this macro.
+	(Z_debug): New declaration.
+	lib/Zinternal.c (__Z_debug_print*): Definitions.
+	(Z_debug): New routine; calls debug-printing procedure, if non-null.
+	(Z_debug_stderr): Utility routine; calls vfprintf with stderr.
+
+	* config/config.Imakefile (GLOBALCDEFS): Define NO_VPRINTF when
+	vfprintf isn't available.
+
+	* zhm/zhm.h [sun, sparc]: Added more machine-name tests.
+	(adjust_size): New macro for adjusting data size on machine-specific
+	basis.
+	* zhm/zhm.c (send_stats): Use adjust_size, or use -1 if not defined.
+
+	* clients/zstat/Imakefile: No longer need to build src in server
+	before running `depend'.
+
+	* config/config.Imakefile (PidFile): New macro, returns directory
+	name for .pid file.
+	* zhm/Imakefile: Use it.
+
+	* config/Imake.rules (makefile_target): Build new Makefile before
+	renaming old one, then move it into place.
+
+	* tools/makepaths: New script.
+	* include/zephyr/zephyr_paths.h: New file generated by makepaths.
+	* include/zephyr/Imakefile: Create it when config.Imakefile is
+	changed.
+	* include/zephyr/zephyr_conf.h: Include it.  Conditionalize Kerberos
+	stuff on Z_HaveKerberos rather than KERBEROS.
+	* include/zephyr/zephyr.h: Conditionalize on Z_HaveKerberos rather
+	than KERBEROS.
+	* include/zephyr/zephyr_conf.h (SERVER_SRVTAB): Moved...
+	* server/zsrv_conf.h: ...to here.
+	* server/zsrv_conf.h (SERVER_LIST_FILE, ZEPHYR_ACL_DIR,
+	ZEPHYR_TKFILE, DEFAULT_SUBS_FILE, SERVER_SRVTAB): Use Z_LIBDIR.
+
+	* include/zephyr/zephyr_conf.h [!Z_HaveKerberos] (KRM_REALM):
+	Deleted.
+	* include/zephyr/zephyr.h (__Zephyr_realm): Define as constant
+	string if not Z_HaveKerberos.
+	* lib/ZInitialize.c (ZInitialize): Don't fill __Zephyr_realm if
+	Kerberos isn't available.
+	* lib/Zinternal.c (__Zephyr_realm): Don't allocate space for it if
+	Kerberos isn't available.
+	* lib/ZGetSender.c (ZGetSender): Call ZGetRealm, rather than
+	accessing __Zephyr_realm directly.
+
+	* server/main.C (detach, dump_db): Call moncontrol only on some
+	architectures.
+
+	* server/uloc.C [OLD_COMPAT, NEW_COMPAT]: Code deleted.
+	(struct ZLocation_t): Members zlt_user and zlt_tty are now ZStrings.
+	All accesses and allocations changed.  Member zlt_exposure shortened
+	to 16 bits under GNU compilers.
+	(enum exposure_type): Removed extra name "_exposure_type".
+	(ulogin_find): Cache notice instance in a ZString for efficiency.
+	(ulogin_parse, ulogin_setup): Now take pointer to ZLocation_t*.
+	(locations): Now ZLocation_t**; all accesses and allocations
+	changed; many other variables changed.
+	(ul_equiv): Replaced by operators == and !=.  Callers changed.
+
+	* server/zserver.h (GetKerberosData, SendKerberosData): Declare only
+	for KERBEROS.
+	* server/unix.h (rresvport): Declare if not KERBEROS.
+	* server/client.C (client_register): Clear zct_block member only if
+	KERBEROS.
+
+Mon Mar 11 20:00:49 1991  Ken Raeburn  (raeburn at watch.com)
+
+	* lib/acl_files.c (acl_abort): Eliminated return values.
+
+	* lib/ZSendPacket.c (ZSendPacket): Declaration for wait_for_hmack
+	should say "static".
+
+Sat Mar  9 13:43:34 1991  Ken Raeburn  (raeburn at watch.com)
+
+	* lib/ZRetrieveSubscriptions.c (Z_RetSubs): Declare before calling.
+
+	* lib/acl_files.c (acl_abort): Now void.  Moved declaration before
+	use.
+
+Fri Mar  8 15:13:31 1991  Ken Raeburn  (raeburn at watch.com)
+
+	* include/zephyr/zephyr.h (ZFormatAuthenticNotice): Declare only if
+	KERBEROS is defined.
+
+	* include/Imakefile: If LOCAL_LIBS is defined, make links to
+	com_err.h and ss header files.
+
+	* clients/syslogd/syslogd.c: Don't include <krb.h>.
+
+	* config/Imake.rules (do_subdirs, foreach_subdirs): Store exit
+	status from `make' in a variable, and exit subshell with that
+	status.
+
+Fri Mar  8 13:52:28 1991  John Carr  (jfc at m16-034-4.mit.edu)
+
+	* zwgc/ulong.h: AIX 1.2 defines a ulong type in <sys/types.h>,
+	so include that file instead of declaring ulong.
+
+	* zwgc/Memory/new_memory.c, zwgc/Memory/new_memory.c: don't
+	use alternate memory functions unless DEBUG or MEMORY_DEBUG
+	is defined.
+
+Fri Mar  8 11:47:02 1991  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	Many changes finally checked in:
+
+	* server/zalloc.C (count) [ZALLOC_STATS]: New var; array of counters
+	for free and allocated chunks of each size.
+	(zalloc, zfree) [ZALLOC_STATS]: Adjust counters when appropriate.
+	(alloc_size): Define in terms of sz.
+	(zalloc): Use alloc_size for new allocations.
+	[ZALLOC_DEBUG_PRINT]: Now covers printing code previously under
+	ZALLOC_DEBUG.
+	(zalloc) [ZALLOC_DEBUG && !ZALLOC_DEBUG_PRINT]: Scan list in bucket,
+	just to verify that pointers are valid.
+
+	* config/Imake.template (INCLUDE): Include $(ATHINCDIR) only of
+	NeedAthIncDir is defined.
+	* config/config.Imakefile (NeedAthIncDir): Don't define it, but
+	describe when it's needed.
+
+	* config/Imake.rules (library_obj_rule): Use LDSTRIPFLAGS and
+	LDPROFSTRIPFLAGS to strip out symbols.
+	(genutil, generate, test, program, cplusplus_program, suidprogram,
+	program_spinst): Include GLOBAL_SYSLIBS in link step.
+	* config/config.Imakefile (LD*STRIPFLAGS): Define these.
+	(GLOBAL_SYSLIBS): Empty.
+	(GLOBAL_SYSLIBS) [_AIX && i386]: Include -lbsd.
+
+	* lib/Zinternal.c: Eliminated initializations that duplicated C's
+	defaults.
+	(version): Now local to Z_FormatHeader.
+
+	* clients/zmailnotify/zmailnotify.c (main): If NO_FLOCK is defined,
+	don't try calling flock.
+	* config/config.Imakefile (GLOBAL_CDEFS) [_AIX]: Define NO_FLOCK and
+	_BSD.
+	(PROF_FLAG): Use -p on AIX on i386 as well.
+	Also, don't build the server or syslogd under AIX.
+
+	* server/zserver.h (ZClass_t constructor & destructor): Definitions
+	now in class body.
+	(Notice::Notice): Ditto.
+	(ZNotAcked_t::ZNotAcked_t) [not __GNUG__]: Define, to avoid cfront
+	lossage.
+	(ZServerDesc_t): New member `addr', containing inet_ntoa string.
+	server/server.C (setup_server): Set `addr' field.
+
+	* server/zserver.h (class statistic): New type; counts events, and
+	logs counter value.
+	server/dispatch.C: Declare several "statistic" objects.  Removed
+	"register" declarations from function declarations.
+	(dump_stats): Dump all their values to log, schedule another dump at
+	+6hours.
+	(handle_packet): First time through, schedule a stats dump for
+	+5minutes.
+	(dispatch): Reorder some logic to eliminate "dispatched" variable.
+	(control_dispatch): If zdebug is true, log subscription
+	cancellation.
+	server/server.C: Bump counters when appropriate.
+
+	* server/hostm.C: Made many error messages more informative.  Also
+	eliminated many (now-unnecessary) references to `sin_addr' in
+	calling inet_ntoa.  Enabled/disabled some debug messages.  Use
+	`addr' component in ZServerDesc_t instead of calling inet_ntoa.
+	* server/server.C: Ditto.
+
+	* server/kopt.c [ibm032]: Optimized versions of strlen and
+	multiplication functions, from John Carr.
+	(asm_wrapper_kopt_c): Wrapper function for asm code.
+
+	* server/main.C (main): Initialize nacklist with pointer to bss
+	storage, rather than calling malloc.
+
+Wed Mar  6 20:46:41 1991  Ken Raeburn  (raeburn at bill-the-cat.MIT.EDU)
+
+	* server/zsrv_conf.h (NUM_REXMITS): Increased to 9 retries.
+	(LOSE_TIMO): Give hosts a full minute.
+
+Thu Feb 28 18:31:57 1991  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* server/zalloc.h (zalloc, zfree): If MPROF is defined, make these
+	inline routines calling standard C memory management.
+	* zalloc.C: Don't compile any code if MPROF is defined.
+
+Wed Feb 27 22:14:37 1991  Ken Raeburn  (raeburn at hodge.MIT.EDU)
+
+	* server/zserver.h (inet_ntoa): Declare C version; define inline C++
+	version that accepts sin_addr argument.
+	server/hostm.C: Use the latter to simplify code.
+
+	* server/zserver.h (ZDestination::order_strings): Renamed from
+	compare_strings.  All callers and definition changed.
+
+Fri Feb 22 16:38:37 1991  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* clients/zmailnotify/zmailnotify.c (main): Declare argv.
+
+	* config/config.Imakefile (PROF_FLAG): Use -p on PS/2.
+
+	* config/config.Imakefile (LDSTRIPFLAGS, LDPROFSTRIPFLAGS): New
+	variables, flags to pass to linker to strip symbols from library
+	files.
+	(GLOBAL_LIBS): New variables, libraries always needed.
+	config/Imake.rules (library_obj_rule, all program-building rules):
+	Use them.
+
+	* imake/imake.c (REDUCED_TO_ASCII_SPACE): Define this for AIX (at
+	least for PS/2).
+	(cpp_argv): Define _AIX explicitly if imake is compiled that way.
+
+Wed Feb 20 15:09:13 1991  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* clients/zmailnotify/zmailnotify.c: Changed all error messages
+	printed to include program name and final newline.
+	(fatal_pop_err): New function, implementing some common
+	functionality from other routines.
+
+	* clients/zmailnotify/zmailnotify.c: Changes from Mark Eichin:
+	(main): Close pop connection as	soon as possible.
+	(multiline): Flush message bodies more efficiently.
+
+Mon Feb  4 16:08:04 1991  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* server/subscr.C: Made several log messages more clear or
+	informative.
+	(subscr_copy_def_subs): Recompute the hash value for the
+	destination.
+	(subscr_match_list): Create ZString objects when needed, not before.
+	(subscr_cancel): Don't assume subscription listss are ordered.
+
+	* server/ZString.h (no-argument constructor): Newly split off from
+	other constructors.  Always inline.
+
+	* server/class.C (class_deregister): Disabled debugging log
+	messages.
+
+Mon Jan 28 12:20:02 1991  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* server/server.C (admin_dispatch): If a bdump is in progress,
+	discard offers.
+	(send_stats): Add more machine specific info.
+	(all routines): Use new/delete for ZHostList_t.
+	server/hostm.C (all routines): Ditto.
+
+	* server/main.C (dump_strings): Log "dump done" when finished.
+	(main): Seed random number generator.
+	(popular_ZStrings): Don't bother; string table order is now
+	determined by hash value.
+
+	* server/hostm.C (struct losinghost): Leading underscore removed
+	from name.
+	(losinghost::operator new, delete): New methods; use zalloc.  All
+	allocations and deallocations changed from xmalloc/free.
+	(losing_hosts): Explicit version of default initializer removed.
+	(NULLLH): Definition deleted.
+
+	* server/zserver.h (ZDestination): Definitions of hash and set_hash
+	now in class body.
+	(class ZServerDesc_t): Now a class rather than struct.  Member
+	zs_state is private; new methods state and set_state created for
+	accessing.  All accesses changed.
+	server/server.C: Several friends of ZServerDesc_t now non-static.
+
+	* server/ZString.C: Rearranged some functions for inlining.
+	(initialize(cst char*,int)): Use a static buffer rather than an
+	automatic array.
+	(initialize(*)): Reordered downcase-handling logic for efficiency.
+
+	* server/bdump.C: Increased verbosity of many syslog strings.
+	(setup_file_pointers): Now returns int, indicating
+	success or failure.
+	(ticket_time, my_realm): Moved to other Kerberos decls.
+	(bdumping): Removed zero initializer.
+	(bdump_send): Rearranged some logic to be tidier.
+	(shutdown_file_pointers): Only call fclose on non-null FILE
+	pointers, and only call close if the file descriptor is not -1.
+
+	* server/bdump.C: Minor change to dump/offer protocol.
+	(bdump_offer): Now offer version 1A.
+	(bdump_send): If already doing a bdump, decide which connection to
+	punt.
+	(cancel_outgoing_dump): New var, non-zero if a higher-precedence
+	dump has started.
+	(bdump_recv_loop): If cancel_outgoing_dump is non-zero, punt
+	connection.
+	(bdump_send_loop): Ditto.
+	(bdump_get_v1_guts): Internals of old bdump_get.
+	(bdump_get_v1): Rest of old bdump_get; closes listening socket.
+	(bdump_get_v1a): Like bdump_get_v1, except listening socket is kept
+	open.
+	(bdump_get): Decide which to call.
+
+	* server/unix.h (srandom, getpid): Added extern declarations.
+
+	* server/common.C (hash): Improved behavior for short strings;
+	reduced duplicate hash values.
+
+	* server/bdump.C (bdump_sin): Now static in this file.
+	server/zserver.h: Delete declaration.
+	server/main.C: Delete initialization.
+
+	* server/Set.hT: Removed duplicate inclusions of header files.
+
+	* server/dispatch.C: Fixed up preprocessing problems.
+	(dispatch): Now static.
+	server/zserver.h (dispatch): Moved declaration to dispatch.C.
+
+	* server/dispatch.C (dispatch): New argument from_server obviates
+	need to call server_which_server a second time.
+	(handle_packet): Pass it.
+
+Wed Jan 23 09:56:17 1991  John Carr (jfc at Achates.mit.edu)
+	* zwgc/ulong.h: On AIX 1.2, include <sys/types.h> to get
+	ulong definition.
+
+Wed Jan  9 02:36:13 1991  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* zwgc/formatter.c (*_set character classes): Now const.
+	(not_contains): Character class argument is now const.
+	* zwgc/exec.c (opstuff): Now const.
+
+Mon Jan  7 12:20:03 1991  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* config/config.Imakefile (BuildServer): New symbol.
+	[vax] (MiscGplusplusFlags): Pass -DFIXED_GXX and -Z.
+	(CfrontCpp): Handling cleaned up.
+
+	* Incorporated variants of changes from Paul Traina of Stanford
+	University, <pst@ack.Stanford.EDU>:
+	* clients/syslogd/syslogd.c (sighandler_type): Defined as "void" or
+	"int", as appropriate.
+	(die, domark, reapchild): Return this type.
+	* config/config.Imakefile (ATHINCDIR): New variable, specifies where
+	Athena-originated header files (e.g., Kerberos, Hesiod, Zephyr) go.
+	(ETCDIR): New variable.
+	(KRB_LIB, DES_LIB, HES_LIB, SS_LIB, COMERR_LIB): Search LIBDIR.
+	* config/Imake.template (INCLUDES): Use ATHINCDIR for Kerberos and
+	other header files.
+	* et/compile_et/error_table.y: Don't include stdlib.h if ibm032 is
+	defined.
+	* lib/Imakefile (install): Install header files in ${ATHINCDIR}.
+
+Sat Dec 29 01:33:31 1990  Ken Raeburn  (raeburn at bill-the-cat.MIT.EDU)
+
+	* server/hostm.C (hm_recipient): Construct hostmanager recipient
+	name from local realm, rather than assuming Athena, and cache it.
+	(hostm_deathgram, ping): Call it.
+
+Fri Dec 28 17:51:50 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* server/Set.hT (SetHashSize): New default value is 1024, to
+	simplify modulus operations.
+
+	* server/ZString.h, ZString.C (ZString::insert(const char*)): Now
+	takes an int argument denoting length, and passes it through to
+	ZStringRep constructor.
+	(ZString copy constructor): Now always inline.
+
+Thu Dec 27 13:32:45 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* server/ZStringRep.h (operator==, ZStringRep::hash,
+	ZStringRep::value): Reordered functions to get inlining working
+	better under cfront.
+
+	* include/zephyr/zephyr.h (ZSendList): Added prototype.
+
+Sat Dec 22 23:53:33 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* server/ZStringRep.c (operator ==): Now compares hash values.
+
+Sat Dec 22 17:33:38 1990  John Carr  (jfc at Achates.mit.edu)
+
+	* lib/acl_files.c: Only define MAX and MIN macros if not already
+	defined.
+	* lib/ZSendList.c: cert_routine argument is type Z_AuthProc.
+
+Fri Dec 21 17:19:57 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* Integrated some changes from A/UX port by vrt@athena.mit.edu:
+	* zmailnotify.c: Eliminated unneeded header files, cleaned up
+	preprocessor directives.
+	* include/zephyr/zephyr.h: Include <time.h> for macII (running A/UX)
+	also.
+	* include/zephyr/zephyr_conf.h: Define fd_set macros for macII.  (Is
+	this really necessary??)
+	* ozwgc/main.c (vfork): On macII, defined to be `fork'.
+	* server/main.C (main): Setpriority isn't supported by macII.
+	* zhm/zhm.c (srandom): Define to be srand48 on macII.
+	* zwgc/Imakefile (LIBS2): Use -lc and -lPW on macII.
+	(LIBS): Include LIBS2.
+	* config/config.Imakefile (GLOBALCDEFS): List recommended options
+	for Mac A/UX.
+
+Fri Dec 21 09:22:11 1990  John Carr  (jfc at Achates.mit.edu)
+
+	* clients/zmailnotify/zmailnotify.c, zhm/zhm.c, ozwgc/draw.c:
+	Change NULL to '\0'.
+	* clients/syslogd/syslogd.c: Fix bug with constant strings.
+	* clients/xzwrite/util.c: Print newline after error messages.
+	* zwgc/xmark.c: change an array index to type (unsigned char).
+	* ozwgc/inter_zep.c: include <arpa/inet.h>
+	* ozwgc/main.c: add missing argument to fprintf()
+
+Thu Dec 20 02:58:18 1990  John Carr  (jfc at Achates.MIT.EDU)
+
+	* include/zephyr/zephyr.h (SRV_TIMEOUT): New constant for timeout
+	when waiting for server rather than host manager; initial value 30
+	seconds.
+	(HM_TIMEOUT): Back to 10 seconds.
+	* lib/ZNewLocateUser.c (ZNewLocateUser): Use SRV_TIMEOUT instead of
+	HM_TIMEOUT.
+	* lib/ZRetrieveSubscriptions.c (ZRetrieveSubscriptions): Ditto.
+	* lib/ZLocations.c (Z_SendLocation): Ditto.  Also set file
+	descriptor masks inside loops before select, instead of assuming
+	they'll remain unchanged.
+
+Sun Dec 16 12:55:57 1990  Ken Raeburn  (raeburn at bill-the-cat.MIT.EDU)
+
+	* server/ZStringRep.h (ZStringRep::ZStringRep, ZStringRep::init):
+	Added new "length" parameter to these methods, defaulting to -1.
+	* server/ZStringTable.C (ZStringRep::init): If length supplied is
+	not -1, use it instead of calling strlen.
+	* server/ZString.h (ZString::insert of const char *): New parameter
+	"length".
+	* server/ZString.C (ZString::insert(const char*,int)): Pass it
+	through to ZStringRep constructor.
+
+	* server/Set.hT, Set.CT (operators new and delete): Inline these
+	methods.
+
+	* server/main.C (main): Always log "ready for action" message.
+
+Fri Dec 14 10:57:54 1990  John Carr  (jfc at achates.mit.edu)
+
+	* clients/zwrite/zwrite.c: zwrite was writing past the
+	end of space allocated by malloc when reading from a terminal.
+
+Fri Dec 14 02:19:48 1990  Ken Raeburn  (raeburn at bill-the-cat.MIT.EDU)
+
+	* lib/ZReadAscii.c (ZReadAscii): Temporary variables c1, c2 are now
+	ints.
+
+	* include/zephyr/zephyr.h (HM_TIMEOUT): Up to 30 again.
+
+Thu Dec 13 11:35:33 1990  John Carr  (jfc at achates.mit.edu)
+
+	* lib/ZFormatNoticeList.c: cert_routine argument is type Z_AuthProc
+
+Wed Dec 12 05:50:17 1990  Ken Raeburn  (raeburn at hodge.MIT.EDU)
+
+	* lib/ZReadAscii.c (Z_cnvt_xtoi): Rewritten as a macro, for speed.
+
+	* server/bdump.C (net_read, net_write): Use stdio file pointers
+	rather than UNIX file descriptors.  Buffering should improve
+	performance, at least on reading.
+
+	* server/zserver.h (operator != for ZDestination): Defined as
+	negative of ==.
+	(dump_masks): New constant; signal mask to inhibit database and
+	string table dumps.
+	(ZServerDesc_t.zs_state): Eliminated enumeral bit field.
+	Also reordered some functions.
+
+	* server/Set.hT, server/Set.CT: Linked lists are now ordered by hash
+	value.  Set::find and other functions adjusted accordingly.
+	(operators new and delete): Now conditionalized on FIXED_GXX, like
+	11 December change to server/zserver.h.
+	(SetIterator class): Fixed up iterator definition to actually work.
+	(Set::find): Can now return pointer to first element with too-high
+	hash value.  Callers adjusted accordingly.
+
+Wed Dec 12 02:05:18 1990  John Carr  (jfc at achates.mit.edu)
+
+	* include/zephyr/zephyr_internal.h: comment text after #endif
+	* include/zephyr/zephyr.h: include <time.h> for AIX 3.1
+	* lib/ZLocations.c, lib/ZNewLocateUser.c, lib/ZSendPacket.c,
+	  lib/ZRetrieveSubscriptions: include <sys/select.h> for AIX
+	* zwgc/main.c: signal_child() returns void, support systems
+	  without type (union wait)
+	* zwgc/notice.c: ctime() don't assume that the fields of a
+	  struct timeval can be passed to ctime()
+	* zwgc/mux.c: include <sys/select.h> for AIX
+
+Wed Dec 12 01:02:01 1990  Ken Raeburn  (raeburn at hodge.MIT.EDU)
+
+	* server/zsrv_conf.h (TIMO_TARDY): Wait 2 minutes between "hello"
+	notices to tardy servers.
+	(H_NUM_TARDY): Send 5 notices before marking tardy server dead.
+
+	* server/server.C (kill_clt): New argument, server sending notice.
+	Address logged when errors occur.  All callers changed.
+
+	* server/main.C (dump_strings): Preserve errno.
+	(dump_db): Ditto.
+	(do_reset): Ditto.
+	(reap): Ditto.  Also, call wait3 until we're told we have no more
+	children.
+	(popular_ZStrings): Remove "%me%".
+
+	* server/kstuff.C (SendKerberosData): Removed some unused code.  Now
+	logs source address when ZReadAscii, krb_rd_req, krb_get_cred, or
+	the checksum verification fails.
+
+Tue Dec 11 23:56:08 1990  Ken Raeburn  (raeburn at hodge.MIT.EDU)
+
+	* server/zserver.h (class ZDestination): Always use separate
+	destructor function.  Overload operators new and delete like other
+	classes do.
+	(classes ZHostList_t, ZNotAcked_t, ZSrvPending_t): Removed leading
+	underscores from type names, and `typedef' constructs.
+	(all operators new and delete): Conditionalize on __GNUG__ not
+	defined or FIXED_GXX defined, rather than just the former.
+	server/class.C (ZDestination::~ZDestination): Always implement.
+	* config/config.Imakefile (FIXED_GXX): Define it, for Athena.
+
+Wed Dec  5 23:21:40 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* config/Imake.rules, config/config.Imakefile: Changed all `C++'
+	variable names to `CXX'.
+
+Sat Dec  1 17:33:27 1990  Ken Raeburn  (raeburn at bill-the-cat.MIT.EDU)
+
+	* lib/ZFormatNotice.c (ZFormatNotice): Argument cert_routine is type
+	Z_AuthProc.
+
+	* clients/xzwrite/xzwrite.bitmap: Copied from SIPB bitmaps; default
+	bitmap used by xzwrite.
+	clients/xzwrite/XZwrite (*icon.bitmap): Specify bitmap path relative
+	to ACLDIR.
+	clients/xzwrite/Imakefile (install): Install xzwrite.bitmap, and
+	edit XZwrite to have the correct pathname for it.
+	(CODE): Add xzwrite.bitmap.
+
+	* clients/xzwrite/Imakefile (DEFINES): X application-default search
+	path should end with "%N".
+
+	* clients/zctl/zctl.c (main): Print newline after error message.
+
+Fri Nov 30 08:44:20 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* lib/ZFreeNotice.c (ZFreeNotice): Always return zero.
+
+Mon Nov 26 10:58:54 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* All source files tagged with version ASR72A.  (Changes made today
+	not included.)
+
+	* Created libdyn/profiled, in case `makeconfig' isn't used.
+
+	* clients/xzwrite/Imakefile (install): All installs must be relative
+	to $(DESTDIR).
+
+	* lib/ZParseNotice.c: Removed debugging `abort' version of
+	ZERR_BADPKT macro that slipped in.
+
+Sat Nov 17 01:25:29 1990  Ken Raeburn  (raeburn at bill-the-cat.MIT.EDU)
+
+	* include/zephyr/zephyr.h (HM_TIMEOUT): Increase to 10 seconds.
+
+	* server/class.C (class_get_acl): Check entire destination, rather
+	than just class name, when looking for acl.
+
+Fri Nov 16 10:28:13 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* server/kstuff.C (ZCheckAuthentication): Don't log messages about
+	zero-length authenticators.
+
+	* ss/lib/parse.c (ss_parse): Set *argc_ptr to 0 in error cases.
+
+	* clients/syslogd/syslogd.c: Conditionally (on macII) include
+	sys/types.h and time.h, and use setvbuf instead of setlinebuf.
+	[from vrt@athena.mit.edu]
+
+	* lib/ZLocations.c (Z_SendLocation): If gethostbyname returns no
+	info, just use local host name.
+
+	* libdyn, clients/xzwrite: New directories.
+	Imakefile, clients/Imakefile: Build them.
+	tools/makeconfig: Include them.
+
+	* server/Imakefile: Added to ${HDRS} all the header files that are
+	used, so "make depend" does the right thing.
+
+	* server/unix.h: Fixed prototypes for Kerberos routines, and
+	conditionalized them.  Added prototype for hes_resolve.
+
+	* config/Imake.rules: Added support for ucode libraries, if
+	HaveUCode is defined. Reorganized some rules duplicating lots of
+	commands.
+	config/config.Imakefile (HaveUCode): Define it on MIPS.
+
+	* config/Imake.template: Add definitions for dynamic-array library.
+
+	* lib/ZLocations.c (Z_SendLocation): Rewrote handling of select
+	call.
+
+	* clients/zstat/zserver.h: Copied from server/zserver.h, before
+	conversion to C++.  Cut down to needed definitions.
+	clients/zstat/zstat.c: Use the former instead of the latter.
+	clients/zstat/Imakefile: Reflect this change.
+
+Thu Nov 15 13:08:34 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* zwgc/zwgc.desc: Display recipient of class "message" notices.
+	Also reorganized layout of fields to avoid really long lines.
+
+	* include/zephyr/zephyr.h (HM_TIMEOUT): Reduce to 5sec from 30sec.
+
+	* lib/ZParseNotice.c (next_field): New macro, finds next field of
+	message.  Defaults to old action, but on vax and mips faster version
+	is available.
+	(ZParseNotice): Use it.  Also use a union of types rather than
+	casting the address of an int array.  When appropriate, use sizeof
+	instead of strlen.
+
+Wed Nov 14 23:41:48 1990  Ken Raeburn  (raeburn at hodge.MIT.EDU)
+
+	* server/access.h (acl_load): Declare it.
+
+	* include/zephyr/zephyr.h: More prototypes added; further C++
+	changes.
+	* include/zephyr/zephyr_internal.h: Treat C++ like standard C.
+
+	* server/server.C (get_server_addrs): Cleaned up Hesiod code for C++
+	use.
+
+Tue Nov 13 17:31:24 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* config/config.Imakefile: Use -p for profiling on mips.
+
+	* zwgc/xshow.c: Include <X11/Xresource.h>, for XrmUniqueQuark
+	declaration.
+
+	* config/config.Imakefile: Don't automatically use -g with gcc,
+	until we've separated out library flags from program flags.
+
+	* config/{config.Imakefile,Imake.rules}: Added support for C++
+	programs, compiled with either g++ or cfront.  Also enabled
+	P0INVALID code on Vax and RT, and read-only strings on RT.
+
+	* server directory, ChangeLog file: Merged in server changes
+	(audited by lwvanels).  RCS tag ZSRV3PT21 added.
+
+	* man/man1/zwrite.1: Restored documentation of `-O' option and
+	`zwrite-opcode' Zephyr variable.
+
+Fri Nov  9 14:33:13 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* clients/zwrite/zwrite.c (main): For default display formats
+	including signatures, add "From: " before the name.
+
+	* clients/zwrite/zwrite.c (main): Made character buffers and
+	ZNotice_t structure static (and therefore automatically
+	initialized).
+
+	* lib/Imakefile: Simplified Kerberos conditional code.
+
+	* zwgc/xshow.c (xres_get_resource): New function replacing
+	xres_get_{geometry,bgcolor}, with data tables controlling
+	behavior.
+	(xres_get_{geometry,bgcolor}): Now macros calling above.
+
+	* zwgc: Version 0.4.2 frozen and put up for testing; future
+	changes should include update of version number.
+
+	* zwgc/xshow.c (mode_to_colorname): Modified to use
+	xres_get_resource.  Also removed spurious "style" that was being
+	inserted into the resource name.
+	main.c (zwgc_version_string): Raised to 0.4.3.
+
+Thu Nov  8 17:34:23 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* zwgc/tty_filter.c (struct _tty_str_info): Make flags into
+	bitfields.
+
+	* zwgc/X_gram.c (x_gram_create): Only beep once.
+	zwgc/tty_filter.c (convert_desc_to_tty_str_info): Ditto.  Also
+	simplified Saber-bug/non-ANSI workaround.
+	man/man1/zwgc.1: Documented change.
+
+Wed Nov  7 19:00:28 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* zwgc/X_gram.c (x_gram_init): Prefixed time-to-live resource
+	names with "min", making room for future "max" variant.
+	man/man1/zwgc.1: Documented change.
+
+Tue Nov  6 14:04:07 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* zhm/zhm.c: Commented out text after #endif directives.
+	(send_stats): MIPS measures data size from 0x10000000, like IBM RT
+	does.
+
+Sun Nov  4 10:26:22 1990  Ken Raeburn  (raeburn at bill-the-cat.MIT.EDU)
+
+	* zwgc/xselect.c (xselSetProperties): Cast argument of XFree to
+	char* to avoid compiler errors on the RT.
+
+	* lib/ZVariables.c (get_localvarfile, get_varval, varline): Added
+	static declarations.
+
+	* server/ZStringRep.h (ZStringRep_magic): Never define.
+	server/ZString.h (ZString_magic): Ditto.
+
+	* server/zalloc.C (BUCKET): Use quotient, not remainder, to choose
+	bucket number.
+
+	* server/acl_files.c (ACL_LEN): Raised from 16 to 256.  Should be
+	deleted eventually.
+	(CACHED_ACLS): Raised from 32 to 64.
+	[WRITE_ACL]: Conditionalized compilation of code involved in
+	editing acl files.
+	(KRB_REALM): Default definition deleted.
+	(destroy_hash): Void return.
+	[#if 0]: Some debug code, currently disabled.
+
+	* server/class.C (class_setup_restricted): Don't pull class name
+	out of ZDestination record to initialize new ZDestination record,
+	when the new record will be the same as the old.
+
+	* server/kstuff.C (add_to_cache): Fixed bug in access to expire
+	method.
+
+	* server/unix.h [ibm032] (LOCAL_ALLOC): Since we can't really
+	access the builtin _Alloca from C++, call alloca instead.
+
+	* server/bdump.C (sbd_loop): To avoid calling malloc, use a
+	fixed-size automatic buffer for zeph_version if it'll fit.
+
+Thu Nov  1 17:20:03 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* server/access.C (access_setup): Merged function, from
+	access_init and access_reinit.
+	(access_init, access_reinit): Trivial functions that call
+	access_setup.
+
+Wed Oct 31 15:10:13 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* zwgc/main.c (signal_child): Preserve value of errno.
+
+	* server/main.C (dump_strings): Rename output file to
+	zephyr.strings.
+
+	* server/kstuff.C (add_to_cache): Call expire method, rather than
+	calling zfree, to localize memory-manager dependencies.
+
+Tue Oct 30 01:31:31 1990  Ken Raeburn  (raeburn at binkley.MIT.EDU)
+
+	* server/client.C (client_deregister): Delete client, rather than
+	calling clt_free to do it.
+	(clt_free): Deleted.
+
+Mon Oct 29 04:35:02 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* server/kstuff.C: Removed unused variable cache_initialized.
+	(AuthEnt::expire, add_to_cache, ZCheckAuthentication): Use zalloc
+	and zfree for saved authenticator strings.
+
+	* server/ZString.h (ZString::length): New method.
+	server/ZString.C (ZString::initialize for const ZString&): Use it.
+
+	* server/kstuff.C (ZCheckAuthentication): Only calculate the
+	length of the ASCII form once.
+
+	* server/ZStringRep.h (ZStringRep::len): New field, length of
+	string.
+	(ZStringRep::length): New method, returns it.
+	(operator==): Compare it before calling strcmp.
+	server/ZStringTable.C (ZStringRep::init): Set it.
+	(ZStringRep::~ZStringRep): Use it, rather than calling strlen, for
+	argument to zfree.
+
+	* server/ZStringRep.h (ZStringRep::is_copy): New field, indicating
+	whether field `str' was allocated by this class.  Bitfield of
+	length one.
+	(ZStringRep::magic, ZStringRep_magic): Now `unsigned short'.
+	(ZStringRep::ZStringRep): Now takes a `nocopy' argument,
+	defaulting to 0.  Pass it through to init.
+	(ZStringRep::init): Also takes `nocopy' argument.
+	server/ZStringTable.C (ZStringRep::init): If `nocopy' is non-zero,
+	use the string value passed in.
+
+	* server/common.C (hash): Preserve more bits.
+
+	* server/zalloc.C (BUCKET): New macro; returns bucket number given
+	size.  Adjusted to use bucket 0 for one-word requests.
+	(ROUND): New macro; rounds argument (lvalue) up to next multiple
+	of sz.
+	(zalloc, zfree): Use them.
+	(alloc_size): Raised to 16K minus overhead.
+
+	* server/zserver.h (struct ZClient_t): Removed leading underscore
+	from primary name.
+	(ZClient::last_check): New field: Last time owning server was
+	prodded to check if client still exists.
+	(ZClient::ZClient): New method; initialize last_check and last_msg
+	to 0.
+
+	* server/zalloc.C (memset): New routine for debugging; overwrite
+	region with specified byte value.
+	(ZALLOC_DEBUG code): More debugging code, now disabled.
+	(zfree): Fix to enter proper value in free list, rather than
+	address of bucket.
+
+	* server/Set.hT (Set::print): New function; call obj.print for
+	each object in the set.
+	server/ZStringRep.h (ZStringRep::print): New function; print ref
+	count and string contents to specified file.
+	server/ZString.h (ZString::print): New static method; call print
+	method of string table.
+	server/main.C (dump_strings): New function; calls ZString::print
+	to dump string table into /usr/tmp/zephyrd.strings.
+	(main): Call it on SIGEMT.
+
+Tue Oct 23 11:36:49 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* server/zalloc.C: New file.  Contains routines for more compact
+	memory allocation.
+	* server/zalloc.h: Declarations for external use.
+	* server/Imakefile (SRCS, OBJS): Include it.
+	* server/Set.hT (class SetRec): Define operators new and delete,
+	using the zalloc routines.  Use only if __GNUG__ not defined (bug
+	workaround).
+	* server/zserver.h (ZSubscr_t, ZClient_t, ZClientList_t, ZClass_t,
+	ZHostList_t, ZNotAcked_t, ZSrvPending_t): Likewise.
+
+Mon Oct 22 04:11:38 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* clients/zctl/zctl.c (main): Fixed up format of error message
+	printed for request given on command line.
+
+	* lib/Zinternal.c (Z_AddField): Treat a null pointer as a
+	zero-length string.
+	[from dcj%flume@decwrl.dec.com]
+
+	* zwgc/X_gram.h (x_gram.can_die): New field; indicates first time
+	when the window should respond to ButtonRelease events and delete
+	itself.
+	* zwgc/X_gram.c (ttl): New variable; minimum-time-to-live of X
+	windowgrams.
+	(x_gram_init): Set ttl from timeToLive/TimeToLive X resource.
+	(x_gram_create): Include StructureNotifyMask in selected input.
+	Simplified a conditional; added comments.
+	* zwgc/xcut.c (xdestroygram): New function, taken from xcut; does
+	work of deleting a windowgram.  Augmented to perform minimum-ttl
+	last-minute cancellation.
+	(xcut) [ButtonRelease]: If "control" key is down, delete all
+	windows at the specified coordinates, rather than just the window
+	containing the mouse pointer.  Call xdestroygram to delete them.
+	[MapNotify]: Initialize "can_die" field with current time plus
+	ttl.
+	[from marc@athena.mit.edu]
+
+	* zwgc/main.c (zwgc_version_string): Set version to 0.4.2.
+
+Fri Oct 19 06:09:22 1990  Ken Raeburn  (raeburn at bill-the-cat.MIT.EDU)
+
+	* clients/zshutdown_notify/zshutdown_notify.c (main): Moved the
+	ZInitialize call to after the Kerberos setup code.
+	zwgc/standard_ports.c (init_standard_ports): Use ZWGCPATH in error
+	message rather than explicit path.
+	zwgc/Imakefile (DEFINES): Define ZWGCPATH.
+	[from jtkohl@athena.mit.edu]
+
+	* zwgc/X_driver.c (open_display_and_load_resources): X bug
+	workaround: Don't call XrmGetStringDatabase with null value.
+	[from epeisach@athena.mit.edu]
+
+	* clients/zwrite/zwrite.c (main): Incorporate time and date into
+	default message formats.
+
+	* zhm/zhm.h: Minor preprocessing changes for ANSI compliance.
+	ozwgc/zbrowser/Viewport.h: Ditto.
+	makedepend/def.h: Ditto.
+	include/zephyr/zephyr_internal.h: Ditto.
+	include/zephyr/zephyr.h: Ditto.
+	[from jik@athena.mit.edu]
+
+	* lib/ZLocations.c (Z_SendLocation): If ttyname returns null, use
+	a location of "unknown".
+
+	* zwgc/port.c (defined (__HIGHC__)): Changed from ibm032, since
+	higher-level compiler errors aren't specific to hardware platform.
+
+	* zwgc/standard_ports.c (init_standard_ports): If -ttymode is
+	given, disable X driver.
+	[from warlord@athena.mit.edu]
+
+	* lib/ZSendPacket.c (ZSendPacket): Removed unreachable return
+	statement.
+
+	* lib/Zinternal.c (Z_ReadWait): Check for failure allocating
+	header field.
+	(Z_FormatHeader): Use assignment rather than bcopy for
+	ZUnique_Id_t values.  Initialize checksum to 0 if no certification
+	routine is provided.
+	(Z_FormatRawHeader): Use a union of different types, rather than
+	assuming "int" will cover all, for "temp".
+
+	* server/kopt.c (krb_get_lrealm): Cache value after reading it
+	once.
+
+Thu Oct 18 23:41:24 1990  Ken Raeburn  (raeburn at bill-the-cat.MIT.EDU)
+
+	* include/zephyr/zephyr.h (<netinet/in.h>): Moved include to
+	inside `extern "C"' section.
+	(various): Cleaned up whitespace to get names aligned again.
+	(ZSubscriptions_t "z_class" field): Got rid of this (unused) name,
+	in favor of the new one.
+	(ZGetFD): Use inline function for C++ rather than macro.
+	(ZQLength, ZGetDestAddr, ZGetRealm): Ditto.
+	(Z_MAXQLEN, ZERR_NONE, HM_TIMEOUT, ZAUTH, ZNOAUTH): Const values
+	for C++, rather than macros.
+	Also added lots of missing library routine declarations.
+
+	* include/zephyr/acl.h: Added ANSI/C++ versions of declarations.
+
+	* Server changes to date:
+	* server/uloc.c: Added unauthentic-zlocate changes.
+	* server/ZString*, server/Set*: Separated out functions that
+	cannot be made inline, made a separate source file.
+	* server/xxx.c: New source file, for anything that doesn't compile
+	correctly in C++ code (e.g., unions under cfront).
+	* server/* (struct ZDestination): Combination of class/inst/recip,
+	with its own methods.  Now used where the triple was used before.
+	Non-inlined methods are in class.C.
+	(struct Notice): Parsed notice, including ZString for sender and
+	ZDestination, as well as original ZNotice_t.  Should be used more
+	thoroughly.
+	* server/zserver.h (class_is_*): Functions now inline.
+	(many constants): Replaced macros with constants of same name.
+	(msgs_queued): Inline function, replaces macro.
+	* server/*: Most "zdbug" calls, other DEBUG logging code, now
+	under "#if 0".  Some "#if 1" for now; change as needed.
+
+	* server/version.C: Manually changed version to 3.20.90.
+
+Sun Sep  9 14:02:50 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* server/kopt.c (krb_rd_req): Copied from Kerberos library; added
+	cache to minimize des_key_sched calls.
+
+Thu Sep  6 02:49:25 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* server/zserver.h (struct ZClient_t): Changed zct_principal to
+	ZString.
+
+	* server/kstuff.C (ZCheckAuthentication): Copied from library;
+	added interaction with new authenticator cache.
+
+	* server/zserver.h: Created new ZDestination class.
+	(struct ZSubscr_t, ZClass_t): Use it.
+	(struct ZClass_t): Changed zct_classname to ZString; created
+	constructor and destructor methods.
+
+	* server/ZString.[hC]: Added declaration and definition of
+	operator== for comparing ZString objects.  Removed debugging
+	printf statements.
+
+Tue Sep  4 18:31:15 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* Server changes:
+	* Added constructors for ZSubscr_t.
+	* Added ZString class (not based on a String class at the moment);
+	incorporated into ZSubscr_t.  Also changed all references to use
+	ZString or to use value() method.
+	* Changed "class" to "class_name" or "z_class" throughout.
+	* Ran all files through protoize; added declarations to zserver.h
+	and other header files as needed.
+
+Tue Sep  4 09:50:30 1990  Lucien Van Elsen  (lwvanels at fionavar.mit.edu)
+
+	* lib/ZMakeAuthentication.c: Fixes to set last_authent_time
+	correctly.  [auditor: raeburn]
+
+	* clients/zctl/zctl.c (main): Error code is returned by
+	ss_execute_line; it doesn't take pointer-to.  [auditor: raeburn]
+
+Thu Aug 16 22:51:03 1990  Ken Raeburn  (raeburn at podge.MIT.EDU)
+
+	* server/class.c (hash): Speed it up (on the vax) by using signed
+	arithmetic.  Also, re-implement the hash function the way it was
+	originally intended.
+
+Thu Aug 16 22:44:51 1990  Ted Ts'o  (tytso at binkley.MIT.EDU)
+
+	* server/class.c (class_restrict): Don't #ifdef this out.
+	[Audited by raeburn]
+
+	* server/subscr.c (subscr_subscribe_real): If bdumping, don't
+	bother checking the acl.  [auditor: raeburn]
+
+Thu Aug 16 21:35:12 1990  Ken Raeburn (raeburn at podge.MIT.EDU)
+
+	* server/kstuff.C (SendKerberosData): Changed so that Kerberos error
+	message are sent with the Kerberos error base added to them; the
+	routines in bdump.c which use SendKerberosData were changed to uses
+	error_message() to decode the error returns from
+	SendKerberosData().  This prevents a core dump from happening when
+	SendKerberosData returned ZSRV_PKSHORT and the bdump_() routines
+	tried to index the return through the Kerberos error table.
+	[audited by tytso]
+
+Fri Jul 27 11:15:09 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* Previous changes have been incorporated into Athena release 7.1.
+	RCS logs tagged with ASR71A.
+
+Mon Jul 16 09:18:15 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* include/zephyr/zephyr{,_internal}.h: Added prototypes and some
+	minimal C++-compatibility code.  [audited by jfc]
+
+	* config/config.Imakefile (UseGcc,CC,DBG): Build with gcc if
+	UseGcc is defined; define UseGcc by default on vax.
+	(LINTLIBFLAG): Use -o rather than -C on DECstation, which is
+	SysV-based.
+	[audited by jfc]
+
+Sun Jul 15 17:13:19 1990  Ken Raeburn  (raeburn at hodge.MIT.EDU)
+
+	* lib/ZMakeAuthentication.c (ZMakeAuthentication): Kerberos
+	authenticators less than two minutes old may be re-used.
+	(ZResetAuthentication): New function: Clears this cache.
+	[audited by marc]
+
+	* lib/Z{Make,Read}Ascii.c: Partially rewritten for speed.
+	[audited by marc]
+
+	* man/man1/zmailnotify.1: Corrected description of case with more
+	than four mail messages.  [from krishna]
+
+	* man/man1/zwgc.1: Added description of ``transient;'' corrected
+	description of signal handling.  [from marc]
+
+Thu Jul 12 13:56:49 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* clients/zctl/zctl.c: Include <com_err.h>; don't declare index
+	when including <string.h>; don't declare malloc several times.
+	[from jfc]
+
+	* clients/zpopnotify/zpopnotify.c: Include <com_err.h>.  Don't
+	declare rindex when string.h is included; removed unused variable.
+	[from jfc]
+
+Thu Jul  5 17:04:18 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* Added ASR70F RCS tag to all RCS files.
+
+Thu May 24 22:38:42 1990  Ken Raeburn  (raeburn at jellicle.MIT.EDU)
+
+	* Reverted "punt" semantics, for this release.  (Turned over to
+	rel-eng.)
+	* main.c: Renamed relevant variables from "sender" to "recipient".
+	Also, use recipient rather than when checking for puntable
+	addresses.
+	* subscriptions.c: Go back to previous version, which doesn't try
+	to deal with wildcards as such.
+
+Mon May 21 23:39:59 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* Punted "pretty" hacks.  (Turned over to rel-eng.)
+	* clients/zwrite/zwrite.c: Removed -p argument; default opcode is
+	empty.
+	* zwgc/zwgc.desc: Never use verbatim.
+
+Thu May 17 01:35:19 1990  Ken Raeburn  (raeburn at multics.MIT.EDU)
+
+	* Started ChangeLog, logging changes from marc, jfc, and myself as
+	I audit or enter them.
+
+	* server/uloc.c (uloc_dump_locs): Changed "??" to "?" to avoid
+	trigraph problems.
+
+	* zwgc/port.c (create_port_from_files): Added workaround for bug
+	in RT hc compiler version 2.1y.
+
+	* lib/ZSendPacket.c (ZSendPacket): Use select to determine when to
+	check for response, rather than polling periodically.
+	(wait_for_hmack): Explicitly declare type.
+
+	* zwgc/exec.c (exec_process_packet): Fixed counting of fields,
+	including accounting for old version of zwrite that appended an
+	extra null byte.
+
+	* zwgc/subscriptions.c: Rewrote "punt" list handling code.
+
+	* zwgc/main.c (zwgc_version_string): New variable, replaces
+	multiple literal occurrences of version number.  New version
+	number is 0.4.1.
+	(fake_startup_packet): Use it.  Also use current time.
+	(setup_signals): Take DOFORK argument; if set, ignore signals INT,
+	TSTP, QUIT, rather than exiting or dying.
+	(main): Pass DOFORK to setup_signals.
+	(notice_handler): Use "sender" rather than "recipient" for
+	supression code.
+
+	* zwgc/zwgc_resources: No longer specify name of program, since
+	this is the application-defaults file for only the one program.
+
+	* Unauthenticated-locate changes:
+	* lib/ZNewLocateUser.c (ZNewLocateUser): New file/function, using
+	guts of old ZLocateUser, but now taking an AUTH parameter.
+	* lib/ZLocateUser.c (ZLocateUser): Call it.
+	* lib/Imakefile (SRCS, OLIST): Include ZNewLocateUser.o.
+	* clients/zlocate/zlocate.c: Do unauthenticated zlocate if
+	argument "-d" is given, authenticated (default) on "-a".
+	* man/man1/zlocate.1: Documentation changes for above.
+
+	* Turned over changes to rel-eng for 7.0.
+
+
+Local Variables:
+mode: indented-text
+left-margin: 8
+fill-column: 76
+version-control: never
+End:
