@@ -1,3 +1,11 @@
+zephyr (2.1.20010518.SNAPSHOT-7) unstable; urgency=low
+
+  * Stop using some egregious ?roff hacks in the zwgc man page that seem
+    to be not quite compatible with either groff or groff's -man
+    implementation.  closes: #134480
+
+ --
+
 zephyr (2.1.20010518.SNAPSHOT-6) unstable; urgency=low
 
   * Second try at placating the ia64 autobuilders.  Why they weren't
