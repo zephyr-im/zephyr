@@ -340,6 +340,10 @@ main(argc, argv)
 		} else 
 			nfound = select(nfildes, &readable, (fd_set *) NULL,
 					(fd_set *) NULL, tvp);
+
+		/* Initialize t_local for other uses */
+		(void) gettimeofday(&t_local, (struct timezone *)0);
+		
 		/* don't flame about EINTR, since a SIGUSR1 or SIGUSR2
 		   can generate it by interrupting the select */
 		if (nfound < 0) {
