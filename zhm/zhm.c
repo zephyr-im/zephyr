@@ -44,7 +44,7 @@ long starttime;
 u_short cli_port;
 struct sockaddr_in cli_sin, serv_sin, from;
 int numserv;
-char **serv_list;
+char **serv_list = (char **)0;
 char prim_serv[MAXHOSTNAMELEN], cur_serv[MAXHOSTNAMELEN];
 char *zcluster;
 int sig_type;
@@ -59,7 +59,7 @@ extern long time();
 void choose_server(), init_hm(), detach(),
     handle_timeout(), resend_notices(), die_gracefully();
 
-#if defined(ultrix) || defined(_POSIX_SOURCE)
+#ifdef POSIX
 void
 #endif
   set_sig_type(sig)
@@ -80,6 +80,15 @@ char *argv[];
      extern int optind;
      register int i, j = 0;
 
+#ifdef _AIX
+     struct sigaction sa;
+
+     sigemptyset(&sa.sa_mask);
+     sa.sa_flags = SA_FULLDUMP;
+     sa.sa_handler = SIG_DFL;
+     sigaction(SIGSEGV, &sa, (struct sigaction *)0);
+#endif
+     
      if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
 	  printf("Can't find my hostname?!\n");
 	  exit(-1);
@@ -246,7 +255,8 @@ void choose_server()
 	    i = 1;
 	while (i < numserv)
 	    (void) free(serv_list[i]);
-	(void) free(serv_list);
+	if (serv_list)
+	    (void) free(serv_list);
 	
 	numserv = 0;
 	prim_serv[0] = '\0';
