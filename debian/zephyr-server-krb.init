@@ -25,8 +25,7 @@ case "$1" in
 	if test ! -f /etc/zephyr/srvtab
 	then
 		echo 'You need to get a srvtab before the kerberized zephyr server will function'
-		echo 'correctly.  Get a srvtab for zephyr/zephyr and put it in
-/etc/zephyr/srvtab.'
+		echo 'correctly.  Get a srvtab for zephyr/zephyr and put it in /etc/zephyr/srvtab.'
 		exit 0
 	fi
 	echo -n "Starting $DESC: "
