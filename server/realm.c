@@ -20,8 +20,60 @@ static void rlm_new_ticket __P(());
 static void rlm_rexmit __P((void *arg));
 static Code_t realm_ulocate_dispatch __P((ZNotice_t *notice,int auth,struct sockaddr_in *who,Server *server,Realm *realm));
 #ifdef ZEPHYR_USES_KERBEROS
-static Code_t ticket_retrieve __P((char *realm));
+static Code_t ticket_retrieve __P((Realm *realm));
 #endif
+
+char *
+realm_expand_realm(realmname)
+char *realmname;
+{
+	static char expand[REALM_SZ];
+	static char krb_realm[REALM_SZ+1];
+	char *cp1, *cp2;
+	int retval;
+	FILE *rlm_file;
+	char list_file128];
+	char linebuf[BUFSIZ];
+	char scratch[128];
+
+	/* upcase what we got */
+	cp2 = realmname;
+	cp1 = expand;
+	while (*cp2) {
+		*cp1++ = toupper(*cp2++);
+	}
+	*cp1 = '\0';
+
+	sprintf(list_file, "%s/%s", CONFDIR, REALM_LIST_FILE);
+
+	if ((rlm_file = fopen(list_file, "r")) == (FILE *) 0) {
+		return(expand);
+	}
+
+	if (fgets(linebuf, BUFSIZ, rlm_file) == NULL) {
+		/* error reading */
+		(void) fclose(rlm_file);
+		break;
+	}
+
+	while (1) {
+		/* run through the file, looking for admin host */
+		if (fgets(linebuf, BUFSIZ, rlm_file) == NULL) {
+			(void) fclose(rlm_file);
+			return(expand);
+		}
+
+		if (sscanf(linebuf, "%s %s", krb_realm, scratch) < 2)
+			continue;
+		if (!strncmp(krb_realm, expand, strlen(expand))) {
+			(void) fclose(rlm_file);
+			return(krb_realm);
+		}
+	}
+	if (!strncmp(my_realm, expand, strlen(expand)))
+	    return(my_realm);
+	return(expand);
+}
 
 Realmname *
 get_realm_lists(file)
@@ -126,7 +178,7 @@ bound_for_local_realm(notice)
   
   realm = strchr(notice->z_recipient, '@');
   
-  if (!realm || !strcmp(realm + 1, ZGetRealm()))
+  if (!realm || !strcmp(realm_expand_realm(realm + 1), ZGetRealm()))
     return 1;
 
   return 0;
@@ -411,7 +463,8 @@ realm_init()
     
     rlm->client = client;
     rlm->idx = random() % rlm->count;
-    rlm->subs = (Destlist *)0;
+    rlm->subs = NULL;
+    rlm->tkt_try = 0;
     free(rlmnames[ii].servers);
     free(addresses);
   }
@@ -521,7 +574,7 @@ realm_handoff(notice, auth, who, realm, ack_to_sender)
   }
   
   if (!ticket_lookup(realm->name))
-    if ((retval = ticket_retrieve(realm->name)) != ZERR_NONE) {
+    if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
       syslog(LOG_WARNING, "rlm_handoff failed: %s", error_message(retval));
       return;
     }
@@ -1002,7 +1055,7 @@ char *realm;
 
 static Code_t
 ticket_retrieve(realm)
-    char *realm;
+    Realm *realm;
 {
   int pid, retval;
   KTEXT_ST authent;
@@ -1013,15 +1066,20 @@ ticket_retrieve(realm)
   memset(&authent.dat,0,MAX_KTXT_LEN);
   authent.mbz=0;
 
-  retval = krb_mk_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
-                      realm, 0);
-  if (retval != KSUCCESS) {
-    syslog(LOG_WARNING, "tkt_rtrv: %s: %s", realm,
-           krb_err_txt[retval]);
-    return (retval+krb_err_base);
+  /* Don't lose by trying too often. */
+  if (NOW - realm->tkt_try > 5 * 60) {
+    retval = krb_mk_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
+			realm->name, 0);
+    realm->tkt_try = NOW;
+    if (retval != KSUCCESS) {
+      syslog(LOG_WARNING, "tkt_rtrv: %s: %s", realm,
+	     krb_err_txt[retval]);
+      return (retval+krb_err_base);
+    }
+    return (0);
+  } else {
+    return (1);
   }
-
-  return (0);
 }
 #endif /* ZEPHYR_USES_KERBEROS */
 
