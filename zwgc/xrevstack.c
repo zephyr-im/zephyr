@@ -23,6 +23,7 @@ static char rcsid_xrevstack_c[] = "$Id$";
 #include <stdio.h>
 
 x_gram *bottom_gram = NULL;
+x_gram *unlinked = NULL;
 int reverse_stack = 0;
 
 void add_to_bottom(gram)
@@ -60,10 +61,39 @@ void delete_gram(gram)
       } else {
 	 bottom_gram = NULL;
       }
+   } else if (gram == unlinked) {
+      if (gram->above) {
+	 unlinked = gram->above;
+	 unlinked->below = NULL;
+      } else {
+	 unlinked = NULL;
+      }
    } else {
       if (gram->above)
 	gram->above->below = gram->below;
       gram->below->above = gram->above;     
+   }
+
+   /* fix up above & below pointers so that calling delete_gram
+      again is safe */
+   gram->below = gram;
+   gram->above = gram;
+}
+
+void unlink_gram(gram)
+     x_gram *gram;
+{
+   delete_gram(gram);
+
+   if (unlinked) {
+      unlinked->below = gram;
+      gram->below = NULL;
+      gram->above = unlinked;
+      unlinked = gram;
+   } else {
+      gram->above = NULL;
+      gram->below = NULL;
+      unlinked = gram;
    }
 }
 
