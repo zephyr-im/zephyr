@@ -4,7 +4,7 @@
 .\"
 .\"	@(#)zwrite.1	6.1 (MIT) 7/9/87
 .\"
-.TH ZWRITE 1 "July 14, 1987"
+.TH ZWRITE 1 "February 6, 1988"
 .SH NAME
 zwrite \- write to another user
 .SH SYNOPSIS
@@ -12,14 +12,20 @@ zwrite \- write to another user
 [
 .BI -a
 ] [
-.BI -i
-instance ] [
+.BI -d
+] [
+.BI -v
+] [
 .BI -q
 ] [
 .BI -u
 ] [
-.BI -v
+.BI -o
 ] [
+.BI -c
+class ] [
+.BI -i
+instance ] [
 .BI user \ ...
 ] [
 .BI -m
@@ -30,7 +36,7 @@ instance ] [
 sends a message from you to another user through the
 .I zephyr(1)
 notification service.  The user must have subscribed to messages of
-class ``MESSAGE'', instance ``PERSONAL'' and/or ``URGENT'', using the
+the appropriate class and instance using the
 .I zctl(1)
 program.
 .PP
@@ -40,16 +46,20 @@ understands the following options.
 .B \-a
 Causes
 .I zwrite
-to send an authenticated message, using
-.I kerberos.
+to send the message authenticated, using
+.I kerberos
+to perform the authentication.  This is the default.
 .TP
-.B \-i
-Allows a user to specify a different instance than the default
-``PERSONAL'' or ``URGENT'' ones.  When this option is used, the message
-is sent to recipient "*".  This allows a message to be sent to a large
-group of people (e.g. a development group) just by having the members
-group to messages of class "MESSAGE", the specified instance, and recipient
-"*".
+.B \-d
+Causes
+.I zwrite
+to send the message nonauthenticated.
+.TP
+.B \-v
+Causes
+.I zwrite
+to print what type of message it is sending, and whether or not it was
+successful.
 .TP
 .B \-q
 Forces
@@ -57,15 +67,34 @@ Forces
 to suppress information about whether or not the message was sent.
 .TP
 .B \-u
-Sends an urgent message.  This is to allow one to unsubscribe to
-instance ``PERSONAL'' messages, but remain able to receive instance
-``URGENT'' ones.
+Sends an urgent message.  This changes the
+.I zephyr
+instance of the message to ``URGENT''.
 .TP
-.B \-v
+.B \-o
 Causes
 .I zwrite
-to print what type of message it is sending, and whether or not it was
-successful.
+to ignore the environment variables ZEPHYR_CLASS and ZEPHYR_INST when picking
+a default class and instance.
+.TP
+.B \-c
+Allows a user to specify a different class for the message.  This allows
+a message to be sent to a large group of people with some degree of
+security.  See
+.I zephyr(1)
+and
+.I zephyrd(8)
+for a description of how to restrict access to classes.  When this option
+is specified, the message is sent to recipient "*" unless an additional
+list of recipients is specified.
+.TP
+.B \-i
+Allows a user to specify a different instance than the default.
+When this option is used, the message is sent to recipient "*" unless an
+additional list of recipients is specified.  This allows a message to be
+sent to a large group of people (e.g. a development group) just by having
+the members group to messages of class "MESSAGE", the specified instance,
+and recipient "*".
 .TP
 .B \-m
 .I Zwrite
@@ -76,6 +105,13 @@ If the
 option is not specified, the user is prompted for the message to be
 sent.  The message may be terminated by typing ^D or ``.'' on a line
 by itself.
+.PP
+The default class for messages is ``MESSAGE'', and the default instance
+is ``PERSONAL''.  These defaults can be changed by setting the environment
+variables ZEPHYR_CLASS and ZEPHYR_INST, respectively.
+.PP
+If the environment variable ZEPHYR_SIGNATURE is set, its contents are used
+to augment the user's username in the message. 
 .SH SEE ALSO
 kerberosintro(1), zctl(1), zephyr(1), zwgc(1), zhm(8), zephyrd(8)
 .br
