@@ -258,7 +258,7 @@ main(argc, argv)
 {
 	register int i;
 	register char *p;
-	int funix, inetm, fklog, klogm, len;
+	int funix, inetm = 0, fklog, klogm, len;
 	struct sockaddr_un sunx, fromunix;
 	struct sockaddr_in sin, frominet;
 	FILE *fp;
@@ -364,6 +364,7 @@ main(argc, argv)
 			logerror("syslog/udp: unknown service");
 			die(0);
 		}
+		bzero(sin.sin_zero, sizeof(sin.sin_zero));
 		sin.sin_family = AF_INET;
 		sin.sin_port = LogPort = sp->s_port;
 #ifdef COMPAT42
