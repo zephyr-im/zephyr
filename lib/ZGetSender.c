@@ -41,15 +41,15 @@ char *ZGetSender()
 		(void) sprintf(sender,"%s@UNAUTH",pw->pw_name);
 		return (sender);
 	} 
-	getst(fp,pname,ANAME_SZ);
-	getst(fp,pinst,INST_SZ);
+        readstr(fp,pname,ANAME_SZ);
+	readstr(fp,pinst,INST_SZ);
 	(void) sprintf(sender,"%s%s%s@%s",pname,(pinst[0]?".":""),pinst,
 		__Zephyr_realm);
 	
 	return (sender);
 }
 
-static getst(fp,s,n)
+static readstr(fp,s,n)
 	FILE *fp;
 	char *s;
 	int n;
