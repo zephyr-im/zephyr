@@ -16,10 +16,4 @@ OBJS = zmailnotify.o
 
 zprogram(zmailnotify,$(LIB_HES))
 install_man(zmailnotify.1,zmailnotify.1)
-
-#ifdef ATHENA_COMPAT
-install::
-	$(RM) $(DESTDIR)/usr/athena/zmailnotify
-	ln -s $(CLIENTDIR)/zmailnotify $(DESTDIR)/usr/athena/zmailnofity
-#endif
 #endif
