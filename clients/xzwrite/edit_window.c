@@ -116,7 +116,7 @@ void edit_yank_store()
                  XtNstring, (XtArgVal) &buf,
                  NULL);
 
-     if (buf != NULL && *buf != NULL)
+     if (buf != NULL && *buf != '\0')
 	  yank_store(&current_dest, buf);
 
      XawAsciiSourceFreeString(editor);
