@@ -795,8 +795,12 @@ bdump_recv_loop(server)
 	
     /* do the inverse of bdump_send_loop, registering stuff on the fly */
     while (1) {
-	if (packets_waiting())
+	if (packets_waiting()) {
+	    /* A non-braindump packet is waiting; handle it. */
+	    bdumping = 0;
 	    handle_packet();
+	    bdumping = 1;
+	}
 	len = sizeof(packet);
 	retval = get_packet(packet, len, &len);
 	if (retval != ZERR_NONE) {
