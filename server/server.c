@@ -962,6 +962,8 @@ int auth;
 {
 	register ZServerDesc_t *which;
 
+	zdbug((LOG_DEBUG, "hello from %s", inet_ntoa(who->sin_addr)));
+
 	send_msg(who, ADMIN_IMHERE, auth);
 	if (adj != ADJUST)
 		return;
@@ -1020,6 +1022,8 @@ struct sockaddr_in *who;
 {
 	register ZServerDesc_t *which = server_which_server(who);
 
+	zdbug((LOG_DEBUG, "srv_responded %s", inet_ntoa(who->sin_addr)));
+
 	if (!which) {
 		syslog(LOG_ERR, "hello input from non-server?!");
 		return;
@@ -1030,10 +1034,14 @@ struct sockaddr_in *who;
 		/* he responded, we thought he was dead. mark as starting
 		   and negotiate */
 		which->zs_state = SERV_STARTING;
+		which->zs_timeout = timo_tardy;
+		timer_reset(which->zs_timer);
+		which->zs_timer = timer_set_rel(0L, server_timo,
+						(caddr_t) which);
 
 	case SERV_STARTING:
 		/* here we negotiate and set up a braindump */
-		if (!bdump_socket) {
+		if (bdump_socket < 0) {
 			/* XXX offer it to the other server */
 			bdump_offer(who);
 		}			
