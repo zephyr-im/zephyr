@@ -122,7 +122,7 @@ clean::
 /*
  * Sun SOLARIS
  */
-#if defined(sun) && defined(sparc) && defined(SOLARIS)
+#if defined(SOLARIS)
 
 #define NoBsdArgs \
         -Dsignal=signal_oops -Dlongjmp=lonjmp_oops -Dsetjmp=setjmp_oops
@@ -134,11 +134,11 @@ clean::
 #define NOLINT
 #define CcFlags  -DSOLARIS -DPOSIX \
         -Dsrandom=srand48 -Drandom=lrand48 NoBsdArgs \
-        -I/usr/gcc/include -I/usr/openwin/include
+        -I/usr/openwin/include
 #define ProfCcFlags -pg
 #define CDebugFlags -O2
-#define LdPath -L/usr/gcc/lib -L/usr/ccs/lib -L/usr/openwin/lib -L$(ATHLIBDIR)
-#define LdLibs /usr/athena/lib/libresolv.a -lsocket -lnsl /usr/ucblib/libucb.a -lelf
+#define LdPath -L/usr/openwin/lib -Xlinker -R/usr/openwin/lib -L$(ATHLIBDIR)
+#define LdLibs -lresolv -lsocket -lnsl -lelf
 #define AnsiCcCmd /usr/gcc/bin/gcc
 #define AnsiLdCmd /usr/gcc/bin/gcc
 #define CcCmd /usr/gcc/bin/gcc -traditional
