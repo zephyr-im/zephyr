@@ -301,6 +301,8 @@ int open_display_and_load_resources(pargc, argv)
 int X_driver_ioerror(display)
 Display *display;
 {
+    extern void finalize_zephyr();
+
     ERROR2("X IO error on display '%s'--exiting\n", display->display_name);
     finalize_zephyr();
     exit(1);
@@ -314,8 +316,9 @@ Display *display;
 extern void x_get_input();
 
 /*ARGSUSED*/
-int X_driver_init(drivername, pargc, argv)
+int X_driver_init(drivername, notfirst, pargc, argv)
      char *drivername;
+     char notfirst;
      int *pargc;
      char **argv;
 {
