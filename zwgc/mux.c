@@ -25,6 +25,7 @@ static const char rcsid_mux_c[] = "$Id$";
 /****************************************************************************/
 
 #include <zephyr/zephyr.h>
+#include "main.h"
 #include "mux.h"
 #include "error.h"
 #include "zwgc.h"
@@ -130,9 +131,9 @@ void mux_add_input_source(descriptor, handler, arg)
 
 void mux_loop()
 {
-    int i;
-    fd_set input_sources_copy;
-    struct timeval tv;
+    int i, nfds;
+    fd_set inputs, outputs;
+    struct timeval tv, *tvp;
 
     mux_end_loop_p = 0;
 
@@ -146,18 +147,28 @@ void mux_loop()
 	if (have_tty) {
 	    tv.tv_sec = 10;
 	    tv.tv_usec = 0;
+	    tvp = &tv;
 	} else {
-	    tv.tv_sec = tv.tv_usec = 0;
+	    tvp = NULL;
 	}
 
 	/*
 	 * Do a select on all the file descriptors we care about to
 	 * wait until at least one of them has input available:
 	 */
-	input_sources_copy = input_sources;
+	inputs = input_sources;
+	FD_ZERO(&outputs);
 
-	i = select(max_source+1, &input_sources_copy, (fd_set *)0,
-		   (fd_set *)NULL, have_tty ? &tv : (struct timeval *)0);
+#ifdef HAVE_ARES
+	nfds = ares_fds(achannel, &inputs, &outputs);
+	if (nfds < max_source + 1)
+	    nfds = max_source + 1;
+	tvp = ares_timeout(achannel, tvp, &tv);
+#else
+	nfds = max_source + 1;
+#endif
+
+	i = select(nfds, &inputs, &outputs, NULL, tvp);
 
 	if (i == -1) {
 	    if (errno == EINTR)
@@ -172,12 +183,16 @@ void mux_loop()
 	    }
 	}
 
+#ifdef HAVE_ARES
+	ares_process(achannel, &inputs, &outputs);
+#endif
+
 	/*
 	 * Call all input handlers whose corresponding file descriptors have
 	 * input:
 	 */
 	for(i=0; i<=max_source; i++)
-	  if (FD_ISSET(i, &input_sources_copy) && input_handler[i]) {
+	  if (FD_ISSET(i, &inputs) && input_handler[i]) {
 #ifdef DEBUG
 	      if (zwgc_debug)
 		fprintf(stderr,

@@ -13,11 +13,16 @@
  */
 
 #include <sysdep.h>
+#ifdef HAVE_ARES
+#include <ares.h>
+#endif
 
 #if (!defined(lint) && !defined(SABER))
 static const char rcsid_main_c[] = "$Id$";
 #endif
 
+#include <netdb.h>
+#include <sys/socket.h>
 #include <sys/resource.h>
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
@@ -37,7 +42,10 @@ static const char rcsid_main_c[] = "$Id$";
 #include "main.h"
 
 extern void notice_handler();
-static void setup_signals(), detach(), signal_exit();
+static void process_notice(), setup_signals(), detach(), signal_exit();
+#ifdef HAVE_ARES
+static void notice_callback();
+#endif
 
 /*
  * Global zwgc-wide variables:
@@ -72,6 +80,14 @@ char *subscriptions_filename_override = NULL;
  */
 
 char *location_override = NULL;
+
+#ifdef HAVE_ARES
+/*
+ * achannel - <<<>>> export!
+ */
+
+ares_channel achannel;
+#endif
 
 /****************************************************************************/
 /*                                                                          */
@@ -116,7 +132,7 @@ static void fake_startup_packet()
     notice.z_message = msgbuf;
     notice.z_message_len = strlen(notice.z_message)+1;
     
-    notice_handler(&notice);
+    process_notice(&notice, NULL);
 }
 
 static void read_in_description_file()
@@ -206,6 +222,10 @@ int main(argc, argv)
     char **new;
     register char **current;
     int dofork = 1;
+#ifdef HAVE_ARES
+    char *errmem;
+    int status;
+#endif
 
     progname = argv[0];
 
@@ -244,6 +264,19 @@ int main(argc, argv)
 	  *(new)++ = *current;
     }
     *new = *current;
+
+#ifdef HAVE_ARES
+    /*
+     * Initialize resolver library
+     */
+    status = ares_init(&achannel);
+    if (status != ARES_SUCCESS) {
+	fprintf(stderr, "Couldn't initialize resolver: %s\n",
+		ares_strerror(status, &errmem));
+	ares_free_errmem(errmem);
+	return(1);
+    }
+#endif
 
     /*
      * Initialize various subsystems in proper order:
@@ -292,11 +325,47 @@ int main(argc, argv)
 void notice_handler(notice)
      ZNotice_t *notice;
 {
+    struct hostent *fromhost = NULL;
+
+    if (notice->z_sender_addr.s_addr) {
+#ifdef HAVE_ARES
+	ares_gethostbyaddr(achannel, &(notice->z_sender_addr),
+			   sizeof(notice->z_sender_addr), AF_INET,
+			   notice_callback, notice);
+	return;
+#else
+	fromhost = gethostbyaddr((char *) &(notice->z_sender_addr),
+				 sizeof(struct in_addr), AF_INET);
+#endif
+    }
+    process_notice(notice, fromhost ? fromhost->h_name : NULL);
+    ZFreeNotice(notice);
+    free(notice);
+}
+
+#ifdef HAVE_ARES
+static void notice_callback(arg, status, fromhost)
+     void *arg;
+     int status;
+     struct hostent *fromhost;
+{
+    ZNotice_t *notice = (ZNotice_t *) arg;
+
+    process_notice(notice, fromhost ? fromhost->h_name : NULL);
+    ZFreeNotice(notice);
+    free(notice);
+}
+#endif
+
+static void process_notice(notice, hostname)
+     ZNotice_t *notice;
+     char *hostname;
+{
     char *control_opcode;
 
     dprintf("Got a message\n");
 
-    if (control_opcode = decode_notice(notice)) {
+    if (control_opcode = decode_notice(notice, hostname)) {
 #ifdef DEBUG
 	printf("got control opcode <%s>.\n", control_opcode);
 #endif

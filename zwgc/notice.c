@@ -27,8 +27,6 @@ static const char rcsid_notice_c[] = "$Id$";
 /****************************************************************************/
 
 #include <zephyr/zephyr.h>
-#include <netdb.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include "new_memory.h"
 #include "error.h"
@@ -252,12 +250,12 @@ static string z_auth_to_ascii(z_auth)
  *        Effects:
  */
 
-char *decode_notice(notice)
+char *decode_notice(notice, hostname)
      ZNotice_t *notice;
+     char *hostname;
 {
     char *temp;
     string time, notyear, year, date_string, time_string;
-    struct hostent *fromhost;
 
     /*
      * Convert useful notice fields to ascii and store away in
@@ -309,14 +307,8 @@ char *decode_notice(notice)
     /*
      * Convert host notice sent from to ascii:
      */
-    if (notice->z_sender_addr.s_addr) {
-	fromhost = gethostbyaddr((char *) &(notice->z_sender_addr),
-				 sizeof(struct in_addr), AF_INET);
-	var_set_variable("fromhost", fromhost ? fromhost->h_name :
-			 inet_ntoa(notice->z_sender_addr));
-    } else {
-	var_set_variable("fromhost", inet_ntoa(notice->z_sender_addr));
-    }
+    var_set_variable("fromhost", hostname ? hostname :
+		     inet_ntoa(notice->z_sender_addr));
 
     /*
      * Set $message to the message field of the notice with nulls changed
