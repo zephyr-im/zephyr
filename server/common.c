@@ -47,7 +47,7 @@ strsave (const char *sp)
 unsigned long
 hash (const char *string)
 {
-	register int hval = 0;
+	register unsigned long hval = 0;
 	register char cp;
 
 	while (1) {
@@ -59,25 +59,25 @@ hash (const char *string)
 	    cp = *string++;
 	    if (!cp)
 		break;
-	    hval += cp * 9;
+	    hval += cp * (3 + (1 << 16));
 
 	    cp = *string++;
 	    if (!cp)
 		break;
-	    hval += cp * 17;
+	    hval += cp * (1 + (1 << 8));
 
 	    cp = *string++;
 	    if (!cp)
 		break;
-	    hval += cp * 65;
+	    hval += cp * (1 + (1 << 12));
 
 	    cp = *string++;
 	    if (!cp)
 		break;
-	    hval += cp * 129;
+	    hval += cp * (1 + (1 << 4));
 
-	    hval += (hval & 0x7fffff) * 256;
-	    hval &= 0x7fffffff;
+	    hval += ((long) hval) >> 18;
 	}
+	hval &= 0x7fffffff;
 	return hval;
 }
