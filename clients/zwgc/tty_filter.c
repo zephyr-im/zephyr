@@ -97,7 +97,7 @@ int tty_filter_init()
     }
     if (tmp = tgetstr("bl",&p)) {	/* Bell ? */
 	TD_SET("B.bell",tmp);
-	TD_SET("B.bell",NULL);
+	TD_SET("E.bell",NULL);
     }
     if (tmp = tgetstr("mb",&p)) {	/* Blink ? */
 	TD_SET("B.blink",tmp);
