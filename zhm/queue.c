@@ -225,7 +225,7 @@ void resend_notices(sin)
       } else do {
 	    if (srch->q_data->timeout <= time(NULL)) {
 		  if (++(srch->q_data->retries) > MAXRETRIES) {
-			new_server();
+			new_server(NULL);
 			break;
 		  } else {
 			DPR ("notice:\n");
