@@ -375,7 +375,7 @@ Exits the innermost if, case, or while block.
 Evaluates \fIexpr1\fR.  Then, each of the match expressions is
 evaluated in order.  The first time an expression matches \fIexpr1\fR,
 then the body of commands under it is executed, and the rest of the case
-statement is skipped.  default always
+statement is skipped.  This compare is case-insensitive.  default always
 matches, so it should always appear as the last set of commands.  See
 the default description file for an example of use.
 .TP
