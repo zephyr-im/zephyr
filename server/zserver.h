@@ -114,6 +114,7 @@ struct _Client {
 #endif /* HAVE_KRB4 */
     String		*principal;	/* krb principal of user */
     int			last_send;	/* Counter for last sent packet. */
+    time_t		last_ack;	/* Time of last received ack */
     Realm		*realm;
     struct _Client	*next, **prev_p;
 };
@@ -135,6 +136,7 @@ enum _Server_state {
 
 struct _Unacked {
     Timer		*timer;		/* timer for retransmit */
+    Client		*client;	/* responsible client, or NULL */
     short		rexmits;	/* number of retransmits */
     short		packsz;		/* size of packet */
     char		*packet;	/* ptr to packet */

@@ -89,6 +89,7 @@ client_register(notice, host, client_p, wantdefaults)
 	memset(&client->session_key, 0, sizeof(client->session_key));
 #endif
 	client->last_send = 0;
+	client->last_ack = NOW;
 	client->addr.sin_family = AF_INET;
 	client->addr.sin_addr.s_addr = host->s_addr;
 	client->addr.sin_port = notice->z_port;
