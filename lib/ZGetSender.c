@@ -22,8 +22,6 @@ static char rcsid_ZGetSender_c[] =
 
 #include <pwd.h>
 
-uid_t getuid();
-
 char *ZGetSender()
 {
     struct passwd *pw;
