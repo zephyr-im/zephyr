@@ -1,5 +1,6 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for the ZRetrieveSubscriptions function.
+ * It contains source for the ZRetrieveSubscriptions and
+ * ZRetrieveDefaultSubscriptions functions.
  *
  *	Created by:	Robert French
  *
@@ -24,14 +25,45 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	u_short port;
 	int *nsubs;
 {
-	int subscription_pred();
+	int retval;
+	ZNotice_t notice;
+	char asciiport[50];
 	
+	if ((retval = ZMakeAscii(asciiport,sizeof(asciiport),
+				 (unsigned char *)&port,
+				 sizeof(u_short))) != ZERR_NONE)
+		return (retval);
+
+	notice.z_message = asciiport;
+	notice.z_message_len = strlen(asciiport)+1;
+	notice.z_opcode = CLIENT_GIMMESUBS;
+
+	return(Z_RetSubs(&notice, nsubs));
+}
+
+Code_t ZRetrieveDefaultSubscriptions(nsubs)
+	int *nsubs;
+{
+	ZNotice_t notice;
+
+	notice.z_message = (char *) 0;
+	notice.z_message_len = 0;
+	notice.z_opcode = CLIENT_GIMMEDEFS;
+
+	return(Z_RetSubs(&notice, nsubs));
+
+}
+
+static Code_t Z_RetSubs(notice, nsubs)
+	register ZNotice_t *notice;
+	int *nsubs;
+{
 	int i,retval,nrecv,gimmeack;
 	ZNotice_t notice,retnotice;
 	ZPacket_t buffer;
 	char *ptr,*end,*ptr2;
 	char asciiport[50];
-	
+
 	retval = ZFlushSubscriptions();
 
 	if (retval != ZERR_NONE && retval != ZERR_NOSUBSCRIPTIONS)
@@ -41,22 +73,14 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 		if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
 			return (retval);
 
-	notice.z_kind = ACKED;
-	notice.z_port = __Zephyr_port;
-	notice.z_class = ZEPHYR_CTL_CLASS;
-	notice.z_class_inst = ZEPHYR_CTL_CLIENT;
-	notice.z_opcode = CLIENT_GIMMESUBS;
-	notice.z_sender = 0;
-	notice.z_recipient = "";
-	notice.z_default_format = "";
-	notice.z_num_other_fields = 0;
-	notice.z_message = asciiport;
-
-	if ((retval = ZMakeAscii(asciiport,sizeof(asciiport),
-				 (unsigned char *)&port,
-				 sizeof(u_short))) != ZERR_NONE)
-		return (retval);
-	notice.z_message_len = strlen(asciiport)+1;
+	notice->z_kind = ACKED;
+	notice->z_port = __Zephyr_port;
+	notice->z_class = ZEPHYR_CTL_CLASS;
+	notice->z_class_inst = ZEPHYR_CTL_CLIENT;
+	notice->z_sender = 0;
+	notice->z_recipient = "";
+	notice->z_default_format = "";
+	notice->z_num_other_fields = 0;
 
 	if ((retval = ZSendNotice(&notice,ZAUTH)) != ZERR_NONE)
 		return (retval);
@@ -68,7 +92,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	while (!nrecv || !gimmeack) {
 		if ((retval = ZIfNotice(&retnotice,NULL,
 					ZCompareMultiUIDPred,
-					(char *)&notice.z_multiuid))
+					(char *)&notice->z_multiuid))
 		    != ZERR_NONE)
 			return (retval);
 
@@ -78,7 +102,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 		}	
 
 		if (retnotice.z_kind == SERVACK &&
-		    !strcmp(retnotice.z_opcode,CLIENT_GIMMESUBS)) {
+		    !strcmp(retnotice.z_opcode,notice->z_opcode))) {
 			gimmeack = 1;
 			continue;
 		} 
