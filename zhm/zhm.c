@@ -15,31 +15,18 @@
 
 static char rcsid_hm_c[] = "$Id$";
 
-#ifdef POSIX
-#include <unistd.h>
-#include <stdlib.h>
-#endif
-
-#include <ctype.h>
-#include <signal.h>
-#include <sys/ioctl.h>
-#include <sys/file.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <string.h>
-/* 
- * warning: sys/param.h may include sys/types.h which may not be protected from
- * multiple inclusions on your system
- */
-#include <sys/param.h>
-
-#ifdef Z_HaveHesiod
-#include <hesiod.h>
-int use_hesiod = 0;
+#ifdef ZEPHYR_USES_HESIOD
+int ZEPHYR_USES_hesiod = 0;
 #endif
 
 #ifdef macII
 #define srandom srand48
+#endif
+
+#ifdef _PATH_VARRUN
+#define PIDDIR _PATH_VARRUN
+#else
+#define PIDDIR CONFDIR
 #endif
 
 int hmdebug, rebootflag, errflg, dieflag, inetd, oldpid, nofork;
@@ -49,28 +36,27 @@ long starttime;
 u_short cli_port;
 struct sockaddr_in cli_sin, serv_sin, from;
 int numserv;
-char **serv_list = (char **)0;
+char **serv_list = NULL;
 char prim_serv[MAXHOSTNAMELEN], cur_serv[MAXHOSTNAMELEN];
 char *zcluster;
 int sig_type;
 struct hostent *hp;
 char **clust_info;
 char hostname[MAXHOSTNAMELEN], loopback[4];
-char *PidFile = PIDFILE;
+char PidFile[128];
 
-void choose_server(), init_hm(), detach(),
-    handle_timeout(), resend_notices(), die_gracefully();
+static void choose_server __P((void));
+static void init_hm __P((void));
+static void detach __P((void));
+static void handle_timeout __P((void));
+static void send_stats __P((ZNotice_t *, struct sockaddr_in *));
+static char *strsave __P((const char *));
 
-#ifdef POSIX
-void
-#endif
-  set_sig_type(sig)
+RETSIGTYPE set_sig_type(sig)
      int sig;
 {
      sig_type = sig;
 }
-
-char *strsave();
 
 main(argc, argv)
 char *argv[];
@@ -82,15 +68,8 @@ char *argv[];
      extern int optind;
      register int i, j = 0;
 
-#ifdef _AIX
-     struct sigaction sa;
+     sprintf(PidFile, "%s/zhm.pid", PIDDIR);
 
-     sigemptyset(&sa.sa_mask);
-     sa.sa_flags = SA_FULLDUMP;
-     sa.sa_handler = SIG_DFL;
-     sigaction(SIGSEGV, &sa, (struct sigaction *)0);
-#endif
-     
      if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
 	  printf("Can't find my hostname?!\n");
 	  exit(-1);
@@ -149,9 +128,9 @@ char *argv[];
 	 }
 	 serv_list[numserv] = NULL;
      }
-#ifdef Z_HaveHesiod
+#ifdef ZEPHYR_USES_HESIOD
      else
-	 use_hesiod = 1;
+	 ZEPHYR_USES_hesiod = 1;
 #endif
 
      choose_server();
@@ -248,12 +227,12 @@ char *argv[];
      }
 }
 
-void choose_server()
+static void choose_server()
 {
     int i = 0;
 
-#ifdef Z_HaveHesiod
-    if (use_hesiod) {
+#ifdef ZEPHYR_USES_HESIOD
+    if (ZEPHYR_USES_hesiod) {
 
 	/* Free up any previously used resources */
 	if (prim_serv[0]) 
@@ -327,17 +306,17 @@ void choose_server()
 #endif
     
     if (!prim_serv[0] && numserv) {
-	srandom(time((long *) 0));
+	srandom(time(NULL));
 	(void) strcpy(prim_serv, serv_list[random() % numserv]);
     }
 }
 
-void init_hm()
+static void init_hm()
 {
      struct servent *sp;
      Code_t ret;
      FILE *fp;
-#ifdef POSIX
+#ifdef _POSIX_VERSION
      struct sigaction sa;
 #endif
 
@@ -378,11 +357,8 @@ void init_hm()
 					   thanks to inetd */
      } else {
 	     /* Open client socket, for receiving client and server notices */
-	     if ((sp = getservbyname(HM_SVCNAME, "udp")) == NULL) {
-		     printf("No %s entry in /etc/services.\n", HM_SVCNAME);
-		     exit(1);
-	     }
-	     cli_port = sp->s_port;
+	     sp = getservbyname(HM_SVCNAME, "udp");
+	     cli_port = (sp) ? sp->s_port : HM_SVC_FALLBACK;
       
 	     if ((ret = ZOpenPort(&cli_port)) != ZERR_NONE) {
 		     Zperr(ret);
@@ -391,13 +367,11 @@ void init_hm()
 	     }
      }
      cli_sin = ZGetDestAddr();
-  
-     /* Open the server socket */
-  
-     if ((sp = getservbyname(SERVER_SVCNAME, "udp")) == NULL) {
-	  printf("No %s entry in /etc/services.\n", SERVER_SVCNAME);
-	  exit(1);
-     }
+
+     sp = getservbyname(SERVER_SVCNAME, "udp");
+     (void) memset((char *)&serv_sin, 0, sizeof(struct sockaddr_in));
+     serv_sin.sin_port = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
+      
 
 #ifndef DEBUG
      if (!inetd && !nofork)
@@ -415,9 +389,6 @@ void init_hm()
 	  syslog(LOG_INFO, "Debugging on.");
      }
 
-     (void) memset((char *)&serv_sin, 0, sizeof(struct sockaddr_in));
-     serv_sin.sin_port = sp->s_port;
-      
      /* Set up communications with server */
      /* target is SERVER_SVCNAME port on server machine */
 
@@ -436,7 +407,7 @@ void init_hm()
      send_boot_notice(HM_BOOT);
      deactivated = 0;
 
-#ifdef POSIX
+#ifdef _POSIX_VERSION
      sigemptyset(&sa.sa_mask);
      sa.sa_flags = 0;
      sa.sa_handler = set_sig_type;
@@ -450,7 +421,7 @@ void init_hm()
 #endif
 }
 
-void detach()
+static void detach()
 {
      /* detach from terminal and fork. */
      register int i, x = ZGetFD();
@@ -461,7 +432,7 @@ void detach()
 	       perror("fork");
 	  exit(0);
      }
-#ifdef POSIX
+#ifdef _POSIX_VERSION
      size = sysconf(_SC_OPEN_MAX);
 #else
      size = getdtablesize();
@@ -474,18 +445,23 @@ void detach()
 	  ;		/* Can't open tty, but don't flame about it. */
      else {
 #ifdef TIOCNOTTY
+	  /* Necessary for old non-POSIX systems which automatically assign
+	   * an opened tty as the controlling terminal of a process which
+	   * doesn't already have one.  POSIX systems won't include
+	   * <sys/ioctl.h> (see ../h/sysdep.h); if TIOCNOTTY is defined anyway,
+	   * this is unnecessary but won't hurt. */
 	  (void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
 #endif
 	  (void) close(i);
      }
-#ifdef POSIX
+#ifdef _POSIX_VERSION
      (void) setsid();
 #endif
 }
 
 static char version[BUFSIZ];
 
-send_stats(notice, sin)
+static void send_stats(notice, sin)
      ZNotice_t *notice;
      struct sockaddr_in *sin;
 {
@@ -494,7 +470,7 @@ send_stats(notice, sin)
      char *bfr;
      char *list[20];
      int len, i, nitems = 10;
-     unsigned int size;
+     unsigned long size;
 
      newnotice = *notice;
      
@@ -524,7 +500,7 @@ send_stats(notice, sin)
      list[7] = (char *)malloc(64);
      (void)sprintf(list[7], "%ld", time((time_t *)0) - starttime);
 #ifdef adjust_size
-     size = (unsigned int)sbrk(0);
+     size = (unsigned long)sbrk(0);
      adjust_size (size);
 #else
      size = -1;
@@ -532,7 +508,7 @@ send_stats(notice, sin)
      list[8] = (char *)malloc(64);
      (void)sprintf(list[8], "%ld", size);
      list[9] = (char *)malloc(32);
-     (void)strcpy(list[9], MACHINE);
+     (void)strcpy(list[9], MACHINE_TYPE);
 
      /* Since ZFormatRaw* won't change the version number on notices,
 	we need to set the version number explicitly.  This code is taken
@@ -555,7 +531,7 @@ send_stats(notice, sin)
 	  free(list[i]);
 }
 
-void handle_timeout()
+static void handle_timeout()
 {
      switch(timeout_type) {
      case BOOTING:
@@ -580,9 +556,8 @@ void die_gracefully()
      exit(0);
 }
 
-char *
-strsave(sp)
-char *sp;
+static char *strsave(sp)
+    const char *sp;
 {
     register char *ret;
 

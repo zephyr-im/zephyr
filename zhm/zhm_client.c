@@ -22,9 +22,9 @@ static char rcsid_hm_client_c[] = "$Header$";
 extern int no_server, timeout_type, nclt, deactivated;
 extern struct sockaddr_in cli_sin, serv_sin, from;
 
-transmission_tower(notice, packet, pak_len)
+void transmission_tower(notice, packet, pak_len)
      ZNotice_t *notice;
-     caddr_t packet;
+     char *packet;
      int pak_len;
 {
       ZNotice_t gack;
@@ -79,7 +79,7 @@ transmission_tower(notice, packet, pak_len)
 	      (void)alarm(tleft);
 	    else {
 		  timeout_type = NOTICES;
-		  (void)alarm(NOTICE_TIMEOUT);
+		  (void)alarm(rexmit_times[0]);
 	    }
       }
       (void)add_notice_to_queue(notice, packet, &gsin, pak_len);
