@@ -231,8 +231,7 @@ static XrmOptionDescRec cmd_options[] = {
     {"-name",        ".name",         XrmoptionSepArg, (caddr_t) NULL},
     {"-reverse",     "*reverseVideo", XrmoptionNoArg,  (caddr_t) "on"},
     {"-rv",          "*reverseVideo", XrmoptionNoArg,  (caddr_t) "on"},
-    {"-selectionTimeout", 
-       ".selectionTimeout", XrmoptionSepArg,   (caddr_t) NULL},
+    {"-transient",   "*transient",    XrmoptionNoArg,  (caddr_t) "on"},
     {"-synchronous", "*synchronous",  XrmoptionNoArg,  (caddr_t) "on"},
     {"-title",       ".title",        XrmoptionSepArg, (caddr_t) NULL},
     {"-xrm",         NULL,            XrmoptionResArg, (caddr_t) NULL} };
