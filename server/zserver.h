@@ -32,7 +32,7 @@
 /* Kerberos-specific library interfaces used only by the server. */
 extern C_Block __Zephyr_session;
 #define ZGetSession() (__Zephyr_session)
-Code_t ZFormatAuthenticNotice ZP((ZNotice_t*, char*, int, int*, C_Block));
+Code_t ZFormatAuthenticNotice __P((ZNotice_t*, char*, int, int*, C_Block));
 #endif
 
 /* For krb_rd_req prototype and definition. */
