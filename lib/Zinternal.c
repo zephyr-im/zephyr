@@ -226,10 +226,22 @@ Code_t Z_ReadWait()
     char *slash;
     Code_t retval;
     register int i;
+    fd_set fds;
+    struct timeval tv;
 
     if (ZGetFD() < 0)
 	return (ZERR_NOPORT);
 	
+    FD_ZERO(&fds);
+    FD_SET(ZGetFD(), &fds);
+    tv.tv_sec = 60;
+    tv.tv_usec = 0;
+
+    if (select(ZGetFD() + 1, &fds, NULL, NULL, &tv) < 0)
+      return (errno);
+    if (!FD_ISSET(ZGetFD(), &fds))
+      return ETIMEDOUT;
+
     from_len = sizeof(struct sockaddr_in);
 
     packet_len = recvfrom(ZGetFD(), packet, sizeof(packet), 0, 
