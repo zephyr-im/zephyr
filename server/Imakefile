@@ -9,11 +9,8 @@
 /**/#
 
 #if defined(SYSLOG_COMPAT42)
-SYSLOG_LIB= ../clients/syslogd/syslog.o
+SYSLOG_OBJ= ../clients/syslogd/syslog.o
 SYSLOG_DEF= -I../clients/syslogd
-#else
-SYSLOG_LIB=
-SYSLOG_DEF=
 #endif
 
 XDEFS = $(SYSLOG_DEF) -DCONCURRENT
@@ -54,7 +51,7 @@ OBJS=	access.o \
 	zstring.o
 
 error_table(zsrv_err)
-SimpleProgram(zephyrd,$(OBJS) version.o $(ZLIB),$(ZLIBS) $(LIB_HES),$(ATHETCDIR))
+SimpleProgram(zephyrd,$(OBJS) version.o $(SYSLOG_OBJ) $(ZLIB),$(ZLIBS) $(LIB_HES),$(ATHETCDIR))
 install_man(zephyrd.8,zephyrd.8)
 install_file(default.subscriptions,$(ZLIBDIR))
 
