@@ -3,7 +3,7 @@ SHELL = /bin/sh
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 datadir=@datadir@
-confdir=@confdir@
+sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
 
@@ -21,14 +21,14 @@ INSTALL=@INSTALL@
 
 DEBUG=-g
 CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @CPPFLAGS@
-LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LDFLAGS=${DEBUG} -L${BUILDTOP}/lib @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	zlocate.o
 
 all: zlocate
 
-zlocate: ${OBJS} ${BUILDTOP}/lib/zephyr/libzephyr.a @ETDEP@
+zlocate: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
 	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 check:

@@ -3,7 +3,7 @@ SHELL = /bin/sh
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 datadir=@datadir@
-confdir=@confdir@
+sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
 
@@ -22,8 +22,7 @@ INSTALL=@INSTALL@
 DEBUG=-O
 CFLAGS=${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h @X_CFLAGS@ @CPPFLAGS@
-LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr -L${BUILDTOP}/lib/dyn @ET_LDFLAGS@ \
-	@X_LIBS@ @LDFLAGS@
+LDFLAGS=${DEBUG} -L${BUILDTOP}/lib -L${BUILDTOP}/libdyn @X_LIBS@ @LDFLAGS@
 LIBS=-lzephyr -ldyn -lXaw -lXmu -lXt @X_PRE_LIBS@ -lX11 -lXext @X_EXTRA_LIBS@ \
      @LIBS@ -lcom_err
 
@@ -33,8 +32,7 @@ OBJS=	interface.o resource.o destlist.o util.o bfgets.o gethomedir.o \
 
 all: xzwrite
 
-xzwrite: ${OBJS} ${BUILDTOP}/lib/zephyr/libzephyr.a \
-	 ${BUILDTOP}/lib/dyn/libdyn.a @ETDEP@
+xzwrite: ${OBJS} ${BUILDTOP}/lib/libzephyr.a ${BUILDTOP}/libdyn/libdyn.a
 	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 check:
