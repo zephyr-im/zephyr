@@ -11,27 +11,16 @@
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
- 
+
 #include <zephyr/mit-copyright.h>
- 
+
 #ifndef lint
-#ifndef SABER
 static char rcsid_bdump_c[] = "$Id$";
-#endif /* SABER */
 #endif /* lint */
- 
+
 #include "zserver.h"
 #include <sys/socket.h>
-#include <signal.h>
-#include <sys/param.h>		/* for BSD */
- 
-/* inconsistent header files... */
-#ifdef SignalIgnore
-#undef SIG_IGN
-#define SIG_IGN SignalIgnore
-#undef SIG_DFL
-#define SIG_DFL SignalDefault
-#endif
+#include <com_err.h>
 
 /*
  * External functions are:
@@ -45,7 +34,7 @@ static char rcsid_bdump_c[] = "$Id$";
  *	ZNotice_t *notice;
  *	int auth;
  *	struct sockaddr_in *who;
- *	ZServerDesc_t *server;
+ *	Server *server;
  *
  * Code_t bdump_send_list_tcp(kind, port, class, inst, opcode,
  *			    sender, recip, lyst, num)
@@ -55,42 +44,31 @@ static char rcsid_bdump_c[] = "$Id$";
  *	char *lyst[];
  *	int num;
  */
- 
-#ifdef __STDC__
-# define        P(s) s
-#else
-# define P(s) ()
-#endif
 
-static void close_bdump P((void* arg));
-static Code_t bdump_send_loop P((register ZServerDesc_t *server, char *vers)),
-    bdump_ask_for P((char *inst)),
-    bdump_recv_loop P((ZServerDesc_t *server));
-static void bdump_get_v1 P((ZNotice_t *, int, struct sockaddr_in *,
-			    ZServerDesc_t *));
-static void bdump_get_v1a P((ZNotice_t *notice, int auth,
-			    struct sockaddr_in *who, ZServerDesc_t *server));
-static Code_t get_packet P((caddr_t packet, int len, int *retlen));
-static Code_t extract_sin P((ZNotice_t *notice, struct sockaddr_in *target));
-static Code_t send_done P((void));
-static Code_t send_list P((ZNotice_Kind_t kind, int port, char *class_name,
-			char *inst, char *opcode, char *sender, char *recip,
-			char **lyst, int num));
-static Code_t send_host_register P((ZHostList_t *host));
-static Code_t sbd_loop P((struct sockaddr_in *from));
-static Code_t gbd_loop P((ZServerDesc_t *server));
-static Code_t send_normal_tcp P((ZNotice_Kind_t kind, int port,
-				 char *class_name,
-				 char *inst, char *opcode, char *sender,
-				 char *recip, char *message, int len));
-static int net_read P((FILE *f, register char *buf, register int len));
-static int net_write P((FILE *f, register char *buf, int len));
-static int setup_file_pointers  P((void));
-static void shutdown_file_pointers  P((void));
-static void cleanup P((ZServerDesc_t *server));
+static void close_bdump __P((void* arg));
+static Code_t bdump_send_loop __P((Server *server)),
+bdump_ask_for __P((char *inst)),
+bdump_recv_loop __P((Server *server));
+static void bdump_get_v12 __P((ZNotice_t *, int, struct sockaddr_in *,
+			       Server *));
+static Code_t get_packet __P((void *packet, int len, int *retlen));
+static Code_t extract_sin __P((ZNotice_t *notice, struct sockaddr_in *target));
+static Code_t send_done __P((void));
+static Code_t send_list __P((ZNotice_Kind_t kind, int port, char *class_name,
+			     char *inst, char *opcode, char *sender,
+			     char *recip, char **lyst, int num));
+static Code_t send_normal_tcp __P((ZNotice_Kind_t kind, int port,
+				   char *class_name,
+				   char *inst, char *opcode, char *sender,
+				   char *recip, char *message, int len));
+static int net_read __P((FILE *f, char *buf, int len));
+static int net_write __P((FILE *f, char *buf, int len));
+static int setup_file_pointers __P((void));
+static void shutdown_file_pointers __P((void));
+static void cleanup __P((Server *server));
 
-#ifdef KERBEROS
-static int get_tgt P((void));
+#ifdef ZEPHYR_USES_KERBEROS
+static int get_tgt __P((void));
 static long ticket_time;
 static char my_realm[REALM_SZ];
 
@@ -98,15 +76,12 @@ static char my_realm[REALM_SZ];
 #define tkt_lifetime(val) ((long) val * 5L * 60L)
 
 #ifndef NOENCRYPTION
-C_Block	serv_key;
-Sched	serv_ksched;
+extern C_Block	serv_key;
+extern Sched	serv_ksched;
 #endif
-#endif /* KERBEROS */
+#endif /* ZEPHYR_USES_KERBEROS */
 
-#undef P
-
-static timer bdump_timer;
-static int bdump_inited;
+static Timer *bdump_timer;
 static int live_socket = -1;
 static FILE *input, *output;
 static struct sockaddr_in bdump_sin;
@@ -116,667 +91,568 @@ static int cancel_outgoing_dump;
 
 int bdumping;
 extern char *bdump_version;
- 
+
 /*
  * Functions for performing a brain dump between servers.
  */
- 
+
 /*
  * offer the brain dump to another server
  */
- 
+
 void
 bdump_offer(who)
-     struct sockaddr_in *who;
+    struct sockaddr_in *who;
 {
-	Code_t retval;
-	char buf[512], *addr, *lyst[2];
-#ifndef KERBEROS
-	int bdump_port = IPPORT_RESERVED - 1;
-#endif /* !KERBEROS */
+    Code_t retval;
+    char buf[512], *addr, *lyst[2];
+#ifndef ZEPHYR_USES_KERBEROS
+    int bdump_port = IPPORT_RESERVED - 1;
+#endif /* !ZEPHYR_USES_KERBEROS */
 #if 1
-	zdbug((LOG_DEBUG, "bdump_offer"));
+    zdbug((LOG_DEBUG, "bdump_offer"));
 #endif
-#ifdef KERBEROS
-	/* 
-	 * when using Kerberos server-server authentication, we can
-	 * use any random local address 
-	 */
-	if ((bdump_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		syslog(LOG_ERR,"bdump_offer: socket: %m");
-		bdump_socket = -1;
-		return;
+#ifdef ZEPHYR_USES_KERBEROS
+    /* 
+     * when using ZEPHYR_USES_KERBEROS server-server authentication, we can
+     * use any random local address 
+     */
+    bdump_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (bdump_socket < 0) {
+	syslog(LOG_ERR,"bdump_offer: socket: %m");
+	bdump_socket = -1;
+	return;
+    }
+    memset(&bdump_sin, 0, sizeof(bdump_sin));
+    /* a port field of 0 makes the UNIX
+     * kernel choose an appropriate port/address pair */
+ 
+    bdump_sin.sin_port = 0;
+    bdump_sin.sin_addr = my_addr;
+    bdump_sin.sin_family = AF_INET;
+    retval = bind(bdump_socket, (struct sockaddr *) &bdump_sin,
+		  sizeof(bdump_sin));
+    if (retval < 0) {
+	syslog(LOG_ERR, "bdump_offer: bind: %m");
+	close(bdump_socket);
+	bdump_socket = -1;
+	return;
+    }
+    if (!bdump_sin.sin_port) {
+	int len = sizeof(bdump_sin);
+
+	if (getsockname(bdump_socket,
+			(struct sockaddr *) &bdump_sin, &len) < 0) {
+	    syslog(LOG_ERR, "bdump_offer: getsockname: %m");
+	    close(bdump_socket);
+	    bdump_socket = -1;
+	    return;
 	}
-	(void) memset((caddr_t) &bdump_sin, 0, sizeof(bdump_sin));
-	/* a port field of 0 makes the UNIX
-	 * kernel choose an appropriate port/address pair */
+    }
+#else  /* !ZEPHYR_USES_KERBEROS */
+    /*
+     * when not using ZEPHYR_USES_KERBEROS, we can't use any old port, we use
+     * Internet reserved ports instead (rresvport)
+     */
+    bdump_socket = rresvport(&bdump_port);
+    if (bdump_socket < 0) {
+	syslog(LOG_ERR,"bdump_offer: socket: %m");
+	bdump_socket = -1;
+	return;
+    }
+    memset(&bdump_sin, 0, sizeof(bdump_sin));
+    bdump_sin.sin_port = htons((unsigned short) bdump_port);
+    bdump_sin.sin_addr = my_addr;
+    bdump_sin.sin_family = AF_INET;
+#endif				/* ZEPHYR_USES_KERBEROS */
+
+    listen(bdump_socket, 1);
  
-	bdump_sin.sin_port = 0;
-	bdump_sin.sin_addr = my_addr;
-	bdump_sin.sin_family = AF_INET;
-	if ((retval = bind(bdump_socket, (struct sockaddr *) &bdump_sin, sizeof(bdump_sin))) < 0) {
-		syslog(LOG_ERR, "bdump_offer: bind: %m");
-		(void) close(bdump_socket);
-		bdump_socket = -1;
-		return;
-	}
-	if (!bdump_sin.sin_port) {
-		int len = sizeof(bdump_sin);
-		if (getsockname(bdump_socket,
-				(struct sockaddr *)&bdump_sin, &len)) {
-			syslog(LOG_ERR, "bdump_offer: getsockname: %m");
-			(void) close(bdump_socket);
-			bdump_socket = -1;
-			return;
-		}
-	}
-#else /* !KERBEROS */
-	/*
-	 * when not using Kerberos, we can't use any old port, we use
-	 * Internet reserved ports instead (rresvport)
-	 */
-	if ((bdump_socket = rresvport(&bdump_port)) < 0) {
-		syslog(LOG_ERR,"bdump_offer: socket: %m");
-		bdump_socket = -1;
-		return;
-	}
-	(void) memset((caddr_t) &bdump_sin, 0, sizeof(bdump_sin));
-	bdump_sin.sin_port = htons((unsigned short)bdump_port);
-	bdump_sin.sin_addr = my_addr;
-	bdump_sin.sin_family = AF_INET;
+    bdump_timer = timer_set_rel(20L, close_bdump, NULL);
+    FD_SET(bdump_socket, &interesting);
+    nfildes = max(bdump_socket, srv_socket) + 1;
+
+    addr = inet_ntoa(bdump_sin.sin_addr);
+    sprintf(buf, "%d", ntohs(bdump_sin.sin_port));
+    lyst[0] = addr;
+    lyst[1] = buf;
  
-#endif /* KERBEROS */
-	(void) listen(bdump_socket, 1);
+    retval = ZSetDestAddr(who);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_WARNING, "bdump_offer: ZSetDestAddr: %s",
+	       error_message(retval));
+	return;
+    }
  
-	bdump_timer = timer_set_rel(20L, close_bdump, (void *) 0);
-	FD_SET(bdump_socket, &interesting);
-	nfildes = max(bdump_socket, srv_socket) + 1;
- 
- 
-	addr = inet_ntoa(bdump_sin.sin_addr);
-	(void) sprintf(buf, "%d", ntohs(bdump_sin.sin_port));
-	lyst[0] = addr;
-	lyst[1] = buf;
- 
-	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "bdump_offer: ZSetDestAddr: %s",
-		       error_message(retval));
-		return;
-	}
- 
-	/* myname is the hostname */
-	/* the class instance is the version number, here it is */
-	/* bdump_version, which is set in main */
-	(void) send_list(ACKED, sock_sin.sin_port, ZEPHYR_ADMIN_CLASS,
-			 bdump_version, ADMIN_BDUMP, myname, "", lyst, 2);
+    /* myname is the hostname */
+    /* the class instance is the version number, here it is */
+    /* bdump_version, which is set in main */
+    send_list(ACKED, srv_addr.sin_port, ZEPHYR_ADMIN_CLASS, bdump_version,
+	      ADMIN_BDUMP, myname, "", lyst, 2);
 	
 #if 1
-	zdbug((LOG_DEBUG,"bdump_offer: address is %s/%d\n",
-	       inet_ntoa(bdump_sin.sin_addr),
-	       ntohs(bdump_sin.sin_port)));
+    zdbug((LOG_DEBUG,"bdump_offer: address is %s/%d\n",
+	   inet_ntoa(bdump_sin.sin_addr),
+	   ntohs(bdump_sin.sin_port)));
 #endif
-	return;
+    return;
 }
- 
+
 /*
  * Accept a connection, and send the brain dump to the other server
  */
- 
+
 void
-#ifdef __STDC__
-bdump_send(void)
-#else
 bdump_send()
-#endif
 {
-	struct sockaddr_in from;
-	ZServerDesc_t *server;
-	Code_t retval;
-	int fromlen = sizeof(from);
-	int on = 1;
-#ifdef POSIX
-	struct sigaction action;
+    struct sockaddr_in from;
+    Server *server;
+    Code_t retval;
+    int fromlen = sizeof(from);
+    int on = 1;
+#ifdef _POSIX_VERSION
+    struct sigaction action;
 #endif
 
-#ifdef KERBEROS
-	KTEXT_ST ticket;
-	AUTH_DAT kdata;
+#ifdef ZEPHYR_USES_KERBEROS
+    KTEXT_ST ticket;
+    AUTH_DAT kdata;
 #else
-	unsigned short fromport;
-#endif /* KERBEROS */
+    unsigned short fromport;
+#endif /* ZEPHYR_USES_KERBEROS */
  
 #if 1
-	zdbug((LOG_DEBUG, "bdump_send"));
+    zdbug((LOG_DEBUG, "bdump_send"));
 #endif
-	/* accept the connection, and send the brain dump */
-	if ((live_socket = accept(bdump_socket, (struct sockaddr *)&from,
-				  &fromlen)) < 0) {
-		syslog(LOG_ERR,"bdump_send: accept: %m");
-		return;
-	}
-	if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *)&on,
-	    sizeof (on)) < 0)
-		syslog(LOG_WARNING,
-		       "bdump_send: setsockopt (SO_KEEPALIVE): %m");
- 
-#ifndef KERBEROS
-	fromport = ntohs(from.sin_port);
-#endif
- 
-#ifdef POSIX
-	(void) sigemptyset(&action.sa_mask);
-	action.sa_flags = 0;
-	action.sa_handler = SIG_IGN;
-	(void) sigaction(SIGPIPE, &action, NULL);
-
-	START_CRITICAL_CODE;
-#else
-	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect failures */
-#endif
- 
-	from.sin_port = sock_sin.sin_port; /* we don't care what port
-					    it came from, and we need to
-					    fake out server_which_server() */
-	server = server_which_server(&from);
-	if (!server) {
-		syslog(LOG_ERR, "bdump_send: unknown server?");
-		server = limbo_server;
-	}
-#if 1
-	zdbug((LOG_DEBUG, "bdump_send: connection from %s/%d",
-	       inet_ntoa (from.sin_addr), ntohs (from.sin_port)));
-#endif
-
-#ifdef notdef
-	if (bdumping) {
-	    /* Already bdumping; punt one of the two.  If this is a
-	       new host, punt this connection.  If it's one we're
-	       already trying to talk to... arbitrary decision: The
-	       connection with the listener at the lower IP address
-	       will be punted.  */
-	    if (!server->zs_dumping) {
-		zdbug ((LOG_INFO,
-"bdump_send: already dumping; breaking new bdump connection from %s",
-			inet_ntoa (from.sin_addr)));
-		(void) close (live_socket);
-		return;
-	    }
-	    /* Should be safe now to get rid of listener socket.  */
-	    (void) close (bdump_socket);
-	    FD_CLR (bdump_socket, &interesting);
-	    bdump_socket = -1;
-	    timer_reset(bdump_timer);
-	    if (ntohl (bdump_sin.sin_addr.s_addr) < ntohl (from.sin_addr.s_addr)) {
-		/* My address is lower; punt incoming connection.  */
-		(void) close (live_socket);
-		return;
-	    }
-	    else
-		cancel_outgoing_dump = 1;
-	}
-#endif
-
-	bdumping = 1;
-	server->zs_dumping = 1;
-
-	if (bdump_socket >= 0) {
-	    /* shut down the listening socket and the timer */
-	    FD_CLR(bdump_socket, &interesting);
-	    (void) close(bdump_socket);
-	    nfildes = srv_socket + 1;
-	    bdump_socket = -1;
-	    timer_reset(bdump_timer);
-	}
- 
-	/* Now begin the brain dump. */
- 
-#ifdef KERBEROS
-	/* receive the authenticator */
-	if ((retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
-				      SERVER_SERVICE, ZEPHYR_SRVTAB))
-	    != KSUCCESS)
-	{
-	    syslog(LOG_ERR, "bdump_send: getkdata: %s",
-		   krb_err_txt[retval]);
-	    cleanup(server);
-	    return;
-	}
-	if (get_tgt()) {
-		cleanup(server);
-		return;
-	}
-	if (strcmp(kdata.pname,SERVER_SERVICE) ||
-	    strcmp(kdata.pinst, SERVER_INSTANCE) ||
-	    strcmp(kdata.prealm, my_realm))
-	{
-	    syslog(LOG_ERR, "bdump_send: peer not zephyr: %s.%s@%s",
-		   kdata.pname, kdata.pinst, kdata.prealm);
-	    cleanup(server);
-	    return;
-	}
-	/* authenticate back */
-	if ((retval = SendKerberosData(live_socket, &ticket,
-				       SERVER_SERVICE, SERVER_INSTANCE)) != 0)
-	{
-	    syslog(LOG_ERR,"bdump_send: SendKerberosData: %s",
-		   error_message (retval));
-	    cleanup(server);
-	    return;
-	}
-#else /* !KERBEROS */
-	if ((fromport > IPPORT_RESERVED) ||
-	    (fromport < (IPPORT_RESERVED / 2))) {
-		syslog(LOG_ERR, "bdump_send: bad port from peer: %d",
-		       fromport);
-		cleanup(server);
-		return;
-	}
-#endif /* KERBEROS */
-
-	if ((retval = setup_file_pointers()) != 0) {
-	    syslog (LOG_WARNING, "bdump_send: can't set up file pointers: %s",
-		    error_message (retval));
-	    cleanup(server);
-	    return;
-	}
-	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "bdump_send: sbd_loop failed: %s",
-		       error_message(retval));
-		cleanup(server);
-		return;
-	}
-	if ((retval = gbd_loop(server)) != ZERR_NONE) {
-	    syslog(LOG_WARNING, "bdump_send: gbd_loop failed: %s",
-		   error_message(retval));
-	    cleanup(server);
-	    return;
-	}
-#if 1
-	zdbug((LOG_DEBUG, "bdump_send: finished"));
-#endif
-	if (server != limbo_server) {
-	    /* set this guy to be up, and schedule a hello */
-	    server->zs_state  = SERV_UP;
-	    timer_reset(server->zs_timer);
-	    server->zs_timer = timer_set_rel(0L, server_timo, (void *) server);
-	}
-#if 0
-	zdbug((LOG_DEBUG,"cleanup sbd"));
-#endif
-	shutdown_file_pointers ();
-
-#ifdef POSIX
-	action.sa_handler = SIG_DFL;
-	sigaction(SIGPIPE, &action, NULL);
-#else
-	(void) signal(SIGPIPE, SIG_DFL);
-#endif
-	bdump_inited = 1;
-	bdumping = 0;
-	server->zs_dumping = 0;
-#ifdef CONCURRENT
-	/* Now that we are finished dumping, send all the queued packets */
-	server_send_queue(server);
-#endif
-	END_CRITICAL_CODE;
+    /* accept the connection, and send the brain dump */
+    live_socket = accept(bdump_socket, (struct sockaddr *) &from, &fromlen);
+    if (live_socket < 0) {
+	syslog(LOG_ERR,"bdump_send: accept: %m");
 	return;
+    }
+    if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *) &on,
+		   sizeof(on)) < 0)
+	syslog(LOG_WARNING, "bdump_send: setsockopt (SO_KEEPALIVE): %m");
+ 
+#ifndef ZEPHYR_USES_KERBEROS
+    fromport = ntohs(from.sin_port);
+#endif
+ 
+#ifdef _POSIX_VERSION
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+    action.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &action, NULL);
+
+#else
+    signal(SIGPIPE, SIG_IGN);	/* so we can detect failures */
+#endif
+ 
+    from.sin_port = srv_addr.sin_port; /* we don't care what port
+					* it came from, and we need to
+					* fake out server_which_server() */
+    server = server_which_server(&from);
+    if (!server) {
+	syslog(LOG_ERR, "bdump_send: unknown server?");
+	server = limbo_server;
+    }
+#if 1
+    zdbug((LOG_DEBUG, "bdump_send: connection from %s/%d",
+	   inet_ntoa(from.sin_addr), ntohs(from.sin_port)));
+#endif
+
+    bdumping = 1;
+    server->dumping = 1;
+
+    if (bdump_socket >= 0) {
+	/* shut down the listening socket and the timer. */
+	FD_CLR(bdump_socket, &interesting);
+	close(bdump_socket);
+	nfildes = srv_socket + 1;
+	bdump_socket = -1;
+	timer_reset(bdump_timer);
+    }
+ 
+    /* Now begin the brain dump. */
+ 
+#ifdef ZEPHYR_USES_KERBEROS
+    /* receive the authenticator */
+    retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
+			     SERVER_SERVICE, srvtab_file);
+    if (retval != KSUCCESS) {
+	syslog(LOG_ERR, "bdump_send: getkdata: %s",
+	       krb_err_txt[retval]);
+	cleanup(server);
+	return;
+    }
+    if (get_tgt()) {
+	cleanup(server);
+	return;
+    }
+    if (strcmp(kdata.pname, SERVER_SERVICE) ||
+	strcmp(kdata.pinst, SERVER_INSTANCE) ||
+	strcmp(kdata.prealm, my_realm)) {
+	syslog(LOG_ERR, "bdump_send: peer not zephyr: %s.%s@%s",
+	       kdata.pname, kdata.pinst, kdata.prealm);
+	cleanup(server);
+	return;
+    }
+    /* authenticate back */
+    retval = SendKerberosData(live_socket, &ticket, SERVER_SERVICE,
+			      SERVER_INSTANCE);
+    if (retval != 0) {
+	syslog(LOG_ERR,"bdump_send: SendKerberosData: %s",
+	       error_message (retval));
+	cleanup(server);
+	return;
+    }
+#else  /* !ZEPHYR_USES_KERBEROS */
+    if (fromport > IPPORT_RESERVED || fromport < IPPORT_RESERVED / 2) {
+	syslog(LOG_ERR, "bdump_send: bad port from peer: %d", fromport);
+	cleanup(server);
+	return;
+    }
+#endif /* ZEPHYR_USES_KERBEROS */
+
+    retval = setup_file_pointers();
+    if (retval != 0) {
+	syslog (LOG_WARNING, "bdump_send: can't set up file pointers: %s",
+		error_message(retval));
+	cleanup(server);
+	return;
+    }
+    retval = bdump_send_loop(server);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_WARNING, "bdump_send: bdump_send_loop failed: %s",
+	       error_message(retval));
+	cleanup(server);
+	return;
+    }
+    retval = bdump_recv_loop(server);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_WARNING, "bdump_send: bdump_recv_loop failed: %s",
+	       error_message(retval));
+	cleanup(server);
+	return;
+    }
+#if 1
+    zdbug((LOG_DEBUG, "bdump_send: finished"));
+#endif
+    if (server != limbo_server) {
+	/* set this guy to be up, and schedule a hello */
+	server->state = SERV_UP;
+	timer_reset(server->timer);
+	server->timer = timer_set_rel(0L, server_timo, server);
+    }
+#if 0
+    zdbug((LOG_DEBUG,"cleanup sbd"));
+#endif
+    shutdown_file_pointers();
+
+#ifdef _POSIX_VERSION
+    action.sa_handler = SIG_DFL;
+    sigaction(SIGPIPE, &action, NULL);
+#else
+    signal(SIGPIPE, SIG_DFL);
+#endif
+    bdumping = 0;
+    server->dumping = 0;
+    /* Now that we are finished dumping, send all the queued packets */
+    server_send_queue(server);
+    return;
 }
 
 /*ARGSUSED*/
 static void
-bdump_get_v1_guts (notice, auth, who, server)
-     ZNotice_t *notice;
-     int auth;
-     struct sockaddr_in *who;
-     ZServerDesc_t *server;
+bdump_get_v12 (notice, auth, who, server)
+    ZNotice_t *notice;
+    int auth;
+    struct sockaddr_in *who;
+    Server *server;
 {
-	struct sockaddr_in from;
-	Code_t retval;
-	int on = 1;
-#ifdef POSIX
-	struct sigaction action;
+    struct sockaddr_in from;
+    Code_t retval;
+    int on = 1;
+#ifdef _POSIX_VERSION
+    struct sigaction action;
 #endif
-#ifdef KERBEROS
-	KTEXT_ST ticket;
-	AUTH_DAT kdata;
-#else /* !KERBEROS */
-	int reserved_port = IPPORT_RESERVED - 1;
-#endif /* KERBEROS */
+#ifdef ZEPHYR_USES_KERBEROS
+    KTEXT_ST ticket;
+    AUTH_DAT kdata;
+#else  /* !ZEPHYR_USES_KERBEROS */
+    int reserved_port = IPPORT_RESERVED - 1;
+#endif /* ZEPHYR_USES_KERBEROS */
     
-	bdumping = 1;
-	server->zs_dumping = 1;
+    bdumping = 1;
+    server->dumping = 1;
  
-#ifdef POSIX
-	action.sa_flags = 0;
-	sigemptyset(&action.sa_mask);
-	action.sa_handler = SIG_IGN;
-	sigaction(SIGPIPE, &action, NULL);
+#ifdef _POSIX_VERSION
+    action.sa_flags = 0;
+    sigemptyset(&action.sa_mask);
+    action.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &action, NULL);
 #else
-	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect problems */
-#endif /* POSIX */
+    signal(SIGPIPE, SIG_IGN);	/* so we can detect problems */
+#endif /* _POSIX_VRESION */
  
-	if (bdump_socket >= 0) {
-		/* We cannot go get a brain dump when someone may
-		   potentially be connecting to us (if that other
-		   server is the server to whom we are connecting,
-		   we will deadlock. so we shut down the listening
-		   socket and the timer */
-	  FD_CLR(bdump_socket, &interesting);
-	  (void) close(bdump_socket);
-	  nfildes = srv_socket+1;
-	  bdump_socket = -1;
-	  timer_reset(bdump_timer);
-	}
-
-	if ((retval = extract_sin(notice, &from)) != ZERR_NONE) {
-		syslog(LOG_ERR, "bdump_get: sin: %s", error_message(retval));
-#ifdef POSIX
-		action.sa_handler = SIG_DFL;
-		sigaction(SIGPIPE, &action, NULL);
-#else
-		(void) signal(SIGPIPE, SIG_DFL);
-#endif
-		bdumping = 0;
-		server->zs_dumping = 0;
-		return;
-	}
-	START_CRITICAL_CODE;
-#ifndef KERBEROS
-	if (ntohs(from.sin_port) > IPPORT_RESERVED ||
-	    ntohs(from.sin_port) < IPPORT_RESERVED / 2) {
-		syslog(LOG_ERR, "bdump_get: port not reserved: %d",
-		       ntohs(from.sin_port));
-		cleanup(server);
-		return;
-	}
-	live_socket = rresvport(&reserved_port);
-#else /* !KERBEROS */
-	live_socket = socket(AF_INET, SOCK_STREAM, 0);
-#endif /* KERBEROS */
-	if (live_socket < 0) {
-		syslog(LOG_ERR, "bdump_get: socket: %m");
-		cleanup(server);
-		return;
-	}
-	if (connect(live_socket, (struct sockaddr *) &from, sizeof(from))) {
-		syslog(LOG_ERR, "bdump_get: connect: %m");
-		cleanup(server);
-		return;
-	}
-	if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *)&on,
-	    sizeof (on)) < 0)
-		syslog(LOG_WARNING,
-		       "bdump_get: setsockopt (SO_KEEPALIVE): %m");
-#if 1
-	zdbug((LOG_DEBUG, "bdump_get: connected"));
-#endif
- 
-	/* Now begin the brain dump. */
-
-#ifdef KERBEROS
-	/* send an authenticator */
-	if (get_tgt()) {
-		cleanup(server);
-		return;
-	}
-	if ((retval = SendKerberosData(live_socket, &ticket,
-				       SERVER_SERVICE, SERVER_INSTANCE)) != 0)
-	{
-		syslog(LOG_ERR,"bdump_get: %s",
-		       error_message (retval));
-		cleanup(server);
-		return;
-	}
-#if 1
-	zdbug((LOG_DEBUG, "bdump_get: SendKerberosData ok"));
-#endif
- 
-	/* get his authenticator */
-	if ((retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
-				      SERVER_SERVICE, ZEPHYR_SRVTAB))
-	    != KSUCCESS)
-	{
-		syslog(LOG_ERR, "bdump_get getkdata: %s",krb_err_txt[retval]);
-		cleanup(server);
-		return;
-	}
-	/* my_realm is filled in inside get_tgt() */
-	if (strcmp(kdata.pname, SERVER_SERVICE) ||
-	    strcmp(kdata.pinst, SERVER_INSTANCE) ||
-	    strcmp(kdata.prealm, my_realm))
-	{
-		syslog(LOG_ERR,
-		       "bdump_get: peer not zephyr in lrealm: %s.%s@%s",
-		       kdata.pname, kdata.pinst,kdata.prealm);
-		cleanup(server);
-		return;
-	}
-#endif /* KERBEROS */
-	if ((retval = setup_file_pointers()) != 0) {
-	    syslog (LOG_WARNING, "bdump_get: can't set up file pointers: %s",
-		    error_message (retval));
-	    cleanup(server);
-	    return;
-	}
-	if ((retval = gbd_loop(server)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "bdump_get: gbd_loop failed: %s",
-		       error_message(retval));
-		cleanup(server);
-		return;
-	}
-#if 1
-	zdbug((LOG_DEBUG,"bdump_get: gbdl ok"));
-#endif
-	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
-	    syslog(LOG_WARNING, "sbd_loop failed: %s",
-		   error_message(retval));
-	    cleanup(server);
-	    return;
-	}
-#if 1
-	zdbug((LOG_DEBUG, "bdump_get: gbd finished"));
-#endif
-	/* set this guy to be up, and schedule a hello */
-	server->zs_state = SERV_UP;
-	timer_reset(server->zs_timer);
-	server->zs_timer = timer_set_rel(0L, server_timo, (void *) server);
-
-#if 1
-	zdbug((LOG_DEBUG,"cleanup gbd"));
-#endif
-	shutdown_file_pointers ();
-#ifdef POSIX
-	action.sa_handler = SIG_DFL;
-	sigaction(SIGPIPE, &action, NULL);
-#else
-	(void) signal(SIGPIPE, SIG_DFL);
-#endif
-	bdump_inited = 1;
-	bdumping = 0;
-	server->zs_dumping = 0;
-#ifdef CONCURRENT
-	/* Now that we are finished dumping, send all the queued packets */
-	server_send_queue(server);
-#endif
-
-	END_CRITICAL_CODE;
-	return;
-}
- 
-static void
-#ifdef __STDC__
-bdump_get_v1(ZNotice_t *notice, int auth, struct sockaddr_in *who,
-	     ZServerDesc_t *server)
-#else
-bdump_get_v1(notice, auth, who, server)
-     ZNotice_t *notice;
-     int auth;
-     struct sockaddr_in *who;
-     ZServerDesc_t *server;
-#endif
-{
     if (bdump_socket >= 0) {
 	/* We cannot go get a brain dump when someone may
 	   potentially be connecting to us (if that other
 	   server is the server to whom we are connecting,
 	   we will deadlock. so we shut down the listening
-	   socket and the timer */
+	   socket and the timer. */
 	FD_CLR(bdump_socket, &interesting);
-	(void) close(bdump_socket);
-	nfildes = srv_socket + 1;
+	close(bdump_socket);
+	nfildes = srv_socket+1;
 	bdump_socket = -1;
 	timer_reset(bdump_timer);
     }
 
-    bdump_get_v1_guts (notice, auth, who, server);
-}
-
-static void
-#ifdef __STDC__
-bdump_get_v1a( ZNotice_t *notice, int auth, struct sockaddr_in *who,
-	      ZServerDesc_t *server)
+    retval = extract_sin(notice, &from);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_ERR, "bdump_get: sin: %s", error_message(retval));
+#ifdef _POSIX_VERSION
+	action.sa_handler = SIG_DFL;
+	sigaction(SIGPIPE, &action, NULL);
 #else
-bdump_get_v1a(notice, auth, who, server)
-     ZNotice_t *notice;
-     int auth;
-     struct sockaddr_in *who;
-     ZServerDesc_t *server;
+	signal(SIGPIPE, SIG_DFL);
 #endif
-{
-    /* In version 1A, leave the listening file descriptor open; if we
-       get a connection while we're dumping, one of the two will be
-       punted.  */
-    bdump_get_v1_guts (notice, auth, who, server);
+	bdumping = 0;
+	server->dumping = 0;
+	return;
+    }
+#ifndef ZEPHYR_USES_KERBEROS
+    if (ntohs(from.sin_port) > IPPORT_RESERVED ||
+	ntohs(from.sin_port) < IPPORT_RESERVED / 2) {
+	syslog(LOG_ERR, "bdump_get: port not reserved: %d",
+	       ntohs(from.sin_port));
+	cleanup(server);
+	return;
+    }
+    live_socket = rresvport(&reserved_port);
+#else  /* !ZEPHYR_USES_KERBEROS */
+    live_socket = socket(AF_INET, SOCK_STREAM, 0);
+#endif /* ZEPHYR_USES_KERBEROS */
+    if (live_socket < 0) {
+	syslog(LOG_ERR, "bdump_get: socket: %m");
+	cleanup(server);
+	return;
+    }
+    if (connect(live_socket, (struct sockaddr *) &from, sizeof(from))) {
+	syslog(LOG_ERR, "bdump_get: connect: %m");
+	cleanup(server);
+	return;
+    }
+    if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *)&on,
+		   sizeof(on)) < 0)
+	syslog(LOG_WARNING, "bdump_get: setsockopt (SO_KEEPALIVE): %m");
+#if 1
+    zdbug((LOG_DEBUG, "bdump_get: connected"));
+#endif
+ 
+    /* Now begin the brain dump. */
+
+#ifdef ZEPHYR_USES_KERBEROS
+    /* send an authenticator */
+    if (get_tgt()) {
+	cleanup(server);
+	return;
+    }
+    retval = SendKerberosData(live_socket, &ticket, SERVER_SERVICE,
+			      SERVER_INSTANCE);
+    if (retval != 0) {
+	syslog(LOG_ERR,"bdump_get: %s", error_message(retval));
+	cleanup(server);
+	return;
+    }
+#if 1
+    zdbug((LOG_DEBUG, "bdump_get: SendKerberosData ok"));
+#endif
+ 
+    /* get his authenticator */
+    retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
+			     SERVER_SERVICE, srvtab_file);
+    if (retval != KSUCCESS) {
+	syslog(LOG_ERR, "bdump_get getkdata: %s",krb_err_txt[retval]);
+	cleanup(server);
+	return;
+    }
+    /* my_realm is filled in inside get_tgt() */
+    if (strcmp(kdata.pname, SERVER_SERVICE) ||
+	strcmp(kdata.pinst, SERVER_INSTANCE) ||
+	strcmp(kdata.prealm, my_realm)) {
+	syslog(LOG_ERR, "bdump_get: peer not zephyr in lrealm: %s.%s@%s",
+	       kdata.pname, kdata.pinst,kdata.prealm);
+	cleanup(server);
+	return;
+    }
+#endif /* ZEPHYR_USES_KERBEROS */
+    retval = setup_file_pointers();
+    if (retval != 0) {
+	syslog(LOG_WARNING, "bdump_get: can't set up file pointers: %s",
+	       error_message (retval));
+	cleanup(server);
+	return;
+    }
+    retval = bdump_recv_loop(server);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_WARNING, "bdump_get: bdump_recv_loop failed: %s",
+	       error_message(retval));
+	cleanup(server);
+	return;
+    }
+#if 1
+    zdbug((LOG_DEBUG,"bdump_get: gbdl ok"));
+#endif
+    retval = bdump_send_loop(server);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_WARNING, "bdump_send_loop failed: %s",
+	       error_message(retval));
+	cleanup(server);
+	return;
+    }
+#if 1
+    zdbug((LOG_DEBUG, "bdump_get: gbd finished"));
+#endif
+    /* set this guy to be up, and schedule a hello */
+    server->state = SERV_UP;
+    timer_reset(server->timer);
+    server->timer = timer_set_rel(0L, server_timo, server);
+
+#if 1
+    zdbug((LOG_DEBUG,"cleanup gbd"));
+#endif
+    shutdown_file_pointers();
+#ifdef _POSIX_VERSION
+    action.sa_handler = SIG_DFL;
+    sigaction(SIGPIPE, &action, NULL);
+#else
+    signal(SIGPIPE, SIG_DFL);
+#endif
+    bdumping = 0;
+    server->dumping = 0;
+    /* Now that we are finished dumping, send all the queued packets */
+    server_send_queue(server);
+
+    return;
 }
 
 void
 bdump_get(notice, auth, who, server)
-     ZNotice_t *notice;
-     int auth;
-     struct sockaddr_in *who;
-     ZServerDesc_t *server;
+    ZNotice_t *notice;
+    int auth;
+    struct sockaddr_in *who;
+    Server *server;
 {
-#ifdef __STDC__
-# define        P(s) s
-#else
-# define P(s) ()
-#endif
+    void (*proc) __P((ZNotice_t *, int, struct sockaddr_in *, Server *));
 
-  void (*proc) P((ZNotice_t *, int, struct sockaddr_in *, ZServerDesc_t *));
-
-#undef P
-  proc = NULL;
+    proc = NULL;
 
 #if 1
-	if (zdebug)
-		syslog(LOG_DEBUG, "bdump_get: bdump v%s avail %s",
-		       notice->z_class_inst, inet_ntoa(who->sin_addr));
+    if (zdebug) {
+	syslog(LOG_DEBUG, "bdump_get: bdump v%s avail %s",
+	       notice->z_class_inst, inet_ntoa(who->sin_addr));
+    }
 #endif
-	/*
-	 * We do not listen to version "1" or "1A" because they are a
-	 * security threat (they send the CBlock in clear-text).
-	 */
-	if (!strcmp (notice->z_class_inst, "1.1")
-	    || !strcmp (notice->z_class_inst, ""))
-	    proc = bdump_get_v1;
-	if (!strcmp (notice->z_class_inst, "1.1A"))
-	    proc = bdump_get_v1a;
+    if (strcmp (notice->z_class_inst, "1.2") == 0)
+	proc = bdump_get_v12;
 
-	if (proc)
-	    (*proc) (notice, auth, who, server);
-	else
-	    syslog(LOG_WARNING,
-		   "bdump_get: Incompatible bdump version '%s' from %s",
-		   notice->z_class_inst,
-		   inet_ntoa(who->sin_addr));
+    if (proc) {
+	(*proc)(notice, auth, who, server);
+    } else {
+	syslog(LOG_WARNING,
+	       "bdump_get: Incompatible bdump version '%s' from %s",
+	       notice->z_class_inst,
+	       inet_ntoa(who->sin_addr));
+    }
 }
 
 /*
  * Send a list off as the specified notice
  */
- 
-int
-bdump_send_list_tcp(kind, port, class_name, inst, opcode, sender, recip,
-		    lyst, num)
-     ZNotice_Kind_t kind;
-     int port;
-     char *class_name;
-     char *inst;
-     char *opcode;
-     char *sender;
-     char *recip;
-     char **lyst;
-     int num;
-{
-	ZNotice_t notice;
-	register ZNotice_t *pnotice = &notice; /* speed hack */
-	char *pack;
-	int packlen, count;
-	Code_t retval;
-	u_short length;
 
-	pnotice->z_kind = kind;
+Code_t
+bdump_send_list_tcp(kind, addr, class_name, inst, opcode, sender, recip, lyst,
+		    num)
+    ZNotice_Kind_t kind;
+    struct sockaddr_in *addr;
+    int num;
+    char *class_name, *inst, *opcode, *sender, *recip, **lyst;
+{
+    ZNotice_t notice;
+    char *pack;
+    int packlen, count;
+    Code_t retval;
+    u_short length;
+
+    notice.z_kind = kind;
  
-	pnotice->z_port = port;
-	pnotice->z_class = class_name;
-	pnotice->z_class_inst = inst;
-	pnotice->z_opcode = opcode;
-	pnotice->z_sender = sender;
-	pnotice->z_recipient = recip;
-	pnotice->z_default_format = "";
-	pnotice->z_num_other_fields = 0;
+    memcpy(&notice.z_sender_addr, &addr->sin_addr, sizeof(struct sockaddr_in));
+    notice.z_port = addr->sin_port;
+    notice.z_class = class_name;
+    notice.z_class_inst = inst;
+    notice.z_opcode = opcode;
+    notice.z_sender = sender;
+    notice.z_recipient = recip;
+    notice.z_default_format = "";
+    notice.z_num_other_fields = 0;
  
-	if ((retval = ZFormatNoticeList(pnotice, (char **) lyst, num, &pack, &packlen, ZNOAUTH)) != ZERR_NONE)
-		return(retval);
+    retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen, ZNOAUTH);
+    if (retval != ZERR_NONE)
+	return retval;
 	
-	length = htons((u_short) packlen);
+    length = htons((u_short) packlen);
  
-	if ((count = net_write(output, (caddr_t) &length, sizeof(length))) != sizeof(length))
-		if (count < 0) {
-			xfree(pack);	/* free allocated storage */
-			return(errno);
-		} else {
-			syslog(LOG_WARNING, "slt (length) xmit: %d vs %d",
-			       sizeof(length),count);
-			xfree(pack);	/* free allocated storage */
-			return(ZSRV_PKSHORT);
-		}
+    count = net_write(output, (char *) &length, sizeof(length));
+    if (count != sizeof(length)) {
+	if (count < 0) {
+	    free(pack);
+	    return(errno);
+	} else {
+	    syslog(LOG_WARNING, "slt (length) xmit: %d vs %d",
+		   sizeof(length), count);
+	    free(pack);
+	    return(ZSRV_PKSHORT);
+	}
+    }
  
-	if ((count = net_write(output, pack, packlen)) != packlen)
-		if (count < 0) {
-			xfree(pack);	/* free allocated storage */
-			return(errno);
-		} else {
-			syslog(LOG_WARNING, "slt (packet) xmit: %d vs %d",
-			       packlen, count);
-			xfree(pack);	/* free allocated storage */
-			return(ZSRV_PKSHORT);
-		}
-	xfree(pack);			/* free allocated storage */
-	return(ZERR_NONE);
+    count = net_write(output, pack, packlen);
+    if (count != packlen) {
+	if (count < 0) {
+	    free(pack);
+	    return(errno);
+	} else {
+	    syslog(LOG_WARNING, "slt (packet) xmit: %d vs %d",
+		   packlen, count);
+	    free(pack);
+	    return(ZSRV_PKSHORT);
+	}
+    }
+    free(pack);
+    return(ZERR_NONE);
 }
- 
+
 static void
-shutdown_file_pointers () {
+shutdown_file_pointers() {
     if (input) {
-	(void) fclose (input);
+	fclose(input);
 	input = 0;
     }
     if (output) {
-	(void) fclose (output);
+	fclose(output);
 	output = 0;
     }
     if (live_socket >= 0) {
-	(void) close (live_socket);
+	close(live_socket);
 	live_socket = -1;
     }
 }
 
 static void
 cleanup(server)
-    ZServerDesc_t *server;
+    Server *server;
 {
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     struct sigaction action;
 #endif
 
@@ -784,226 +660,91 @@ cleanup(server)
     zdbug((LOG_DEBUG, "bdump cleanup"));
 #endif
     if (server != limbo_server) {
-	server->zs_state = SERV_DEAD;
-	timer_reset(server->zs_timer);
-	server->zs_timer =
-	    timer_set_rel(0L, server_timo, (void *) server);
+	server->state = SERV_DEAD;
+	timer_reset(server->timer);
+	server->timer = timer_set_rel(0L, server_timo, server);
     }
     shutdown_file_pointers ();
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     action.sa_flags = 0;
     sigemptyset(&action.sa_mask);
     action.sa_handler = SIG_DFL;
     sigaction(SIGPIPE,&action, NULL);
 #else
-    (void) signal(SIGPIPE, SIG_DFL);
-#endif						/* POSIX */
+    signal(SIGPIPE, SIG_DFL);
+#endif /* _POSIX_VERSION */
     bdumping = 0;
-    server->zs_dumping = 0;
-#ifdef CONCURRENT
-    /* XXX need to flush the server and the updates to it */
-#endif
-    END_CRITICAL_CODE;
-    return;
+    server->dumping = 0;
 }
-  
-#ifdef KERBEROS
+
+#ifdef ZEPHYR_USES_KERBEROS
 static int
 get_tgt()
 {
-	int retval;
+    int retval;
 #ifndef NOENCRYPTION
-	Sched *s;
+    Sched *s;
 #endif
 	
-	if (!*my_realm)
-		if ((retval = krb_get_lrealm(my_realm, 1)) != KSUCCESS) {
-			syslog(LOG_ERR,"krb_get_lrealm: %s",
-			       krb_err_txt[retval]);
-			*my_realm = '\0';
-			return(1);
-		}
-	/* have they expired ? */
-	if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + 15L) {
-		/* +15 for leeway */
+    if (!*my_realm) {
+	retval = krb_get_lrealm(my_realm, 1);
+	if (retval != KSUCCESS) {
+	    syslog(LOG_ERR,"krb_get_lrealm: %s", krb_err_txt[retval]);
+	    *my_realm = '\0';
+	    return(1);
+	}
+    }
+    /* have they expired ? */
+    if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + 15L) {
+	/* +15 for leeway */
 #if 0
-		zdbug((LOG_DEBUG,"get new tickets: %d %d %d",
-		       ticket_time, NOW,
-		       NOW - tkt_lifetime(TKTLIFETIME) + 15L));
+	zdbug((LOG_DEBUG,"get new tickets: %d %d %d", ticket_time, NOW,
+	       NOW - tkt_lifetime(TKTLIFETIME) + 15L));
 #endif
-		(void) dest_tkt();
+	dest_tkt();
 
-		{
-		    /*
-		     * XXX One version of krb_get_svc_in_tkt wants
-		     * this argument writable and at least INST_SZ
-		     * bytes long.
-		     */
-		    static char buf[INST_SZ+1] = SERVER_INSTANCE;
+	{
+	    /*
+	     * XXX One version of krb_get_svc_in_tkt wants
+	     * this argument writable and at least INST_SZ
+	     * bytes long.
+	     */
+	    static char buf[INST_SZ + 1] = SERVER_INSTANCE;
 
-		    retval = krb_get_svc_in_tkt (SERVER_SERVICE, buf/*XXX*/,
-						 my_realm,
-						 SERVER_SERVICE, SERVER_INSTANCE,
-						 TKTLIFETIME, ZEPHYR_SRVTAB);
-		}
-		if (retval != KSUCCESS) {
-			syslog(LOG_ERR,"get_tgt: krb_get_svc_in_tkt: %s",
-			       krb_err_txt[retval]);
-			ticket_time = 0L;
-			return(1);
-		} else
-			ticket_time = NOW;
+	    retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, my_realm,
+					SERVER_SERVICE,SERVER_INSTANCE,
+					TKTLIFETIME, srvtab_file);
+	}
+	if (retval != KSUCCESS) {
+	    syslog(LOG_ERR,"get_tgt: krb_get_svc_in_tkt: %s",
+		   krb_err_txt[retval]);
+	    ticket_time = 0L;
+	    return(1);
+	} else {
+	    ticket_time = NOW;
+	}
 
 #ifndef NOENCRYPTION
-		retval = read_service_key(SERVER_SERVICE, SERVER_INSTANCE,
-					  my_realm, 0 /*kvno*/,
-					  ZEPHYR_SRVTAB, serv_key);
-		if (retval != KSUCCESS) {
-		    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
-			   krb_err_txt[retval]);
-		    return 1;
-		}
-		s = (Sched *)check_key_sched_cache(serv_key);
-		if (s) {
-		    serv_ksched = *s;
-		} else {
-		    des_key_sched(serv_key, serv_ksched.s);
-		    add_to_key_sched_cache(serv_key, &serv_ksched);
-		}
+	retval = read_service_key(SERVER_SERVICE, SERVER_INSTANCE,
+				  my_realm, 0 /*kvno*/,
+				  srvtab_file, serv_key);
+	if (retval != KSUCCESS) {
+	    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
+		   krb_err_txt[retval]);
+	    return 1;
+	}
+	s = (Sched *) check_key_sched_cache(serv_key);
+	if (s) {
+	    serv_ksched = *s;
+	} else {
+	    des_key_sched(serv_key, serv_ksched.s);
+	    add_to_key_sched_cache(serv_key, &serv_ksched);
+	}
 #endif /* !NOENCRYPTION */
-	}
-	return(0);
+    }
+    return(0);
 }
-#endif /* KERBEROS */
- 
-static Code_t
-sbd_loop(from)
-     struct sockaddr_in *from;
-{
-	ZNotice_t bd_notice;
-	ZPacket_t pack;
-	ZServerDesc_t *server;
-	int packlen = sizeof(pack);
-	Code_t retval;
-	struct sockaddr_in bogus_from;
-	char *zeph_version = NULL;
- 
-	bogus_from = *from;
-	bogus_from.sin_port = sock_sin.sin_port;
-
-	while (1) {
-		packlen = sizeof(pack);
-		if ((retval = get_packet(pack, packlen, &packlen)) != ZERR_NONE) {
-			syslog(LOG_ERR, "sbd_loop: notice get: %s",
-			       error_message(retval));
-			return(retval);
-		}
-		if ((retval = ZParseNotice(pack, packlen, &bd_notice)) != ZERR_NONE) {
-			syslog(LOG_ERR, "sbd notice parse: %s",
-			       error_message(retval));
-			return(retval);
-		}
-		if (!zeph_version) {
-		  zeph_version = strsave(bd_notice.z_version);
-		}
-#ifdef DEBUG
-		if (zdebug) {
-			char buf[4096];
-		
-			(void) sprintf(buf,
-				       "bdump:%s '%s' '%s' '%s' '%s' '%s'",
-				       ZNoticeKinds[(int) bd_notice.z_kind],
-				       bd_notice.z_class,
-				       bd_notice.z_class_inst,
-				       bd_notice.z_opcode,
-				       bd_notice.z_sender,
-				       bd_notice.z_recipient);
-			syslog(LOG_DEBUG, buf);
-		}
-#endif /* DEBUG */
-		if (!strcmp(bd_notice.z_class_inst, ADMIN_LIMBO)) {
-			/* he wants limbo */
-#if 1
-			zdbug((LOG_DEBUG, "limbo req"));
-#endif
-			if ((retval = bdump_send_loop(limbo_server,
-						      zeph_version))
-			    != ZERR_NONE)
-				return(retval);
-			continue;
-		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_ME)) {
-			/* he wants his state */
-#if 1
-			zdbug((LOG_DEBUG, "his state req"));
-#endif
-			if ((server = server_which_server(&bogus_from)) !=
-			    NULLZSDT) { 
-				if ((retval = bdump_send_loop(server,
-							      zeph_version))
-				    != ZERR_NONE)
-					return(retval);
-			} else {
-				syslog(LOG_ERR,"sbd_loop: no state");
-				if ((retval = send_done()) != ZERR_NONE)
-					return(retval);
-			}
-			continue;
-		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_YOU)) {
-			/* he wants my state */
-#if 1
-			zdbug((LOG_DEBUG, "my state req"));
-#endif
-			if ((retval = bdump_send_loop(me_server, zeph_version))
-			    != ZERR_NONE)
-				return(retval);
-			break;
-		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_DONE)) {
-			break;
-		} else {
-			/* what does he want? */
-#if 1
-			zdbug((LOG_DEBUG, "unknown req"));
-#endif
-			break;
-		}
-	}
-	if (zeph_version)
-	    xfree(zeph_version);
-	return(ZERR_NONE);
-}
- 
-static Code_t
-gbd_loop(server)
-     ZServerDesc_t *server;
-{
-	Code_t retval;
- 
-	/* 
-	 * if we have no hosts in the 'limbo' state (on the limbo server),
-	 * ask for the other server to send us the limbo state.
-	 * Thus we keep track of all the hosts which haven't spoken in a while,
-	 * even in the face of server failure.
-	 */
-	if (otherservers[limbo_server_idx()].zs_hosts->q_forw ==
-	    otherservers[limbo_server_idx()].zs_hosts) {
-		if ((retval = bdump_ask_for(ADMIN_LIMBO)) != ZERR_NONE)
-			return(retval);
-		if ((retval = bdump_recv_loop(&otherservers[limbo_server_idx()])) != ZERR_NONE)
-			return(retval);
-	}
-
-	/* Have I been given my own startup info yet?  */
-	if (!bdump_inited) {
-		if ((retval = bdump_ask_for(ADMIN_ME)) != ZERR_NONE)
-			return(retval);
-		if ((retval = bdump_recv_loop(me_server)) != ZERR_NONE)
-			return(retval);
-	}
-	if ((retval = bdump_ask_for(ADMIN_YOU)) != ZERR_NONE)
-		return(retval);
-	retval = bdump_recv_loop(server);
-	return(retval);
-}
+#endif /* ZEPHYR_USES_KERBEROS */
 
 /*
  * The braindump offer wasn't taken, so we retract it.
@@ -1012,40 +753,22 @@ gbd_loop(server)
 /*ARGSUSED*/
 static void
 close_bdump(arg)
-     void * arg;
+    void * arg;
 {
-	if (bdump_socket >= 0) {
-		FD_CLR(bdump_socket, &interesting);
-		(void) close(bdump_socket);
-		nfildes = srv_socket + 1;
-		bdump_socket = -1;
+    if (bdump_socket >= 0) {
+	FD_CLR(bdump_socket, &interesting);
+	close(bdump_socket);
+	nfildes = srv_socket + 1;
+	bdump_socket = -1;
 #if 1
-		zdbug((LOG_DEBUG, "bdump not used"));
+	zdbug((LOG_DEBUG, "bdump not used"));
 #endif
-	} else {
+    } else {
 #if 1
-		zdbug((LOG_DEBUG, "bdump not open"));
+	zdbug((LOG_DEBUG, "bdump not open"));
 #endif
-	}
-	return;
-}
- 
-/*
- * Ask the other server to send instruction packets for class instance
- * inst
- */
- 
-static Code_t
-bdump_ask_for(inst)
-     char *inst;
-{
-	Code_t retval;
- 
-	/* myname is the hostname */
-	retval = send_normal_tcp(ACKED, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
-				 inst, ADMIN_BDUMP, myname, "",
-				 (char *) NULL, 0);
-	return(retval);
+    }
+    return;
 }
  
 /*
@@ -1054,535 +777,336 @@ bdump_ask_for(inst)
  
 static Code_t
 bdump_recv_loop(server)
-     ZServerDesc_t *server;
+    Server *server;
 {
-	ZNotice_t notice;
-	ZPacket_t packet;
-	int len;
-	Code_t retval;
-	ZClient_t *client = NULLZCNT;
-	struct sockaddr_in current_who;
-	int who_valid = 0;
-	int flushing_subs = 0;
-#ifdef KERBEROS
-	register char *cp;
-	C_Block cblock;
-#endif /* KERBEROS */
-#ifdef CONCURRENT
-	fd_set readable, initial;
-	int fd_ready;
- 	struct timeval tv;
-#endif /* CONCURRENT */
+    ZNotice_t notice;
+    ZPacket_t packet;
+    int len;
+    Code_t retval;
+    Client *client = NULL;
+    struct sockaddr_in who;
+#ifdef ZEPHYR_USES_KERBEROS
+    char *cp;
+    C_Block cblock;
+#endif /* ZEPHYR_USES_KERBEROS */
  
 #if 1
-	zdbug((LOG_DEBUG, "bdump recv loop"));
+    zdbug((LOG_DEBUG, "bdump recv loop"));
 #endif
 	
-#ifdef CONCURRENT
-	FD_ZERO(&initial);
-	FD_SET(srv_socket, &initial);
-#endif /* CONCURRENT */
- 
-	/* do the inverse of bdump_send_loop, registering stuff on the fly */
-	while (1) {
-#ifdef CONCURRENT
-		readable = initial;
-		tv.tv_sec = tv.tv_usec = 0;
+    /* do the inverse of bdump_send_loop, registering stuff on the fly */
+    while (1) {
+	if (packets_waiting())
+	    handle_packet();
+	len = sizeof(packet);
+	retval = get_packet(packet, len, &len);
+	if (retval != ZERR_NONE) {
+	    syslog(LOG_ERR, "brl get pkt: %s", error_message(retval));
+	    return retval;
+	}
 
-		if (msgs_queued()) {
-#if 1
-			zdbug((LOG_DEBUG, "brl msgqued"));
-#endif
-			fd_ready = 1;
-		} else
-			fd_ready = select(srv_socket + 1, &readable,
-					  (fd_set *)0,
-					  (fd_set *)0, &tv);
-		/* 
-		 * if there are packets to be processed, do them.
-		 * We needn't worry about locking since we don't
-		 * know what's coming our way.
-		 */
-		if (fd_ready > 0) {
-#if 1
-			zdbug((LOG_DEBUG, "brl fdready"));
-#endif
-			handle_packet();
-#ifdef notdef
-			if (cancel_outgoing_dump) {
-			    cancel_outgoing_dump = 0;
-			    return EWOULDBLOCK; /* maybe in a warped sort
-						   of way */
-			}
-#endif
-		} else if (fd_ready < 0)
-			syslog(LOG_ERR, "brl select: %m");
-#endif /* CONCURRENT */
-		len = sizeof(packet);
-		if ((retval = get_packet(packet, len, &len)) != ZERR_NONE) {
-			syslog(LOG_ERR, "brl get pkt: %s",
-			       error_message(retval));
-			return(retval);
-		}
-
-		if ((retval = ZParseNotice(packet, len, &notice)) != ZERR_NONE) {
-			syslog(LOG_ERR, "brl notice parse: %s",
-			       error_message(retval));
-			return(retval);
-		}
+	retval = ZParseNotice(packet, len, &notice);
+	if (retval != ZERR_NONE) {
+	    syslog(LOG_ERR, "brl notice parse: %s", error_message(retval));
+	    return retval;
+	}
 #if defined (DEBUG)
-		if (zdebug) {
-			char buf[4096];
+	if (zdebug) {
+	    char buf[4096];
 
-			(void) sprintf(buf,
-				       "bdump:%s '%s' '%s' '%s' '%s' '%s'",
-				       ZNoticeKinds[(int) notice.z_kind],
-				       notice.z_class,
-				       notice.z_class_inst,
-				       notice.z_opcode,
-				       notice.z_sender,
-				       notice.z_recipient);
-			syslog(LOG_DEBUG, buf);
-		}
+	    sprintf(buf, "bdump:%s '%s' '%s' '%s' '%s' '%s'",
+		    ZNoticeKinds[(int) notice.z_kind], notice.z_class,
+		    notice.z_class_inst, notice.z_opcode, notice.z_sender,
+		    notice.z_recipient);
+	    syslog(LOG_DEBUG, buf);
+	}
 #endif /* DEBUG */
-		if (notice.z_kind == HMCTL) {
-			/* host register */
-			if ((retval = extract_sin(&notice, &current_who)) !=
-			    ZERR_NONE) {
-				syslog(LOG_ERR, "brl hmctl sin: %s",
-				       error_message(retval));
-				return(retval);
-			}
-			who_valid = 1;
-			/* 1 = tell it we are authentic */
-			if ((retval = hostm_dispatch(&notice, 1,
-						    &current_who, server))
-			     != ZERR_NONE) {
-				syslog(LOG_ERR,"brl hm_disp failed: %s",
-				       error_message(retval));
-				return(retval);
-			}
-		} else if (!strcmp(notice.z_opcode, ADMIN_DONE)) {
-			/* end of brain dump */
-		  return(ZERR_NONE);
-		} else if (!who_valid) {
-			syslog(LOG_ERR, "brl: no current host");
-			return(ZSRV_HNOTFOUND);
-		} else if (!strcmp(notice.z_class, LOGIN_CLASS)) {
-			/* 1 = tell it we are authentic */
-			if ((retval = ulogin_dispatch(&notice, 1,
-						     &current_who, server))
-			     != ZERR_NONE) {
-				syslog(LOG_ERR, "brl ul_disp failed: %s",
-				       error_message(retval));
-				return(retval);
-			}
-		} else if (!strcmp(notice.z_opcode, ADMIN_NEWCLT)) {
-			/* register a new client */
-			notice.z_port = htons((u_short)atoi(notice.z_message));
-			if (ntohs(notice.z_port) == 0) {
-			    /* this is a bogus client from an older rev.
-			       server, so we just flush it. */
-			    syslog(LOG_ERR, "brl flushing %s/0",
-				   inet_ntoa(current_who.sin_addr));
-			    flushing_subs = 1;
-			    continue;	/* while loop */
-			}
-			flushing_subs = 0;
-			if ((retval = client_register(&notice,
-						      &current_who,
-						      &client,
-						      server,
-						      0)) != ZERR_NONE) {
-				syslog(LOG_ERR,"brl register failed: %s",
-				       error_message(retval));
-				return(retval);
-			}
-#ifdef KERBEROS
-			(void) memset((caddr_t) client->zct_cblock, 0,
-				      sizeof(C_Block));
-			if (*notice.z_class_inst) {
-			    /* a C_Block is there */
-			    cp = notice.z_message +
-				strlen(notice.z_message) + 1;
-			    retval = ZReadAscii(cp,strlen(cp),
-						cblock, sizeof(C_Block));
-			    if (retval != ZERR_NONE) {
-				syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
-				       error_message(retval),
-				       cp);
-			    } else {
-#ifdef NOENCRYPTION
-				memcpy((caddr_t)cblock,
-				       (caddr_t)client->zct_cblock,
-				       sizeof(C_Block));
-#else
-				des_ecb_encrypt(cblock, client->zct_cblock,
-						serv_ksched.s, DES_DECRYPT);
-#endif
-			    }
-			}
-#endif /* KERBEROS */
-		} else if (!strcmp(notice.z_opcode, CLIENT_SUBSCRIBE)) { 
-			if (flushing_subs)
-			    continue;	/* while loop */
-			/* a subscription packet */
-			if (!client) {
-				syslog(LOG_ERR, "brl no client");
-				return(ZSRV_NOCLT);
-			}
-			if ((retval = subscr_subscribe(client, &notice)) != ZERR_NONE) {
-				syslog(LOG_WARNING, "brl subscr failed: %s",
-				       error_message(retval));
-				return(retval);
-			}
+	who.sin_family = AF_INET;
+	who.sin_addr.s_addr = notice.z_sender_addr.s_addr;
+	who.sin_port = notice.z_port;
+	if (strcmp(notice.z_opcode, ADMIN_DONE) == 0) {
+	    /* end of brain dump */
+	    return ZERR_NONE;
+	} else if (strcmp(notice.z_class, LOGIN_CLASS) == 0) {
+	    /* 1 = tell it we are authentic */
+	    retval = ulogin_dispatch(&notice, 1, &who, server);
+	    if (retval != ZERR_NONE) {
+		syslog(LOG_ERR, "brl ul_disp failed: %s",
+		       error_message(retval));
+		return retval;
+	    }
+	} else if (strcmp(notice.z_opcode, ADMIN_NEWCLT) == 0) {
+	    /* a new client */
+	    notice.z_port = htons((u_short) atoi(notice.z_message));
+	    retval = client_register(&notice, &who.sin_addr, &client, 0);
+	    if (retval != ZERR_NONE) {
+		syslog(LOG_ERR,"brl failed: %s", error_message(retval));
+		return retval;
+	    }
+#ifdef ZEPHYR_USES_KERBEROS
+	    memset(client->session_key, 0, sizeof(C_Block));
+	    if (*notice.z_class_inst) {
+		/* a C_Block is there */
+		cp = notice.z_message + strlen(notice.z_message) + 1;
+		retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(C_Block));
+		if (retval != ZERR_NONE) {
+		    syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
+			   error_message(retval), cp);
 		} else {
-			syslog(LOG_ERR, "brl bad opcode %s",notice.z_opcode);
-			return(ZSRV_UNKNOWNOPCODE);
+#ifdef NOENCRYPTION
+		    memcpy(cblock, client->session_key, sizeof(C_Block));
+#else
+		    des_ecb_encrypt(cblock, client->session_key, serv_ksched.s,
+				    DES_DECRYPT);
+#endif
 		}
+	    }
+#endif /* ZEPHYR_USES_KERBEROS */
+	} else if (strcmp(notice.z_opcode, CLIENT_SUBSCRIBE) == 0) { 
+	    /* a subscription packet */
+	    if (!client) {
+		syslog(LOG_ERR, "brl no client");
+		return ZSRV_NOCLT;
+	    }
+	    retval = subscr_subscribe(client, &notice);
+	    if (retval != ZERR_NONE) {
+		syslog(LOG_WARNING, "brl subscr failed: %s",
+		       error_message(retval));
+		return retval;
+	    }
+	} else {
+	    syslog(LOG_ERR, "brl bad opcode %s",notice.z_opcode);
+	    return ZSRV_UNKNOWNOPCODE;
 	}
+    }
 }
- 
+
 /*
- * Send all the state from server to the peer.
+ * Send all the state to the peer.
  */
- 
+
 static Code_t
-bdump_send_loop(server, vers)
-     ZServerDesc_t *server;
-     char *vers;
+bdump_send_loop(server)
+    Server *server;
 {
-	register ZHostList_t *host;
-	register ZClientList_t *clist;
-	Code_t retval;
-#ifdef CONCURRENT
-	fd_set readable, initial;
-	int fd_ready;
-	struct timeval tv;
-#endif /* CONCURRENT */
- 
+    Code_t retval;
+
 #if 1
-	zdbug((LOG_DEBUG, "bdump send loop"));
+    zdbug((LOG_DEBUG, "bdump send loop"));
 #endif
- 
- 
-#ifdef CONCURRENT
-	FD_ZERO(&initial);
-	FD_SET(srv_socket, &initial);
-#endif /* CONCURRENT */
- 
-	for (host = server->zs_hosts->q_forw;
-	     host != server->zs_hosts;
-	     host = host->q_forw) {
-		/* for each host */
-#ifdef CONCURRENT
-		host->zh_locked = 1;
- 
-		readable = initial;
-		tv.tv_sec = tv.tv_usec = 0;
- 
-		if (msgs_queued())
-			fd_ready = 1;
-		else
-			fd_ready = select(srv_socket + 1, &readable,
-					  (fd_set *)0,
-					  (fd_set *)0, &tv);
-		/* 
-		 * if there are packets to be processed, do them.
-		 * locking the host above insures nothing we are working on
-		 * gets trashed.
-		 */
-		if (fd_ready > 0) {
-			handle_packet();
-#ifdef notdef
-			if (cancel_outgoing_dump) {
-			    cancel_outgoing_dump = 0;
-			    return EWOULDBLOCK;
-			}
-#endif
-		} else if (fd_ready < 0)
-			syslog(LOG_ERR, "bsl select: %m");
- 
-#endif /* CONCURRENT */
-		if ((retval = send_host_register(host)) != ZERR_NONE) {
-			host->zh_locked = 0;
-			return(retval);
-		}
-		if ((retval = uloc_send_locations(host, vers)) != ZERR_NONE) {
-			host->zh_locked = 0;
-			return(retval);
-		}
-		if (!host->zh_clients) {
-			host->zh_locked = 0;
-			continue;
-		}
-		for (clist = host->zh_clients->q_forw;
-		     clist != host->zh_clients;
-		     clist = clist->q_forw) {
-			/* for each client */
-			if (!clist->zclt_client->zct_subs) {
-				host->zh_locked = 0;
-				continue;
-			}
-			if ((retval = subscr_send_subs(clist->zclt_client,
-						       vers)) != ZERR_NONE) {
-				host->zh_locked = 0;
-				return(retval);
-			}
-		}
-		host->zh_locked = 0;
-	}
-	retval = send_done();
-	return(retval);
+
+    retval = uloc_send_locations();
+    if (retval != ZERR_NONE)
+	return retval;
+    retval = client_send_clients();
+    if (retval != ZERR_NONE)
+	return retval;
+    return send_done();
 }
- 
-/*
- * Send a host boot packet to the other server
- */
- 
-static Code_t
-send_host_register(host)
-     ZHostList_t *host;
-{
-	char buf[512], *addr, *lyst[2];
-	Code_t retval;
- 
-#if 0
-	zdbug((LOG_DEBUG, "bdump_host_register"));
-#endif
-	addr = inet_ntoa(host->zh_addr.sin_addr);
-	(void) sprintf(buf, "%d", ntohs(host->zh_addr.sin_port));
-	lyst[0] = addr;
-	lyst[1] = buf;
- 
-	/* myname is the hostname */
-	retval = bdump_send_list_tcp (HMCTL, (int) bdump_sin.sin_port,
-				      ZEPHYR_CTL_CLASS, ZEPHYR_CTL_HM,
-				      HM_BOOT, myname, "", lyst, 2);
-	if (retval != ZERR_NONE)
-		syslog(LOG_ERR, "shr send: %s",error_message(retval));
-	return(retval);
-}
- 
+
 /*
  * Send a sync indicating end of this host
  */
- 
+
 static Code_t
 send_done()
 {
-	Code_t retval;
+    Code_t retval;
  
 #if 1
-	zdbug((LOG_DEBUG, "send_done"));
+    zdbug((LOG_DEBUG, "send_done"));
 #endif
-	retval = send_normal_tcp(SERVACK, bdump_sin.sin_port,
-				 ZEPHYR_ADMIN_CLASS, "", ADMIN_DONE, myname,
-				 "", (char *) NULL, 0);
-	return(retval);
+    retval = send_normal_tcp(SERVACK, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
+			     "", ADMIN_DONE, myname, "", NULL, 0);
+    return retval;
 }
- 
- 
+
+
 /*
  * Send a list off as the specified notice
  */
- 
+
 static Code_t
 send_list(kind, port, class_name, inst, opcode, sender, recip, lyst, num)
-     ZNotice_Kind_t kind;
-     int port;
-     char *class_name;
-     char *inst;
-     char *opcode;
-     char *sender;
-     char *recip;
-     char **lyst;
-     int num;
+    ZNotice_Kind_t kind;
+    int port, num;
+    char *class_name, *inst, *opcode, *sender, *recip, **lyst;
 {
-	ZNotice_t notice;
-	register ZNotice_t *pnotice; /* speed hack */
-	char *pack;
-	int packlen;
-	Code_t retval;
+    ZNotice_t notice;
+    char *pack;
+    int packlen;
+    Code_t retval;
  
-	pnotice = &notice;
- 
-	pnotice->z_kind = kind;
- 
-	pnotice->z_port = port;
-	pnotice->z_class = class_name;
-	pnotice->z_class_inst = inst;
-	pnotice->z_opcode = opcode;
-	pnotice->z_sender = sender;
-	pnotice->z_recipient = recip;
-	pnotice->z_default_format = "";
-	pnotice->z_num_other_fields = 0;
+    notice.z_kind = kind;
+    notice.z_port = port;
+    notice.z_class = class_name;
+    notice.z_class_inst = inst;
+    notice.z_opcode = opcode;
+    notice.z_sender = sender;
+    notice.z_recipient = recip;
+    notice.z_default_format = "";
+    notice.z_num_other_fields = 0;
 	
-	if ((retval = ZFormatNoticeList(pnotice, lyst, num, &pack, &packlen, ZNOAUTH)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "sl format: %s", error_message(retval));
-		return(retval);
-	}
+    retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen, ZNOAUTH);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_WARNING, "sl format: %s", error_message(retval));
+	return retval;
+    }
 	
-	if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "sl xmit: %s", error_message(retval));
-		xfree(pack);		/* free allocated storage */
-		return(retval);
-	}
-	xfree(pack);			/* free allocated storage */
-	return(ZERR_NONE);
+    retval = ZSendPacket(pack, packlen, 0);
+    if (retval != ZERR_NONE)
+	syslog(LOG_WARNING, "sl xmit: %s", error_message(retval));
+    free(pack);
+    return retval;
 }
- 
+
 /*
  * Send a message off as the specified notice, via TCP
  */
- 
+
 static Code_t
 send_normal_tcp(kind, port, class_name, inst, opcode, sender, recip,
 		message, len)
-     ZNotice_Kind_t kind;
-     int port;
-     char *class_name;
-     char *inst;
-     char *opcode;
-     char *sender;
-     char *recip;
-     char *message;
-     int len;
+    ZNotice_Kind_t kind;
+    int port, len;
+    char *class_name, *inst, *opcode, *sender, *recip, *message;
 {
-	ZNotice_t notice;
-	register ZNotice_t *pnotice; /* speed hack */
-	char *pack;
-	int packlen, count;
-	Code_t retval;
-	u_short length;
+    ZNotice_t notice;
+    char *pack;
+    int packlen, count;
+    Code_t retval;
+    u_short length;
  
-	pnotice = &notice;
+    notice.z_kind = kind;
+    notice.z_port = port;
+    notice.z_class = class_name;
+    notice.z_class_inst = inst;
+    notice.z_opcode = opcode;
+    notice.z_sender = sender;
+    notice.z_recipient = recip;
+    notice.z_default_format = "";
+    notice.z_message = message;
+    notice.z_message_len = len;
+    notice.z_num_other_fields = 0;
  
-	pnotice->z_kind = kind;
+    retval = ZFormatNotice(&notice, &pack, &packlen, ZNOAUTH);
+    if (retval != ZERR_NONE) {
+	syslog(LOG_WARNING, "sn format: %s", error_message(retval));
+	return retval;
+    }
  
-	pnotice->z_port = port;
-	pnotice->z_class = class_name;
-	pnotice->z_class_inst = inst;
-	pnotice->z_opcode = opcode;
-	pnotice->z_sender = sender;
-	pnotice->z_recipient = recip;
-	pnotice->z_default_format = "";
-	pnotice->z_message = message;
-	pnotice->z_message_len = len;
-	pnotice->z_num_other_fields = 0;
+    length = htons((u_short) packlen);
  
-	if ((retval = ZFormatNotice(pnotice, &pack, &packlen, ZNOAUTH)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "sn format: %s", error_message(retval));
-		return(retval);
+    count = net_write(output, (char *) &length, sizeof(length));
+    if (count != sizeof(length)) {
+	if (count < 0) {
+	    syslog(LOG_WARNING, "snt xmit/len: %m");
+	    free(pack);
+	    return errno;
+	} else {
+	    syslog(LOG_WARNING, "snt xmit: %d vs %d",sizeof(length),count);
+	    free(pack);
+	    return ZSRV_LEN;
 	}
- 
-	length = htons((u_short) packlen);
- 
-	if ((count = net_write(output, (caddr_t) &length, sizeof(length))) != sizeof(length)) {
-		if (count < 0) {
-			syslog(LOG_WARNING, "snt xmit/len: %m");
-			xfree(pack);	/* free allocated storage */
-			return(errno);
-		} else {
-			syslog(LOG_WARNING, "snt xmit: %d vs %d",sizeof(length),count);
-			xfree(pack);	/* free allocated storage */
-			return(ZSRV_LEN);
-		}
+    }
+    count = net_write(output, pack, packlen);
+    if (count != packlen) {
+	if (count < 0) {
+	    syslog(LOG_WARNING, "snt xmit: %m");
+	    free(pack);
+	    return errno;
+	} else {
+	    syslog(LOG_WARNING, "snt xmit: %d vs %d",packlen, count);
+	    free(pack);
+	    return ZSRV_LEN;
 	}
-	if ((count = net_write(output, pack, packlen)) != packlen)
-		if (count < 0) {
-			syslog(LOG_WARNING, "snt xmit: %m");
-			xfree(pack);	/* free allocated storage */
-			return(errno);
-		} else {
-			syslog(LOG_WARNING, "snt xmit: %d vs %d",packlen, count);
-			xfree(pack);	/* free allocated storage */
-			return(ZSRV_LEN);
-		}
-	xfree(pack);			/* free allocated storage */
-	return(ZERR_NONE);
+    }
+    free(pack);
+    return ZERR_NONE;
 }
- 
+
 /*
  * get a packet from the TCP socket
  * return 0 if successful, error code else
  */
- 
+
 static Code_t
 get_packet(packet, len, retlen)
-     caddr_t packet;
-     int len;
-     int *retlen;
+    void *packet;
+    int len;
+    int *retlen;
 {
-	u_short length;
-	int result;
+    u_short length;
+    int result;
  
-	if ((result = net_read(input, (caddr_t) &length, sizeof(u_short))) < sizeof(short)) {
-		if (result < 0)
-			return(errno);
-		else {
-			syslog(LOG_ERR, "get_pkt len: %d vs %d (%m)", result, sizeof(short));
-			return(ZSRV_LEN);
-		}
+    result = net_read(input, (char *) &length, sizeof(u_short));
+    if (result < sizeof(short)) {
+	if (result < 0) {
+	    return errno;
+	} else {
+	    syslog(LOG_ERR, "get_pkt len: %d vs %d (%m)", result,
+		   sizeof(short));
+	    return ZSRV_LEN;
 	}
+    }
 	
-	length = ntohs(length);
-	if (len < length)
-		return(ZSRV_BUFSHORT);
-	if ((result = net_read(input, packet, (int) length)) < length) {
-		if (result < 0)
-			return(errno);
-		else {
-			syslog(LOG_ERR, "get_pkt: %d vs %d (%m)",result, length);
-			return(ZSRV_LEN);
-		}
+    length = ntohs(length);
+    if (len < length)
+	return ZSRV_BUFSHORT;
+    result = net_read(input, packet, (int) length);
+    if (result < length) {
+	if (result < 0) {
+	    return errno;
+	} else {
+	    syslog(LOG_ERR, "get_pkt: %d vs %d (%m)", result, length);
+	    return ZSRV_LEN;
 	}
-	*retlen = (int) length;
-	return(ZERR_NONE);
+    }
+    *retlen = length;
+    return ZERR_NONE;
 }
- 
+
 static Code_t
 extract_sin(notice, target)
-     ZNotice_t *notice;
-     struct sockaddr_in *target;
+    ZNotice_t *notice;
+    struct sockaddr_in *target;
 {
-	register char *cp = notice->z_message;
-	char *buf;
+    char *cp = notice->z_message;
+    char *buf;
 
-	buf = cp;
-	if (!notice->z_message_len || *buf == '\0') {
+    buf = cp;
+    if (!notice->z_message_len || *buf == '\0') {
 #if 0
-		zdbug((LOG_DEBUG,"no addr"));
+	zdbug((LOG_DEBUG,"no addr"));
 #endif
-		return(ZSRV_PKSHORT);
-	}
-	target->sin_addr.s_addr = inet_addr(cp);
+	return ZSRV_PKSHORT;
+    }
+    target->sin_addr.s_addr = inet_addr(cp);
  
-	cp += (strlen(cp) + 1); /* past the null */
-	if ((cp >= notice->z_message + notice->z_message_len)
-	    || (*cp == '\0')) {
+    cp += (strlen(cp) + 1);	/* past the null */
+    if ((cp >= notice->z_message + notice->z_message_len) || (*cp == '\0')) {
 #if 0
-		zdbug((LOG_DEBUG, "no port"));
+	zdbug((LOG_DEBUG, "no port"));
 #endif
-		return(ZSRV_PKSHORT);
-	}
-	target->sin_port = htons((u_short) atoi(cp));
-	target->sin_family = AF_INET;
-	return(ZERR_NONE);
+	return(ZSRV_PKSHORT);
+    }
+    target->sin_port = htons((u_short) atoi(cp));
+    target->sin_family = AF_INET;
+    return ZERR_NONE;
 }
- 
+
 static int
 net_read(f, buf, len)
-     FILE *f;
-     register char *buf;
-     register int len;
+    FILE *f;
+    char *buf;
+    int len;
 {
     int cc, len2 = 0;
  
     fflush (output);
     do {
 	errno = 0;
-	cc = fread (buf, 1, len, f);
+	cc = fread(buf, 1, len, f);
 	if (cc == 0)
 	    return -1;
 	buf += cc;
@@ -1591,15 +1115,15 @@ net_read(f, buf, len)
     } while (len > 0);
     return len2;
 }
- 
+
 static int
 net_write(f, buf, len)
-     FILE *f;
-     register char *buf;
-     int len;
+    FILE *f;
+    char *buf;
+    int len;
 {
     int cc;
-    register int wrlen = len;
+    int wrlen = len;
     do {
 	cc = fwrite (buf, 1, wrlen, f);
 	if (cc == 0)
@@ -1613,7 +1137,7 @@ net_write(f, buf, len)
 static int
 setup_file_pointers ()
 {
-  int fd;
+    int fd;
 
     input = fdopen (live_socket, "r");
     if (!input)

@@ -16,32 +16,20 @@
 #define	__ZSRV_CONF_H__
 #include <zephyr/mit-copyright.h>
 
-/* Magic path names */
-#ifndef HESIOD
-#define SERVER_LIST_FILE	"/etc/athena/zephyr/server.list"
-#endif
+/* Path names are relative to CONFDIR, except for the class registry. */
 
-/* ACL's for pre-registered classes */
-/* Directory containing acls and other info */
-#ifndef ZEPHYR_ACL_DIR
-#define	ZEPHYR_ACL_DIR		"/etc/athena/zephyr/acl/"
+#ifndef ZEPHYR_USES_HESIOD
+#define SERVER_LIST_FILE	"server.list"
 #endif
-/* name of the class registry */
+#ifdef ZEPHYR_USES_KERBEROS
+#define ZEPHYR_SRVTAB		"srvtab"
+#define ZEPHYR_TKFILE		"ztkts"
+#endif
+#define	ZEPHYR_ACL_DIR		"acl/"
 #define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
+#define	DEFAULT_SUBS_FILE	"default.subscriptions"
 
-#ifdef KERBEROS
-/* name of file to hold the tickets for keys to exchange with other servers */
-#define	ZEPHYR_TKFILE		"/etc/athena/zephyr/ztkts"
-
-/* The pathname of the Kerberos srvtab file is defined in zephyr_conf.h. */
-#endif /* KERBEROS */
-
-/* default subscription file */
-#define	DEFAULT_SUBS_FILE	"/etc/athena/zephyr/default.subscriptions"
-
-/* client defines */
-#define	REXMIT_SECS	((long) 20)	/* rexmit delay on normal notices */
-#define	NUM_REXMITS	(9)		/* number of rexmits */
+#define REXMIT_TIMES { 2, 2, 4, 4, 8, 8, 16, 16, 32, 32, -1 }
 
 /* hostmanager defines */
 #define	LOSE_TIMO	(60)		/* time during which a losing host
@@ -56,4 +44,8 @@
 					   when tardy */
 #define	H_NUM_STARTING	2		/* num hello's before going dead
 					   when starting */
+
+#define SWEEP_INTERVAL  3600		/* Time between sweeps of the ticket
+					   hash table */
+
 #endif /* __ZSRV_CONF_H__ */

@@ -13,26 +13,22 @@
 
 #include <zephyr/mit-copyright.h>
 
-#include <string.h>
-#include <zephyr/zephyr.h>
+#include "zserver.h"
 #include "version.h"
 
+const char zephyr_version[] = "Zephyr sytem version 2.0";
+
 #ifdef DEBUG
-Zconst char version[] = "Zephyr Server (DEBUG) $Revision$";
+const char version[] = "Zephyr server (DEBUG) $Revision$";
 #else
-Zconst char version[] = "Zephyr Server $Revision$";
+const char version[] = "Zephyr server $Revision$";
 #endif
 
 #if !defined (lint) && !defined (SABER)
-Zconst char rcsid_version_c[] =
+const char rcsid_version_c[] =
     "$Id$";
-Zconst char copyright[] =
+const char copyright[] =
     "Copyright (c) 1987,1988,1989,1990 Massachusetts Institute of Technology.\n";
-#ifdef CONCURRENT
-Zconst char concurrent[] = "Brain-dump concurrency enabled";
-#else
-Zconst char concurrent[] = "no brain-dump concurrency";
-#endif
 #endif
 
 char *

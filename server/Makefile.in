@@ -1,0 +1,68 @@
+SHELL = /bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+datadir=@datadir@
+confdir=@confdir@
+sbindir=@sbindir@
+lsbindir=@lsbindir@
+
+includedir=$(prefix)/include
+mandir=$(prefix)/man
+libdir=$(exec_prefix)/lib
+
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+BUILDTOP=..
+VPATH=@srcdir@
+CC=@CC@
+INSTALL=@INSTALL@
+COMPILE_ET=@COMPILE_ET@
+
+DEBUG=-O
+CFLAGS=	$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h -I$(top_srcdir)/lib/des \
+	-I. @CPPFLAGS@
+LDFLAGS=-L$(BUILDTOP)/lib/zephyr -L$(BUILDTOP)/lib/des @ET_LDFLAGS@ @LDFLAGS@
+LIBS=-lzephyr @LIBS@ -lcom_err
+
+OBJS=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \
+	dispatch.o kopt.o kstuff.o main.o server.o subscr.o timer.o uloc.o \
+	zstring.o version.o
+
+all: zephyrd
+
+zephyrd: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a \
+	$(BUILDTOP)/lib/des/libdes.a @ETDEP@
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+
+zsrv_err.c zsrv_err.h: zsrv_err.et
+	$(COMPILE_ET) $(srcdir)/zsrv_err.et
+
+version.o: version.h
+
+version.h: always
+	sh $(srcdir)/new_vers.sh
+
+check:
+
+# No dependency on zephyrd, to avoid rebuilding version.o.
+install:
+	$(INSTALL) -m 755 -c -s zephyrd $(sbindir)
+	$(INSTALL) -m 644 -c $(srcdir)/zephyrd.8 $(mandir)/man8
+	$(INSTALL) -m 644 -c $(srcdir)/default.subscriptions $(confdir)
+	rm -f $(confdir)/acl/?*.acl
+	cp $(srcdir)/acl/?*.acl $(confdir)/acl
+	chmod 644 $(confdir)/acl/*
+
+clean:
+	rm -f $(OBJS) zephyrd zsrv_err.[ch]
+
+always:
+
+$(OBJS): zserver.h zsrv_err.h timer.h zsrv_conf.h zstring.h access.h acl.h
+$(OBJS): $(top_srcdir)/h/internal.h $(top_srcdir)/h/sysdep.h
+$(OBJS): $(BUILDTOP)/h/config.h $(BUILDTOP)/h/zephyr/zephyr.h
+$(OBJS): $(BUILDTOP)/h/zephyr/zephyr_err.h
+
+.PHONY: all check install clean always
+

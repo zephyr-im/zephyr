@@ -36,31 +36,21 @@ without express or implied warranty.
 
  */
 
-#ifdef __STDC__
-# define        P(s) s
-#else
-# define P(s) ()
-#endif
-
-typedef struct _timer {
-        int heap_pos;
-        /* time for timer to go off, absolute time */
-        long    time;
-        /* procedure to call when timer goes off */
-        void    (*func)P((void*));
-        /* argument for that procedure */
+typedef struct _Timer {
+        int	heap_pos;		/* Position in timer heap */
+        long    abstime;
+        void    (*func) __P((void*));
         void *  arg;
-} *timer;
+} Timer;
 
 #define NOW t_local.tv_sec
-typedef void (*timer_proc) P((void *));
-extern timer timer_set_rel P((long, timer_proc, void*));
-extern timer timer_set_abs P((long, timer_proc, void*));
-extern void timer_reset P((timer)), timer_process P((void));
-
-#undef P
+typedef void (*timer_proc) __P((void *));
+Timer *timer_set_rel __P((long, timer_proc, void *));
+Timer *timer_set_abs __P((long, timer_proc, void *));
+void timer_reset __P((Timer *));
+void timer_process __P((void));
 
 #define timer_when(x)   ALARM_TIME(x)
 
 extern struct timeval t_local;
-extern long nexttimo;                   /* Unix time of next timout */
+extern time_t nexttimo;                   /* Unix time of next timout */
