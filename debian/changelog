@@ -1,3 +1,9 @@
+zephyr (2.1.20000421.SNAPSHOT-7) unstable; urgency=low
+
+  * Fix incorrect potato build-depends (xlib6g-dev instead of xlib6g)
+
+ -- Karl Ramm <kcr@1TS.ORG>  Sat, 24 Feb 2001 11:40:12 -0500
+
 zephyr (2.1.20000421.SNAPSHOT-6) unstable; urgency=low
 
   * get the acl stuff right, so it goes into the source package
