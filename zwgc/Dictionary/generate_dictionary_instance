@@ -1,0 +1,35 @@
+#!/bin/csh -f
+# This file is part of the Project Athena Zephyr Notification System.
+# It is a tool used in the compilation of zwgc, the Zephyr WindowGram
+# client.
+#
+#      Created by:     Marc Horowitz <marc@athena.mit.edu>
+#
+#      $Source$
+#      $Author$
+#	$Id$
+#
+#      Copyright (c) 1989 by the Massachusetts Institute of Technology.
+#      For copying and distribution information, see the file
+#      "mit-copyright.h".
+#
+
+set source=/afs/athena.mit.edu/astaff/project/zephyr/@sys/zwgc/zwgc.dev/Dictionary
+
+if (z$1x == zx) then
+	echo "usage: generate_dictionary_instance <typename> [<include file>]"
+	exit 1
+endif
+if (-r $source/dictionary.c) then
+else
+	echo "generate_dictionary_instance: unable to open" $source/dictionary.c
+	exit 2
+endif
+
+if (z$2x == zx) then
+	echo > $1_dictionary.h
+else
+	echo "#include" '"'$2'"' > $1_dictionary.h
+endif
+sed "s/TYPE_T/$1/g" $source/dictionary.h >> $1_dictionary.h
+sed "s/TYPE_T/$1/g" $source/dictionary.c > $1_dictionary.c
