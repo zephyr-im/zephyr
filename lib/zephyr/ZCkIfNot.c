@@ -36,7 +36,8 @@ Code_t ZCheckIfNotice(buffer,buffer_len,notice,auth,predicate,args)
 	
 	for (;qcount;qcount--) {
 		if ((retval = ZParseNotice(qptr->packet,qptr->packet_len,
-					   &tmpnotice,&tmpauth)) != ZERR_NONE)
+					   &tmpnotice,&tmpauth,&qptr->from))
+		    != ZERR_NONE)
 			return (retval);
 		if ((predicate)(&tmpnotice,args)) {
 			if (qptr->packet_len > buffer_len)
@@ -46,6 +47,7 @@ Code_t ZCheckIfNotice(buffer,buffer_len,notice,auth,predicate,args)
 						   notice,auth))
 			    != ZERR_NONE)
 				return (retval);
+			*auth = tmpauth;
 			return (Z_RemQueue(qptr));
 		} 
 		qptr = qptr->next;
