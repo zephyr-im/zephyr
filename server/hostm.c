@@ -555,6 +555,8 @@ ZServerDesc_t *server;
 	shutnotice.z_opcode = SERVER_SHUTDOWN;
 	shutnotice.z_sender = HM_CTL_SERVER;
 	shutnotice.z_recipient = "hm@ATHENA.MIT.EDU";
+	shutnotice.z_default_format = "";
+	
 	if (server) {
 		shutnotice.z_message = inet_ntoa(server->zs_addr.sin_addr);
 		shutnotice.z_message_len = strlen(shutnotice.z_message);
