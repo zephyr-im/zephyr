@@ -329,9 +329,7 @@ extern fd_set interesting;		/* the file descrips we are listening
 extern int nfds;			/* number to look at in select() */
 extern int zdebug;
 extern char myname[];			/* domain name of this host */
-#ifndef ZEPHYR_USES_HESIOD
 extern char list_file[];
-#endif
 #ifdef ZEPHYR_USES_KERBEROS
 extern char srvtab_file[];
 extern char my_realm[];

@@ -92,10 +92,8 @@ static Code_t server_register();
 #endif
 
 static struct in_addr *get_server_addrs __P((int *number));
-#ifndef ZEPHYR_USES_HESIOD
 static char **get_server_list __P((char *file));
 static void free_server_list __P((char **list));
-#endif
 
 static Unacked *srv_nacktab[SRV_NACKTAB_HASHSIZE];
 Server *otherservers;		/* points to an array of the known
@@ -955,10 +953,9 @@ send_stats(who)
 
 /*
  * Get a list of server addresses.
-#ifdef ZEPHYR_USES_HESIOD
- * This list is retrieved from Hesiod.
-#else
  * This list is read from a file.
+#ifdef ZEPHYR_USES_HESIOD
+ * if the file is not present, the list is retrieved from Hesiod.
 #endif
  * Return a pointer to an array of allocated storage.  This storage is
  * freed by the caller.
@@ -968,23 +965,25 @@ static struct in_addr *
 get_server_addrs(number)
     int *number; /* RETURN */
 {
-    int i;
+    int i, needfree;
     char **server_hosts;
     char **cpp;
     struct in_addr *addrs;
     struct in_addr *addr;
     struct hostent *hp;
 
+    if (server_hosts = get_server_list(list_file))
+	needfree = 1;
+    else
+	needfree = 0;
 #ifdef ZEPHYR_USES_HESIOD
-    /* get the names from Hesiod */
-    server_hosts = hes_resolve("zephyr","sloc");
-    if (!server_hosts)
-	return NULL;
-#else
-    server_hosts = get_server_list(list_file);
-    if (!server_hosts)
-	return NULL;
+    if (!server_hosts) {
+	/* get the names from Hesiod */
+	server_hosts = hes_resolve("zephyr","sloc");
+    }
 #endif
+    if (!server_hosts)
+	return NULL;
     /* count up */
     i = 0;
     for (cpp = server_hosts; *cpp; cpp++)
@@ -1003,13 +1002,10 @@ get_server_addrs(number)
 	}
     }
     *number = i;
-#ifndef ZEPHYR_USES_HESIOD
-    free_server_list(server_hosts);
-#endif
+    if (needfree)
+	free_server_list(server_hosts);
     return addrs;
 }
-
-#ifndef ZEPHYR_USES_HESIOD
 
 static int nhosts = 0;
 
@@ -1078,7 +1074,6 @@ free_server_list(list)
     free(orig_list);
     return;
 }
-#endif
 
 /*
  * initialize the server structure for address addr, and set a timer

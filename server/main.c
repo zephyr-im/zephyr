@@ -91,9 +91,7 @@ unsigned short hm_srv_port;		/* host manager server sending port */
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 
-#ifndef ZEPHYR_USES_HESIOD
 char list_file[128];
-#endif
 #ifdef ZEPHYR_USES_KERBEROS
 char srvtab_file[128];
 char my_realm[REALM_SZ];
@@ -139,9 +137,7 @@ main(argc, argv)
     extern char *optarg;
     extern int optind;
 
-#ifndef ZEPHYR_USES_HESIOD
     sprintf(list_file, "%s/%s", CONFDIR, SERVER_LIST_FILE);
-#endif
 #ifdef ZEPHYR_USES_KERBEROS
     sprintf(srvtab_file, "%s/%s", CONFDIR, ZEPHYR_SRVTAB);
     sprintf(tkt_file, "%s/%s", CONFDIR, ZEPHYR_TKFILE);
