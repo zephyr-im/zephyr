@@ -81,7 +81,7 @@ main(argc,argv)
 	ptr += strlen(ptr);
     }
 
-    bzero((char *)&notice, sizeof(ZNotice_t));
+    bzero((char *)&notice, sizeof(notice));
 
     notice.z_kind = N_KIND;
     notice.z_port = 0;
