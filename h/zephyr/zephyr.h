@@ -197,6 +197,7 @@ extern int ZMakeAuthentication();
 #define LOGIN_USER_LOGIN	"USER_LOGIN"	/* Opcode: Normal User login */
 #define LOGIN_QUIET_LOGIN	"QUIET_LOGIN"	/* Opcode: Quiet login */
 #define LOGIN_USER_LOGOUT	"USER_LOGOUT"	/* Opcode: User logout */
+#define	LOGIN_USER_FLUSH	"USER_FLUSH"	/* Opcode: flush all locs */
 
 	/* Locate class messages */
 #define LOCATE_CLASS		"USER_LOCATE"	/* Class */
