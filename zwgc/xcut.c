@@ -133,9 +133,15 @@ void xunmark(dpy,w,gram,desc_context)
 }
 
 /* This is out here so xdestroygram can get at it */
-     
-static int current_window_in = -1;
-static int current_valid = False;
+
+#define PRESSOP_NONE 0	/* nothing */
+#define PRESSOP_KILL 1	/* normal click */
+#define PRESSOP_SEL  2	/* shift left */
+#define PRESSOP_EXT  3  /* shift right */
+#define PRESSOP_NUKE 4	/* ctrl */
+#define PRESSOP_STOP 5  /* pressop cancelled by moving out of window */
+
+static int current_pressop = PRESSOP_NONE;
 
 void xdestroygram(dpy,w,desc_context,gram)
      Display *dpy;
@@ -156,8 +162,7 @@ void xdestroygram(dpy,w,desc_context,gram)
 	selecting_in = 0;
 	xmarkClear();
     }
-    current_window_in = -1;
-    current_valid = False;
+    current_pressop = PRESSOP_NONE;
     XDeleteContext(dpy, w, desc_context);
     XDestroyWindow(dpy, w);
     delete_gram(gram);
@@ -198,91 +203,89 @@ void xcut(dpy,event,desc_context)
 	}
 	break;
 
-     case LeaveNotify:
-	if (event->xcrossing.window == current_window_in) {
-	    current_valid = False;
-	} else {
-	    /* it left in an unusual way, so give up */
-	    current_valid = False;
-	    current_window_in = -1;
-	}
+      case LeaveNotify:
+	if (current_pressop == PRESSOP_KILL ||
+	    current_pressop == PRESSOP_NUKE)
+	   current_pressop = PRESSOP_STOP;
 	break;
 
-     case MotionNotify:
-       if (w == selecting_in) {
-	  if (event->xmotion.state==(ShiftMask|Button1Mask)) {
-	     /*	  getLastEvent(dpy,Button1Mask,event); */
-	     changedbound=xmarkExtendFromFirst(gram,event->xmotion.x,
+      case MotionNotify:
+	if (current_pressop == PRESSOP_SEL) {
+	   /*	  getLastEvent(dpy,Button1Mask,event); */
+	   changedbound=xmarkExtendFromFirst(gram,event->xmotion.x,
+					     event->xmotion.y);
+	   xmarkRedraw(dpy,w,gram,changedbound);
+	} else if (current_pressop == PRESSOP_EXT) {
+	   /*	  getLastEvent(dpy,Button3Mask,event); */
+	   changedbound=xmarkExtendFromNearest(gram,event->xmotion.x,
 					       event->xmotion.y);
-	     xmarkRedraw(dpy,w,gram,changedbound);
-	  } else if (event->xmotion.state==(ShiftMask|Button3Mask)) {
-	     /*	  getLastEvent(dpy,Button3Mask,event); */
-	     changedbound=xmarkExtendFromNearest(gram,event->xmotion.x,
-						 event->xmotion.y);
-	     xmarkRedraw(dpy,w,gram,changedbound);
-	  } 
-       }
-       break;
+	   xmarkRedraw(dpy,w,gram,changedbound);
+	} 
+	break;
 
       case ButtonPress:
-	if ( (event->xbutton.state)&ShiftMask ) {
+	if (current_pressop != PRESSOP_NONE) {
+	   current_pressop = PRESSOP_STOP;
+	} else if ( (event->xbutton.state)&ShiftMask ) {
 	   if (event->xbutton.button==Button1) {
 	      if (selecting_in)
-		xunmark(dpy,selecting_in,NULL,desc_context);
+		 xunmark(dpy,selecting_in,NULL,desc_context);
 	      if (selected_text) free(selected_text);
 	      selected_text = NULL;
 	      if (! xselGetOwnership(dpy,w,event->xbutton.time)) {
 		 XBell(dpy,0);
 		 ERROR("Unable to get ownership of PRIMARY selection.\n");
 		 selecting_in = 0;
+		 current_pressop = PRESSOP_STOP;
 	      } else {
 		 selecting_in = w;
 		 xmarkStart(gram,event->xbutton.x,event->xbutton.y);
+		 current_pressop = PRESSOP_SEL;
 	      }
-	   }
-	   if ((event->xbutton.button==Button3) && (w == selecting_in)) {
+	   } else if ((event->xbutton.button==Button3) &&
+		      (w == selecting_in)) {
 	      if (selected_text) free(selected_text);
 	      selected_text = NULL;
 	      changedbound=xmarkExtendFromNearest(gram,event->xbutton.x,
 						  event->xbutton.y);
 	      xmarkRedraw(dpy,w,gram,changedbound);
 	      selected_text = xmarkGetText();
+	      /* this is ok, since to get here, the selection must be owned */
+	      current_pressop = PRESSOP_EXT;
 	   }
+	} else if ( (event->xbutton.state)&ControlMask ) {
+	   current_pressop = PRESSOP_NUKE;
 	} else {
-	   current_window_in = w;
-	   current_valid = True;
+	   current_pressop = PRESSOP_KILL;
 	}
 	break;
 
       case ButtonRelease:
-	if (w == current_window_in && 
-	    current_valid &&
-	    !((event->xbutton.state)&ShiftMask)) {
-
-	    if ((event->xbutton.state)&ControlMask) {
-		XWindowAttributes wa;
-		int gx,gy;
-		Window temp;
-
-		for (gram = bottom_gram ; gram ; gram = gram->above) {
-		    XGetWindowAttributes(dpy,gram->w,&wa);
-		    XTranslateCoordinates(dpy,gram->w,wa.root,0,0,&gx,&gy,
-					  &temp);
-
-		    if ((wa.map_state == IsViewable) &&
-			(gx <= event->xbutton.x_root) &&
-			(event->xbutton.x_root < gx+wa.width) &&
-			(gy <= event->xbutton.y_root) &&
-			(event->xbutton.y_root < gy+wa.height))
-			xdestroygram(dpy,gram->w,desc_context,gram);
-		}
-	    } else {
-		xdestroygram(dpy,w,desc_context,gram);
-	    }
-	} else if (w == selecting_in && ((event->xbutton.state)&ShiftMask)) {
+	if (current_pressop == PRESSOP_KILL) {
+	   xdestroygram(dpy,w,desc_context,gram);
+	} else if (current_pressop == PRESSOP_SEL ||
+		   current_pressop == PRESSOP_EXT) {
 	   if (selected_text) free(selected_text);
 	   selected_text = xmarkGetText();
+	} else if (current_pressop == PRESSOP_NUKE) {
+	   XWindowAttributes wa;
+	   int gx,gy;
+	   Window temp;
+
+	   for (gram = bottom_gram ; gram ; gram = gram->above) {
+	      XGetWindowAttributes(dpy,gram->w,&wa);
+	      XTranslateCoordinates(dpy,gram->w,wa.root,0,0,&gx,&gy,
+				    &temp);
+
+	      if ((wa.map_state == IsViewable) &&
+		  (gx <= event->xbutton.x_root) &&
+		  (event->xbutton.x_root < gx+wa.width) &&
+		  (gy <= event->xbutton.y_root) &&
+		  (event->xbutton.y_root < gy+wa.height))
+		 xdestroygram(dpy,gram->w,desc_context,gram);
+	   }
 	}
+	current_pressop = PRESSOP_NONE;
 	break;
 
      case SelectionRequest:
