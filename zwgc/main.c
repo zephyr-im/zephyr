@@ -67,6 +67,12 @@ char *progname = NULL;
 
 char *subscriptions_filename_override = NULL;
 
+/*
+ * location_override - <<<>>> export!
+ */
+
+char *location_override = NULL;
+
 /****************************************************************************/
 /*                                                                          */
 /*             Code to deal with reading in the description file:           */
@@ -147,13 +153,13 @@ void usage()
 #ifdef DEBUG
     fprintf(stderr, "\
 zwgc: usage: zwgc [-debug] [-f <filename>] [-subfile <filename>]\n\
-                  [-ttymode] [-nofork] [-reenter]\n\
+                  [-ttymode] [-nofork] [-reenter] [-loc text]\n\
                   [-default <driver>] {-disable <driver>}*\n\
                   [output driver options]\n");
 #else
     fprintf(stderr, "\
 zwgc: usage: zwgc [-f <filename>] [-subfile <filename>]\n\
-                  [-ttymode] [-nofork] [-reenter]\n\
+                  [-ttymode] [-nofork] [-reenter] [-loc text]\n\
                   [-default <driver>] {-disable <driver>}*\n\
                   [output driver options]\n");
 #endif
@@ -229,6 +235,11 @@ int main(argc, argv)
 	    dofork = 0;
 	} else if (string_Eq(*current, "-reenter")) {
 	    argc--;			/* just throw it away */
+	} else if (string_Eq(*current, "-loc")) {
+	    argc -= 2; current++;
+	    if (!*current)
+	      usage();
+	    location_override = *current;
 	} else
 	  *(new)++ = *current;
     }

@@ -35,6 +35,7 @@ static const char rcsid_zephyr_c[] = "$Id$";
 #include "subscriptions.h"
 #include "variables.h"
 #include "pointer.h"
+#include "main.h"
 #ifndef X_DISPLAY_MISSING
 #include "X_driver.h"
 #endif
@@ -141,9 +142,11 @@ void zephyr_init(notice_handler)
     }
 
     /* Set hostname and tty for locations.  If we support X, use the
-     * display string for the tty name. */
+     * display string for the default tty name. */
+    if (location_override)
+	tty = location_override;
 #ifndef X_DISPLAY_MISSING
-    if (dpy)
+    else if (dpy)
 	tty = DisplayString(dpy);
 #endif
     error_code = ZInitLocationInfo(NULL, tty);

@@ -21,6 +21,7 @@
 
 extern char *progname;
 extern char *subscriptions_filename_override;
+extern char *location_override;
 
 /*
  *    void usage()
