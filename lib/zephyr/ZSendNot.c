@@ -16,9 +16,9 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZSendNotice(notice,cert)
+Code_t ZSendNotice(notice,cert_routine)
 	ZNotice_t	*notice;
-	int		cert;
+	int		(*cert_routine)();
 {
 	Code_t retval;
 	char *buffer;
@@ -28,8 +28,8 @@ Code_t ZSendNotice(notice,cert)
 	if (!buffer)
 		return (ENOMEM);
 
-	if ((retval = ZFormatNotice(notice,buffer,Z_MAXPKTLEN,&len,cert)) !=
-	    ZERR_NONE) {
+	if ((retval = ZFormatNotice(notice,buffer,Z_MAXPKTLEN,&len,
+				    cert_routine)) != ZERR_NONE) {
 		free(buffer);
 		return (retval);
 	}
