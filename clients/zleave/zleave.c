@@ -312,7 +312,7 @@ char *msg;
 
       if (use_zephyr) {
 	    real_message = (char *) malloc(strlen(msg) +
-					   strlen(reminder_message) + 2);
+					   strlen(reminder_message) + 3);
 	    if (real_message == NULL) {
 		fprintf (stderr, "zleave: out of memory\n");
 		exit (1);
