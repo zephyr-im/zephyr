@@ -23,7 +23,7 @@ normal_obj_rule()
 program(zmailnotify,${OBJS},,${LIBS},${CLIENTDIR})
 
 #ifdef ATHENA_COMPAT
-all::
+install::
 	$(RM) $(DESTDIR)/usr/athena/zmailnotify
 	ln -s $(CLIENTDIR)/zmailnotify $(DESTDIR)/usr/athena/zmailnofity
 #endif
