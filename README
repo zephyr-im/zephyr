@@ -19,11 +19,6 @@ USING.
 Please read the file NOTES before making any modifications to the
 source tree.
 
-LaTeX files for the Zephyr API are located on doc/progman.  These
-documents may serve as a useful reference, but they have not been
-under recent maintenance, so they might have become somewhat out of
-date.
-
 --Greg Hudson
 ghudson@mit.edu
 
