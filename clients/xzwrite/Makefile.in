@@ -41,7 +41,7 @@ install: xzwrite XZwrite
 	$(INSTALL) -m 755 -c -s xzwrite $(bindir)
 	$(INSTALL) -m 644 -c $(srcdir)/xzwrite.1 $(mandir)/man1
 	$(INSTALL) -m 644 -c XZwrite $(datadir)
-	$(INSTALL) -m 644 -c xzwrite.bitmap $(datadir)
+	$(INSTALL) -m 644 -c $(srcdir)/xzwrite.bitmap $(datadir)
 
 clean:
 	rm -f $(OBJS) xzwrite
