@@ -100,8 +100,8 @@ AC_CHECK_FUNCS(putenv strchr memcpy memmove waitpid getlogin strerror random)
 AC_CHECK_FUNCS(lrand48 gethostid getsid getpgid krb_get_err_text krb_log)
 
 AC_CONFIG_HEADER(h/config.h)
-AC_OUTPUT(Makefile clients/Makefile clients/syslogd/Makefile
-	  clients/xzwrite/Makefile clients/zaway/Makefile clients/zctl/Makefile
+AC_OUTPUT(Makefile clients/Makefile clients/xzwrite/Makefile
+	  clients/zaway/Makefile clients/zctl/Makefile
 	  clients/zleave/Makefile clients/zlocate/Makefile
 	  clients/zmailnotify/Makefile clients/znol/Makefile
 	  clients/zpopnotify/Makefile clients/zshutdown_notify/Makefile
