@@ -380,10 +380,10 @@ initialize()
 #endif
     realm_init();
 
+    ZSetServerState(1);
     ZInitialize();		/* set up the library */
     init_zsrv_err_tbl();	/* set up err table */
 
-    ZSetServerState(1);
     ZSetFD(srv_socket);		/* set up the socket as the input fildes */
 
     /* set up default strings */
