@@ -524,7 +524,7 @@ server_dispatch(notice, auth, who)
 	ZSTRING *notice_class;
 
 
-#if 1
+#if 0
 	zdbug((LOG_DEBUG, "server_dispatch"));
 #endif
 
@@ -546,7 +546,7 @@ server_dispatch(notice, auth, who)
 	   to the caller, and the caller will re-queue the message
 	   for us to process later. */
 
-	notice_class = make_zstring(notice->z_class_inst,1);
+	notice_class = make_zstring(notice->z_class,1);
 
 	if (class_is_admin(notice_class)) {
 		/* admins don't get acked, else we get a packet loop */
@@ -709,7 +709,7 @@ server_kill_clt(client)
 	(void) sprintf(buf, "%d", ntohs(client->zct_sin.sin_port));
 	lyst[1] = buf;
 
-#if 1
+#if 0
 	zdbug((LOG_DEBUG, "server kill clt %s/%s", lyst[0], lyst[1]));
 #endif
 
@@ -776,7 +776,7 @@ kill_clt(notice, server)
 		       server->addr);
 		return(ZERR_NONE);	/* XXX */
 	}
-#if 1
+#if 0
 	if (zdebug || 1)
 		syslog(LOG_DEBUG, "kill_clt clt_dereg %s/%d from %s",
 		       inet_ntoa (who.sin_addr), ntohs (who.sin_port),
@@ -864,7 +864,7 @@ server_flush(which)
 {
 	register ZHostList_t *hst;
 
-#if 1
+#if 0
 	if (zdebug)
 	    syslog (LOG_DEBUG, "server_flush %s", which->addr);
 #endif
@@ -875,7 +875,7 @@ server_flush(which)
 	     hst != which->zs_hosts;
 	     hst = which->zs_hosts->q_forw) {
 		/* for each host, flush all data */
-#if 1
+#if 0
 		if (zdebug)
 		    syslog (LOG_DEBUG, "... host %s",
 			    inet_ntoa (hst->zh_addr.sin_addr));
