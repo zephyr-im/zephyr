@@ -45,6 +45,9 @@
 /* Define to the type of the host system. */
 #define MACHINE_TYPE "unknown"
 
+/* Define if `regcomp' exists and works. */
+#undef HAVE_REGCOMP
+
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
 
@@ -83,9 +86,6 @@
 
 /* Define if you have the re_comp function.  */
 #undef HAVE_RE_COMP
-
-/* Define if you have the regcomp function.  */
-#undef HAVE_REGCOMP
 
 /* Define if you have the strchr function.  */
 #undef HAVE_STRCHR
@@ -146,6 +146,12 @@
 
 /* Define if you have the dl library (-ldl).  */
 #undef HAVE_LIBDL
+
+/* Define if you have the hesiod library (-lhesiod).  */
+#undef HAVE_LIBHESIOD
+
+/* Define if you have the krb library (-lkrb).  */
+#undef HAVE_LIBKRB
 
 /* Define if you have the nsl library (-lnsl).  */
 #undef HAVE_LIBNSL

@@ -10,16 +10,7 @@
 #include <hesiod.h>
 #endif
 
-#ifdef ZEPHYR_USES_KERBEROS
-/* Prototypes omitted from <krb.h> and <des.h> */
-int krb_get_cred __P((char *, char *, char *, CREDENTIALS *));
-int krb_get_lrealm __P((char *, int));
-int dest_tkt __P((void));
-int krb_get_svc_in_tkt __P((char *, char *, char *, char *,
-			    char *, int, char *));
-int krb_get_tf_fullname __P((char *, char *, char *, char *));
-int krb_mk_req __P((register KTEXT, char *, char *, char *, long));
-#else
+#ifndef ZEPHYR_USES_KERBEROS
 #define REALM_SZ	MAXHOSTNAMELEN
 #define INST_SZ		0		/* no instances w/o Kerberos */
 #define ANAME_SZ	9		/* size of a username + null */
