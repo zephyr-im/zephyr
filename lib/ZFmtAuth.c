@@ -20,6 +20,7 @@ static char rcsid_ZFormatAuthenticNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
+#ifdef KERBEROS
 Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
     ZNotice_t *notice;
     char *buffer;
@@ -61,3 +62,4 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
 
     return (ZERR_NONE);
 }
+#endif
