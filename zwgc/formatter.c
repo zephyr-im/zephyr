@@ -318,7 +318,7 @@ int length_of_block(str)
 char close_bracket(str)
      string str;
 {
-   int len=0,temp;
+   int temp;
    char ch,close;
 
    while (*str) {
@@ -343,13 +343,12 @@ string protect(str)
      string str;
 {
    string temp,temp2,temp3;
-   int len,len2;
+   int len;
    char ch;
 
    /* verbatim all top-level strings */
 
    temp=string_Copy("");
-   len = 0;
    while(*str) {
       if ((len=length_of_block(str)) == -1) {
 	 temp2=string_CreateFromData(str,len=pure_text_length(str,0));
@@ -364,14 +363,11 @@ string protect(str)
 	 free(temp2);
       }
    }
-   len2=string_Length(temp);
-   len=len2-len;
-   temp2=temp+len;
-   while (ch=close_bracket(temp2)>0) {
-      temp=(char *) realloc(temp,++len2);
-      temp[len2-2]=ch;
-      temp[len2-1]='\0';
-      temp2=temp+len;
+   len=string_Length(temp)+1;  /* len = size of malloc'd block */
+   while ((ch=close_bracket(temp))>0) {
+      temp=(char *) realloc(temp,++len);
+      temp[len-2]=ch;
+      temp[len-1]='\0';
    }
 
    return(temp);
