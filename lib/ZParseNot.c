@@ -38,7 +38,7 @@ Code_t ZParseNotice(buffer, len, notice)
     
     notice->z_version = ptr;
     if (strncmp(ptr, ZVERSIONHDR, strlen(ZVERSIONHDR)))
-/*	return (ZERR_VERS);*/ abort();
+	return (ZERR_VERS);
     ptr += strlen(ZVERSIONHDR);
     maj = atoi(ptr);
     if (maj != ZVERSIONMAJOR)
@@ -198,7 +198,8 @@ Code_t ZParseNotice(buffer, len, notice)
 	ptr += strlen(ptr)+1;
     }
     else
-	bzero(&notice->z_multiuid, sizeof(ZUnique_Id_t));
+	bcopy((char *) &notice->z_uid, (char *) &notice->z_multiuid,
+	      sizeof(ZUnique_Id_t));
 
     for (i=0;i<Z_MAXOTHERFIELDS && numfields;i++,numfields--) {
 	notice->z_other_fields[i] = ptr;
