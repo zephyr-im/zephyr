@@ -34,6 +34,13 @@ static char rcsid_dispatch_c[] = "$Header$";
  *	struct sockaddr_in *who;
  *	ZSentType sent;
  *
+ * void nack_release(client)
+ *	ZClient_t *client;
+ *
+ * void sendit(notice, auth, who)
+ *	ZNotice_t *notice;
+ *	int auth;
+ *	struct sockaddr_in *who;
  */
 
 static void xmit(), rexmit(), nack_cancel();
@@ -103,15 +110,7 @@ struct sockaddr_in *who;
 		ulocate_dispatch(notice, auth, who);
 		return;
 	} else if (class_is_admin(notice)) {
-		/* this had better be a HELLO message--start of acquisition
-		   protocol */
-		syslog(LOG_INFO, "disp: new server?");
-		if (server_register(notice, who) != ZERR_NONE)
-			syslog(LOG_INFO, "new server failed");
-		else
-			syslog(LOG_INFO, "new server %s, %d",
-			       inet_ntoa(who->sin_addr),
-			       ntohs(who->sin_port));
+		server_adispatch(notice, auth, who);
 		return;
 	}
 
