@@ -20,9 +20,15 @@ static char rcsid_character_class_c[] = "$Header$";
 
 #include "character_class.h"
 
+/* 
+ * It may look like we are passing the cache by value, but since it's
+ * really an array we are passing by reference.  C strikes again....
+ */
+
 static character_class cache;
 
-character_class *string_to_character_class(str)
+/* character_class */
+char * string_to_character_class(str)
      string str;
 {
     int i;
@@ -32,5 +38,5 @@ character_class *string_to_character_class(str)
     for (i=0; i<strlen(str); i++)
       cache[str[i]] = 1;
 
-    return(&cache);
+    return(cache);
 }
