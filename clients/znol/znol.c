@@ -34,6 +34,7 @@ main(argc,argv)
 	FILE *fp;
 	struct passwd *pwd;
 	char anyonename[BUFSIZ],name[BUFSIZ],cleanname[BUFSIZ],*envptr;
+	char *comment_ptr;
 	int onoff = ON,quiet = 0,justlist = 0,useronly = 0, filenamed = 0;
 	int retval,arg,ind,one,numlocs,i;
 	short wgport;
@@ -137,6 +138,8 @@ main(argc,argv)
 		    if (cleanname[0] == '#' || cleanname[0] == '\0' ||
 			cleanname[0] == '\n')
 			continue;	/* ignore comment and empty lines */
+		    if (comment_ptr = strchr(cleanname, '#'))
+			*comment_ptr = '\0'; /* Ignore from # onwards */
 		    /* Get rid of old-style nol entries, just in case */
 		    cp = cleanname + strlen(cleanname) - 1;
 		    *cp = '\0';
