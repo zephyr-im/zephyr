@@ -82,6 +82,11 @@ typedef struct _ZLocation_t {
 #define	NOLOC		(1)
 #define	QUIET		(-1)
 #define	UNAUTH		(-2)
+#ifdef OLD_COMPAT
+#define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
+#define	LOGIN_USER_LOGIN	"USER_LOGIN"
+#define	LOGIN_QUIET_LOGIN	"QUIET_LOGIN"
+#endif /* OLD_COMPAT */
 
 static void ulogin_locate(), ulogin_add_user(), ulogin_flush_user();
 static ZLocation_t *ulogin_find();
@@ -160,12 +165,26 @@ ZServerDesc_t *server;
 			clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}
+#ifdef OLD_COMPAT
+	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
+		zdbug((LOG_DEBUG, "old login"));
+		/* map LOGIN's to realm-announced */
+		ulogin_add_user(notice, REALM_ANN, who);
+		if (server == me_server) /* announce to the realm */
+			sendit(notice, auth, who);
+	} else if (!strcmp(notice->z_opcode, LOGIN_QUIET_LOGIN)) {
+		zdbug((LOG_DEBUG, "old quiet"));
+		/* map LOGIN's to realm-announced */
+		ulogin_add_user(notice, OPSTAFF_VIS, who);
+		if (server == me_server) /* announce to the realm */
+			ack(notice, who);
+	} else
+#endif /* OLD_COMPAT */
 	if (!strcmp(notice->z_opcode, LOGIN_USER_FLUSH)) {
 		zdbug((LOG_DEBUG, "user flush"));
 		ulogin_flush_user(notice);
 		if (server == me_server)
 			ack(notice, who);
-#ifdef notdef
 	} else if (!strcmp(notice->z_opcode, EXPOSE_NONE)) {
 		zdbug((LOG_DEBUG,"no expose"));
 		(void) ulogin_remove_user(notice, auth, who, &err_ret);
@@ -181,15 +200,16 @@ ZServerDesc_t *server;
 				clt_ack(notice, who, NOT_FOUND);
 			return;
 		}
-		if (server == me_server)
+		if (server == me_server) {
+			ack(notice, who);
 			server_forward(notice, auth, who);
+		}
 		return;
-#endif notdef
 	} else if (!strcmp(notice->z_opcode, EXPOSE_OPSTAFF)) {
 		zdbug((LOG_DEBUG,"opstaff"));
 		ulogin_add_user(notice, OPSTAFF_VIS, who);
 		if (server == me_server)
-			sendit(notice, auth, who);
+			ack(notice, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_REALMVIS)) {
 		zdbug((LOG_DEBUG,"realmvis"));
 		ulogin_add_user(notice, REALM_VIS, who);
@@ -235,6 +255,16 @@ ZServerDesc_t *server;
 {
 	zdbug((LOG_DEBUG,"ulocate_disp"));
 
+#ifdef OLD_COMPAT
+	if (!strcmp(notice->z_version, OLD_ZEPHYR_VERSION) &&
+	    !strcmp(notice->z_opcode, LOCATE_LOCATE)) {
+		/* we support locates on the old version */
+		zdbug((LOG_DEBUG,"old locate"));
+		ulogin_locate(notice, who);
+		/* does xmit and ack itself, so return */
+		return;
+	}
+#endif /* OLD_COMPAT */
 	if (!auth) {
 		zdbug((LOG_DEBUG,"unauthentic ulocate"));
 		if (server == me_server)
@@ -854,10 +884,11 @@ exposure_type exposure;
 	while ((index < num_locs) &&
 	       !strcmp(locations[index].zlt_user, loc2.zlt_user)) {
 
-		/* change exposure for each loc on that host */
+		/* change exposure and owner for each loc on that host */
 		if (!strcmp(locations[index].zlt_machine, loc2.zlt_machine)) {
 			notfound = 0;
 			locations[index].zlt_exposure = exposure;
+			locations[index].zlt_port = notice->z_port;
 		}
 		index++;
 	}
