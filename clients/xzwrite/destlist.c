@@ -78,8 +78,18 @@ char **load_default_dest()
      if (defs.read_anyone)
 	  _get_default_dest(ANYONE_FILE);
 
-     if (DynSize(dests) == 0)
-	  Error("No destinations specified", NULL);
+     if (DynSize(dests) == 0) {
+	  char *def;
+	  
+	  Warning("XZwrite: No destinations specified, using default.",
+		  NULL);
+
+	  def = (char *) Malloc(strlen("...") + 1, "adding default dests",
+				NULL);
+	  strcpy(def, "...");
+	  if (DynAdd(dests, (char *) &def) == DYN_NOMEM)
+	       Error("Out of memory adding default destinations.", NULL);
+     }
 
      sort_destinations();
      return ((char **) DynGet(dests, 0));
@@ -218,12 +228,65 @@ static int sort_dest_func(c1, c2)
 	  return strcmp(s1, s2);
 }
 
+static int
+binary_find_dest(key)
+char *key;
+{
+    register int low = 0, high = DynSize(dests), mid;
+    register int val;
+    register char **d;
+
+    d = (char **) DynGet(dests, 0);
+
+    /* do binary search */
+    while (low <= high) {
+	mid = (low + high) / 2;
+	val = sort_dest_func(&key, &d[mid]);
+	if (val < 0) {
+	    high = mid - 1;
+	} else if (val > 0) {
+	    low = mid + 1;
+	} else {
+	    return (mid);
+	}
+    }
+
+    return -1;
+}
+
 char **sort_destinations()
 {
-     char	**d;
+     register char **d;
+     register int idx, idx2;
+     int dsiz = DynSize(dests);
 
      d = (char **) DynGet(dests, 0);
-     qsort(d, DynSize(dests), sizeof(char *), sort_dest_func);
+     qsort(d, dsiz, sizeof(char *), sort_dest_func);
+     
+     for (idx = 0; idx < DynSize(dests);) {
+	if (d[idx][0] == '!') {
+	    /* unsubscription */
+	    char *next = d[idx];
+	    next++;
+	    while ((idx2 = binary_find_dest(next)) >= 0) {
+		/* found one to nuke */
+		DynDelete(dests, idx2);
+		if (idx2 <= idx) {
+		    /* indexes shifted, so restart this pass. */
+		    idx--;
+		    if (idx <= 0)
+			idx = 0;
+		    continue;
+		}
+	    }
+	    /* ok, no more to nuke from this one, so delete it and
+	       move on. */
+	    DynDelete(dests, idx);
+	    continue;
+	}
+	/* nope, continue on to next unsub */
+	idx++;
+     }
      return d;
 }
 
