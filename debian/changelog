@@ -5,6 +5,7 @@ zephyr (2.1.20010518.SNAPSHOT-3) unstable; urgency=low
   * Spanish translation for zephyr-server debconf, closes #106573, #106572
   * Spanish translation for zephyr-clients debconf, closes #106571
   * include hints for people trying to use zephyr-server-krb, closes: #106852
+  * attempt to get some small bits of documentation into /usr/share/doc/...
 
  -- Karl Ramm <kcr@debian.org>  Sat, 20 Oct 2001 12:25:07 -0400
 
