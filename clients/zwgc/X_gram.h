@@ -32,13 +32,11 @@ typedef struct _xblock {
 
 typedef struct _x_gram {
    unsigned long bgcolor;
-#ifdef REVSTACK
-   struct _x_gram *below,*above;
-   Window w;
-#endif
    int numblocks;
    xblock *blocks;
    char *text;
+   struct _x_gram *below,*above;
+   Window w;
 } x_gram;
 
 typedef struct _xauxblock {
