@@ -148,7 +148,6 @@ clean::
 #define ExtraXLibs -lm
 #endif
 
-
 /*
  * Linux
  */
@@ -158,6 +157,14 @@ clean::
 #define SYSLOG_COMPAT42
 #endif
 
+/*
+ * SGI Irix 5
+ */
+#ifdef sgi
+#define CcFlags -DSYSV -DPOSIX
+#define CDebugFlags -O2
+#define RanLibCmd \:
+#endif
 
 /*
  * AFS configuration
