@@ -47,6 +47,7 @@ CDEFS_SS = -I$(D_UTIL)
 #define SsLibs $(D_SS)/libss.a
 #endif
 
+ZPIDDIR = /etc/athena
 ZLIBDIR = $(ATHLIBDIR)/zephyr
 ZINCDIR = $(ATHINCDIR)/zephyr
 ZACLDIR = $(ZLIBDIR)/acl
@@ -94,7 +95,6 @@ ATHINCDIR = /mit/zephyr/include
 ATHMANDIR = /mit/zephyr/man
 
 ZLIBDIR = /mit/zephyr/configs
-ZPIDDIR = /etc/athena
 ATHCONFDIR = $(ZLIBDIR)
 ATHETCDIR = $(ATHBINDIR)
 ATHRETCDIR = $(ATHBINDIR)
