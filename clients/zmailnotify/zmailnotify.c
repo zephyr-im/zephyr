@@ -23,6 +23,7 @@ static char rcsid_zwmnotify_c[] =
 #include <sys/uio.h>
 #include <sys/socket.h>
 #include <sys/file.h>
+#include <fcntl.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <errno.h>
@@ -41,12 +42,11 @@ static char rcsid_zwmnotify_c[] =
 FILE *sfi;
 FILE *sfo;
 char Errmsg[80];
+
 #ifdef KPOP
-char *PrincipalHostname(), *index();
+char *PrincipalHostname();
 #endif
 
-extern uid_t getuid();
-char *getenv(), *malloc(), *realloc();
 void get_message(), pop_close(), mail_notify(), fatal_pop_err ();
 #define MAXMAIL 4
 
@@ -57,7 +57,6 @@ struct _mail {
 } maillist[MAXMAIL];
 
 char *mailptr = NULL;
-
 char *prog = "zmailnotify";
 
 /* This entire program is a kludge - beware! */
@@ -85,8 +84,8 @@ main(argc, argv)
 		exit(1);
 	}
 
-	dir = getenv("HOME");
-	user = getenv("USER");
+	dir = (char *)getenv("HOME");
+	user = (char *)getenv("USER");
 	if (!user || !dir) {
 		pwd = (struct passwd *)getpwuid((int) getuid());
 		if (!pwd) {
@@ -102,7 +101,7 @@ main(argc, argv)
 
 	(void) sprintf(lockfile,"%s/.maillock",dir);
 	
-	host = getenv("MAILHOST");
+	host = (char *)getenv("MAILHOST");
 #ifdef HESIOD
 	if (host == NULL) {
 		p = hes_getmailhost(user);
@@ -122,7 +121,7 @@ main(argc, argv)
 	}
 
 	lock = fopen(lockfile,"w");
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	if (lock) {
 	  struct flock fl;
 
@@ -165,7 +164,7 @@ main(argc, argv)
 
 	if (!nmsgs) {
 		if (lock) {
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 		  struct flock fl;
 
 		  /* unlock the whole file */
@@ -178,7 +177,7 @@ main(argc, argv)
 #ifndef NO_FLOCK
 			(void) flock(fileno(lock),LOCK_UN);
 #endif /* ! NO_FLOCK */
-#endif /* _POSIX_SOURCE */
+#endif /* POSIX */
 			(void) fclose(lock);
 		} 
 		(void) unlink(lockfile);
@@ -190,9 +189,9 @@ main(argc, argv)
 	uselock = 0;
         if (lock) {
 		uselock = 1;
-		mymail.to = malloc(BUFSIZ);
-		mymail.from = malloc(BUFSIZ);
-		mymail.subj = malloc(BUFSIZ);
+		mymail.to = (char *)malloc(BUFSIZ);
+		mymail.from = (char *)malloc(BUFSIZ);
+		mymail.subj = (char *)malloc(BUFSIZ);
 		if (fgets(mymail.from,BUFSIZ,lock) != NULL)
 		    mymail.from[strlen(mymail.from)-1] = 0;
 		else
@@ -208,7 +207,7 @@ main(argc, argv)
 	}
 	else {
 		lock = fopen(lockfile,"w");
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 		if (lock) {
 		  struct flock fl;
 
@@ -247,7 +246,7 @@ main(argc, argv)
 		mail_notify(&maillist[nmsgs-i]);
 	i--;
 	if (lock) {
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	  struct flock fl;
 
 	  /* unlock the whole file */
@@ -321,7 +320,7 @@ get_mail(i,mail)
 
 	ptr = mailptr;
 	while (ptr) {
-		ptr2 = index(ptr,'\n');
+		ptr2 = strchr(ptr,'\n');
 		if (ptr2)
 			*ptr2++ = 0;
 		if (*ptr == '\0')
@@ -348,11 +347,11 @@ get_mail(i,mail)
 		*c = 0;
 	}
 
-	mail->from = malloc((unsigned)(strlen(from)+1));
+	mail->from = (char *)malloc((unsigned)(strlen(from)+1));
 	(void) strcpy(mail->from,from);
-	mail->to = malloc((unsigned)(strlen(to)+1));
+	mail->to = (char *)malloc((unsigned)(strlen(to)+1));
 	(void) strcpy(mail->to,to);
-	mail->subj = malloc((unsigned)(strlen(subj)+1));
+	mail->subj = (char *)malloc((unsigned)(strlen(subj)+1));
 	(void) strcpy(mail->subj,subj);
 
 	return (0);
@@ -366,7 +365,7 @@ mail_notify(mail)
 	char *fields[3];
 	ZNotice_t notice;
 
-	(void) bzero((char *)&notice, sizeof(notice));
+	(void) _BZERO((char *)&notice, sizeof(notice));
 	notice.z_kind = UNACKED;
 	notice.z_port = 0;
 	notice.z_class = "MAIL";
@@ -428,7 +427,7 @@ char *host;
 	return NOTOK;
     }
     sin.sin_family = hp->h_addrtype;
-    bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
+    _BCOPY(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
     sin.sin_port = sp->s_port;
 #ifdef KPOP
     s = socket(AF_INET, SOCK_STREAM, 0);
@@ -640,11 +639,11 @@ char *line;
 int dummy;				/* for consistency with pop_scan */
 {
 	if (mailptr) {
-		mailptr = realloc(mailptr,(unsigned)(strlen(mailptr)+strlen(line)+2));
+		mailptr = (char *)realloc(mailptr,(unsigned)(strlen(mailptr)+strlen(line)+2));
 		(void) strcat(mailptr,line);
 	} 
 	else {
-		mailptr = malloc((unsigned)(strlen(line)+2));
+		mailptr = (char *)malloc((unsigned)(strlen(line)+2));
 		(void) strcpy(mailptr,line);
 	}
 	(void) strcat(mailptr,"\n");
