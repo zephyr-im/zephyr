@@ -562,15 +562,14 @@ struct sockaddr_in *who;
 	ZServerDesc_t *temp;
 	register int i;
 	long timerval;
-	int omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
+	SignalBlock omask (sigmask(SIGFPE)); /* don't do ascii dumps */
 
 	if (who->sin_port != sock_sin.sin_port) {
 #if 0
 		zdbug((LOG_DEBUG, "srv_register wrong port %d",
 		       ntohs(who->sin_port)));
 #endif
-		(void) sigsetmask(omask);
-		return(1);
+		return 1;
 	}
 	/* Not yet... talk to ken about authenticators */
 #ifdef notdef
@@ -578,16 +577,14 @@ struct sockaddr_in *who;
 #if 0
 		zdbug((LOG_DEBUG, "srv_register unauth"));
 #endif
-		(void) sigsetmask(omask);
-		return(1);
+		return 1;
 	}
 #endif notdef
 	/* OK, go ahead and set him up. */
 	temp = (ZServerDesc_t *)malloc((unsigned) ((nservers + 1) * sizeof(ZServerDesc_t)));
 	if (!temp) {
 		syslog(LOG_CRIT, "srv_reg malloc");
-		(void) sigsetmask(omask);
-		return(1);
+		return 1;
 	}
 	bcopy((caddr_t) otherservers, (caddr_t) temp, nservers * sizeof(ZServerDesc_t));
 	xfree(otherservers);
@@ -613,10 +610,9 @@ struct sockaddr_in *who;
 	       inet_ntoa(otherservers[nservers].zs_addr.sin_addr),
 	       srv_states[(int) otherservers[nservers].zs_state]));
 #endif
-	(void) sigsetmask(omask);
-	return(0);
+	return 0;
 }
-#endif notdef
+#endif
 
 /*
  * Recover a host whose client has stopped responding.
@@ -717,7 +713,7 @@ server_kill_clt(ZClient_t *client)
  */
 
 static Code_t
-kill_clt(ZNotice_t *notice)
+kill_clt(ZNotice_t *notice, ZServerDesc_t *server)
 {
 	struct sockaddr_in who;
 	ZHostList_t *host;
@@ -729,13 +725,19 @@ kill_clt(ZNotice_t *notice)
 	if (extract_addr(notice, &who) != ZERR_NONE)
 		return(ZERR_NONE);	/* XXX */
 	if (!(host = hostm_find_host(&who.sin_addr))) {
-		syslog(LOG_WARNING, "no host kill_clt");
+		char buf[16];
+		strcpy (buf, inet_ntoa (server->zs_addr.sin_addr));
+		syslog(LOG_WARNING, "kill_clt: no such host (%s, from %s)",
+		       inet_ntoa (who.sin_addr), buf);
 		return(ZERR_NONE);	/* XXX */
 	}
 	if (host->zh_locked)
 		return(ZSRV_REQUEUE);
 	if (!(client = client_which_client(&who, notice))) {
-		syslog(LOG_WARNING, "no clt kill_clt");
+		char buf[16];
+		strcpy (buf, inet_ntoa (server->zs_addr.sin_addr));
+		syslog(LOG_WARNING, "kill_clt: no such client (%s/%d) from %s",
+		       inet_ntoa (who.sin_addr), ntohs (who.sin_port), buf);
 		return(ZERR_NONE);	/* XXX */
 	}
 #if 0
@@ -765,8 +767,9 @@ recover_clt(register ZNotice_t *notice, ZServerDesc_t *server)
 	if (!(host = hostm_find_host(&who.sin_addr))) {
 		char buf[16];		/* long enough for 255.255.255.255\0 */
 		(void) strncpy(buf, inet_ntoa(who.sin_addr), sizeof(buf));
-		syslog(LOG_WARNING, "recover_clt h not found, from %s for %s",
-		       inet_ntoa(server->zs_addr.sin_addr), buf);
+		syslog(LOG_WARNING,
+		       "recover_clt: host not found (%s, from %s)",
+		       buf, inet_ntoa(server->zs_addr.sin_addr));
 		return(ZERR_NONE);	/* XXX */
 	}
 	if (host->zh_locked)
@@ -774,9 +777,10 @@ recover_clt(register ZNotice_t *notice, ZServerDesc_t *server)
 	if (!(client = client_which_client(&who, notice))) {
 		char buf[16];		/* long enough for 255.255.255.255\0 */
 		(void) strncpy(buf, inet_ntoa(who.sin_addr), sizeof(buf));
-		syslog(LOG_WARNING, "recover_clt not found, from %s for %s/%d",
-		       inet_ntoa(server->zs_addr.sin_addr), buf,
-		       ntohs(who.sin_port));
+		syslog(LOG_WARNING,
+		       "recover_clt: client not found (%s/%d, from %s)",
+		       buf, ntohs(who.sin_port),
+		       inet_ntoa(server->zs_addr.sin_addr));
 		return(ZERR_NONE);	/* XXX */
 	}
 	hostm_losing(client, host);
@@ -894,7 +898,7 @@ admin_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDesc
 	} else if (!strcmp(opcode, ADMIN_LOST_CLT)) {
 		status = recover_clt(notice, server);
 	} else if (!strcmp(opcode, ADMIN_KILL_CLT)) {
-		status = kill_clt(notice);
+		status = kill_clt(notice, server);
 		if (status == ZERR_NONE)
 			ack(notice, who);
 	} else
