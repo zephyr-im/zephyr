@@ -31,6 +31,10 @@ static char rcsid_standard_ports_c[] = "$Id$";
 #include "error.h"
 #include <zephyr/zephyr.h>
 
+#ifndef ZWGCPATH
+#define ZWGCPATH "/usr/etc/zwgc"
+#endif
+
 extern string tty_filter();
 extern char *X_driver();
 
@@ -275,12 +279,13 @@ void init_standard_ports(pargc, argv)
 	    var_set_variable("output_driver", p->port_name);
 	else { /* no suitable default has been found */
 	    if (fallback == -1)		/* complain, since indeterminate */
-		ERROR(
+		ERROR2(
 "\7\7\7There is no X display available, so zwgc cannot run.\n\
 THIS MEANS THAT YOU WILL NOT RECEIVE ANY ZEPHYR MESSAGES.\n\
 If you wish to receive Zephyr messages, you should start zwgc\n\
-with the -ttymode option (type '/usr/etc/zwgc -ttymode').\n\
-Read the zwgc(1) manual page for details on the fallback variable.\n\n");
+with the -ttymode option (type `%s -ttymode').\n\
+Read the zwgc(1) manual page for details on the fallback variable.\n\n",
+		      ZWGCPATH);
 	    exit(1);
 	}
     } else
