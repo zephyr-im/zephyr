@@ -63,7 +63,7 @@ Display *dpy = NULL;
  */
 
 #ifndef  APPNAME
-#define  APPNAME        "zwgc2"
+#define  APPNAME        "zwgc"
 #endif
 
 /*
