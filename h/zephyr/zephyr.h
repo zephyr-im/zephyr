@@ -277,4 +277,4 @@ extern "C" {
 }
 #endif
 
-#endif !__ZEPHYR_H__
+#endif /* !__ZEPHYR_H__ */
