@@ -448,16 +448,42 @@ ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
 {
-	ZClient_t *client = client_which_client(who, notice);
+	ZNotice_t notice2;
+	ZClient_t *client;
 	register ZSubscr_t *subs;
 	Code_t retval;
 	ZNotice_t reply;
 	ZPacket_t reppacket;
+	struct sockaddr_in who2;
 	register int i;
-	int packlen, found = 0, count;
+	int packlen, found = 0, count, initfound, temp, zerofound;
+	u_short newport;
 	char **answer = (char **) NULL;
 	char buf[64];
 
+	/* Note that the following code is an incredible crock! */
+	
+	/* Make our own copy so we can send directly back to the client */
+	/* RSF 11/07/87 */
+	
+	who2 = *who;
+	who2.sin_port = notice->z_port;  /* Return port */
+
+	if ((retval = ZReadAscii(notice->z_message,notice->z_message_len,
+				 (unsigned char *)&temp,sizeof(u_short)))
+	    != ZERR_NONE) {
+		syslog(LOG_WARNING, "subscr_sendlist read port num: %s",
+		       error_message(retval));
+		xfree(answer);
+		return;
+	}
+
+	/* Blech blech blech */
+	notice2 = *notice;
+	notice2.z_port = *((u_short *)&temp);
+	
+	client = client_which_client(who, &notice2);
+	
 	if (client && client->zct_subs) {
 
 		/* check authenticity here.  The user must be authentic to get
@@ -498,9 +524,7 @@ struct sockaddr_in *who;
 	reply.z_authent_len = 0; /* save some space */
 	reply.z_auth = 0;
 
-	packlen = sizeof(reppacket);
-
-	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
+	if ((retval = ZSetDestAddr(&who2)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "subscr_sendlist set addr: %s",
 		       error_message(retval));
 		xfree(answer);
@@ -508,13 +532,19 @@ struct sockaddr_in *who;
 	}
 
 	/* send 5 at a time until we are finished */
-	count = found / 5 + 1;		/* total # to be sent */
+	count = found?((found-1) / 5 + 1):1;	/* total # to be sent */
 	i = 0;				/* pkt # counter */
-	while (found > 0) {
+	zdbug((LOG_DEBUG,"Found %d subscriptions for %d packets",
+	       found,count));
+	initfound = found;
+	zerofound = (found == 0);
+	while (found > 0 || zerofound) {
+		packlen = sizeof(reppacket);
 		(void) sprintf(buf, "%d/%d", ++i, count);
-		reply.z_opcode = buf; 
+		reply.z_opcode = buf;
 		retval = ZFormatRawNoticeList(&reply,
-					      answer,
+					      answer+(initfound-found)*
+					      NUM_FIELDS,
 					      ((found > 5) ? 5 : found) * NUM_FIELDS,
 					      reppacket, packlen, &packlen);
 		if (retval != ZERR_NONE) {
@@ -530,8 +560,7 @@ struct sockaddr_in *who;
 			return;
 		}
 		found -= 5;
-		if (found < 0)
-			found = 0;
+		zerofound = 0;
 	}
 	zdbug((LOG_DEBUG,"subscr_sendlist acked"));
 	xfree(answer);
