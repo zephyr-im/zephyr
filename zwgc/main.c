@@ -33,9 +33,10 @@ static char rcsid_main_c[] = "$Id$";
 #include "mux.h"
 #include "port.h"
 #include "variables.h"
+#include "main.h"
 
 extern void notice_handler();
-static void setup_signals();
+static void setup_signals(), detach();
 
 /*
  * Global zwgc-wide variables:
@@ -130,11 +131,13 @@ void usage()
 #ifdef DEBUG
     fprintf(stderr, "\
 zwgc: usage: zwgc [-debug] [-f <filename>] [-subfile <filename>]\n\
+                  [-ttymode] [-nofork]\n\
                   [-default <driver>] {-disable <driver>}*\n\
                   [output driver options]\n");
 #else
     fprintf(stderr, "\
 zwgc: usage: zwgc [-f <filename>] [-subfile <filename>]\n\
+                  [-ttymode] [-nofork]\n\
                   [-default <driver>] {-disable <driver>}*\n\
                   [output driver options]\n");
 #endif
@@ -179,10 +182,12 @@ int main(argc, argv)
      char **argv;
 {
     char **new, **current;
+    int dofork = 1;
 
     /*
-     * Process "-f <filename>", "-subfile <filename>", and (if DEBUG) "-debug"
-     * arguments, removing then from argc, agrv:
+     * Process "-f <filename>", "-subfile <filename>", "-nofork",
+     * "-reenter" (which is ignored) and (if DEBUG) "-debug"
+     * arguments, removing then from argc, argv:
      */
     for (new=current=argv+1; *current; current++) {
 	if (string_Eq(*current, "-debug")) {
@@ -200,6 +205,11 @@ int main(argc, argv)
 	    if (!*current)
 	      usage();
 	    subscriptions_filename_override = *current;
+	} else if (string_Eq(*current, "-nofork")) {
+	    argc--;
+	    dofork = 0;
+	} else if (string_Eq(*current, "-reenter")) {
+	    argc--;			/* just throw it away */
 	} else
 	  *(new)++ = *current;
     }
@@ -220,6 +230,8 @@ int main(argc, argv)
     setup_signals();
     zephyr_init(notice_handler);
 
+    if (dofork)
+	detach();
     /*
      * Run the initprogs program(s) now that we are all set to deal:
      */
@@ -343,3 +355,23 @@ static void setup_signals()
     signal(SIGINT, signal_exit);
     signal(SIGCHLD, signal_child);
 }
+
+/* detach() taken from old zwgc, with lots of stuff ripped out */
+
+static void detach()
+{
+  /* detach from terminal and fork. */
+  register int i;
+
+  (void) setpgrp(0, getpgrp(getppid())); /* to try to get SIGHUP on user
+					    logout */
+  /* fork off and let parent exit... */
+  if (i = fork()) {
+      if (i < 0) {
+	  perror("zwgc: cannot fork, aborting:");
+	  exit(1);
+      }
+      exit(0);
+  }
+}	
+
