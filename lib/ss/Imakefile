@@ -7,9 +7,6 @@ DEFINES=-I. -DPOSIX
 DEFINES=-I. 
 #endif
 
-LINTFLAGS=-uhv
-
-
 LIB=	libss.a
 COMERR=	-lcom_err
 
