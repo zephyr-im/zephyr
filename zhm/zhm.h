@@ -16,22 +16,26 @@
 
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
+#include <syslog.h>
 
 #ifdef DEBUG
 #define DPR(a) fprintf(stderr, a); fflush(stderr)
 #define DPR2(a,b) fprintf(stderr, a, b); fflush(stderr)
+#define Zperr(e) fprintf(stderr, "Error = %d\n", e)
 #else
 #define DPR(a)
 #define DPR2(a,b)
+#define Zperr(e)
 #endif
 
 #define ever (;;)
-#define Zperr(e) fprintf(stderr, "Error = %d\n", e)
 
 #define SERV_TIMEOUT 20
-#define NOTICE_TIMEOUT 5
+#define NOTICE_TIMEOUT 10
 #define BOOTING 1
 #define NOTICES 2
+
+#define MAXRETRIES 5
 
 extern char *malloc();
 
