@@ -12,6 +12,7 @@
  */
 
 #include <sysdep.h>
+#include <krb_err.h>
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
 #include <pwd.h>
@@ -42,6 +43,8 @@ int main(argc,argv)
 #ifdef _POSIX_VERSION
 	struct sigaction sa;
 #endif
+	int i, cnt;
+	char *realm;
 	
 	if ((retval = ZInitialize()) != ZERR_NONE) {
 		com_err(argv[0],retval,"while initializing");
@@ -90,9 +93,24 @@ int main(argc,argv)
 	(void) signal(SIGTERM, cleanup);
 	(void) signal(SIGHUP, cleanup);
 #endif
-	if ((retval = ZSubscribeTo(&sub,1,port)) != ZERR_NONE) {
-		com_err(argv[0],retval,"while subscribing");
-		exit(1);
+	
+	if (retval = ZGetRealmCount(&cnt)) {
+		com_err(argv[0], retval, "while getting realm count");
+	    return;
+	}
+
+	for (i=0; i<cnt; i++) {
+		if (retval = ZGetRealmName(i, &realm)) {
+			com_err(argv[0], retval, "while getting realm name");
+			return;
+		}
+
+		if (((retval = ZSubscribeTo(realm, &sub,1,port))
+		     != ZERR_NONE) &&
+		    (retval != KRBET_AD_NOTGT)) {
+			com_err(argv[0],retval,"while subscribing");
+			exit(1);
+		}
 	}
 
 	for (;;) {
@@ -190,6 +208,19 @@ char *find_message(notice,fp)
 
 RETSIGTYPE cleanup()
 {
-    ZCancelSubscriptions(port);
-    exit(1);
+	int i, cnt;
+	char *realm;
+
+	if (ZGetRealmCount(&cnt))
+		exit(1);
+
+	for (i=0; i<cnt; i++) {
+		if (ZGetRealmName(i, &realm))
+			continue;
+
+		if (ZCancelSubscriptions(realm, port))
+			continue;
+	}
+	
+	exit(1);
 }
