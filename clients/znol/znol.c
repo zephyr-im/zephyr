@@ -80,7 +80,7 @@ main(argc,argv)
 			strcpy(anyonename,argv[++arg]);
 			continue;
 		}
-		printf("Usage: %s [on|off] [-f file]\n",argv[0]);
+		printf("Usage: %s [on|off] [-q] [-l] [-f file]\n",argv[0]);
 		exit (1);
 	}
 
