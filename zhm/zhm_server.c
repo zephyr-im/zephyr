@@ -177,6 +177,7 @@ ZNotice_t *notice;
 	syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
     } else {
 	/* This is our server, handle the notice */
+	booting = 0;
 	if (boot_timer) {
 	    timer_reset(boot_timer);
 	    boot_timer = NULL;
