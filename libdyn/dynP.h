@@ -45,26 +45,9 @@ int _DynRealloc();
      (_DynRealloc((obj), (((req) - (obj)->size) / (obj)->inc) + 1)))
 
 /* external (C library) functions */
-#ifndef __STDC__
-extern char *malloc ();
-extern char *realloc ();
-extern void free ();
-extern int fprintf ();
-extern void bzero ();
-extern void bcopy ();
-#else
 #include <stdio.h>
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 #include <stdlib.h>
-#else
-extern void *malloc (unsigned);
-extern void *realloc (void *, unsigned);
-extern void free (void *);
-extern int fprintf (FILE *, const char *, ...);
-extern void bzero (void *, unsigned);
-extern void memcpy (void *, void *, unsigned);
-#define bcopy(src,dest,size)	memcpy(dest,src,size)
-#endif
 #endif
 
 #endif /* _DynP_h */
