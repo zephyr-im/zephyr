@@ -1,6 +1,6 @@
 SHELL = /bin/sh
 
-SUBDIRS=syslogd @XCLIENTS@ zaway zctl zleave zlocate zmailnotify znol \
+SUBDIRS=@XCLIENTS@ zaway zctl zleave zlocate zmailnotify znol \
 	zpopnotify zshutdown_notify zstat zwrite
 
 all:
