@@ -50,7 +50,7 @@ int dest_num()
 void dest_set_current_dest(dest)
    Dest       dest;
 {
-     bcopy((char *) dest, (char *) &current_dest, sizeof(DestRec));
+     _BCOPY((char *) dest, (char *) &current_dest, sizeof(DestRec));
 }
 
 void dest_init()

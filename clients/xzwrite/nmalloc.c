@@ -717,7 +717,7 @@ realloc (mem, n)
 
     if ((new = malloc (n)) == 0)
       return 0;
-    bcopy (mem, new, tocopy);
+    _BCOPY (mem, new, tocopy);
     free (mem);
     return new;
   }
