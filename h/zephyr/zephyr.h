@@ -27,16 +27,12 @@
 #include <stdio.h>
 
 #ifndef va_start /* guaranteed to be a macro */
-#ifdef __STDC__
+#if defined(__STDC__) && !defined(ibm032) &&!defined(SABER)
 #include <stdarg.h>
 #else
 #include <varargs.h>
 #define Z_varargs
 #endif
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 #ifdef Z_HaveKerberos
@@ -47,7 +43,7 @@ extern "C" {
 #include <netinet/in.h>
 #endif
 
-#if defined(__STDC__) || defined(__cplusplus)
+#if defined(__STDC__)
 #define Zproto(X) X
 #define Zconst const
 #else
@@ -81,7 +77,7 @@ extern "C" {
     /* Packet type */
     typedef enum { UNSAFE, UNACKED, ACKED, HMACK, HMCTL, SERVACK, SERVNAK,
 		       CLIENTACK, STAT } ZNotice_Kind_t;
-    extern Zconst char *Zconst ZNoticeKinds[((int) STAT) + 1];
+    extern Zconst char *ZNoticeKinds[9];
 
     /* Unique ID format */
     typedef struct _ZUnique_Id_t {
@@ -165,9 +161,11 @@ extern "C" {
     extern int errno;
 
     /* for ZSetDebug */
+#ifdef Z_DEBUG
     extern void (*__Z_debug_print) Zproto((const char *fmt, va_list args,
 					   void *closure));
     extern void *__Z_debug_print_closure;
+#endif
 
 #ifdef Z_HaveKerberos
     /* Kerberos error table base */
@@ -203,7 +201,7 @@ extern "C" {
     extern Code_t ZSendList Zproto((ZNotice_t*, char *[], int, Z_AuthProc));
     extern Code_t ZFormatNotice Zproto((ZNotice_t*, char**, int*, Z_AuthProc));
     extern Code_t ZLocateUser Zproto((char *, int *, Z_AuthProc));
-    extern Code_t ZRequestLocations Zproto((char *, ZAsyncLocateData_t *, int, Z_AuthProc));
+    extern Code_t ZRequestLocations Zproto((char *, ZAsyncLocateData_t *, ZNotice_Kind_t, Z_AuthProc));
     extern Code_t ZInitialize Zproto ((void));
     extern Code_t ZSetServerState Zproto((int));
     extern Code_t ZSetFD Zproto ((int));
@@ -222,10 +220,12 @@ extern "C" {
 						  int*, C_Block));
 #endif
     extern Code_t ZFormatRawNotice Zproto ((ZNotice_t *, char**, int *));
+#ifdef Z_DEBUG
 #ifndef Z_varargs
     extern void Z_debug Zproto ((const char *, ...));
 #else
     extern void Z_debug ();
+#endif
 #endif
 
     /* Compatibility */
@@ -236,7 +236,6 @@ extern "C" {
 #define ZGetSession() (__Zephyr_session)
 #endif
 
-#ifndef __cplusplus
     /* ZGetFD() macro */
     extern int ZGetFD ();
 #define ZGetFD() __Zephyr_fd
@@ -254,11 +253,15 @@ extern "C" {
 #define ZGetRealm() __Zephyr_realm
 
     /* ZSetDebug() macro */
+#ifdef Z_DEBUG
     extern void ZSetDebug Zproto ((void (*)(const char *, va_list, void *),
 				   void *));
 #define ZSetDebug(proc,closure)    (__Z_debug_print=(proc), \
 				    __Z_debug_print_closure=(closure), \
 				    (void) 0)
+#else
+#define	ZSetDebug(proc,closure)
+#endif
 
     /* Maximum queue length */
 #define Z_MAXQLEN 		30
@@ -274,36 +277,6 @@ extern "C" {
 
 #define ZAUTH (ZMakeAuthentication)
 #define ZNOAUTH ((Z_AuthProc)0)
-
-#else /* C++ */
-
-    inline int ZGetFD () { return __Zephyr_fd; }
-
-    inline int ZQLength () { return __Q_CompleteLength; }
-
-    inline const sockaddr_in& ZGetDestAddr () { return __HM_addr; }
-
-    inline const char* ZGetRealm () { return __Zephyr_realm; }
-
-    inline void ZSetDebug (register void (*proc)(Zconst char *,va_list,void *),
-			   void *closure) {
-      __Z_debug_print = proc;
-      __Z_debug_print_closure = closure;
-    }
-
-    const int Z_MAXQLEN = 30;
-
-    const int ZERR_NONE = 0;
-
-    const int HM_TIMEOUT = 10;
-
-    const int SRV_TIMEOUT = 30;
-
-    const Z_AuthProc ZAUTH = &ZMakeAuthentication;
-    const Z_AuthProc ZNOAUTH = 0;
-
-#endif
-
 
     /* Packet strings */
 
@@ -382,9 +355,5 @@ extern "C" {
 #define USER_REREAD		"REREAD"	/* Opcode: Reread desc file */
 #define USER_SHUTDOWN		"SHUTDOWN"	/* Opcode: Go catatonic */
 #define USER_STARTUP		"STARTUP"	/* Opcode: Come out of it */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
