@@ -1,0 +1,70 @@
+.\" Copyright (c) 1980 Regents of the University of California.
+.\" All rights reserved.  The Berkeley software License Agreement
+.\" specifies the terms and conditions for redistribution.
+.\"
+.\"	@(#)zleave.1	6.2 (Berkeley) 5/7/86
+.\"
+.TH ZLEAVE 1 "August 6, 1987"
+.UC
+.SH NAME
+zleave \- remind you when you have to leave
+.SH SYNOPSIS
+.B zleave
+[ [+]
+.I hhmm
+] [
+.I can\fR[\fIcel\fR]
+]
+.SH DESCRIPTION
+.I Zleave
+waits until the specified time, then reminds you that you
+have to leave, using the \fIZephyr(1)\fR Notification Service.
+You are reminded 5 minutes and 1 minute before the actual
+time, at the time, and every minute thereafter.
+When you log off,
+.I zleave
+exits just before it would have sent the next message.
+.PP
+The time of day is in the form hhmm where hh is a time in
+hours (on a 12 or 24 hour clock).
+All times are converted to a 12 hour clock, and assumed to
+be in the next 12 hours.
+.PP
+If the time is preceeded by `+', the alarm will go off in hours and minutes
+from the current time.
+.PP
+If no argument is given,
+.I zleave
+prompts with "When do you
+have to leave?". A reply of newline causes
+.I zleave
+to exit,
+otherwise the reply is assumed to be a time.
+This form is suitable for inclusion in a
+.I .login
+or
+.I .profile.
+.PP
+The
+.I cancel
+option cancels the currently running \fIzleave\fR.  If another
+.I zleave
+is running, it is automatically killed when a new time to leave is
+set.  The process id is stored in the file /tmp/zleave.\fIuid\fR
+.PP
+.I Zleave
+automatically subscribes you to Zephyr class "MESSAGE",
+instance "LEAVE".  Therefore, you do not have to add anything to your
+default subscriptions file (see \fIzctl(1)\fR).
+.PP
+If Zephyr is unavailable, \fIzleave\fR beeps three times per reminder,
+and prints the reminder to the screen.
+.PP
+Zleave ignores interrupts, quits, and terminates.
+To get rid of it you should either log off or use the
+.I cancel
+option.
+.SH FILES
+/tmp/zleave.\fIuid
+.SH SEE ALSO
+calendar(1), zephyr(1)
