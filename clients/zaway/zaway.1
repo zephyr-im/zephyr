@@ -13,7 +13,10 @@ zaway \- tell other people via Zephyr that you aren't around
 .SH SYNOPSIS
 .B zaway
 [
-.I file
+.I OPTIONS
+]
+[
+.I FILE
 ]
 .SH DESCRIPTION
 .I zaway
@@ -31,6 +34,18 @@ usually never exits; when you return to your terminal you should type
 the interrupt character (usually ^C) in order to make
 .I zaway
 exit.
+.SS OPTIONS
+.TP
+.I "\-m STRING"
+Use STRING as the body of the auto-reply message.  Any message file
+(specified on the command line or the default) is ignored.
+.TP
+.I "\-w"
+Watch the invoking user's location status.  If the user is locatable
+anywhere, no auto-replies will be sent.
+.TP
+.I "\-h"
+Displays a short usage message and exits.
 .PP
 .I zaway
 uses a message file (which defaults
