@@ -12,7 +12,7 @@
  */
 
 #include <zephyr/zephyr.h>
-#include "../server/zserver.h"
+#include "../../server/zserver.h"
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netdb.h>
