@@ -67,7 +67,7 @@ Z_Subscriptions(sublist,nitems,port,opcode)
 	for (i=0;i<nitems;i++) {
 		list[i*3] = sublist[i].class;
 		list[i*3+1] = sublist[i].classinst;
-		list[i*3+2] = sublist[i].recipient;
+		list[i*3+2] = "";
 	}
 	
 	retval = ZSendList(&notice,list,nitems*3,ZAUTH);
