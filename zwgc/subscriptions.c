@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_subscriptions_c[] = "$Header$";
+static char rcsid_subscriptions_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -26,6 +26,8 @@ static char rcsid_subscriptions_c[] = "$Header$";
 
 #include <stdio.h>
 #include <zephyr/zephyr.h>
+#include <sys/param.h>
+#include <netdb.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "int_dictionary.h"
@@ -215,11 +217,44 @@ static void unsubscribe(class, instance, recipient)
 /*                                                                          */
 /****************************************************************************/
 
+#define	TOKEN_HOSTNAME	"%host%"
+#define	TOKEN_CANONNAME	"%canon%"
+#define	TOKEN_ME	"%me%"
+#define	TOKEN_WILD	"*"
+
+char ourhost[MAXHOSTNAMELEN],ourhostcanon[MAXHOSTNAMELEN];
+
+static void inithosts()
+{
+    struct hostent *hent;
+    if (gethostname(ourhost,sizeof(ourhost)-1) == -1) {
+	ERROR3("unable to retrieve hostname, %s and %s will be wrong in subscriptions.", TOKEN_HOSTNAME, TOKEN_CANONNAME);
+	return;
+    }
+
+    if (!(hent = gethostbyname(ourhost))) {
+	ERROR2("unable to resolve hostname, %s will be wrong in subscriptions.", TOKEN_CANONNAME);
+	return;
+    }
+    (void) strncpy(ourhostcanon,hent->h_name, sizeof(ourhostcanon)-1);
+    return;
+}
+
 static void macro_sub(str)
      char *str;
 {
-    if (string_Eq(str, "%me%"))
-      strcpy(str, ZGetSender());
+    static int initedhosts = 0;
+
+    if (!initedhosts) {
+	inithosts();
+	initedhosts = 1;
+    }
+    if (string_Eq(str, TOKEN_ME))
+	strcpy(str, ZGetSender());
+    else if (string_Eq(str, TOKEN_HOSTNAME))
+	strcpy(str, ourhost);	
+    else if (string_Eq(str, TOKEN_CANONNAME))
+	strcpy(str, ourhostcanon);
 }
 
 #define  UNSUBSCRIBE_CHARACTER  '!'
