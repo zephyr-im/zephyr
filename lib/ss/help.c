@@ -80,7 +80,6 @@ got_it:
 #else
 	while (wait((union wait *)0) != child) ; /* do nothing if wrong pid */
 #endif
-	};
     }
 }
 
