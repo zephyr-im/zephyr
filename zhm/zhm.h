@@ -81,18 +81,6 @@ extern void init_queue(), retransmit_queue();
 #define ok
 #endif /* SUN4_ARCH */
 
-#ifdef _AIX
-#ifdef i386
-#define	MACHINE	"ps2"
-#define adjust_size(size)	size -= 0x800000
-#endif
-#ifdef _IBMR2
-#define	MACHINE "IBM Risc System/6000"
-#define	adjust_size(size)	size -= 0x20000000
-#endif
-#define	ok
-#endif
-
 #ifndef ok
 #if defined (m68k)
 #define MACHINE "sun (unknown 68k)"
@@ -102,6 +90,18 @@ extern void init_queue(), retransmit_queue();
 #define ok
 #endif /* ! ok */
 #endif /* sun */
+
+#ifdef _AIX
+#ifdef i386
+#define	MACHINE	"ps2"
+#define adjust_size(size)	size -= 0x400000
+#endif
+#ifdef _IBMR2
+#define	MACHINE "IBM Risc System/6000"
+#define	adjust_size(size)	size -= 0x20000000
+#endif
+#define	ok
+#endif
 
 #if defined(ultrix) && defined(mips)
 #define MACHINE "decmips"
