@@ -5,7 +5,7 @@
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Header$
+/**/#	$Id$
 /**/#
 
 SUBDIRS= Memory String Dictionary
@@ -17,20 +17,20 @@ SRCS = parser.y lexer.c node.c exec.c buffer.c main.c zephyr.c X_driver.c\
           mux.c eval.c subscriptions.c notice.c xcut.c regexp.c\
 	  character_class.c text_operations.c file.c error.c variables.c\
 	  formatter.c X_fonts.c X_gram.c tty_filter.c standard_ports.c\
-	  xselect.c xmark.c xrevstack.c
+	  xselect.c xmark.c xrevstack.c xerror.c
 OBJS = parser.o lexer.o node.o exec.o buffer.o main.o zephyr.o X_driver.o\
           substitute.o port_dictionary.o port.o xshow.o pointer_dictionary.o\
           mux.o eval.o subscriptions.o notice.o xcut.o regexp.o\
 	  character_class.o text_operations.o file.o error.o variables.o\
 	  formatter.o X_fonts.o X_gram.o tty_filter.o standard_ports.o\
-	  xselect.o xmark.o xrevstack.o
+	  xselect.o xmark.o xrevstack.o xerror.o ulong_dictionary.o
 HDRS = exec.h node.h zwgc.h parser.h port.h\
 		xshow.h pointer.h substitute.h eval.h zephyr.h lexer.h\
 		subscriptions.h notice.h regexp.h character_class.h\
 		text_operations.h file.h error.h mux.h variables.h\
 		formatter.h main.h\
 		X_driver.h X_fonts.h X_gram.h xselect.h \
-		buffer.h xmark.h
+		buffer.h xmark.h xrevstack.h xerror.h ulong.h
 
 LINCLUDES = -IMemory -IString -IDictionary
 GENERATORS= generate_stack_instance stack.h
@@ -46,6 +46,7 @@ LIBRARIES = $(LIB)/String/new_string.o $(LIB)/Dictionary/string_dictionary.o\
 
 GENERATED= port_dictionary.c port_dictionary.h \
 	pointer_dictionary.c pointer_dictionary.h \
+	ulong_dictionary.c ulong_dictionary.h \
 	char_stack.h \
 	string_stack.h \
 	xmode_stack.h \
@@ -53,13 +54,17 @@ GENERATED= port_dictionary.c port_dictionary.h \
 	
 
 DEPENDSRCS= ${CODE} ${GENERATED}
-#DEFINES=-DREVSTACK
 
-CC = /mit/gnu/vaxbin/gcc
+/*
+ * The pathname for the installed default description file.
+ */
+ZWGCDESC=$(ETCATHDIR)/zwgc.desc
+
+DEFINES=-DREVSTACK -DDEFDESC=\"$(ZWGCDESC)\"
 
 normal_obj_rule()
 
-OUTPUT=testprog
+OUTPUT=zwgc
 
 do_subdirs($(SUBDIRS)) /* gotta do the subdirs first! */
 
@@ -84,6 +89,12 @@ port_dictionary.c port_dictionary.h: Dictionary/dictionary.c Dictionary/dictiona
 #
 pointer_dictionary.c pointer_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
 	Dictionary/generate_dictionary_instance pointer pointer.h
+
+#
+# /* How to generate a ulong dictionary: */
+#
+ulong_dictionary.c ulong_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
+	Dictionary/generate_dictionary_instance ulong ulong.h
 
 #
 # /* How to generate a char stack: */
