@@ -297,7 +297,7 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     sizehints.height = ysize;
     sizehints.flags = USPosition|USSize;
 
-    wmhints.input = True;
+    wmhints.input = False;
     wmhints.initial_state = NormalState;
     if (set_transient) {
        wmhints.window_group = group_leader;
