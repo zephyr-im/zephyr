@@ -57,7 +57,7 @@ Code_t ZInitialize()
     __HM_set = 0;
 
 #ifdef KERBEROS    
-    if ((krbval = get_krbrlm(__Zephyr_realm, 1)) != KSUCCESS)
+    if ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)
 	return (krbval);
 #else
     (void) strcpy(__Zephyr_realm, KRB_REALM);
