@@ -1,0 +1,2153 @@
+diff -c /mit/zephyr/src/server/Imakefile ./Imakefile
+*** /mit/zephyr/src/server/Imakefile	Wed Nov 24 14:39:08 1993
+--- ./Imakefile	Wed Jul  6 17:19:09 1994
+***************
+*** 9,18 ****
+  /**/#
+  
+  #if defined(SYSLOG_COMPAT42)
+! SYSLOG_LIB= ../clients/syslogd/syslog.o
+  SYSLOG_DEF= -I../clients/syslogd
+  #else
+! SYSLOG_LIB=
+  SYSLOG_DEF=
+  #endif
+  
+--- 9,18 ----
+  /**/#
+  
+  #if defined(SYSLOG_COMPAT42)
+! SYSLOG_OBJ= ../clients/syslogd/syslog.o
+  SYSLOG_DEF= -I../clients/syslogd
+  #else
+! SYSLOG_OBJ=
+  SYSLOG_DEF=
+  #endif
+  
+***************
+*** 54,60 ****
+  	zstring.o
+  
+  error_table(zsrv_err)
+! SimpleProgram(zephyrd,$(OBJS) version.o $(ZLIB),$(ZLIBS) $(LIB_HES),$(ATHETCDIR))
+  install_man(zephyrd.8,zephyrd.8)
+  install_file(default.subscriptions,$(ZLIBDIR))
+  
+--- 54,60 ----
+  	zstring.o
+  
+  error_table(zsrv_err)
+! SimpleProgram(zephyrd,$(OBJS) $(SYSLOG_OBJ) version.o $(ZLIB), $(ZLIBS) $(LIB_HES), $(ATHETCDIR))
+  install_man(zephyrd.8,zephyrd.8)
+  install_file(default.subscriptions,$(ZLIBDIR))
+  
+diff -c /mit/zephyr/src/server/class.c ./class.c
+*** /mit/zephyr/src/server/class.c	Mon Aug  1 08:38:18 1994
+--- ./class.c	Wed Jul  6 17:19:14 1994
+***************
+*** 28,44 ****
+   *
+   * External functions are:
+   *
+!  * Code_t class_register(client, subs)
+   *
+!  * Code_t class_deregister(client, subs)
+   *
+!  * ZClientList_t *class_lookup(subs)
+   *	ZClient_t *client;
+   *	ZSubscr_t *subs;
+   *
+-  * void class_free(lyst)
+-  *	ZClientList_t *lyst;
+-  *
+   * ZAcl_t *class_get_acl(ZString class_name)
+   *
+   * Code_t class_restrict(class_name, acl)
+--- 28,41 ----
+   *
+   * External functions are:
+   *
+!  * Code_t triplet_register(client, subs)
+   *
+!  * Code_t triplet_deregister(client, subs)
+   *
+!  * ZClientList_t *triplet_lookup(subs)
+   *	ZClient_t *client;
+   *	ZSubscr_t *subs;
+   *
+   * ZAcl_t *class_get_acl(ZString class_name)
+   *
+   * Code_t class_restrict(class_name, acl)
+***************
+*** 75,83 ****
+  #define	EMPTY_CLASS	2000
+  
+  #define	HASHSIZE	1023
+! #define CLASS_HASHVAL(cl,in) (cl->hash_val ^ in->hash_val) % HASHSIZE
+  
+! static ZClass_t *class_bucket[HASHSIZE]; /* the hash table of pointers */
+  
+  
+  #ifdef __STDC__
+--- 72,82 ----
+  #define	EMPTY_CLASS	2000
+  
+  #define	HASHSIZE	1023
+! #define HASHVAL(c, i, r) (((c)->hash_val ^ (i)->hash_val ^ (r)->hash_val) \
+! 			  % HASHSIZE)
+! #define DEST_HASHVAL(dest) HASHVAL((dest).classname, (dest).inst, (dest).recip)
+  
+! static ZTriplet_t *class_bucket[HASHSIZE]; /* the hash table of pointers */
+  
+  
+  #ifdef __STDC__
+***************
+*** 86,165 ****
+  # define P(s) ()
+  #endif
+  
+! static Code_t remove_client P((ZClass_t *ptr, ZClient_t *client)),
+!     insert_client P((ZClass_t *ptr, ZClient_t *client));
+  static ZClientList_t *client_alloc P((ZClient_t *client));
+! static ZClass_t *class_alloc P((ZSTRING *classname, ZSTRING *inst));
+! static void free_class P((ZClass_t *));
+  
+  /* public routines */
+  
+! void
+! set_ZDestination_hash(zd)
+!      ZDestination *zd;
+! {
+!   zd->hash_value = (zd->classname->hash_val ^ zd->inst->hash_val) % HASHSIZE;
+! }
+  
+- 
+  int ZDest_eq(d1, d2)
+       ZDestination *d1, *d2;
+  {
+!   return((d1->hash_value == d2->hash_value) &&
+! 	 (d1->classname == d2->classname) &&
+! 	 (d1->inst == d2->inst));
+  }
+  
+- int order_dest_strings(d1, d2)
+-      ZDestination *d1, *d2;
+- {
+-   int i;
+  
+!   i = strcmp(d1->classname->string, d2->classname->string);
+!   if (i != 0)
+!     return (i);
+!   i = strcmp(d1->inst->string, d2->inst->string);
+!   if (i != 0)
+!     return(i);
+!   i = strcmp(d1->recip->string, d2->recip->string);
+!   if (i != 0)
+!     return(i);
+!   syslog(LOG_WARNING,"order_dest_strings equal");
+!   return(1); /* be arbitrary */
+! }
+  
+- int ZDest_geq(d1, d2)
+-      ZDestination *d1, *d2;
+- {
+-   return((d1->hash_value != d2->hash_value) ?
+- 	 (d1->hash_value < d2->hash_value) :
+- 	 ((order_dest_strings(d1,d2) < 0)));
+- }
+- 
+- 
+- 
+- /* register the client as interested in class */
+- 
+  Code_t
+! class_register(client, subs)
+       ZClient_t *client;
+!      ZSubscr_t *subs;
+  {
+! 	register ZClass_t *ptr, *ptr2;
+  	unsigned long hashval;
+  
+! 	hashval = CLASS_HASHVAL(subs->zst_dest.classname, subs->zst_dest.inst);
+  
+  	if (!(ptr = class_bucket[hashval])) {
+  		/* not registered */
+  		
+! 		if (!(ptr = class_alloc(subs->zst_dest.classname,
+! 					subs->zst_dest.inst)))
+  			return(ENOMEM);
+  
+  		/* allocate the head of the bucket */
+  
+! 		if (!(ptr2 = (ZClass_t *) xmalloc(sizeof(ZClass_t))))
+  		  return(ENOMEM);
+  
+  		ptr2->zct_clientlist = 0;
+--- 85,143 ----
+  # define P(s) ()
+  #endif
+  
+! static Code_t remove_client P((ZTriplet_t *ptr, ZClient_t *client));
+! static Code_t insert_client P((ZTriplet_t *ptr, ZClient_t *client));
+  static ZClientList_t *client_alloc P((ZClient_t *client));
+! static ZTriplet_t *triplet_alloc P((ZSTRING *classname, ZSTRING *inst,
+! 				ZSTRING *recipient));
+! static void free_class P((ZTriplet_t *));
+  
+  /* public routines */
+  
+! /*
+!  * Determine if two destination triplets are equal.  Note the backup
+!  * case-insensitive recipient check in the third term.  Recipients are
+!  * not downcased at subscription time (in order to preserve case for,
+!  * say, "zctl ret"), but traditional zephyr server behavior has not
+!  * been case-sensitive in the recipient string.  In most cases, a
+!  * failed match will fail on the classname or instance, and a successful
+!  * match will succeed on the (d1->recip == d2->recip) check, so this
+!  * shouldn't affect performance.  Note that this invalidates the overall
+!  * hash value check, which was of dubious value to start with.
+!  */
+  
+  int ZDest_eq(d1, d2)
+       ZDestination *d1, *d2;
+  {
+!   return((d1->classname == d2->classname) &&
+! 	 (d1->inst == d2->inst) &&
+! 	 (d1->recip == d2->recip ||
+! 	  strcasecmp(d1->recip->string, d2->recip->string) == 0));
+  }
+  
+  
+! /* register the client as interested in a triplet */
+  
+  Code_t
+! triplet_register(client, dest)
+       ZClient_t *client;
+!      ZDestination *dest;
+  {
+! 	register ZTriplet_t *ptr, *ptr2;
+  	unsigned long hashval;
+  
+! 	hashval = DEST_HASHVAL(*dest);
+  
+  	if (!(ptr = class_bucket[hashval])) {
+  		/* not registered */
+  		
+! 		ptr = triplet_alloc(dest->classname, dest->inst, dest->recip);
+! 		if (!ptr)
+  			return(ENOMEM);
+  
+  		/* allocate the head of the bucket */
+  
+! 		if (!(ptr2 = (ZTriplet_t *) xmalloc(sizeof(ZTriplet_t))))
+  		  return(ENOMEM);
+  
+  		ptr2->zct_clientlist = 0;
+***************
+*** 173,186 ****
+  		return(insert_client(ptr, client));
+  
+  	} else {
+! 		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
+  		    /* walk down the list, looking for a match */
+! 		    if (ZDest_eq(&ptr2->zct_dest,&subs->zst_dest))
+  		      return(insert_client(ptr2, client));
+  
+  		/* fell off the end, no match */
+! 		if (!(ptr2 = class_alloc(subs->zst_dest.classname,
+! 					 subs->zst_dest.inst)))
+  			return(ENOMEM);
+  
+  		xinsque(ptr2, ptr);	/* insert new class into hash bucket */
+--- 151,165 ----
+  		return(insert_client(ptr, client));
+  
+  	} else {
+! 		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
+  		    /* walk down the list, looking for a match */
+! 		    if (ZDest_eq(&ptr2->zct_dest,dest))
+  		      return(insert_client(ptr2, client));
++ 		}
+  
+  		/* fell off the end, no match */
+! 		ptr2 = triplet_alloc(dest->classname, dest->inst, dest->recip);
+! 		if (!ptr2)
+  			return(ENOMEM);
+  
+  		xinsque(ptr2, ptr);	/* insert new class into hash bucket */
+***************
+*** 191,218 ****
+  /* dissociate client from the class, garbage collecting if appropriate */
+  
+  Code_t
+! class_deregister(client, subs)
+       ZClient_t *client;
+!      ZSubscr_t *subs;
+  {
+! 	register ZClass_t *ptr, *ptr2;
+  	int retval = -1;
+  	unsigned long hashval;
+  
+! 	hashval = CLASS_HASHVAL(subs->zst_dest.classname, subs->zst_dest.inst);
+  #if 0
+! 	zdbug((LOG_DEBUG, "class_dereg: %s %s",
+! 		subs->zst_dest.classname->string,
+! 		subs->zst_dest.inst->string));
+  #endif
+! 	if (!(ptr = class_bucket[hashval]))
+  		/* no such class to deregister */
+  		return(ZSRV_BADASSOC);
+  	
+  	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
+  		/* walk down the list, looking for a match */
+! 		if (ZDest_eq(&ptr2->zct_dest,&subs->zst_dest)) {
+! 			if ((retval = remove_client(ptr2, client)) == EMPTY_CLASS) {
+  #if 0
+  				zdbug((LOG_DEBUG,"empty class"));
+  #endif
+--- 170,198 ----
+  /* dissociate client from the class, garbage collecting if appropriate */
+  
+  Code_t
+! triplet_deregister(client, dest)
+       ZClient_t *client;
+!      ZDestination *dest;
+  {
+! 	register ZTriplet_t *ptr, *ptr2;
+  	int retval = -1;
+  	unsigned long hashval;
+  
+! 	hashval = DEST_HASHVAL(*dest);
+  #if 0
+! 	zdbug((LOG_DEBUG, "class_dereg: %s %s",	dest->classname->string,
+! 	       dest->inst->string));
+  #endif
+! 	ptr = class_bucket[hashval];
+! 	if (!ptr)
+  		/* no such class to deregister */
+  		return(ZSRV_BADASSOC);
+  	
+  	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
+  		/* walk down the list, looking for a match */
+! 		if (ZDest_eq(&ptr2->zct_dest,dest)) {
+! 			retval = remove_client(ptr2, client);
+! 			if (retval == EMPTY_CLASS) {
+  #if 0
+  				zdbug((LOG_DEBUG,"empty class"));
+  #endif
+***************
+*** 237,331 ****
+  	return(retval);
+  }
+  
+! /* return a linked list of what clients are interested in this class */
+  
+  ZClientList_t *
+! class_lookup(subs)
+!      ZSubscr_t *subs;
+  {
+! 	register ZClass_t *ptr, *ptr2;
+! 	register int count = 0, wc_count = 0, idx = 1;
+! 	register ZClientList_t *list_return, *list_copy;
+! 	ZClientList_t *list = NULLZCLT;
+! 	ZClientList_t *wc_list = NULLZCLT;
+! 	ZSubscr_t wc_sub;
+  	unsigned long hashval;
+  
+! 	hashval = CLASS_HASHVAL(subs->zst_dest.classname, subs->zst_dest.inst);
+  
+! 	if ((ptr = class_bucket[hashval]) !=  NULLZCT)
+! 		/* go search the list for the class */
+! 		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
+! 			/* walk down the list, looking for a match */
+! 			if (ZDest_eq(&ptr2->zct_dest,&subs->zst_dest)) {
+! 				list = ptr2->zct_clientlist;
+! 				break;
+! 			}
+! 		}
+! 	/* list is the list of direct matches; now check for wildcards */
+! 	wc_sub = *subs;
+! 	wc_sub.zst_dest.inst = wildcard_instance;
+! 	set_ZDestination_hash(&wc_sub.zst_dest);
+! 
+! 	hashval = CLASS_HASHVAL(wc_sub.zst_dest.classname, wc_sub.zst_dest.inst);
+! 	if ((ptr = class_bucket[hashval]) != NULLZCT)
+! 		/* go search the list for the class */
+! 		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
+! 			/* walk down the list, looking for a match */
+! 			if (ZDest_eq(&ptr2->zct_dest,&wc_sub.zst_dest)) {
+! 				wc_list = ptr2->zct_clientlist;
+! 				break;
+! 			}
+! 		}
+! 	/* merge the lists for returning */
+! 	if (list)
+! 		for (list_return = list->q_forw;
+! 		     list_return != list;
+! 		     list_return = list_return->q_forw)
+! 			count++;
+! 	if (wc_list)
+! 		for (list_return = wc_list->q_forw;
+! 		     list_return != wc_list;
+! 		     list_return = list_return->q_forw)
+! 			wc_count++;
+! 	
+! 	if (!(wc_count + count))
+! 		return(NULLZCLT);
+! 	list_return = (ZClientList_t *) xmalloc((count + wc_count + 1)
+! 						* sizeof(ZClientList_t));
+! 	if (!list_return) {
+! 		syslog(LOG_ERR, "class_lookup no mem");
+! 		return(NULLZCLT);
+  	}
+! 	list_return[0].q_forw = list_return[0].q_back = &list_return[0];
+! 	if (list)
+! 		for (list_copy = list->q_forw;
+! 		     list_copy != list;
+! 		     list_copy = list_copy->q_forw) {
+! 			list_return[idx].zclt_client = list_copy->zclt_client;
+! 			xinsque(&list_return[idx], &list_return[0]);
+! 			idx++;
+! 		}
+! 	if (wc_list)
+! 		for (list_copy = wc_list->q_forw;
+! 		     list_copy != wc_list;
+! 		     list_copy = list_copy->q_forw) {
+! 			list_return[idx].zclt_client = list_copy->zclt_client;
+! 			xinsque(&list_return[idx], &list_return[0]);
+! 			idx++;
+! 		}
+! 	return(list_return);
+  }
+  
+- /* free up the storage used by a returned list */
+- void
+- class_free(lyst)
+-      ZClientList_t *lyst;
+- {
+- 	xfree(lyst);
+- 	return;
+- }
+- 
+  /*
+   * return the acl structure associated with class, or NULLZACLT if there is
+   * no such acl struct
+--- 217,245 ----
+  	return(retval);
+  }
+  
+! /* return a linked list of what clients are interested in this triplet */
+  
+  ZClientList_t *
+! triplet_lookup(dest)
+!      ZDestination *dest;
+  {
+! 	register ZTriplet_t *class, *p;
+  	unsigned long hashval;
+  
+! 	hashval = DEST_HASHVAL(*dest);
+! 	p = class_bucket[hashval];
+! 	if (p == NULLZT)
+! 		return NULLZCLT;
+  
+! 	/* Go search the list for the class */
+! 	for (class = p->q_forw; class != p; class = class->q_forw) {
+! 		/* walk down the list, looking for a match */
+! 		if (ZDest_eq(&class->zct_dest,dest))
+! 			return class->zct_clientlist;
+  	}
+! 	return NULLZCLT;
+  }
+  
+  /*
+   * return the acl structure associated with class, or NULLZACLT if there is
+   * no such acl struct
+***************
+*** 335,344 ****
+  class_get_acl(class_name)
+       ZSTRING *class_name;
+  {
+! 	register ZClass_t *ptr, *ptr2;
+  	unsigned long hashval;
+  
+! 	hashval = CLASS_HASHVAL(class_name, empty);
+  	if (!(ptr = class_bucket[hashval]))
+  		return(NULLZACLT);
+  
+--- 249,258 ----
+  class_get_acl(class_name)
+       ZSTRING *class_name;
+  {
+! 	register ZTriplet_t *ptr, *ptr2;
+  	unsigned long hashval;
+  
+! 	hashval = HASHVAL(class_name, empty, empty);
+  	if (!(ptr = class_bucket[hashval]))
+  		return(NULLZACLT);
+  
+***************
+*** 345,351 ****
+  	/* walk down the list, looking for a match */
+  	for (ptr2 = ptr->q_back; ptr2 != ptr; ptr2 = ptr2->q_back)
+  	    if ((ptr2->zct_dest.classname == class_name) &&
+! 		(ptr2->zct_dest.inst == empty))
+  		return(ptr2->zct_acl);
+  
+  	/* fell off the end, no match ==> not restricted */
+--- 259,266 ----
+  	/* walk down the list, looking for a match */
+  	for (ptr2 = ptr->q_back; ptr2 != ptr; ptr2 = ptr2->q_back)
+  	    if ((ptr2->zct_dest.classname == class_name) &&
+! 		(ptr2->zct_dest.inst == empty) &&
+! 		(ptr2->zct_dest.recip == empty))
+  		return(ptr2->zct_acl);
+  
+  	/* fell off the end, no match ==> not restricted */
+***************
+*** 363,374 ****
+       char *class_name;
+       ZAcl_t *acl;
+  {
+! 	register ZClass_t *ptr, *ptr2;
+  	ZSTRING *d;
+  	unsigned long hashval;
+  
+  	d = make_zstring(class_name,1);
+! 	hashval = CLASS_HASHVAL(d,empty);
+  
+  	if (!(ptr = class_bucket[hashval])) {
+  	  free_zstring(d);
+--- 278,289 ----
+       char *class_name;
+       ZAcl_t *acl;
+  {
+! 	register ZTriplet_t *ptr, *ptr2;
+  	ZSTRING *d;
+  	unsigned long hashval;
+  
+  	d = make_zstring(class_name,1);
+! 	hashval = HASHVAL(d, empty, empty);
+  
+  	if (!(ptr = class_bucket[hashval])) {
+  	  free_zstring(d);
+***************
+*** 377,383 ****
+  	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
+  		/* walk down the list, looking for a match */
+  		if ((ptr2->zct_dest.classname == d) &&
+! 		    (ptr2->zct_dest.inst == empty)){
+  			if (ptr2->zct_acl)
+  				return ZSRV_CLASSRESTRICTED;
+  			ptr2->zct_acl = acl;
+--- 292,299 ----
+  	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
+  		/* walk down the list, looking for a match */
+  		if ((ptr2->zct_dest.classname == d) &&
+! 		    (ptr2->zct_dest.inst == empty) &&
+! 		    (ptr2->zct_dest.recip == empty)) {
+  			if (ptr2->zct_acl)
+  				return ZSRV_CLASSRESTRICTED;
+  			ptr2->zct_acl = acl;
+***************
+*** 401,423 ****
+       char *class_name;
+       ZAcl_t *acl;
+  {
+! 	register ZClass_t *ptr, *ptr2;
+  	ZSTRING *d;
+  	unsigned long hashval;
+  
+  	d = make_zstring(class_name,1);
+! 	hashval = CLASS_HASHVAL(d,empty);
+  
+  	if (!(ptr = class_bucket[hashval])) {
+  		/* not registered */
+  
+! 		if (!(ptr = class_alloc(d,empty)))
+  		  return(ENOMEM);
+  
+  		ptr->zct_acl = acl;
+  
+  		/* allocate the head of the bucket */
+! 		if (!(ptr2 = (ZClass_t *) xmalloc(sizeof(ZClass_t))))
+  		  return(ENOMEM);
+  
+  		ptr2->q_forw = ptr;
+--- 317,341 ----
+       char *class_name;
+       ZAcl_t *acl;
+  {
+! 	register ZTriplet_t *ptr, *ptr2;
+  	ZSTRING *d;
+  	unsigned long hashval;
+  
+  	d = make_zstring(class_name,1);
+! 	hashval = HASHVAL(d, empty, empty);
+  
+  	if (!(ptr = class_bucket[hashval])) {
+  		/* not registered */
+  
+! 		ptr = triplet_alloc(d,empty,empty);
+! 		if (!ptr)
+  		  return(ENOMEM);
+  
+  		ptr->zct_acl = acl;
+  
+  		/* allocate the head of the bucket */
+! 		ptr2 = (ZTriplet_t *) xmalloc(sizeof(ZTriplet_t));
+! 		if (!ptr2)
+  		  return(ENOMEM);
+  
+  		ptr2->q_forw = ptr;
+***************
+*** 432,442 ****
+  	    for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
+  		/* walk down the list, looking for a match */
+  		if ((ptr2->zct_dest.classname == d) &&
+! 		    (ptr2->zct_dest.inst == empty)) {
+  		  free_zstring(d);
+  		  return(ZSRV_CLASSXISTS);
+  		}
+! 	    if (!(ptr2 = class_alloc(d,empty))) {
+  	      free_zstring(d);
+  	      return(ENOMEM);
+  	    }
+--- 350,361 ----
+  	    for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
+  		/* walk down the list, looking for a match */
+  		if ((ptr2->zct_dest.classname == d) &&
+! 		    (ptr2->zct_dest.inst == empty) &&
+! 		    (ptr2->zct_dest.recip == empty)) {
+  		  free_zstring(d);
+  		  return(ZSRV_CLASSXISTS);
+  		}
+! 	    if (!(ptr2 = triplet_alloc(d,empty,empty))) {
+  	      free_zstring(d);
+  	      return(ENOMEM);
+  	    }
+***************
+*** 452,477 ****
+  
+  /* allocate space for a class structure */
+  
+! static ZClass_t *
+! class_alloc(classname,inst)
+       ZSTRING *classname;
+       ZSTRING *inst;
+  {
+! 	register ZClass_t *ptr;
+  	ZClientList_t *clist;
+  
+! 	if (!(ptr = (ZClass_t *) xmalloc(sizeof(ZClass_t))))
+! 	    return(NULLZCT);
+  
+  	ptr->q_forw = ptr->q_back = ptr;
+  	ptr->zct_dest.classname = dup_zstring(classname);
+  	ptr->zct_dest.inst = dup_zstring(inst);
+! 	ptr->zct_dest.recip = dup_zstring(empty);
+! 	set_ZDestination_hash(&ptr->zct_dest);
+  
+  	if (!(clist = (ZClientList_t *) xmalloc (sizeof (ZClientList_t)))) {
+  	    xfree(ptr);
+! 	    return(NULLZCT);
+  	}
+  	clist->q_forw = clist->q_back = clist;
+  	ptr->zct_clientlist = clist;
+--- 371,396 ----
+  
+  /* allocate space for a class structure */
+  
+! static ZTriplet_t *
+! triplet_alloc(classname,inst,recipient)
+       ZSTRING *classname;
+       ZSTRING *inst;
++      ZSTRING *recipient;
+  {
+! 	register ZTriplet_t *ptr;
+  	ZClientList_t *clist;
+  
+! 	if (!(ptr = (ZTriplet_t *) xmalloc(sizeof(ZTriplet_t))))
+! 	    return(NULLZT);
+  
+  	ptr->q_forw = ptr->q_back = ptr;
+  	ptr->zct_dest.classname = dup_zstring(classname);
+  	ptr->zct_dest.inst = dup_zstring(inst);
+! 	ptr->zct_dest.recip = dup_zstring(recipient);
+  
+  	if (!(clist = (ZClientList_t *) xmalloc (sizeof (ZClientList_t)))) {
+  	    xfree(ptr);
+! 	    return(NULLZT);
+  	}
+  	clist->q_forw = clist->q_back = clist;
+  	ptr->zct_clientlist = clist;
+***************
+*** 500,506 ****
+  
+  static Code_t
+  insert_client(ptr, client)
+!      ZClass_t *ptr;
+       ZClient_t *client;
+  {
+  	register ZClientList_t *listp, *clist;
+--- 419,425 ----
+  
+  static Code_t
+  insert_client(ptr, client)
+!      ZTriplet_t *ptr;
+       ZClient_t *client;
+  {
+  	register ZClientList_t *listp, *clist;
+***************
+*** 507,516 ****
+  
+  	for (clist = ptr->zct_clientlist->q_forw;
+  	     clist != ptr->zct_clientlist;
+! 	     clist = clist->q_forw)
+  		/* don't duplicate */
+  		if (clist->zclt_client == client)
+! 			return(ZERR_NONE);
+  
+  	if (!(listp = client_alloc(client)))
+  		return(ENOMEM);
+--- 426,436 ----
+  
+  	for (clist = ptr->zct_clientlist->q_forw;
+  	     clist != ptr->zct_clientlist;
+! 	     clist = clist->q_forw) {
+  		/* don't duplicate */
+  		if (clist->zclt_client == client)
+! 			return(ZSRV_CLASSXISTS);
+! 	}
+  
+  	if (!(listp = client_alloc(client)))
+  		return(ENOMEM);
+***************
+*** 525,531 ****
+   */
+  
+  static Code_t remove_client(ptr, client)
+!      ZClass_t *ptr;
+       ZClient_t *client;
+  {
+  	register ZClientList_t *listp = ptr->zct_clientlist; 
+--- 445,451 ----
+   */
+  
+  static Code_t remove_client(ptr, client)
+!      ZTriplet_t *ptr;
+       ZClient_t *client;
+  {
+  	register ZClientList_t *listp = ptr->zct_clientlist; 
+***************
+*** 549,555 ****
+  }
+  
+  static void free_class(class)
+!      ZClass_t *class;
+  {
+    free_zstring(class->zct_dest.classname);
+    free_zstring(class->zct_dest.inst);
+--- 469,475 ----
+  }
+  
+  static void free_class(class)
+!      ZTriplet_t *class;
+  {
+    free_zstring(class->zct_dest.classname);
+    free_zstring(class->zct_dest.inst);
+diff -c /mit/zephyr/src/server/client.c ./client.c
+*** /mit/zephyr/src/server/client.c	Mon Aug  1 08:43:42 1994
+--- ./client.c	Wed Jul  6 17:19:14 1994
+***************
+*** 100,105 ****
+--- 100,106 ----
+  
+  	(*client)->last_msg = 0;
+  	(*client)->last_check = 0;
++ 	(*client)->last_send = 0;
+  
+  	if (!(clist = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
+  	  xfree(*client);
+diff -c /mit/zephyr/src/server/common.c ./common.c
+*** /mit/zephyr/src/server/common.c	Wed Aug 26 00:36:11 1992
+--- ./common.c	Wed Jul  6 17:19:14 1994
+***************
+*** 49,55 ****
+      return(ret);
+  }
+  
+! /* generic string hash function */
+  
+  unsigned long
+  #ifdef __STDC__
+--- 49,55 ----
+      return(ret);
+  }
+  
+! /* The "& 0x5f" provides case-insensitivity for ASCII. */
+  
+  unsigned long
+  #ifdef __STDC__
+***************
+*** 63,89 ****
+  	register char cp;
+  
+  	while (1) {
+! 	    cp = *string++;
+  	    if (!cp)
+  		break;
+  	    hval += cp;
+  
+! 	    cp = *string++;
+  	    if (!cp)
+  		break;
+  	    hval += cp * (3 + (1 << 16));
+  
+! 	    cp = *string++;
+  	    if (!cp)
+  		break;
+  	    hval += cp * (1 + (1 << 8));
+  
+! 	    cp = *string++;
+  	    if (!cp)
+  		break;
+  	    hval += cp * (1 + (1 << 12));
+  
+! 	    cp = *string++;
+  	    if (!cp)
+  		break;
+  	    hval += cp * (1 + (1 << 4));
+--- 63,89 ----
+  	register char cp;
+  
+  	while (1) {
+! 	    cp = *string++ & 0x5f;
+  	    if (!cp)
+  		break;
+  	    hval += cp;
+  
+! 	    cp = *string++ & 0x5f;
+  	    if (!cp)
+  		break;
+  	    hval += cp * (3 + (1 << 16));
+  
+! 	    cp = *string++ & 0x5f;
+  	    if (!cp)
+  		break;
+  	    hval += cp * (1 + (1 << 8));
+  
+! 	    cp = *string++ & 0x5f;
+  	    if (!cp)
+  		break;
+  	    hval += cp * (1 + (1 << 12));
+  
+! 	    cp = *string++ & 0x5f;
+  	    if (!cp)
+  		break;
+  	    hval += cp * (1 + (1 << 4));
+diff -c /mit/zephyr/src/server/dispatch.c ./dispatch.c
+*** /mit/zephyr/src/server/dispatch.c	Tue Mar 15 12:44:24 1994
+--- ./dispatch.c	Wed Jul  6 17:19:15 1994
+***************
+*** 74,79 ****
+--- 74,80 ----
+  
+  static void nack_cancel P((register ZNotice_t *, struct sockaddr_in *));
+  static void dispatch P((ZNotice_t *, int, struct sockaddr_in *, int));
++ static int send_to_send P((ZNotice_t *, int, ZDestination *dest, int));
+  
+  #undef P
+  
+***************
+*** 346,364 ****
+       int auth;
+       struct sockaddr_in *who;
+  {
+! 	int acked = 0;
+  	ZAcl_t *acl;
+! 	register ZClientList_t *clientlist, *ptr;
+! 	ZSTRING *z;
+  
+! 	z = make_zstring(notice->z_class,1);
+! 	if ((acl = class_get_acl(z)) != NULLZACLT) {
+! 	  free_zstring(z);
+  	    /* if controlled and not auth, fail */
+  	    if (!auth) {
+  		syslog(LOG_WARNING, "sendit unauthentic %s from %s",
+  		       notice->z_class, notice->z_sender);
+  		clt_ack(notice, who, AUTH_FAILED);
+  		return;
+  	    }
+  	    /* if not auth to transmit, fail */
+--- 347,366 ----
+       int auth;
+       struct sockaddr_in *who;
+  {
+! 	static int send_counter = 0;
+! 	int any = 0;
+  	ZAcl_t *acl;
+! 	ZDestination dest;
+! 	ZSTRING *class;
+  
+! 	class = make_zstring(notice->z_class,1);
+! 	if ((acl = class_get_acl(class)) != NULLZACLT) {
+  	    /* if controlled and not auth, fail */
+  	    if (!auth) {
+  		syslog(LOG_WARNING, "sendit unauthentic %s from %s",
+  		       notice->z_class, notice->z_sender);
+  		clt_ack(notice, who, AUTH_FAILED);
++ 		free_zstring(class);
+  		return;
+  	    }
+  	    /* if not auth to transmit, fail */
+***************
+*** 366,371 ****
+--- 368,374 ----
+  		syslog(LOG_WARNING, "sendit unauthorized %s from %s",
+  		       notice->z_class, notice->z_sender);
+  		clt_ack(notice, who, AUTH_FAILED);
++ 		free_zstring(class);
+  		return;
+  	    }
+  	  /* sender != inst and not auth to send to others --> fail */
+***************
+*** 377,382 ****
+--- 380,386 ----
+  		   notice->z_class,
+  		   notice->z_class_inst);
+  	    clt_ack(notice, who, AUTH_FAILED);
++ 	    free_zstring(class);
+  	    return;
+  	  }
+  	}
+***************
+*** 391,396 ****
+--- 395,401 ----
+  		syslog(LOG_WARNING, "sendit unauthentic fake packet: claimed %s, real %s",
+  		       inet_ntoa(notice->z_sender_addr), buffer);
+  		clt_ack(notice, who, AUTH_FAILED);
++ 		free_zstring(class);
+  		return;
+  	    }
+  	    if (ntohl(notice->z_sender_addr.s_addr) != 0) {
+***************
+*** 397,425 ****
+  		syslog(LOG_WARNING, "sendit invalid address: claimed %s, real %s",
+  		       inet_ntoa(notice->z_sender_addr), buffer);
+  		clt_ack(notice, who, AUTH_FAILED);
+  		return;
+  	    }
+  	    syslog(LOG_WARNING, "sendit addr mismatch: claimed %s, real %s",
+  		   inet_ntoa(notice->z_sender_addr), buffer);
+  	}
+- 	if ((clientlist = subscr_match_list(notice)) != NULLZCLT) {
+- 		for (ptr = clientlist->q_forw;
+- 		     ptr != clientlist;
+- 		     ptr = ptr->q_forw) {
+- 			/* for each client who gets this notice,
+- 			   send it along */
+- 			xmit(notice, &(ptr->zclt_client->zct_sin), auth,
+- 			     ptr->zclt_client);
+- 			if (!acked) {
+- 				acked = 1;
+- 				ack(notice, who);
+- 			}
+- 		}
+- 		subscr_free_list(clientlist);
+- 	}
+  
+! 	if (!acked)
+  		nack(notice, who);
+  }
+  
+  /*
+--- 402,473 ----
+  		syslog(LOG_WARNING, "sendit invalid address: claimed %s, real %s",
+  		       inet_ntoa(notice->z_sender_addr), buffer);
+  		clt_ack(notice, who, AUTH_FAILED);
++ 		free_zstring(class);
+  		return;
+  	    }
+  	    syslog(LOG_WARNING, "sendit addr mismatch: claimed %s, real %s",
+  		   inet_ntoa(notice->z_sender_addr), buffer);
+  	}
+  
+! 	/* Increment the send counter, used to prevent duplicate sends to
+! 	 * clients.  On the off-chance that we wrap around to 0, skip over
+! 	 * it to prevent missing clients which have never had a packet
+! 	 * sent to them. */
+! 	send_counter++;
+! 	if (send_counter == 0)
+! 		send_counter = 1;
+! 
+! 	/* Send to clients subscribed to the triplet itself. */
+! 	dest.classname = class;
+! 	dest.inst = make_zstring(notice->z_class_inst, 1);
+! 	dest.recip = make_zstring(notice->z_recipient, 0);
+! 	if (send_to_dest(notice, auth, &dest, send_counter))
+! 		any = 1;
+! 
+! 	/* Send to clients subscribed to the triplet with the instance
+! 	 * substituted with the wildcard instance. */
+! 	free_zstring(dest.inst);
+! 	dest.inst = wildcard_instance;
+! 	if (send_to_dest(notice, auth, &dest, send_counter))
+! 		any = 1;
+! 
+! 	free_zstring(class);
+! 	free_zstring(dest.recip);
+! 	if (any)
+! 		ack(notice, who);
+! 	else
+  		nack(notice, who);
++ }
++ 
++ /*
++  * Send to each client in the list.  Avoid duplicates by setting
++  * last_send on each client to send_counter, a nonce which is updated
++  * by sendit() above.
++  */
++ 
++ static int
++ send_to_dest(notice, auth, dest, send_counter)
++      ZNotice_t *notice;
++      int auth;
++      ZDestination *dest;
++      int send_counter;
++ {
++ 	register ZClientList_t *list, *p;
++ 	register ZClient_t *client;
++ 	register int any = 0;
++ 
++ 	list = triplet_lookup(dest);
++ 	if (list != NULLZCLT) {
++ 		for (p = list->q_forw; p != list; p = p->q_forw) {
++ 			client = p->zclt_client;
++ 			if (client->last_send == send_counter)
++ 				continue;
++ 			client->last_send = send_counter;
++ 			xmit(notice, &(client->zct_sin), auth, client);
++ 			any = 1;
++ 		}
++ 	}
++ 	return any;
+  }
+  
+  /*
+diff -c /mit/zephyr/src/server/main.c ./main.c
+*** /mit/zephyr/src/server/main.c	Mon Aug  1 08:43:47 1994
+--- ./main.c	Wed Jul  6 17:19:15 1994
+***************
+*** 442,458 ****
+  	class_hm = make_zstring(HM_CTL_CLASS, 1);
+  	class_ulogin = make_zstring(LOGIN_CLASS, 1);
+  	class_ulocate = make_zstring(LOCATE_CLASS, 1);
+- 	wildcard_class = make_zstring(MATCHALL_CLASS, 1);
+  	wildcard_instance = make_zstring(WILDCARD_INSTANCE, 1);
+  	empty = make_zstring("", 0);
+  
+- 	matchall_sub.q_forw = &matchall_sub;
+- 	matchall_sub.q_back = &matchall_sub;
+- 	matchall_sub.zst_dest.classname = wildcard_class;
+- 	matchall_sub.zst_dest.inst = dup_zstring(empty);
+- 	matchall_sub.zst_dest.recip = dup_zstring(empty);
+- 
+- 	set_ZDestination_hash(&matchall_sub.zst_dest);
+  	/* restrict certain classes */
+  	access_init();
+  	return(0);
+--- 442,450 ----
+diff -c /mit/zephyr/src/server/server.c ./server.c
+*** /mit/zephyr/src/server/server.c	Mon Aug  1 08:43:51 1994
+--- ./server.c	Wed Jul  6 17:19:16 1994
+***************
+*** 1770,1777 ****
+  
+  	/* search the not-yet-acked list for anything destined to him, and
+  	   flush it. */
+! 	for (nacked = nacklist->q_forw;
+! 	     nacked != nacklist;)
+  		if (&otherservers[nacked->na_srv_idx] == server) {
+  			/* go back, since remque will change things */
+  			nack2 = nacked->q_back;
+--- 1770,1777 ----
+  
+  	/* search the not-yet-acked list for anything destined to him, and
+  	   flush it. */
+! 	for (nacked = srv_nacklist->q_forw;
+! 	     nacked != srv_nacklist;)
+  		if (&otherservers[nacked->na_srv_idx] == server) {
+  			/* go back, since remque will change things */
+  			nack2 = nacked->q_back;
+diff -c /mit/zephyr/src/server/subscr.c ./subscr.c
+*** /mit/zephyr/src/server/subscr.c	Mon Aug  1 08:43:37 1994
+--- ./subscr.c	Wed Jul  6 17:19:16 1994
+***************
+*** 80,86 ****
+  
+  /* for compatibility when sending subscription information to old clients */
+  
+- static void check_sub_order P((ZSubscr_t *subs, int wc));
+  #ifdef OLD_COMPAT
+  #define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
+  #define	OLD_CLIENT_INCOMPSUBS	"INCOMP"
+--- 80,85 ----
+***************
+*** 96,110 ****
+  #endif /* NEW_COMPAT */
+  
+  extern char *re_comp(), *re_conv();
+  static ZSubscr_t *extract_subscriptions P((register ZNotice_t *notice));
+- static int clt_unique P((ZClient_t *clt, ZClientList_t *clist));
+  static void free_subscriptions P((register ZSubscr_t *subs));
+  static char **subscr_marshal_subs P((ZNotice_t *notice, int auth,
+! 					struct sockaddr_in *who,
+! 					register int *found));
+! static Code_t subscr_subscribe_real P((ZClient_t *who, ZSubscr_t *newsubs,
+! 				    ZNotice_t *notice));
+! static ZSubscr_t *subscr_copy_def_subs P((char *));
+  static int cl_match  P((ZSubscr_t*, ZClient_t *));
+  
+  static int defaults_read = 0;		/* set to 1 if the default subs
+--- 95,108 ----
+  #endif /* NEW_COMPAT */
+  
+  extern char *re_comp(), *re_conv();
++ static Code_t add_subscriptions P((ZClient_t *who, ZSubscr_t *subs_queue,
++ 				   ZNotice_t *notice));
+  static ZSubscr_t *extract_subscriptions P((register ZNotice_t *notice));
+  static void free_subscriptions P((register ZSubscr_t *subs));
+  static char **subscr_marshal_subs P((ZNotice_t *notice, int auth,
+! 				     struct sockaddr_in *who,
+! 				     register int *found));
+! static ZSubscr_t *subscr_copy_def_subs P((char *person));
+  static int cl_match  P((ZSubscr_t*, ZClient_t *));
+  
+  static int defaults_read = 0;		/* set to 1 if the default subs
+***************
+*** 113,122 ****
+  
+  #undef P
+  
+- ZSTRING *wildcard_class;
+  ZSTRING *wildcard_instance;
+  ZSTRING *empty;
+- ZSubscr_t matchall_sub;
+  
+  /* WARNING: make sure this is the same as the number of strings you */
+  /* plan to hand back to the user in response to a subscription check, */
+--- 111,118 ----
+***************
+*** 132,268 ****
+       ZClient_t *who;
+       ZNotice_t *notice;
+  {
+! 	ZSubscr_t *subs;
+  	
+  	if (!who->zct_subs) {
+  		/* allocate a subscription head */
+! 		if (!(subs = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t))))
+  			return(ENOMEM);
+! 		subs->q_forw = subs->q_back = subs;
+! 		subs->zst_dest.classname = subs->zst_dest.inst =
+! 		  subs->zst_dest.recip = NULL;
+! 		subs->zst_dest.hash_value = 0;
+! 		who->zct_subs = subs;
+  	}
+  
+! 	if (!(subs = extract_subscriptions(notice)))
+! 		return(ZERR_NONE);	/* no subscr -> no error */
+! 
+! 	return(subscr_subscribe_real(who, subs, notice));
+  }
+  
+  static Code_t
+! subscr_subscribe_real(who, newsubs, notice)
+       ZClient_t *who;
+!      register ZSubscr_t *newsubs;
+       ZNotice_t *notice;
+  {
+  	Code_t retval;
+  	ZAcl_t *acl;
+  	ZSTRING *sender;
+- 	ZSubscr_t *subs2, *subs3, *subs;
+- 	int relation;
+  
+  	sender = make_zstring(notice->z_sender,0);
+  
+  	START_CRITICAL_CODE;
+  
+! 	for (subs = newsubs->q_forw;
+! 	     subs != newsubs;
+! 	     subs = subs->q_forw) {
+! 		/* for each new subscription */
+  
+  #if 0
+  		zdbug ((LOG_DEBUG, "subscr: %s/%s/%s",
+! 			subs->zst_dest.classname->string,
+! 			subs->zst_dest.inst->string,
+! 			subs->zst_dest.recip->string));
+  #endif
+  
+- 		if (!bdumping
+- 		    && (subs->zst_dest.recip != empty)
+- 		    && (subs->zst_dest.recip != sender)) {
+- 		    syslog(LOG_WARNING, "subscr unauth %s recipient %s",
+- 			   sender->string,
+- 			   subs->zst_dest.recip->string);
+- 		    continue;
+- 		}
+  		if (!bdumping) {
+! 		    acl = class_get_acl(subs->zst_dest.classname);
+  		    if (acl) {
+  			if (!(access_check(sender->string, acl, SUBSCRIBE))) {
+  				syslog(LOG_WARNING,
+  				       "subscr unauth %s class %s",
+  				       sender->string,
+! 				       subs->zst_dest.classname->string);
+  				continue; /* the for loop */
+  			}
+! 			if (wildcard_instance == subs->zst_dest.inst) {
+  			    if (!access_check(sender->string, acl, INSTWILD)) {
+  				syslog(LOG_WARNING,
+  				       "subscr unauth %s class %s wild inst",
+  				       notice->z_sender,
+! 				       subs->zst_dest.classname->string);
+  				continue;
+  			    }
+  			}
+  		    }
+  		}
+! 		/* subscriptions are stored in ascending order by */
+! 		/* subscription hash value */
+! 		/* Scan through list to check for duplicates, and to find */
+! 		/* where to insert these subs */
+! 
+! 		for (subs2 = who->zct_subs->q_forw;
+! 		     subs2 != who->zct_subs;
+! 		     subs2 = subs2->q_forw) {
+! 			/* for each existing subscription */
+! 		  relation = compare_subs(subs2,subs,0);
+! 		  if (relation == 0)
+! 		    goto duplicate;
+! 		  if (relation > 0) /* we have passed last possible one */
+! 		    break;
+! 		  if (relation < 0) /* nope... */
+! 		    continue;
+  		}
+! 
+! 		/* subs2 now points to the first class which is greater
+! 		   than the new class. We need to back up so that the
+! 		   insertion below goes BEFORE this one (i.e. after the
+! 		   previous one) */
+! 		subs2 = subs2->q_back;
+! 
+! 		/* ok, we are a new subscription. register and chain on. */
+! 
+! 		if (!(subs3 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
+! 			free_subscriptions(newsubs);
+! 			END_CRITICAL_CODE;
+! 			return(ENOMEM);
+! 		}
+! 
+! 		subs3->q_forw = subs3->q_back = subs3;
+! 		subs3->zst_dest.classname =
+! 		  dup_zstring(subs->zst_dest.classname);
+! 		subs3->zst_dest.inst = dup_zstring(subs->zst_dest.inst);
+! 		subs3->zst_dest.recip = dup_zstring(subs->zst_dest.recip);
+! 		set_ZDestination_hash(&subs3->zst_dest);
+! 
+! 		if ((retval = class_register(who, subs)) != ZERR_NONE) {
+! 		    xfree(subs3);
+! 		    free_subscriptions(newsubs);
+! 		    END_CRITICAL_CODE;
+! 		    return(retval);
+! 		}
+! 
+! 		/* subs2 was adjusted above */
+! 		xinsque(subs3, subs2);
+!  duplicate:
+! 		;
+  	}
+  
+  	END_CRITICAL_CODE;
+  
+! 	free_subscriptions(newsubs);
+  	return(ZERR_NONE);
+  }
+  
+--- 128,228 ----
+       ZClient_t *who;
+       ZNotice_t *notice;
+  {
+! 	ZSubscr_t *subs_queue, *sub;
+! 	Code_t retval;
+  	
+  	if (!who->zct_subs) {
+  		/* allocate a subscription head */
+! 		sub = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t));
+! 		if (!sub)
+  			return(ENOMEM);
+! 		sub->q_forw = sub->q_back = sub;
+! 		sub->zst_dest.classname = sub->zst_dest.inst =
+! 		  sub->zst_dest.recip = NULL;
+! 		who->zct_subs = sub;
+  	}
+  
+! 	subs_queue = extract_subscriptions(notice);
+! 	return(add_subscriptions(who, subs_queue, notice));
+  }
+  
+  static Code_t
+! add_subscriptions(who, subs_queue, notice)
+       ZClient_t *who;
+!      ZSubscr_t *subs_queue;
+       ZNotice_t *notice;
+  {
++ 	ZSubscr_t *sub, *next;
+  	Code_t retval;
+  	ZAcl_t *acl;
+  	ZSTRING *sender;
+  
++ 	if (!subs_queue)
++ 		return(ZERR_NONE);	/* no subscr -> no error */
++ 
+  	sender = make_zstring(notice->z_sender,0);
+  
+  	START_CRITICAL_CODE;
+  
+! 	/* Loop over the new subscriptions. */
+! 	next = subs_queue->q_forw;
+! 	while (next != subs_queue) {
+! 		sub = next;
+! 		next = sub->q_forw;
+  
+  #if 0
+  		zdbug ((LOG_DEBUG, "subscr: %s/%s/%s",
+! 			sub->zst_dest.classname->string,
+! 			sub->zst_dest.inst->string,
+! 			sub->zst_dest.recip->string));
+  #endif
+  
+  		if (!bdumping) {
+! 		    if ((sub->zst_dest.recip != empty)
+! 			&& (sub->zst_dest.recip != sender)) {
+! 			syslog(LOG_WARNING, "subscr unauth %s recipient %s",
+! 			       sender->string,
+! 			       sub->zst_dest.recip->string);
+! 			continue;
+! 		    }
+! 		    acl = class_get_acl(sub->zst_dest.classname);
+  		    if (acl) {
+  			if (!(access_check(sender->string, acl, SUBSCRIBE))) {
+  				syslog(LOG_WARNING,
+  				       "subscr unauth %s class %s",
+  				       sender->string,
+! 				       sub->zst_dest.classname->string);
+  				continue; /* the for loop */
+  			}
+! 			if (wildcard_instance == sub->zst_dest.inst) {
+  			    if (!access_check(sender->string, acl, INSTWILD)) {
+  				syslog(LOG_WARNING,
+  				       "subscr unauth %s class %s wild inst",
+  				       notice->z_sender,
+! 				       sub->zst_dest.classname->string);
+  				continue;
+  			    }
+  			}
+  		    }
+  		}
+! 		xremque(sub);
+! 		retval = triplet_register(who, &sub->zst_dest);
+! 		if (retval != ZERR_NONE) {
+! 			xfree(sub);
+! 			if (retval == ZSRV_CLASSXISTS) {
+! 				continue;
+! 			} else {
+! 				free_subscriptions(subs_queue);
+! 				END_CRITICAL_CODE;
+! 				return(retval);
+! 			}
+  		}
+! 		xinsque(sub, who->zct_subs);
+  	}
+  
+  	END_CRITICAL_CODE;
+  
+! 	free_subscriptions(subs_queue);
+  	return(ZERR_NONE);
+  }
+  
+***************
+*** 285,296 ****
+  		subs->q_forw = subs->q_back = subs;
+  		subs->zst_dest.classname = subs->zst_dest.inst =
+  		  subs->zst_dest.recip = (ZSTRING *) NULL;
+- 		subs->zst_dest.hash_value = 0;
+  		who->zct_subs = subs;
+  	}
+  
+  	subs = subscr_copy_def_subs(who->zct_principal->string);
+! 	return(subscr_subscribe_real(who, subs, &default_notice));
+  }
+  
+  void
+--- 245,255 ----
+  		subs->q_forw = subs->q_back = subs;
+  		subs->zst_dest.classname = subs->zst_dest.inst =
+  		  subs->zst_dest.recip = (ZSTRING *) NULL;
+  		who->zct_subs = subs;
+  	}
+  
+  	subs = subscr_copy_def_subs(who->zct_principal->string);
+! 	return(add_subscriptions(who, subs, &default_notice));
+  }
+  
+  void
+***************
+*** 391,403 ****
+  		  free_zstring(subs2->zst_dest.recip);
+  		  subs2->zst_dest.recip = dup_zstring(empty);
+  		}
+- 		set_ZDestination_hash(&(subs2->zst_dest));
+  	}
+  	return(subs);
+  }
+  
+  /*
+!  * Cancel one subscription.
+   */
+  
+  Code_t
+--- 350,361 ----
+  		  free_zstring(subs2->zst_dest.recip);
+  		  subs2->zst_dest.recip = dup_zstring(empty);
+  		}
+  	}
+  	return(subs);
+  }
+  
+  /*
+!  * Cancel a specific set of subscriptions.
+   */
+  
+  Code_t
+***************
+*** 406,412 ****
+       ZNotice_t *notice;
+  {
+  	ZClient_t *who;
+! 	register ZSubscr_t *subs, *subs2, *subs3, *subs4;
+  	Code_t retval;
+  	int found = 0;
+  	int relation;
+--- 364,370 ----
+       ZNotice_t *notice;
+  {
+  	ZClient_t *who;
+! 	register ZSubscr_t *cancel_queue, *cancel, *sub;
+  	Code_t retval;
+  	int found = 0;
+  	int relation;
+***************
+*** 414,475 ****
+  #if 0
+  	zdbug((LOG_DEBUG,"subscr_cancel"));
+  #endif
+! 	if (!(who = client_which_client(sin, notice)))
+  		return(ZSRV_NOCLT);
+  
+  	if (!who->zct_subs)
+  		return(ZSRV_NOSUB);
+  
+! 	if (!(subs = extract_subscriptions(notice)))
+  		return(ZERR_NONE);	/* no subscr -> no error */
+  
+  	START_CRITICAL_CODE;
+  
+! 	for (subs4 = subs->q_forw; subs4 != subs; subs4 = subs4->q_forw) {
+! 	    for (subs2 = who->zct_subs->q_forw;
+! 		 subs2 != who->zct_subs;) {
+! 		/* for each existing subscription */
+! 		/* is this what we are canceling? */
+! 	      relation = compare_subs(subs2, subs4,0);
+! 	      if (relation < 0) {
+! 		subs2 = subs2->q_forw;
+! 		continue;
+! 	      }
+! 	      if (relation > 0)
+! 		/* We have passed last possible one */
+! 		break;
+! 
+! 	      /* go back, since remque will change things */
+! 	      subs3 = subs2->q_back;
+! 	      xremque(subs2);
+! 	      (void) class_deregister(who, subs2);
+! 	      free_zstring(subs2->zst_dest.classname);
+! 	      free_zstring(subs2->zst_dest.inst);
+! 	      free_zstring(subs2->zst_dest.recip);
+! 	      xfree(subs2);
+! 	      found = 1;
+! 	      /* now that the remque adjusted the linked
+! 		 list, we go forward again */
+! 	      subs2 = subs3->q_forw;
+! 	      break;
+  	    }
+- 	  }
+- 
+- 	/* make sure we are still registered for all the classes */
+- 	if (found) {
+- 	  for (subs2 = who->zct_subs->q_forw;
+- 	       subs2 != who->zct_subs;
+- 	       subs2 = subs2->q_forw)
+- 	    if ((retval = class_register(who, subs2)) != ZERR_NONE) {
+- 	      free_subscriptions(subs);
+- 	      END_CRITICAL_CODE;
+- 	      return(retval);
+- 	    }
+  	}
+  
+  	END_CRITICAL_CODE;
+  
+! 	free_subscriptions(subs);
+  	if (found) {
+  #if 0
+  	  zdbug((LOG_DEBUG, "found & removed"));
+--- 372,410 ----
+  #if 0
+  	zdbug((LOG_DEBUG,"subscr_cancel"));
+  #endif
+! 	who = client_which_client(sin, notice);
+! 	if (!who)
+  		return(ZSRV_NOCLT);
+  
+  	if (!who->zct_subs)
+  		return(ZSRV_NOSUB);
+  
+! 	cancel_queue = extract_subscriptions(notice);
+! 	if (!cancel_queue)
+  		return(ZERR_NONE);	/* no subscr -> no error */
+  
+  	START_CRITICAL_CODE;
+  
+! 	for (cancel = cancel_queue->q_forw; cancel != cancel_queue;
+! 	     cancel = cancel->q_forw) {
+! 	    for (sub = who->zct_subs->q_forw; sub != who->zct_subs;
+! 		 sub = sub->q_forw) {
+! 		if (ZDest_eq(&cancel->zst_dest, &sub->zst_dest)) {
+! 		    xremque(sub);
+! 		    triplet_deregister(who, &sub->zst_dest);
+! 		    free_zstring(sub->zst_dest.classname);
+! 		    free_zstring(sub->zst_dest.inst);
+! 		    free_zstring(sub->zst_dest.recip);
+! 		    xfree(sub);
+! 		    found = 1;
+! 		    break;
+! 		}
+  	    }
+  	}
+  
+  	END_CRITICAL_CODE;
+  
+! 	free_subscriptions(cancel_queue);
+  	if (found) {
+  #if 0
+  	  zdbug((LOG_DEBUG, "found & removed"));
+***************
+*** 509,515 ****
+  		zdbug((LOG_DEBUG,"sub_can %s",
+  		       subs->zst_dest.classname->string));
+  #endif
+! 		if (class_deregister(client, subs) != ZERR_NONE) {
+  #if 0
+  			zdbug((LOG_DEBUG,"sub_can_clt: not registered!"));
+  #endif
+--- 444,450 ----
+  		zdbug((LOG_DEBUG,"sub_can %s",
+  		       subs->zst_dest.classname->string));
+  #endif
+! 		if (triplet_deregister(client, &subs->zst_dest) != ZERR_NONE) {
+  #if 0
+  			zdbug((LOG_DEBUG,"sub_can_clt: not registered!"));
+  #endif
+***************
+*** 565,670 ****
+  #endif
+  
+  /*
+-  * Here is the bulk of the work in the subscription manager.
+-  * We grovel over the list of clients possibly interested in this
+-  * notice, and copy into a list on a match.  Make sure we only add any given
+-  * client once.
+-  */
+- 
+- ZClientList_t *
+- subscr_match_list(notice)
+-      ZNotice_t *notice;
+- {
+- 	register ZClientList_t *hits, *clients, *majik, *clients2, *hit2;
+- 	char *saveclass, *saveclinst;
+- 	ZSTRING *newclass;
+- 	ZSTRING *newclinst;
+- 	ZSubscr_t check_sub;
+- 
+- 	if (!(hits = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))))
+- 		return(NULLZCLT);
+- 	hits->q_forw = hits->q_back = hits;
+- 
+- 	saveclass = notice->z_class;
+- 	newclass = make_zstring(notice->z_class, 1);
+- 
+- 	saveclinst = notice->z_class_inst;
+- 	newclinst = make_zstring(notice->z_class_inst, 1);
+- 
+- 	check_sub.zst_dest.classname = newclass;
+- 	check_sub.zst_dest.inst = newclinst;
+- 	check_sub.zst_dest.recip = make_zstring(notice->z_recipient, 0);
+- 	set_ZDestination_hash(&check_sub.zst_dest);
+- 	check_sub.q_forw = check_sub.q_back = &check_sub;
+- 
+- 	clients = class_lookup (&check_sub);
+- 	majik = class_lookup (&matchall_sub);
+- 	if (!clients && !majik)
+- 	    return NULLZCLT;
+- 
+- 	notice->z_class = (char *) newclass->string;
+- 	notice->z_class_inst = (char *) newclinst->string;
+- 	if (clients) {
+- 		for (clients2 = clients->q_forw;
+- 		     clients2 != clients;
+- 		     clients2 = clients2->q_forw)
+- 		  if (cl_match(&check_sub, clients2->zclt_client)) {
+- 				if (!clt_unique(clients2->zclt_client, hits))
+- 					continue;
+- 				/* we hit */
+- 				if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
+- 					syslog(LOG_WARNING,
+- 					       "subscr_match: punting/no mem");
+- 					notice->z_class = saveclass;
+- 					notice->z_class_inst = saveclinst;
+- 					free_zstring(newclass);
+- 					free_zstring(newclinst);
+- 					free_zstring(check_sub.zst_dest.recip);
+- 					return(hits);
+- 				}
+- 				hit2->zclt_client = clients2->zclt_client;
+- 				hit2->q_forw = hit2->q_back = hit2;
+- 				xinsque(hit2, hits);
+- 			}
+- 		class_free(clients);
+- 	}
+- 	if (majik) {
+- 		for (clients2 = majik->q_forw;
+- 		     clients2 != majik;
+- 		     clients2 = clients2->q_forw) {
+- 			if (!clt_unique(clients2->zclt_client, hits))
+- 				continue;
+- 			/* we hit */
+- 			if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
+- 				syslog(LOG_WARNING,
+- 				       "subscr_match(majik): punting/no mem");
+- 				notice->z_class = saveclass;
+- 				notice->z_class_inst = saveclinst;
+- 				free_zstring(newclass);
+- 				free_zstring(newclinst);
+- 				free_zstring(check_sub.zst_dest.recip);
+- 				return(hits);
+- 			}
+- 			hit2->zclt_client = clients2->zclt_client;
+- 			hit2->q_forw = hit2->q_back = hit2;
+- 
+- 			xinsque(hit2, hits);
+- 		}
+- 		class_free(majik);
+- 	}
+- 	notice->z_class = saveclass;
+- 	notice->z_class_inst = saveclinst;
+- 	free_zstring(newclass);
+- 	free_zstring(newclinst);
+- 	free_zstring(check_sub.zst_dest.recip);
+- 	if (hits->q_forw == hits) {
+- 		xfree(hits);
+- 		return(NULLZCLT);
+- 	}
+- 	return(hits);
+- }
+- 
+- /*
+   * Free memory used by a list we allocated.
+   */
+  
+--- 500,505 ----
+***************
+*** 1149,1206 ****
+  }
+  
+  /*
+-  * is this client unique to this list?  0 = no, 1 = yes
+-  */
+- 
+- static int
+- clt_unique(clt, clist)
+-      ZClient_t *clt;
+-      ZClientList_t *clist;
+- {
+- 	register ZClientList_t *client;
+- 
+- 	for (client = clist->q_forw;
+- 	     client != clist;
+- 	     client = client->q_forw)
+- 		if (client->zclt_client == clt)
+- 			return(0);
+- 	return(1);
+- }
+- 
+- /*
+-  * is this client listening to this notice? 1=yes, 0=no
+-  */
+- 
+- static int
+- cl_match(notice_subs, client)
+-      register ZSubscr_t *notice_subs;
+-      register ZClient_t *client;
+- {
+- 	register ZSubscr_t *subs;
+- 	int relation;
+- 
+- 	if (client->zct_subs == NULLZST) {
+- 		syslog(LOG_WARNING, "cl_match w/ no subs");
+- 		return(0);
+- 	}
+- 		
+- 	for (subs = client->zct_subs->q_forw;
+- 	     subs != client->zct_subs;
+- 	     subs = subs->q_forw) {
+- 	  relation = compare_subs(notice_subs, subs, 1);
+- 
+- /*
+- 	  if (relation < 0)
+- 	    return(0);
+- */
+- 	  if (relation == 0)
+- 	    return(1);
+- 	}
+- 	/* fall through */
+- 	return(0);
+- }	
+- 
+- /*
+   * free the memory allocated for the list of subscriptions.
+   */
+  
+--- 984,989 ----
+***************
+*** 1272,1278 ****
+  			subs->q_forw = subs->q_back = subs;
+  			subs->zst_dest.classname = subs->zst_dest.inst =
+  			  subs->zst_dest.recip = NULL;
+- 			subs->zst_dest.hash_value = 0;
+  		}
+  		if (!(subs2 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
+  			syslog(LOG_WARNING, "ex_subs: no mem 2");
+--- 1055,1060 ----
+***************
+*** 1282,1288 ****
+  		subs2->zst_dest.classname = make_zstring(class_name,1);
+  		subs2->zst_dest.inst = make_zstring(classinst,1);
+  		subs2->zst_dest.recip = make_zstring(recip,0);
+- 		set_ZDestination_hash(&subs2->zst_dest);
+  		
+  		xinsque(subs2, subs);
+  	}
+--- 1064,1069 ----
+***************
+*** 1317,1384 ****
+  	return;
+  }
+  
+- int
+- compare_subs(s1,s2,do_wildcard)
+-      ZSubscr_t *s1, *s2;
+-      int do_wildcard;
+- {
+- 
+- #if 0
+-   zdbug((LOG_DEBUG,"compare_subs: %s/%s/%s to %s/%s/%s",
+- 	 s1->zst_dest.classname->string, s1->zst_dest.inst->string, s1->zst_dest.recip->string,
+- 	 s2->zst_dest.classname->string, s2->zst_dest.inst->string, s2->zst_dest.recip->string));
+- #endif
+-   /* wildcard must be in s2 in order for it to match */
+- 
+-   if (do_wildcard && (s1->zst_dest.classname == s2->zst_dest.classname) &&
+-       (s2->zst_dest.inst == wildcard_instance) &&
+-       (s1->zst_dest.recip == s2->zst_dest.recip))
+-     return(0);
+- 
+-   if (s1->zst_dest.hash_value > s2->zst_dest.hash_value)
+-     return 1;
+-   if (s1->zst_dest.hash_value < s2->zst_dest.hash_value)
+-     return -1;
+- 
+-   if (s1->zst_dest.classname != s2->zst_dest.classname)
+-     return(strcasecmp(s1->zst_dest.classname->string,
+- 		      s2->zst_dest.classname->string));
+- 
+-   if (s1->zst_dest.inst != s2->zst_dest.inst)
+-     return(strcasecmp(s1->zst_dest.inst->string,
+- 		      s2->zst_dest.inst->string));
+- 
+-   if (s1->zst_dest.recip != s2->zst_dest.recip)
+-     return(strcasecmp(s1->zst_dest.recip->string,
+- 		      s2->zst_dest.recip->string));
+- 
+-   return(0);
+- }
+- 
+- static void
+- check_sub_order(subs,wc)
+-      ZSubscr_t *subs;
+-      int wc;
+- {
+-   ZSubscr_t *subs2;
+-   int relation;
+- 
+-   for (subs2 = subs->q_forw;
+-        subs2->q_forw != subs;
+-        subs2 = subs2->q_forw) {
+- 
+-     /* for each existing subscription */
+-     relation = compare_subs(subs2,subs2->q_forw,wc);
+-     if (relation > 0) {
+-       syslog(LOG_DEBUG, "s_check failed: %s/%s/%s <=> %s/%s/%s = %d",
+- 	     subs2->zst_dest.classname->string,
+- 	     subs2->zst_dest.inst->string,
+- 	     subs2->zst_dest.recip->string,
+- 	     subs2->q_forw->zst_dest.classname->string,
+- 	     subs2->q_forw->zst_dest.inst->string,
+- 	     subs2->q_forw->zst_dest.recip->string,
+- 	     relation);
+-     }
+-     
+-   }
+- }
+--- 1098,1100 ----
+diff -c /mit/zephyr/src/server/uloc.c ./uloc.c
+*** /mit/zephyr/src/server/uloc.c	Mon Aug  1 09:39:54 1994
+--- ./uloc.c	Wed Jul  6 17:19:16 1994
+***************
+*** 108,115 ****
+  static exposure_type ulogin_remove_user P((ZNotice_t *notice, int auth,
+  					struct sockaddr_in *who,
+  					int *err_return));
+! static void login_sendit P((ZNotice_t *notice, int auth, struct sockaddr_in *who)),
+!     sense_logout P((ZNotice_t *notice, struct sockaddr_in *who));
+  static char **ulogin_marshal_locs P((ZNotice_t *notice, int *found, int auth));
+  
+  static int ul_equiv P((ZLocation_t *l1, ZLocation_t *l2));
+--- 108,114 ----
+  static exposure_type ulogin_remove_user P((ZNotice_t *notice, int auth,
+  					struct sockaddr_in *who,
+  					int *err_return));
+! static void login_sendit P((ZNotice_t *notice, int auth, struct sockaddr_in *who));
+  static char **ulogin_marshal_locs P((ZNotice_t *notice, int *found, int auth));
+  
+  static int ul_equiv P((ZLocation_t *l1, ZLocation_t *l2));
+***************
+*** 158,167 ****
+  				       inet_ntoa(who->sin_addr),
+  				       ntohs(notice->z_port)));
+  #endif
+! 				if (server == me_server) {
+  					clt_ack(notice, who, AUTH_FAILED);
+- 					sense_logout(notice, who);
+- 				}
+  				return(ZERR_NONE);
+  			} else if (err_ret == NOLOC) {
+  				if (server == me_server)
+--- 157,164 ----
+  				       inet_ntoa(who->sin_addr),
+  				       ntohs(notice->z_port)));
+  #endif
+! 				if (server == me_server)
+  					clt_ack(notice, who, AUTH_FAILED);
+  				return(ZERR_NONE);
+  			} else if (err_ret == NOLOC) {
+  				if (server == me_server)
+***************
+*** 204,210 ****
+  		zdbug((LOG_DEBUG,"unauthentic ulogin: %d %s %s", auth,
+  		       notice->z_sender, notice->z_class_inst));
+  #endif
+- 		sense_logout(notice, who);
+  		if (server == me_server)
+  			clt_ack(notice, who, AUTH_FAILED);
+  		return(ZERR_NONE);
+--- 201,206 ----
+***************
+*** 322,386 ****
+  }
+  
+  
+- /*ARGSUSED*/
+- static void
+- sense_logout(notice, who)
+-      ZNotice_t *notice;
+-      struct sockaddr_in *who;
+- {
+- 	ZNotice_t sense_notice;
+- 	ZLocation_t *loc;
+- 	struct sockaddr_in owner;
+- 	char message[BUFSIZ];
+- 	int retval, len;
+- 	char *pkt;
+- 	ZClient_t *client;
+- 
+- 	/* XXX todo: have the messsage print the IP addr */
+- 	/*
+- 	  someone tried an unauthentic logout.  Try to send a message
+- 	  to the person named in the message, warning them of this.
+- 	  If there is nobody listening on that port, the retransmission
+- 	  will eventually result in a flush of the location.
+- 	 */
+- 
+- 	if (!(loc = ulogin_find (notice, 1)))
+- 	    return;
+- 
+- 	/* fabricate an addr descriptor for him */
+- 	owner = *who;
+- 	owner.sin_addr.s_addr = loc->zlt_addr.s_addr;
+- 	owner.sin_port = loc->zlt_port;
+- 
+- 	sense_notice = *notice;		/* copy all fields */
+- 	/* and change the ones we need to */
+- 	sense_notice.z_kind = ACKED;
+- 	sense_notice.z_port = loc->zlt_port;
+- 	sense_notice.z_class = "MESSAGE";
+- 	sense_notice.z_class_inst = "URGENT";
+- 	sense_notice.z_opcode = "";
+- 	sense_notice.z_sender = "Zephyr Server";
+- 	sense_notice.z_recipient = (char *) loc->zlt_user->string;
+- 	sense_notice.z_default_format = "Urgent Message from $sender at $time:\n\n$1";
+- 	(void) sprintf(message,
+- 		       "Someone at host %s tried an unauthorized \nchange to your login information",
+- 		       inet_ntoa(notice->z_sender_addr));
+- 	sense_notice.z_message = message;
+- 	sense_notice.z_message_len = strlen(message) + 1;
+- 
+- 	/* we format the notice to generate a UID and other stuff */
+- 	if ((retval = ZFormatNotice(&sense_notice, &pkt, &len, ZNOAUTH))
+- 	    != ZERR_NONE) {
+- 		syslog(LOG_ERR, "sense_logout: %s", error_message(retval));
+- 		return;
+- 	}
+- 	xfree(pkt);			/* free packet */
+- 
+- 	client = client_which_client(who, &sense_notice);
+- 	/* transmit the message to the owning port of the location. */
+- 	xmit(&sense_notice, &owner, 1, client);
+- 	return;	
+- }
+  /*
+   * Dispatch a LOCATE notice.
+   */
+--- 318,323 ----
+diff -c /mit/zephyr/src/server/version.h ./version.h
+*** /mit/zephyr/src/server/version.h	Fri Nov 19 13:34:58 1993
+--- ./version.h	Wed Jul  6 17:19:17 1994
+***************
+*** 1 ****
+! #define ZSERVER_VERSION_STRING "(Fri Nov 19 13:34:58 EST 1993) probe@tardis"
+--- 1 ----
+! #define ZSERVER_VERSION_STRING "(Wed Jul  6 14:39:57 EDT 1994) ghudson@packet-drop"
+diff -c /mit/zephyr/src/server/zserver.h ./zserver.h
+*** /mit/zephyr/src/server/zserver.h	Thu Apr  7 12:40:16 1994
+--- ./zserver.h	Wed Jul  6 17:19:17 1994
+***************
+*** 57,63 ****
+   */
+  
+  typedef struct _ZDestination {
+-     unsigned long hash_value;
+      ZSTRING *classname;
+      ZSTRING *inst;
+      ZSTRING *recip;
+--- 57,62 ----
+***************
+*** 86,91 ****
+--- 85,94 ----
+  	long	last_msg;		/* last message sent to this client */
+  	long	last_check;		/* actually, last time the other
+  					   server was asked to check... */
++ 	int	last_send;		/* The send counter value for the
++ 					 * last packet sent to the client,
++ 					 * used to prevent duplicates.  See
++ 					 * sendit() in dispatch.c. */
+  } ZClient_t;
+  
+  typedef struct _ZClientList_t {
+***************
+*** 94,106 ****
+  	struct _ZClient_t	*zclt_client;
+  } ZClientList_t;
+  
+! typedef struct _ZClass_t {
+! 	struct _ZClass_t *q_forw;
+! 	struct _ZClass_t *q_back;
+  	ZDestination zct_dest;
+  	ZAcl_t	*zct_acl;
+  	ZClientList_t	*zct_clientlist;
+! } ZClass_t;
+  
+  typedef struct _ZHostList_t {
+  	struct _ZHostList_t *q_forw;
+--- 97,109 ----
+  	struct _ZClient_t	*zclt_client;
+  } ZClientList_t;
+  
+! typedef struct _ZTriplet_t {
+! 	struct _ZTriplet_t *q_forw;
+! 	struct _ZTriplet_t *q_back;
+  	ZDestination zct_dest;
+  	ZAcl_t	*zct_acl;
+  	ZClientList_t	*zct_clientlist;
+! } ZTriplet_t;
+  
+  typedef struct _ZHostList_t {
+  	struct _ZHostList_t *q_forw;
+***************
+*** 190,200 ****
+  				  char **lyst, int num));
+  
+  /* found in class.c */
+! extern Code_t class_register P((ZClient_t *client, ZSubscr_t *subs));
+! extern Code_t class_deregister P((ZClient_t *client, ZSubscr_t *subs));
+  extern Code_t class_restrict P((char *z_class, ZAcl_t *acl));
+  extern Code_t class_setup_restricted P((char *z_class, ZAcl_t *acl));
+! extern ZClientList_t *class_lookup P((ZSubscr_t *subs));
+  extern ZAcl_t *class_get_acl P((ZSTRING *z_class));
+  extern void class_free P((ZClientList_t *lyst));
+  extern ZSTRING *class_control, *class_admin, *class_hm;
+--- 193,203 ----
+  				  char **lyst, int num));
+  
+  /* found in class.c */
+! extern Code_t triplet_register P((ZClient_t *client, ZDestination *dest));
+! extern Code_t triplet_deregister P((ZClient_t *client, ZDestination *dest));
+  extern Code_t class_restrict P((char *z_class, ZAcl_t *acl));
+  extern Code_t class_setup_restricted P((char *z_class, ZAcl_t *acl));
+! extern ZClientList_t *triplet_lookup P((ZDestination *dest));
+  extern ZAcl_t *class_get_acl P((ZSTRING *z_class));
+  extern void class_free P((ZClientList_t *lyst));
+  extern ZSTRING *class_control, *class_admin, *class_hm;
+***************
+*** 281,287 ****
+  extern Code_t subscr_cancel P((struct sockaddr_in *sin, ZNotice_t *notice));
+  extern Code_t subscr_subscribe P((ZClient_t *who, ZNotice_t *notice)),
+      subscr_send_subs P((ZClient_t *client, char *vers));;
+- extern ZClientList_t *subscr_match_list P((ZNotice_t *notice));
+  extern void subscr_free_list P((ZClientList_t *list)),
+      subscr_cancel_client P((register ZClient_t *client)),
+      subscr_sendlist P((ZNotice_t *notice, int auth, struct sockaddr_in *who));
+--- 284,289 ----
+***************
+*** 343,350 ****
+  /* found in subscr.c */
+  extern ZSTRING *empty;
+  extern ZSTRING *wildcard_instance;
+- extern ZSTRING *wildcard_class;
+- extern ZSubscr_t matchall_sub;
+  
+  extern struct in_addr my_addr;	/* my inet address */
+  
+--- 345,350 ----
+***************
+*** 369,375 ****
+  #define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
+  #define	ADMIN_ME	"MY_STATE"	/* Class inst: please send my info */
+  
+! #define	NULLZCT		((ZClass_t *) 0)
+  #define	NULLZCNT	((ZClient_t *) 0)
+  #define	NULLZCLT	((ZClientList_t *) 0)
+  #define	NULLZST		((ZSubscr_t *) 0)
+--- 369,375 ----
+  #define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
+  #define	ADMIN_ME	"MY_STATE"	/* Class inst: please send my info */
+  
+! #define	NULLZT		((ZTriplet_t *) 0)
+  #define	NULLZCNT	((ZClient_t *) 0)
+  #define	NULLZCLT	((ZClientList_t *) 0)
+  #define	NULLZST		((ZSubscr_t *) 0)
+***************
+*** 397,404 ****
+  #define START_CRITICAL_CODE
+  #define END_CRITICAL_CODE
+  
+- /* the magic class to match all packets */
+- #define	MATCHALL_CLASS	"zmatch_all"
+  /* the instance that matches all instances */
+  #define	WILDCARD_INSTANCE	"*"
+  
+--- 397,402 ----
+diff -c /mit/zephyr/src/server/zsrv_conf.h ./zsrv_conf.h
+*** /mit/zephyr/src/server/zsrv_conf.h	Fri Nov 19 15:57:44 1993
+--- ./zsrv_conf.h	Wed Jul  6 17:19:17 1994
+***************
+*** 18,30 ****
+  
+  /* Magic path names */
+  #ifndef HESIOD
+! #define SERVER_LIST_FILE	"/usr/athena/lib/zephyr/server.list"
+  #endif
+  
+  /* ACL's for pre-registered classes */
+  /* Directory containing acls and other info */
+  #ifndef ZEPHYR_ACL_DIR
+! #define	ZEPHYR_ACL_DIR		"/usr/athena/lib/zephyr/acl/"
+  #endif
+  /* name of the class registry */
+  #define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
+--- 18,30 ----
+  
+  /* Magic path names */
+  #ifndef HESIOD
+! #define SERVER_LIST_FILE	"/etc/athena/zephyr/server.list"
+  #endif
+  
+  /* ACL's for pre-registered classes */
+  /* Directory containing acls and other info */
+  #ifndef ZEPHYR_ACL_DIR
+! #define	ZEPHYR_ACL_DIR		"/etc/athena/zephyr/acl/"
+  #endif
+  /* name of the class registry */
+  #define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
+***************
+*** 31,45 ****
+  
+  #ifdef KERBEROS
+  /* name of file to hold the tickets for keys to exchange with other servers */
+! #define	ZEPHYR_TKFILE		"/usr/athena/lib/zephyr/ztkts"
+  
+! /* Pathname of Kerberos srvtab file.
+!  * WARNING: lib/ZCkAuth.c needs to have a corresponding definition! */
+! #define SERVER_SRVTAB		"/usr/athena/lib/zephyr/srvtab"
+  #endif /* KERBEROS */
+  
+  /* default subscription file */
+! #define	DEFAULT_SUBS_FILE	"/usr/athena/lib/zephyr/default.subscriptions"
+  
+  /* client defines */
+  #define	REXMIT_SECS	((long) 20)	/* rexmit delay on normal notices */
+--- 31,43 ----
+  
+  #ifdef KERBEROS
+  /* name of file to hold the tickets for keys to exchange with other servers */
+! #define	ZEPHYR_TKFILE		"/etc/athena/zephyr/ztkts"
+  
+! /* The pathname of the Kerberos srvtab file is defined in zephyr_conf.h. */
+  #endif /* KERBEROS */
+  
+  /* default subscription file */
+! #define	DEFAULT_SUBS_FILE	"/etc/athena/zephyr/default.subscriptions"
+  
+  /* client defines */
+  #define	REXMIT_SECS	((long) 20)	/* rexmit delay on normal notices */
