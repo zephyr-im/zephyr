@@ -91,33 +91,33 @@ parser.o: parser.y
 # /* How to generate a port dictionary: */
 #
 port_dictionary.c port_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance port port.h
+	Dictionary/generate_dictionary_instance ${SRCDIR}/Dictionary port port.h
 
 #
 # /* How to generate a pointer dictionary: */
 #
 pointer_dictionary.c pointer_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance pointer pointer.h
+	Dictionary/generate_dictionary_instance ${SRCDIR}/Dictionary pointer pointer.h
 
 #
 # /* How to generate a ulong dictionary: */
 #
 ulong_dictionary.c ulong_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ulong ulong.h
+	Dictionary/generate_dictionary_instance ${SRCDIR}/Dictionary ulong ulong.h
 
 #
 # /* How to generate a char stack: */
 #
 char_stack.h: stack.h
-	./generate_stack_instance char
+	./generate_stack_instance ${SRCDIR} char
 #
 # /* How to generate a string stack: */
 #
 string_stack.h: stack.h
-	./generate_stack_instance string
+	./generate_stack_instance ${SRCDIR} string
 #
 # /* How to generate a xmode stack: */
 #
 xmode_stack.h: stack.h
-	./generate_stack_instance xmode
+	./generate_stack_instance ${SRCDIR} xmode
 
