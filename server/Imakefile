@@ -51,7 +51,7 @@ OBJS= 	zsrv_err.o \
 	timer.o \
 	uloc.o \
 	kstuff.o \
-	version.c
+	version.o
 
 OTHERSRCS= zsrv_err.et
 CONFIG_FILES= default.subscriptions
