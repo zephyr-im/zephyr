@@ -27,8 +27,10 @@ static char *rcsid_rd_req_c =
 #ifndef NOENCRYPTION
 
 #include <zephyr/mit-copyright.h>
+#include <zephyr/zephyr.h>
 #include <stdio.h>
 #include <krb.h>
+#include "zserver.h"
 
 /* Byte ordering */
 extern int krbONE;
@@ -72,13 +74,9 @@ extern int krb_ap_req_debug;
  * to this routine by the same server using the same key.
  */
 
-/* Kerberos shouldn't stick us with array types... */
-typedef struct {
-    des_key_schedule s;
-} Sched;
+static Sched serv_ksched;	/* Key sched to decrypt ticket */
+static des_cblock serv_key;	/* Initialization vector */
 
-static Sched serv_key;	/* Key sched to decrypt ticket */
-static des_cblock ky;		/* Initialization vector */
 static int st_kvno;		/* version number for this key */
 static char st_rlm[REALM_SZ];	/* server's realm */
 static char st_nam[ANAME_SZ];	/* service name */
@@ -98,9 +96,9 @@ typedef struct {
 static KeySchedRec scheds[HASH_SIZE_1][HASH_SIZE_2];
 
 #ifdef __STDC__
-static Sched* check_key_sched_cache (des_cblock key)
+Sched* check_key_sched_cache (des_cblock key)
 #else
-static Sched* check_key_sched_cache (key)
+Sched* check_key_sched_cache (key)
      des_cblock key;
 #endif
 {
@@ -119,9 +117,9 @@ static Sched* check_key_sched_cache (key)
 }
 
 #ifdef __STDC__
-static void add_to_key_sched_cache (des_cblock key, Sched* sched)
+void add_to_key_sched_cache (des_cblock key, Sched* sched)
 #else
-static void add_to_key_sched_cache (key, sched)
+void add_to_key_sched_cache (key, sched)
      des_cblock key;
      Sched* sched;
 #endif
@@ -138,7 +136,7 @@ static void add_to_key_sched_cache (key, sched)
 	if (rec[i].last_time_used < rec[oldest].last_time_used)
 	    oldest = i;
     }
-    bcopy (key, rec[oldest].key, sizeof (des_cblock));
+    _BCOPY (key, rec[oldest].key, sizeof (des_cblock));
     rec[oldest].schedule = *sched;
     rec[oldest].last_time_used = last_use++;
 }
@@ -161,9 +159,9 @@ static void add_to_key_sched_cache (key, sched)
  * taken to be a DES key; if "cvt" is non-null, "key" is taken to
  * be a password string, and is converted into a DES key using
  * string_to_key().  In either case, the resulting key is returned
- * in the external static variable "ky".  A key schedule is
- * generated for "ky" and returned in the external static variable
- * "serv_key".
+ * in the external variable "serv_key".  A key schedule is
+ * generated for "serv_key" and returned in the external variable
+ * "serv_ksched".
  *
  * This routine returns the return value of des_key_sched.
  *
@@ -178,24 +176,24 @@ krb_set_key(key,cvt)
     int cvt;
 {
 #ifdef NOENCRYPTION
-    bzero(ky, sizeof(ky));
+    _BZERO(serv_key, sizeof(serv_key));
     return KSUCCESS;
 #else /* Encrypt */
     Sched *s;
     int ret;
 
     if (cvt)
-	string_to_key(key,ky);
+	string_to_key(key,serv_key);
     else
-	bcopy(key,(char *)ky,8);
+	_BCOPY(key,(char *)serv_key,8);
 
-    s = check_key_sched_cache (ky);
+    s = check_key_sched_cache (serv_key);
     if (s) {
-	serv_key = *s;
+	serv_ksched = *s;
 	return 0;
     }
-    ret = des_key_sched (ky, serv_key.s);
-    add_to_key_sched_cache (ky, &serv_key);
+    ret = des_key_sched (serv_key, serv_ksched.s);
+    add_to_key_sched_cache (serv_key, &serv_ksched);
     return ret;
 #endif /* NOENCRYPTION */
 }
@@ -342,7 +340,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     tkt->length = (int) *ptr++;
     if ((tkt->length + (ptr+1 - (char *) authent->dat)) > authent->length)
 	return(RD_AP_MODIFIED);
-    bcopy(ptr+1,(char *)(tkt->dat),tkt->length);
+    _BCOPY(ptr+1,(char *)(tkt->dat),tkt->length);
 
     if (krb_ap_req_debug)
         log("ticket->length: %d",tkt->length);
@@ -353,7 +351,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 
     if (decomp_ticket(tkt,&ad->k_flags,ad->pname,ad->pinst,ad->prealm,
                       &(ad->address),ad->session, &(ad->life),
-                      &(ad->time_sec),sname,iname,ky,serv_key.s))
+                      &(ad->time_sec),sname,iname,serv_key,serv_ksched.s))
         return(RD_AP_UNDEC);
 
     if (krb_ap_req_debug) {
@@ -368,7 +366,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     if ((req_id->length + (ptr + tkt->length - (char *) authent->dat)) >
 	authent->length)
 	return(RD_AP_MODIFIED);
-    bcopy(ptr + tkt->length, (char *)(req_id->dat),req_id->length);
+    _BCOPY(ptr + tkt->length, (char *)(req_id->dat),req_id->length);
 
 #ifndef NOENCRYPTION
     /* And decrypt it with the session key from the ticket */
@@ -397,7 +395,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     (void) strcpy(r_realm,ptr);	/* Authentication name */
     ptr += strlen(r_realm)+1;
     check_ptr();
-    bcopy(ptr,(char *)&ad->checksum,4);	/* Checksum */
+    _BCOPY(ptr,(char *)&ad->checksum,4);	/* Checksum */
     ptr += 4;
     check_ptr();
     if (swap_bytes) swap_u_long(ad->checksum);
@@ -410,7 +408,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 #endif /* lint */
     check_ptr();
     /* assume sizeof(r_time_sec) == 4 ?? */
-    bcopy(ptr,(char *)&r_time_sec,4); /* Time (coarse) */
+    _BCOPY(ptr,(char *)&r_time_sec,4); /* Time (coarse) */
     if (swap_bytes) swap_u_long(r_time_sec);
 
     /* Check for authenticity of the request */
