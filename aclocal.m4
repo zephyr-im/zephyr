@@ -93,21 +93,21 @@ fi])
 dnl ----- Regular expressions -----
 
 AC_DEFUN(ATHENA_REGEXP,
-[AC_ARG_WITH(rx,
-	[  --with-rx=PREFIX        Use installed rx library],
-	[rx="$withval"], [rx=no])
-if test "$rx" != no; then
-	if test "$rx" != yes; then
-		CPPFLAGS="$CPPFLAGS -I$rx/include"
-		LDFLAGS="$LDFLAGS -L$rx/lib"
+[AC_ARG_WITH(regex,
+	[  --with-regex=PREFIX     Use installed regex library],
+	[regex="$withval"], [regex=no])
+if test "$regex" != no; then
+	if test "$regex" != yes; then
+		CPPFLAGS="$CPPFLAGS -I$regex/include"
+		LDFLAGS="$LDFLAGS -L$regex/lib"
 	fi
-	AC_CHECK_LIB(rx, regcomp, RX_LIBS=-lrx,
-		     [AC_MSG_ERROR(rx library not found)])
+	AC_CHECK_LIB(regex, regcomp, REGEX_LIBS=-lregex,
+		     [AC_MSG_ERROR(regex library not found)])
 else
 	AC_CHECK_FUNC(regcomp, :,
 		      [AC_MSG_ERROR(can't find POSIX regexp support)])
 fi
-AC_SUBST(RX_LIBS)])
+AC_SUBST(REGEX_LIBS)])
 
 dnl ----- Motif -----
 
@@ -144,7 +144,7 @@ dnl ----- AFS -----
 AC_DEFUN(ATHENA_AFS_CHECK,
 [AC_CHECK_FUNC(insque, :, AC_CHECK_LIB(compat, insque))
 AC_CHECK_FUNC(sigvec, :, AC_CHECK_LIB(ucb, sigvec))
-AC_CHECK_FUNC(gethostname, :, AC_CHECK_LIB(nsl, gethostbyname))
+AC_CHECK_FUNC(gethostbyname, :, AC_CHECK_LIB(nsl, gethostbyname))
 AC_CHECK_FUNC(socket, :, AC_CHECK_LIB(socket, socket))
 if test "$afs" != yes; then
 	CPPFLAGS="$CPPFLAGS -I$afs/include"
@@ -178,16 +178,15 @@ fi])
 dnl ----- Kerberos 4 -----
 
 AC_DEFUN(ATHENA_KRB4_CHECK,
-[ocppflags="$CPPFLAGS"
-if test "$krb4" != yes; then
+[if test "$krb4" != yes; then
 	CPPFLAGS="$CPPFLAGS -I$krb4/include"
 	LDFLAGS="$LDFLAGS -L$krb4/lib"
 fi
 AC_CHECK_LIB(krb, krb_rd_req, [KRB4_LIBS="-lkrb -ldes"],
 	[if test "$krb4" != yes; then
-		CPPFLAGS="$ocppflags -I$krb4/include/kerberosIV"
+		CPPFLAGS="$CPPFLAGS -I$krb4/include/kerberosIV"
 	else
-		CPPFLAGS="$ocppflags -I/usr/include/kerberosIV"
+		CPPFLAGS="$CPPFLAGS -I/usr/include/kerberosIV"
 	fi
 	AC_CHECK_LIB(krb4, krb_rd_req,
 		     [KRB4_LIBS="-lkrb4 -ldes425 -lkrb5 -lcrypto -lcom_err"],
