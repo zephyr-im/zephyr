@@ -84,9 +84,6 @@ char **argv;
 			fprintf(stderr,"Will write directly to terminal.\n");
 			use_zephyr = 0;
 		}
-	}
-	
-	if (use_zephyr) {
 		sub.class = MESSAGE_CLASS;
 		sub.classinst = INSTANCE;
 		sub.recipient = ZGetSender();
@@ -268,13 +265,14 @@ char *msg;
       delay(slp);
 
       if (use_zephyr) {
+	    (void) bzero((char *)&notice, sizeof(notice));
 	    notice.z_kind = UNACKED;
 	    notice.z_port = 0;
 	    notice.z_class = MESSAGE_CLASS;
 	    notice.z_class_inst = INSTANCE;
 	    notice.z_recipient = ZGetSender();
 	    notice.z_opcode = "";
-	    notice.z_sender = 0;
+	    notice.z_sender = (char *) 0;
 	    notice.z_default_format = "\n$1";
 	    notice.z_message = msg;
 	    notice.z_message_len = strlen(msg);
