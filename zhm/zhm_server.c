@@ -31,7 +31,6 @@ extern int numserv;
 extern char **serv_list;
 extern char cur_serv[], prim_serv[];
 extern void die_gracefully();
-extern unsigned long inet_addr();
 
 void hm_control(), send_back(), new_server();
 
