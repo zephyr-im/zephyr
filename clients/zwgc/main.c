@@ -432,11 +432,12 @@ static void detach()
   register int i;
 
   /* to try to get SIGHUP on user logout */
-#ifdef POSIX
+#if defined(POSIX) && !defined(ultrix)
   (void) setpgid(0, tcgetpgrp(1));
 #else
   (void) setpgrp(0, getpgrp(getppid()));
 #endif
+
   /* fork off and let parent exit... */
   if (i = fork()) {
       if (i < 0) {
