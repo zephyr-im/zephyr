@@ -27,6 +27,7 @@ int
 main(int argc, char *argv[])
 {
 	register char *cp;
+	char *realm;
 	ZSubscription_t subs[SUBSATONCE];
 	ZLocations_t locations;
 	FILE *fp = NULL;
@@ -156,12 +157,36 @@ main(int argc, char *argv[])
 			*cp++ = '@';
 			(void) strcpy(cp,ZGetRealm());
 		}
-		if ((subs[ind].zsub_classinst = malloc((unsigned)(strlen(name)+1))) == NULL) {
+		cp = strchr(name,'@');
+		if (cp[0] && strcmp(cp+1,ZGetRealm())) {
+		    realm = cp + 1;
+		    *cp = '\0';
+		    if ((subs[ind].zsub_classinst =
+			 malloc((unsigned)(strlen(name) + strlen(realm) + 2)))
+			== NULL)
+		    {
 			fprintf (stderr, "znol: out of memory");
 			exit (1);
+		    }
+		    (void) sprintf(subs[ind].zsub_classinst, "%s@%s", name,
+				   realm);
+		    (void) strcpy(name, subs[ind].zsub_classinst);
+		    if ((subs[ind].zsub_recipient =
+			 malloc((unsigned)(strlen(realm)+2))) == NULL) {
+			fprintf (stderr, "znol: out of memory");
+			exit (1);
+		    }
+		    (void) sprintf(subs[ind++].zsub_recipient, "@%s", realm);
+		} else {
+		    if ((subs[ind].zsub_classinst =
+			 malloc((unsigned)(strlen(name)+1))) == NULL)
+		    {
+			fprintf (stderr, "znol: out of memory");
+			exit (1);
+		    }
+		    (void) strcpy(subs[ind].zsub_classinst, name);
+		    subs[ind++].zsub_recipient = "";
 		}
-		(void) strcpy(subs[ind].zsub_classinst, name);
-		subs[ind++].zsub_recipient = "";
 
 		if (!quiet && onoff == ON) {
 			if ((retval = ZLocateUser(name,&numlocs,ZAUTH))
@@ -204,7 +229,11 @@ main(int argc, char *argv[])
 					exit(1);
 				} 
 			for (ind=0;ind<SUBSATONCE;ind++)
-				free(subs[ind].zsub_classinst);
+			  {
+			    if (subs[ind].zsub_recipient[0] != '\0')
+			      free(subs[ind].zsub_recipient);
+			    free(subs[ind].zsub_classinst);
+			  }
 			ind = 0;
 		}
 	}
