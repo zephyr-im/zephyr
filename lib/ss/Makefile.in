@@ -15,6 +15,8 @@ top_srcdir=@top_srcdir@
 BUILDTOP=../..
 VPATH=@srcdir@
 CC=@CC@
+YACC=@YACC@
+LEX=@LEX@
 RANLIB=@RANLIB@
 COMPILE_ET=@COMPILE_ET@
 
