@@ -190,9 +190,15 @@ extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
 
 /* useful defines */
 
+/* client defines */
 #define	REXMIT_SECS	((long) 10)	/* rexmit delay on normal notices */
 #define	NUM_REXMITS	(5)		/* number of rexmits */
 
+/* hostmanager defines */
+#define	LOSE_TIMO	(15)		/* time during which a losing host
+					   must respond to a ping */
+
+/* server-server defines */
 #define	TIMO_UP		((long) 10)	/* timeout between up and tardy */
 #define	TIMO_TARDY	((long) 30)	/* timeout btw tardy hellos */
 #define	TIMO_DEAD	((long)(15*60))	/* timeout between hello's for dead */
@@ -235,13 +241,9 @@ extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
 
 /* debugging macros */
 #ifdef DEBUG
-#define zdbug1(s1)	if (zdebug) syslog(LOG_DEBUG, s1);
-#define zdbug2(s1,s2)	if (zdebug) syslog(LOG_DEBUG, s1, s2);
-#define zdbug3(s1,s2,s3)	if (zdebug) syslog(LOG_DEBUG, s1, s2, s3);
+#define zdbug(s1)	if (zdebug) syslog s1;
 #else !DEBUG
-#define zdbug1(s1)
-#define zdbug2(s1,s2)
-#define zdbug3(s1,s2,s3)
+#define zdbug(s1)
 #endif DEBUG
 
 #endif !__ZSERVER_H__
