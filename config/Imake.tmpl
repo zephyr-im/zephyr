@@ -1,0 +1,405 @@
+/* 
+ * Generic Imake Template
+ *
+ * Future changes:
+ * 
+ * o Reorganize the structure to employ a config.Imakefile and reduce
+ *   the complexity of Imake.tmpl.  Also, the use of site.def should be
+ *   re-examined.
+ *
+ * o Support global project configurations.  This can be done by always
+ *   including a Project.tmpl and altering the include path such that
+ *   this is found prior to the minimal one in the global templates.
+ */
+
+#define ATHENA_RULES
+
+/* 
+ * WARNING - HACK HACK HACK
+ * To allow xmkmf to work with our setup: set CONFDIR to be TOPDIR/config.
+ *
+ * NEWTOP is still set to . since this is being run from the top of the
+ * developer's project tree.  However, TOPDIR is simply the top of the
+ * Athena source tree, which contains the Imake configuration files.
+ */
+#ifdef TOPDIR
+#define UseInstalled
+#define ConfDir TOPDIR/config
+#endif
+
+all::
+
+#include <site.def>
+
+#ifndef ConfDir
+#define ConfDir $(TOP)/config
+#endif
+#ifndef NEWTOP
+#define NEWTOP .
+#endif
+#ifndef NEWCWD
+#define NEWCWD .
+#endif
+#ifndef ALibDir
+#define ALibDir $(ATHBASEDIR)/lib
+#endif
+#ifndef ABinDir
+#define ABinDir $(ATHBASEDIR)/bin
+#endif
+#ifndef AIncDir
+#define AIncDir $(ATHBASEDIR)/include
+#endif
+#ifndef AManDir
+#define AManDir $(ATHBASEDIR)/man
+#endif
+#ifndef AEtcDir
+#define AEtcDir $(ATHBASEDIR)/etc
+#endif
+#ifndef AConfDir
+#define AConfDir /etc/athena
+#endif
+#ifndef ARBinDir
+#define ARBinDir /bin/athena
+#endif
+#ifndef AREtcDir
+#define AREtcDir /etc/athena
+#endif
+#ifndef AthXAppDir
+#define AthXAppDir /usr/athena/lib/X11/app-defaults
+#endif
+#ifndef AthXBitDir
+#define AthXBitDir /usr/athena/lib/X11/bitmaps
+#endif
+#ifndef AthXIncDir
+#define AthXIncDir /usr/athena/include
+#endif
+#ifndef AthXLibDir
+#define AthXLibDir /usr/athena/lib
+#endif
+#ifndef LintCFlag
+#define LintCFlag -o
+#endif
+#ifndef CcCmd
+#define CcCmd cc
+#endif
+#ifndef LdCmd
+#define LdCmd cc
+#endif
+#ifndef AnsiCcCmd
+#define AnsiCcCmd cc
+#endif
+#ifndef AnsiLdCmd
+#define AnsiLdCmd cc
+#endif
+#ifndef AsCmd
+#define AsCmd as
+#endif
+#ifndef RanLibCmd
+#define RanLibCmd ranlib
+#endif
+#ifndef InstPgmFlags
+#define InstPgmFlags -s
+#endif
+#ifndef InstScriptFlags
+#define InstScriptFlags -m 755
+#endif
+#ifndef RmCmd
+#define RmCmd rm -f
+#endif
+#ifndef CpCmd
+#define CpCmd cp -p
+#endif
+#ifndef CcFlags
+#define CcFlags -DPOSIX
+#endif
+#ifndef CDebugFlags
+#define CDebugFlags -O
+#endif
+#ifndef ProfCcFlags
+#define ProfCcFlags -p
+#endif
+#ifndef LdFlags
+#define LdFlags
+#endif
+#ifndef LdPath
+#define LdPath -L$(ATHLIBDIR)
+#endif
+#ifndef LdLibs
+#define LdLibs
+#endif
+#ifndef LintCmd
+#define LintCmd lint
+#endif
+#ifndef LintFlags
+#define LintFlags CcFlags
+#endif
+
+#ifndef ExtraXLibs
+#define ExtraXLibs
+#endif
+
+#ifdef UseInstalled
+# ifndef InstallCmd
+# define InstallCmd install -c
+# endif
+# ifndef EtCmd
+# define EtCmd compile_et
+# endif
+# ifndef SsCmd
+# define SsCmd mk_cmds
+# endif
+# ifndef EtLibs
+# define EtLibs -lcom_err
+# endif
+# ifndef SsLibs
+# define SsLibs -lss
+# endif
+# ifndef KrbLibs
+# define KrbLibs -lkrb -ldes
+# endif
+# ifndef HesLibs
+# define HesLibs -lhesiod
+# endif
+# ifndef ZephyrLibs
+# define ZephyrLibs -lzephyr KrbLibs EtLibs
+# endif
+# ifndef XLibs
+# define XLibs -lX11 -lXext ExtraXLibs
+# endif
+# ifndef XtLibs
+# define XtLibs -lXt XLibs
+# endif
+# ifndef XawLibs
+# define XawLibs -lXaw -lXmu XtLibs
+# endif
+#else /* !UseInstalled */
+# ifndef InstallCmd
+# define InstallCmd $(UTILDIR)install -c
+# endif
+# ifndef EtCmd
+# define EtCmd $(TOP)/athena/athena.lib/et/compile_et
+# endif
+# ifndef SsCmd
+# define SsCmd $(TOP)/athena/athena.lib/ss/mk_cmds
+# endif
+# ifndef EtLibs
+# define EtLibs $(TOP)/athena/athena.lib/et/libcom_err.a
+# endif
+# ifndef SsLibs
+# define SsLibs $(TOP)/athena/athena.lib/ss/libss.a
+# endif
+# ifndef KrbLibs
+# define KrbLibs $(TOP)/athena/athena.lib/kerberos.p10/lib/krb/libkrb.a \
+	$(TOP)/athena/athena.lib/kerberos.p10/lib/des/libdes.a
+# endif
+# ifndef HesLibs
+# define HesLibs $(TOP)/athena/athena.lib/hesiod/libhesiod.a
+# endif
+# ifndef ZephyrLibs
+# define ZephyrLibs $(TOP)/athena/athena.lib/zephyr/lib/libzephyr.a \
+	KrbLibs EtLibs
+# endif
+# ifndef XLibs
+# define XLibs $(XTOP)/lib/X/libX11.a $(XTOP)/extensions/lib/libXext.a \
+	ExtraXLibs
+# endif
+# ifndef XtLibs
+# define XtLibs $(XTOP)/lib/Xt/libXt.a XLibs
+# endif
+# ifndef XawLibs
+# define XawLibs $(XTOP)/lib/Xaw/libXaw.a $(XTOP)/lib/Xmu/libXmu.a XtLibs
+# endif
+#endif /* UseInstalled */
+
+
+SHELL=/bin/sh
+MAKESHELL=/bin/sh
+
+TOP = NEWTOP
+CWD = NEWCWD
+CONFIGSRC = ConfDir
+DESTDIR=
+
+IRULESRC = $(CONFIGSRC)		
+
+#ifdef ProjectTop
+PTOP = $(TOP)/ProjectTop
+#endif
+
+#ifdef UseInstalled
+IMAKE= imake
+IFLAGS= -I$(IRULESRC) $(IFLAGS_SH) $(OTHER_IFLAGS) -DTOPDIR=TOPDIR
+XIFLAGS= -I$(ATHXLIBDIR)/X11/config -DUseInstalled
+#else
+UTILDIR=$(TOP)/util/bin/
+IMAKE= $(UTILDIR)imake
+IFLAGS= -I$(IRULESRC) $(IFLAGS_SH) $(OTHER_IFLAGS)
+XTOP=$(TOP)/third/common/X11R4
+XIFLAGS= -I$(XTOP)/config -DTOPDIR=$(XTOP) -DCURDIR=$(CWD)
+#endif
+
+ICONFIGFILES = $(IRULESRC)/Imake.tmpl $(IRULESRC)/Imake.rules \
+	$(IRULESRC)/site.def Imakefile $(PRULEDEP)
+MKDIRHIER= sh $(IRULESRC)/mkdirhier.sh
+
+ATHVERS = $(IRULESRC)/update.conf
+
+ATHBASEDIR=/usr/athena
+
+ATHLIBDIR=ALibDir
+ATHBINDIR=ABinDir
+ATHINCDIR=AIncDir
+ATHETCDIR=AEtcDir
+ATHCONFDIR=AConfDir
+ATHMANDIR=AManDir
+ATHRBINDIR=ARBinDir
+ATHRETCDIR=AREtcDir
+
+/* This should be removed, but too much depends on it */
+ATHNEWDIR=$(ATHBINDIR)
+
+ATHXAPPDIR=AthXAppDir
+ATHXBITDIR=AthXBitDir
+ATHXINCDIR=AthXIncDir
+ATHXLIBDIR=AthXLibDir
+
+#ifdef AfsDir
+AFSDIR=AfsDir
+#endif
+
+LINTCFLAG=LintCFlag
+LINTFLAGS=LintFlags $(DEFINES) -I/usr/athena/include
+
+INSTALL=InstallCmd
+RANLIB=RanLibCmd
+CC=CcCmd
+LD=LdCmd
+AS=AsCmd
+RM=RmCmd
+CP=CpCmd
+
+ETCMD=EtCmd
+SSCMD=SsCmd
+
+LIB_ET = EtLibs
+LIB_SS = SsLibs
+LIB_HES = HesLibs
+LIB_KRB = KrbLibs
+LIB_ZEPHYR = ZephyrLibs
+LIB_X = XLibs
+LIB_XT = XtLibs
+LIB_XAW = XawLibs
+
+CDEBUG=CDebugFlags
+
+CFLAGS=$(CDEBUG) CcFlags $(DEFINES) -I/usr/athena/include
+LDFLAGS=LdFlags $(LDDEFS)
+LDPATH=LdPath
+LDLIBS=LdLibs
+
+#include "Imake.rules"
+
+install:: install_dirs
+install_dirs::
+install:: 
+install.man::
+
+clean::
+depend::
+
+FRC::
+
+/**/###########################################################################
+/**/# start of Imakefile
+/**/###########################################################################
+
+#ifdef Project
+#define InProject
+#undef Project
+#ifdef ProjectRules
+#include ProjectRules
+#endif
+#endif /* Project */
+
+#include INCLUDE_IMAKEFILE
+
+#if defined(InProject) && !defined(Project)
+#define Project
+#endif
+
+/*
+ * PROJECT DECLARATION
+ *
+ * At the top of the project directory, simply include the following:
+ *
+ * 	#define Project
+ *
+ * If you also want to declare a set of rules that should be included,
+ * simply do:
+ * 
+ * 	#ifndef ProjectRules
+ * 	#define ProjectRules config/extra.rules
+ * 	#include ProjectRules
+ * 	#endif
+ * 
+ * at the top of the project tree.
+ * 
+ *
+ * This will declare that directory to be the top of the project tree.
+ * The top of the project tree will be in the include path, so if there
+ * are additional rules files that are being used by the Imakefiles, you
+ * can simply do something like:
+ *
+ * 	#include "config/extra.rules"
+ *
+ * from any Imakefile in the tree.
+ *
+ * The Make variable $(PTOP) is also set to the top of the project tree,
+ * so you can declare dependencies such as $(PTOP)/lib/libfoo.a.
+ */
+
+#ifdef Project
+#ifndef ProjectTop
+#define ProjectTop NEWCWD
+#endif
+#ifdef ProjectRules
+PRULES = ProjectRules
+PINC = -DProjectRules=\"$(PRULES)\" -DProjectRuleDep=$(PRULES)
+#ifdef ProjectRuleDep
+PRULEDEP = $(PTOP)/ProjectRuleDep
+#endif
+#endif
+PTOP = $(TOP)/ProjectTop
+IPROJ = -DProject -DProjectTop=ProjectTop -I$(PTOP) $(PINC)
+#endif
+
+#ifdef UseSharedLibs
+IFLAGS_SH = -DUseSharedLibs
+#endif
+
+makefile_target()
+
+clean::
+	$(RM) *~ *.o *.a core a.out Makefile.bak
+	$(RM) -r profiled
+
+all-prof inst-prof::
+
+#ifdef ISUBDIRS
+do_subdirs_imakefile(ISUBDIRS)
+do_subdirs(ISUBDIRS)
+#endif
+
+#ifdef XSUBDIRS
+do_subdirs_xmakefile(XSUBDIRS)
+do_subdirs(XSUBDIRS)
+#endif
+
+#ifdef SUBDIRS
+do_subdirs(SUBDIRS)
+#endif SUBDIRS
+
+Makefiles::
+
+/**/###########################################################################
+/**/# dependencies generated by makedepend
