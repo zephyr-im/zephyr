@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_mux_c[] = "$Header$";
+static char rcsid_mux_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -31,6 +31,7 @@ static char rcsid_mux_c[] = "$Header$";
 #include "mux.h"
 #include "error.h"
 #include "zwgc.h"
+#include "pointer.h"
 
 /*
  * mux_end_loop_p - Setting this to true during a mux_loop causes the mux_loop
@@ -53,7 +54,7 @@ static int max_source = -1;
 
 static fd_set input_sources;
 static void (*input_handler[MAX_SOURCES])();
-static void *input_handler_arg[MAX_SOURCES];
+static pointer input_handler_arg[MAX_SOURCES];
 
 /*
  *    void mux_init()
@@ -73,7 +74,7 @@ void mux_init()
 }
 
 /*
- *    void mux_add_input_source(int descriptior; void (*handler)(); void *arg)
+ *    void mux_add_input_source(int descriptor; void (*handler)(); pointer arg)
  *        Requires: 0<=descriptor<MAX_SOURCES, mux_init has been called
  *        Modifies: Removes the previous input handler if any for descriptor
  *        Effects: Registers handler as the input handler for file descriptor
@@ -85,7 +86,7 @@ void mux_init()
 void mux_add_input_source(descriptor, handler, arg)
      int descriptor;
      void (*handler)();
-     void *arg;
+     pointer arg;
 {
 #ifdef DEBUG
     if(descriptor < 0 || descriptor >= MAX_SOURCES)
@@ -106,10 +107,10 @@ void mux_add_input_source(descriptor, handler, arg)
  *                 mux_end_loop_p false to start).  Whenever input is
  *                 available on an input source which has a registered
  *                 handler (see mux_add_input_source), that handler is
- *                 called with its argument.  It is guarenteed that if
+ *                 called with its argument.  It is guaranteed that if
  *                 input is available on a source, its respective input
  *                 handler, if any, will eventually be called.  No other
- *                 ordering guarentees are made.  When some signal handler
+ *                 ordering guarantees are made.  When some signal handler
  *                 or input handler eventually sets mux_end_loop_p to
  *                 true, we return.
  */
