@@ -1,11 +1,11 @@
 /* This file is part of the Project Athena Zephyr Notification System.
  * It contains functions for managing multiple timeouts.
  *
- *	Created by:	John T. Kohl
- *	Derived from timer_manager_ by Ken Raeburn
+ *      Created by:     John T. Kohl
+ *      Derived from timer_manager_ by Ken Raeburn
  *
- *	$Source$
- *	$Author$
+ *      $Source$
+ *      $Author$
  *
  */
 
@@ -46,16 +46,16 @@ without express or implied warranty.
  * External functions:
  *
  * timer timer_set_rel (time_rel, proc, arg)
- *	long time_rel;
- *	void (*proc)();
- *	caddr_t arg;
+ *      long time_rel;
+ *      void (*proc)();
+ *      caddr_t arg;
  * timer timer_set_abs (time_abs, proc, arg)
- *	long time_abs;
- *	void (*proc)();
- *	caddr_t arg;
+ *      long time_abs;
+ *      void (*proc)();
+ *      caddr_t arg;
  *
  * void timer_reset(tmr)
- *	timer tmr;
+ *      timer tmr;
  *
  * void timer_process()
  *
@@ -64,10 +64,59 @@ without express or implied warranty.
 #include <stdio.h>
 #include "zserver.h"
 
-long nexttimo = 0L;			/* the Unix time of the next
-					   alarm */
-static timer timers = NULL;
-static long right_now;
+/* DELTA is just an offset to keep the size a bit less than a power 
+ * of two.  It's measured in pointers, so it's 32 bytes on most
+ * systems. */
+#define DELTA 8
+#define INITIAL_HEAP_SIZE (1024 - DELTA)
+
+/* We have three operations which we need to be able to perform
+ * quickly: adding a timer, deleting a timer given a pointer to
+ * it, and determining which timer will be the next to go off.  A
+ * heap is an ideal data structure for these purposes, so we use
+ * one.  The heap is an array of pointers to timers, and each timer
+ * knows the position of its pointer in the heap.
+ *
+ * Okay, what is the heap, exactly?  It's a data structure,
+ * represented as an array, with the invariant condition that
+ * the timeout of heap[i] is less than or equal to the timeout of
+ * heap[i * 2 + 1] and heap[i * 2 + 2] (assuming i * 2 + 1 and
+ * i * 2 + 2 are valid * indices).  An obvious consequence of this
+ * is that heap[0] has the lowest timer value, so finding the first
+ * timer to go off is easy.  We say that an index i has "children"
+ * i * 2 + 1 and i * 2 + 1, and the "parent" (i - 1) / 2.
+ *
+ * To add a timer to the heap, we start by adding it to the end, and
+ * then keep swapping it with its parent until it has a parent with
+ * a timer value less than its value.  With a little bit of thought,
+ * you can see that this preserves the heap property on all indices
+ * of the array.
+ *
+ * To delete a timer at position i from the heap, we discard it and
+ * fill in its position with the last timer in the heap.  In order
+ * to restore the heap, we have to consider two cases: the timer
+ * value at i is less than that of its parent, or the timer value at
+ * i is greater than that of one of its children.  In the first case,
+ * we propagate the timer at i up the tree, swapping it with its
+ * parent, until the heap is restored; in the second case, we
+ * propagate the timer down the tree, swapping it with its least
+ * child, until the heap is restored. */
+
+/* In order to ensure that the back pointers from timers are consistent
+ * with the heap pointers, all heap assignments should be done with the
+ * HEAP_ASSIGN() macro, which sets the back pointer and updates the
+ * heap at the same time. */
+#define PARENT(i) (((i) - 1) / 2)
+#define CHILD1(i) ((i) * 2 + 1)
+#define CHILD2(i) ((i) * 2 + 2)
+#define TIME(i) (heap[i]->time)
+#define HEAP_ASSIGN(pos, tmr) ((heap[pos] = (tmr))->heap_pos = (pos))
+
+long nexttimo = 0L;                     /* the Unix time of the next
+                                           alarm */
+static timer *heap;
+static int num_timers = 0;
+static int heap_size = 0;
 
 #ifdef __STDC__
 # define        P(s) s
@@ -75,10 +124,8 @@ static long right_now;
 # define P(s) ()
 #endif
 
-static void timer_botch P((void*)), insert_timer P((timer)),
-       add_timer P((timer));
-
-#undef P
+static void timer_botch P((void*));
+static timer add_timer P((timer));
 
 /*
  * timer_set_rel(time_rel, proc)
@@ -90,56 +137,18 @@ static void timer_botch P((void*)), insert_timer P((timer)),
 
 timer timer_set_rel (time_rel, proc, arg)
      long time_rel;
-#ifdef __STDC__
-     void (*proc)(void*);
-#else
-     void (*proc)();
-#endif
+     void (*proc) P((void *));
      void *arg;
 {
-	timer new_t;
-	right_now = NOW;
-	new_t = (timer) xmalloc(TIMER_SIZE);
-	if (new_t == NULL) return(NULL);
-	ALARM_TIME(new_t) = time_rel + right_now;
-	ALARM_FUNC(new_t) = proc;
-	ALARM_NEXT(new_t) = NULL;
-	ALARM_PREV(new_t) = NULL;
-	ALARM_ARG(new_t)  = arg;
-	add_timer(new_t);
-	return(new_t);
+        timer new_t;
+        new_t = (timer) xmalloc(sizeof(*new_t));
+        if (new_t == NULL)
+                return(NULL);
+        new_t->time = time_rel + NOW;
+        new_t->func = proc;
+        new_t->arg = arg;
+        return add_timer(new_t);
 }
-
-#ifdef notdef
-/* currently unused */
-
-/*
- * timer_set_abs (time_abs, proc, arg)
- *   time_abs: alarm time, absolute
- *   proc: routine to call when timer expires
- *   arg:  argument to routine
- *
- * functions like timer_set_rel
- */
-
-timer timer_set_abs (time_abs, proc, arg)
-     long time_abs;
-     void (*proc)();
-     caddr_t arg;
-{
-	timer new_t;
-
-	new_t = (timer)xmalloc(TIMER_SIZE);
-	if (new_t == NULL) return(NULL);
-	ALARM_TIME(new_t) = time_abs;
-	ALARM_FUNC(new_t) = proc;
-	ALARM_NEXT(new_t) = NULL;
-	ALARM_PREV(new_t) = NULL;
-	ALARM_ARG(new_t)  = arg;
-	add_timer(new_t);
-	return(new_t);
-}
-#endif /* notdef */
 
 /*
  * timer_reset
@@ -155,23 +164,42 @@ void
 timer_reset(tmr)
      timer tmr;
 {
-	if (!ALARM_PREV(tmr) || !ALARM_NEXT(tmr)) {
-		syslog (LOG_ERR, "timer_reset() of unscheduled timer\n");
-		abort();
+        int pos, min;
+
+        /* Free the timer, saving its heap position. */
+        pos = tmr->heap_pos;
+        xfree(tmr);
+
+	if (pos != num_timers - 1) {
+	    /* Replace the timer with the last timer in the heap and
+	     * restore the heap, propagating the timer either up or
+	     * down, depending on which way it violates the heap
+	     * property to insert the last timer in place of the
+	     * deleted timer. */
+	    if (pos > 0 && TIME(num_timers - 1) < TIME(PARENT(pos))) {
+                do {
+		    HEAP_ASSIGN(pos, heap[PARENT(pos)]);
+		    pos = PARENT(pos);
+                } while (pos > 0 && TIME(num_timers - 1) < TIME(PARENT(pos)));
+                HEAP_ASSIGN(pos, heap[num_timers - 1]);
+	    } else {
+                while (CHILD2(pos) < num_timers) {
+		    min = num_timers - 1;
+		    if (TIME(CHILD1(pos)) < TIME(min))
+			min = CHILD1(pos);
+		    if (TIME(CHILD2(pos)) < TIME(min))
+			min = CHILD2(pos);
+		    HEAP_ASSIGN(pos, heap[min]);
+		    pos = min;
+                }
+		if (pos != num_timers - 1)
+		    HEAP_ASSIGN(pos, heap[num_timers - 1]);
+	    }
 	}
-	if (tmr == timers) {
-		syslog (LOG_ERR,"timer_reset of timer head\n");
-		abort();
-	}
-	xremque(tmr);
-	ALARM_PREV(tmr) = NULL;
-	ALARM_NEXT(tmr) = NULL;
-	xfree(tmr);
-	if (timers == NULL) {
-		syslog (LOG_ERR,"reset with no timers\n");
-		abort();
-	}
-	nexttimo = ALARM_TIME(ALARM_NEXT(timers));
+        num_timers--;
+
+        /* Fix up the next timeout. */
+        nexttimo = (num_timers == 0) ? 0 : heap[0]->time;
 }
 
 
@@ -187,48 +215,37 @@ timer_reset(tmr)
  *   -1 if error (errno set) -- old time table may have been destroyed
  *
  */
-static void
-add_timer(new_t)
-     timer new_t;
+static timer
+add_timer(new)
+     timer new;
 {
-	if (ALARM_PREV(new_t) || ALARM_NEXT(new_t)) {
-		syslog (LOG_ERR,"add_timer of enqueued timer\n");
-		abort();
-	}
-	insert_timer(new_t);
-}
+        int pos;
 
-/*
- * insert_timer(t:timer)
- *
- * inserts a timer into the current timer table.
- *
- */
+        /* Create or resize the heap as necessary. */
+        if (heap_size == 0) {
+                heap_size = INITIAL_HEAP_SIZE;
+                heap = (timer *) xmalloc(heap_size * sizeof(timer));
+        } else if (num_timers >= heap_size) {
+                heap_size = heap_size * 2 + DELTA;
+                heap = (timer *) xrealloc(heap, heap_size * sizeof(timer));
+        }
+        if (!heap) {
+                xfree(new);
+                return NULL;
+        }
 
-static void
-insert_timer(new_t)
-     timer new_t;
-{
-	register timer t;
+        /* Insert the timer into the heap. */
+        pos = num_timers;
+        while (pos > 0 && new->time < TIME(PARENT(pos))) {
+                HEAP_ASSIGN(pos, heap[PARENT(pos)]);
+                pos = PARENT(pos);
+        }
+        HEAP_ASSIGN(pos, new);
+        num_timers++;
 
-	if (timers == NULL) {
-		timers = (timer) xmalloc(TIMER_SIZE);
-		ALARM_NEXT(timers) = timers;
-		ALARM_PREV(timers) = timers;
-		ALARM_TIME(timers) = 0L;
-		ALARM_FUNC(timers) = timer_botch;
-		ALARM_ARG(timers)  = (void *) NULL;
-	}
-	for (t = ALARM_NEXT(timers); t != timers; t = ALARM_NEXT(t)) {
-		if (ALARM_TIME(t) > ALARM_TIME(new_t)) {
-			xinsque(new_t, ALARM_PREV(t));
-			nexttimo = ALARM_TIME(ALARM_NEXT(timers));
-			return;
-		}
-	}
-	xinsque(new_t, ALARM_PREV(timers));
-	nexttimo = ALARM_TIME(ALARM_NEXT(timers));
-	return;
+        /* Fix up the next timeout. */
+        nexttimo = heap[0]->time;
+        return new;
 }
 
 /*
@@ -240,43 +257,32 @@ insert_timer(new_t)
 void
 timer_process()
 {
-	register timer t;
-	timer_proc queue;
-	void * queue_arg;
-	int valid = 0;
+        register timer t;
+        timer_proc func;
+        void *arg;
+        int valid = 0;
 
-	right_now = NOW;
-	t=ALARM_NEXT(timers);
-	/* note that in the case that there are no timers, the ALARM_TIME
-	   is set to 0L, which is what the main loop expects as the
-	   nexttimo when we have no timout work to do */
-	nexttimo = ALARM_TIME(t);
-	if (t != timers && right_now >= ALARM_TIME(t)) {
-		/*
-		 * This one goes off NOW..
-		 * Enqueue the function, and delete the timer.
-		 */
-		valid = 1;
-		queue_arg = ALARM_ARG(t);
-		queue = ALARM_FUNC(t);
-		xremque(t); 
-	        ALARM_PREV(t) = NULL;
-		ALARM_NEXT(t) = NULL;
-		ALARM_FUNC(t) = timer_botch;
-		ALARM_ARG(t)  = (caddr_t) NULL;
-		xfree(t);	
-	}
-	
-	if (valid) {
-		(queue)(queue_arg);
-	}
-	return;
+        if (num_timers == 0 || heap[0]->time > NOW)
+                return;
+
+        /* Remove the first timer from the heap, remembering it's 
+         * function and argument.  timer_reset() updates nexttimo. */
+        t = heap[0];
+        func = t->func;
+        arg = t->arg;
+        t->func = timer_botch;
+        t->arg = NULL;
+        timer_reset(t);
+
+        /* Run the function. */
+        (func)(arg);
 }
 
 static void
 timer_botch(arg)
      void *arg;
 {
-	syslog(LOG_CRIT, "Timer botch\n");
-	abort();
+        syslog(LOG_CRIT, "Timer botch\n");
+        abort();
 }
+
