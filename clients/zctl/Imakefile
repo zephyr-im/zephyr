@@ -1,0 +1,26 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${SS_LIB} ${KRB_LIB} ${DES_LIB}
+LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${SS_LINTLIB} \
+	${KRB_LINTLIB} ${DES_LINTLIB}
+SRCS = zctl.c
+OBJS = zctl.o zctl_cmds.o
+#ifdef LOCAL_LIBS
+LINCLUDES=-I$(BUILDTOP)/ss
+#endif
+
+normal_obj_rule()
+
+command_table(zctl_cmds)
+
+program(zctl,${OBJS},,${LIBS},${CLIENTDIR})
+
+clean::
+	rm -f zctl_cmds.ct.o
