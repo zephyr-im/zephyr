@@ -173,9 +173,7 @@ client_deregister(client, host, flush)
 				xremque(clients);
 				free_zstring(client->zct_principal);
 				xfree(client);
-				client = NULLZCNT;
 				xfree(clients);
-				clients = NULLZCLT;
 				(void) sigsetmask(omask);
 				return;
 			}
