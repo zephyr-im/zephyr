@@ -1,16 +1,22 @@
-.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\" Copyright 1987, 1988 by the Massachusetts Institute of Technology
 .\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
 .\" specifies the terms and conditions for redistribution.
 .\"
 .\"	@(#)zhm.8	6.1 (MIT) 7/9/87
 .\"
-.TH ZHM 8 "July 9, 1987"
+.TH ZHM 8 "June 2, 1988"
 .SH NAME
 zhm \- Zephyr HostManager
 .SH SYNOPSIS
 .B /etc/athena/zhm
 [
 .BI -d
+] [
+.BI -h
+] [
+.BI -r
+] [
+.BI -i
 ] [
 .BI server
 ]
@@ -28,6 +34,32 @@ The
 option turns on debugging mode, and sends its information to syslog
 LOG_DAEMON messages.
 .PP
+The
+.I -h
+option causes
+.I zhm
+to send a shutdown message and exit upon delivery of a SIGHUP signal.
+The normal action on SIGHUP is to send a flush notice to the zephyr server.
+.PP
+The
+.I -r
+option causes
+.I zhm
+to send a boot notice to the server and then exit.
+.PP
+The
+.I -i
+option indicates that
+.I zhm
+is being started by
+.I inetd(8).
+When this option is specified,
+.I zhm
+assumes that file descriptor zero (0) is bound to the UDP datagram port
+designated for hostmanager use.  In this mode, SIGHUP is handled as if the
+.I -h
+option were specified.
+.PP
 The optional
 .I server
 argument is used to override the default primary server, supplied by
@@ -35,12 +67,12 @@ the
 .I hesiod(3)
 name server.
 .SH SEE ALSO
-zephyr(1), zephyrd(8)
+zephyr(1), zephyrd(8), inetd(8)
 .SH AUTHOR
 .PP
 David C. Jedlinsky, MIT Project Athena
 .sp
-Copyright (c) 1987 by the Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 by the Massachusetts Institute of Technology
 .br
 See
 .I zephyr(1)
