@@ -46,6 +46,9 @@ Code_t ZFlushMyLocations()
     return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_FLUSH, ZAUTH, ""));
 }
 
+static char host[MAXHOSTNAMELEN], mytty[MAXHOSTNAMELEN];
+static int reenter = 0;
+
 Z_SendLocation(class, opcode, auth, format)
     char *class;
     char *opcode;
@@ -57,12 +60,14 @@ Z_SendLocation(class, opcode, auth, format)
     int retval;
     long ourtime;
     ZNotice_t notice, retnotice;
-    char *bptr[3], host[MAXHOSTNAMELEN], mytty[MAXHOSTNAMELEN];
-    char *display;
+    char *bptr[3];
+    char *display, *ttyp;
     struct hostent *hent;
 
     notice.z_kind = ACKED;
-    notice.z_port = 0;
+    notice.z_port = ZGetWGPort();
+    if (notice.z_port == -1)
+	        notice.z_port = 0;
     notice.z_class = class;
     notice.z_class_inst = ZGetSender();
     notice.z_opcode = opcode;
@@ -71,33 +76,44 @@ Z_SendLocation(class, opcode, auth, format)
     notice.z_num_other_fields = 0;
     notice.z_default_format = format;
 
-    if (gethostname(host, MAXHOSTNAMELEN) < 0)
-	return (errno);
+    /*
+      keep track of what we said before so that we can be consistent
+      when changing our minds.
+      This is done mainly for the sake of the WindowGram client.
+     */
 
-    hent = gethostbyname(host);
-    if (!hent)
-	bptr[0] = "unknown";
-    else {
-	(void) strcpy(host, hent->h_name);
-	bptr[0] = host;
-    } 
+    if (!reenter) {
+	    if (gethostname(host, MAXHOSTNAMELEN) < 0)
+		    return (errno);
+
+	    hent = gethostbyname(host);
+	    if (!hent)
+		    (void) strcpy(host, "unknown");
+	    else
+		    (void) strcpy(host, hent->h_name);
+	    bptr[0] = host;
+	    if ((display = getenv("DISPLAY")) && *display) {
+		    (void) strcpy(mytty, display);
+		    bptr[2] = mytty;
+	    } else {
+		    ttyp = ttyname(0);
+		    bptr[2] = rindex(ttyp, '/');
+		    if (bptr[2])
+			    bptr[2]++;
+		    else
+			    bptr[2] = ttyp;
+		    (void) strcpy(mytty, bptr[2]);
+	    }
+	    reenter = 1;
+    } else {
+	    bptr[0] = host;
+	    bptr[2] = mytty;
+    }
 
     ourtime = time((long *)0);
     bptr[1] = ctime(&ourtime);
     bptr[1][strlen(bptr[1])-1] = '\0';
 
-    if ((display = getenv("DISPLAY")) && *display) {
-	(void) strcpy(mytty, display);
-	bptr[2] = mytty;
-    }
-    else {
-	(void) strcpy(mytty, ttyname(0));
-	bptr[2] = rindex(mytty, '/');
-	if (bptr[2])
-	    bptr[2]++;
-	else
-	    bptr[2] = mytty;
-    }
 	
     if ((retval = ZSendList(&notice, bptr, 3, auth)) != ZERR_NONE)
 	return (retval);
