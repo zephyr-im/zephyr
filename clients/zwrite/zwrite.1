@@ -22,6 +22,8 @@ zwrite \- write to another user
 ] [
 .BI -q
 ] [
+.BI -t
+] [
 .BI -u
 ] [
 .BI -o
@@ -71,6 +73,14 @@ successful.
 Forces
 .I zwrite
 to suppress information about whether or not the message was sent.
+.TP
+.B \-t
+Prevents
+.I zwrite
+from expanding tabs in the message into appropriate spaces.  Normally
+.I zwrite
+will expand any tabs it finds into the appropriate number of spaces to
+maintain separation based on 8-character tab stops.
 .TP
 .B \-u
 Sends an urgent message.  This changes the
@@ -140,8 +150,10 @@ Command-line options override the defaults.
 .PP
 If the Zephyr variable \fIzephyr-signature\fR is set, its contents are used
 to augment the user's username in the message. 
+.SH BUGS
+Tab expansion should really be done by the receiver of the message.
 .SH SEE ALSO
-kerberosintro(1), zctl(1), zephyr(1), zwgc(1), zhm(8), zephyrd(8)
+kerberosintro(1), zctl(1), zephyr(1), zwgc(1), zhm(8), zephyrd(8),
 gethostbyname(3)
 .br
 Project Athena Technical Plan Section E.4.1, `Zephyr Notification
