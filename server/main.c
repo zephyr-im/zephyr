@@ -140,6 +140,8 @@ unsigned long m_size;
 int zalone;
 #endif
 
+struct timeval t_local;			/* store current time for other uses */
+
 u_long npackets;			/* number of packets processed */
 long uptime;				/* when we started operations */
 static int nofork;
