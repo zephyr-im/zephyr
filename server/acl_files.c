@@ -71,8 +71,8 @@ acl_canonicalize_principal(principal, canon)
     char *dot, *atsign;
     int len;
 
-    dot = (char *) index(principal, INST_SEP);
-    atsign = (char *) index(principal, REALM_SEP);
+    dot = (char *) strchr(principal, INST_SEP);
+    atsign = (char *) strchr(principal, REALM_SEP);
 
     /* Maybe we're done already */
     if(dot != NULL && atsign != NULL) {
@@ -512,8 +512,8 @@ acl_check(acl, principal)
 	return 1;
 
     /* Try the wildcards */
-    realm = (char *) index(canon, REALM_SEP);
-    *((char *)index(canon, INST_SEP)) = '\0';	/* Chuck the instance */
+    realm = (char *) strchr(canon, REALM_SEP);
+    *((char *)strchr(canon, INST_SEP)) = '\0';	/* Chuck the instance */
 
     sprintf(buf, "%s.*%s", canon, realm);
     if(acl_exact_match(acl, buf)) return 1;
