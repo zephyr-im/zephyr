@@ -48,6 +48,7 @@ transmission_tower(notice, packet, pak_len)
 	      gack = *notice;
 	      gack.z_kind = HMACK;
 	      gack.z_message_len = 0;
+	      gack.z_multinotice = "";
 	      gsin = cli_sin;
 	      gsin.sin_port = from.sin_port;
 	      if (gack.z_port == 0)
@@ -59,7 +60,7 @@ transmission_tower(notice, packet, pak_len)
 		    com_err("hm", ret, "setting destination");
 	      }
 	      /* Bounce ACK to library */
-	      if ((ret = ZSendRawNotice(&gack)) != ZERR_NONE) {
+	      if ((ret = send_outgoing(&gack)) != ZERR_NONE) {
 		    Zperr(ret);
 		    com_err("hm", ret, "sending raw notice");
 	      }
@@ -70,7 +71,7 @@ transmission_tower(notice, packet, pak_len)
 		  Zperr(ret);
 		  com_err("hm", ret, "setting destination");
 	    }
-	    if ((ret = ZSendRawNotice(notice)) != ZERR_NONE) {
+	    if ((ret = send_outgoing(notice)) != ZERR_NONE) {
 		  Zperr(ret);
 		  com_err("hm", ret, "while sending raw notice");
 	    }
@@ -82,4 +83,25 @@ transmission_tower(notice, packet, pak_len)
 	    }
       }
       (void)add_notice_to_queue(notice, packet, &gsin, pak_len);
+}
+
+Code_t
+send_outgoing(notice)
+ZNotice_t *notice;
+{
+	Code_t retval;
+	char *packet;
+	int length;
+
+	if (!(packet = (char *) malloc((unsigned)sizeof(ZPacket_t))))
+		return(ENOMEM);
+
+	if ((retval = ZFormatSmallRawNotice(notice, packet, &length))
+	    != ZERR_NONE) {
+		free(packet);
+		return(retval);
+	}
+	retval = ZSendPacket(packet, length, 0);
+	free(packet);
+	return(retval);
 }
