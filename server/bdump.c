@@ -16,12 +16,13 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_bdump_c[] = "$Header$";
-#endif SABER
-#endif lint
+#endif /* SABER */
+#endif /* lint */
 
 #include "zserver.h"
 #include <sys/socket.h>
 #include <signal.h>
+#include <sys/param.h>		/* for BSD */
 
 /*
  * External functions are:
@@ -53,11 +54,13 @@ static Code_t send_host_register(), sbd_loop(), gbd_loop(), send_normal_tcp();
 static int net_read(), net_write();
 #ifdef KERBEROS
 static int get_tgt();
-#endif KERBEROS
+#endif /* KERBEROS */
 
 static timer bdump_timer;
+#ifdef KERBEROS
 static long ticket_time = 0L;
 static char my_realm[REALM_SZ] = "\0";
+#endif /* KERBEROS */
 static int bdump_inited = 0;
 static int live_socket = -1;
 
@@ -77,7 +80,9 @@ struct sockaddr_in *who;
 {
 	Code_t retval;
 	char buf[512], *addr, *lyst[2];
-
+#ifndef KERBEROS
+	int bdump_port = IPPORT_RESERVED - 1;
+#endif /* !KERBEROS */
 	zdbug((LOG_DEBUG, "bd_offer"));
 #ifdef KERBEROS
 	/* 
@@ -112,8 +117,7 @@ struct sockaddr_in *who;
 			return;
 		}
 	}
-#else
-	int bdump_port = IPPORT_RESERVED - 1;
+#else /* !KERBEROS */
 	/*
 	 * when not using Kerberos, we can't use any old port, we use
 	 * Internet reserved ports instead (rresvport)
@@ -128,7 +132,7 @@ struct sockaddr_in *who;
 	bdump_sin.sin_addr = my_addr;
 	bdump_sin.sin_family = AF_INET;
 
-#endif KERBEROS
+#endif /* KERBEROS */
 	(void) listen(bdump_socket, 1);
 
 	bdump_timer = timer_set_rel(20L, close_bdump, (caddr_t) 0);
@@ -174,7 +178,7 @@ bdump_send()
 	AUTH_DAT kdata;
 #else
 	unsigned short fromport;
-#endif KERBEROS
+#endif /* KERBEROS */
 
 	zdbug((LOG_DEBUG, "bdump_send"));
 	/* accept the connection, and send the brain dump */
@@ -186,7 +190,7 @@ bdump_send()
 
 #ifndef KERBEROS
 	fromport = ntohs(from.sin_port);
-#endif KERBEROS
+#endif /* !KERBEROS */
 
 	omask = sigblock(sigmask(SIGFPE)); /* don't let ascii dumps start */
 
@@ -241,14 +245,14 @@ bdump_send()
 		cleanup(server, omask);
 		return;
 	}
-#else
+#else /* !KERBEROS */
 	if ((fromport > IPPORT_RESERVED) ||
 	    (fromport < (IPPORT_RESERVED / 2))) {
 		syslog(LOG_ERR,"bad port from peer: %d",fromport);
 		cleanup(server, omask);
 		return;
 	}
-#endif KERBEROS
+#endif /* KERBEROS */
 
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sbd_loop failed: %s",
@@ -281,7 +285,7 @@ bdump_send()
 #ifdef CONCURRENT
 	/* Now that we are finished dumping, send all the queued packets */
 	server_send_queue(server);
-#endif CONCURRENT
+#endif /* CONCURRENT */
 
 	(void) sigsetmask(omask);
 	return;
@@ -301,9 +305,9 @@ ZServerDesc_t *server;
 #ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
-#else
+#else /* !KERBEROS */
 	int reserved_port = IPPORT_RESERVED - 1;
-#endif KERBEROS
+#endif /* KERBEROS */
 
 	if (zdebug)
 		syslog(LOG_DEBUG, "bdump avail %s",inet_ntoa(who->sin_addr));
@@ -352,9 +356,9 @@ ZServerDesc_t *server;
 		return;
 	}
 	if ((live_socket = rresvport(&reserved_port)) < 0) {
-#else
+#else /* !KERBEROS */
 	if ((live_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-#endif KERBEROS
+#endif /* KERBEROS */
 		syslog(LOG_ERR, "gbd socket: %m");
 		cleanup(server, omask);
 		return;
@@ -397,7 +401,7 @@ ZServerDesc_t *server;
 		cleanup(server, omask);
 		return;
 	}
-#endif KERBEROS
+#endif /* KERBEROS */
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "gbd_loop failed: %s",
 		       error_message(retval));
@@ -429,7 +433,7 @@ ZServerDesc_t *server;
 #ifdef CONCURRENT
 	/* Now that we are finished dumping, send all the queued packets */
 	server_send_queue(server);
-#endif CONCURRENT	
+#endif /* CONCURRENT */
 
 	(void) sigsetmask(omask);
 	return;
@@ -514,7 +518,7 @@ int omask;
 	server->zs_dumping = 0;
 #ifdef CONCURRENT
 	/* XXX need to flush the server and the updates to it */
-#endif CONCURRENT
+#endif /* CONCURRENT */
 	(void) sigsetmask(omask);
 	return;
 }
@@ -549,7 +553,7 @@ get_tgt()
 	}
 	return(0);
 }
-#endif KERBEROS
+#endif /* KERBEROS */
 
 static Code_t
 sbd_loop(from)
@@ -593,7 +597,7 @@ struct sockaddr_in *from;
 				       bd_notice.z_recipient);
 			syslog(LOG_DEBUG, buf);
 		}
-#endif DEBUG
+#endif /* DEBUG */
 		if (!strcmp(bd_notice.z_class_inst, ADMIN_LIMBO)) {
 			/* he wants limbo */
 			zdbug((LOG_DEBUG, "limbo req"));
@@ -721,19 +725,21 @@ ZServerDesc_t *server;
 	ZClient_t *client = NULLZCNT;
 	struct sockaddr_in current_who;
 	int who_valid = 0;
+#ifdef KERBEROS
 	register char *cp;
+#endif /* KERBEROS */
 #ifdef CONCURRENT
 	fd_set readable, initial;
 	int fd_ready;
 	struct timeval tv;
-#endif CONCURRENT
+#endif /* CONCURRENT */
 
 	zdbug((LOG_DEBUG, "bdump recv loop"));
 	
 #ifdef CONCURRENT
 	FD_ZERO(&initial);
 	FD_SET(srv_socket, &initial);
-#endif CONCURRENT
+#endif /* CONCURRENT */
 
 	/* do the inverse of bdump_send_loop, registering stuff on the fly */
 	while (1) {
@@ -758,7 +764,7 @@ ZServerDesc_t *server;
 			handle_packet();
 		} else if (fd_ready < 0)
 			syslog(LOG_ERR, "brl select: %m");
-#endif CONCURRENT
+#endif /* CONCURRENT */
 		len = sizeof(packet);
 		if ((retval = get_packet(packet, len, &len)) != ZERR_NONE) {
 			syslog(LOG_ERR, "brl get pkt: %s",
@@ -783,7 +789,7 @@ ZServerDesc_t *server;
 				       notice.z_recipient);
 			syslog(LOG_DEBUG, buf);
 		}
-#endif DEBUG
+#endif /* DEBUG */
 		if (notice.z_kind == HMCTL) {
 			/* host register */
 			if ((retval = extract_sin(&notice, &current_who)) !=
@@ -842,7 +848,7 @@ ZServerDesc_t *server;
 					       cp);
 				}
 			}
-#endif KERBEROS
+#endif /* KERBEROS */
 		} else if (!strcmp(notice.z_opcode, CLIENT_SUBSCRIBE)) { 
 			/* a subscription packet */
 			if (!client) {
@@ -877,7 +883,7 @@ char *vers;
 	fd_set readable, initial;
 	int fd_ready;
 	struct timeval tv;
-#endif CONCURRENT
+#endif /* CONCURRENT */
 
 	zdbug((LOG_DEBUG, "bdump send loop"));
 
@@ -885,7 +891,7 @@ char *vers;
 #ifdef CONCURRENT
 	FD_ZERO(&initial);
 	FD_SET(srv_socket, &initial);
-#endif CONCURRENT
+#endif /* CONCURRENT */
 
 	for (host = server->zs_hosts->q_forw;
 	     host != server->zs_hosts;
@@ -913,7 +919,7 @@ char *vers;
 		else if (fd_ready < 0)
 			syslog(LOG_ERR, "bsl select: %m");
 
-#endif CONCURRENT
+#endif /* CONCURRENT */
 		if ((retval = send_host_register(host)) != ZERR_NONE) {
 			host->zh_locked = 0;
 			return(retval);
@@ -1142,6 +1148,7 @@ struct sockaddr_in *target;
 {
 	register char *cp = notice->z_message;
 	char *buf;
+	extern unsigned long inet_addr();
 
 	buf = cp;
 	if (!notice->z_message_len || *buf == '\0') {
@@ -1149,6 +1156,7 @@ struct sockaddr_in *target;
 		return(ZSRV_PKSHORT);
 	}
 	target->sin_addr.s_addr = inet_addr(cp);
+
 	cp += (strlen(cp) + 1); /* past the null */
 	if ((cp >= notice->z_message + notice->z_message_len)
 	    || (*cp == '\0')) {
