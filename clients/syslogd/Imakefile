@@ -8,7 +8,11 @@
 /**/#	$Id$
 /**/#
 
+#ifdef _AIX
+LIBS= $(ZEPHYR_LIB) $(KRB_LIB) $(COMERR_LIB) -lsrc
+#else
 LIBS= $(ZEPHYR_LIB) $(KRB_LIB) $(COMERR_LIB)
+#endif
 LINCLUDES=-I.
 LINTLIBS=$(ZEPHYR_LINTLIB) $(KRB_LINTLIB) $(COMERR_LINTLIB)
 SRCS = syslogd.c
