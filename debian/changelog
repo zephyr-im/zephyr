@@ -1,9 +1,9 @@
 zephyr (2.1.20000421.SNAPSHOT-11) unstable; urgency=low
 
-  * tweak to kopt.c to maybe allow alpha build to work. closes: 94600
-  * 
+  * tweak to kopt.c to maybe allow alpha build to work. closes: #94600
+  * build shlibs using gcc, and against the latest krb5. closes: #93779
 
- --
+ -- Karl Ramm <kcr@1TS.ORG>  Tue, 24 Apr 2001 16:32:52 -0400
 
 zephyr (2.1.20000421.SNAPSHOT-10) unstable; urgency=low
 
