@@ -27,4 +27,6 @@ extern void unpunt();
 extern void zwgc_shutdown();
 extern void zwgc_startup();
 
+#define USRSUBS ".zephyr.subs"
+
 #endif
