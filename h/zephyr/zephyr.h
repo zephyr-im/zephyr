@@ -180,6 +180,7 @@ extern "C" {
     extern Code_t ZParseNotice Zproto((char*, int, ZNotice_t *));
     extern Code_t ZReadAscii Zproto((char*, int, unsigned char*, int));
     extern Code_t ZSendPacket Zproto((char*, int, int));
+    extern Code_t ZSendList Zproto((ZNotice_t*, char *[], int, Z_AuthProc));
     extern Code_t ZFormatNotice Zproto((ZNotice_t*, char**, int*, Z_AuthProc));
     extern Code_t ZInitialize Zproto ((void));
     extern Code_t ZSetServerState Zproto((int));
