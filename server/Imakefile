@@ -20,8 +20,7 @@ LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${HES_LINTLIB} \
 
 HDRS=	zserver.h \
 	zsrv_conf.h \
-	timer.h \
-	zsrv_err.h
+	timer.h
 
 SRCS=	access.c \
 	bdump.c \
@@ -63,6 +62,8 @@ normal_obj_rule()
 program(zephyrd,${OBJS},,${LIBS},${USRETCDIR})
 
 error_table_noprof(zsrv_err)
+
+src:: zsrv_err.h
 
 
 install::
