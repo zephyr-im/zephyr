@@ -21,7 +21,7 @@
 
 #ifndef lint
 static char rcsid_zpopnotify_c[] = "$Header$";
-#endif lint
+#endif /* lint */
 
 #define MAIL_CLASS "MAIL"
 #define MAIL_INSTANCE "POP"
