@@ -230,7 +230,7 @@ elseparts : elseifparts
 					  reverse_list_of_nodes($3));
 		  $$->next = $1;
 	          $$ = reverse_list_of_nodes($$); }
-
+          ;
 /* elseifparts needs to be reversed before using... */
 elseifparts : /* empty */
                 { $$ = 0; }

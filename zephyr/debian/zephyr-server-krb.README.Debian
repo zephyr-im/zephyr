@@ -1,0 +1,30 @@
+To run a zephyr server with MIT Kerberos support, you need to generate a 
+Kerberos IV srvtab for the principal zephyr.zephyr@YOUR.REALM.NAME.
+
+Doing this with the MIT Kerberos V server is a somewhat convoluted process, 
+but here we go:
+
+[Note that this presumes that you have Kerberos administrator privileges, if
+you don't, find someone who does.]
+
+At the kadmin prompt, type
+
+ank -randkey zephyr/zephyr
+
+this creates the Kerberos principal, with whatever key types and cryptosystems
+your realm defaults to.  Next, also at the kadmin prompt, type the following
+substituting appropriately for your realm name and various file locations:
+
+xst -k /tmp/keytab -e des-cbc-crc:v4 zephyr/zephyr@YOUR.REALM.NAME
+
+The key type is necessary because zephyr uses an older version of Kerberos
+that used only single-DES.  Now run ktutil:
+
+rkt /tmp/keytab
+wst /etc/zephyr/srvtab
+q
+
+You now want to make sure that the /tmp/keytab file is written-over and
+removed.  Fortunately, you have Kerberos, you have kdestroy.
+
+env KRB5CCNAME=/tmp/keytab kdestroy

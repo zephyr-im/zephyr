@@ -232,11 +232,11 @@ krb_set_key(key,cvt)
 int
 krb_rd_req(authent,service,instance,from_addr,ad,fn)
     KTEXT authent;			/* The received message */
-    char *service;			/* Service name */
-    char *instance;			/* Service instance */
-    unsigned KRB_INT32 from_addr;	/* Net address of originating host */
-    AUTH_DAT *ad;			/* Structure to be filled in */
-    char *fn;				/* Filename to get keys from */
+    char FAR *service;			/* Service name */
+    char FAR *instance;			/* Service instance */
+    unsigned KRB4_32 from_addr;	/* Net address of originating host */
+    AUTH_DAT FAR *ad;			/* Structure to be filled in */
+    char FAR *fn;				/* Filename to get keys from */
 {
     KTEXT_ST ticket;     /* Temp storage for ticket */
     KTEXT tkt = &ticket;

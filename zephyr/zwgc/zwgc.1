@@ -380,7 +380,7 @@ created, its mode is set to read-write, owner only (no access for others).
 .TP
 .B break
 Exits the innermost if, case, or while block.
-.if n .ll +2in
+.\" .if n .ll +2in
 .TP
 \fBcase \fIexpr1\fR [ ((\fBmatch \fIexpr\fR [,\fIexpr ...\fR]) | \fBdefault\fR)\fI commands \fR] ... \fBendcase\fR
 Evaluates \fIexpr1\fR.  Then, each of the match expressions is
@@ -427,7 +427,7 @@ of the process.
 Completes processing of the current notice.  The remainder of the
 description file is ignored after execution of this command.
 .\" hack because the following line otherwise breaks because it is too long.
-.if n .ll +2in
+.\" .if n .ll +2in
 .TP
 \fBif \fIexpr1 \fBthen \fIcommands1\fR [\fBelseif \fIexpr2 \fBthen \fIcommands2\fR] ... [\fBelse \fIcommandsn\fR] \fBendif\fR
 If \fIexpr1\fR evaluates to true, execute \fIcommands1\fI, etc. [A conditional
@@ -538,16 +538,16 @@ Supported @ commands are:
 .\" .TQ 15
 .\" @em
 .\" Emphasis.  Use underline if available, else reverse video.
-.TQ 15
+.TP
 @roman
 Roman (plain) letters (turns off all special modes).
-.TQ
+.TP
 @b or @bold
 Bold letters.  If not available, reverse video, else underline.
-.TQ
+.TP
 @i or @italic
 Italic letters (underlining, if available).
-.TQ
+.TP
 @beep
 "bl" termcap entry, else "^G" (beep the terminal); limited to once per
 message.
@@ -560,13 +560,13 @@ message.
 .\" .TQ
 .\" @u
 .\" "us"/"ue" termcap entry.
-.TQ
+.TP
 @l or @left
 left aligned
-.TQ
+.TP
 @c or @center
 center aligned
-.TQ
+.TP
 @r or @right
 right aligned
 .RE
@@ -578,34 +578,34 @@ Displays one window per string output to the port.  The output is
 formatted according to @ commands embedded in the string.  Supported
 @ commands are:
 .RS 10
-.TQ 15
+.TP 15
 @roman
 turns off @italic and @bold
-.TQ
+.TP
 @b or @bold
 turns on boldface
-.TQ
+.TP
 @i or @italic
 turns on italics
-.TQ
+.TP
 @l or @left
 left aligned
-.TQ
+.TP
 @c or @center
 center aligned
-.TQ
+.TP
 @r or @right
 right aligned
-.TQ
+.TP
 @large
 large type size
-.TQ
+.TP
 @medium
 medium type size
-.TQ
+.TP
 @small
 small type size
-.TQ
+.TP
 @beep
 Ring the X bell (limited to once per message)
 .TP
@@ -643,19 +643,19 @@ The substyle is determined by @ commands in the message text.
 .IP
 Zwgc variables which the X output device reads are:
 .RS 10
-.TQ 15
+.TP 15
 default_X_geometry
 default geometry for notices, set from resources
-.TQ
+.TP
 X_geometry
 overrides geometry in resource file, if set
-.TQ
+.TP
 default_X_background
 default background color for notices, set from resources
-.TQ
+.TP
 X_background
 overrides bgcolor in resource file, if set
-.TQ
+.TP
 style
 style, as described above
 .RE
@@ -1018,25 +1018,25 @@ notices appear to be forged, your tickets have probably expired, in
 which case you must get new tickets and then run ``zctl load
 /dev/null''.)
 .SH FILES
-.TQ 15
+.TP 15
 $HOME/.zwgc.desc
 Default location of user's description file
-.TQ
+.TP
 /usr/athena/share/zephyr/zwgc.desc
 System-wide description file
-.TQ
+.TP
 /usr/athena/share/zephyr/zwgc_resources
 Default X application resources.
-.TQ
+.TP
 $HOME/.zephyr.vars
 File containing variable definitions
-.TQ
+.TP
 $HOME/.zephyr.subs
 Supplementary subscription file
-.TQ
+.TP
 $HOME/.Xresources
 Standard X resources file
-.TQ
+.TP
 $WGFILE or /tmp/wg.\fIuid\fR
 File used to store WindowGram port number for other clients
 .SH SEE ALSO

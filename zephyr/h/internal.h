@@ -97,5 +97,6 @@ Code_t Z_WaitForNotice __P((ZNotice_t *notice,
 			    int (*pred) __P((ZNotice_t *, void *)), void *arg,
 			    int timeout));
 
+void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz);
 #endif /* __INTERNAL_H__ */
 

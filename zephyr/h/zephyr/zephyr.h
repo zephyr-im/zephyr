@@ -62,14 +62,19 @@ typedef enum {
 } ZNotice_Kind_t;
 extern ZCONST char *ZNoticeKinds[9];
 
+struct _ZTimeval {
+	int tv_sec;
+	int tv_usec;
+};
+
 /* Unique ID format */
 typedef struct _ZUnique_Id_t {
     struct	in_addr zuid_addr;
-    struct	timeval	tv;
+    struct	_ZTimeval	tv;
 } ZUnique_Id_t;
 
 /* Checksum */
-typedef unsigned long ZChecksum_t;
+typedef unsigned int ZChecksum_t;
 
 /* Notice definition */
 typedef struct _ZNotice_t {
@@ -78,7 +83,7 @@ typedef struct _ZNotice_t {
     ZNotice_Kind_t	z_kind;
     ZUnique_Id_t	z_uid;
 #define z_sender_addr	z_uid.zuid_addr
-    struct		timeval z_time;
+    struct		_ZTimeval z_time;
     unsigned short	z_port;
     int			z_auth;
     int			z_checked_auth;

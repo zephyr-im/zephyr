@@ -16,9 +16,7 @@
 
 /* Path names are relative to CONFDIR, except for the class registry. */
 
-#ifndef HAVE_HESIOD
 #define SERVER_LIST_FILE	"server.list"
-#endif
 #define REALM_LIST_FILE		"realm.list"
 #ifdef HAVE_KRB4
 #define ZEPHYR_SRVTAB		"srvtab"

@@ -269,8 +269,8 @@ void sweep_ticket_hash_table __P((void *));
 Sched *check_key_sched_cache __P((des_cblock key));
 void add_to_key_sched_cache __P((des_cblock key, Sched *sched));
 int krb_set_key __P((char *key, int cvt));
-int krb_rd_req __P((KTEXT authent, char *service, char *instance,
-		    unsigned KRB_INT32 from_addr, AUTH_DAT *ad, char *fn));
+/* int krb_rd_req __P((KTEXT authent, char *service, char *instance,
+		    unsigned KRB_INT32 from_addr, AUTH_DAT *ad, char *fn)); */
 int krb_find_ticket __P((KTEXT authent, KTEXT ticket));
 int krb_get_lrealm __P((char *r, int n));
 #endif
@@ -354,9 +354,7 @@ extern fd_set interesting;		/* the file descrips we are listening
 extern int nfds;			/* number to look at in select() */
 extern int zdebug;
 extern char myname[];			/* domain name of this host */
-#ifndef HAVE_HESIOD
 extern char list_file[];
-#endif
 #ifdef HAVE_KRB4
 extern char srvtab_file[];
 extern char my_realm[];

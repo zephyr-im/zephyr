@@ -8,8 +8,9 @@ sbindir=@sbindir@
 lsbindir=@lsbindir@
 
 includedir=${prefix}/include
-mandir=${prefix}/man
+mandir=@mandir@
 libdir=${exec_prefix}/lib
+LIBS=@LIBS@
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
@@ -18,9 +19,10 @@ VPATH=@srcdir@
 CC=@CC@
 INSTALL=@INSTALL@
 RANLIB=@RANLIB@
-
+FPIC=
+DEBUG=-O
 CPPFLAGS=@CPPFLAGS@
-CFLAGS=@CFLAGS@
+CFLAGS=@CFLAGS@ ${DEBUG} ${FPIC}
 ALL_CFLAGS=${CFLAGS} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h ${CPPFLAGS}
 
@@ -34,11 +36,15 @@ OBJS =	zephyr_err.o ZAsyncLocate.o ZCkAuth.o ZCkIfNot.o ZClosePort.o \
 	ZSendPkt.o ZSendRaw.o ZSendRLst.o ZSetDest.o ZSetFD.o ZSetSrv.o \
 	ZSubs.o ZVariables.o ZWait4Not.o Zinternal.o
 
-all: libzephyr.a
+LIBEXT=a
+all: libzephyr.$(LIBEXT)
 
 libzephyr.a: ${OBJS}
 	ar cru $@ ${OBJS}
 	${RANLIB} $@
+
+libzephyr.so: $(OBJS)
+	gcc  -shared -Wl,-soname -Wl,libzephyr.so.$(SONAME) -o libzephyr.so $(OBJS) $(LIBS)  -lcom_err  
 
 zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
 	compile_et ${srcdir}/zephyr_err.et
@@ -49,8 +55,10 @@ zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
 
 check:
 
-install: libzephyr.a
-	${INSTALL} -m 644 libzephyr.a ${DESTDIR}${libdir}
+install: libzephyr.$(LIBEXT)
+	-${INSTALL} -m 644 libzephyr.a ${DESTDIR}${libdir}
+	-$(INSTALL) -m 644 libzephyr.so ${DESTDIR}$(libdir)
+
 	${INSTALL} -m 644 ${srcdir}/zephyr.1 ${DESTDIR}${mandir}/man1
 
 clean:

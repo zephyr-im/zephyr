@@ -1,0 +1,42 @@
+Template: zephyr-server/servers
+Type: string
+Description: What are your zephyr servers?
+ Please type the full names of your zephyr servers, separated by spaces.
+ (Note that this can be a superset of that you're telling the clients.)
+Description-es: ©CuАles son sus servidores zephyr?
+ Por favor, introduzca los nombres completos de sus servidores zephyr
+ separados por espacios. (tenga en cuenta que se puede tratar de un
+ conjunto mАs amplio de lo que usted considera los clientes)
+Description-ru: Как называются ваши сервера zephyr?
+ Введите  полные  имена  ваших  серверов zephyr, разделенные пробелами.
+ (Заметьте,  что  это  может  быть  супернабор  того,  что  вы говорите
+ клиентам).
+
+Template: zephyr-server/read_conf
+Type: boolean
+Default: true
+Description: You should never see this
+ We want to try and capture user changes when they edit a config file
+ manually.  To do this we look at the file in the config script.
+ However, in the case of preconfigure, the config script is run twice
+ before the postinst is run.  Thus we may read the wrong value before the
+ edited value is written out in postinst.
+ If this is false we skip reading config files until postinst runs.
+Description-es: No deberМa poder leer esto
+ Para averiguar quИ cambios ha realizado el usuario manualmente en el
+ fichero de configuraciСn, hay que mirar en el fichero que hay en el
+ script de configuraciСn. Sin embargo, si se trata de preconfigurar el
+ paquete, dicho script se ejecuta dos veces antes de que lo haga el
+ posterior a la instalaciСn. De ese modo, es posible obtener un valor
+ equivocado antes de que se guarde despuИs de la instalaciСn el valor
+ editado. Si no es Иste el caso, nos saltamos la lectura de los ficheros
+ de configuraciСn hasta que se ejecute el script posterior a la
+ instalaciСn.
+Description-ru: Этого вы должны никогда не видеть
+ Мы  хотим  попробовать  и захватить  пользовательские изменения, когда
+ пользователи  редактируют файл настроек вручную. Чтобы это сделать, мы
+ смотрим  в  файл в сценарии настройки. Однако в случае пред-настройки,
+ сценарий  настройки  запускается дважды до запуска postinst. Потому мы
+ можем  прочитать  неверное  значение  до  того,  как отредактированное 
+ значение  будет  записано  из  postinst.  Если  это  не удалось, то мы 
+ пропускаем чтение файла настроек, пока не будет запущен postinst.
