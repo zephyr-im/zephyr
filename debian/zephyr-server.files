@@ -1,5 +1,5 @@
 usr/sbin/zephyrd
-usr/man/man8/zephyrd.8
+usr/share/man/man8/zephyrd.8
 etc/zephyr/acl/class-registry.acl
 etc/zephyr/acl/iui-hm_ctl.acl
 etc/zephyr/acl/iui-hm_stat.acl
