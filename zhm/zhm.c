@@ -50,6 +50,7 @@ extern long time();
 
 void init_hm(), detach(), handle_timeout(), resend_notices(), die_gracefully();
 int set_sig_type();
+char *strsave();
 
 main(argc, argv)
 char *argv[];
@@ -59,12 +60,13 @@ char *argv[];
      Code_t ret;
      int opt, pak_len;
      extern int optind;
+     register int i;
 
      if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
 	  printf("Can't find my hostname?!\n");
 	  exit(-1);
      }
-     *prim_serv = NULL;
+     *prim_serv = '\0';
      while ((opt = getopt(argc, argv, "drhi")) != EOF)
 	  switch(opt) {
 	  case 'd':
@@ -96,58 +98,91 @@ char *argv[];
 
      /* Override server argument? */
      if (optind < argc) {
-	  (void)strcpy(prim_serv, argv[optind]);
-	  if ((hp = gethostbyname(prim_serv)) == NULL) {
-	       printf("Unknown server name: %s\n", prim_serv);
-	       *prim_serv = NULL;
-	  }
+	 if ((hp = gethostbyname(argv[optind++])) == NULL) {
+	     printf("Unknown server name: %s\n", prim_serv);
+	     *prim_serv = NULL;
+	 } else
+	     (void) strcpy(prim_serv, hp->h_name);
+	 /* argc-optind is the # of other servers on the command line */
+	 serv_list = (char **)malloc((argc-optind + 2) * sizeof(char *));
+	 serv_list[0] = prim_serv;
+	 for (i = 1; optind < argc; optind++) {
+	     if ((hp = gethostbyname(argv[optind])) == NULL) {
+		 printf("Unknown server name '%s', ignoring\n", argv[optind]);
+		 continue;
+	     }
+	     serv_list[i] = strsave(hp->h_name);
+	     i++;
+	 }
+	 serv_list[i] = NULL;
      }
-
 #ifdef HESIOD
-     if (*prim_serv == NULL) {
-	  if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
-	      zcluster = NULL;
-	  } else
-	  for ( ; *clust_info; clust_info++) {
-	       /* Remove the following check once we have changed over to
-		* new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
-		* server
-		*/
-	       if (!strncasecmp("ZEPHYR", *clust_info, 6)) {
-		    register char *c;
-	
-		    if ((c = index(*clust_info, ' ')) == 0) {
-			 printf("Hesiod error getting primary server info.\n");
-		    } else
-			 (void)strcpy(prim_serv, c+1);
-		    break;
-	       }
-	       if (!strncasecmp("ZCLUSTER", *clust_info, 6)) {
-		    register char *c;
+     else {
+	 register int j;
 
-		    if ((c = index(*clust_info, ' ')) == 0) {
+	 if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
+	     zcluster = NULL;
+	 } else
+	     for ( ; *clust_info; clust_info++) {
+		 /* Remove the following check once we have changed over to
+		  * new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
+		  * server
+		  */
+		 if (!strncasecmp("ZEPHYR", *clust_info, 6)) {
+		     register char *c;
+	
+		     if ((c = index(*clust_info, ' ')) == 0) {
+			 printf("Hesiod error getting primary server info.\n");
+		     } else
+			 (void)strcpy(prim_serv, c+1);
+		     break;
+		 }
+		 if (!strncasecmp("ZCLUSTER", *clust_info, 9)) {
+		     register char *c;
+
+		     if ((c = index(*clust_info, ' ')) == 0) {
 			 printf("Hesiod error getting zcluster info.\n");
-		    } else {
+		     } else {
 			 if ((zcluster = malloc((unsigned)(strlen(c+1)+1)))
 			     != NULL) {
-			      (void)strcpy(zcluster, c+1);
+			     (void)strcpy(zcluster, c+1);
 			 } else {
-			      printf("Out of memory.\n");
-			      exit(-5);
+			     printf("Out of memory.\n");
+			     exit(-5);
 			 }
-		    }
-		    break;
-	       }
-	  }
-#endif HESIOD
+		     }
+		     break;
+		 }
+	     }
 	  
-	  if (zcluster == NULL) {
-	       if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
-		    (void)strcpy(zcluster, "zephyr");
-	  }
-#ifdef HESIOD
+	 if (zcluster == NULL) {
+	     if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
+		 (void)strcpy(zcluster, "zephyr");
+	 }
+	 while ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
+	     syslog(LOG_ERR, "No servers or no hesiod");
+	     /* wait a bit, and try again */
+	     sleep(30);
+	 }
+	 clust_info = (char **)malloc(2*sizeof(char *));
+	 clust_info[0] = prim_serv;
+	 j = 1;
+	 for (i = 0; serv_list[i]; i++)
+	     /* copy in non-duplicates */
+	     /* assume the names returned in the sloc are full domain names */
+	     if (strcasecmp(prim_serv, serv_list[i])) {
+		 clust_info = (char **) realloc(clust_info,
+						(j+2) * sizeof(char *));
+		 clust_info[j++] = strsave(serv_list[i]);
+	     }
+	 clust_info[j] = NULL;
+	 serv_list = clust_info;
      }
-#endif HESIOD    
+#endif HESIOD	       
+     if (*prim_serv == NULL) {
+	 printf("No valid primary server found, exiting.\n");
+	 exit(ZERR_SERVNAK);
+     }
      init_hm();
 
      DPR2 ("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
@@ -254,23 +289,6 @@ void init_hm()
      (void)ZSetServerState(1);	/* Aargh!!! */
      init_queue();
 
-#ifdef HESIOD
-     while ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
-	  syslog(LOG_ERR, "No servers or no hesiod");
-	  /* wait a bit, and try again */
-	  sleep(30);
-      }
-#else
-     serv_list = (char **)malloc(2 * sizeof(char *));
-     serv_list[0] = (char *)malloc(MAXHOSTNAMELEN);
-     (void)strcpy(serv_list[0], prim_serv);
-     serv_list[1] = "";
-     if (*prim_serv == NULL) {
-	 printf("No valid primary server found, exiting.\n");
-	 exit(ZERR_SERVNAK);
-     }
-#endif HESIOD	       
-     
      cur_serv_list = serv_list;
      if (*prim_serv == NULL)
 	  (void)strcpy(prim_serv, *cur_serv_list);
@@ -477,4 +495,17 @@ void die_gracefully()
      (void)unlink(PidFile);
      closelog();
      exit(0);
+}
+
+char *
+strsave(sp)
+char *sp;
+{
+    register char *ret;
+
+    if((ret = malloc((unsigned) strlen(sp)+1)) == NULL) {
+	    abort();
+    }
+    (void) strcpy(ret,sp);
+    return(ret);
 }
