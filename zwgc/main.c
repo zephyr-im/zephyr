@@ -79,7 +79,7 @@ static void fake_startup_packet()
 {
     ZNotice_t notice;
 
-    var_set_variable("version", "0.3.6");
+    var_set_variable("version", "0.3.7");
 
     bzero(&notice, sizeof(notice));
 
@@ -93,7 +93,7 @@ static void fake_startup_packet()
     notice.z_port = 0;
     notice.z_kind = ACKED;
     notice.z_auth = ZAUTH_YES;
-    notice.z_message = "Zwgc mark II version 0.3.6 now running...";
+    notice.z_message = "Zwgc mark II version 0.3.7 now running...";
     notice.z_message_len = strlen(notice.z_message)+1;
     
     notice_handler(&notice);
@@ -362,6 +362,7 @@ static void setup_signals()
     signal(SIGHUP, signal_exit);
     signal(SIGINT, signal_exit);
     signal(SIGCHLD, signal_child);
+    signal(SIGPIPE, SIG_IGN);		/* so that Xlib gets an error */
 }
 
 /* detach() taken from old zwgc, with lots of stuff ripped out */
