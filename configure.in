@@ -99,7 +99,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(putenv re_comp strchr memcpy memmove waitpid getlogin)
 AC_CHECK_FUNCS(strerror random lrand48 gethostid krb_get_err_text krb_log)
 
-AC_CONFIG_HEADER(h/config.h h/zephyr/zephyr.h)
+AC_CONFIG_HEADER(h/config.h)
 AC_OUTPUT(Makefile clients/Makefile clients/syslogd/Makefile
 	  clients/xzwrite/Makefile clients/zaway/Makefile clients/zctl/Makefile
 	  clients/zleave/Makefile clients/zlocate/Makefile
