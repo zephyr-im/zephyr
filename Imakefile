@@ -16,6 +16,8 @@ CODE=Imakefile
 LOC_SUBDIRS = et ss
 #endif /*LOCAL_LIBS*/
 SUBDIRS= ${LOC_SUBDIRS} include lib clients server zhm zwgc man
+/* Need to make sure `all' is the first target */
+all::
 /**/# we need to remove these here; it's not appropriate to remove them
 /**/# from lib/Makefile since someone may type 'make clean' there and nuke
 /**/# them by accident.
