@@ -1,7 +1,9 @@
 zephyr (2.1.20010518.SNAPSHOT-2) unstable; urgency=low
 
-  * On linux/alpha, timeval is 16 bytes.  Unfortunately, the protocol is
-    defined in terms of sizeof(struct timeval). Ooops. closes: #99158
+  * On linux/alpha, longs are 8 octets, not 4.  Thus, timeval is sixteen
+    octets, not eight.  Unfortunately, part of the protocol is coded in
+    terms of sizeof (struct timeval), and another part in terms of a
+    sizeof(long).  Work around with ints. closes: #99158
   * streamline server config script
   * have client config script check for existence of /etc/zephyr/servers.list
 
