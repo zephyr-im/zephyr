@@ -1,12 +1,12 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains code for the "zlocate" command.
+ * It contains code for the "zleave" command.
  *
  *      Created by:     David Jedlinsky
  *
  *      $Source$
  *      $Author$
  *
- *      Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *      Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
  *      "mit-copyright.h". 
  */
@@ -21,21 +21,28 @@ static char rcsid_zlocate_c[] = "$Header$";
 
 /*
  * Copyright (c) 1980 Regents of the University of California.
- * All rights reserved.  The Berkeley software License Agreement
- * specifies the terms and conditions for redistribution.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms are permitted
+ * provided that this notice is preserved and that due credit is given
+ * to the University of California at Berkeley. The name of the University
+ * may not be used to endorse or promote products derived from this
+ * software without specific written prior permission. This software
+ * is provided ``as is'' without express or implied warranty.
  */
 
 #ifndef lint
 char copyright[] =
 "@(#) Copyright (c) 1980 Regents of the University of California.\n\
  All rights reserved.\n";
-#endif not lint
+#endif /* not lint */
 
 #ifndef lint
-static char sccsid[] = "@(#)leave.c	5.1 (Berkeley) 5/31/85";
-#endif not lint
+static char sccsid[] = "@(#)leave.c	5.2 (Berkeley) 12/2/87";
+#endif /* not lint */
 
 #include <stdio.h>
+#include <ctype.h>
 #include <signal.h>
 #include <string.h>
 
@@ -50,7 +57,7 @@ static char sccsid[] = "@(#)leave.c	5.1 (Berkeley) 5/31/85";
  * It nags you like a mother hen.
  */
 char origlogin[20];
-char tmpfile[40];
+char tempfile[40];
 char *getlogin();
 char *whenleave;
 char buff[100];
@@ -62,20 +69,24 @@ long time();
 main(argc, argv)
 char **argv;
 {
-	long when, tod, now, diff, hours, minutes;
+	long when, now, diff, hours, minutes;
 	char *cp;
 	FILE *fp;
 	struct tm *nv;
-	int atoi();
-	short port;
+	int gethm();
+	int port;
 	ZSubscription_t sub;
 	
 	if (ZInitialize() != ZERR_NONE) {
 	      fprintf(stderr,"No Zephyr! Will write directly to terminal.\n");
 	      use_zephyr = 0;
 	}
-	(void) strcpy(origlogin, getlogin());
-	(void) sprintf(tmpfile, "/tmp/zleave.%d", (int) getuid());
+	if ((cp = getlogin()) == NULL) {
+		fputs("leave: You are not logged in.\n", stderr);
+		exit(1);
+	}
+	(void) strcpy(origlogin, cp);
+	(void) sprintf(tempfile, "/tmp/zleave.%d", (int) getuid());
 
 	if (use_zephyr) {
 		if ((port = ZGetWGPort()) == -1) {
@@ -106,11 +117,8 @@ char **argv;
 		exit(0);
 	if (*cp == '+') {
 		cp++;
-		if (*cp < '0' || *cp > '9')
+		if (!gethm(cp, &hours, &minutes))
 			usage();
-		tod = atoi(cp);
-		hours = tod / 100;
-		minutes = tod % 100;
 		if (minutes < 0 || minutes > 59)
 			usage();
 		diff = 60*hours+minutes;
@@ -118,7 +126,7 @@ char **argv;
 		exit(0);
 	}
 	if (!strcmp(cp, "cancel") || !strcmp(cp, "can")) {
-	      if (!(fp = fopen(tmpfile,"r"))) {
+	      if (!(fp = fopen(tempfile,"r"))) {
 		    printf("No zleave is currently running.\n");
 		    exit(0);
 	      }
@@ -130,18 +138,15 @@ char **argv;
 	      (void) fclose(fp);
 	      if (kill(oldpid,9))
 		    printf("No zleave is currently running.\n");
-	      (void) unlink(tmpfile);
+	      (void) unlink(tempfile);
 	      exit(0);
 	}
-	if (*cp < '0' || *cp > '9')
+	if (!gethm(cp, &hours, &minutes))
 		usage();
-	tod = atoi(cp);
-	hours = tod / 100;
 	if (hours > 12)
 		hours -= 12;
 	if (hours == 12)
 		hours = 0;
-	minutes = tod % 100;
 
 	if (hours < 0 || hours > 12 || minutes < 0 || minutes > 59)
 		usage();
@@ -156,7 +161,7 @@ char **argv;
 	while (diff < 0)
 		diff += 12*60;
 	if (diff > 11*60) {
-		printf("That time has already passed!\n");
+		fprintf(stderr, "That time has already passed!\n");
 		exit(1);
 	}
 
@@ -166,8 +171,27 @@ char **argv;
 
 usage()
 {
-	printf("usage: zleave [[+]hhmm] [can[cel]]\n");
+	fprintf(stderr, "usage: zleave [[+]hhmm] [can[cel]]\n");
 	exit(1);
+}
+
+int
+gethm(cp, hp, mp)
+register char *cp;
+int *hp, *mp;
+{
+	register char c;
+	register int tod;
+
+	tod = 0;
+	while ((c = *cp++) != '\0') {
+		if (!isdigit(c))
+			return(0);
+		tod = tod * 10 + (c - '0');
+	}
+	*hp = tod / 100;
+	*mp = tod % 100;
+	return(1);
 }
 
 doalarm(nmins)
@@ -211,7 +235,7 @@ long nmins;
 	daytime += gseconds;
 	whenleave = ctime(&daytime);
 
-	if (fp = fopen(tmpfile,"r")) {
+	if (fp = fopen(tempfile,"r")) {
 	      if (fscanf(fp, "%d", &oldpid) == 1)
 		      if (!kill(oldpid,9))
 			      printf("Old zleave process killed.\n");
@@ -232,7 +256,7 @@ long nmins;
 	      exit(0);
 	      break;
 	}
-	if (!(fp = fopen(tmpfile, "w")))
+	if (!(fp = fopen(tempfile, "w")))
 	  fprintf(stderr, "Cannot open pid file.\n");
 	else {
 	      fprintf(fp, "%d\n", getpid());
@@ -293,6 +317,7 @@ delay(secs)
 long secs;
 {
 	long n;
+	register char *l;
 
 	while (secs > 0) {
 		n = 100;
@@ -301,7 +326,10 @@ long secs;
 		secs -= n;
 		if (n > 0)
 			sleep((unsigned) n);
-		if (strcmp(origlogin, getlogin()))
+		l = getlogin();
+		if (l == NULL)
+			exit(0);
+		if (strcmp(origlogin, l) != 0)
 			exit(0);
 	}
 }
