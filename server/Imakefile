@@ -67,6 +67,7 @@ error_table_noprof(zsrv_err)
 
 src:: zsrv_err.h
 
+depend:: zsrv_err.h
 
 install::
 	-mkdir ${DESTDIR}${ACLDIR}
