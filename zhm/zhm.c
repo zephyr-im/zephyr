@@ -15,6 +15,11 @@
 
 static char rcsid_hm_c[] = "$Id$";
 
+#ifdef POSIX
+#include <unistd.h>
+#include <stdlib.h>
+#endif
+
 #include <ctype.h>
 #include <signal.h>
 #include <sys/ioctl.h>
@@ -52,9 +57,6 @@ struct hostent *hp;
 char **clust_info;
 char hostname[MAXHOSTNAMELEN], loopback[4];
 char *PidFile = PIDFILE;
-
-extern char *sbrk();
-extern long time();
 
 void choose_server(), init_hm(), detach(),
     handle_timeout(), resend_notices(), die_gracefully();
