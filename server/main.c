@@ -107,7 +107,8 @@ int nfildes;				/* number to look at in select() */
 struct sockaddr_in sock_sin;		/* address of the socket */
 struct timeval nexthost_tv;		/* time till next timeout for select */
 
-ZNotAcked_t *nacklist;			/* list of packets waiting for ack's */
+static ZNotAcked_t not_acked_head;
+ZNotAcked_t *nacklist = &not_acked_head; /* list of packets waiting for acks */
 
 u_short hm_port;			/* the port # of the host manager */
 
@@ -320,19 +321,6 @@ initialize(void)
 
 	server_init();
 
-#if 0
-	if (!(nacklist = (ZNotAcked_t *) xmalloc(sizeof(ZNotAcked_t)))) {
-		/* unrecoverable */
-		syslog(LOG_CRIT, "nacklist malloc");
-		abort();
-	}
-#else
-	{
-	    static ZNotAcked_t not_acked_head;
-	    nacklist = &not_acked_head;
-	}
-#endif
-	bzero((caddr_t) nacklist, sizeof(ZNotAcked_t));
 	nacklist->q_forw = nacklist->q_back = nacklist;
 
 	nexttimo = 1L;	/* trigger the timers when we hit
