@@ -782,12 +782,10 @@ Code_t Z_SendFragmentedNotice(notice, len, send_func)
 				       fragsize);
 	if ((retval = ZFormatSmallRawNotice(&partnotice, buffer,
 					    &ret_len)) != ZERR_NONE) {
-	    free(buffer);
 	    return (retval);
 	}
 	if ((retval = (*send_func)(&partnotice, buffer, ret_len,
 				   waitforack)) != ZERR_NONE) {
-	    free(buffer);
 	    return (retval);
 	}
 	offset += fragsize;
@@ -807,3 +805,10 @@ int wait;
 {
 	return(ZSendPacket(buf, len, wait));
 }
+
+#if (BSD < 43) || defined(STRCASE)
+#ifndef ULTRIX30
+/* Ultrix 3.0 has strcasecmp/strncasecmp */
+#include "strcasecmp.c"
+#endif /* ULTRIX30 */
+#endif /* BSD < 43 */
