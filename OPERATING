@@ -46,7 +46,8 @@ the local system binary directory (/etc/athena for --enable-athena,
 /usr/local/sbin if you installed in /usr/local and didn't use
 --enable-athena).  If you built Zephyr without Hesiod support, you
 should start zhm as "zhm server1 server2 server3 ..." so that zhm
-knows where the Zephyr servers are.
+knows where the Zephyr servers are.  Do not use "localhost" or
+"127.0.0.1" as a server name, or zhm will become confused.
 
 You can send a SIGFPE signal to the server process to make it dump its
 subscription database to /var/tmp/zephyr.db.  (If /var/tmp didn't
