@@ -25,7 +25,7 @@ static char rcsid_zwrite_c[] = "$Header$";
 #define URGENT "URGENT"
 
 int nrecips,everyone,msgarg,verbose,quiet;
-char *whoami,*inst;
+char *whoami,*inst,*class;
 int (*auth)();
 
 main(argc,argv)
@@ -50,9 +50,10 @@ main(argc,argv)
 
 	bzero(&notice,sizeof(ZNotice_t));
 	
-	auth = ZNOAUTH;
+	auth = ZAUTH;
 	verbose = quiet = msgarg = nrecips = everyone = nocheck = 0;
 
+	class = MESSAGE_CLASS;
 	inst = PERSONAL;
 	
 	arg = 1;
@@ -66,8 +67,8 @@ main(argc,argv)
 		if (strlen(argv[arg]) > 2)
 			usage(whoami);
 		switch (argv[arg][1]) {
-		case 'a':
-			auth = ZAUTH;
+		case 'd':
+			auth = ZNOAUTH;
 			break;
 		case 'v':
 			verbose = 1;
@@ -88,6 +89,12 @@ main(argc,argv)
 			inst = argv[arg];
 			everyone = 1;
 			break;
+		case 'c':
+			if (arg == argc-1)
+				usage(whoami);
+			arg++;
+			class = argv[arg];
+			break;
 		case 'm':
 			if (arg == argc-1)
 				usage(whoami);
@@ -103,18 +110,18 @@ main(argc,argv)
 		exit (1);
 	}
 
-	if (!nocheck) {
-		notice.z_kind = ACKED;
-		notice.z_port = 0;
-		notice.z_class = MESSAGE_CLASS;
-		notice.z_class_inst = inst;
-		notice.z_opcode = "PING";
-		notice.z_sender = 0;
-		notice.z_message_len = 0;
-		notice.z_recipient = "";
-		notice.z_default_format = "";
+	notice.z_kind = ACKED;
+	notice.z_port = 0;
+	notice.z_class = class;
+	notice.z_class_inst = inst;
+	notice.z_opcode = "PING";
+	notice.z_sender = 0;
+	notice.z_message_len = 0;
+	notice.z_recipient = "";
+	notice.z_default_format = "";
+
+	if (!nocheck)
 		send_off(&notice,argc,argv,0);
-	}
 	
 	if (!msgarg && isatty(0))
 		printf("Type your message now.  End with control-D or a dot on a line by itself.\n");
@@ -183,6 +190,8 @@ send_off(notice,argc,argv,real)
 	
 	for (arg=1;everyone||(arg<argc&&!(msgarg&&arg>=msgarg));arg++) {
 		if (*argv[arg] == '-' && !everyone)
+			continue;
+		if (!strcmp(argv[arg-1],"-c"))
 			continue;
 		if (!strcmp(argv[arg-1],"-i") && !everyone)
 			continue;
@@ -258,6 +267,6 @@ send_off(notice,argc,argv,real)
 usage(s)
 	char *s;
 {
-	printf("Usage: %s [-a] [-v] [-q] [-u] [-i inst] [user ...]  [-m message]\n",s);
+	printf("Usage: %s [-d] [-v] [-q] [-u] [-i inst] [-c class] [user ...]  [-m message]\n",s);
 	exit(1);
 } 
