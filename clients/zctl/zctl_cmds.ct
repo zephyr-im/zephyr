@@ -30,6 +30,9 @@
 	request		current, "Retrieve current subscriptions.",
 			retrieve, ret;
 
+	request		current, "Retrieve system-wide default subscriptions.",
+			defaults, defs;
+
 	request		current, "Save current subscriptions.",
 			save;
 

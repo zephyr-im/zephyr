@@ -30,7 +30,6 @@ static char rcsid_zctl_c[] = "$Header$";
 #define UNSUB 1
 #define LIST 2
 
-#define DEFAULT_SUBS "/etc/athena/zephyr.subs"
 #define USERS_SUBS "/.zephyr.subs"
 #define OLD_SUBS "/.subscriptions"
 
@@ -532,13 +531,7 @@ load_subs(argc,argv)
 
 	file = (argc == 1) ? subsname : argv[1];
 	
-	if (!(fp = fopen(file,"r")))
-		if (!(fp = fopen(DEFAULT_SUBS,"r"))) {
-			(void) sprintf(errbuf,
-				       "while opening %s for read",file);
-			ss_perror(sci_idx,errno,errbuf);
-			return;
-		} 
+	fp = fopen(file,"r");
 
 	if (*argv[0] == 'u')
 		type = UNSUB;
@@ -551,7 +544,7 @@ load_subs(argc,argv)
 	ind = 0;
 	lineno = 1;
 	
-	for (;;lineno++) {
+	if (fp)	for (;;lineno++) {
 		if (!fgets(subline,sizeof subline,fp))
 			break;
 		if (*subline == '#' || !*subline)
@@ -605,18 +598,17 @@ load_subs(argc,argv)
 		} 
 	}
 	
-	if (ind) {
-		fix_macros(subs,subs2,ind);
-		if ((retval = (type == SUB)?ZSubscribeTo(subs2,ind,(u_short)wgport):
-		     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) != ZERR_NONE) {
-			ss_perror(sci_idx,retval,(type == SUB)?
-				"while subscribing":
-				"while unsubscribing");
-			return;
-		}
-	} 
+	fix_macros(subs,subs2,ind);
+	if ((retval = (type == SUB)?ZSubscribeTo(subs2,ind,(u_short)wgport):
+	     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) != ZERR_NONE) {
+		ss_perror(sci_idx,retval,(type == SUB)?
+			  "while subscribing":
+			  "while unsubscribing");
+		return;
+	}
 
-	(void) fclose(fp);		/* ignore errs--file is read-only */
+	if (fp)
+		(void) fclose(fp);	/* ignore errs--file is read-only */
 }
 
 current(argc,argv)
@@ -626,26 +618,34 @@ current(argc,argv)
 	FILE *fp;
 	char errbuf[BUFSIZ];
 	ZSubscription_t subs;
-	int i,nsubs,retval,save,one;
+	int i,nsubs,retval,save,one,defs;
 	short wgport;
 	char *file,backup[BUFSIZ];
 	
 	save = 0;
-	
+	defs = 0;
+
 	if (!strcmp(argv[0],"save"))
 		save = 1;
+	else if (!strcmp(argv[0], "defaults") || !strcmp(argv[0], "defs"))
+		defs = 1;
 
 	if (argc != 1 && !(save && argc == 2)) {
 		fprintf(stderr,"Usage: %s%s\n",argv[0],save?" [filename]":"");
 		return;
 	}
 
- 	if ((wgport = ZGetWGPort()) == -1) {
-		ss_perror(sci_idx,errno,"while finding WindowGram port");
-		return;
-	} 
+	if (!defs)
+		if ((wgport = ZGetWGPort()) == -1) {
+			ss_perror(sci_idx,errno,
+				  "while finding WindowGram port");
+			return;
+		} 
 
-	retval = ZRetrieveSubscriptions((u_short)wgport,&nsubs);
+	if (defs)
+		retval = ZRetrieveDefaultSubscriptions(&nsubs);
+	else
+		retval = ZRetrieveSubscriptions((u_short)wgport,&nsubs);
 
 	if (retval == ZERR_TOOMANYSUBS) {
 		fprintf(stderr,"Too many subscriptions -- some have not been returned.\n");
@@ -710,19 +710,10 @@ make_exist(filename)
 	char *filename;
 {
 	char bfr[BUFSIZ],errbuf[BUFSIZ];
-	FILE *fp,*fpout;
+	FILE *fpout;
 	
 	if (!access(filename,F_OK))
 		return (0);
-
-	fprintf(stderr,"Copying %s to %s\n",DEFAULT_SUBS,filename);
-
-	if (!(fp = fopen(DEFAULT_SUBS,"r"))) {
-		(void) sprintf(errbuf,"while opening %s for read",
-			       DEFAULT_SUBS);
-		ss_perror(sci_idx,errno,errbuf);
-		return (1);
-	}
 
 	if (!(fpout = fopen(filename,"w"))) {
 		(void) sprintf(errbuf,"while opening %s for write",filename);
@@ -730,9 +721,6 @@ make_exist(filename)
 		(void) fclose(fp);
 		return (1);
 	}
-
-	while (fgets(bfr,sizeof bfr,fp))
-		fprintf(fpout,"%s",bfr);
 
 	(void) fclose(fp);
 	if (fclose(fpout) == EOF) {
