@@ -366,13 +366,14 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
 char *no_dots_downcase_var(str)
      char *str;
 {
-   char *var;
+   register char *var, *var2;
 
    var = string_Downcase(var_get_variable(str));
+   var2 = var;
    while (*var++)
       if (*var == '.')
 	 *var = '_';
-   return(var);
+   return(var2);
 }
 
 #define MODE_TO_FONT(dpy,style,mode) \
