@@ -10,12 +10,13 @@
 
 #if defined(SYSLOG_COMPAT42)
 SOBJS= ../clients/syslogd/syslog.o
+SINC= -I../clients/syslogd
 #endif
 
 SRCS= zhm.c zhm_server.c zhm_client.c queue.c
 OBJS= zhm.o zhm_server.o zhm_client.o queue.o
 
-XDEFS= -DPIDFILE=\"$(ZPIDDIR)/zhm.pid\"
+XDEFS= $(SINC) -DPIDFILE=\"$(ZPIDDIR)/zhm.pid\"
 
 SimpleProgram(zhm,$(OBJS) $(SOBJS) $(ZLIB),$(ZLIBS) $(LIB_HES),$(ATHRETCDIR))
 install_man(zhm.8,zhm.8)
