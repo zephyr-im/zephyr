@@ -29,6 +29,8 @@ static char sccsid[] = "@(#)logger.c	6.8 (Berkeley) 6/29/88";
 #include <syslog.h>
 #include <ctype.h>
 
+extern int errno;
+
 /*
 **  LOGGER -- read and log utility
 **
