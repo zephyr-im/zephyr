@@ -93,9 +93,9 @@ char **argv;
 			fprintf(stderr,"Will write directly to terminal.\n");
 			use_zephyr = 0;
 		} else {
-			sub.class = MESSAGE_CLASS;
-			sub.classinst = INSTANCE;
-			sub.recipient = ZGetSender();
+			sub.zsub_class = MESSAGE_CLASS;
+			sub.zsub_classinst = INSTANCE;
+			sub.zsub_recipient = ZGetSender();
 			if (ZSubscribeTo(&sub,1,(u_short)port) != ZERR_NONE) {
 				fprintf(stderr,
 					"Subscription error!  Writing to your terminal...\n");
@@ -313,6 +313,10 @@ char *msg;
       if (use_zephyr) {
 	    real_message = (char *) malloc(strlen(msg) +
 					   strlen(reminder_message) + 2);
+	    if (real_message == NULL) {
+		fprintf (stderr, "zleave: out of memory\n");
+		exit (1);
+	    }
 	    sprintf(real_message,"%c%s\n%s",'\0',msg,reminder_message);
 
 	    (void) bzero((char *)&notice, sizeof(notice));
@@ -358,7 +362,11 @@ char *msg;
 	    ZFreeNotice(&retnotice);
 	    free(real_message);
       } else
+#ifdef __STDC__
+	printf("\a\a\a%s\n%s", msg, reminder_message);
+#else
 	printf("\7\7\7%s\n%s", msg, reminder_message);
+#endif
 }
 
 /*
