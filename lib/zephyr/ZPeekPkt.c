@@ -16,9 +16,7 @@
 static char rcsid_ZPeekPacket_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZPeekPacket(buffer, ret_len, from)
     char **buffer;

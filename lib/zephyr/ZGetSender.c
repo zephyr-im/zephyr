@@ -17,15 +17,14 @@ static char rcsid_ZGetSender_c[] =
     "$Id$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 #include <pwd.h>
 
 char *ZGetSender()
 {
     struct passwd *pw;
-#ifdef Z_HaveKerberos
+#ifdef ZEPHYR_USES_KERBEROS
     char pname[ANAME_SZ], pinst[INST_SZ], prealm[REALM_SZ];
     static char sender[ANAME_SZ+INST_SZ+REALM_SZ+3] = "";
 #else
@@ -36,7 +35,7 @@ char *ZGetSender()
     if (*sender)
 	return (sender);
 
-#ifdef Z_HaveKerberos
+#ifdef ZEPHYR_USES_KERBEROS
     if (krb_get_tf_fullname((char *)TKT_FILE, pname, pinst, prealm) == KSUCCESS)
     {
 	(void) sprintf(sender, "%s%s%s@%s", pname, (pinst[0]?".":""),

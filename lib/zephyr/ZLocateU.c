@@ -16,9 +16,7 @@
 static char rcsid_ZLocateUser_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZLocateUser(user, nlocs)
     char *user;

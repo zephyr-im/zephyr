@@ -16,7 +16,7 @@
 static char rcsid_ZAsyncLocate_c[] = "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZRequestLocations(user, zald, kind, auth)
      char *user;
@@ -153,7 +153,7 @@ Code_t ZParseLocations(notice,zald,nlocs,user)
 
 int ZCompareALDPred(notice, zald)
      ZNotice_t *notice;
-     char *zald;
+     void *zald;
 {
     return(ZCompareUID(&(notice->z_multiuid),
 		       &(((ZAsyncLocateData_t *) zald)->uid)));

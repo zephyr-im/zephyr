@@ -16,9 +16,7 @@
 static char rcsid_ZSetServerState_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZSetServerState(state)
 	int	state;

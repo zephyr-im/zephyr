@@ -18,14 +18,9 @@ static char rcsid_ZLocations_c[] =
     "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZLocations.c,v 1.30 90/12/20 03:04:39 raeburn Exp $";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 #include <pwd.h>
-#include <sys/file.h>
-#include <sys/param.h>
-#include <netdb.h>
 
 extern char *getenv();
 extern int errno;
@@ -51,21 +46,19 @@ Code_t ZFlushMyLocations()
 static char host[MAXHOSTNAMELEN], mytty[MAXPATHLEN];
 static int reenter = 0;
 
-Z_SendLocation(class, opcode, auth, format)
+Code_t Z_SendLocation(class, opcode, auth, format)
     char *class;
     char *opcode;
-    int (*auth)();
+    Z_AuthProc auth;
     char *format;
 {
-    char *ttyname(), *ctime();
-
     int retval;
-    long ourtime;
+    time_t ourtime;
     ZNotice_t notice, retnotice;
     char *bptr[3];
-#ifdef X11
+#ifndef X_DISPLAY_MISSING
     char *display;
-#endif /* X11 */
+#endif
     char *ttyp;
     struct hostent *hent;
     short wg_port = ZGetWGPort();
@@ -95,12 +88,12 @@ Z_SendLocation(class, opcode, auth, format)
 	    if (hent)
 		    (void) strcpy(host, hent->h_name);
 	    bptr[0] = host;
-#ifdef X11
+#ifndef X_DISPLAY_MISSING
 	    if ((display = getenv("DISPLAY")) && *display) {
 		    (void) strcpy(mytty, display);
 		    bptr[2] = mytty;
 	    } else {
-#endif /* X11 */
+#endif
 		    ttyp = ttyname(0);
 		    if (ttyp) {
 			bptr[2] = strrchr(ttyp, '/');
@@ -112,16 +105,16 @@ Z_SendLocation(class, opcode, auth, format)
 		    else
 			bptr[2] = "unknown";
 		    (void) strcpy(mytty, bptr[2]);
-#ifdef X11
+#ifndef X_DISPLAY_MISSING
 	    }
-#endif /* X11 */
+#endif
 	    reenter = 1;
     } else {
 	    bptr[0] = host;
 	    bptr[2] = mytty;
     }
 
-    ourtime = time((long *)0);
+    ourtime = time((time_t *)0);
     bptr[1] = ctime(&ourtime);
     bptr[1][strlen(bptr[1])-1] = '\0';
 

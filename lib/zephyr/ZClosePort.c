@@ -16,9 +16,7 @@
 static char rcsid_ZClosePort_c[] = "$Id$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZClosePort()
 {

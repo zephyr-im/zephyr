@@ -17,12 +17,18 @@
 static char rcsid_ZSubscriptions_c[] = "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
+
+static Code_t Z_Subscriptions __P((register ZSubscription_t *sublist,
+				   int nitems, unsigned int port,
+				   char *opcode, int authit));
+static Code_t subscr_sendoff __P((ZNotice_t *notice, char **lyst, int num,
+				  int authit));
 
 Code_t ZSubscribeTo(sublist, nitems, port)
     ZSubscription_t *sublist;
     int nitems;
-    u_short port;
+    unsigned int port;
 {
     return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE, 1));
 }
@@ -30,7 +36,7 @@ Code_t ZSubscribeTo(sublist, nitems, port)
 Code_t ZSubscribeToSansDefaults(sublist, nitems, port)
     ZSubscription_t *sublist;
     int nitems;
-    u_short port;
+    unsigned int port;
 {
     return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE_NODEFS,
 			    1));
@@ -39,19 +45,17 @@ Code_t ZSubscribeToSansDefaults(sublist, nitems, port)
 Code_t ZUnsubscribeTo(sublist, nitems, port)
     ZSubscription_t *sublist;
     int nitems;
-    u_short port;
+    unsigned int port;
 {
     return (Z_Subscriptions(sublist, nitems, port, CLIENT_UNSUBSCRIBE, 1));
 }
 
 Code_t ZCancelSubscriptions(port)
-    u_short port;
+    unsigned int port;
 {
     return (Z_Subscriptions((ZSubscription_t *)0, 0, port,
 			    CLIENT_CANCELSUB, 0));
 }
-
-static Code_t subscr_sendoff();
 
 /*
  * This routine must do its own fragmentation.  Subscriptions must
@@ -59,10 +63,11 @@ static Code_t subscr_sendoff();
  * mis-interpret them.
  */
 
+static Code_t
 Z_Subscriptions(sublist, nitems, port, opcode, authit)
     register ZSubscription_t *sublist;
     int nitems;
-    u_short port;
+    unsigned int port;
     char *opcode;
     int authit;
 {

@@ -16,13 +16,13 @@
 static char rcsid_ZCheckIfNotice_c[] = "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZCheckIfNotice(notice, from, predicate, args)
     ZNotice_t *notice;
     struct sockaddr_in *from;
-    register int (*predicate)();
-    char *args;
+    register int (*predicate) __P((ZNotice_t *, void *));
+    void *args;
 {
     ZNotice_t tmpnotice;
     Code_t retval;

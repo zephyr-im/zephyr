@@ -16,7 +16,7 @@
 static char rcsid_ZFlushSubscriptions_c[] = "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZFlushSubscriptions()
 {

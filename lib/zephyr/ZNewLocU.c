@@ -17,14 +17,14 @@ static char rcsid_ZNewLocateUser_c[] =
     "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZLocateUser(user, nlocs, auth)
     char *user;
     int *nlocs;
     Z_AuthProc auth;
 {
-    register int retval;
+    Code_t retval;
     ZNotice_t notice;
     ZAsyncLocateData_t zald;
 
@@ -34,8 +34,7 @@ Code_t ZLocateUser(user, nlocs, auth)
     if ((retval = ZRequestLocations(user, &zald, UNACKED, auth)) != ZERR_NONE)
 	return(retval);
 
-    retval = Z_WaitForNotice (&notice, ZCompareALDPred,
-			      (char *) &zald, SRV_TIMEOUT);
+    retval = Z_WaitForNotice (&notice, ZCompareALDPred, &zald, SRV_TIMEOUT);
     if (retval == ZERR_NONOTICE)
 	return ETIMEDOUT;
     if (retval != ZERR_NONE)

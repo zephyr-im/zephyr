@@ -18,13 +18,18 @@ static char rcsid_ZRetrieveSubscriptions_c[] =
     "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 static Code_t Z_RetSubs ();
 
+/* Need STDC definition when possible for unsigned short argument. */
+#ifdef __STDC__
+Code_t ZRetrieveSubscriptions(unsigned short port, int *nsubs)
+#else
 Code_t ZRetrieveSubscriptions(port,nsubs)
-	u_short port;
+	unsigned short port;
 	int *nsubs;
+#endif
 {
 	int retval;
 	ZNotice_t notice;
@@ -63,7 +68,7 @@ Code_t ZRetrieveDefaultSubscriptions(nsubs)
 static Code_t Z_RetSubs(notice, nsubs, auth_routine)
 	register ZNotice_t *notice;
 	int *nsubs;
-	int (*auth_routine)();
+	Z_AuthProc auth_routine;
 {
 	register int i;
 	int retval,nrecv,gimmeack;
