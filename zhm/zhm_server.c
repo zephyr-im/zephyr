@@ -158,14 +158,14 @@ char *sugg_serv;
 	     break;
 	 }
      }
-     _BCOPY(hp->h_addr, (char *)&serv_sin.sin_addr, hp->h_length);
+     (void) memcpy((char *)&serv_sin.sin_addr, hp->h_addr, hp->h_length);
      nservchang++;
 }
 
 server_manager(notice)
 ZNotice_t *notice;
 {
-     if ((bcmp((char *)&serv_sin.sin_addr, (char *)&from.sin_addr, 4) != 0) ||
+     if (memcmp((char *)&serv_sin.sin_addr, (char *)&from.sin_addr, 4) ||
 	 (serv_sin.sin_port != from.sin_port)) {
 	  syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
      } else {
