@@ -10,6 +10,20 @@
 #include ProjectRules
 #endif
 
-#define ISUBDIRS util include lib libdyn clients server zhm zwgc /* man */
+UTILS = $(D_IMAKE) $(D_ET) $(D_SS)
+#define ISUBDIRS $(UTILS) h lib libdyn clients server zhm zwgc /* man */
 
 create_dir($(ZLIBDIR))
+
+World::
+	make clean
+	make Makefile
+	make Makefiles
+#ifndef NO_MAKEDEPEND
+	make depend
+#endif
+	make all	
+
+#ifdef NO_IMAKE
+$(IMAKE): $(D_IMAKE)
+#endif
