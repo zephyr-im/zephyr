@@ -16,7 +16,7 @@
 #ifndef string_TYPE
 #define string_TYPE
 
-#include <strings.h>
+#include <string.h>
 #include "new_memory.h"
 
 typedef char *string;
