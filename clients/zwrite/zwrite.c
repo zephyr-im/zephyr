@@ -249,7 +249,6 @@ main(argc, argv)
 	message = malloc((unsigned)(strlen(signature)+2));
 	(void) strcpy(message, signature);
 	msgsize = strlen(message);
-	message[msgsize++] = '\n';
 	message[msgsize++] = '\0';
     } else {
 	message = malloc(1);
