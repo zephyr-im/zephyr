@@ -59,10 +59,6 @@ ZServerDesc_t *server;
 	register ZHostList_t *hlp2;
 	register ZClientList_t *clist;
 
-	/* allocate a client struct */
-	if (!(*client = (ZClient_t *) xmalloc(sizeof(ZClient_t))))
-		return(ENOMEM);
-
 	/* chain the client's host onto this server's host list */
 
 	if (!hlp) {			/* bad host list */
@@ -70,18 +66,22 @@ ZServerDesc_t *server;
 		abort();
 	}
 
-	if (!(hlp2 = hostm_find_host(&who->sin_addr)))
+	if (!(hlp2 = hostm_find_host(&who->sin_addr))) {
 		/* not here */
 		return(ZSRV_HNOTFOUND);
+	}
 
 	/* hlp2 is now pointing to the client's host's address struct */
 
 	if (!hlp2->zh_clients) {
-		xfree(*client);
 		return(EINVAL);
 	}
 
-	if (!(clist = (ZClientList_t *)xmalloc(sizeof(ZClientList_t)))) {
+	/* allocate a client struct */
+	if (!(*client = (ZClient_t *) xmalloc(sizeof(ZClient_t))))
+		return(ENOMEM);
+
+	if (!(clist = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
 		xfree(*client);
 		return(ENOMEM);
 	}
