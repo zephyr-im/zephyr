@@ -19,7 +19,7 @@ static char rcsid_main_c[] = "$Header$";
 #endif SABER
 #endif lint
 static char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nPortions Copyright (c) 1986 Student Information Processing Board, Massachusetts Institute of Technology\n";
-static char version[] = "Zephyr Server (Prerelease) 0.2";
+static char version[] = "Zephyr Server (Prerelease) 0.3";
 
 /*
  * Server loop for Zephyr.
@@ -31,7 +31,8 @@ static char version[] = "Zephyr Server (Prerelease) 0.2";
   There is an array of servers initialized in main.c and maintained
   by server_s.c.
   Each server descriptor contains a pointer to a linked list of hosts
-  which are ``owned'' by that server.
+  which are ``owned'' by that server.  The first server is the ``limbo''
+  server which owns any host which was formerly owned by a dead server.
   Each of these host list entries has an IP address and a pointer to a
   linked list of clients on that host.
   Each client has a sockaddr_in, a list of subscriptions, and possibly
@@ -66,8 +67,7 @@ static char version[] = "Zephyr Server (Prerelease) 0.2";
 #define	max(a,b)	((a) > (b) ? (a) : (b))
 
 static int do_net_setup(), initialize();
-static struct in_addr *get_server_addrs();
-static void usage(), setup_server();
+static void usage();
 static int bye();
 #ifndef DEBUG
 static void detach();
@@ -79,15 +79,12 @@ struct sockaddr_in sock_sin;		/* address of the socket */
 struct in_addr my_addr;			/* for convenience, my IP address */
 struct timeval nexthost_tv;		/* time till next timeout for select */
 
-int nservers;				/* number of other servers */
-ZServerDesc_t *otherservers;		/* points to an array of the known
-					   servers */
-int me_server_idx;			/* # of my entry in the array */
 ZNotAcked_t *nacklist;			/* list of packets waiting for ack's */
+
+u_short hm_port;			/* the port # of the host manager */
 
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
-
 ZAcl_t zctlacl = { ZEPHYR_CTL_ACL };
 ZAcl_t loginacl = { LOGIN_ACL };
 ZAcl_t locateacl = { LOCATE_ACL };
@@ -104,8 +101,11 @@ char **argv;
 	int nfildes;			/* number to look at in select() */
 	int authentic;			/* authentic flag for ZParseNotice */
 	Code_t status;
-	ZPacket_t new_packet;		/* from the network */
-	ZNotice_t new_notice;		/* parsed from new_packet */
+	ZNotice_t new_notice;		/* parsed from input_packet */
+	ZPacket_t input_packet;		/* from the network */
+	int input_len;			/* len of packet */
+	struct sockaddr_in input_sin;	/* constructed for authent */
+
 	fd_set readable, interesting;
 	struct timeval *tvp;
 	struct sockaddr_in whoisit;	/* for holding peer's address */
@@ -199,8 +199,12 @@ char **argv;
 			tvp = (struct timeval *) NULL;
 		}
 		readable = interesting;
-		nfound = select(nfildes, &readable, (fd_set *) NULL,
-				(fd_set *) NULL, tvp);
+		if (ZQLength()) nfound = 1;	/* note that this leaves
+						   srv_socket set in readable*/
+
+		else 
+			nfound = select(nfildes, &readable, (fd_set *) NULL,
+					(fd_set *) NULL, tvp);
 		if (nfound < 0) {
 			syslog(LOG_WARNING, "select error: %m");
 			continue;
@@ -211,17 +215,52 @@ char **argv;
 			   the loop, and process the next timeout */
 			continue;
 		else {
-			if (FD_ISSET(srv_socket, &readable)) {
+			if (ZQLength() || FD_ISSET(srv_socket, &readable)) {
 				/* handle traffic */
 				
-				if (status = ZReceiveNotice(new_packet,
-							    sizeof(new_packet),
-							    &new_notice,
-							    &authentic,
+				if (status = ZReceivePacket(input_packet,
+							    sizeof(input_packet),
+							    &input_len,
 							    &whoisit)) {
 					syslog(LOG_ERR,
-					       "bad notice receive: %s",
+					       "bad packet receive: %s",
 					       error_message(status));
+					continue;
+				}
+				/* we need to parse twice--once to get
+				   the source addr, second to check
+				   authentication */
+				if (status = ZParseNotice(input_packet,
+							  input_len,
+							  &new_notice,
+							  &authentic,
+							  &whoisit)) {
+					syslog(LOG_ERR,
+					       "bad notice parse: %s",
+					       error_message(status));
+					continue;
+				}
+				bzero((caddr_t) &input_sin, sizeof(input_sin));
+				input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
+				input_sin.sin_port = new_notice.z_port;
+				input_sin.sin_family = AF_INET;
+				if (status = ZParseNotice(input_packet,
+							  input_len,
+							  &new_notice,
+							  &authentic,
+							  &input_sin)) {
+					syslog(LOG_ERR,
+					       "bad notice parse: %s",
+					       error_message(status));
+					continue;
+				}
+				if (whoisit.sin_port != hm_port &&
+				    whoisit.sin_port != sock_sin.sin_port &&
+				    new_notice.z_kind != CLIENTACK) {
+					syslog(LOG_ERR,
+					       "bad port %s/%d",
+					       inet_ntoa(whoisit.sin_addr),
+					       ntohs(whoisit.sin_port));
 					continue;
 				}
 				dispatch(&new_notice, authentic, &whoisit);
@@ -232,8 +271,7 @@ char **argv;
 }
 
 /* Initialize net stuff.
-   Contact Hesiod to find all the other servers, allocate space for the
-   structure, initialize them all to SERV_DEAD with expired timeouts.
+   Set up the server array.
    Initialize the packet ack queues to be empty.
    Initialize the error tables.
    Restrict certain classes.
@@ -242,63 +280,11 @@ char **argv;
 static int
 initialize()
 {
-	register int i;
-	struct in_addr *serv_addr, *hes_addrs;
-
 	if (do_net_setup())
 		return(1);
 
-	/* talk to hesiod here, set nservers */
-	if (!(hes_addrs = get_server_addrs(&nservers))) {
-		    syslog(LOG_ERR, "No servers?!?");
-		    exit(1);
-	    }
+	server_init();
 
-	otherservers = (ZServerDesc_t *) xmalloc(nservers *
-						sizeof(ZServerDesc_t));
-	me_server_idx = -1;
-
-	for (serv_addr = hes_addrs, i = 0; i < nservers; serv_addr++, i++) {
-		setup_server(&otherservers[i], serv_addr);
-		/* is this me? */
-		if (serv_addr->s_addr == my_addr.s_addr) {
-			me_server_idx = i;
-			otherservers[i].zs_state = SERV_UP;
-			timer_reset(otherservers[i].zs_timer);
-			otherservers[i].zs_timer = (timer) NULL;
-			zdbug((LOG_DEBUG,"found myself"));
-		}
-	}
-
-	/* free up the addresses */
-	xfree(hes_addrs);
-
-	if (me_server_idx == -1) {
-		ZServerDesc_t *temp;
-		syslog(LOG_WARNING, "I'm a renegade server!");
-		temp = (ZServerDesc_t *)realloc((caddr_t) otherservers, (unsigned) (++nservers * sizeof(ZServerDesc_t)));
-		if (!temp) {
-			syslog(LOG_CRIT, "renegade realloc");
-			abort();
-		}
-		otherservers = temp;
-		setup_server(&otherservers[nservers - 1], &my_addr);
-		/* we are up. */
-		otherservers[nservers - 1].zs_state = SERV_UP;
-
-		/* cancel and reschedule all the timers--pointers need
-		   adjusting */
-		for (i = 0; i < nservers - 1; i++) {
-			timer_reset(otherservers[i].zs_timer);
-			/* all the HELLO's are due now */
-			otherservers[i].zs_timer = timer_set_rel(0L, server_timo, (caddr_t) &otherservers[i]);
-		}
-		/* I don't send hello's to myself--cancel the timer */
-		timer_reset(otherservers[nservers - 1].zs_timer);
-		otherservers[nservers - 1].zs_timer = (timer) NULL;
-
-		me_server_idx = nservers - 1;
-	}
 	if (!(nacklist = (ZNotAcked_t *) xmalloc(sizeof(ZNotAcked_t)))) {
 		/* unrecoverable */
 		syslog(LOG_CRIT, "nacklist malloc");
@@ -359,6 +345,12 @@ do_net_setup()
 	bzero((caddr_t) &sock_sin, sizeof(sock_sin));
 	sock_sin.sin_port = sp->s_port;
 	
+	if (!(sp = getservbyname("zephyr-hm", "udp"))) {
+		syslog(LOG_ERR, "zephyr-hm/udp unknown");
+		return(1);
+	}
+	hm_port = sp->s_port;
+
 	(void) endservent();
 	
 	if ((srv_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -377,80 +369,6 @@ do_net_setup()
 	return(0);
 }    
 
-
-/*
- * get a list of server addresses, from Hesiod.  Return a pointer to an
- * array of allocated storage.  This storage is freed by the caller.
- */
-
-static struct in_addr *
-get_server_addrs(number)
-int *number;				/* RETURN */
-{
-	register int i;
-	char **hes_resolve();
-	char **server_hosts;
-	register char **cpp;
-	struct in_addr *addrs;
-	register struct in_addr *addr;
-	register struct hostent *hp;
-
-	/* get the names from Hesiod */
-	if (!(server_hosts = hes_resolve("zephyr","sloc")))
-		return((struct in_addr *)NULL);
-
-	/* count up */
-	for (cpp = server_hosts, i = 0; *cpp; cpp++, i++);
-	
-	addrs = (struct in_addr *) xmalloc(i * sizeof(struct in_addr));
-
-	/* Convert to in_addr's */
-	for (cpp = server_hosts, addr = addrs, i = 0; *cpp; cpp++) {
-		hp = gethostbyname(*cpp);
-		if (hp) {
-			bcopy((caddr_t)hp->h_addr,
-			      (caddr_t) addr,
-			      sizeof(struct in_addr));
-			addr++, i++;
-		} else
-			syslog(LOG_WARNING, "hostname failed, %s",*cpp);
-	}
-	*number = i;
-	return(addrs);
-}
-
-/*
- * initialize the server structure for address addr, and set a timer
- * to go off immediately to send hello's to other servers.
- */
-
-static void
-setup_server(server, addr)
-register ZServerDesc_t *server;
-struct in_addr *addr;
-{
-	register ZHostList_t *host;
-	extern int timo_dead;
-
-	server->zs_state = SERV_DEAD;
-	server->zs_timeout = timo_dead;
-	server->zs_numsent = 0;
-	server->zs_addr.sin_family = AF_INET;
-	/* he listens to the same port we do */
-	server->zs_addr.sin_port = sock_sin.sin_port;
-	server->zs_addr.sin_addr = *addr;
-
-	/* set up a timer for this server */
-	server->zs_timer = timer_set_rel(0L, server_timo, (caddr_t) server);
-	if (!(host = (ZHostList_t *) xmalloc(sizeof(ZHostList_t)))) {
-		/* unrecoverable */
-		syslog(LOG_CRIT, "zs_host malloc");
-		abort();
-	}
-	host->q_forw = host->q_back = host;
-	server->zs_hosts = host;
-	return;
-}
 
 /*
  * print out a usage message.
