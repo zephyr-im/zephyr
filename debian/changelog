@@ -1,5 +1,6 @@
 zephyr (2.1.20010518.SNAPSHOT-1) unstable; urgency=low
 
+  * make sure zwgc doesn't define PC or ospeed to keep curses happy
   * new upstream version
   * update config.{guess,sub}
 
