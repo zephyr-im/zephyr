@@ -32,6 +32,7 @@
 #include <stdarg.h>
 #else
 #include <varargs.h>
+#define Z_varargs
 #endif
 #endif
 
@@ -219,7 +220,9 @@ extern "C" {
 						  int*, C_Block));
 #endif
     extern Code_t ZFormatRawNotice Zproto ((ZNotice_t *, char**, int *));
+#ifndef Z_varargs
     extern void Z_debug Zproto ((const char *, ...));
+#endif
 
 #ifdef Z_HaveKerberos
     /* ZGetSession() macro */
