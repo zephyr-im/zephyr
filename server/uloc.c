@@ -24,15 +24,17 @@ static char rcsid_uloc_s_c[] = "$Header$";
  *
  * External functions:
  *
- * void ulocate_dispatch(notice, auth, who)
+ * void ulocate_dispatch(notice, auth, who, server)
  *	ZNotice_t *notice;
  *	int auth;
  *	struct sockaddr_in *who;
+ *	ZServerDesc_t *server;
  *
- * void ulogin_dispatch(notice, auth, who)
+ * void ulogin_dispatch(notice, auth, who, server)
  *	ZNotice_t *notice;
  *	int auth;
  *	struct sockaddr_in *who;
+ *	ZServerDesc_t *server;
  *
  * void uloc_hflush(addr)
  *	struct in_addr *addr;
@@ -58,7 +60,7 @@ typedef struct _ZLocation_t {
 #endif
 	char *zlt_time;			/* in ctime format */
 	login_type zlt_visible;
-	struct in_addr zlt_addr;
+	struct in_addr zlt_addr;	/* IP addr of this loc */
 } ZLocation_t;
 
 /* WARNING: make sure this is the same as the number of strings you */
@@ -67,7 +69,9 @@ typedef struct _ZLocation_t {
 #define	NUM_FIELDS	2
 
 #define	NULLZLT		((ZLocation_t *) 0)
+#define	NOLOC		(1)
 #define	QUIET		(-1)
+#define	UNAUTH		(-2)
 
 static void ulogin_locate(), ulogin_add_user();
 static ZLocation_t *ulogin_find();
@@ -82,39 +86,65 @@ static int num_locs = 0;		 /* number in array */
  */
 
 void
-ulogin_dispatch(notice, auth, who)
+ulogin_dispatch(notice, auth, who, server)
 ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
+ZServerDesc_t *server;
 {
 	Code_t retval;
 	zdbug((LOG_DEBUG,"ulogin_disp"));
 
+	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGOUT)) {
+		zdbug((LOG_DEBUG,"logout"));
+		if ((retval = ulogin_remove_user(notice, auth, who)) == QUIET) {
+			if (server == me_server)
+				ack(notice, who);
+		}
+		else if (retval == UNAUTH) {
+			zdbug((LOG_DEBUG, "unauth logout: %d %d",auth,
+			       ntohs(notice->z_port)));
+			if (server == me_server)
+				clt_ack(notice, who, AUTH_FAILED);
+			return;
+		} else if (retval == NOLOC) {
+			if (server == me_server)
+				clt_ack(notice, who, NOT_FOUND);
+			return;
+		} else
+			/* XXX we assume that if this user is at a certain
+			   IP address, we can trust the logout to be
+			   authentic */
+			if (server == me_server)
+				sendit(notice, 1, who);
+		if (server == me_server)
+			server_forward(notice, auth, who);
+		return;
+	}
 	if (!auth) {
 		zdbug((LOG_DEBUG,"unauthentic ulogin"));
-		clt_ack(notice, who, AUTH_FAILED);
+		if (server == me_server)
+			clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}
 	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
 		zdbug((LOG_DEBUG,"user login"));
 		ulogin_add_user(notice, VISIBLE, who);
-		sendit(notice, auth, who);
+		if (server == me_server)
+			sendit(notice, auth, who);
 	} else if (!strcmp(notice->z_opcode, LOGIN_QUIET_LOGIN)) {
 		zdbug((LOG_DEBUG,"quiet login"));
 		ulogin_add_user(notice, INVISIBLE, who);
-		ack(notice, who);
-	} else if (!strcmp(notice->z_opcode, LOGIN_USER_LOGOUT)) {
-		zdbug((LOG_DEBUG,"logout"));
-		if ((retval = ulogin_remove_user(notice)) == QUIET)
+		if (server == me_server)
 			ack(notice, who);
-		else if (retval)
-			clt_ack(notice, who, NOT_FOUND);
-		else
-			sendit(notice, auth, who);
 	} else {
 		syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
-		nack(notice, who);
+		if (server == me_server)
+			nack(notice, who);
+		return;
 	}
+	if (server == me_server)
+		server_forward(notice, auth, who);
 	return;
 }
 
@@ -123,10 +153,11 @@ struct sockaddr_in *who;
  */
 
 void
-ulocate_dispatch(notice, auth, who)
+ulocate_dispatch(notice, auth, who, server)
 ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
+ZServerDesc_t *server;
 {
 	zdbug((LOG_DEBUG,"ulocate_disp"));
 
@@ -140,26 +171,33 @@ struct sockaddr_in *who;
 	/* ... but not unauthentic changes of location status */
 	if (!auth) {
 		zdbug((LOG_DEBUG,"unauthentic ulocate"));
-		clt_ack(notice, who, AUTH_FAILED);
+		if (server == me_server)
+			clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}
 	if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
 		zdbug((LOG_DEBUG,"user hide"));
 		if (ulogin_hide_user(notice, INVISIBLE)) {
-			clt_ack(notice, who, NOT_FOUND);
+			if (server == me_server)
+				clt_ack(notice, who, NOT_FOUND);
 			return;
 		}
 	} else if (!strcmp(notice->z_opcode, LOCATE_UNHIDE)) {
 		zdbug((LOG_DEBUG,"user unhide"));
 		if (ulogin_hide_user(notice, VISIBLE)) {
-			clt_ack(notice, who, NOT_FOUND);
+			if (server == me_server)
+				clt_ack(notice, who, NOT_FOUND);
 			return;
 		}
 	} else {
 		syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
-		nack(notice, who);
+		if (server == me_server)
+			nack(notice, who);
 	}
-	ack(notice, who);
+	if (server == me_server) {
+		server_forward(notice, auth, who);
+		ack(notice, who);
+	}
 	return;
 }
 
@@ -471,8 +509,10 @@ register ZLocation_t *l1, *l2;
  */
 
 static int
-ulogin_remove_user(notice)
+ulogin_remove_user(notice, auth, who)
 ZNotice_t *notice;
+int auth;
+struct sockaddr_in *who;
 {
 	ZLocation_t *loc, *loc2;
 	register int i = 0;
@@ -480,8 +520,14 @@ ZNotice_t *notice;
 
 	if (!(loc2 = ulogin_find(notice, 1))) {
 		zdbug((LOG_DEBUG,"ul_rem: not here"));
-		return(1);
+		return(NOLOC);
 	}
+
+	/* if unauthentic, the sender MUST be the same IP addr
+	   that registered */
+
+	if (!auth && loc2->zlt_addr.s_addr != who->sin_addr.s_addr)
+		return(UNAUTH);
 
 	if (loc2->zlt_visible == INVISIBLE)
 		quiet = QUIET;
