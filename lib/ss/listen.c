@@ -28,7 +28,7 @@ static char const rcs_id[] =
 #define sigtype void
 #else
 #define sigtype int
-#endif POSIX
+#endif
 
 extern char *index();
 
@@ -61,40 +61,76 @@ int ss_listen (sci_idx)
     int sci_idx;
 {
     register char *cp;
-    register sigtype (*sig_cont)();
     register ss_data *info;
-    sigtype (*sig_int)(), (*old_sig_cont)();
     char input[BUFSIZ];
     char expanded_input[BUFSIZ];
     char buffer[BUFSIZ];
     char *end = buffer;
-    int mask;
     int code;
     jmp_buf old_jmpb;
     ss_data *old_info = current_info;
     static sigtype print_prompt();
+#ifdef POSIX
+    struct sigaction isig, csig, nsig, osig;
+    sigset_t nmask, omask;
+#else
+    register sigtype (*sig_cont)();
+    sigtype (*sig_int)(), (*old_sig_cont)();
+    int mask;
+#endif
 
     current_info = info = ss_info(sci_idx);
-    sig_cont = (sigtype (*)())0;
     info->abort = 0;
+#ifdef POSIX
+    csig.sa_handler = (sigtype (*)())0;
+    
+    sigemptyset(&nmask);
+    sigaddset(&nmask, SIGINT);
+    sigprocmask(SIG_BLOCK, &nmask, &omask);
+#else
+    sig_cont = (sigtype (*)())0;
     mask = sigblock(sigmask(SIGINT));
+#endif
+
     bcopy(listen_jmpb, old_jmpb, sizeof(jmp_buf));
+
+#ifdef POSIX    
+    nsig.sa_handler = listen_int_handler;
+    sigemptyset(&nsig.sa_mask);
+    nsig.sa_flags = 0;
+    sigaction(SIGINT, &nsig, &isig);
+#else
     sig_int = signal(SIGINT, listen_int_handler);
+#endif
+
     setjmp(listen_jmpb);
+
+#ifdef POSIX
+    sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
     (void) sigsetmask(mask);
+#endif
     while(!info->abort) {
 	print_prompt();
 	*end = '\0';
+#ifdef POSIX
+	nsig.sa_handler = listen_int_handler;	/* fgets is not signal-safe */
+	osig = csig;
+	sigaction(SIGCONT, &nsig, &csig);
+	if ((sigtype (*)())csig.sa_handler==(sigtype (*)())listen_int_handler)
+	    csig = osig;
+#else
 	old_sig_cont = sig_cont;
 	sig_cont = signal(SIGCONT, print_prompt);
 #ifdef mips
-	/* The mips compiler breaks on determining the types,
-	   we help */
+	/* The mips compiler breaks on determining the types, we help */
 	if ( (sigtype *) sig_cont == (sigtype *) print_prompt)
-#else
-	if ( sig_cont == print_prompt)
-#endif
 	    sig_cont = old_sig_cont;
+#else
+	if (sig_cont == print_prompt)
+	    sig_cont = old_sig_cont;
+#endif
+#endif
 	if (fgets(input, BUFSIZ, stdin) != input) {
 	    code = SS_ET_EOF;
 	    goto egress;
@@ -105,7 +141,11 @@ int ss_listen (sci_idx)
 	    if (cp == input)
 		continue;
 	}
+#ifdef POSIX
+	sigaction(SIGCONT, &csig, (struct sigaction *)0);
+#else
 	(void) signal(SIGCONT, sig_cont);
+#endif
 	for (end = input; *end; end++)
 	    ;
 
@@ -127,7 +167,11 @@ int ss_listen (sci_idx)
     }
     code = 0;
 egress:
+#ifdef POSIX
+    sigaction(SIGINT, &isig, (struct sigaction *)0);
+#else
     (void) signal(SIGINT, sig_int);
+#endif
     bcopy(old_jmpb, listen_jmpb, sizeof(jmp_buf));
     current_info = old_info;
     return code;
