@@ -59,11 +59,7 @@ typedef struct _timer {
 #define ALARM_ARG(x)  ((x)->arg)
 #define TIMER_SIZE sizeof(struct _timer)
 
-#ifdef mips
-#define time_t long /* sigh */
-#endif
-extern time_t time P((time_t*));
-#define NOW (time((time_t *)NULL))
+#define NOW (gettimeofday(&t_local, (struct timezone *)0), t_local.tv_sec)
 typedef void (*timer_proc) P((void *));
 extern timer timer_set_rel P((long, timer_proc, void*));
 extern timer timer_set_abs P((long, timer_proc, void*));
@@ -73,4 +69,5 @@ extern void timer_reset P((timer)), timer_process P((void));
 
 #define	timer_when(x)	ALARM_TIME(x)
 
+extern struct timeval t_local;
 extern long nexttimo;			/* Unix time of next timout */
