@@ -37,7 +37,7 @@ HDRS = exec.h node.h zwgc.h parser.h port.h\
 		buffer.h xmark.h xrevstack.h xerror.h ulong.h
 
 LINCLUDES = -IMemory -IString -IDictionary
-GENERATORS= generate_stack_instance stack.h
+GENERATORS= ./generate_stack_instance stack.h
 
 SRCDIR= ${SRCTOP}/zwgc
 CONFIG_FILES= zwgc.desc  zephyr.vars zwgc_resources
@@ -68,7 +68,7 @@ ZWGCDESC=$(ACLDIR)/zwgc.desc
 APPDEF=$(ACLDIR)/zwgc_resources
 
 DEFINES=-DREVSTACK -DDEFDESC=\"$(ZWGCDESC)\" -DAPPDEFDATABASE=\"$(APPDEF)\" \
-	-DZWGCPATH=\"$(USRETCDIR)/zwgc\"
+	-DZWGCPATH=\"$(CLIENTDIR)/zwgc\"
 
 normal_obj_rule()
 
@@ -76,7 +76,15 @@ OUTPUT=zwgc
 
 do_subdirs($(SUBDIRS)) /* gotta do the subdirs first! */
 
-program($(OUTPUT),$(OBJS),,$(LIBRARIES) $(LIBS),$(USRETCDIR))
+program($(OUTPUT),$(OBJS),,$(LIBRARIES) $(LIBS),$(CLIENTDIR))
+
+#ifdef ATHENA_COMPAT
+/* On Athena, zwgc has been in /usr/etc on VAXes and RTs and some people
+   run in with a full pathname.  For compatbility, install a link. */
+install::
+	$(RM) $(DESTDIR)$(USRETCDIR)/zwgc
+	ln $(DESTDIR)$(CLIENTDIR)/zwgc $(DESTDIR)$(USRETCDIR)/zwgc || ln -s $(CLIENTDIR)/zwgc $(DESTDIR)$(USRETCDIR)/zwgc 
+#endif
 
 depend:: ${DEPENDSRCS}
 	
