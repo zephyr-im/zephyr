@@ -109,14 +109,14 @@ main(argc, argv)
 	    inst = URGENT_INSTANCE;
 	    break;
 	case 'i':
-	    if (arg == argc-1 || filsys)
+	    if (arg == argc-1 || filsys == 1)
 		usage(whoami);
 	    arg++;
 	    inst = argv[arg];
 	    filsys = -1;
 	    break;
 	case 'c':
-	    if (arg == argc-1 || filsys)
+	    if (arg == argc-1 || filsys == 1)
 		usage(whoami);
 	    arg++;
 	    class = argv[arg];
@@ -154,7 +154,7 @@ main(argc, argv)
     notice.z_sender = 0;
     notice.z_message_len = 0;
     notice.z_recipient = "";
-    if (filsys)
+    if (filsys == 1)
 	    notice.z_default_format = "@bold(Filesystem Operation Message for $instance:)\nFrom: @bold($sender)\n$message";
     else if (signature && auth == ZAUTH)
 	notice.z_default_format = "Class $class, Instance $instance:\n@center(To: @bold($recipient))\nFrom: $message";
@@ -165,7 +165,7 @@ main(argc, argv)
     else
 	notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance:\n$message";
 
-    if (!nocheck && !msgarg && !filsys)
+    if (!nocheck && !msgarg && filsys != 1)
 	send_off(&notice, 0);
 	
     if (!msgarg && isatty(0))
@@ -256,7 +256,7 @@ send_off(notice, real)
 		   auth?"authenticated ":"", 
 		   class, inst, 
 		   nrecips?notice->z_recipient:"everyone");
-	if ((retval = ZSendNotice(notice, real?auth:ZNOAUTH)) != ZERR_NONE) {
+	if ((retval = ZSendNotice(notice, auth)) != ZERR_NONE) {
 	    (void) sprintf(bfr, "while sending notice to %s", 
 		    nrecips?notice->z_recipient:inst);
 	    com_err(whoami, retval, bfr);
