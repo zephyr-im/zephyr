@@ -408,6 +408,8 @@ ZClient_t *client;
 		return;			/* DON'T put on nack list */
 	}
 
+	packlen = sizeof(ZPacket_t);
+
 	if (auth && client) {		/*
 					  we are distributing authentic and
 					  we have a pointer to auth info
