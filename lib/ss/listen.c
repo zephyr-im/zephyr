@@ -24,12 +24,18 @@ static char const rcs_id[] =
     "$Header$";
 #endif
 
+#ifdef POSIX
+#define sigtype void
+#else
+#define sigtype int
+#endif POSIX
+
 extern char *index();
 
 static ss_data *current_info;
 static jmp_buf listen_jmpb;
 
-static int print_prompt()
+static sigtype print_prompt()
 {
 #ifdef BSD
     /* put input into a reasonable mode */
@@ -45,7 +51,7 @@ static int print_prompt()
     (void) fflush(stdout);
 }
 
-static int listen_int_handler()
+static sigtype listen_int_handler()
 {
     putc('\n', stdout);
     longjmp(listen_jmpb, 1);
@@ -55,9 +61,9 @@ int ss_listen (sci_idx)
     int sci_idx;
 {
     register char *cp;
-    register int (*sig_cont)();
+    register sigtype (*sig_cont)();
     register ss_data *info;
-    int (*sig_int)(), (*old_sig_cont)();
+    sigtype (*sig_int)(), (*old_sig_cont)();
     char input[BUFSIZ];
     char expanded_input[BUFSIZ];
     char buffer[BUFSIZ];
@@ -66,9 +72,10 @@ int ss_listen (sci_idx)
     int code;
     jmp_buf old_jmpb;
     ss_data *old_info = current_info;
-    
+    static sigtype print_prompt();
+
     current_info = info = ss_info(sci_idx);
-    sig_cont = (int (*)())0;
+    sig_cont = (sigtype (*)())0;
     info->abort = 0;
     mask = sigblock(sigmask(SIGINT));
     bcopy(listen_jmpb, old_jmpb, sizeof(jmp_buf));
@@ -80,7 +87,13 @@ int ss_listen (sci_idx)
 	*end = '\0';
 	old_sig_cont = sig_cont;
 	sig_cont = signal(SIGCONT, print_prompt);
-	if (sig_cont == print_prompt)
+#ifdef mips
+	/* The mips compiler breaks on determining the types,
+	   we help */
+	if ( (sigtype *) sig_cont == (sigtype *) print_prompt)
+#else
+	if ( sig_cont == print_prompt)
+#endif
 	    sig_cont = old_sig_cont;
 	if (fgets(input, BUFSIZ, stdin) != input) {
 	    code = SS_ET_EOF;
