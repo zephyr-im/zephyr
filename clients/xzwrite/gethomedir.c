@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <pwd.h>
+#include "xzwrite.h"
 
 char *get_home_dir()
 {
@@ -8,7 +9,7 @@ char *get_home_dir()
 
      if (h) return h;
      
-     if (h = (char *) getenv("HOME")) return h;
+     if ((h = getenv("HOME")) != NULL) return h;
      
      pwuid = getpwuid(getuid());
      return (pwuid->pw_dir);

@@ -8,12 +8,10 @@
 extern Defaults defs;
 DynObject zsigs = NULL;
 
-#define islower(foo) ((foo) >= 'a' && (foo) <= 'z')
-#define toupper(foo) ((foo)+'A'-'a')
+static void set_signature __P((void));
+static Boolean set_random_zsigs __P((void));
 
-Boolean set_random_zsigs();
-
-main(argc, argv)
+int main(argc, argv)
    int	argc;
    char	**argv;
 {
@@ -37,9 +35,10 @@ main(argc, argv)
 	  zeph_subto_replies();
 
      go();
+     return 0;
 }
 
-set_signature()
+static void set_signature()
 {
      char *sig, sigbfr[BUFSIZ];
      
@@ -86,7 +85,7 @@ set_signature()
 	 
 
 
-usage()
+void usage()
 {
      fprintf(stderr, "Usage:  xzwrite [ -toolkitoption ... ] [-s signature] [+d | -d] [+n | -n]\n\t[+v | -v] [+yd | -yd] [+av | -av] [+ci | -ci] [-my yanks]\n\t[+l | -l] [+a | -a] [+x | -x] [+z | -z] [+pong | -pong] [+reply | -reply]\n");
      exit(1);
@@ -94,7 +93,7 @@ usage()
 
 #define BUF_SIZE 1024
 
-Boolean set_random_zsigs()
+static Boolean set_random_zsigs()
 { int x, n;
   char z[BUF_SIZE], *z2;
   FILE *fp;

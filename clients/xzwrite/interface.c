@@ -134,17 +134,16 @@ void build_interface(argc, argv)
 	  path1 = (char *) getenv("XFILESEARCHPATH");
 	  if (! path1) path1 = "";
 	  path2 = (char *) malloc(strlen(path1) +
-#ifdef USE_PUTENV
+#ifdef HAVE_PUTENV
 				  strlen("XFILESEARCHPATH=") +
 #endif
-				  strlen(XZWRITE_SEARCH_PATHS) + 2);
+				  strlen(DATADIR) + 5);
 	  if (path2 != NULL) {
-#ifdef USE_PUTENV
-	       sprintf(path2, "XFILESEARCHPATH=%s:%s", path1,
-		       XZWRITE_SEARCH_PATHS);
+#ifdef HAVE_PUTENV
+	       sprintf(path2, "XFILESEARCHPATH=%s:%s/%%N", path1, DATADIR);
 	       putenv(path2);
 #else
-	       sprintf(path2, "%s:%s", path1, XZWRITE_SEARCH_PATHS);
+	       sprintf(path2, "%s:%s/%N", path1, DATADIR);
 	       setenv("XFILESEARCHPATH", path2, 1);
 	       free(path2);
 #endif
@@ -226,7 +225,7 @@ static void Quit(w, e, p, n)
    Cardinal *n;
 {
      XtDestroyApplicationContext(app_con);
-     ZCancelSubscriptions();
+     ZCancelSubscriptions(0);
      exit(0);
 }
 
@@ -388,7 +387,7 @@ static void CloseMenu(w, e, p, n)
      XtPopdown(menuWindow);
 }
 
-static void set_editor_width (void)
+static void set_editor_width ()
 {
   int w, c; char m = 'm';
   XFontStruct *fs = (XFontStruct *) NULL;
@@ -410,7 +409,7 @@ static void set_editor_width (void)
   XtVaSetValues(destForm, XtNwidth, (Dimension)(w*3/8), NULL);
 }
 
-static void set_sendclose_width (void)
+static void set_sendclose_width ()
 {
   /* make the Close Window button the width of the form */
   Dimension wi = 0;

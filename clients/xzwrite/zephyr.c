@@ -3,6 +3,7 @@
 #include "xzwrite.h"
 #include <string.h>
 #include <dyn.h>
+#include <com_err.h>
 
 static int zeph_send_notice();
 extern Defaults defs;
@@ -61,7 +62,7 @@ void zeph_init()
      if (retval != ZERR_NONE)
 	  Error("Cannot initialize the Zephyr library.", NULL);
 
-     retval = ZOpenPort((int *) 0);
+     retval = ZOpenPort(NULL);
      if (retval != ZERR_NONE)
 	  Error("Cannot open Zephyr port.", NULL);
 }
