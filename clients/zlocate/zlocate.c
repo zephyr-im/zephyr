@@ -20,21 +20,27 @@
 static char rcsid_zlocate_c[] = "$Header$";
 #endif lint
 
+char *whoami;
+
+void usage()
+{
+   printf("Usage: %s [ -a | -d ] user ... \n",whoami);
+   exit(1);
+}
+
 main(argc,argv)
 	int argc;
 	char *argv[];
 {
-	int retval,numlocs,i,one,ourargc,found;
-	char *whoami,bfr[BUFSIZ],user[BUFSIZ];
+	int retval,numlocs,i,one,ourargc,found,auth;
+	char bfr[BUFSIZ],user[BUFSIZ];
 	ZLocations_t locations;
 	
 	whoami = argv[0];
+	auth = -1;
 
-	if (argc < 2) {
-		printf("Usage: %s user ... \n",whoami);
-		exit(1);
-	}
-	
+	if (argc < 2) usage();
+
 	if ((retval = ZInitialize()) != ZERR_NONE) {
 		com_err(whoami,retval,"while initializing");
 		exit(1);
@@ -43,17 +49,38 @@ main(argc,argv)
 	argv++;
 	argc--;
 
+	for (i=0; argv[i]; i++)
+	  if (argv[i][0] == '-')
+	    switch (argv[i][1]) {
+		  case 'a':
+		    if (auth != -1) usage();
+		    auth = 1;
+		    break;
+		  case 'd':
+		    if (auth != -1) usage();
+		    auth = 0;
+		    break;
+		  default:
+		    usage();
+		    break;
+	    }
+
 	one = 1;
 	found = 0;
-	ourargc = argc;
+	ourargc = argc - ((auth == -1)?0:1);
 	
+	if (auth == -1) auth = 1;
+
 	for (;argc--;argv++) {
+		if ((*argv)[0] == '-') continue;
 		(void) strcpy(user,*argv);
 		if (!index(user,'@')) {
 			(void) strcat(user,"@");
 			(void) strcat(user,ZGetRealm());
 		} 
-		if ((retval = ZLocateUser(user,&numlocs)) != ZERR_NONE) {
+		if ((retval = ZNewLocateUser(user,&numlocs,
+					     (auth?ZAUTH:ZNOAUTH)))
+		    != ZERR_NONE) {
 			(void) sprintf(bfr,"while locating user %s",user);
 			com_err(whoami,retval,bfr);
 			continue;
