@@ -3,20 +3,7 @@ learn how to use Zephyr once you've installed it, read the file USING.
 To learn how to set up Zephyr service at a site, read the file
 OPERATING.
 
-To build and install Zephyr for the Athena environment, run:
-
-	setenv CC "cc"	# Or whatever compiler
-	./configure --enable-athena
-	make
-	make install
-
-(If you're not sure whether your site qualifies as being in the
-"Athena environment," the exact criteria are that you have installed
-versions of Hesiod, Kerberos 4, libss, and libcom_err in /usr/athena,
-and that you want Zephyr to be installed in the Athena directory
-layout.)
-
-To build and install outside the Athena environment, you can run:
+To build and install Zephyr, run:
 
 	./configure
 	make
