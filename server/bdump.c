@@ -243,9 +243,9 @@ bdump_send()
 		cleanup(server, omask);
 		return;
 	}
-	if ((retval = SendKerberosData(live_socket, &ticket, "zephyr", "zephyr"))
-	    != KSUCCESS) {
-		syslog(LOG_ERR,"bdump_send: %s",krb_err_txt[retval]);
+	retval = SendKerberosData(live_socket, &ticket, "zephyr", "zephyr");
+	if (retval) {
+		syslog(LOG_ERR,"bdump_send: %s", error_message (retval));
 		cleanup(server, omask);
 		return;
 	}
@@ -386,9 +386,10 @@ ZServerDesc_t *server;
 		cleanup(server, omask);
 		return;
 	}
-	if ((retval = SendKerberosData(live_socket, &ticket, "zephyr", "zephyr"))
-	    != KSUCCESS) {
-		syslog(LOG_ERR,"bdump_send: %s",krb_err_txt[retval]);
+	retval = SendKerberosData(live_socket, &ticket, "zephyr", "zephyr");
+	if (retval){
+		syslog(LOG_ERR,"bdump_send: %s",
+		       error_message (retval));
 		cleanup(server, omask);
 		return;
 	}
@@ -533,7 +534,12 @@ int omask;
  
 #ifdef KERBEROS
 #define TKTLIFETIME	96
-static long tkt_lifetime();
+static long
+tkt_lifetime(val)
+int val;
+{
+    return((long) val * 5L * 60L);
+}
  
 static int
 get_tgt()
@@ -548,15 +554,22 @@ get_tgt()
 		}
 	/* have they expired ? */
 	if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + 15L) {
+		/*
+		 * XXX krb_get_svc_in_tkt wants this argument writable
+		 * and at least this long.
+		 */
+		static char buf[INST_SZ] = "zephyr";
+
 		/* +15 for leeway */
 		zdbug((LOG_DEBUG,"get new tickets: %d %d %d",
 		       ticket_time, NOW,
 		       NOW - tkt_lifetime(TKTLIFETIME) + 15L));
 		(void) dest_tkt();
-		if ((retval =
-		     krb_get_svc_in_tkt("zephyr", "zephyr", my_realm,
-				    "zephyr", "zephyr",
-				    TKTLIFETIME, ZEPHYR_SRVTAB)) != KSUCCESS) {
+		
+		retval = krb_get_svc_in_tkt ("zephyr", buf/*XXX*/, my_realm,
+					     "zephyr", "zephyr",
+					     TKTLIFETIME, ZEPHYR_SRVTAB);
+		if (retval != KSUCCESS) {
 			syslog(LOG_ERR,"get_tkt: %s",
 			       krb_err_txt[retval]);
 			ticket_time = 0L;
@@ -565,13 +578,6 @@ get_tgt()
 			ticket_time = NOW;
 	}
 	return(0);
-}
- 
-static long
-tkt_lifetime(val)
-int val;
-{
-    return((long) val * 5L * 60L);
 }
 #endif /* KERBEROS */
  
