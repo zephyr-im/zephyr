@@ -184,7 +184,7 @@ static int varline(bfr, var)
 	return(0);			/* var is not the var in
 					   bfr ==> no match */
 
-    cp = index(bfr, '=');
+    cp = strchr(bfr, '=');
     if (!cp)
 	return(0);
     cp++;
