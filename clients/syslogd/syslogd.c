@@ -870,6 +870,7 @@ static void logmsg(pri, msg, from, flags)
 			(void) strncpy(f->f_lasttime, timestamp, 15);
 			(void) strncpy(f->f_prevhost, from,
 					sizeof(f->f_prevhost));
+			f->f_prevhost[sizeof(f->f_prevhost) - 1] = 0;
 			if (msglen < MAXSVLINE) {
 				f->f_prevlen = msglen;
 				f->f_prevpri = pri;
@@ -899,7 +900,7 @@ static void fprintlog(f, flags, msg, fac, prilev)
 	struct iovec iov[6];
 	register struct iovec *v = iov;
 	register int l;
-	char line[MAXLINE + 1];
+	char line[MAXLINE + MAXHOSTNAMELEN + 21];
 	char repbuf[80];
 	char pri_fac_str[35];
 	int i;
