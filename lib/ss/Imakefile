@@ -15,7 +15,11 @@ INCDIR=
 
 # flags
 
+#ifdef ultrix
+CFLAGS=	-O -I. -DPOSIX
+#else
 CFLAGS=	-O -I. 
+#endif
 
 LINTFLAGS= -uhv -I.
 
