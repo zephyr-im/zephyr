@@ -10,6 +10,11 @@
 #include <ss/mit-sipb-copyright.h>
 #include <ss/ss_err.h>
 
+#include <config.h>
+#ifdef HAVE_SYS_CDEFS_H
+#include <sys/cdefs.h>
+#endif
+
 /* Don't use <sysdep.h> for this; the broken Ultrix yacc produces
  * "char *malloc()", which conflicts with <stdlib.h>. */
 #ifdef __STDC__
@@ -57,6 +62,6 @@ void ss_help __P((int, const char *const *, int, void *));
 char *ss_name __P((int));
 void ss_error __P((int, long, char const *, ...));
 void ss_perror __P((int, long, char const *));
-void ss_abort_subsystem __P((int));
+void ss_abort_subsystem __P((int sci_idx, int code));
 extern ss_request_table ss_std_requests;
 #endif /* _ss_h */

@@ -170,7 +170,7 @@ egress:
 }
 
 void ss_abort_subsystem(sci_idx, code)
-    int sci_idx;
+    int sci_idx, code;
 {
     ss_info(sci_idx)->abort = 1;
     ss_info(sci_idx)->exit_status = code;
