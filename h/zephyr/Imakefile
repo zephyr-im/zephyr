@@ -1,0 +1,14 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+SRCDIR= ${SRCTOP}/include/zephyr
+HDRS= acl.h krb_err.h mit-copyright.h zephyr.h zephyr_conf.h zephyr_err.h zephyr_internal.h zsyslog.h
+CODE= ${HDRS} Imakefile
+
+SUBDIRS= zephyr
