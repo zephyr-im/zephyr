@@ -9,8 +9,6 @@ static char *rcsid_kstuff_c = "$Header$";
 
 #include "zserver.h"
 
-#include <krb.h>
-#include <netinet/in.h>
 #include <ctype.h>
 #include <netdb.h>
 
@@ -45,7 +43,8 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
 	 */
 	for (i=0; i<20; i++) {
 		if (read(fd, &p[i], 1) != 1) {
-		    return(KFAILURE);
+			syslog(LOG_WARNING,"bad read tkt len");
+			return(KFAILURE);
 		}
 		if (p[i] == ' ') {
 		    p[i] = '\0';
@@ -54,10 +53,12 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
 	}
 	ticket.length = atoi(p);
 	if ((i==20) || (ticket.length<=0) || (ticket.length>MAX_KTXT_LEN)) {
+		syslog(LOG_WARNING,"bad tkt len %d",ticket.length);
 	    return(KFAILURE);
 	}
 	for (i=0; i<ticket.length; i++) {
-	    if (read(0, &(ticket.dat[i]), 1) != 1) {
+	    if (read(fd, (caddr_t) &(ticket.dat[i]), 1) != 1) {
+		syslog(LOG_WARNING,"bad tkt read");
 		return(KFAILURE);
 	    }
 	}
@@ -65,38 +66,9 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
 	 * now have the ticket.  use it to get the authenticated
 	 * data from Kerberos.
 	 */
-	strcpy(instance,"*");	/* let Kerberos fill it in */
+	(void) strcpy(instance,"*");	/* let Kerberos fill it in */
 
 	return(rd_ap_req(&ticket,service,instance,haddr,kdata, srvtab ? srvtab : ""));
-}
-
-/*
- * The convention established by the Kerberos-authenticated rcmd
- * services (rlogin, rsh, rcp) is that the principal host name is
- * all lower case characters.  Therefore, we can get this name from
- * an alias by taking the official, fully qualified hostname, stripping off
- * the domain info (ie, take everything up to but excluding the
- * '.') and translating it to lower case.  For example, if "menel" is an
- * alias for host officially named "menelaus" (in /etc/hosts), for 
- * the host whose official name is "MENELAUS.MIT.EDU", the user could
- * give the command "menel echo foo" and we will resolve it to "menelaus".
- */
-
-char *
-PrincipalHostname( alias )
-char *alias;
-{
-    struct hostent *h;
-    char *phost = alias;
-    if ( (h=gethostbyname(alias)) != (struct hostent *)NULL ) {
-	char *p = index( h->h_name, '.' );
-	if (p) *p = NULL;
-	p = phost = h->h_name;
-	do {
-	    if (isupper(*p)) *p=tolower(*p);
-	} while (*p++);
-    }
-    return( phost );
 }
 
 /*
@@ -112,14 +84,10 @@ int fd;					/* file descriptor to write onto */
 KTEXT ticket;				/* where to put ticket (return) */
 char *service, *host;			/* service name, foreign host */
 {
-    int rem, serv_length;
+    int rem;
     char p[32];
     char krb_realm[REALM_SZ];
-
-    /* send service name, then authenticator */
-    serv_length = htonl(strlen(service));
-    write(fd, &serv_length, sizeof(long));
-    write(fd, service, strlen(service));
+    int written;
 
     rem=KSUCCESS;
 
@@ -132,8 +100,17 @@ char *service, *host;			/* service name, foreign host */
       return(rem);
 
     (void) sprintf(p,"%d ",ticket->length);
-    (void) write(fd, p, strlen(p));
-    (void) write(fd, ticket->dat, ticket->length);
+    if ((written = write(fd, p, strlen(p))) != strlen(p))
+	    if (written < 0)
+		    return(written);
+	    else
+		    return(ZSRV_PKSHORT);
+    if ((written = write(fd, (caddr_t) (ticket->dat), ticket->length)) != ticket->length)
+	    if (written < 0)
+		    return(written);
+	    else
+		    return(ZSRV_PKSHORT);
+	    
     return(rem);
 }
 
