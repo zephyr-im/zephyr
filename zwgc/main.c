@@ -341,11 +341,19 @@ static void signal_exit()
 }
 
 #include <sys/wait.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+
+/* clean up ALL the waiting children, in case we get hit with
+   multiple SIGCHLD's at once, and don't process in time. */
 static signal_child()
 {
   union wait status;
+  int pid;
 
-  (void)wait(&status);
+  do {
+      pid = wait3(&status, WNOHANG, (struct rusage *)0);
+  } while (pid != 0 && pid != -1);
 }
 
 static void setup_signals()
