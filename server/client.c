@@ -168,8 +168,13 @@ client_send_clients()
 
     for (i = 0; i < HASHSIZE; i++) {
 	/* Allow packets to be processed between rows of the hash table. */
-	if (packets_waiting())
+	if (packets_waiting()) {
+	    bdumping = 0;
+	    bdump_concurrent = 1;
 	    handle_packet();
+	    bdump_concurrent = 0;
+	    bdumping = 1;
+	}
 	for (client = client_bucket[i]; client; client = client->next) {
 	    if (client->subs) {
 		retval = subscr_send_subs(client);
