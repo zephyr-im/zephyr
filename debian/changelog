@@ -1,3 +1,10 @@
+zephyr (2.1.20010518.SNAPSHOT-8) unstable; urgency=low
+
+  * Missing build-depends on libhesiod-dev.  I cannot begin to describe
+    how stupid I feel.  closes: #148250
+
+ -- Karl Ramm <kcr@DEBIAN.ORG>  Mon, 27 May 2002 21:31:32 -0400
+
 zephyr (2.1.20010518.SNAPSHOT-7) unstable; urgency=low
 
   * Stop using some egregious ?roff hacks in the zwgc man page that seem
