@@ -13,9 +13,10 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xrevstack_c[] = "$Header$";
+static char rcsid_xrevstack_c[] = "$Id$";
 #endif
 
+#ifdef REVSTACK
 #include <zephyr/mit-copyright.h>
 
 #include "X_gram.h"
@@ -176,3 +177,4 @@ x_gram *gram;
 #endif
 }
 
+#endif /* REVSTACK */
