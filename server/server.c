@@ -21,9 +21,6 @@ static char rcsid_server_s_c[] = "$Header$";
 
 #include "zserver.h"
 #include <sys/socket.h>			/* for AF_INET */
-#ifdef lint
-#include <sys/uio.h>
-#endif lint
 #include <netdb.h>			/* for gethostbyname */
 
 /*
@@ -463,7 +460,7 @@ ZClient_t *client;
 			continue;
 
 		if (!(pack = (caddr_t) xmalloc(sizeof(ZPacket_t)))) {
-			syslog(LOG_ERR, "srv_forw malloc");
+			syslog(LOG_ERR, "srv_kill_clt malloc");
 			continue;	/* DON'T put on nack list */
 		}
 
@@ -489,7 +486,7 @@ ZClient_t *client;
 		
 		if (!(nacked = (ZNotAcked_t *)xmalloc(sizeof(ZNotAcked_t)))) {
 			/* no space: just punt */
-			syslog(LOG_ERR, "srv_forw nack malloc");
+			syslog(LOG_ERR, "srv_kill_clt nack malloc");
 			xfree(pack);
 			continue;
 		}
@@ -1293,6 +1290,7 @@ ZNotice_t *notice;
 	return;
 }
 
+#ifdef CONCURRENT
 /*
  * send the queued message for the server.
  */
@@ -1322,6 +1320,8 @@ ZServerDesc_t *server;
 		}
 	}
 }
+#endif CONCURRENT
+
 /*
  * a server has acknowledged a message we sent to him; remove it from
  * server unacked queue
@@ -1500,6 +1500,7 @@ register ZSrvPending_t *pending;
 	return;
 }
 
+#ifdef CONCURRENT
 /*
  * Queue something to be handled later by this server.
  */
@@ -1529,6 +1530,7 @@ struct sockaddr_in *who;
 	server_queue(me_server, packlen, pack, auth, who);
 	return;
 }
+#endif CONCURRENT
 
 /*
  * dump info about servers onto the fp.
