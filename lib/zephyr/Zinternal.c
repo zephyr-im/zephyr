@@ -13,7 +13,7 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_Zinternal_c[] = "$Header$";
+static char rcsid_Zinternal_c[] = "$Id$";
 static char copyright[] = "Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.";
 #endif lint
 
@@ -261,6 +261,27 @@ Code_t Z_ReadWait()
      * with the same multiuid field, insert the current fragment as
      * appropriate.
      */
+    switch (notice.z_kind) {
+    case SERVACK:
+    case SERVNAK:
+	/* The SERVACK and SERVNAK replies shouldn't be reassembled
+	   (they have no parts).  Instead, we should hold on to the reply
+	   ONLY if it's the first part of a fragmented message, i.e.
+	   multi_uid == uid.  This allows programs to wait for the uid
+	   of the first packet, and get a response when that notice
+	   arrives.  Acknowledgements of the other fragments are discarded
+	   (XXX we assume here that they all carry the same information
+	   regarding failure/success)
+	 */
+	if (!__Zephyr_server &&
+	    !ZCompareUID(&notice.z_multiuid, &notice.z_uid))
+	    /* they're not the same... throw away this packet. */
+	    return(ZERR_NONE);
+	/* fall thru & process it */
+    default:
+	/* for HMACK types, we assume no packet loss (local loopback
+	   connections).  The other types can be fragmented and MUST
+	   run through this code. */
     if (!__Zephyr_server && (qptr = Z_SearchQueue(&notice.z_multiuid,
 						  notice.z_kind))) {
 	/*
@@ -274,6 +295,7 @@ Code_t Z_ReadWait()
 	    bcopy(packet, qptr->header, qptr->header_len);
 	}
 	return (Z_AddNoticeToEntry(qptr, &notice, part));
+    }
     }
 
     /*
