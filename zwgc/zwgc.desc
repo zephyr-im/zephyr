@@ -1,4 +1,4 @@
-#	Copyright 1989 Massachusetts Institute of Technology
+#	Copyright 1989, 1990 Massachusetts Institute of Technology
 #
 #	For copying and distribution information, see the file
 #	"mit-copyright.h".
@@ -99,7 +99,7 @@ match "message"
 		set body = $signature
 		set signature = ""
 	endif
-	if ($signature =~ "From: .*") then
+	if ($signature =~ "^[Ff]rom: .*") then
 		set dummy = lany($signature,"From: ")
 	endif
 	if ($signature =~ "\n$") then
@@ -113,8 +113,12 @@ match "message"
 	endif
 
 	print "@center(@bold("+$aval+") "+$type+" message at "+$time+
-		" on "+$date+")\n"+$ftext+"\n\n"
-	print $body
+		" on "+$date+" from "+$fromhost+")\n"+$ftext+"\n\n"
+	if (downcase($opcode) == "pretty") then
+		print $body
+	else
+		print verbatim($body)
+	endif
 	put
 	exit
 
@@ -136,8 +140,12 @@ match "login"
 	exit
 
 default
-	print "(Authentication: @bold("+$aval+"))\n"
-	print substitute($default)
+	print "(Authentication: @bold("+$aval+") from host: "+$fromhost+")\n"
+	if (downcase($opcode) == "verbatim") then
+		print verbatim(substitute($default))
+	else
+		print substitute($default)
+	endif
 	put
 	exit
 
