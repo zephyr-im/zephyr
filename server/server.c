@@ -1770,8 +1770,8 @@ srv_nack_release(server)
 
 	/* search the not-yet-acked list for anything destined to him, and
 	   flush it. */
-	for (nacked = nacklist->q_forw;
-	     nacked != nacklist;)
+	for (nacked = srv_nacklist->q_forw;
+	     nacked != srv_nacklist;)
 		if (&otherservers[nacked->na_srv_idx] == server) {
 			/* go back, since remque will change things */
 			nack2 = nacked->q_back;
