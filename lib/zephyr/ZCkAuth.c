@@ -66,6 +66,6 @@ int ZCheckAuthentication(notice, from)
 
     return (our_checksum == notice->z_checksum);
 #else
-    return (0);
+    return (notice->z_auth);
 #endif
 } 
