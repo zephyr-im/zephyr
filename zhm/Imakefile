@@ -1,11 +1,11 @@
-/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#	Copyright 1988, 1991 Massachusetts Institute of Technology.
 /**/#
 /**/#	For copying and distribution information, see the file
 /**/#	"mit-copyright.h". 
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Header$
+/**/#	$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/zhm/RCS/Imakefile,v 1.7 89/12/18 13:19:55 jtkohl Exp $
 /**/#
 
 #if defined(DO_SYSLOG) && defined(SYSLOG_COMPAT42)
@@ -26,7 +26,7 @@ CODE= ${HDRS} ${SRCS} Imakefile
 /*
  * The pathname for the pid file.
  */
-ZHMPIDFILE=$(ETCATHDIR)/zhm.pid
+ZHMPIDFILE=PidFile($(ETCATHDIR))/zhm.pid
 
 DEFINES=-DPIDFILE=\"$(ZHMPIDFILE)\"
 
