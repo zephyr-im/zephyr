@@ -18,7 +18,7 @@
 
 Code_t ZInitialize()
 {
-	init_zeph_err_tbl();
+	init_ezef_err_tbl();
 
 	return (ZERR_NONE);
 }
