@@ -333,6 +333,7 @@ char *host;
 #ifdef KPOP
     KTEXT ticket = (KTEXT)NULL;
     int rem;
+    long authopts;
 #endif KPOP
     char *get_errmsg();
 
@@ -377,7 +378,21 @@ char *host;
 #ifdef KPOP
     ticket = (KTEXT)malloc( sizeof(KTEXT_ST) );
     rem=KSUCCESS;
-    rem = SendKerberosData(s, ticket, "pop", hp->h_name);
+#ifdef ATHENA_COMPAT
+    authopts = KOPT_DO_OLDSTYLE;
+    rem = krb_sendsvc(s,"pop");
+    if (rem != KSUCCESS) {
+	(void) sprintf(Errmsg, "kerberos error: %s", krb_err_txt[rem]);
+	(void) close(s);
+	return(NOTOK);
+    }
+#else
+    authopts = 0L;
+#endif
+    rem = krb_sendauth(authopts, s, ticket, "pop", hp->h_name, (char *)0,
+		       0, (MSG_DAT *) 0, (CREDENTIALS *) 0,
+		       (bit_64 *) 0, (struct sockaddr_in *)0,
+		       (struct sockaddr_in *)0,"ZMAIL0.0");
     if (rem != KSUCCESS) {
 	(void) sprintf(Errmsg, "kerberos error: %s",krb_err_txt[rem]);
 	(void) close(s);
@@ -487,7 +502,7 @@ FILE *f;
     }
 
     if (c == EOF && p == buf) {
-	(void) strcpy(buf, "connection closed by foreign host");
+	(void) strcpy(buf, "connection closed by foreign host\n");
 	return (DONE);
     }
 
