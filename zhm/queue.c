@@ -110,6 +110,7 @@ Code_t remove_notice_from_queue(notice, kind, repl)
 #ifdef DEBUG
     dump_queue();
 #endif /* DEBUG */
+    free(entry);
     return(ZERR_NONE);
 }
 
