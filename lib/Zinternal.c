@@ -33,6 +33,12 @@ static char copyright[] =
 #define VARARGS
 #endif
 
+#ifdef __STDC__
+typedef void *pointer;
+#else
+typedef char *pointer;
+#endif
+
 extern char *inet_ntoa ();
 
 int __Zephyr_fd = -1;
@@ -58,11 +64,7 @@ ZSubscription_t *__subscriptions_list;
 int __subscriptions_num;
 int __subscriptions_next;
 void (*__Z_debug_print) Zproto((const char *fmt, va_list args, void *closure));
-#ifdef __STDC__
-void *__Z_debug_print_closure;
-#else
-char *__Z_debug_print_closure;
-#endif
+pointer __Z_debug_print_closure;
 
 #define min(a,b) ((a)<(b)?(a):(b))
 
@@ -306,20 +308,21 @@ Code_t Z_ReadWait()
 	/* for HMACK types, we assume no packet loss (local loopback
 	   connections).  The other types can be fragmented and MUST
 	   run through this code. */
-    if (!__Zephyr_server && (qptr = Z_SearchQueue(&notice.z_multiuid,
-						  notice.z_kind))) {
-	/*
-	 * If this is the first fragment, and we haven't already gotten a
-	 * first fragment, grab the header from it.
-	 */
-	if (part == 0 && !qptr->header) {
-	    qptr->header_len = packet_len-notice.z_message_len;
-	    if (!(qptr->header = malloc((unsigned) qptr->header_len)))
-		return (ENOMEM);
-	    bcopy(packet, qptr->header, qptr->header_len);
+	if (!__Zephyr_server && (qptr = Z_SearchQueue(&notice.z_multiuid,
+						      notice.z_kind))) {
+	    /*
+	     * If this is the first fragment, and we haven't already
+	     * gotten a first fragment, grab the header from it.
+	     */
+	    if (part == 0 && !qptr->header) {
+		qptr->header_len = packet_len-notice.z_message_len;
+		qptr->header = malloc((unsigned) qptr->header_len);
+		if (!qptr->header)
+		    return (ENOMEM);
+		bcopy(packet, qptr->header, qptr->header_len);
+	    }
+	    return (Z_AddNoticeToEntry(qptr, &notice, part));
 	}
-	return (Z_AddNoticeToEntry(qptr, &notice, part));
-    }
     }
 
     /*
@@ -640,7 +643,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
 		   sizeof(temp.i)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
-	
+
     if (Z_AddField(&ptr, notice->z_ascii_authent, end))
 	return (ZERR_HEADERLEN);
     if (Z_AddField(&ptr, notice->z_class, end))
@@ -909,57 +912,31 @@ void Z_debug_stderr (format, args, closure)
   putc ('\n', stderr);
 }
 
-#if (BSD < 43) || defined(STRCASE)
-#ifndef ULTRIX30
-/* Ultrix 3.0 has strcasecmp/strncasecmp */
-#include "strcasecmp.c"
-#endif /* ULTRIX30 */
-#endif /* BSD < 43 */
-
-#if defined (sparc) && __GNUC__ == 1
-/* GCC version 1 passes structures incorrectly on the Sparc.
-   This addition will cause things to work correctly if everything
-   using inet_ntoa is compiled with gcc.  If not, you lose anyways.  */
-char *inet_ntoa (addr)
-     struct in_addr addr;
-{
-  static char buf[16];
-  sprintf (buf, "%d.%d.%d.%d",
-	   addr.S_un.S_un_b.s_b1,
-	   addr.S_un.S_un_b.s_b2,
-	   addr.S_un.S_un_b.s_b3,
-	   addr.S_un.S_un_b.s_b4);
-  return buf;
-}
-#endif
-
-#ifdef __GNUC__
-#define inline __inline__
-#else
-#define inline
-#endif
-
-static inline int rZGetFD () { return ZGetFD (); }
 #undef ZGetFD
-int ZGetFD () { return rZGetFD (); }
+int ZGetFD () { return __Zephyr_fd; }
 
-static inline int rZQLength () { return ZQLength (); }
 #undef ZQLength
-int ZQLength () { return rZQLength (); }
+int ZQLength () { return __Q_CompleteLength; }
 
-static inline struct sockaddr_in rZGetDestAddr () { return ZGetDestAddr (); }
 #undef ZGetDestAddr
-struct sockaddr_in ZGetDestAddr () { return rZGetDestAddr (); }
+struct sockaddr_in ZGetDestAddr () { return __HM_addr; }
 
-static inline Zconst char * rZGetRealm () { return ZGetRealm (); }
 #undef ZGetRealm
-Zconst char * ZGetRealm () { return rZGetRealm (); }
+Zconst char * ZGetRealm () { return __Zephyr_realm; }
 
 #ifdef __STDC__
 #define ARGS	(void (*proc)(const char *,va_list,void *), void *arg)
 #else
 #define ARGS	(proc, arg) void (*proc)(); char *arg;
 #endif
-static inline void rZSetDebug ARGS { ZSetDebug (proc, arg); }
 #undef ZSetDebug
-void ZSetDebug ARGS { rZSetDebug (proc, arg); }
+void ZSetDebug ARGS {
+    __Z_debug_print = proc;
+    __Z_debug_print_closure = arg;
+}
+
+#ifdef NO_MALLOC_ZERO
+#undef malloc
+extern pointer malloc ();
+pointer (*Z_malloc) () = &malloc;
+#endif
