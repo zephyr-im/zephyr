@@ -7,8 +7,8 @@ service name resolution library.
 
 Please note that Zephyr version 2.0 is not compatible with previous
 versions of Zephyr, in two important ways.  First, the inter-server
-brain dump protocol has changed, so you a version 2.0Zephyr server and
-an older Zephyr server will not be able to brain dump to each other.
+brain dump protocol has changed, so a version 2.0 Zephyr server and an
+older Zephyr server will not be able to brain dump to each other.
 Second, Zephyr clients built from sources earlier than the January 3,
 1995 snapshot will not be able to send authentic notices through
 version 2.0 Zephyr servers.
