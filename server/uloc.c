@@ -316,6 +316,7 @@ struct sockaddr_in *who;
 	sense_notice.z_message = "Someone tried an unauthentic logout for you";
 	sense_notice.z_message_len = strlen(sense_notice.z_message);
 	sense_notice.z_uid = notice->z_multiuid;
+	sense_notice.z_num_other_fields = 0;
 
 	/* transmit the message to the owning port of the location. */
 	xmit(&sense_notice, &owner, 0, NULLZCLT);
@@ -374,8 +375,14 @@ ZServerDesc_t *server;
 #endif /* OLD_COMPAT */
 	if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
 		zdbug((LOG_DEBUG,"locate"));
+#if defined(NEW_COMPAT) || defined(OLD_COMPAT)
+		if (strcmp(notice->z_version, NEW_OLD_ZEPHYR_VERSION) &&
+		    strcmp(notice->z_version, OLD_ZEPHYR_VERSION))
+#endif /* NEW_COMPAT || OLD_COMPAT */
+		/* we are talking to a current-rev client; send an
+		   acknowledgement-message */
+			ack(notice, who);
 		ulogin_locate(notice, who);
-		/* does xmit and ack itself, so return */
 		return(ZERR_NONE);
 	} else {
 		syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
@@ -1037,6 +1044,12 @@ exposure_type exposure;
 			notfound = 0;
 			locations[idx].zlt_exposure = exposure;
 			locations[idx].zlt_port = notice->z_port;
+			/* change time for the specific loc */
+			if (!strcmp(locations[idx].zlt_tty, loc2.zlt_tty)) {
+				xfree(locations[idx].zlt_time);
+				locations[idx].zlt_time =
+					strsave(loc2.zlt_time);
+			}
 		}
 		idx++;
 	}
@@ -1053,6 +1066,7 @@ struct sockaddr_in *who;
 	char **answer;
 	int found;
 	Code_t retval;
+	struct sockaddr_in send_to_who;
 
 #if defined(NEW_COMPAT) || defined(OLD_COMPAT)
 	if (!strcmp(notice->z_version, NEW_OLD_ZEPHYR_VERSION) ||
@@ -1065,7 +1079,10 @@ struct sockaddr_in *who;
 #endif /* NEW_COMPAT || OLD_COMPAT */
 	answer = ulogin_marshal_locs(notice, who, &found);
 
-	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
+	send_to_who = *who;
+	send_to_who.sin_port = notice->z_port;
+
+	if ((retval = ZSetDestAddr(&send_to_who)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "ulogin_locate set addr: %s",
 		       error_message(retval));
 		if (answer)
@@ -1108,7 +1125,7 @@ register int *found;
 
 	if (!(loc = ulogin_find(notice, 0)))
 		/* not here anywhere */
-		return(NULL);
+		return((char **)0);
 
 	i = loc - locations;
 	while ((i < num_locs) &&
@@ -1134,7 +1151,7 @@ register int *found;
 			matches[0] = &locations[i];
 			(*found)++;
 		} else {
-			if ((matches = (ZLocation_t **) realloc((caddr_t) matches, (unsigned) ++found * sizeof(ZLocation_t *))) == (ZLocation_t **) 0) {
+			if ((matches = (ZLocation_t **) realloc((caddr_t) matches, (unsigned) ++(*found) * sizeof(ZLocation_t *))) == (ZLocation_t **) 0) {
 				syslog(LOG_ERR, "ulog_loc: realloc no mem");
 				*found = 0;
 				break;	/* from the while */
@@ -1168,7 +1185,7 @@ register int *found;
 		}
 
 	xfree(matches);
-	/* if it's too long, chop off one at a time till it fits */
+	return(answer);
 }
 
 #if defined(OLD_COMPAT) || defined(NEW_COMPAT)
