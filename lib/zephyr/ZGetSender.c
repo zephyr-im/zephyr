@@ -18,6 +18,8 @@
 
 #include <pwd.h>
 
+uid_t getuid();
+
 char *ZGetSender()
 {
 	char *tktfile;
@@ -31,8 +33,9 @@ char *ZGetSender()
 
 	tktfile = (char *)TKT_FILE;
 	if (!(fp = fopen(tktfile,"r"))) {
-		/*NOSTRICT*/
-		pw = getpwuid(getuid());
+		/* XXX a uid_t is a u_short (now), but getpwuid
+		   wants an int. AARGH! */
+		pw = getpwuid((int) getuid());
 		if (!pw)
 			return ("unauth");
 		(void) sprintf(sender,"%s@UNAUTH",pw->pw_name);
