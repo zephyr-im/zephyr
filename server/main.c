@@ -429,6 +429,7 @@ do_net_setup()
     setservent(1);		/* keep file/connection open */
 
     memset(&srv_addr, 0, sizeof(srv_addr));
+    srv_addr.sin_family = AF_INET;
     sp = getservbyname(SERVER_SVCNAME, "udp");
     srv_addr.sin_port = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
 
