@@ -26,7 +26,6 @@ uid_t getuid();
 
 char *ZGetSender()
 {
-
     struct passwd *pw;
 #ifdef KERBEROS
     char pname[ANAME_SZ], pinst[INST_SZ];
