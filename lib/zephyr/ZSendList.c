@@ -24,7 +24,7 @@ Code_t ZSendList(notice, list, nitems, cert_routine)
     ZNotice_t *notice;
     char *list[];
     int nitems;
-    int (*cert_routine)();
+    Z_AuthProc cert_routine;
 {
     return(ZSrvSendList(notice, list, nitems, cert_routine, Z_XmitFragment));
 }
