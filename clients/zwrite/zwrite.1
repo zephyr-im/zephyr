@@ -94,7 +94,10 @@ instance of the message to ``URGENT''.
 .B \-o
 Causes
 .I zwrite
-to ignore the Zephyr variables \fIzwrite-class\fR and \fIzwrite-inst\fR
+to ignore the Zephyr variables 
+.I zwrite-class
+and
+.I zwrite-inst
 when picking a default class and instance.
 .TP
 .B \-n
@@ -114,12 +117,17 @@ When the
 option is used, no PING is sent.
 .TP
 .B \-s \fIsignature\fR
-sets the signature to be included in the message.  This overrides any
-setting of the Zephyr variable \fIzwrite-signature\fR.
-\fIsignature\fR must
+sets the signature to be included in the message.  This overrides both
+the user's name (as found in the password file) and any
+setting of the Zephyr variable 
+.IR zwrite-signature .
+.I signature
+must
 be a single argument, hence when using a shell it should be quoted with
-double quotes.  A \fIsignature\fR argument of "" has the same effect as
-leaving \fIzwrite-signature\fR unset (see below).
+double quotes.  A
+.I signature
+argument of "" leaves the signature in
+the message empty.
 .TP
 .B \-c \fIclass\fR
 Allows a user to specify a different class for the message.  This allows
@@ -146,17 +154,27 @@ This argument may not be used in conjunction with the -f option.
 .TP
 .B \-f \fIarg\fR
 Allows a user to specify an argument to be interpreted as a filesystem
-specification.  The class is set to \fBFILSRV\fR.  The instance is set
-to \fIarg\fR as modified:
-If \fIarg\fR contains no colons (`:'), it is assumed to
+specification.  The class is set to 
+.BR FILSRV .
+he instance is set
+to
+.I arg
+as modified:
+If
+.I arg
+contains no colons (`:'), it is assumed to
 be a host name, and it is converted into an official host name via 
 .I gethostbyname(3).
-If \fIarg\fR contains a colon, the portion preceding the colon is
+If
+.I arg
+contains a colon, the portion preceding the colon is
 treated as a host name, and the colon and any trailing characters are
 appended to the offical host name returned by
 .I gethostbyname.
 If the name fails to resolve into an official host name, the instance is
-set to \fIarg\fR unmodified.
+set to
+.I arg
+unmodified.
 .br
 This option may not be used in conjunction with the -c or -i option.
 .TP
@@ -172,7 +190,11 @@ by itself.
 .PP
 The default class for messages is ``MESSAGE'', and the default instance
 is ``PERSONAL''.  These defaults can be overridden by setting the Zephyr
-variables \fIzwrite-class\fR and \fIzwrite-inst\fR, respectively.
+variables
+.I zwrite-class
+and
+.IR zwrite-inst ,
+respectively.
 .br
 Command-line options override the defaults.
 .PP
@@ -180,10 +202,17 @@ If the class is ``MESSAGE'' and the instance is either ``PERSONAL'' or
 ``URGENT'', a recipient must be specified.  These comparisons are
 case-sensitive.
 .PP
-If the Zephyr variable \fIzwrite-signature\fR is set, its contents are used
-to augment the user's username in the message, unless the
-.B -s
-option is used.
+Unless the
+.B \-s
+option is used, the contents of the Zephyr variable
+.I zwrite-signature
+are used to augment the user's username in the
+message.  If
+.I zwrite-signature
+is not set and the
+.B \-s
+option is not specified, the user's full name (as specified in the
+password file) is used instead.
 .SH BUGS
 Tab expansion should really be done by the receiver of the message.
 .br
@@ -197,6 +226,10 @@ gethostbyname(3)
 .br
 Project Athena Technical Plan Section E.4.1, `Zephyr Notification
 Service'
+.SH FILES
+/etc/passwd
+.br
+$HOME/.zephyr.vars
 .SH AUTHOR
 .PP
 .br
