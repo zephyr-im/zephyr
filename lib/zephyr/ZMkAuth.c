@@ -17,11 +17,10 @@ static char rcsid_ZMakeAuthentication_c[] = "$Header$";
 #endif lint
 
 #include <zephyr/mit-copyright.h>
+#include <zephyr/zephyr_internal.h>
 #ifdef KERBEROS
 #include "krb_err.h"
 #endif
-
-#include <zephyr/zephyr_internal.h>
 
 Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     ZNotice_t *notice;
