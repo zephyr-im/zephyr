@@ -71,7 +71,7 @@ depend:: zsrv_err.h
 
 install::
 	-mkdir ${DESTDIR}${ACLDIR}
-	-rm -f ${DESTDIR}${ACLDIR}/?*
+	-rm -f ${DESTDIR}${ACLDIR}/?*.acl
 	cp acldir/?* ${DESTDIR}${ACLDIR}
 	${INSTALLFILE} default.subscriptions ${DESTDIR}${ACLDIR}/default.subscriptions
 
