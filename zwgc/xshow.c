@@ -33,8 +33,6 @@ static char rcsid_xshow_c[] = "$Id$";
 #define max(a,b)   ((a)>(b)?(a):(b))
 
 XContext desc_context;
-static pointer_dictionary geometry_dict = NULL;
-static pointer_dictionary bgcolor_dict = NULL;
 static pointer_dictionary colorname_dict = NULL;
 
 extern int internal_border_width;
@@ -84,67 +82,52 @@ char *mode_to_colorname(dpy,style,mode)
    }
 }
 
-static char *xres_get_geometry(style)
-     char *style;
+struct res_dict_type {
+    pointer_dictionary	dict;
+    char *		resname_suffix;
+    char *		resclass;
+};
+
+static struct res_dict_type geometry_resources = {
+    NULL, ".geometry", "StyleKey.Style1.Style2.Style3.GeometryKey",
+};
+
+static struct res_dict_type bgcolor_resources = {
+    NULL, ".background", "StyleKey.Style1.Style2.Style3.BackgroundKey",
+};
+
+static char *xres_get_resource (restype, style)
+    struct res_dict_type *restype;
+    char *style;
 {
    char *desc;
    pointer_dictionary_binding *binding;
    int exists;
-   char *spec;
+   char *value;
 
-   desc=string_Concat("style.",style);
-   desc=string_Concat2(desc,".geometry");
+   desc=string_Concat("style.", style);
+   desc=string_Concat2(desc, restype->resname_suffix);
 
-   if (!geometry_dict)
-      geometry_dict = pointer_dictionary_Create(37);
-   binding = pointer_dictionary_Define(geometry_dict,desc,&exists);
+   if (!restype->dict)
+      restype->dict = pointer_dictionary_Create(37);
+   binding = pointer_dictionary_Define(restype->dict, desc, &exists);
 
    if (exists) {
       free(desc);
       return((string) binding->value);
    } else {
-#define GEOM_CLASS "StyleKey.Style1.Style2.Style3.GeometryKey"
-      spec=get_string_resource(desc,GEOM_CLASS);
-#undef GEOM_CLASS
+      value=get_string_resource(desc, restype->resclass);
       free(desc);
-      if (spec==NULL)
-	 pointer_dictionary_Delete(geometry_dict,binding);
+      if (value==NULL)
+	 pointer_dictionary_Delete(restype->dict, binding);
       else
-	 binding->value=(pointer) spec;
-      return(spec);  /* If resource returns NULL, return NULL also */
+	 binding->value=(pointer) value;
+      return value;  /* If resource returns NULL, return NULL also */
    }
 }
 
-static char *xres_get_bgcolor(style)
-     char *style;
-{
-   char *desc;
-   pointer_dictionary_binding *binding;
-   int exists;
-   char *color;
-
-   desc=string_Concat("style.",style);
-   desc=string_Concat2(desc,".background");
-
-   if (!bgcolor_dict)
-      bgcolor_dict = pointer_dictionary_Create(37);
-   binding = pointer_dictionary_Define(bgcolor_dict,desc,&exists);
-
-   if (exists) {
-      free(desc);
-      return((string) binding->value);
-   } else {
-#define BG_CLASS "StyleKey.Style1.Style2.Style3.BackgroundKey"
-      color=get_string_resource(desc,BG_CLASS);
-#undef BG_CLASS
-      free(desc);
-      if (color==NULL)
-	 pointer_dictionary_Delete(bgcolor_dict,binding);
-      else
-	 binding->value=(pointer) color;
-      return(color);  /* If resource returns NULL, return NULL also */
-   }
-}
+#define xres_get_geometry(style) xres_get_resource(&geometry_resources,style)
+#define xres_get_bgcolor(style)  xres_get_resource(&bgcolor_resources,style)
 
 void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
 		    beepcount)
