@@ -348,7 +348,7 @@ send_off(notice, real)
 
     success = 0;
 	
-    for (i=0;i<nrecips || !nrecips;i++) {
+    for (i=0;i<nrecips || i==0;i++) {
 	if (realm) {
 	    sprintf(realm_recip, "%s@%s", (nrecips) ? recips[i] : "", realm);
 	    notice->z_recipient = realm_recip;
@@ -439,8 +439,6 @@ send_off(notice, real)
 	else
 	    printf("Internal failure - illegal message field in server response\n");
 	ZFreeNotice(&retnotice);
-	if (!nrecips)
-	    break;
     }
     if (!success)
 	exit(1);
