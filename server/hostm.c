@@ -48,10 +48,6 @@ static char rcsid_hostm_c[] = "$Id$";
  *
  * void hostm_shutdown()
  *
- * void hostm_losing(client, host)
- *	ZClient_t *client;
- *	ZHostList_t *host;
- *
  * void hostm_deathgram(sin, server)
  *	struct sockaddr_in *sin;
  * 	ZServerDesc_t *server;
@@ -67,11 +63,6 @@ static char rcsid_hostm_c[] = "$Id$";
  * so that lookups can be fast (binary search).  num_hosts contains the
  * number of hosts to be found in the array.
  *
- * The losing hosts list is a linked list of all the clients (and their hosts)
- * whose existence is in doubt.  Any host on this list has already been sent
- * a ping and is expected to reply immediately.
- * As usual, the first element of the list is a placeholder header so we
- * know when the list has been completely scanned.
  */
 
 struct hostlist {
@@ -79,23 +70,12 @@ struct hostlist {
 	int server_index;		/* index of server in the table */
 };
 
-typedef struct _losinghost {
-	struct _losinghost *q_forw;
-	struct _losinghost *q_back;
-	struct _ZHostList_t *lh_host;
-	timer lh_timer;
-	struct _ZClient_t *lh_client;
-} losinghost;
-
 #define	NULLHLT		((struct hostlist *) 0)
 
 static struct hostlist *all_hosts;
 
 static int num_hosts = 0;		/* number of hosts in all_hosts */
 static long lose_timo = LOSE_TIMO;
-
-static losinghost *losing_hosts; /* queue of pings for hosts we
-					     doubt are really there */
 
 #ifdef __STDC__
 # define        P(s) s
@@ -106,9 +86,6 @@ static losinghost *losing_hosts; /* queue of pings for hosts we
 static void host_detach P((register ZHostList_t *host, ZServerDesc_t *server)),
     insert_host P((ZHostList_t *host, ZServerDesc_t *server)),
     remove_host P((ZHostList_t *host));
-static void host_not_losing P((struct sockaddr_in *who)),
-    host_lost P((void *which)),
-    ping P((struct sockaddr_in *sin));
 static Code_t host_attach P((struct sockaddr_in *who, ZServerDesc_t *server));
 
 #undef P
@@ -139,7 +116,7 @@ hostm_dispatch(notice, auth, who, server)
 		return(ZSRV_REQUEUE);
 
 	if (notice->z_kind == HMACK) {
-		host_not_losing(who);
+		/* No longer used. */
 		return(ZERR_NONE);
 	} else if (notice->z_kind != HMCTL) {
 #if 0
@@ -223,9 +200,8 @@ hostm_dispatch(notice, auth, who, server)
 }
 
 /*
- * Flush all information about this host.  Remove any losing host entries,
- * deregister all the clients, flush any user locations, and remove the host
- * from its server.
+ * Flush all information about this host.  Deregister all its clients,
+ * flush any user locations, and remove the host from its server.
  * The caller is responsible for informing other servers of this flush
  * (if appropriate).
  */
@@ -236,7 +212,6 @@ hostm_flush(host, server)
      ZServerDesc_t *server;
 {
 	register ZClientList_t *clist = NULLZCLT, *clt;
-	losinghost *lhp, *lhp2;
 
 	START_CRITICAL_CODE;
 
@@ -248,18 +223,6 @@ hostm_flush(host, server)
 #if 0
 	zdbug ((LOG_DEBUG,"hostm_flush %s", inet_ntoa (host->zh_addr.sin_addr)));
 #endif
-
-	if (losing_hosts)
-		for (lhp = losing_hosts->q_forw;
-		     lhp != losing_hosts;)
-			if (lhp->lh_host == host) {
-				lhp2 = lhp->q_back;
-				timer_reset(lhp->lh_timer);
-				xremque(lhp);
-				xfree(lhp);
-				lhp = lhp2->q_forw;
-			} else
-				lhp = lhp->q_forw;
 
 	if ((clist = host->zh_clients) != NULLZCLT) {
 	  for (clt = clist->q_forw; clt != clist; clt = clist->q_forw) {
@@ -329,214 +292,6 @@ hostm_shutdown()
     return;
 }
 
-
-/*
- * The client on the host is not acknowledging any packets.  Ping the
- * host and set a timeout.
- */
-
-void
-hostm_losing(client, host)
-     ZClient_t *client;
-     ZHostList_t *host;
-{
-	losinghost *newhost;
-
-#if 0
-	zdbug((LOG_DEBUG,"losing host"));
-#endif
-	if (!losing_hosts) {
-		if (!(losing_hosts = (losinghost *)
-		      xmalloc(sizeof(losinghost)))) {
-			syslog(LOG_ERR, "no mem losing host");
-			return;
-		}
-		losing_hosts->q_forw = losing_hosts->q_back = losing_hosts;
-	}
-	for (newhost = losing_hosts->q_forw;
-	     newhost != losing_hosts;
-	     newhost = newhost->q_forw)
-		if (newhost->lh_client == client) {
-#if 0
-			zdbug((LOG_DEBUG,"clt already losing"));
-#endif
-			return;
-		}
-	if (!(newhost = (losinghost *) xmalloc(sizeof(losinghost)))) {
-		syslog(LOG_ERR, "no mem losing host 2");
-		return;
-	}
-
-	/* send a ping */
-	ping(&host->zh_addr);
-	newhost->lh_host = host;
-	newhost->lh_client = client;
-	newhost->lh_timer = timer_set_rel(lose_timo, host_lost, (void *) newhost);
-	xinsque(newhost, losing_hosts);
-	return;
-}
-
-/*
- * The host did not respond to the ping, so we punt him
- */
-
-static void
-host_lost(arg)
-     void* arg;
-{
-	losinghost *which = (losinghost *) arg;
-	ZServerDesc_t *server;
-	ZNotice_t notice;
-	struct sockaddr_in who;
-	Code_t retval;
-	char *buffer;
-	int len;
-
-	START_CRITICAL_CODE;
-	
-	server = hostm_find_server(&which->lh_host->zh_addr.sin_addr);
-#if 1
-	zdbug ((LOG_DEBUG,"lost host %s (server %s)",
-		inet_ntoa(which->lh_host->zh_addr.sin_addr),
-		server ? server->addr : "<NONE>"));
-#endif
-
-	if (!server) {
-#if 1
-		zdbug((LOG_DEBUG,"no server"));
-#endif
-		xremque(which);
-		xfree(which);
-		END_CRITICAL_CODE;
-		return;
-	}
-	xremque(which);
-	hostm_flush(which->lh_host, server);
-
-	(void) memset((caddr_t)&notice, 0, sizeof(notice));
-	
-	/* tell other servers to flush this host */
-	notice.z_kind = HMCTL;
-	notice.z_auth = 0;
-	notice.z_port = hm_port;
-	notice.z_class = ZEPHYR_CTL_CLASS;
-	notice.z_class_inst = ZEPHYR_CTL_HM;
-	notice.z_opcode = HM_FLUSH;
-	notice.z_sender = "HM";
-	notice.z_recipient = "";
-	notice.z_default_format = "";
-	notice.z_num_other_fields = 0;
-	notice.z_message_len = 0;
-
-	/* generate the other fields */
-	retval = ZFormatNotice(&notice, &buffer, &len, ZNOAUTH);
-	if (retval != ZERR_NONE)
-	    return;
-	xfree(buffer);
-
-	/* forge a from address */
-	(void) memset((char *) &who, 0, sizeof(who));
-	who.sin_addr.s_addr = which->lh_host->zh_addr.sin_addr.s_addr;
-	who.sin_port = hm_port;
-	who.sin_family = AF_INET;
-
-	server_forward(&notice, 0, &who); /* unauthentic */
-
-	xfree(which);
-
-	END_CRITICAL_CODE;
-
-	return;
-}
-
-/*
- * The host responded to the ping, so we flush the losing clients on this host.
- */
-
-static void
-host_not_losing(who)
-     struct sockaddr_in *who;
-{
-	losinghost *lhp, *lhp2;
-
-	if (!losing_hosts)
-		return;
-
-	START_CRITICAL_CODE;
-	
-	for (lhp = losing_hosts->q_forw;
-	     lhp != losing_hosts;)
-		if (lhp->lh_host->zh_addr.sin_addr.s_addr == who->sin_addr.s_addr) {
-			/* go back, since remque will change things */
-			lhp2 = lhp->q_back;
-			timer_reset(lhp->lh_timer);
-#if 1
-			if (zdebug || 1)
-			    syslog (LOG_DEBUG,"lost client %s/%d",
-				    inet_ntoa(lhp->lh_client->zct_sin.sin_addr),
-				    ntohs(lhp->lh_client->zct_sin.sin_port));
-#endif
-			/* deregister all subscriptions, and flush locations
-			   associated with the client. */
-#if 0
-			if (zdebug)
-				syslog(LOG_DEBUG,"h_not_lose clt_dereg");
-#endif
-			server_kill_clt(lhp->lh_client);
-			client_deregister(lhp->lh_client, lhp->lh_host, 1);
-			xremque(lhp);
-			xfree(lhp);
-			/* now that the remque adjusted the linked list,
-			   we go forward again */
-			lhp = lhp2->q_forw;
-		} else
-			lhp = lhp->q_forw;
-
-	END_CRITICAL_CODE;
-
-	return;
-}
-
-/*
- * A client is being de-registered, so remove it from the losing_host list,
- * if it is there.
- */
-
-void
-hostm_lose_ignore(client)
-     ZClient_t *client;
-{
-	losinghost *lhp, *lhp2;
-	
-	if (!losing_hosts)
-		return;
-
-	START_CRITICAL_CODE;
-	
-	for (lhp = losing_hosts->q_forw;
-	     lhp != losing_hosts;)
-		/* if client matches, remove it */
-		if (lhp->lh_client == client) {
-			/* go back, since remque will change things */
-			lhp2 = lhp->q_back;
-			timer_reset(lhp->lh_timer);
-#if 0
-			zdbug((LOG_DEBUG,"hm_l_ign client %s/%d",
-			       inet_ntoa(client->zct_sin),
-			       ntohs(client->zct_sin.sin_port)));
-#endif
-			xremque(lhp);
-			xfree(lhp);
-			/* now that the remque adjusted the linked list,
-			   we go forward again */
-			lhp = lhp2->q_forw;
-		} else
-			lhp = lhp->q_forw;
-
-	END_CRITICAL_CODE;
-	
-	return;
-}
 
 /*
  * transfer this host to server's ownership.  The caller must update the
@@ -755,60 +510,6 @@ hostm_deathgram(sin, server)
 		return;
 	}
 	xfree(shutpack);		/* free allocated storage */
-	return;
-}
-
-/*
- * Send a ping to the HostManager at sin
- */
-
-static void
-ping(sin)
-     struct sockaddr_in *sin;
-{
-	Code_t retval;
-	int shutlen;
-	ZNotice_t shutnotice;
-	char *shutpack;
-
-#if 0
-	zdbug((LOG_DEBUG,"ping %s",inet_ntoa(*sin)));
-#endif
-
-	/* fill in the shutdown notice */
-
-	shutnotice.z_kind = HMCTL;
-	shutnotice.z_port = sock_sin.sin_port;
-	shutnotice.z_class = HM_CTL_CLASS;
-	shutnotice.z_class_inst = HM_CTL_SERVER;
-	shutnotice.z_opcode = SERVER_PING;
-	shutnotice.z_sender = HM_CTL_SERVER;
-	shutnotice.z_recipient = hm_recipient ();
-	shutnotice.z_message = NULL;
-	shutnotice.z_message_len = 0;
-	shutnotice.z_default_format = "";
-	shutnotice.z_num_other_fields = 0;
-
-	if ((retval = ZFormatNotice(&shutnotice,
-				    &shutpack,
-				    &shutlen,
-				    ZNOAUTH)) != ZERR_NONE) {
-		syslog(LOG_ERR, "hm_ping format: %s",error_message(retval));
-		return;
-	}
-	if ((retval = ZSetDestAddr(sin)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "hm_ping set addr: %s",
-		       error_message(retval));
-		xfree(shutpack);	/* free allocated storage */
-		return;
-	}
-	/* don't wait for ack */
-	if ((retval = ZSendPacket(shutpack, shutlen, 0)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "hm_ping xmit: %s", error_message(retval));
-		xfree(shutpack);	/* free allocated storage */
-		return;
-	}
-	xfree(shutpack);	/* free allocated storage */
 	return;
 }
 
