@@ -14,18 +14,35 @@
  */
 
 #ifndef lint
-static const char rcsid_kstuff_c[] = "$Header$";
+#ifndef SABER
+static char rcsid_kstuff_c[] = "$Id$";
+#endif
 #endif
 
 #include "zserver.h"
 
-extern "C" {
 #include <ctype.h>
 #include <netdb.h>
 #include <strings.h>
 #include <zephyr/zephyr_internal.h>
-}
 
+static char tkt_file[] = ZEPHYR_TKFILE;
+
+
+struct AuthEnt {
+    Zconst char *data;
+    int len;
+    ZSTRING *principal;
+#ifndef NOENCRYPTION
+    C_Block session_key;
+#endif
+    long expire_time;
+    struct sockaddr_in from;
+};
+
+#define HASH_SIZE_1	513
+#define HASH_SIZE_2	3
+static struct AuthEnt auth_cache[HASH_SIZE_1][HASH_SIZE_2];
 
 /*
  * GetKerberosData
@@ -35,14 +52,13 @@ extern "C" {
  * the value of rd_ap_req() applied to the ticket.
  */
 int
-GetKerberosData(int fd, struct in_addr haddr, AUTH_DAT *kdata, char *service, char *srvtab)
-	       				/* file descr. to read from */
-	                     		/* address of foreign host on fd */
-	                		/* kerberos data (returned) */
-	              			/* service principal desired */
-	             			/* file to get keys from */
+GetKerberosData(fd, haddr, kdata, service, srvtab)
+     int fd; /* file descr. to read from */
+     struct in_addr haddr; /* address of foreign host on fd */
+     AUTH_DAT *kdata;	/* kerberos data (returned) */
+     char *service; /* service principal desired */
+     char *srvtab; /* file to get keys from */
 {
-
 	char p[20];
 	KTEXT_ST ticket;	/* will get Kerberos ticket from client */
 	int i;
@@ -91,15 +107,18 @@ GetKerberosData(int fd, struct in_addr haddr, AUTH_DAT *kdata, char *service, ch
  * get the ticket and write it to the file descriptor
  */
 
-SendKerberosData(int fd,	/* file descriptor to write onto */
-		 KTEXT ticket,	/* where to put ticket (return) */
-		 char *service,	/* service name, foreign host */
-		 char *host)
+int
+SendKerberosData(fd, ticket, service, host)
+     int fd;	/* file descriptor to write onto */
+     KTEXT ticket;	/* where to put ticket (return) */
+     char *service;	/* service name, foreign host */
+     char *host;
 {
     int rem;
     char p[32];
     char krb_realm[REALM_SZ];
     int written;
+    int size_to_write;
 
     rem = krb_get_lrealm(krb_realm,1);
     if (rem != KSUCCESS)
@@ -110,7 +129,7 @@ SendKerberosData(int fd,	/* file descriptor to write onto */
 	return rem + krb_err_base;
 
     (void) sprintf(p,"%d ",ticket->length);
-    int size_to_write = strlen (p);
+    size_to_write = strlen (p);
     if ((written = write(fd, p, size_to_write)) != size_to_write)
 	    if (written < 0)
 		    return errno;
@@ -125,12 +144,10 @@ SendKerberosData(int fd,	/* file descriptor to write onto */
     return 0;
 }
 
-static char tkt_file[] = ZEPHYR_TKFILE;
-
 /* Hack to replace the kerberos library's idea of the ticket file with
    our idea */
 char *
-tkt_string(void)
+tkt_string()
 {
     return tkt_file;
 }
@@ -142,34 +159,25 @@ tkt_string(void)
   
    When not using Kerberos, return (looks-authentic-p)
  */
-struct AuthEnt {
-    const char *data;
-    int len;
-    ZString principal;
-#ifndef NOENCRYPTION
-    C_Block session_key;
-#endif
-    long expire_time;
-    sockaddr_in from;
-    AuthEnt () {
-	data = 0;
-    }
-    void expire () {
-	if (data) {
-	    zfree ((void *) data, strlen (data) + 1);
-	    data = 0;
-	}
-	len = 0;
-	expire_time = 0;
-	principal = 0;
-    }
-};
 
-#define HASH_SIZE_1	513
-#define HASH_SIZE_2	3
-static AuthEnt auth_cache[HASH_SIZE_1][HASH_SIZE_2];
+static void
+ae_expire(ae)
+     struct AuthEnt *ae;
+{
+  if (ae->data) {
+    xfree((void *) ae->data);
+    ae->data = 0;
+  }
+  ae->len = 0;
+  ae->expire_time = 0;
+  ae->principal = 0;
+}
 
-static int auth_hash (const char *str, int len) {
+static int
+auth_hash (str, len)
+     Zconst char *str;
+     int len;
+{
     unsigned long hash;
     if (len <= 3)
 	return str[0];
@@ -178,21 +186,26 @@ static int auth_hash (const char *str, int len) {
     return hash;
 }
 
-static int check_cache (ZNotice_t *notice, sockaddr_in *from) {
-    const char *str = notice->z_ascii_authent;
-    int len = strlen (str), i;
-    unsigned int hash = 0;
+static int
+check_cache (notice, from)
+     ZNotice_t *notice;
+     struct sockaddr_in *from;
+ {
+    Zconst char *str = notice->z_ascii_authent;
+    int len, i;
+    unsigned int hash_val = 0;
     unsigned long now = time(0);
-    AuthEnt *a;
+    struct AuthEnt *a;
 
-    hash = auth_hash (str, len);
+    len = strlen (str);
+    hash_val = auth_hash (str, len);
     for (i = 0; i < HASH_SIZE_2; i++) {
-	a = &auth_cache[hash][i];
+	a = &auth_cache[hash_val][i];
 	if (!a->data) {
 	    continue;
 	}
 	if (now > a->expire_time) {
-	    a->expire ();
+	    ae_expire(a);
 	    continue;
 	}
 	if (len != a->len) {
@@ -202,7 +215,7 @@ static int check_cache (ZNotice_t *notice, sockaddr_in *from) {
 	    continue;
 	}
 	/* Okay, we know we've got the same authenticator.  */
-	if (strcmp (notice->z_sender, a->principal.value ())) {
+	if (strcmp (notice->z_sender, a->principal->string)) {
 	    return ZAUTH_FAILED;
 	}
 	if (from->sin_addr.s_addr != a->from.sin_addr.s_addr) {
@@ -216,13 +229,17 @@ static int check_cache (ZNotice_t *notice, sockaddr_in *from) {
     return ZAUTH_NO;
 }
 
-void add_to_cache (const AuthEnt& a) {
-    int len = a.len, i, j;
-    AuthEnt *entries;
-    unsigned int hash = 0;
+void 
+add_to_cache (a)
+     struct AuthEnt *a;
+{
+    int len, i, j;
+    struct AuthEnt *entries;
+    unsigned int hash_val = 0;
 
-    hash = auth_hash (a.data, len);
-    entries = auth_cache[hash];
+    len = a->len;
+    hash_val = auth_hash (a->data, len);
+    entries = auth_cache[hash_val];
     j = 0;
     for (i = 0; i < HASH_SIZE_2; i++) {
 	if (entries[i].data == 0) {
@@ -236,19 +253,25 @@ void add_to_cache (const AuthEnt& a) {
     }
 ok:
     if (entries[j].data)
-	entries[j].expire ();
-    entries[j] = a;
+	ae_expire(&entries[j]);
+    entries[j] = *a;
 }
 
-int ZCheckAuthentication(ZNotice_t *notice, sockaddr_in *from) {	
+int
+ZCheckAuthentication(notice, from)
+     ZNotice_t *notice;
+     struct sockaddr_in *from;
+{	
     int result;
     char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
     KTEXT_ST authent;
     AUTH_DAT dat;
     ZChecksum_t our_checksum;
     CREDENTIALS cred;
-    AuthEnt a;
+    struct AuthEnt a;
+    char *s;
     int auth_len = 0;
+
 
     if (!notice->z_auth) {
 	return (ZAUTH_NO);
@@ -280,7 +303,7 @@ int ZCheckAuthentication(ZNotice_t *notice, sockaddr_in *from) {
 
 	/* Well, it's not in the cache... decode it.  */
 	result = krb_rd_req(&authent, SERVER_SERVICE, 
-			    SERVER_INSTANCE, from->sin_addr.s_addr, 
+			    SERVER_INSTANCE, (int) from->sin_addr.s_addr, 
 			    &dat, SERVER_SRVTAB);
 	if (result == RD_AP_OK) {
 	    bcopy ((void *) dat.session, (void *) a.session_key,
@@ -293,14 +316,14 @@ int ZCheckAuthentication(ZNotice_t *notice, sockaddr_in *from) {
 		syslog (LOG_DEBUG, "principal mismatch->AUTH_FAILED");
 		return (ZAUTH_FAILED);
 	    }
-	    a.principal = srcprincipal;
+	    a.principal = make_zstring(srcprincipal,0);
 	    a.expire_time = time (0) + 5 * 60; /* add 5 minutes */
 	    a.from = *from;
-	    char *s = (char *) zalloc (auth_len + 1);
+	    s = (char *) xmalloc (auth_len + 1);
 	    strcpy (s, notice->z_ascii_authent);
 	    a.data = s;
 	    a.len = auth_len;
-	    add_to_cache (a);
+	    add_to_cache (&a);
 	    return(ZAUTH_YES);
 	} else {
 	    syslog (LOG_DEBUG, "krb_rd_req failed (%s)->AUTH_FAILED (from %s)",

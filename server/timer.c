@@ -9,8 +9,12 @@
  *
  */
 
+#ifndef SABER
+#ifndef lint
 static char rcsid[] =
-    "$Header$";
+    "$Id$";
+#endif /* lint */
+#endif /* SABER */
 
 /*
  * timer_manager_ -- routines for handling timers in login_shell
@@ -65,7 +69,16 @@ long nexttimo = 0L;			/* the Unix time of the next
 static timer timers = NULL;
 static long right_now;
 
-static void timer_botch(void*), insert_timer(timer), add_timer(timer);
+#ifdef __STDC__
+# define        P(s) s
+#else
+# define P(s) ()
+#endif
+
+static void timer_botch P((void*)), insert_timer P((timer)),
+       add_timer P((timer));
+
+#undef P
 
 /*
  * timer_set_rel(time_rel, proc)
@@ -75,7 +88,11 @@ static void timer_botch(void*), insert_timer(timer), add_timer(timer);
  * creates a "timer" and adds it to the current list, returns "timer"
  */
 
-timer timer_set_rel (long time_rel, void (*proc)(void*), void *arg) {
+timer timer_set_rel (time_rel, proc, arg)
+     long time_rel;
+     void (*proc)(void*);
+     void *arg;
+{
 	timer new_t;
 	right_now = NOW;
 	new_t = (timer) xmalloc(TIMER_SIZE);
@@ -86,7 +103,7 @@ timer timer_set_rel (long time_rel, void (*proc)(void*), void *arg) {
 	ALARM_PREV(new_t) = NULL;
 	ALARM_ARG(new_t)  = arg;
 	add_timer(new_t);
-	return new_t;
+	return(new_t);
 }
 
 #ifdef notdef
@@ -116,9 +133,9 @@ timer timer_set_abs (time_abs, proc, arg)
 	ALARM_PREV(new_t) = NULL;
 	ALARM_ARG(new_t)  = arg;
 	add_timer(new_t);
-	return new_t;
+	return(new_t);
 }
-#endif notdef
+#endif /* notdef */
 
 /*
  * timer_reset
@@ -131,7 +148,9 @@ timer timer_set_abs (time_abs, proc, arg)
  */
 
 void
-timer_reset(timer tmr) {
+timer_reset(tmr)
+     timer tmr;
+{
 	if (!ALARM_PREV(tmr) || !ALARM_NEXT(tmr)) {
 		syslog (LOG_ERR, "timer_reset() of unscheduled timer\n");
 		abort();
@@ -165,7 +184,9 @@ timer_reset(timer tmr) {
  *
  */
 static void
-add_timer(timer new_t) {
+add_timer(new_t)
+     timer new_t;
+{
 	if (ALARM_PREV(new_t) || ALARM_NEXT(new_t)) {
 		syslog (LOG_ERR,"add_timer of enqueued timer\n");
 		abort();
@@ -181,7 +202,9 @@ add_timer(timer new_t) {
  */
 
 static void
-insert_timer(timer new_t) {
+insert_timer(new_t)
+     timer new_t;
+{
 	register timer t;
 
 	if (timers == NULL) {
@@ -190,6 +213,7 @@ insert_timer(timer new_t) {
 		ALARM_PREV(timers) = timers;
 		ALARM_TIME(timers) = 0L;
 		ALARM_FUNC(timers) = timer_botch;
+		ALARM_ARG(timers)  = (void *) NULL;
 	}
 	for (t = ALARM_NEXT(timers); t != timers; t = ALARM_NEXT(t)) {
 		if (ALARM_TIME(t) > ALARM_TIME(new_t)) {
@@ -200,6 +224,7 @@ insert_timer(timer new_t) {
 	}
 	xinsque(new_t, ALARM_PREV(timers));
 	nexttimo = ALARM_TIME(ALARM_NEXT(timers));
+	return;
 }
 
 /*
@@ -209,7 +234,8 @@ insert_timer(timer new_t) {
  */
 
 void
-timer_process(void) {
+timer_process()
+{
 	register timer t;
 	timer_proc queue;
 	void * queue_arg;
@@ -240,10 +266,13 @@ timer_process(void) {
 	if (valid) {
 		(queue)(queue_arg);
 	}
+	return;
 }
 
 static void
-timer_botch(void *arg) {
+timer_botch(arg)
+     void *arg;
+{
 	syslog(LOG_CRIT, "Timer botch\n");
 	abort();
 }

@@ -1,17 +1,22 @@
 /*
  */
 
-#ifndef INCLUDED_zalloc_h
+#ifndef __zalloc_h
+#define __zalloc_h __FILE__
 #ifdef MPROF
-inline void * zalloc (unsigned int sz) {
-    return malloc (sz);
-}
-inline void zfree (void *ptr, unsigned int sz) {
-    free (ptr);
-}
+#define zalloc(sz) malloc(sz)
+#define zfree(p,sz) free(p)
 #else
-extern void * zalloc (unsigned int);
-extern void zfree (void *, unsigned int);
-#endif
-#define INCLUDED_zalloc_h
-#endif
+
+#ifdef __STDC__
+# define        P(s) s
+#else
+# define P(s) ()
+#endif /* STDC */
+
+extern void * zalloc P((unsigned int));
+extern void zfree P((void *, unsigned int));
+
+#undef P
+#endif /* MPROF */
+#endif /* __zalloc_h */

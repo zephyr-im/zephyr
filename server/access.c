@@ -14,15 +14,18 @@
 #include <zephyr/mit-copyright.h>
 
 #if !defined (lint) && !defined (SABER)
-static const char rcsid_access_c[] =
-    "$Header$";
+static char rcsid_access_c[] =
+    "$Id$";
 #endif
 
 /*
  *
  * External routines:
  *
- * ZAcl_t::ok (ZString sender, ZAccess_t accesstype)
+ * int access_check(notice, acl, accesstype)
+ *    ZNotice_t *notice;
+ *    ZAcl_t *acl;
+ *    ZAccess_t accesstype;
  *
  * void access_init();
  *
@@ -49,12 +52,28 @@ static const char rcsid_access_c[] =
 #define ACL_IWS		4
 #define ACL_IUI		8
 
+#ifdef __STDC__
+# define        P(s) s
+#else
+# define P(s) ()
+#endif
+
+static void check_acl P((ZAcl_t *acl));
+static void check_acl_type P((ZAcl_t *acl, ZAccess_t accesstype,
+			      int typeflag));
+static void access_setup P((int first));
+
+#undef P
+
 /*
  * check access.  return 1 if ok, 0 if not ok.
  */
 
 int
-ZAcl_t::ok (ZString sender, ZAccess_t accesstype)
+access_check(sender, acl, accesstype)
+     char *sender;
+     ZAcl_t *acl;
+     ZAccess_t accesstype;
 {
 	char buf[MAXPATHLEN];		/* holds the real acl name */
 	char *prefix;
@@ -81,61 +100,69 @@ ZAcl_t::ok (ZString sender, ZAccess_t accesstype)
 		syslog(LOG_ERR, "unknown access type %d", (int) accesstype);
 		return(0);
 	}
-	if (!acl_types & flag) /* no acl ==> no restriction
+	if (!(acl->acl_types) & flag) /* no acl ==> no restriction
 				        ==> thumbs up */
 		return (1);
 	(void) sprintf(buf, "%s%s-%s.acl", 
 		       ZEPHYR_ACL_DIR,
 		       prefix,
-		       acl_filename);
+		       acl->acl_filename);
 	/*
 	 * If we can't load it (because it probably doesn't exist),
 	 * we grant access by default.  Dangerous!
 	 */
 #if 0
-	zdbug ((LOG_DEBUG, "checking %s for %s", buf, sender.value ()));
+	zdbug ((LOG_DEBUG, "checking %s for %s", buf, sender->string));
 #endif
 	return (acl_load (buf) < 0
-		|| acl_check(buf, sender.value ()));
+		|| acl_check(buf, sender));
 }
 
-void ZAcl_t::check_acl_type (ZAccess_t accesstype, int typeflag)
+static void
+check_acl(acl)
+     ZAcl_t *acl;
 {
-	char 	buf[MAXPATHLEN];		/* holds the real acl name */
-	char	*prefix;
-
-	switch (accesstype) {
-	case TRANSMIT:
-		prefix = "xmt";
-		break;
-	case SUBSCRIBE:
-		prefix = "sub";
-		break;
-	case INSTWILD:
-		prefix = "iws";
-		break;
-	case INSTUID:
-		prefix = "iui";
-		break;
-	default:
-		syslog(LOG_ERR, "unknown access type %d", (int) accesstype);
-		return;
-	}
-	(void) sprintf(buf, "%s%s-%s.acl", 
-		       ZEPHYR_ACL_DIR,
-		       prefix,
-		       acl_filename);
-	if (!access(buf, F_OK))
-		acl_types |= typeflag;
+  acl->acl_types = 0;
+  check_acl_type (acl, TRANSMIT, ACL_XMT);
+  check_acl_type (acl, SUBSCRIBE, ACL_SUB);
+  check_acl_type (acl, INSTWILD, ACL_IWS);
+  check_acl_type (acl, INSTUID, ACL_IUI);
 }
 
-void ZAcl_t::check () {
-    acl_types = 0;
-    check_acl_type (TRANSMIT, ACL_XMT);
-    check_acl_type (SUBSCRIBE, ACL_SUB);
-    check_acl_type (INSTWILD, ACL_IWS);
-    check_acl_type (INSTUID, ACL_IUI);
+static void
+check_acl_type(acl, accesstype, typeflag)
+     ZAcl_t *acl;
+     ZAccess_t accesstype;
+     int typeflag;
+{
+  char 	buf[MAXPATHLEN];		/* holds the real acl name */
+  char	*prefix;
+
+  switch (accesstype) {
+  case TRANSMIT:
+    prefix = "xmt";
+    break;
+  case SUBSCRIBE:
+    prefix = "sub";
+    break;
+  case INSTWILD:
+    prefix = "iws";
+    break;
+  case INSTUID:
+    prefix = "iui";
+    break;
+  default:
+    syslog(LOG_ERR, "unknown access type %d", (int) accesstype);
+    return;
+  }
+  (void) sprintf(buf, "%s%s-%s.acl", 
+		 ZEPHYR_ACL_DIR,
+		 prefix,
+		 acl->acl_filename);
+  if (!access(buf, F_OK))
+    acl->acl_types |= typeflag;
 }
+  
 
 /*
  * Re-init code written by TYT, 8/14/90.
@@ -170,14 +197,21 @@ access_setup (int first)
 		else if (len = strlen(class_name))
 		    class_name[len - 1] = '\0';
 		acl = 0;
-		if (!first)
-		    acl = class_get_acl (ZString (class_name, 1));
+		if (!first) {
+		  ZSTRING *z;
+		  z = make_zstring(class_name,1);
+		  acl = class_get_acl(z);
+		  free_zstring(z);
+		}
 		if (!acl) {
-		    acl = new ZAcl_t (class_name);
+		    acl = (ZAcl_t *) xmalloc(sizeof(ZAcl_t));
 		    if (!acl) {
 			syslog(LOG_ERR, "no mem acl alloc");
 			abort();
 		    }
+		    acl->acl_filename = strsave(class_name);
+		    check_acl(acl);
+		    
 		    if (!first) {
 			/* Try to restrict already existing class */
 			retval = class_restrict (class_name, acl);

@@ -16,7 +16,7 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_main_c[] =
-    "$Zephyr: main.C,v 1.45 91/03/08 14:09:46 raeburn Exp $";
+    "$Id$";
 #endif
 #endif
 
@@ -47,33 +47,36 @@ static char rcsid_main_c[] =
   (if the client has not acknowledged a packet after a given timeout).
 */
 
-#include <new.h>
-#ifndef __GNUG__
-#define NO_INLINING	/* bugs in cfront inlining... */
-#endif
-#include "zserver.h"			/* which includes
-					   zephyr/zephyr.h
-					   	<errno.h>
-						<sys/types.h>
-						<netinet/in.h>
-						<sys/time.h>
-						<stdio.h>
-					   <sys/file.h>
-					   <syslog.h>
-					   <strings.h>
-					   <signal.h>
-					   timer.h
-					   zsrv_err.h
-					 */
+#include "zserver.h"
+/* which includes
+   zephyr/zephyr.h
+   <errno.h>
+   <sys/types.h>
+   <netinet/in.h>
+   <sys/time.h>
+   <stdio.h>
+   <sys/file.h>
+   <syslog.h>
+   <strings.h>
+   <signal.h>
+   timer.h
+   zsrv_err.h
+   */
 
-extern "C" {
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
-}
+
+#ifdef _POSIX_SOURCE
+#define SIGNAL_RETURN_TYPE void
+#define SIG_RETURN return
+#else
+#define SIGNAL_RETURN_TYPE int
+#define SIG_RETURN return(0)
+#endif
 
 #if !defined(__SABER__) && (defined (vax) || defined (ibm032))
 #define MONCONTROL moncontrol
@@ -83,22 +86,24 @@ extern "C" {
 
 #define	EVER		(;;)		/* don't stop looping */
 
-static int do_net_setup(void), initialize(void);
-static void usage(void), do_reset (void);
-#ifdef __GNUG__
-typedef int SIGNAL_RETURN_TYPE;
-#define SIG_RETURN return 0
+#ifdef __STDC__
+# define        P(s) s
 #else
-#define SIGNAL_RETURN_TYPE void
-#define SIG_RETURN return
+# define P(s) ()
 #endif
-static SIGNAL_RETURN_TYPE bye(int sig), dbug_on(int), dbug_off(int);
-static SIGNAL_RETURN_TYPE dump_db(int), reset(int), reap(int);
-static SIGNAL_RETURN_TYPE dump_strings(int);
+
+static int do_net_setup P((void)), initialize P((void));
+static void usage P((void)), do_reset P((void));
+static SIGNAL_RETURN_TYPE bye P((int sig)), dbug_on P((int)), 
+					dbug_off P((int));
+static SIGNAL_RETURN_TYPE dump_db P((int)), reset P((int)), reap P((int));
+static SIGNAL_RETURN_TYPE dump_strings P((int));
 #ifndef DEBUG
-static void detach(void);
-#endif DEBUG
-extern "C" void perror(const char *);
+static void detach P((void));
+#endif /* DEBUG */
+extern void perror P((Zconst char *));
+
+#undef P
 
 static short doreset = 0;		/* if it becomes 1, perform
 					   reset functions */
@@ -122,27 +127,32 @@ char myname[MAXHOSTNAMELEN];		/* my host name */
 int zdebug;
 #ifdef DEBUG
 int zalone;
-#endif DEBUG
+#endif /* DEBUG */
 u_long npackets;			/* number of packets processed */
 long uptime;				/* when we started operations */
 static int nofork;
+struct in_addr my_addr;
 
 int
-main(int argc, char **argv)
+main(argc, argv)
+     int argc;
+     char **argv;
 {
 	int nfound;			/* #fildes ready on select */
 	fd_set readable;
 	struct timeval *tvp;
+#ifdef _POSIX_SOURCE
+	struct sigaction action;
+    /* Set up sigaction structure */
+    /* This is all done because the RS/6000 emulation of signal sets the */
+    /* signal action back to the default action when the signal handler is */
+    /* called, instead of leaving well enough alone.. */
+#endif /* _POSIX_SOURCE */
+
 
 	int optchar;			/* option processing */
 	extern char *optarg;
 	extern int optind;
-
-#ifndef __GNUG__
-	set_new_handler ((void(*)()) abort);
-#else
-	set_new_handler (abort);
-#endif
 
 	/* set name */
 	if (programname = rindex(argv[0],'/'))
@@ -151,7 +161,7 @@ main(int argc, char **argv)
 
 	/* process arguments */
 	
-	while ((optchar = getopt(argc, argv, "ds3")) != EOF) {
+	while ((optchar = getopt(argc, argv, "dsn")) != EOF) {
 		switch(optchar) {
 		case 'd':
 			zdebug = 1;
@@ -161,7 +171,7 @@ main(int argc, char **argv)
 			zalone = 1;
 			break;
 #endif
-		case '3':
+		case 'n':
 			nofork = 1;
 			break;
 		case '?':
@@ -178,18 +188,18 @@ main(int argc, char **argv)
 	if (access(ZEPHYR_SRVTAB, R_OK)
 #ifdef DEBUG		
 	    && !zalone
-#endif DEBUG
+#endif /* DEBUG */
 	    ) {
 		fprintf(stderr, "NO ZEPHYR SRVTAB (%s) available; exiting\n",
 			ZEPHYR_SRVTAB);
 		exit(1);
 	}
-#endif KERBEROS
+#endif /* KERBEROS */
 
 #ifndef DEBUG
 	if (!nofork)
 		detach();
-#endif DEBUG
+#endif /* DEBUG */
 
 	/* open log */
 	OPENLOG(programname, LOG_PID, LOG_LOCAL6);
@@ -231,28 +241,68 @@ main(int argc, char **argv)
 	nfildes = srv_socket + 1;
 
 
+#ifdef _POSIX_SOURCE
+	action.sa_flags = 0;
+	sigemptyset(&action.sa_mask);
+#endif /* _POSIX_SOURCE */
 #ifdef DEBUG
 	/* DBX catches sigterm and does the wrong thing with sigint,
 	   so we provide another hook */
+#ifdef _POSIX_SOURCE
+	action.sa_handler = bye;
+	sigaction(SIGALRM, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+#else /* posix */
 	(void) signal(SIGALRM, bye);
-
 	(void) signal(SIGTERM, bye);
+#endif /* _POSIX_SOURCE */
 #ifdef SignalIgnore
 #undef SIG_IGN
 #define SIG_IGN SignalIgnore
-#endif
+#endif /* SignalIgnore */
+#ifdef _POSIX_SOURCE
+	action.sa_handler = SIG_IGN;
+	sigaction(SIGINT, &action, NULL);
+#else /* posix */
 	(void) signal(SIGINT, SIG_IGN);
-#else
+#endif /* _POSIX_SOURCE */
+#else /* ! debug */
+#ifdef _POSIX_SOURCE
+	action.sa_handler = bye;
+	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+#else /* posix */
 	(void) signal(SIGINT, bye);
 	(void) signal(SIGTERM, bye);
-#endif
+#endif /* _POSIX_SOURCE */
+#endif /* DEBUG */
 	syslog(LOG_INFO, "Ready for action");
+#ifdef _POSIX_SOURCE
+	action.sa_handler = dbug_on;
+	sigaction(SIGUSR1, &action, NULL);
+
+	action.sa_handler = dbug_off;
+	sigaction(SIGUSR2, &action, NULL);
+
+	action.sa_handler = reap;
+	sigaction(SIGCHLD, &action, NULL);
+
+	action.sa_handler = dump_db;
+	sigaction(SIGFPE, &action, NULL);
+
+	action.sa_handler = dump_strings;
+	sigaction(SIGEMT, &action, NULL);
+
+	action.sa_handler = reset;
+	sigaction(SIGHUP, &action, NULL);
+#else /* !posix */
 	(void) signal(SIGUSR1, dbug_on);
 	(void) signal(SIGUSR2, dbug_off);
 	(void) signal(SIGCHLD, reap);
 	(void) signal(SIGFPE, dump_db);
 	(void) signal(SIGEMT, dump_strings);
 	(void) signal(SIGHUP, reset);
+#endif /* _POSIX_SOURCE */
 
 	/* GO! */
 	uptime = NOW;
@@ -319,7 +369,7 @@ main(int argc, char **argv)
    */
 
 static int
-initialize(void)
+initialize()
 {
 	if (do_net_setup())
 		return(1);
@@ -351,6 +401,24 @@ initialize(void)
 	(void) ZSetFD(srv_socket);	/* set up the socket as the
 					   input fildes */
 
+	/* set up default strings */
+
+	class_control = make_zstring(ZEPHYR_CTL_CLASS, 1);
+	class_admin = make_zstring(ZEPHYR_ADMIN_CLASS, 1);
+	class_hm = make_zstring(HM_CTL_CLASS, 1);
+	class_ulogin = make_zstring(LOGIN_CLASS, 1);
+	class_ulocate = make_zstring(LOCATE_CLASS, 1);
+	wildcard_class = make_zstring(MATCHALL_CLASS, 1);
+	wildcard_instance = make_zstring(WILDCARD_INSTANCE, 1);
+	empty = make_zstring("", 0);
+
+	matchall_sub.q_forw = &matchall_sub;
+	matchall_sub.q_back = &matchall_sub;
+	matchall_sub.zst_dest.classname = wildcard_class;
+	matchall_sub.zst_dest.inst = empty;
+	matchall_sub.zst_dest.recip = empty;
+
+	set_ZDestination_hash(&matchall_sub.zst_dest);
 	/* restrict certain classes */
 	access_init();
 	return(0);
@@ -361,7 +429,7 @@ initialize(void)
  */
 
 static int
-do_net_setup(void)
+do_net_setup()
 {
 	struct servent *sp;
 	struct hostent *hp;
@@ -419,13 +487,13 @@ do_net_setup(void)
  */
 
 static void
-usage(void)
+usage()
 {
 #ifdef DEBUG
-	fprintf(stderr,"Usage: %s [-d] [-s]\n",programname);
+	fprintf(stderr,"Usage: %s [-d] [-s] [-n]\n",programname);
 #else
-	fprintf(stderr,"Usage: %s [-d]\n",programname);
-#endif DEBUG
+	fprintf(stderr,"Usage: %s [-d] [-n]\n",programname);
+#endif /* DEBUG */
 	exit(2);
 }
 
@@ -475,7 +543,7 @@ dump_strings (int sig) {
 	SIG_RETURN;
     }
     syslog (LOG_INFO, "dumping strings to disk");
-    ZString::print (fp);
+    print_zstring_table(fp);
     if (fclose (fp) == EOF)
 	syslog (LOG_ERR, "error writing strings dump file");
     else
@@ -541,22 +609,29 @@ reset(int sig)
 static SIGNAL_RETURN_TYPE
 reap(int sig)
 {
-	wait waitb;
-	int oerrno = errno;
-	while (wait3 (&waitb, WNOHANG, (struct rusage*) 0) == 0)
-	    ;
-	errno = oerrno;
-	SIG_RETURN;
+#ifdef _POSIX_SOURCE
+  int waitb;
+#else
+	union wait waitb;
+#endif
+	int oerrno;
+
+  oerrno = errno;
+  while (wait3 (&waitb, WNOHANG, (struct rusage*) 0) == 0)
+    ;
+  errno = oerrno;
+  SIG_RETURN;
 }
 
 static void
-do_reset(void)
+do_reset()
 {
 	int oerrno = errno;
+	int old_mask;
 #if 0
 	zdbug((LOG_DEBUG,"do_reset()"));
 #endif
-	SignalBlock no_hups (sigmask (SIGHUP));
+	old_mask = sigblock(sigmask(SIGHUP));
 
 	/* reset various things in the server's state */
 	subscr_reset();
@@ -565,6 +640,7 @@ do_reset(void)
 	syslog (LOG_INFO, "restart completed");
 	doreset = 0;
 	errno = oerrno;
+	sigsetmask(old_mask);
 }
 
 #ifndef DEBUG
@@ -573,7 +649,7 @@ do_reset(void)
  */
 
 static void
-detach(void)
+detach()
 {
 	/* detach from terminal and fork. */
 	register int i, size = getdtablesize();
@@ -595,52 +671,4 @@ detach(void)
 	(void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
 	(void) close(i);
 }
-#endif
-
-#if 0 /* Not useful now that strings in string table are sorted by
-         hash value rather than entry time.  */
-static /*const*/ ZString popular_ZStrings[] = {
-    "filsrv",
-    "",
-    "login",
-    "message",
-    "personal",
-    "operations",
-    "athena.mit.edu:root.cell",
-    "athena.mit.edu",
-    "artemis.mit.edu",
-    "athena.mit.edu:contrib",
-    "athena.mit.edu:contrib.sipb",
-    "talos.mit.edu",
-    "unix:0.0",
-    "aphrodite.mit.edu",
-    "mail",
-    "*",
-    "cyrus.mit.edu",
-    "odysseus.mit.edu",
-    "discuss",
-    "themis.mit.edu",
-    "pop",
-    "cyrus.mit.edu:/u2/lockers/games",
-    "athena.mit.edu:contrib.xpix.nb",
-    "talos.mit.edu:/u2/lockers/athenadoc",
-    "pollux.mit.edu",
-    "popret",
-    "syslog",
-    "maeander.mit.edu",
-    "athena.mit.edu:contrib.consult",
-    "athena.mit.edu:astaff",
-    "athena.mit.edu:project",
-    "aeneas.mit.edu",
-    "aeneas.mit.edu:/u1/x11r3",
-    "athena.mit.edu:project.gnu.nb",
-    "odysseus.mit.edu:/u3/lockers/softbone",
-    "urgent",
-    "aphrodite.mit.edu:/u2/lockers/andrew",
-    "helen.mit.edu",
-    "help",
-    "consult",
-    "athena.mit.edu:contrib.watchmaker",
-    "testers.athena.mit.edu:x11r4",
-};
 #endif

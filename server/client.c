@@ -14,8 +14,8 @@
 #include <zephyr/mit-copyright.h>
 
 #if !defined (lint) && !defined (SABER)
-static const char rcsid_client_c[] =
-    "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/server/RCS/client.C,v 1.19 90/11/13 17:05:00 raeburn Exp $";
+static char rcsid_client_c[] =
+    "$Id$";
 #endif
 
 /*
@@ -54,8 +54,23 @@ static const char rcsid_client_c[] =
  * The caller should check by calling client_which_client
  */
 
+#ifdef __STDC__
+# define        P(s) s
+#else
+# define P(s) ()
+#endif
+
+static void clt_free P((ZClient_t *client));
+
+#undef P
+
 Code_t
-client_register(ZNotice_t *notice, struct sockaddr_in *who, register ZClient_t **client, ZServerDesc_t *server, int wantdefaults)
+client_register(notice, who, client, server, wantdefaults)
+     ZNotice_t *notice;
+     struct sockaddr_in *who;
+     register ZClient_t **client;
+     ZServerDesc_t *server;
+     int wantdefaults;
 {
 	register ZHostList_t *hlp = server->zs_hosts;
 	register ZHostList_t *hlp2;
@@ -69,9 +84,11 @@ client_register(ZNotice_t *notice, struct sockaddr_in *who, register ZClient_t *
 		abort();
 	}
 
+#if 1
 	zdbug ((LOG_DEBUG, "client_register: adding %s at %s/%d",
 		notice->z_sender, inet_ntoa (who->sin_addr),
 		ntohs (notice->z_port)));
+#endif
 
 	if (!notice->z_port) {
 	    /* must be a non-zero port # */
@@ -89,12 +106,14 @@ client_register(ZNotice_t *notice, struct sockaddr_in *who, register ZClient_t *
 	}
 
 	/* allocate a client struct */
-	*client = new ZClient_t;
-	if (!*client)
-		return(ENOMEM);
+	if (!(*client = (ZClient_t *) xmalloc(sizeof(ZClient_t))))
+	  return(ENOMEM);
+
+	(*client)->last_msg = 0;
+	(*client)->last_check = 0;
 
 	if (!(clist = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
-		delete *client;
+	  xfree(*client);
 		return(ENOMEM);
 	}
 
@@ -112,8 +131,7 @@ client_register(ZNotice_t *notice, struct sockaddr_in *who, register ZClient_t *
 	(*client)->zct_sin.sin_port = notice->z_port;
 	(*client)->zct_sin.sin_family = AF_INET;
 	(*client)->zct_subs = NULLZST;
-	(*client)->zct_subs = NULLZST;
-	(*client)->zct_principal = ZString (notice->z_sender);
+	(*client)->zct_principal = make_zstring(notice->z_sender,0);
 
 	/* chain him in to the clients list in the host list*/
 
@@ -137,7 +155,10 @@ client_register(ZNotice_t *notice, struct sockaddr_in *who, register ZClient_t *
  */
 
 void
-client_deregister(ZClient_t *client, ZHostList_t *host, int flush)
+client_deregister(client, host, flush)
+     ZClient_t *client;
+     ZHostList_t *host;
+     int flush;
 {
 	ZClientList_t *clients;
 	int omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
@@ -160,7 +181,7 @@ client_deregister(ZClient_t *client, ZHostList_t *host, int flush)
 		     clients = clients->q_forw)
 			if (clients->zclt_client == client) {
 				xremque(clients);
-				delete client;
+				clt_free(client);
 				xfree(clients);
 				(void) sigsetmask(omask);
 				return;
@@ -175,20 +196,22 @@ client_deregister(ZClient_t *client, ZHostList_t *host, int flush)
  */
 
 ZClient_t *
-client_which_client(struct sockaddr_in *who, ZNotice_t *notice)
+client_which_client(who, notice)
+     struct sockaddr_in *who;
+     ZNotice_t *notice;
 {
 	register ZHostList_t *hlt;
 	register ZClientList_t *clients;
 
 	if (!(hlt = hostm_find_host(&who->sin_addr))) {
-#if 0
+#if 1
 		zdbug((LOG_DEBUG,"cl_wh_clt: host not found"));
 #endif
 		return(NULLZCNT);
 	}
 
 	if (!hlt->zh_clients) {
-#if 0
+#if 1
 		zdbug((LOG_DEBUG,"cl_wh_clt: no clients"));
 #endif
 		return(NULLZCNT);
@@ -201,7 +224,7 @@ client_which_client(struct sockaddr_in *who, ZNotice_t *notice)
 			return(clients->zclt_client);
 		}
 
-#if 0
+#if 1
 	zdbug((LOG_DEBUG, "cl_wh_clt: no port"));
 #endif
 	return(NULLZCNT);
@@ -214,15 +237,25 @@ client_which_client(struct sockaddr_in *who, ZNotice_t *notice)
  */
 
 void
-client_dump_clients(FILE *fp, ZClientList_t *clist)
+client_dump_clients(fp, clist)
+     FILE *fp;
+     ZClientList_t *clist;
 {
 	register ZClientList_t *ptr;
 
 	for (ptr = clist->q_forw; ptr != clist; ptr = ptr->q_forw) {
 		(void) fprintf(fp, "\t%d (%s):\n",
 			       ntohs(ptr->zclt_client->zct_sin.sin_port),
-			       ptr->zclt_client->zct_principal.value ());
+			       ptr->zclt_client->zct_principal->string);
 		subscr_dump_subs(fp, ptr->zclt_client->zct_subs);
 	}
 	return;
+}
+
+static void
+clt_free(client)
+     ZClient_t *client;
+{
+  free_zstring(client->zct_principal);
+  xfree(client);
 }

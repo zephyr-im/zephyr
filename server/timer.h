@@ -35,13 +35,19 @@ without express or implied warranty.
 
  */
 
+#ifdef __STDC__
+# define        P(s) s
+#else
+# define P(s) ()
+#endif
+
 typedef struct _timer {
 	struct _timer 	*next;		/*  Next one to go off.. */
 	struct _timer   *prev;		/*  Previous one to go off.. */
 	/* time for timer to go off, absolute time */
 	long 	alarm_time;
 	/* procedure to call when timer goes off */
-	void 	(*func)(void*);
+	void 	(*func)P((void*));
 	/* argument for that procedure */
 	void *	arg;
 } *timer;
@@ -56,12 +62,14 @@ typedef struct _timer {
 #ifdef mips
 #define time_t long /* sigh */
 #endif
-extern "C" time_t time(time_t*);
+extern time_t time P((time_t*));
 #define NOW (time((time_t *)NULL))
-typedef void (*timer_proc) (void *);
-extern timer timer_set_rel(long, timer_proc, void*);
-extern timer timer_set_abs(long, timer_proc, void*);
-extern void timer_reset(timer), timer_process(void);
+typedef void (*timer_proc) P((void *));
+extern timer timer_set_rel P((long, timer_proc, void*));
+extern timer timer_set_abs P((long, timer_proc, void*));
+extern void timer_reset P((timer)), timer_process P((void));
+
+#undef P
 
 #define	timer_when(x)	ALARM_TIME(x)
 

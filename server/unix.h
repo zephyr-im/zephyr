@@ -17,78 +17,63 @@
 
 #ifndef ZSERVER_UNIX_H__
 
-extern "C" {
-    /* found in libc.a */
-#ifndef __GNUG__
-    void *malloc(unsigned), *realloc(void *, unsigned), free (void *);
+#include <stdio.h>
+#if defined(__STDC__) && !defined(__HIGHC__) && !defined(SABER)
+/* Brain-dead High-C claims to be ANSI but doesn't have the include files.. */
+#include <stdlib.h>
 #endif
-    long random(void);
-    void srandom (int);
-    int getpid (void);
 
-    /*
-     * Queue-handling functions.  This structure is basically a dummy;
-     * as long as the start of another structure looks like this,
-     * we're okay.
-     */
-    struct qelem {
-	struct qelem *q_forw;
-	struct qelem *q_back;
-	char *q_data;
-    };
-    void insque (qelem*, qelem*);
-    void remque (qelem *);
-#ifdef __GNUG__
-#if defined (ultrix)
-    void openlog (char *, int);
-#undef LOG_DEBUG
-#define LOG_DEBUG LOG_ERR
+#ifdef __STDC__
+# define        P(s) s
 #else
-    void openlog (char *, int, int); /* ??? */
+# define P(s) ()
 #endif
-#endif /* G++? */
-    void syslog (int, const char *, ...);
-    int setsockopt (int, int, int, const char *, int);
-    extern int strcasecmp (const char*, const char*);
-#ifdef __GNUG__
-    extern void setservent (int);
-    extern void endservent (void);
-#endif
-    extern void moncontrol (int);
 
-    /* From the Error table library */
-    char *error_message(long);
+/*
+ * Queue-handling functions.  This structure is basically a dummy;
+ * as long as the start of another structure looks like this,
+ * we're okay.
+ */
+struct qelem {
+  struct qelem *q_forw;
+  struct qelem *q_back;
+  char *q_data;
+};
+void insque P((struct qelem*, struct qelem*));
+void remque P((struct qelem *));
+
+/* From the Error table library */
+char *error_message P((long));
 
 #ifdef KERBEROS
-    /* Kerberos */
-    extern int krb_get_lrealm (char *, int);
-    extern int dest_tkt (void);
-    extern int krb_get_svc_in_tkt (char *, char *, char *, char *, char *, int,
-				   char *);
+/* Kerberos */
+extern int krb_get_lrealm P((char *, int));
+extern int dest_tkt P((void));
+extern int krb_get_svc_in_tkt P((char *, char *, char *, char *, char *, int,
+			       char *));
 #ifdef KRB_DEFS		/* have we actually got krb.h? */
-    extern int krb_mk_req (KTEXT, char *, char *, char *, unsigned long);
-    extern int krb_get_cred (char *, char *, char *, CREDENTIALS *);
+extern int krb_mk_req P((KTEXT, char *, char *, char *, unsigned long));
+extern int krb_get_cred P((char *, char *, char *, CREDENTIALS *));
 #endif
-    extern int krb_rd_req (...);
-    extern int des_quad_cksum (...);
 #else
-    extern int rresvport (...);
+extern int rresvport P((int *));
 #endif
 
 #ifdef HESIOD
     /* Hesiod */
-    extern char ** hes_resolve (const char *, const char *);
+extern char ** hes_resolve P((Zconst char *, Zconst char *));
 #endif
 
     /* hacked acl code */
-    extern void acl_cache_reset (void);
-}
+extern void acl_cache_reset P((void));
+
+#undef P
 
 #ifdef vax
 #define HAVE_ALLOCA
 #endif
 
-#if defined (__GNUC__) || defined (__GNUG__)
+#if defined (__GNUC__)
 
 /* GCC/G++ has a built-in function for allocating automatic storage.  */
 #define LOCAL_ALLOC(X)	__builtin_alloca(X)
@@ -96,20 +81,9 @@ extern "C" {
 
 #else /* not gcc or g++ */
 
-#if defined (ibm032)
-/*
- * Unfortunately, there's no way to get cfront to access _Alloca.  So
- * we compile with -ma and call alloca.  Sigh.
- */
-#define LOCAL_ALLOC(X)	alloca(X)
-#define LOCAL_FREE(X)
-extern "C" void * alloca (unsigned int);
-
-#else /* none of above */
 #ifdef HAVE_ALLOCA
 #define LOCAL_ALLOC(X)	alloca(X)
 #define LOCAL_FREE(X)
-#endif
 #endif
 #endif
 
