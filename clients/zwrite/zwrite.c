@@ -285,7 +285,7 @@ main(argc, argv)
 		    exit(1);
 		}
 		message = realloc(message, (unsigned)(msgsize+nchars));
-		bcopy(bfr, message+msgsize, nchars);
+		_BCOPY(bfr, message+msgsize, nchars);
 		msgsize += nchars;
 	    }
 	    /* end of msg */
