@@ -33,7 +33,7 @@ static char *rcsid_rd_req_c =
 #include "zserver.h"
 
 /* Byte ordering */
-extern int krbONE;
+static int krbONE;
 #define		HOST_BYTE_ORDER	(* (char *) &krbONE)
 
 #define		KRB_PROT_VERSION 	4
