@@ -94,6 +94,7 @@ ATHINCDIR = /mit/zephyr/include
 ATHMANDIR = /mit/zephyr/man
 
 ZLIBDIR = /mit/zephyr/configs
+ZPIDDIR = /etc/athena
 ATHCONFDIR = $(ZLIBDIR)
 ATHETCDIR = $(ATHBINDIR)
 ATHRETCDIR = $(ATHBINDIR)
