@@ -99,9 +99,10 @@ static int do_net_setup P((void)), initialize P((void));
 static void usage P((void)), do_reset P((void));
 static SIGNAL_RETURN_TYPE bye P((int)),
 		dbug_on P((int)), dbug_off P((int)),
-		dump_db P((int)), dump_strings P((int)),
+		sig_dump_db P((int)), sig_dump_strings P((int)),
 		reset P((int)), reap P((int));
 static void read_from_dump P((char *dumpfile));
+static void dump_db P((void)), dump_strings P((void));
 
 #ifndef DEBUG
 static void detach P((void));
@@ -141,6 +142,9 @@ int zalone;
 #endif
 
 struct timeval t_local;			/* store current time for other uses */
+
+static int dump_db_flag = 0;
+static int dump_strings_flag = 0;
 
 u_long npackets;			/* number of packets processed */
 long uptime;				/* when we started operations */
@@ -286,10 +290,11 @@ main(argc, argv)
 	action.sa_handler = reap;
 	sigaction(SIGCHLD, &action, NULL);
 
-	action.sa_handler = dump_db;
+	action.sa_handler = sig_dump_db;
 	sigaction(SIGFPE, &action, NULL);
+	sigaction(SIGXCPU, &action, NULL);
 
-	action.sa_handler = dump_strings;
+	action.sa_handler = sig_dump_strings;
 	sigaction(SIGEMT, &action, NULL);
 
 	action.sa_handler = reset;
@@ -300,15 +305,19 @@ main(argc, argv)
 	(void) signal(SIGUSR1, dbug_on);
 	(void) signal(SIGUSR2, dbug_off);
 	(void) signal(SIGCHLD, reap);
-	(void) signal(SIGFPE, dump_db);
-	(void) signal(SIGEMT, dump_strings);
+	(void) signal(SIGFPE, sig_dump_db);
+	(void) signal(SIGXCPU, sig_dump_db);
+	(void) signal(SIGEMT, sig_dump_strings);
 	(void) signal(SIGHUP, reset);
 #endif /* POSIX */
 
 	syslog(LOG_NOTICE, "Ready for action");
 
+	/* Initialize t_local for other uses */
+	(void) gettimeofday(&t_local, (struct timezone *)0);
 	/* GO! */
 	uptime = NOW;
+
 #ifdef DEBUG_MALLOC
 	malloc_inuse(&m_size);
 #endif
@@ -316,11 +325,17 @@ main(argc, argv)
 		if (doreset)
 			do_reset();
 
+		if (dump_db_flag)
+		    dump_db();
+		if (dump_strings_flag)
+		    dump_strings();
+
+		nexthost_tv.tv_usec = 0;
 		tvp = &nexthost_tv;
+
 		if (nexttimo != 0L) {
 			nexthost_tv.tv_sec = nexttimo - NOW;
-			nexthost_tv.tv_usec = 0;
-			if (nexthost_tv.tv_sec < 0) {
+			if (nexthost_tv.tv_sec <= 0) {
 				/* timeout has passed! */
 				/* so we process one timeout, then pop to
 				   select, polling for input.  This way we get
@@ -331,7 +346,7 @@ main(argc, argv)
 				nexthost_tv.tv_sec = 0;
 			}
 		} else {			/* no timeouts to process */
-			tvp = (struct timeval *) NULL;
+			nexthost_tv.tv_sec = 15;
 		}
 		readable = interesting;
 		if (msgs_queued()) {
@@ -340,8 +355,8 @@ main(argc, argv)
 			nfound = 1;
 			FD_ZERO(&readable);
 		} else 
-			nfound = select(nfildes, &readable, (fd_set *) NULL,
-					(fd_set *) NULL, tvp);
+			nfound = select(nfildes, &readable, (fd_set *) 0,
+					(fd_set *) 0, tvp);
 
 		/* Initialize t_local for other uses */
 		(void) gettimeofday(&t_local, (struct timezone *)0);
@@ -578,11 +593,17 @@ int fork_for_dump = 0;
 
 static SIGNAL_RETURN_TYPE
 #ifdef __STDC__
-dump_strings (int sig)
+sig_dump_strings (int sig)
 #else
-dump_strings(sig)
+sig_dump_strings(sig)
      int sig;
 #endif
+{
+	dump_strings_flag = 1;
+	SIG_RETURN;
+}
+
+static void dump_strings()
 {
     FILE *fp;
     int oerrno = errno;
@@ -590,7 +611,8 @@ dump_strings(sig)
     if (!fp) {
 	syslog (LOG_ERR, "can't open strings dump file: %m");
 	errno = oerrno;
-	SIG_RETURN;
+	dump_strings_flag = 0;
+	return;
     }
     syslog (LOG_INFO, "dumping strings to disk");
     print_zstring_table(fp);
@@ -599,16 +621,23 @@ dump_strings(sig)
     else
 	syslog (LOG_INFO, "dump done");
     oerrno = errno;
-    SIG_RETURN;
+    dump_strings_flag = 0;
+    return;
 }
 
 static SIGNAL_RETURN_TYPE
 #ifdef __STDC__
-dump_db(int sig)
+sig_dump_db(int sig)
 #else
-dump_db(sig)
+sig_dump_db(sig)
      int sig;
 #endif
+{
+	dump_db_flag = 1;
+	SIG_RETURN;
+}
+
+static void dump_db()
 {
 	/* dump the in-core database to human-readable form on disk */
 	FILE *fp;
@@ -627,11 +656,15 @@ dump_db(sig)
 	    pid = -1;
 #endif
 	if (pid > 0)
-	    SIG_RETURN;
+	{
+		dump_db_flag = 0;
+		return;
+	}
 	if ((fp = fopen("/usr/tmp/zephyr.db", "w")) == (FILE *)0) {
 		syslog(LOG_ERR, "can't open dump database");
 		errno = oerrno;
-		SIG_RETURN;
+		dump_db_flag = 0;
+		return;
 	}
 	syslog(LOG_INFO, "dumping to disk");
 	server_dump_servers(fp);
@@ -644,7 +677,8 @@ dump_db(sig)
 	if (pid == 0)
 	    exit (0);
 	errno = oerrno;
-	SIG_RETURN;
+	dump_db_flag = 0;
+	return;
 }
 
 static SIGNAL_RETURN_TYPE

@@ -65,11 +65,6 @@ client_register(notice, who, client, server, wantdefaults)
 	register ZHostList_t *hlp = server->zs_hosts;
 	register ZHostList_t *hlp2;
 	register ZClientList_t *clist;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 	/* chain the client's host onto this server's host list */
 
@@ -129,19 +124,11 @@ client_register(notice, who, client, server, wantdefaults)
 
 	/* chain him in to the clients list in the host list*/
 
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
+
 	xinsque(clist, hlp2->zh_clients);
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
 
 	if (!server->zs_dumping && wantdefaults)
 		/* add default subscriptions only if this is not
@@ -165,14 +152,8 @@ client_deregister(client, host, flush)
      int flush;
 {
 	ZClientList_t *clients;
-#ifdef POSIX
-	sigset_t mask, omask;
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	int omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+
+	START_CRITICAL_CODE;
 
 	/* release any not-acked packets in the rexmit queue */
 	nack_release(client);
@@ -195,12 +176,7 @@ client_deregister(client, host, flush)
 				free_zstring(client->zct_principal);
 				xfree(client);
 				xfree(clients);
-#ifdef POSIX
-				(void) sigprocmask(SIG_SETMASK, &omask,
-						   (sigset_t *)0);
-#else
-				(void) sigsetmask(omask);
-#endif
+				END_CRITICAL_CODE;
 				return;
 			}
 	syslog(LOG_CRIT, "clt_dereg: clt not in host list");
