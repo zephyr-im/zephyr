@@ -20,7 +20,14 @@ LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${HES_LINTLIB} \
 
 HDRS=	zserver.h \
 	zsrv_conf.h \
-	timer.h
+	timer.h \
+	ZString.h ZStringTable.h ZStringRep.h \
+	Set.hT Set.CT \
+	unix.h \
+	zalloc.h \
+	access.h \
+	template_macros.h \
+	new.h
 
 SRCS=	main.C \
 	access.C \
