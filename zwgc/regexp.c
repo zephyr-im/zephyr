@@ -19,6 +19,10 @@ static char rcsid_regexp_c[] = "$Id$";
 #include <stdio.h>
 #include "regexp.h"
 
+#ifdef SOLARIS
+#include <libgen.h>
+#endif
+
 extern char *re_comp();
 extern int re_exec();
 
@@ -47,7 +51,7 @@ int ed_regexp_match_p(test_string, pattern)
  * It is a wrapper around the C library regexp functions.
  */
 
-#ifdef _AUX_SOURCE
+#if defined(_AUX_SOURCE) || defined(SOLARIS)
 
 static char *re;
 
