@@ -592,29 +592,11 @@ server_register(notice, auth, who)
 	ZServerDesc_t *temp;
 	register int i;
 	long timerval;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
-
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);	/* don't let db dumps start */
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE));
-#endif
 
 	if (who->sin_port != sock_sin.sin_port) {
 #if 0
 		zdbug((LOG_DEBUG, "srv_register wrong port %d",
 		       ntohs(who->sin_port)));
-#endif
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
 #endif
 		return 1;
 	}
@@ -624,11 +606,6 @@ server_register(notice, auth, who)
 #if 0
 		zdbug((LOG_DEBUG, "srv_register unauth"));
 #endif
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
 		return 1;
 	}
 #endif /* notdef */
@@ -636,13 +613,11 @@ server_register(notice, auth, who)
 	temp = (ZServerDesc_t *)xmalloc((unsigned) ((nservers + 1) * sizeof(ZServerDesc_t)));
 	if (!temp) {
 		syslog(LOG_CRIT, "srv_reg malloc");
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
 		return 1;
 	}
+
+	START_CRITICAL_CODE;
+	
 	(void) memcpy((caddr_t) temp, (caddr_t) otherservers,
 		       nservers * sizeof(ZServerDesc_t));
 	xfree(otherservers);
@@ -667,11 +642,9 @@ server_register(notice, auth, who)
 	zdbug((LOG_DEBUG, "srv %s is %s", otherservers[nservers].addr,
 	       srv_states[(int) otherservers[nservers].zs_state]));
 #endif
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+
 	return 0;
 }
 #endif

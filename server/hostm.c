@@ -237,14 +237,8 @@ hostm_flush(host, server)
 {
 	register ZClientList_t *clist = NULLZCLT, *clt;
 	losinghost *lhp, *lhp2;
-#ifdef POSIX
-	sigset_t mask, omask;
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	int omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+
+	START_CRITICAL_CODE;
 
 	if (!host) {
 	    syslog(LOG_WARNING, "null host flush");
@@ -283,11 +277,9 @@ hostm_flush(host, server)
 
 	uloc_hflush(&host->zh_addr.sin_addr);
 	host_detach(host, server);
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+
 	return;
 }
 
@@ -399,15 +391,9 @@ host_lost(arg)
 	Code_t retval;
 	char *buffer;
 	int len;
-#ifdef POSIX
-	sigset_t mask, omask;
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	int omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
 
+	START_CRITICAL_CODE;
+	
 	server = hostm_find_server(&which->lh_host->zh_addr.sin_addr);
 #if 1
 	zdbug ((LOG_DEBUG,"lost host %s (server %s)",
@@ -421,11 +407,7 @@ host_lost(arg)
 #endif
 		xremque(which);
 		xfree(which);
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+		END_CRITICAL_CODE;
 		return;
 	}
 	xremque(which);
@@ -461,11 +443,9 @@ host_lost(arg)
 	server_forward(&notice, 0, &who); /* unauthentic */
 
 	xfree(which);
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+
 	return;
 }
 
@@ -478,21 +458,12 @@ host_not_losing(who)
      struct sockaddr_in *who;
 {
 	losinghost *lhp, *lhp2;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 	if (!losing_hosts)
 		return;
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+
+	START_CRITICAL_CODE;
+	
 	for (lhp = losing_hosts->q_forw;
 	     lhp != losing_hosts;)
 		if (lhp->lh_host->zh_addr.sin_addr.s_addr == who->sin_addr.s_addr) {
@@ -520,11 +491,9 @@ host_not_losing(who)
 			lhp = lhp2->q_forw;
 		} else
 			lhp = lhp->q_forw;
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+
 	return;
 }
 
@@ -538,22 +507,12 @@ hostm_lose_ignore(client)
      ZClient_t *client;
 {
 	losinghost *lhp, *lhp2;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 	
 	if (!losing_hosts)
 		return;
 
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
+	
 	for (lhp = losing_hosts->q_forw;
 	     lhp != losing_hosts;)
 		/* if client matches, remove it */
@@ -573,11 +532,9 @@ hostm_lose_ignore(client)
 			lhp = lhp2->q_forw;
 		} else
 			lhp = lhp->q_forw;
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+	
 	return;
 }
 
@@ -591,14 +548,7 @@ hostm_transfer(host, server)
      ZHostList_t *host;
      ZServerDesc_t *server;
 {
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
-
 	/* we need to unlink and relink him, and change the table entry */
-
 #if 1
 	if (zdebug)
 	    syslog (LOG_DEBUG, "hostm_transfer %s to %s",
@@ -609,13 +559,8 @@ hostm_transfer(host, server)
 	if (hostm_find_server(&host->zh_addr.sin_addr) == server)
 		return;
 
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
+	
 	/* remove from old server's queue */
 	xremque(host);
 
@@ -625,11 +570,9 @@ hostm_transfer(host, server)
 
 	/* insert in our queue */
 	xinsque(host, server->zs_hosts);
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+
 	return;
 }
 
@@ -645,14 +588,8 @@ host_attach(who, server)
 {
 	register ZHostList_t *hlist;
 	register ZClientList_t *clist;
-#ifdef POSIX
-	sigset_t mask, omask;
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	int omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+
+	START_CRITICAL_CODE;
 
 #if 0
 	if (zdebug)
@@ -662,21 +599,13 @@ host_attach(who, server)
 	/* allocate a header */
 	if (!(hlist = (ZHostList_t *) xmalloc(sizeof(ZHostList_t)))) {
 		syslog(LOG_WARNING, "hm_attach alloc");
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+		END_CRITICAL_CODE;
 		return(ENOMEM);
 	}
 	/* set up */
 	if (!(clist = (ZClientList_t *)xmalloc(sizeof(ZClientList_t)))) {
 	        xfree(hlist);
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+		END_CRITICAL_CODE;
 		return(ENOMEM);
 	}
 	clist->zclt_client = NULLZCNT;
@@ -692,11 +621,9 @@ host_attach(who, server)
 
 	/* chain in to the end of the list */
 	xinsque(hlist, server->zs_hosts->q_back);
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+
 	return(ZERR_NONE);
 }
 
@@ -712,20 +639,10 @@ host_detach(host, server)
      ZServerDesc_t *server;
 {
 	ZServerDesc_t *server2;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
+
+	START_CRITICAL_CODE;
 
 	/* undo what we did in host_attach */
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
 	server2 = hostm_find_server (&host->zh_addr.sin_addr);
 
 	if (server2 != server) {
@@ -734,11 +651,7 @@ host_detach(host, server)
 		       inet_ntoa (host->zh_addr.sin_addr),
 		       server->addr,
 		       server2->addr);
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+		END_CRITICAL_CODE;
 		return;
 	}
 
@@ -753,11 +666,9 @@ host_detach(host, server)
 	remove_host(host);
 
 	xfree(host);
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+	
 	return;
 }
 
@@ -982,11 +893,6 @@ insert_host(host, server)
 {
 	struct hostlist *oldlist;
 	register int i = 0;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 #if 0
 	zdbug ((LOG_DEBUG,"insert_host %s %s",
@@ -995,13 +901,7 @@ insert_host(host, server)
 	if (hostm_find_host(&host->zh_addr.sin_addr))
 		return;
 
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
 
 	num_hosts++;
 	oldlist = all_hosts;
@@ -1014,11 +914,7 @@ insert_host(host, server)
 	if (!oldlist) {			/* this is the first */
 		all_hosts[0].host = host;
 		all_hosts[0].server_index = server - otherservers;
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+		END_CRITICAL_CODE;
 		return;
 	}
 
@@ -1038,11 +934,9 @@ insert_host(host, server)
 		i++;
 	}
 	xfree(oldlist);
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+
 #if defined (DEBUG) && 0
         if (zdebug) {
                 register int i = 0;
@@ -1065,11 +959,6 @@ remove_host(host)
 {
 	struct hostlist *oldlist;
 	register int i = 0;
-#ifdef POSIX
-	sigset_t mask, omask;
-#else
-	int omask;
-#endif
 
 #if 0
 	zdbug((LOG_DEBUG,"remove_host %s", inet_ntoa(host->zh_addr.sin_addr)));
@@ -1077,24 +966,15 @@ remove_host(host)
 	if (!hostm_find_host(&host->zh_addr.sin_addr))
 		return;
 
-#ifdef POSIX
-	(void) sigemptyset(&mask);
-	(void) sigaddset(&mask, SIGFPE);
-	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
-#else
-	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-#endif
+	START_CRITICAL_CODE;
+	
 	if (--num_hosts == 0) {
 #if 0
 		zdbug((LOG_DEBUG,"last host"));
 #endif
 		xfree (all_hosts);
 		all_hosts = NULLHLT;
-#ifdef POSIX
-		(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-		(void) sigsetmask(omask);
-#endif
+		END_CRITICAL_CODE;
 		return;
 	}
 
@@ -1119,11 +999,9 @@ remove_host(host)
 		i++;
 	}
 	xfree (oldlist);
-#ifdef POSIX
-	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
-#else
-	(void) sigsetmask(omask);
-#endif
+
+	END_CRITICAL_CODE;
+
 	return;
 }
 
