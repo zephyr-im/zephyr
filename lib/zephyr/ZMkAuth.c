@@ -85,12 +85,12 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     checksum = des_quad_cksum(buffer, NULL, cstart - buffer, 0, cred.session);
     checksum ^= des_quad_cksum(cend, NULL, buffer + *len - cend, 0,
 			       cred.session);
-    checksum ^= des_quad_cksum(notice->z_message, NULL, notice->message_len, 0,
-			       cred.session);
+    checksum ^= des_quad_cksum(notice->z_message, NULL, notice->z_message_len,
+			       0, cred.session);
     notice->z_checksum = (ZChecksum_t) checksum;
     checksum = htonl(checksum);
-    ZMakeAscii(cptr, buffer + buffer_len - cptr, (unsigned char *) &checksum,
-	       sizeof(checksum));
+    ZMakeAscii(cstart, buffer + buffer_len - cstart,
+	       (unsigned char *) &checksum, sizeof(checksum));
 
     return (ZERR_NONE);
 #else
