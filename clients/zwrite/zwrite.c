@@ -143,36 +143,36 @@ main(argc, argv)
     notice.z_message_len = 0;
     notice.z_recipient = "";
     notice.z_default_format = "";
+    notice.z_num_other_fields = 0;
 
-    if (!nocheck)
+    if (!nocheck && !msgarg)
 	send_off(&notice, 0);
 	
     if (!msgarg && isatty(0))
 	printf("Type your message now.  End with control-D or a dot on a line by itself.\n");
 
+    message = NULL;
+    msgsize = 0;
     if (signature) {
 	message = malloc(strlen(signature)+1);
 	strcpy(message, signature);
 	msgsize = strlen(message)+1;
     }
-    else {
-	message = malloc(1);
-	message[0] = '\0';
-	msgsize = 1;
-    }
 	
     if (msgarg) {
 	for (arg=msgarg;arg<argc;arg++) {
-	    message = realloc(message, msgsize+strlen(argv[arg])+
-			      (arg != argc-1)?2:1);
+	    if (message)
+		    message = realloc(message, msgsize+strlen(argv[arg])+
+				      (arg == argc-1)?2:1);
+	    else
+		    message = malloc(strlen(argv[arg])+ (arg == argc-1)?2:1);
 	    strcpy(message+msgsize, argv[arg]);
 	    msgsize += strlen(argv[arg]);
 	    if (arg != argc-1) {
-		strcpy(message+msgsize+1, " ");
+		message[msgsize] = ' ';
 		msgsize++;
 	    } 
 	}
-	message = realloc(message, msgsize+2);
 	message[msgsize] = '\n';
 	message[msgsize+1] = '\0';
 	msgsize += 2;
