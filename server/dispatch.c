@@ -387,6 +387,18 @@ sendit(notice, auth, who)
 	    /* max size is 255.255.255.255 */
 	    char buffer[16];
 	    (void) strcpy(buffer, inet_ntoa(who->sin_addr));
+	    if (!auth) {
+		syslog(LOG_WARNING, "sendit unauthentic fake packet: claimed %s, real %s",
+		       inet_ntoa(notice->z_sender_addr), buffer);
+		clt_ack(notice, who, AUTH_FAILED);
+		return;
+	    }
+	    if (ntohl(notice->z_sender_addr.s_addr) != 0) {
+		syslog(LOG_WARNING, "sendit invalid address: claimed %s, real %s",
+		       inet_ntoa(notice->z_sender_addr), buffer);
+		clt_ack(notice, who, AUTH_FAILED);
+		return;
+	    }
 	    syslog(LOG_WARNING, "sendit addr mismatch: claimed %s, real %s",
 		   inet_ntoa(notice->z_sender_addr), buffer);
 	}
