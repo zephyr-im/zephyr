@@ -14,7 +14,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_parser_y[] = "$Header$";
+static char rcsid_parser_y[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
