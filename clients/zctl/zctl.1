@@ -4,20 +4,23 @@
 .\"
 .\"	@(#)zctl.1	6.1 (MIT) 7/9/87
 .\"
-.TH ZCTL 1 "July 14, 1987"
+.TH ZCTL 1 "February 7, 1988"
 .SH NAME
-zctl \- zephyr subscription control program
+zctl \- zephyr control program
 .SH SYNOPSIS
 .B zctl [
 .I options
 ]
 .SH DESCRIPTION
 .I Zctl
-is a general purpose subscription handler for the
+is a general purpose control program for the
 .I Zephyr(1)
 Notification Service.  It allows the user to subscribe to specific
-notice types, and to save the subscriptions in a file (default
-$HOME/.subscriptions).
+notice types, to save the subscriptions in a file (default
+$HOME/.zephyr.subs), and to send control messages to the HostManager,
+.I zhm(8),
+and the WindowGram client,
+.I zwgc(1).
 .PP
 The commands may be typed on the command line, or may be entered
 interactively by just typing
@@ -36,12 +39,18 @@ Unsubscribe to \fIclass, instance, recipient\fR, and remove this triplet
 from the subscriptions file.
 .TP
 .B file \fIfile
-Set default subscriptions file to \fIfile.
+Set default subscriptions file to \fIfile.  If \fIfile isn't specified,
+show what the current subscriptions file is.
 .TP
-.B get
-Ask the current server to retrieve all current subscriptions.  These include
-subscriptions that might have been made by other programs, such as
-.I znol(1).
+.B flush_locs
+Tell the Zephyr servers to flush all location information associated with
+the user.  This should only be used to remove any stale data that may have
+been left after a system crash.
+.TP
+.B hm_flush
+Tell the HostManager,
+.I zhm(8),
+to ask the server to flush all state associated with the current host.
 .TP
 .B list [ \fIfile\fR ]
 List contents of current subscriptions file or \fIfile.
@@ -52,27 +61,71 @@ List all available commands.  May be abbreviated by '?'.
 .B load [ \fIfile\fR ]
 Subscribe to all triplets in current subscriptions file or \fIfile.
 .TP
+.B new_server
+Tell the HostManager,
+.I zhm(8),
+to find a new Zephyr server.
+.TP
 .B quit
 Exit from \fIzctl.
+.TP
+.B retrieve
+Ask the current server to retrieve all current subscriptions.  These include
+subscriptions that might have been made by other programs, such as
+.I znol(1).
 .TP
 .B save [ \fIfile\fR ]
 Save subscriptions into current subscriptions file or \fIfile.
 .TP
+.B set \fIvar\fR [ \fIvalue\fR ]
+Set the value of Zephyr variable \fIvar\fR to \fIvalue\fR, or null if
+no \fIvalue\fR is specified.  The variable \fBexposure\fR has special
+significance, and can only be set to the values none, opstaff, realm-visible,
+realm-announced, net-visible, and net-announced.  Setting this variable
+immediately updates the information in the Zephyr servers.
+.TP
+.B show \fIvar\fR [ \fIvar\fR \ ... ]
+Show the value of the specified Zephyr variables.  If a variable is not
+defined in the user's own variables file, the system variables file
+is searched for a default value.
+.TP
 .B subscribe \fIclass instance\fR [ \fIrecipient\fR ]
-Subscribe to \fIclass, instance, recipient.
+Subscribe to \fIclass, instance, recipient, but don't add this triplet to
+the subscriptions file.
 .TP
 .B unload [ \fIfile\fR ]
 Unsubscribe to all triplets in current subscriptions file or \fIfile.
 .TP
+.B unset \fIvar\fR [ \fIvar\fR \ ... ]
+Delete the definitions of the specified Zephyr variables.
+.TP
 .B unsubscribe \fIclass instance\fR [ \fIrecipient\fR ]
-Unsubscribe to \fIclass, instance, recipient.
+Unsubscribe to \fIclass, instance, recipient, but don't remove this triplet
+from the subscriptions file.
+.TP
+.B wg_read
+Tell the WindowGram client,
+.I zwgc(1),
+to reread its description file.
+.TP
+.B wg_shutdown
+Tell the WindowGram client,
+.I zwgc(1),
+to shutdown; this causes it to ignore all notices until a wg_startup command
+is issued.
+.TP
+.B wg_startup
+Tell the WindowGram client,
+.I zwgc(1),
+to start accepting notices again; useful after a wg_shutdown command has
+been issued.
 .PP
 The \fIrecipient\fR field defaults to your kerberos principle.  You
 may also subscribe to recipient ``*''.  There are three macros,
 .I %host%, %canon%, \fRand\fI %me%.  %host%
 returns the current hostname, \fI%canon%\fR returns the canonical
 hostname, and \fI%me%\fR returns your username.  These macros can be
-used in your \fI$HOME/.subscriptions\fR file to specify the
+used in your \fI$HOME/.zephyr.subs\fR file to specify the
 .I class, instance, \fRor\fI recipient
 fields.  A sample file might contain the following:
 .PP
@@ -94,7 +147,7 @@ user's id.
 Runs \fIzctl\fR in interactive mode.
 .TP
 .B zctl load
-Loads default subscriptions from \fI$HOME/.subscriptions\fR file.
+Loads default subscriptions from \fI$HOME/.zephyr.subs\fR file.
 .TP
 .B zctl sub message personal
 Subscribe to personal messages, but don't add this to the
@@ -102,6 +155,9 @@ subscriptions file.
 .TP
 .B zctl save
 Save all current subscriptions to the default subscriptions file.
+.TP
+.B zctl set exposure none
+Set your exposure level to `none', effectively turning off Zephyr.
 .SH SEE ALSO
 zephyr(1), zwgc(1), zhm(8), zephyrd(8)
 .br
@@ -110,7 +166,9 @@ Service'
 .SH FILES
 /tmp/wg.*
 .br
-$HOME/.subscriptions
+$HOME/.zephyr.subs
+.br
+$HOME/.zephyr.vars
 .SH AUTHOR
 .PP
 Robert S. French (MIT-Project Athena)
