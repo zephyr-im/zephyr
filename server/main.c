@@ -339,7 +339,7 @@ do_net_setup()
 	sock_sin.sin_port = sp->s_port;
 	
 	if (!(sp = getservbyname(HM_SVCNAME, "udp"))) {
-		syslog(LOG_ERR, "%s/udp unknown", SERVER_SVCNAME);
+		syslog(LOG_ERR, "%s/udp unknown", HM_SVCNAME);
 		return(1);
 	}
 	hm_port = sp->s_port;
