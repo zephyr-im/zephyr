@@ -145,7 +145,10 @@ dnl ----- AFS -----
 
 AC_DEFUN(ATHENA_AFS_CHECK,
 [AC_CHECK_FUNC(insque, :, AC_CHECK_LIB(compat, insque))
-AC_CHECK_FUNC(sigvec, :, AC_CHECK_LIB(ucb, sigvec, LIBS="$LIBS -lc -lucb"))
+AC_CHECK_FUNC(sigvec, :,
+	      AC_CHECK_LIB(ucb, sigvec,
+			   LIBS="$LIBS -L/usr/ucblib -R/usr/ucblib -lc -lucb",
+			   :, -L/usr/ucblib))
 AC_CHECK_FUNC(gethostbyname, :, AC_CHECK_LIB(nsl, gethostbyname))
 AC_CHECK_FUNC(socket, :, AC_CHECK_LIB(socket, socket))
 if test "$afs" != yes; then
