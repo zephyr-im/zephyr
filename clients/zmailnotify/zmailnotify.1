@@ -46,9 +46,7 @@ only retrieves four headers at one time in order to reduce the
 competition for the mailbox lock on the post office.  If more than four mail
 messages are waiting,
 .I zmailnotify 
-should be run multiple times.  If executed from a
-.I zwgc(1)
-description file, this will happen automatically.
+will only retrieve the four most recent mail headers.
 .PP
 To check for mail already waiting when you log in, use the standard MH
 program
