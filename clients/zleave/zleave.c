@@ -41,7 +41,7 @@ static char sccsid[] = "@(#)leave.c	5.1 (Berkeley) 5/31/85";
 #define MESSAGE_CLASS "MESSAGE"
 #define INSTANCE "LEAVE"
 /*
- * zleave [[+]hhmm]
+ * zleave [[+]hhmm] [can[cel]]
  *
  * Reminds you when you have to leave.
  * Leave prompts for input and goes away if you hit return.
@@ -49,11 +49,12 @@ static char sccsid[] = "@(#)leave.c	5.1 (Berkeley) 5/31/85";
  * It nags you like a mother hen.
  */
 char origlogin[20];
+char tmpfile[40];
 char *getlogin();
 char *whenleave;
 char *ctime();
 char buff[100];
-int use_zephyr=1;
+int use_zephyr=1, oldpid;
 
 main(argc, argv)
 char **argv;
@@ -72,6 +73,7 @@ char **argv;
 	      use_zephyr = 0;
 	}
 	strcpy(origlogin, getlogin());
+	sprintf(tmpfile, "/tmp/zleave.%d", getuid());
 
 	if (use_zephyr) {
 		envptr = (char *)getenv("WGFILE");
@@ -80,7 +82,8 @@ char **argv;
 			envptr = buf;
 		} 
 		if (!(fp = fopen(envptr,"r"))) {
-			fprintf(stderr,"Can't find WindowGram subscription port.\n");
+			fprintf(stderr,
+				"Can't find WindowGram subscription port.\n");
 			fprintf(stderr,"Will write directly to terminal.\n");
 			use_zephyr = 0;
 		}
@@ -94,9 +97,9 @@ char **argv;
 		sub.class = MESSAGE_CLASS;
 		sub.classinst = INSTANCE;
 		sub.recipient = ZGetSender();
-		printf("Using port %d\n",port);
 		if (ZSubscribeTo(&sub,1,(u_short)port) != ZERR_NONE) {
-			fprintf(stderr,"Subscription error!  Writing to your terminal...\n");
+			fprintf(stderr,
+				"Subscription error!  Writing to your terminal...\n");
 			use_zephyr = 0;
 		} 
 	}	
@@ -122,6 +125,18 @@ char **argv;
 		diff = 60*hours+minutes;
 		doalarm(diff);
 		exit(0);
+	}
+	if (!strcmp(cp, "cancel") || !strcmp(cp, "can")) {
+	      if (!(fp = fopen(tmpfile,"r"))) {
+		    printf("No zleave is currently running.\n");
+		    exit(0);
+	      }
+	      fscanf(fp, "%d", &oldpid);
+	      fclose(fp);
+	      if (kill(oldpid,9))
+		    printf("No zleave is currently running.\n");
+	      unlink(tmpfile);
+	      exit(0);
 	}
 	if (*cp < '0' || *cp > '9')
 		usage();
@@ -156,7 +171,7 @@ char **argv;
 
 usage()
 {
-	printf("usage: leave [[+]hhmm]\n");
+	printf("usage: zleave [[+]hhmm] [can[cel]]\n");
 	exit(1);
 }
 
@@ -168,6 +183,7 @@ long nmins;
 	int slp1, slp2, slp3, slp4;
 	int seconds, gseconds;
 	long daytime;
+	FILE *fp;
 
 	seconds = 60 * nmins;
 	if (seconds <= 0)
@@ -199,12 +215,35 @@ long nmins;
 	time(&daytime);
 	daytime += gseconds;
 	whenleave = ctime(&daytime);
+
+	if (fp = fopen(tmpfile,"r")) {
+	      fscanf(fp, "%d", &oldpid);
+	      fclose(fp);
+	      if (!kill(oldpid,9))
+		    printf("Old zleave process killed.\n");
+	}
 	printf("Alarm set for %s", whenleave);
 
 /* Subscribe to MESSAGE.LEAVE here */
 
-	if (fork())
-		exit(0);
+	switch(fork()) {
+	    case -1:
+	      perror("fork");
+	      exit(-1);
+	      break;
+	    case 0:
+	      break;
+	    default:
+	      exit(0);
+	      break;
+	}
+	if (!(fp = fopen(tmpfile, "w")))
+	  fprintf(stderr, "Cannot open pid file.\n");
+	else {
+	      fprintf(fp, "%d\n", getpid());
+	      fclose(fp);
+	}
+
 	signal(SIGINT, SIG_IGN);
 	signal(SIGQUIT, SIG_IGN);
 	signal(SIGTERM, SIG_IGN);
