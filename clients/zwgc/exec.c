@@ -369,6 +369,7 @@ static struct _Opstuff {
     { exec_noop },                         /* substitute */
     { exec_noop },                         /* protect */
     { exec_noop },                         /* verbatim */
+    { exec_noop },                         /* stylestrip */
     { exec_noop },                         /* getenv */
     { exec_noop },                         /* upcase */
     { exec_noop },                         /* downcase */

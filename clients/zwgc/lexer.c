@@ -159,6 +159,7 @@ static struct keyword_info keywords[] =   {
 		   { "rspan", RSPAN },
 		   { "set", SET },
 		   { "show", SHOW },
+		   { "stylestrip", STYLESTRIP },
 		   { "substitute", SUBSTITUTE },
 		   { "then", THEN },
 		   { "upcase", UPCASE },

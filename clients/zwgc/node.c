@@ -268,6 +268,7 @@ static string how_to_print[] = {
     "substitute(%1)",
     "protect(%1)",
     "verbatim(%1)",
+    "stylestrip(%1)",
     "getenv(%1)",
     "upcase(%1)",
     "downcase(%1)",

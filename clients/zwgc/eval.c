@@ -141,6 +141,7 @@ string eval_expr(expr)
       case SUBSTITUTE_OPCODE:
       case PROTECT_OPCODE:
       case VERBATIM_OPCODE:
+      case STYLESTRIP_OPCODE:
       case GETENV_OPCODE:
       case UPCASE_OPCODE:
       case DOWNCASE_OPCODE:
@@ -163,6 +164,9 @@ string eval_expr(expr)
 
 	  case VERBATIM_OPCODE:
 	    return(verbatim(first,0));
+
+	  case STYLESTRIP_OPCODE:
+	    return(stylestrip(first));
 
 	  case GETENV_OPCODE:
 	    result = getenv(first);
