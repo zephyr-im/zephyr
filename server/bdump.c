@@ -3,7 +3,9 @@
  *
  *	Created by:	John T. Kohl
  *
+ *	$Source$
  *	$Id$
+ *	$Author$
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
@@ -66,7 +68,6 @@ static void cleanup __P((Server *server));
 
 #ifdef HAVE_KRB4
 static long ticket_time;
-static char my_realm[REALM_SZ];
 
 #define TKTLIFETIME	120
 #define tkt_lifetime(val) ((long) val * 5L * 60L)
@@ -474,10 +475,10 @@ bdump_get_v12 (notice, auth, who, server)
 	cleanup(server);
 	return;
     }
-    /* my_realm is filled in inside get_tgt() */
+
     if (strcmp(kdata.pname, SERVER_SERVICE) ||
 	strcmp(kdata.pinst, SERVER_INSTANCE) ||
-	strcmp(kdata.prealm, my_realm)) {
+	strcmp(kdata.prealm, ZGetRealm())) {
 	syslog(LOG_ERR, "bdump_get: peer not zephyr in lrealm: %s.%s@%s",
 	       kdata.pname, kdata.pinst,kdata.prealm);
 	cleanup(server);
@@ -582,6 +583,8 @@ bdump_send_list_tcp(kind, addr, class_name, inst, opcode, sender, recip, lyst,
     Code_t retval;
     u_short length;
 
+    memset (&notice, 0, sizeof(notice));
+ 
     retval = ZMakeAscii(addrbuf, sizeof(addrbuf),
 			(unsigned char *) &addr->sin_addr,
 			sizeof(struct in_addr));
@@ -692,16 +695,8 @@ get_tgt()
     Sched *s;
 #endif
 	
-    if (!*my_realm) {
-	retval = krb_get_lrealm(my_realm, 1);
-	if (retval != KSUCCESS) {
-	    syslog(LOG_ERR,"krb_get_lrealm: %s", krb_get_err_text(retval));
-	    *my_realm = '\0';
-	    return(1);
-	}
-    }
     /* have they expired ? */
-    if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + 15L) {
+    if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + (15L * 60L)) {
 	/* +15 for leeway */
 #if 0
 	zdbug((LOG_DEBUG,"get new tickets: %d %d %d", ticket_time, NOW,
@@ -844,8 +839,10 @@ bdump_recv_loop(server)
 	} else if (strcmp(notice.z_opcode, ADMIN_NEWREALM) == 0) {
 	    /* get a realm from the message */
 	    realm = realm_get_realm_by_name(notice.z_message);
-	    if (!realm)
-		return(ZERR_NONE);
+	    if (!realm) {
+		syslog(LOG_ERR, "brl newrlm failed: no realm %s", 
+		       notice.z_message);
+	    }
 	} else if (strcmp(notice.z_class, LOGIN_CLASS) == 0) {
 	    /* 1 = tell it we are authentic */
 	    retval = ulogin_dispatch(&notice, 1, &who, server);
@@ -887,7 +884,7 @@ bdump_recv_loop(server)
 		syslog(LOG_ERR, "brl no client");
 		return ZSRV_NOCLT;
 	    }
-	    retval = subscr_subscribe(client, &notice);
+	    retval = subscr_subscribe(client, &notice, server);
 	    if (retval != ZERR_NONE) {
 		syslog(LOG_WARNING, "brl subscr failed: %s",
 		       error_message(retval));
@@ -895,16 +892,17 @@ bdump_recv_loop(server)
 	    }
 	} else if (strcmp(notice.z_opcode, REALM_SUBSCRIBE) == 0) {
 	    /* add a subscription for a realm */
-	    if (!realm) {
-		syslog(LOG_ERR, "brl no realm");
-		return(ZSRV_NORLM);
-	    }
-	    retval = subscr_realm(realm, &notice);
-	    if (retval != ZERR_NONE) {
-		syslog(LOG_WARNING, "brl subscr failed: %s",
-		       error_message(retval));
-		return retval;
-	    }
+	    if (realm) {
+		retval = subscr_realm(realm, &notice);
+		if (retval != ZERR_NONE) {
+		    syslog(LOG_WARNING, "brl subscr failed: %s",
+			   error_message(retval));
+		    return retval;
+		}
+	    } /* else 
+		 /* Other side tried to send us subs for a realm we didn't
+		    know about, and so we drop them silently */
+	
 	} else {
 	    syslog(LOG_ERR, "brl bad opcode %s",notice.z_opcode);
 	    return ZSRV_UNKNOWNOPCODE;
@@ -971,6 +969,8 @@ send_list(kind, port, class_name, inst, opcode, sender, recip, lyst, num)
     int packlen;
     Code_t retval;
  
+    memset (&notice, 0, sizeof(notice));
+
     notice.z_kind = kind;
     notice.z_port = port;
     notice.z_class = class_name;
@@ -1011,6 +1011,8 @@ send_normal_tcp(kind, port, class_name, inst, opcode, sender, recip,
     Code_t retval;
     u_short length;
  
+    memset (&notice, 0, sizeof(notice));
+
     notice.z_kind = kind;
     notice.z_port = port;
     notice.z_class = class_name;
