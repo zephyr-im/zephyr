@@ -40,6 +40,7 @@ struct _Z_InputQ {
     struct sockaddr_in	from;
     struct _Z_Hole	*holelist;
     ZUnique_Id_t	uid;
+    int			auth;
     int			header_len;
     char		*header;
     int			msg_len;
@@ -65,8 +66,8 @@ extern struct _Z_InputQ *__Q_Head, *__Q_Tail;
 	 * touched by an incoming fragment */
 #define Z_NOTICETIMELIMIT	30	/* seconds */
 
-	/* Number of old uid's to keep around to help filter out duplicates */
-#define Z_FILTERDEPTH		10	/* uid's */
+	/* Initial size of old uid buffer. */
+#define Z_INITFILTERSIZE		30	/* uid's */
 
 extern int __Zephyr_open; /* 0 if the library opened the FD, 1 otherwise */
 extern int __HM_set; /* 0 if the library set the dest addr, 1 otherwise */
