@@ -166,7 +166,7 @@ INT_32_TYPE gethostid();
 # include <krb_err.h>
 # include <des.h>
 # ifndef HAVE_KRB_GET_ERR_TEXT
-#  define krb_get_err_text(n)	krb_err_text[n]
+#  define krb_get_err_text(n)	krb_err_txt[n]
 # endif
 # ifndef HAVE_KRB_LOG
 #  define krb_log		log
