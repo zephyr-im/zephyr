@@ -187,8 +187,7 @@ ZNotice_t *notice;
      if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN)) {
 	  if (notice->z_message_len) {
 	       addr = inet_addr(notice->z_message);
-	       if ((hp = gethostbyaddr(&addr,
-				       4,
+	       if ((hp = gethostbyaddr((char *)&addr, sizeof(addr),
 				       AF_INET)) != NULL) {
 		    (void)strcpy(suggested_server, hp->h_name);
 		    new_server(suggested_server);
