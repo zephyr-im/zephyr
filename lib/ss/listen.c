@@ -66,7 +66,6 @@ int ss_listen (sci_idx)
     int code;
     jmp_buf old_jmpb;
     ss_data *old_info = current_info;
-    static RETSIGTYPE print_prompt();
 #ifdef _POSIX_VERSION
     struct sigaction isig, csig, nsig, osig;
     sigset_t nmask, omask;
