@@ -2,23 +2,23 @@
 .\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
 .\" specifies the terms and conditions for redistribution.
 .\"
-.\"	@(#)hm.8	6.1 (MIT) 7/9/87
+.\"	@(#)zhm.8	6.1 (MIT) 7/9/87
 .\"
-.TH HM 8 "July 9, 1987"
+.TH ZHM 8 "July 9, 1987"
 .SH NAME
-hm \- Zephyr HostManager
+zhm \- Zephyr HostManager
 .SH SYNOPSIS
-.B /etc/athena/hm
+.B /etc/athena/zhm
 [
 .BI -d
 ] [
 .BI server
 ]
 .SH DESCRIPTION
-.I Hm
+.I Zhm
 is the link between a client machine and the zephyr server.  All
 notices sent from programs on the client are funneled through
-.I hm.
+.I zhm.
 This allows all client programs to be much simpler in function, since
 the HostManager is responsible for handling errors, retransmitting
 lost notices, and holding all notices until they are acknowledged.
