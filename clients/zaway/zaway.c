@@ -11,13 +11,11 @@
  *	"mit-copyright.h". 
  */
 
+#include <sysdep.h>
 #include <zephyr/mit-copyright.h>
-
 #include <zephyr/zephyr.h>
-
 #include <pwd.h>
-#include <string.h>
-#include <signal.h>
+#include <com_err.h>
 
 #ifndef lint
 static char rcsid_zaway_c[] = "$Id$";
@@ -26,19 +24,10 @@ static char rcsid_zaway_c[] = "$Id$";
 #define MESSAGE_CLASS "MESSAGE"
 #define DEFAULT_MSG "I'm sorry, but I am currently away from the terminal and am\nnot able to receive your message.\n"
 
-#ifdef POSIX
-#include <stdlib.h>
-#define SIGNAL_RETURN_TYPE void
-#else
-extern char *getenv(), *malloc(), *realloc();
-extern uid_t getuid();
-#define SIGNAL_RETURN_TYPE int
-#endif
-
-SIGNAL_RETURN_TYPE cleanup();
+RETSIGTYPE cleanup();
 u_short port;
 
-main(argc,argv)
+int main(argc,argv)
 	int argc;
 	char *argv[];
 {
@@ -50,7 +39,7 @@ main(argc,argv)
 	register char *ptr;
 	char awayfile[BUFSIZ],*msg[2],*envptr;
 	char *find_message();
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	struct sigaction sa;
 #endif
 	
@@ -89,7 +78,7 @@ main(argc,argv)
 		fprintf(stderr,"File %s not found!\n",awayfile);
 		exit(1);
 	} 
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	(void) sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	sa.sa_handler = cleanup;
@@ -199,7 +188,7 @@ char *find_message(notice,fp)
 	return (ptr);
 }
 
-SIGNAL_RETURN_TYPE cleanup()
+RETSIGTYPE cleanup()
 {
     ZCancelSubscriptions(port);
     exit(1);
