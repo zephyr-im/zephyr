@@ -1,2 +1,3 @@
 operations,message,*
-message,*,%me%
+message,personal,%me%
+message,urgent,%me%
