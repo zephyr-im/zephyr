@@ -14,10 +14,11 @@
 #      "mit-copyright.h".
 #
 
-set source=/afs/athena.mit.edu/astaff/project/zephyr/@sys/zwgc/zwgc.dev/Dictionary
+set source=$1
+shift
 
 if (z$1x == zx) then
-	echo "usage: generate_dictionary_instance <typename> [<include file>]"
+	echo "usage: generate_dictionary_instance <srcdir> <typename> [<include file>]"
 	exit 1
 endif
 if (-r $source/dictionary.c) then
