@@ -6,19 +6,41 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987, 1990 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZReadAscii_c[] = "$Header$";
-#endif lint
+static
+#ifdef __STDC__
+    const
+#endif
+    char rcsid_ZReadAscii_c[] =
+    "$Header$";
+#endif /* lint */
 
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
+
+static int
+#ifdef __STDC__
+Z_cnvt_xtoi (char c) /* may be faster */
+#else
+Z_cnvt_xtoi(c)
+    char c;
+#endif
+{
+    c -= '0';
+    if (c < 10)
+	return c;
+    c -= 'A'-'9'-1;
+    if (c < 16)
+	return c;
+    return -1;
+}
 
 int ZReadAscii(ptr, len, field, num)
     char *ptr;
@@ -34,43 +56,27 @@ int ZReadAscii(ptr, len, field, num)
 	if (*ptr == ' ') {
 	    ptr++;
 	    if (--len < 0)
-		return (ZERR_BADFIELD);
+		return ZERR_BADFIELD;
 	} 
 	if (ptr[0] == '0' && ptr[1] == 'x') {
 	    ptr += 2;
 	    len -= 2;
 	    if (len < 0)
-		return (ZERR_BADFIELD);
+		return ZERR_BADFIELD;
 	} 
 	c1 = Z_cnvt_xtoi(ptr[0]);
+	if (c1 < 0)
+		return ZERR_BADFIELD;
 	c2 = Z_cnvt_xtoi(ptr[1]);
-	if (c1 < 0 || c2 < 0)
-		return(ZERR_BADFIELD);
+	if (c2 < 0)
+		return ZERR_BADFIELD;
 	hexbyte = (c1 << 4) | c2;
 	field[i] = hexbyte;
 	ptr += 2;
 	len -= 2;
 	if (len < 0)
-	    return (ZERR_BADFIELD);
+	    return ZERR_BADFIELD;
     }
 
-    if (*ptr)
-	return (ZERR_BADFIELD);
-
-    return (ZERR_NONE);
-}
-
-Z_cnvt_xtoi(c)
-    char c;
-{
-    c -= '0';
-    if (c < 10)
-	return (c);
-    c -= 'A'-'9'-1;
-    if (c < 16)
-	return (c);
-    c -= 'a'-'A';
-    if (c > 15)
-	return (-1);
-    return (c);
+    return *ptr ? ZERR_BADFIELD : ZERR_NONE;
 }
