@@ -38,8 +38,6 @@ Code_t ZSendPacket(packet,len)
 	sin.sin_port = htons(__HM_port);
 	bcopy(__HM_addr,&sin.sin_addr,__HM_length);
 
-	printf("Internal: Sending to port %d\n",__HM_port);
-
 	if (sendto(ZGetFD(),packet,len,0,&sin,sizeof(sin)) < 0)
 		return (ZERR_UNIX);
 
