@@ -97,14 +97,16 @@ static char rcsid_main_c[] =
 
 static int do_net_setup P((void)), initialize P((void));
 static void usage P((void)), do_reset P((void));
-static SIGNAL_RETURN_TYPE bye P((int sig)), dbug_on P((int)), 
-					dbug_off P((int));
-static SIGNAL_RETURN_TYPE dump_db P((int)), reset P((int)), reap P((int));
-static SIGNAL_RETURN_TYPE dump_strings P((int));
+static SIGNAL_RETURN_TYPE bye P((int)),
+		dbug_on P((int)), dbug_off P((int)),
+		dump_db P((int)), dump_strings P((int)),
+		reset P((int)), reap P((int));
 static void read_from_dump P((char *dumpfile));
+
 #ifndef DEBUG
 static void detach P((void));
-#endif /* DEBUG */
+#endif
+
 extern void perror P((Zconst char *));
 
 #undef P
@@ -128,6 +130,7 @@ u_short hm_port;			/* the port # of the host manager */
 
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
+
 int zdebug;
 #ifdef DEBUG_MALLOC
 int dump_malloc_stats = 0;
@@ -135,7 +138,8 @@ unsigned long m_size;
 #endif
 #ifdef DEBUG
 int zalone;
-#endif /* DEBUG */
+#endif
+
 u_long npackets;			/* number of packets processed */
 long uptime;				/* when we started operations */
 static int nofork;
@@ -246,7 +250,12 @@ main(argc, argv)
 	if (chdir("/usr/tmp") != 0)
 		syslog(LOG_ERR,"chdir failed (%m) (execution continuing)");
 
-#ifndef macII /* A/UX doesn't have setpriority */
+#if 0
+	/*
+	 * Many systems don't implement setpriority() as is done under BSD,
+	 * and the kernel scheduler will appropriately swap in the processes
+	 * that are needed.
+	 */
 	if (setpriority(PRIO_PROCESS, getpid(), -10))
 		syslog(LOG_ERR,"setpriority failed (%m)");
 #endif
@@ -261,40 +270,11 @@ main(argc, argv)
 #ifdef POSIX
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
-#endif /* POSIX */
-#ifdef DEBUG
-	/* DBX catches sigterm and does the wrong thing with sigint,
-	   so we provide another hook */
-#ifdef POSIX
-	action.sa_handler = bye;
-	sigaction(SIGALRM, &action, NULL);
-	sigaction(SIGTERM, &action, NULL);
-#else /* POSIX */
-	(void) signal(SIGALRM, bye);
-	(void) signal(SIGTERM, bye);
-#endif /* POSIX */
-#ifdef SignalIgnore
-#undef SIG_IGN
-#define SIG_IGN SignalIgnore
-#endif /* SignalIgnore */
-#ifdef POSIX
-	action.sa_handler = SIG_IGN;
-	sigaction(SIGINT, &action, NULL);
-#else /* posix */
-	(void) signal(SIGINT, SIG_IGN);
-#endif /* POSIX */
-#else /* ! debug */
-#ifdef POSIX
+
 	action.sa_handler = bye;
 	sigaction(SIGINT, &action, NULL);
 	sigaction(SIGTERM, &action, NULL);
-#else /* posix */
-	(void) signal(SIGINT, bye);
-	(void) signal(SIGTERM, bye);
-#endif /* POSIX */
-#endif /* DEBUG */
-	syslog(LOG_NOTICE, "Ready for action");
-#ifdef POSIX
+
 	action.sa_handler = dbug_on;
 	sigaction(SIGUSR1, &action, NULL);
 
@@ -313,6 +293,8 @@ main(argc, argv)
 	action.sa_handler = reset;
 	sigaction(SIGHUP, &action, NULL);
 #else /* !posix */
+	(void) signal(SIGINT, bye);
+	(void) signal(SIGTERM, bye);
 	(void) signal(SIGUSR1, dbug_on);
 	(void) signal(SIGUSR2, dbug_off);
 	(void) signal(SIGCHLD, reap);
@@ -320,6 +302,8 @@ main(argc, argv)
 	(void) signal(SIGEMT, dump_strings);
 	(void) signal(SIGHUP, reset);
 #endif /* POSIX */
+
+	syslog(LOG_NOTICE, "Ready for action");
 
 	/* GO! */
 	uptime = NOW;
@@ -417,7 +401,7 @@ initialize()
 	    nacklist = &not_acked_head;
 	}
 #endif
-	_BZERO((caddr_t) nacklist, sizeof(ZNotAcked_t));
+	(void) memset((caddr_t) nacklist, 0, sizeof(ZNotAcked_t));
 	nacklist->q_forw = nacklist->q_back = nacklist;
 
 	nexttimo = 1L;	/* trigger the timers when we hit
@@ -475,7 +459,8 @@ do_net_setup()
 		return(1);
 	}
 	(void) strncpy(myname, hp->h_name, MAXHOSTNAMELEN);
-	_BCOPY((caddr_t) hp->h_addr, (caddr_t) &my_addr, sizeof(hp->h_addr));
+	(void) memcpy((caddr_t) &my_addr, (caddr_t) hp->h_addr,
+		       sizeof(hp->h_addr));
 	
 	(void) setservent(1);		/* keep file/connection open */
 	
@@ -483,7 +468,7 @@ do_net_setup()
 		syslog(LOG_ERR, "%s/udp unknown",SERVER_SVCNAME);
 		return(1);
 	}
-	_BZERO((caddr_t) &sock_sin, sizeof(sock_sin));
+	(void) memset((caddr_t) &sock_sin, 0, sizeof(sock_sin));
 	sock_sin.sin_port = sp->s_port;
 	
 	if (!(sp = getservbyname(HM_SVCNAME, "udp"))) {
@@ -532,10 +517,6 @@ usage()
 #endif /* DEBUG */
 	exit(2);
 }
-
-/*
- * interrupt routine
- */
 
 static SIGNAL_RETURN_TYPE
 #ifdef __STDC__
@@ -744,8 +725,14 @@ static void
 detach()
 {
 	/* detach from terminal and fork. */
-	register int i, size = getdtablesize();
+	register int i;
+	register long size;
 
+#ifdef POSIX
+	size = sysconf(_SC_OPEN_MAX);
+#else
+	size = getdtablesize();
+#endif
 	/* profiling seems to get confused by fork() */
 	MONCONTROL (0);
 	i = fork ();
