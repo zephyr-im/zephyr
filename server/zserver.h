@@ -45,7 +45,9 @@ typedef struct _ZSubscr_t {
 typedef struct _ZClient_t {
 	struct sockaddr_in zct_sin;	/* ipaddr/port of client */
 	struct _ZSubscr_t *zct_subs;	/* subscriptions */
+#ifdef KERBEROS
 	C_Block zct_cblock;		/* session key for this client */
+#endif KERBEROS
 	char	*zct_principal;		/* krb principal of user */
 } ZClient_t;
 
