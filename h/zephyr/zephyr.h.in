@@ -15,16 +15,10 @@
 #ifndef __ZEPHYR_H__
 #define __ZEPHYR_H__
 
-/* Define if Zephyr uses Kerberos support. */
-#undef ZEPHYR_USES_KERBEROS
-
 #include <sys/types.h>
 #include <sys/time.h>
 
 #include <zephyr/zephyr_err.h>
-#ifdef ZEPHYR_USES_KERBEROS
-#include <krb.h>
-#endif
 
 #ifndef IPPROTO_MAX	/* Make sure not already included */
 #include <netinet/in.h>
@@ -185,9 +179,6 @@ Code_t ZSetLocation ZP((char *exposure));
 Code_t ZUnsetLocation ZP((void));
 Code_t ZFlushMyLocations ZP((void));
 char *ZParseExposureLevel ZP((char *text));
-#ifdef ZEPHYR_USES_KERBEROS
-Code_t ZFormatAuthenticNotice ZP((ZNotice_t*, char*, int, int*, C_Block));
-#endif
 Code_t ZFormatRawNotice ZP((ZNotice_t *, char**, int *));
 Code_t ZRetrieveSubscriptions ZP((unsigned short, int*));
 Code_t ZOpenPort ZP((unsigned short *port));
@@ -235,14 +226,6 @@ extern char __Zephyr_realm[];
 #define ZQLength()	__Q_CompleteLength
 #define ZGetDestAddr()	__HM_addr
 #define ZGetRealm()	__Zephyr_realm
-
-#ifdef ZEPHYR_USES_KERBEROS
-/* Session key for last parsed packet - server only */
-extern C_Block __Zephyr_session;
-#define ZGetSession() (__Zephyr_session)
-#else
-#define __Zephyr_realm ("local-realm")
-#endif
 
 
 #ifdef Z_DEBUG
