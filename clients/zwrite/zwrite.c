@@ -265,14 +265,16 @@ main(argc, argv)
     } else {
 	if (isatty(0)) {
 	    for (;;) {
+		unsigned int l;
 		if (!fgets(bfr, sizeof bfr, stdin))
 		    break;
 		if (!nodot && bfr[0] == '.' &&
 		    (bfr[1] == '\n' || bfr[1] == '\0'))
 		    break;
-		message = realloc(message, (unsigned)(msgsize+strlen(bfr)));
+		l = strlen(bfr);
+		message = realloc(message, msgsize+l+1);
 		(void) strcpy(message+msgsize, bfr);
-		msgsize += strlen(bfr);
+		msgsize += l;
 	    }
 	    message = realloc(message, (unsigned)(msgsize+1));
 	}
