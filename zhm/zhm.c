@@ -527,8 +527,6 @@ send_stats(notice, sin)
       ZPacket_t bfr;
       char *list[20];
       int len, i, nitems = 10;
-      long runtime;
-      struct tm *tim;
 
       if ((ret = ZSetDestAddr(sin)) != ZERR_NONE) {
 	    Zperr(ret);
@@ -554,10 +552,7 @@ send_stats(notice, sin)
       else
 	sprintf(list[6], "no");
       list[7] = (char *)malloc(64);
-      runtime = time(0) - starttime;
-      tim = gmtime(&runtime);
-      sprintf(list[7], "%d days, %02d:%02d:%02d", tim->tm_yday,
-	      tim->tm_hour, tim->tm_min, tim->tm_sec);
+      sprintf(list[7], "%ld", time(0) - starttime);
       list[8] = (char *)malloc(64);
       sprintf(list[8], "%ld", sbrk(0));
       list[9] = (char *)malloc(32);
