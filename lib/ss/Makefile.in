@@ -6,9 +6,9 @@ datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
 
-includedir=$(prefix)/include
-mandir=$(prefix)/man
-libdir=$(exec_prefix)/lib
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
@@ -21,7 +21,7 @@ RANLIB=@RANLIB@
 COMPILE_ET=@COMPILE_ET@
 
 DEBUG=-O
-CFLAGS=$(DEBUG) -I$(srcdir) -I$(top_srcdir)/h -I$(BUILDTOP)/h -I. @CPPFLAGS@
+CFLAGS=${DEBUG} -I${srcdir} -I${top_srcdir}/h -I${BUILDTOP}/h -I. @CPPFLAGS@
 YFLAGS=-d
 
 OBJS=	ss_err.o data.o help.o error.o execute_cmd.o invocation.o list_rqs.o \
@@ -30,29 +30,29 @@ MKOBJS=	mk_cmds.o utils.o options.o ct.o cmd_tbl.o
 
 all: mk_cmds libss.a
 
-mk_cmds: ss_err.o $(MKOBJS)
-	$(CC) $(LDFLAGS) -o $@ $(MKOBJS) $(LIBS)
+mk_cmds: ss_err.o ${MKOBJS}
+	${CC} ${LDFLAGS} -o $@ ${MKOBJS} ${LIBS}
 
-libss.a: $(OBJS)
-	$(AR) cru $@ $(OBJS)
-	$(RANLIB) $@
+libss.a: ${OBJS}
+	ar cru $@ ${OBJS}
+	${RANLIB} $@
 
-ss_err.c $(BUILDTOP)/h/ss/ss_err.h: ss_err.et
-	$(COMPILE_ET) $(srcdir)/ss_err.et
-	mv ss_err.h $(BUILDTOP)/h/ss/ss_err.h
+ss_err.c ${BUILDTOP}/h/ss/ss_err.h: ss_err.et
+	${COMPILE_ET} ${srcdir}/ss_err.et
+	mv ss_err.h ${BUILDTOP}/h/ss/ss_err.h
 
 std_rqs.c: std_rqs.ct
-	./mk_cmds $(srcdir)/std_rqs.ct
+	./mk_cmds ${srcdir}/std_rqs.ct
 
 check:
 
 install:
 
 clean:
-	rm -f $(OBJS) $(MKOBJS) mk_cmds libss.a ss_err.[ch] std_rqs.c
+	rm -f ${OBJS} ${MKOBJS} mk_cmds libss.a ss_err.[ch] std_rqs.c
 
-$(OBJS) $(MKOBJS): ss_internal.h ss.h $(BUILDTOP)/h/ss/ss_err.h
-$(OBJS) $(MKOBJS): $(top_srcdir)/h/sysdep.h $(BUILDTOP)/h/config.h
+${OBJS} ${MKOBJS}: ss_internal.h ss.h ${BUILDTOP}/h/ss/ss_err.h
+${OBJS} ${MKOBJS}: ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
 
 .PHONY: all check install clean
 

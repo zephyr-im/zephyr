@@ -6,9 +6,9 @@ datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
 
-includedir=$(prefix)/include
-mandir=$(prefix)/man
-libdir=$(exec_prefix)/lib
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
@@ -21,34 +21,34 @@ INSTALL=@INSTALL@
 RANLIB=@RANLIB@
 
 DEBUG=-O
-CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h -I$(srcdir) -I. @CPPFLAGS@
+CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h -I${srcdir} -I. @CPPFLAGS@
 
 OBJS=	com_err.o error_message.o et_name.o init_et.o
 
 all: libcom_err.a compile_et
 
-libcom_err.a: $(OBJS)
-	$(AR) cru $@ $(OBJS)
-	$(RANLIB) $@
+libcom_err.a: ${OBJS}
+	ar cru $@ ${OBJS}
+	${RANLIB} $@
 
 compile_et: compile_et.o error_table.o
-	$(CC) $(LDFLAGS) -o $@ compile_et.o error_table.o $(LIBS)
+	${CC} ${LDFLAGS} -o $@ compile_et.o error_table.o ${LIBS}
 
 error_table.o: et_lex.lex.c
 
 check:
 
 install:
-	$(INSTALL) -m 644 libcom_err.a $(libdir)
-	$(INSTALL) -m 644 $(srcdir)/com_err.h $(includedir)
-	$(INSTALL) -m 644 $(srcdir)/com_err.3 $(mandir)/man3
+	${INSTALL} -m 644 libcom_err.a ${DESTDIR}${libdir}
+	${INSTALL} -m 644 ${srcdir}/com_err.h ${DESTDIR}${includedir}
+	${INSTALL} -m 644 ${srcdir}/com_err.3 ${DESTDIR}${mandir}/man3
 
 clean:
-	rm -f $(OBJS) libcom_err.a compile_et.o error_table.o et_lex.lex.c
+	rm -f ${OBJS} libcom_err.a compile_et.o error_table.o et_lex.lex.c
 	rm -f compile_et
 
-${OBJS} compile_et.o error_table.o: error_table.h $(top_srcdir)/h/sysdep.h
-${OBJS} compile_et.o error_table.o: $(BUILDTOP)/h/config.h
+${OBJS} compile_et.o error_table.o: error_table.h ${top_srcdir}/h/sysdep.h
+${OBJS} compile_et.o error_table.o: ${BUILDTOP}/h/config.h
 com_err.o error_message.o: com_err.h
 
 .PHONY: all check install clean
