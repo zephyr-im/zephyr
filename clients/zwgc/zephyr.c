@@ -119,6 +119,8 @@ static void handle_zephyr_input(notice_handler)
 	}
     }
 }
+
+static int zephyr_inited = 0;
     
 /*
  *
@@ -189,6 +191,8 @@ void zephyr_init(notice_handler)
      */
     mux_add_input_source(ZGetFD(), (void (*)())handle_zephyr_input,
 			 (pointer)notice_handler);
+    zephyr_inited = 1;
+    return;
 }
 
 /*
@@ -199,22 +203,25 @@ void finalize_zephyr() /* <<<>>> */
 {
     string temp;
 
-    /*
-     * Remove the file containing our port # since it is no longer needed:
-     */
-    errno = 0;
-    temp = get_zwgc_port_number_filename();
-    unlink(temp);
-    if (errno) {
-	fprintf(stderr, "zwgc: error while trying to delete %s: ", temp);
-	perror("");
-    }
+    if (zephyr_inited) {
+	/*
+	 * Remove the file containing our port # since it is no longer needed:
+	 */
+	errno = 0;
+	temp = get_zwgc_port_number_filename();
+	unlink(temp);
+	if (errno) {
+	    fprintf(stderr, "zwgc: error while trying to delete %s: ", temp);
+	    perror("");
+	}
 
-    /*
-     * Cancel our subscriptions, unset our location, and close our zephyr
-     * connection:
-     */
-    TRAP( ZCancelSubscriptions(0), "while canceling subscriptions" );
-    TRAP( ZUnsetLocation(), "while unsetting location" );
-    ZClosePort();
+	/*
+	 * Cancel our subscriptions, unset our location, and close our zephyr
+	 * connection:
+	 */
+	TRAP( ZCancelSubscriptions(0), "while canceling subscriptions" );
+	TRAP( ZUnsetLocation(), "while unsetting location" );
+	ZClosePort();
+    }
+    return;
 }
