@@ -45,8 +45,9 @@ static char rcsid_subscr_s_c[] = "$Header$";
  * void subscr_free_list(list)
  *	ZClientList_t *list;
  *
- * void subscr_sendlist(notice, who)
+ * void subscr_sendlist(notice, auth, who)
  *	ZNotice_t *notice;
+ *	int auth;
  *	struct sockaddr_in *who;
  *
  * Code_t subscr_send_subs(client)
@@ -383,8 +384,9 @@ ZClientList_t *list;
  */
 
 void
-subscr_sendlist(notice, who)
+subscr_sendlist(notice, auth, who)
 ZNotice_t *notice;
+int auth;
 struct sockaddr_in *who;
 {
 	ZClient_t *client = client_which_client(who, notice);
@@ -397,6 +399,16 @@ struct sockaddr_in *who;
 
 	if (!client || !client->zct_subs) {
 		clt_ack(notice, who, NOT_FOUND);
+		return;
+	}
+
+	/* check authenticity here.  The user must be authentic to get
+	   a list of subscriptions. If he is not subscribed to anything,
+	   the above test hits, and he gets a response indicating no
+	   subscriptions */
+
+	if (!auth) {
+		clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}
 
@@ -470,18 +482,22 @@ ZClient_t *client;
 	register int i = 0;
 	register ZSubscr_t *sub;
 	char buf[512], buf2[512], *lyst[7 * NUM_FIELDS];
-	int num = 1;
+	int num = 0;
 	Code_t retval;
 
 	zdbug((LOG_DEBUG, "send_subs"));
 	(void) sprintf(buf2, "%d",ntohs(client->zct_sin.sin_port));
 
-	lyst[0] = buf2;
+	lyst[num++] = buf2;
 
-	if (ZMakeAscii(buf, sizeof(buf), client->zct_cblock,
-				 sizeof(C_Block)) != ZERR_NONE)
-		lyst[++num] = buf;
-
+	if ((retval = ZMakeAscii(buf, sizeof(buf), client->zct_cblock,
+				 sizeof(C_Block))) != ZERR_NONE) {
+		zdbug((LOG_DEBUG,"zmakeascii failed: %s",
+		       error_message(retval)));
+	} else {
+		lyst[num++] = buf;
+		zdbug((LOG_DEBUG,"cblock %s",buf));
+	}		
 	if ((retval = bdump_send_list_tcp(SERVACK, bdump_sin.sin_port,
 					  ZEPHYR_ADMIN_CLASS,
 					  num > 1 ? "CBLOCK" : "",
@@ -493,7 +509,7 @@ ZClient_t *client;
 	}
 	
 	if (!client->zct_subs)
-		return;
+		return(ZERR_NONE);
 	for (sub = client->zct_subs->q_forw;
 	     sub != client->zct_subs;
 	     sub = sub->q_forw) {
