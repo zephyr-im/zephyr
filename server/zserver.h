@@ -220,7 +220,7 @@ extern char *pktypes[];			/* names of the packet types */
 /* useful defines */
 
 /* client defines */
-#define	REXMIT_SECS	((long) 10)	/* rexmit delay on normal notices */
+#define	REXMIT_SECS	((long) 15)	/* rexmit delay on normal notices */
 #define	NUM_REXMITS	(5)		/* number of rexmits */
 
 /* hostmanager defines */
@@ -285,13 +285,13 @@ extern char *pktypes[];			/* names of the packet types */
 #define	MATCHALL_CLASS	"zmatch_all"
 
 /* ACL's for pre-registered classes */
-#define	ZEPHYR_ACL_DIR	"/site/zephyr/"
+#define	ZEPHYR_ACL_DIR	"/usr/athena/lib/zephyr/"
 #define	ZEPHYR_CTL_ACL	"zctl.acl"
 #define	LOGIN_ACL	"login.acl"
 #define	LOCATE_ACL	"locate.acl"
 #define	MATCH_ALL_ACL	"matchall.acl"
-#define	ZEPHYR_SRVTAB	"/site/zephyr/srvtab"
-#define	ZEPHYR_TKFILE	"/site/zephyr/ztkts"
+#define	ZEPHYR_SRVTAB	"/usr/athena/lib/zephyr/srvtab"
+#define	ZEPHYR_TKFILE	"/usr/athena/lib/zephyr/ztkts"
 
 /* debugging macros */
 #ifdef DEBUG
