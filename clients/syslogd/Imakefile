@@ -15,8 +15,8 @@ SRCS = syslogd.c
 OBJS = syslogd.o
 HDRS= syslog.h
 
-TSRCS= syslog.c systest.c
-TOBJS= syslog.o systest.o
+TSRCS= logger.c syslog.c 
+TOBJS= logger.o syslog.o
 
 SRCDIR= ${SRCTOP}/clients/syslogd
 CODE= ${SRCS} ${HDRS} ${TSRCS} Imakefile
@@ -27,6 +27,8 @@ DEFINES = -DCOMPAT42
 
 normal_obj_rule()
 
-genutil(syslogtest, $(TOBJS),,)
+#ifdef SYSLOG_COMPAT42
+genutil(logger, $(TOBJS),,)
+#endif
 
 program(syslogd,$(OBJS),,$(LIBS),$(USRETCDIR))
