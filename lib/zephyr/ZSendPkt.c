@@ -37,7 +37,7 @@ Code_t ZSendPacket(packet,len)
 			return (retval);
 
 	if ((retval = Z_InternalParseNotice(packet,len,&notice,(int *)0,
-				   (struct sockaddr_in *)0),(int (*)())0)
+				   (struct sockaddr_in *)0,(int (*)())0))
 	    != ZERR_NONE)
 		return (retval);
 

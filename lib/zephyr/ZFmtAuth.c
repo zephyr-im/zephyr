@@ -23,39 +23,37 @@ Code_t ZFormatAuthenticNotice(notice,buffer,buffer_len,len,session)
 	int		*len;
 	C_Block		session;
 {
+	ZNotice_t newnotice;
 	char *ptr;
 	int retval,hdrlen;
 
-	notice->z_auth = 1;
-	notice->z_authent_len = 0;
-	notice->z_ascii_authent = (char *)"";
+	newnotice = *notice;
+	newnotice.z_auth = 1;
+	newnotice.z_authent_len = 0;
+	newnotice.z_ascii_authent = (char *)"";
 	
-	if ((retval = Z_FormatRawHeader(notice,buffer,buffer_len,&hdrlen))
+	if ((retval = Z_FormatRawHeader(&newnotice,buffer,buffer_len,&hdrlen))
 	    != ZERR_NONE)
 		return (retval);
 
 	for (hdrlen--;buffer[hdrlen-1];hdrlen--)
 		;
 	
-/*	if (result = get_credentials(SERVER_SERVICE,SERVER_INSTANCE,
-			    __Zephyr_realm,&cred))
-		return (result+krb_err_base);
-*/
-	notice->z_checksum = (ZChecksum_t)quad_cksum(buffer,NULL,hdrlen,0,
+	newnotice.z_checksum = (ZChecksum_t)quad_cksum(buffer,NULL,hdrlen,0,
 						     session);
 
-	if ((retval = Z_FormatRawHeader(notice,buffer,buffer_len,&hdrlen))
+	if ((retval = Z_FormatRawHeader(&newnotice,buffer,buffer_len,&hdrlen))
 	    != ZERR_NONE)
 		return (retval);
 
 	ptr = buffer+hdrlen;
 
-	if (notice->z_message_len+hdrlen > buffer_len)
+	if (newnotice.z_message_len+hdrlen > buffer_len)
 		return (ZERR_PKTLEN);
 
-	bcopy(notice->z_message,ptr,notice->z_message_len);
+	bcopy(newnotice.z_message,ptr,newnotice.z_message_len);
 
-	*len = hdrlen+notice->z_message_len;
+	*len = hdrlen+newnotice.z_message_len;
 
 	if (*len > Z_MAXPKTLEN)
 		return (ZERR_PKTLEN);
