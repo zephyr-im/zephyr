@@ -42,15 +42,14 @@ int ZCheckAuthentication(notice, from)
     if (!notice->z_auth)
 	return (ZAUTH_NO);
 	
-    if (notice->z_authent_len <= 0)	/* bogus length */
-	return(ZAUTH_FAILED);
-
     if (__Zephyr_server) {
+	if (notice->z_authent_len <= 0)	/* bogus length */
+	    return(ZAUTH_FAILED);
 	if (ZReadAscii(notice->z_ascii_authent, 
 		       strlen(notice->z_ascii_authent)+1, 
 		       (unsigned char *)authent.dat, 
 		       notice->z_authent_len) == ZERR_BADFIELD) {
-	    return (ZAUTH_NO);
+	    return (ZAUTH_FAILED);
 	}
 	authent.length = notice->z_authent_len;
 	result = krb_rd_req(&authent, SERVER_SERVICE, 
@@ -62,7 +61,7 @@ int ZCheckAuthentication(notice, from)
 		(void) sprintf(srcprincipal, "%s%s%s@%s", dat.pname, 
 			       dat.pinst[0]?".":"", dat.pinst, dat.prealm);
 		if (strcmp(srcprincipal, notice->z_sender))
-			return (ZAUTH_NO);
+			return (ZAUTH_FAILED);
 		return(ZAUTH_YES);
 	} else
 		return (ZAUTH_FAILED);	/* didn't decode correctly */
