@@ -90,7 +90,7 @@ access_check(sender, acl, accesstype)
 	syslog(LOG_ERR, "unknown access type %d", (int) accesstype);
 	return 0;
     }
-    if (!((acl->acl_types) & flag)) /* no acl ==> no restriction */
+    if (!(acl->acl_types & flag)) /* no acl ==> no restriction */
 	return 1;
     sprintf(buf, "%s/%s-%s.acl", acl_dir, prefix, acl->acl_filename);
     /*
