@@ -14,9 +14,9 @@
 #include <zephyr/mit-copyright.h>
 
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) $Id$";
+char version[] = "Zephyr Server (DEBUG) $Revision$";
 #else
-char version[] = "Zephyr Server $Id$";
+char version[] = "Zephyr Server $Revision$";
 #endif DEBUG
 #ifndef lint
 #ifndef SABER
