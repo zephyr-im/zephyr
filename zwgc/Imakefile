@@ -9,7 +9,11 @@
 /**/#
 
 SUBDIRS= Memory String Dictionary
-LIBS = $(X11_LIB) $(ZEPHYR_LIB) $(KRB_LIB) $(DES_LIB) $(COMERR_LIB) -ltermcap
+#ifdef macII
+LIBS2= -lc -lPW
+#endif
+LIBS = $(X11_LIB) $(ZEPHYR_LIB) $(KRB_LIB) $(DES_LIB) $(COMERR_LIB) -ltermcap \
+	$(LIBS2)
 LINTLIBS = $(X11_LINTLIB) $(ZEPHYR_LINTLIB) $(KRB_LINTLIB) $(DES_LINTLIB) \
 	$(COMERR_LINTLIB) -ltermcap
 SRCS = parser.y lexer.c node.c exec.c buffer.c main.c zephyr.c X_driver.c\
