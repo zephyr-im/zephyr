@@ -33,6 +33,6 @@ SHELLSCRIPTS= zlogout zhide zwgc
 install_shell_scripts(SHELLSCRIPTS, $(CLIENTDIR))
 
 install::
-	rm -f ${DESTDIR}/usr/athena/zlogin
-	ln -s zlogout ${DESTDIR}/usr/athena/zlogin
+	rm -f ${DESTDIR}${CLIENTDIR}/zlogin
+	ln -s zlogout ${DESTDIR}${CLIENTDIR}/zlogin
 #endif
