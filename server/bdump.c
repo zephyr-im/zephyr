@@ -28,7 +28,6 @@ static char rcsid_bdump_c[] = "$Id$";
 /* inconsistent header files... */
 #ifdef SignalIgnore
 #undef SIG_IGN
-fubar
 #define SIG_IGN SignalIgnore
 #undef SIG_DFL
 #define SIG_DFL SignalDefault
