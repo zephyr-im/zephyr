@@ -739,6 +739,7 @@ ZServerDesc_t *server;
 				       error_message(retval));
 				return(retval);
 			}
+#ifdef KERBEROS
 			bzero((caddr_t) client->zct_cblock,
 					      sizeof(C_Block));
 			if (*notice.z_class_inst) {
@@ -753,6 +754,7 @@ ZServerDesc_t *server;
 					       cp);
 				}
 			}
+#endif KERBEROS
 		} else if (!strcmp(notice.z_opcode, CLIENT_SUBSCRIBE)) { 
 			/* a subscription packet */
 			if (!client) {
