@@ -16,39 +16,53 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZParseNotice(buffer,len,notice,auth)
+Code_t ZParseNotice(buffer,len,notice,auth,from)
 	ZPacket_t	buffer;
 	int		len;
 	ZNotice_t	*notice;
 	int		*auth;
+	struct		sockaddr_in *from;
 {
-	char *ptr;
+	char *ptr,*cksum;
+	int result;
 	unsigned int temp[3];
-
+	AUTH_DAT dat;
+	KTEXT_ST authent;
+	Key_schedule sess_sched;
+	ZChecksum_t our_checksum;
+	CREDENTIALS cred;
+	
 	ptr = buffer;
 	
-	if (Z_ReadField(&ptr,temp,1))
+	if (ZReadAscii(ptr,temp,sizeof(int)) == ZERR_BADFIELD)
 		return (ZERR_BADPKT);
+	ptr += strlen(ptr)+1;
 	
 	if (*temp != ZVERSION)
 		return (ZERR_VERS);
 
-	if (Z_ReadField(&ptr,temp,1))
+	if (ZReadAscii(ptr,temp,sizeof(int)) == ZERR_BADFIELD)
 		return (ZERR_BADPKT);
 	notice->z_kind = (ZNotice_Kind_t)*temp;
-
-	if (Z_ReadField(&ptr,temp,1))
-		return (ZERR_BADPKT);
-	notice->z_port = (short)*temp;
+	ptr += strlen(ptr)+1;
 	
-	if (Z_ReadField(&ptr,temp,2))
-		return (ZERR_BADPKT);
-	bcopy(temp,notice->z_checksum,sizeof(ZChecksum_t));
-
-	if (Z_ReadField(&ptr,temp,3))
+	if (ZReadAscii(ptr,temp,sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
 		return (ZERR_BADPKT);
 	bcopy(temp,&notice->z_uid,sizeof(ZUnique_Id_t));
+	ptr += strlen(ptr)+1;
+	
+	if (ZReadAscii(ptr,temp,sizeof(u_short)) == ZERR_BADFIELD)
+		return (ZERR_BADPKT);
+	notice->z_port = (u_short)*temp;
+	ptr += strlen(ptr)+1;
+	
+	if (ZReadAscii(ptr,temp,sizeof(int)) == ZERR_BADFIELD)
+		return (ZERR_BADPKT);
+	notice->z_auth = *temp;
+	ptr += strlen(ptr)+1;
 
+	notice->z_ascii_authent = ptr;
+	ptr += strlen(ptr)+1;
 	notice->z_class = ptr;
 	ptr += strlen(ptr)+1;
 	notice->z_class_inst = ptr;
@@ -60,37 +74,47 @@ Code_t ZParseNotice(buffer,len,notice,auth)
 	notice->z_recipient = ptr;
 	ptr += strlen(ptr)+1;
 
+	cksum = ptr;
+	
+	if (ZReadAscii(ptr,&notice->z_checksum,sizeof(ZChecksum_t))
+	    == ZERR_BADFIELD)
+		return (ZERR_BADPKT);
+	ptr += strlen(ptr)+1;
+
 	notice->z_message = (caddr_t) ptr;
 	notice->z_message_len = len-(ptr-buffer);
 
-	*auth = 0;
-
-	return (ZERR_NONE);
-}
-
-int Z_ReadField(ptr,temp,num)
-	char **ptr;
-	int *temp;
-	int num;
-{
-	int i;
-	char *space;
-
-	for (i=0;i<num;i++) {
-		space = (char *)index(*ptr,' ');
-		if ((*ptr)[0] != '0' || (*ptr)[1] != 'x')
-			return (1);
-		sscanf(*ptr+2,"%x",temp+i);
-		if (space)
-			*ptr = space+1;
-		else
-			*ptr += strlen(*ptr);
-		if (!*ptr && i != num-1)
-			return (1);
+	if (!auth)
+		return (ZERR_NONE);
+	if (!notice->z_auth) {
+		*auth = 0;
+		return (ZERR_NONE);
+	}
+	
+	if (__Zephyr_server) {
+		if (ZReadAscii(notice->z_ascii_authent,&authent,
+			       notice->z_authent_len) == ZERR_BADFIELD) {
+			*auth = 0;
+			return (ZERR_NONE);
+		}
+		result = rd_ap_req(&authent,SERVER_SERVICE,
+				   SERVER_INSTANCE,from->sin_addr.s_addr,
+				   dat,SERVER_SRVTAB);
+		*auth = (result == RD_AP_OK);
+		return (ZERR_NONE);
 	}
 
-	if (**ptr)
-		return (1);
-	(*ptr)++;
-	return (0);
+	if (result = get_credentials(SERVER_SERVICE,SERVER_INSTANCE,
+			    __Zephyr_realm,&cred))
+		return (result+krb_err_base);
+
+/*	if (result = key_sched(cred.session,sess_sched))
+		return (result+krb_err_base);
+*/
+	our_checksum = (ZChecksum_t)quad_cksum(buffer,NULL,cksum-buffer,0,
+					       cred.session);
+
+	*auth = (our_checksum == notice->z_checksum);
+	
+	return (ZERR_NONE);
 }
