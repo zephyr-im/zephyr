@@ -90,6 +90,7 @@ typedef struct _Destlist Destlist;
 typedef struct _ZRealm ZRealm;
 typedef struct _ZRealmname ZRealmname;
 typedef enum _ZRealm_state ZRealm_state;
+typedef struct _ZRealm_server ZRealm_server;
 typedef struct _Client Client;
 typedef struct _Triplet Triplet;
 typedef enum _Server_state Server_state;
@@ -110,10 +111,14 @@ struct _Destlist {
     struct _Destlist	*next, **prev_p;
 };
 
+struct _ZRealm_server {
+    struct sockaddr_in	addr;		/* server's address */
+};
+
 struct _ZRealm {
     char name[REALM_SZ];
     int count;
-    struct sockaddr_in *addrs;
+    ZRealm_server *srvrs;
     int idx;				/* which server we are connected to */
     Destlist *subs;                     /* what their clients sub to */
     Destlist *remsubs;                  /* our subs on their end */

@@ -762,7 +762,7 @@ send_stats(struct sockaddr_in *who)
     }
     for (realm = otherrealms, i = 0; i < nrealms ; i++, realm++) {
       sprintf(buf, "%s(%s)/%s", realm->name,
-	      inet_ntoa((realm->addrs[realm->idx]).sin_addr),
+	      inet_ntoa((realm->srvrs[realm->idx].addr).sin_addr),
 	      rlm_states[(int) realm->state]);
       responses[num_resp++] = strsave(buf);
     }

@@ -79,12 +79,35 @@ static int
 realm_get_idx_by_addr(ZRealm *realm,
 		      struct sockaddr_in *who)
 {
-    struct sockaddr_in *addr;
+    ZRealm_server *srvr;
     int b;
 
     /* loop through the realms */
-    for (addr = realm->addrs, b = 0; b < realm->count; b++, addr++)
-	if (addr->sin_addr.s_addr == who->sin_addr.s_addr)
+    for (srvr = realm->srvrs, b = 0; b < realm->count; b++, srvr++)
+	if (srvr->addr.sin_addr.s_addr == who->sin_addr.s_addr)
+	    return(b);
+
+    return 0;
+}
+
+static int
+realm_next_idx_by_idx(realm, idx)
+    ZRealm *realm;
+    int idx;
+{
+    ZRealm_server *srvr;
+    int a, b;
+
+    /* loop through the servers */
+    srvr = realm->srvrs; a = idx;
+    while (a > 0) { a--; srvr++; }
+
+    for (srvr, b = idx; b < realm->count; b++, srvr++)
+	return(b);
+
+    /* recycle */
+    if (idx != 0)
+	for (srvr = realm->srvrs, b = 0; b < idx; b++, srvr++)
 	    return(b);
 
     return 0;
@@ -281,7 +304,7 @@ ZRealm *
 realm_which_realm(struct sockaddr_in *who)
 {
     ZRealm *realm;
-    struct sockaddr_in *addr;
+    ZRealm_server *srvr;
     int a, b;
 
     if (who->sin_port != srv_addr.sin_port)
@@ -290,8 +313,8 @@ realm_which_realm(struct sockaddr_in *who)
     /* loop through the realms */
     for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
 	/* loop through the addresses for the realm */
-	for (addr = realm->addrs, b = 0; b < realm->count; b++, addr++)
-	    if (addr->sin_addr.s_addr == who->sin_addr.s_addr)
+	for (srvr = realm->srvrs, b = 0; b < realm->count; b++, srvr++)
+	    if (srvr->addr.sin_addr.s_addr == who->sin_addr.s_addr)
 		return(realm);
 
     return 0;
@@ -454,6 +477,7 @@ void
 realm_init(void)
 {
     Client *client;
+    ZRealm_server *srvr;
     ZRealmname *rlmnames;
     ZRealm *rlm;
     int ii, jj, found;
@@ -477,6 +501,7 @@ realm_init(void)
 	syslog(LOG_CRIT, "malloc failed in realm_init");
 	abort();
     }
+    memset(otherrealms, 0, (nrealms * sizeof(ZRealm)));
 
     for (ii = 0; ii < nrealms; ii++) {
 	rlm = &otherrealms[ii];
@@ -488,6 +513,7 @@ realm_init(void)
 	    syslog(LOG_CRIT, "malloc failed in realm_init");
 	    abort();
 	}
+
 	/* convert names to addresses */
 	found = 0;
 	for (jj = 0; jj < rlmnames[ii].nused; jj++) {
@@ -503,17 +529,18 @@ realm_init(void)
 	    free(rlmnames[ii].servers[jj]);
 	}
 	rlm->count = found;
-	rlm->addrs = (struct sockaddr_in *)malloc(found *
-						  sizeof (struct sockaddr_in));
-	if (!rlm->addrs) {
+	rlm->srvrs = (ZRealm_server *)malloc(found * sizeof(ZRealm_server));
+	if (!rlm->srvrs) {
 	    syslog(LOG_CRIT, "malloc failed in realm_init");
 	    abort();
 	}
-	for (jj = 0; jj < rlm->count; jj++) {
-	    rlm->addrs[jj].sin_family = AF_INET;
+	memset(rlm->srvrs, 0, (found * sizeof(ZRealm_server)));
+
+	for (srvr = rlm->srvrs, jj = 0; jj < rlm->count; jj++, srvr++) {
+	    srvr->addr.sin_addr = addresses[jj];
 	    /* use the server port */
-	    rlm->addrs[jj].sin_port = srv_addr.sin_port;
-	    rlm->addrs[jj].sin_addr = addresses[jj];
+	    srvr->addr.sin_port = srv_addr.sin_port;
+	    srvr->addr.sin_family = AF_INET;
 	}
 	client = (Client *) malloc(sizeof(Client));
 	if (!client) {
@@ -540,7 +567,8 @@ realm_init(void)
 	client->addr.sin_addr.s_addr = 0;
 
 	rlm->client = client;
-	rlm->idx = (rlm->count) ? random() % rlm->count : 0;
+	rlm->idx = (rlm->count) ?
+	    realm_next_idx_by_idx(rlm, (random() % rlm->count)) : 0;
 	rlm->subs = NULL;
 	rlm->remsubs = NULL;
 	rlm->child_pid = 0;
@@ -815,13 +843,17 @@ realm_new_server(struct sockaddr_in *sin,
 	    /* Not exactly */
 	    if (!rlm || (rlm != realm))
 		return ZSRV_NORLM;
-	    realm->idx = realm_get_idx_by_addr(realm, &sinaddr);
+	    /* Validate the hint */
+	    realm->idx =
+		realm_next_idx_by_idx(realm, realm_get_idx_by_addr(realm,
+								   &sinaddr));
 	} else {
-	    realm->idx = (realm->idx + 1) % realm->count;
+	    realm->idx = realm_next_idx_by_idx(realm, (realm->idx + 1) %
+					       realm->count);
 	}
-	zdbug((LOG_DEBUG, "rlm_new_srv: switched servers (%s)", inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
+	zdbug((LOG_DEBUG, "rlm_new_srv: switched servers (%s)", inet_ntoa((realm->srvrs[realm->idx].addr).sin_addr)));
     } else {
-      zdbug((LOG_DEBUG, "rlm_new_srv: not switching servers (%s)", inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
+      zdbug((LOG_DEBUG, "rlm_new_srv: not switching servers (%s)", inet_ntoa((realm->srvrs[realm->idx].addr).sin_addr)));
     }
     return 0;
 }
@@ -900,7 +932,7 @@ realm_sendit(ZNotice_t *notice,
     }
 
     /* now send */
-    if ((retval = ZSetDestAddr(&realm->addrs[realm->idx])) != ZERR_NONE) {
+    if ((retval = ZSetDestAddr(&realm->srvrs[realm->idx].addr)) != ZERR_NONE) {
 	syslog(LOG_WARNING, "rlm_sendit set addr: %s",
 	       error_message(retval));
 	free(pack);
@@ -989,17 +1021,18 @@ rlm_rexmit(void *arg)
 	(nackpacket->rexmits &&
 	 !((nackpacket->rexmits+1) % (NUM_REXMIT_TIMES/3))))
     {
-	realm->idx = (realm->idx + 1) % realm->count;
+	realm->idx = realm_next_idx_by_idx(realm, (realm->idx + 1) %
+					   realm->count);
 	zdbug((LOG_DEBUG, "rlm_rexmit: %s switching servers:%d (%s)",
 	       realm->name, realm->idx,
-	       inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
+	       inet_ntoa((realm->srvrs[realm->idx].addr).sin_addr)));
     }
 
     /* throttle back if it looks like the realm is down */
     if ((realm->state != REALM_DEAD) ||
 	((nackpacket->rexmits % (realm->count+1)) == 1)) {
 	/* do the retransmit */
-	retval = ZSetDestAddr(&realm->addrs[realm->idx]);
+	retval = ZSetDestAddr(&realm->srvrs[realm->idx].addr);
 	if (retval != ZERR_NONE) {
 	    syslog(LOG_WARNING, "rlm_rexmit set addr: %s",
 		   error_message(retval));
@@ -1012,10 +1045,10 @@ rlm_rexmit(void *arg)
 	/* no per-server nack queues for foreign realms yet, doesn't matter */
 	nackpacket->dest.rlm.rlm_srv_idx = realm->idx;
 	zdbug((LOG_DEBUG, "rlm_rexmit(%s): send to %s", realm->name,
-	       inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
+	       inet_ntoa((realm->srvrs[realm->idx].addr).sin_addr)));
     } else {
 	zdbug((LOG_DEBUG, "rlm_rexmit(%s): not sending to %s", realm->name,
-	       inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
+	       inet_ntoa((realm->srvrs[realm->idx].addr).sin_addr)));
     }
 
     /* reset the timer */
@@ -1025,7 +1058,7 @@ rlm_rexmit(void *arg)
 		      rlm_rexmit, nackpacket);
     if (rexmit_times[nackpacket->rexmits%NUM_REXMIT_TIMES] == -1) {
 	zdbug((LOG_DEBUG, "rlm_rexmit(%s): would send at -1 to %s",
-	       realm->name, inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
+	       realm->name, inet_ntoa((realm->srvrs[realm->idx].addr).sin_addr)));
     }
 
     return;
@@ -1040,7 +1073,7 @@ realm_dump_realms(FILE *fp)
 	(void) fprintf(fp, "%d:%s\n", ii, otherrealms[ii].name);
 	for (jj = 0; jj < otherrealms[ii].count; jj++) {
 	    (void) fprintf(fp, "\t%s\n",
-			   inet_ntoa(otherrealms[ii].addrs[jj].sin_addr));
+			   inet_ntoa(otherrealms[ii].srvrs[jj].addr.sin_addr));
 	}
 	/* dump the subs */
 	subscr_dump_subs(fp, otherrealms[ii].subs);
@@ -1115,7 +1148,7 @@ realm_sendit_auth(ZNotice_t *notice,
 	       error_message(retval));
 
     if (!retval) {
-	retval = ZSetDestAddr(&realm->addrs[realm->idx]);
+	retval = ZSetDestAddr(&realm->srvrs[realm->idx].addr);
 	if (retval)
 	    syslog(LOG_WARNING, "rlm_sendit_auth: ZSetDestAddr: %s",
 		   error_message(retval));
