@@ -4,7 +4,7 @@ Kerberos IV srvtab for the principal zephyr.zephyr@YOUR.REALM.NAME.
 Doing this with the MIT Kerberos V server is a somewhat convoluted process, 
 but here we go:
 
-[Note that this presumes that you have kerberos administrator priviliges, if
+[Note that this presumes that you have Kerberos administrator privileges, if
 you don't, find someone who does.]
 
 At the kadmin prompt, type
@@ -25,6 +25,6 @@ wst /etc/zephyr/srvtab
 q
 
 You now want to make sure that the /tmp/keytab file is written-over and
-removed.  Fortunately, you have kerberos, you have kdestroy.
+removed.  Fortunately, you have Kerberos, you have kdestroy.
 
 env KRB5CCNAME=/tmp/keytab kdestroy
