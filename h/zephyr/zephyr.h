@@ -5,12 +5,12 @@
  *
  *	$Source$
  *	$Author$
+ *	$Id$
  *
  *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h".
  */
-/* $Header$ */
 
 #ifndef __ZEPHYR_H__
 #define __ZEPHYR_H__
@@ -218,7 +218,7 @@ extern "C" {
 #define ZERR_NONE		0
 
     /* Hostmanager wait time (in secs) */
-#define HM_TIMEOUT		30
+#define HM_TIMEOUT		5
 
 #define ZAUTH (ZMakeAuthentication)
 #define ZNOAUTH ((Z_AuthProc)0)
@@ -237,7 +237,7 @@ extern "C" {
 
     const int ZERR_NONE = 0;
 
-    const int HM_TIMEOUT = 30;
+    const int HM_TIMEOUT = 5;
 
     const Z_AuthProc ZAUTH = &ZMakeAuthentication;
     const Z_AuthProc ZNOAUTH = 0;
