@@ -5,6 +5,7 @@ exec_prefix=@exec_prefix@
 datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
+lsbindir=@lsbindir@
 
 includedir=${prefix}/include
 mandir=${prefix}/man
@@ -21,7 +22,7 @@ INSTALL=@INSTALL@
 INSTANTIATE=${srcdir}/instantiate
 
 DEBUG=-O
-CFLAGS=@CPPAFLAGS@ ${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
+CFLAGS=${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h -I${srcdir} -I. @X_CFLAGS@ @CPPFLAGS@
 YFLAGS=-d
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @X_LIBS@ @LDFLAGS@

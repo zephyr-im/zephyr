@@ -5,6 +5,7 @@ exec_prefix=@exec_prefix@
 datadir=@datadir@
 confdir=@confdir@
 sbindir=@sbindir@
+lsbindir=@lsbindir@
 
 includedir=${prefix}/include
 mandir=${prefix}/man
@@ -20,7 +21,7 @@ INSTALL=@INSTALL@
 MK_CMDS=@MK_CMDS@
 
 DEBUG=-O
-CFLAGS=@CPPFLAGS@ ${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@
+CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ @CPPFLAGS@
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @SS_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr -lss @LIBS@ -lcom_err
 
