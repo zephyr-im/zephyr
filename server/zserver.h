@@ -7,9 +7,9 @@
  *
  *	$Source$
  *	$Author$
- *	$Header$
+ *	$Zephyr: /mit/zephyr/src/server/RCS/zserver.h,v 1.34 91/03/08 12:53:24 raeburn Exp $
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -291,6 +291,16 @@ enum ZSentType {
 	NOT_FOUND			/* user not found for uloc */
 };
 
+class SignalBlock {
+    int old_mask;
+public:
+    SignalBlock (int mask) {
+	old_mask = sigblock (mask);
+    }
+    ~SignalBlock () {
+	(void) sigsetmask (old_mask);
+    }
+};
 const int dump_masks = sigmask (SIGFPE) | sigmask (SIGEMT);
 
 /* useful... */
@@ -380,8 +390,10 @@ extern void hostm_lose_ignore(ZClient_t *client);
 extern void hostm_renumber_servers (int *);
 
 /* found in kstuff.c */
+#ifdef KERBEROS
 extern int GetKerberosData (int, struct in_addr, AUTH_DAT*, char*, char*);
 extern Code_t SendKerberosData (int, KTEXT, char*, char*);
+#endif
 
 /* found in server.c */
 extern void server_timo(void *which);
