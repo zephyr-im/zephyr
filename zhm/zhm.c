@@ -29,6 +29,10 @@ static char rcsid_hm_c[] = "$Id$";
 #include <hesiod.h>
 #endif /* HESIOD */
 
+#ifdef macII
+#define srandom srand48
+#endif
+
 #ifndef PIDFILE
 #define	PIDFILE	"/etc/athena/zhm.pid"
 #endif /* PIDFILE */
