@@ -417,28 +417,42 @@ struct sockaddr_in *who;
 	ZNotice_t reply;
 	ZPacket_t reppacket;
 	int packlen, i, found = 0;
-	char **answer;
+	char **answer = (char **) NULL;
 
-	if (!client || !client->zct_subs) {
-		clt_ack(notice, who, NOT_FOUND);
-		return;
-	}
+	if (client && client->zct_subs) {
 
-	/* check authenticity here.  The user must be authentic to get
-	   a list of subscriptions. If he is not subscribed to anything,
-	   the above test hits, and he gets a response indicating no
-	   subscriptions */
+		/* check authenticity here.  The user must be authentic to get
+		   a list of subscriptions. If he is not subscribed to
+		   anything, the above test fails, and he gets a response
+		   indicating no subscriptions */
 
-	if (!auth) {
-		clt_ack(notice, who, AUTH_FAILED);
-		return;
-	}
+		if (!auth) {
+			clt_ack(notice, who, AUTH_FAILED);
+			return;
+		}
 
-	for (subs = client->zct_subs->q_forw;
-	     subs != client->zct_subs;
-	     subs = subs->q_forw, found++);
+		for (subs = client->zct_subs->q_forw;
+		     subs != client->zct_subs;
+		     subs = subs->q_forw, found++);
 		
-	/* found is now the number of subscriptions */
+		/* found is now the number of subscriptions */
+
+		/* coalesce the subscription information into a list of
+		   char *'s */
+		if ((answer = (char **) xmalloc(found * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
+			syslog(LOG_ERR, "subscr no mem(answer)");
+			found = 0;
+		} else
+			for (i = 0, subs = client->zct_subs->q_forw;
+			     i < found ;
+			     i++, subs = subs->q_forw) {
+				answer[i*NUM_FIELDS] = subs->zst_class;
+				answer[i*NUM_FIELDS + 1] = subs->zst_classinst;
+				answer[i*NUM_FIELDS + 2] = subs->zst_recipient;
+			}
+	}
+	/* note that when there are no subscriptions, found == 0, so 
+	   we needn't worry about answer being NULL */
 
 	reply = *notice;
 	reply.z_kind = SERVACK;
@@ -446,19 +460,6 @@ struct sockaddr_in *who;
 	reply.z_auth = 0;
 
 	packlen = sizeof(reppacket);
-
-	/* coalesce the subscription information into a list of char *'s */
-	if ((answer = (char **) xmalloc(found * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
-		syslog(LOG_ERR, "subscr no mem(answer)");
-		found = 0;
-	} else
-		for (i = 0, subs = client->zct_subs->q_forw;
-		     i < found ;
-		     i++, subs = subs->q_forw) {
-			answer[i*NUM_FIELDS] = subs->zst_class;
-			answer[i*NUM_FIELDS + 1] = subs->zst_classinst;
-			answer[i*NUM_FIELDS + 2] = subs->zst_recipient;
-		}
 
 	/* if it's too long, chop off one at a time till it fits */
 	while ((retval = ZFormatRawNoticeList(&reply,
