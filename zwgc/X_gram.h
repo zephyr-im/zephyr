@@ -20,6 +20,7 @@
 #define x_gram_TYPE
 
 #include <X11/Xlib.h>
+#include <sys/time.h>
 
 typedef struct _xblock {
    unsigned long fgcolor;
@@ -37,6 +38,7 @@ typedef struct _x_gram {
    char *text;
    struct _x_gram *below,*above;
    Window w;
+   struct timeval can_die;
 } x_gram;
 
 typedef struct _xauxblock {
