@@ -488,8 +488,7 @@ acl_exact_match(acl, principal)
 }
 
 /* Returns nonzero if it can be determined that acl contains principal */
-/* Recognizes wildcards in acl of the form
-   name.*@realm, *.*@realm, and *.*@* */
+/* Recognizes wildcards in acl. */
 int
 acl_check(acl, principal)
     char *acl;
