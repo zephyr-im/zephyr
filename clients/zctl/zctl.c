@@ -13,7 +13,13 @@
 
 #include <sysdep.h>
 #include <zephyr/zephyr.h>
+#ifdef HAVE_SS_SS_H
 #include <ss/ss.h>
+#else
+# ifdef HAVE_KRB5_SS_H
+# include <krb5/ss.h>
+# endif
+#endif
 #include <com_err.h>
 #include <pwd.h>
 #include <netdb.h>

@@ -42,7 +42,6 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, phdr_len)
     char *krealm, *cksum_start, *cstart, *cend;
     ZChecksum_t checksum;
     CREDENTIALS cred;
-    extern unsigned long des_quad_cksum();
 
     if (notice->z_dest_galaxy && *notice->z_dest_galaxy) {
 	for (i=0; i<__ngalaxies; i++) {

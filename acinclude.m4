@@ -92,8 +92,16 @@ AC_DEFUN(ATHENA_UTIL_COM_ERR,
 	[com_err="$withval"], [com_err=yes])
 if test "$com_err" != no; then
 	if test "$com_err" != yes; then
-		CPPFLAGS="$CPPFLAGS -I$com_err/include"
+		if test -f $com_err/include/krb5/com_right.h; then
+			CPPFLAGS="$CPPFLAGS -I$com_err/include/krb5"
+		else
+			CPPFLAGS="$CPPFLAGS -I$com_err/include"
+		fi
 		LDFLAGS="$LDFLAGS -L$com_err/lib"
+	else
+		if test -f /usr/include/krb5/com_right.h; then
+			CPPFLAGS="$CPPFLAGS -I/usr/include/krb5"
+		fi
 	fi
 	AC_CHECK_LIB(com_err, com_err, :,
 		     [AC_MSG_ERROR(com_err library not found)])
@@ -107,20 +115,31 @@ AC_DEFUN(ATHENA_UTIL_SS,
 [AC_ARG_WITH(ss,
 	[  --with-ss=PREFIX        Specify location of ss (requires com_err)],
 	[ss="$withval"], [ss=yes])
-if test "$ss" != no; then
-	if test "$ss" != yes; then
-		CPPFLAGS="$CPPFLAGS -I$ss/include"
-		LDFLAGS="$LDFLAGS -L$ss/lib"
-	fi
-	AC_CHECK_LIB(ss, ss_perror, :,
-		     [unset ac_cv_lib_ss_ss_perror
-		      AC_CHECK_LIB(ss, ss_perror, :,
-				   [AC_MSG_ERROR(ss library not found)],
-				   -ledit -lroken -ltermcap -lcom_err)],
-		     -lcom_err)
-else
+if test "$ss" = no; then
 	AC_MSG_ERROR(This package requires ss.)
-fi])
+fi
+if test "$ss" != yes; then
+	CPPFLAGS="$CPPFLAGS -I$ss/include"
+	if test -f $ss/include/krb5/sl.h; then
+		CPPFLAGS="$CPPFLAGS -I$ss/include/krb5"
+	fi
+	LDFLAGS="$LDFLAGS -L$ss/lib"
+else
+	if test -f /usr/include/krb5/sl.h; then
+		CPPFLAGS="$CPPFLAGS -I/usr/include/krb5"
+	fi
+fi
+AC_CHECK_HEADERS(ss/ss.h krb5/ss.h)
+
+AC_CHECK_LIB(ss, ss_perror, [SS_LIBS="-lss"],
+	     [unset ac_cv_lib_ss_ss_perror
+	      S="-ledit -lroken -ltermcap -lcom_err -lcrypt"
+	      AC_CHECK_LIB(ss, ss_perror,
+			   [SS_LIBS="-lss $S"],
+			   [AC_MSG_ERROR(ss library not found)],
+			   $S)],
+	     -lcom_err)
+AC_SUBST(SS_LIBS)])
 
 dnl ----- Regular expressions -----
 
