@@ -20,9 +20,9 @@ char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nP
 #endif SABER
 #endif lint
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 2.0";
+char version[] = "Zephyr Server (DEBUG) 2.05";
 #else
-char version[] = "Zephyr Server 2.0";
+char version[] = "Zephyr Server 2.05";
 #endif DEBUG
 /*
  * Server loop for Zephyr.
@@ -156,6 +156,21 @@ char **argv;
 			usage();
 			/*NOTREACHED*/
 		}
+	}
+
+	/* if there is no readable srvtab and we are not standalone, there
+	   is no possible way we can succeed, so we exit */
+
+	if (access(ZEPHYR_SRVTAB, R_OK)
+#ifdef DEBUG		
+	    && !zalone
+#endif DEBUG
+	    ) {
+		fprintf(stderr, "NO ZEPHYR SRVTAB available; exiting\n");
+#ifdef DEBUG
+		syslog(LOG_ERR, "NO ZEPHYR SRVTAB available; exiting\n");
+#endif DEBUG
+		exit(1);
 	}
 
 #ifndef DEBUG
