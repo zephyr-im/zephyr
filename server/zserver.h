@@ -291,16 +291,6 @@ enum ZSentType {
 	NOT_FOUND			/* user not found for uloc */
 };
 
-class SignalBlock {
-    int old_mask;
-public:
-    SignalBlock (int mask) {
-	old_mask = sigblock (mask);
-    }
-    ~SignalBlock () {
-	(void) sigsetmask (old_mask);
-    }
-};
 const int dump_masks = sigmask (SIGFPE) | sigmask (SIGEMT);
 
 /* useful... */
