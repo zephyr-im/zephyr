@@ -15,7 +15,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_dispatch_c[] = "$Id$";
+static const char rcsid_dispatch_c[] = "$Id$";
 #endif SABER
 #endif lint
 
@@ -51,15 +51,17 @@ static char rcsid_dispatch_c[] = "$Id$";
  *	ZClient_t *client;
  */
 
-static void rexmit(), nack_cancel();
+static void rexmit(void *nackpacket),
+    nack_cancel(register ZNotice_t *notice, struct sockaddr_in *who);
 
 /* patchable magic numbers controlling the retransmission rate and count */
 int num_rexmits = NUM_REXMITS;
 long rexmit_secs = REXMIT_SECS;
 long abs_timo = REXMIT_SECS*NUM_REXMITS + 10;
+int current_msg;
 
 #ifdef DEBUG
-char *pktypes[] = {
+extern const char *pktypes[] = {
 	"UNSAFE",
 	"UNACKED",
 	"ACKED",
@@ -71,13 +73,19 @@ char *pktypes[] = {
 };
 #endif DEBUG
 
+extern const ZString class_control (ZEPHYR_CTL_CLASS, 1);
+extern const ZString class_admin (ZEPHYR_ADMIN_CLASS, 1);
+extern const ZString class_hm (HM_CTL_CLASS, 1);
+extern const ZString class_ulogin (LOGIN_CLASS, 1);
+extern const ZString class_ulocate (LOCATE_CLASS, 1);
+
 /*
  * Handle an input packet.
  * Warning: this function may be called from within a brain dump.
  */
 
 void
-handle_packet()
+handle_packet(void)
 {
 	Code_t status;
 	ZPacket_t input_packet;		/* from the network */
@@ -93,8 +101,10 @@ handle_packet()
 				
 	if (otherservers[me_server_idx].zs_update_queue) {
 		/* something here for me; take care of it */
+#if 0
 		if (zdebug)
 			syslog(LOG_DEBUG, "internal queue process");
+#endif
 
 		pending = otherservers[me_server_idx].zs_update_queue->q_forw;
 		host = hostm_find_host(&(pending->pend_who.sin_addr));
@@ -103,8 +113,10 @@ handle_packet()
 			   we can't process other packets, esp. since we
 			   may block since we don't really know if there
 			   are things in the real queue. */
+#if 0
 			zdbug((LOG_DEBUG,"host %s is locked",
 			       inet_ntoa(host->zh_addr.sin_addr)));
+#endif
 			return;
 		}
 		pending = server_dequeue(me_server); /* we can do it, remove */
@@ -171,7 +183,7 @@ handle_packet()
 		break;
 	}
 	if (whoisit.sin_port != hm_port &&
-	    strcasecmp(new_notice.z_class,ZEPHYR_ADMIN_CLASS) &&
+	    strcasecmp (new_notice.z_class,ZEPHYR_ADMIN_CLASS) &&
 	    whoisit.sin_port != sock_sin.sin_port &&
 	    new_notice.z_kind != CLIENTACK) {
 		syslog(LOG_ERR,
@@ -188,77 +200,87 @@ handle_packet()
  */
 
 void
-dispatch(notice, auth, who)
-register ZNotice_t *notice;
-int auth;
-struct sockaddr_in *who;
-{
+dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who) {
 	Code_t status;
 	int dispatched = 0;
+	Notice notice = n;
 
-	/* assumes enums are allocated contiguous, increasing values */
+	current_msg++;
+	if (current_msg >= 9999)
+	    current_msg = 0;
 
-	if ((int) notice->z_kind < (int) UNSAFE ||
-	    (int) notice->z_kind > (int) CLIENTACK) {
+	if ((int) notice.notice->z_kind < (int) UNSAFE ||
+	    (int) notice.notice->z_kind > (int) CLIENTACK) {
 		syslog(LOG_INFO, "bad notice kind 0x%x from %s",
-		       (int) notice->z_kind,
+		       (int) notice.notice->z_kind,
 		       inet_ntoa(who->sin_addr));
 		return;
 	}
-#ifdef DEBUG
+#if defined (DEBUG)
 	if (zdebug) {
-		char buf[4096];
-		
-		(void) sprintf(buf, "disp:%s '%s' '%s' '%s' '%s' '%s' %s/%d/%d",
-			       pktypes[(int) notice->z_kind],
-			       notice->z_class,
-			       notice->z_class_inst,
-			       notice->z_opcode,
-			       notice->z_sender,
-			       notice->z_recipient,
-			       inet_ntoa(who->sin_addr),
-			       ntohs(who->sin_port),
-			       ntohs(notice->z_port));
-		syslog(LOG_DEBUG, buf);
+	    char buf[BUFSIZ];
+	    (void) sprintf (buf,
+			    "disp:%s '%s' '%s' '%s' notice to '%s' from '%s' %s/%d/%d",
+			pktypes[(int) notice.notice->z_kind],
+			notice.dest.classname.value (),
+			notice.dest.inst.value (),
+			notice.notice->z_opcode,
+			notice.dest.recip.value (),
+			notice.sender.value (),
+			inet_ntoa(who->sin_addr),
+			ntohs(who->sin_port),
+			    ntohs(notice.notice->z_port));
+	    syslog (LOG_DEBUG, "%s", buf);
 	}
-#endif DEBUG
-	if (notice->z_kind == CLIENTACK) {
-		nack_cancel(notice, who);
+#endif
+#if 0
+	if (bdumping) {
+	    zdbug ((LOG_DEBUG, "from %s/%d, class %s\n",
+		    inet_ntoa (who->sin_addr), who->sin_port,
+		    notice.dest.classname.value ()));
+	    if (!server_which_server(who) && !class_is_admin (notice)) {
+		syslog (LOG_DEBUG, "brain-dumping, dropping packet");
+		return;
+	    }
+	}
+#endif
+	if (notice.notice->z_kind == CLIENTACK) {
+		nack_cancel(notice.notice, who);
 		return;
 	}
 	if (server_which_server(who)) {
-		status = server_dispatch(notice, auth, who);
+		status = server_dispatch(notice.notice, auth, who);
 		dispatched = 1;
 	} else if (class_is_hm(notice)) {
-		status = hostm_dispatch(notice, auth, who, me_server);
+		status = hostm_dispatch(notice.notice, auth, who, me_server);
 		dispatched = 1;
 	} else if (class_is_control(notice)) {
-		status = control_dispatch(notice, auth, who, me_server);
+		status = control_dispatch(notice.notice, auth, who, me_server);
 		dispatched = 1;
 	} else if (class_is_ulogin(notice)) {
-		status = ulogin_dispatch(notice, auth, who, me_server);
+		status = ulogin_dispatch(notice.notice, auth, who, me_server);
 		dispatched = 1;
 	} else if (class_is_ulocate(notice)) {
-		status = ulocate_dispatch(notice, auth, who, me_server);
+		status = ulocate_dispatch(notice.notice, auth, who, me_server);
 		dispatched = 1;
 	} else if (class_is_admin(notice)) {
-		status = server_adispatch(notice, auth, who, me_server);
+		status = server_adispatch(notice.notice, auth, who, me_server);
 		dispatched = 1;
 	}
 
 	if (dispatched) {
 		if (status == ZSRV_REQUEUE) {
 #ifdef CONCURRENT
-			server_self_queue(notice, auth, who);
+			server_self_queue(notice.notice, auth, who);
 #else
 			syslog(LOG_ERR, "requeue while not concurr");
 			abort();
-#endif CONCURRENT
+#endif
 		}
 		return;
 	}
 	/* oh well, do the dirty work */
-	sendit(notice, auth, who);
+	sendit(notice.notice, auth, who);
 }
 
 /*
@@ -266,16 +288,13 @@ struct sockaddr_in *who;
  */
 
 void
-sendit(notice, auth, who)
-register ZNotice_t *notice;
-int auth;
-struct sockaddr_in *who;
+sendit(register ZNotice_t *notice, int auth, struct sockaddr_in *who)
 {
 	int acked = 0;
 	ZAcl_t *acl;
 	register ZClientList_t *clientlist, *ptr;
 
-	if (acl = class_get_acl(notice->z_class)) {
+	if (acl = class_get_acl(ZString (notice->z_class, 1))) {
 	    /* if controlled and not auth, fail */
 	    if (!auth) {
 		syslog(LOG_WARNING, "sendit unauthentic %s from %s",
@@ -284,22 +303,28 @@ struct sockaddr_in *who;
 		return;
 	    }
 	    /* if not auth to transmit, fail */
-	    if (!access_check(notice, acl, TRANSMIT)) {
+	    if (!access_check(notice->z_sender, acl, TRANSMIT)) {
 		syslog(LOG_WARNING, "sendit unauthorized %s from %s",
 		       notice->z_class, notice->z_sender);
 		clt_ack(notice, who, AUTH_FAILED);
 		return;
 	    }
 	    /* sender != inst and not auth to send to others --> fail */
-	    if (strcmp(notice->z_sender, notice->z_class_inst) &&
-		!access_check(notice, acl, INSTUID)) {
-		syslog(LOG_WARNING,
-		       "sendit unauth uid %s %s.%s",
-		       notice->z_sender,
-		       notice->z_class,
-		       notice->z_class_inst);
-		clt_ack(notice, who, AUTH_FAILED);
-		return;
+	    {
+		/* Need to write this funny so that cfront can deal... */
+		int xxx;
+		xxx = strcmp (notice->z_sender, notice->z_class_inst);
+		if (xxx)
+		    xxx = !acl->ok (notice->z_sender, INSTUID);
+		if (xxx) {
+		    syslog(LOG_WARNING,
+			   "sendit unauth uid %s %s.%s",
+			   notice->z_sender,
+			   notice->z_class,
+			   notice->z_class_inst);
+		    clt_ack(notice, who, AUTH_FAILED);
+		    return;
+		}
 	    }
 	}
 	if (bcmp(&notice->z_sender_addr.s_addr, &who->sin_addr.s_addr,
@@ -338,8 +363,7 @@ struct sockaddr_in *who;
  */
 
 void
-nack_release(client)
-ZClient_t *client;
+nack_release(ZClient_t *client)
 {
 	register ZNotAcked_t *nacked, *nack2;
 
@@ -371,10 +395,7 @@ ZClient_t *client;
 /* the arguments must be the same as the arguments to Z_XmitFragment */
 /*ARGSUSED*/
 Code_t
-xmit_frag(notice, buf, len, waitforack)
-ZNotice_t *notice;
-char *buf;
-int len, waitforack;
+xmit_frag(ZNotice_t *notice, char *buf, int len, int waitforack)
 {
 	char *savebuf;
 	register ZNotAcked_t *nacked;
@@ -425,19 +446,16 @@ int len, waitforack;
  */
 
 void
-xmit(notice, dest, auth, client)
-register ZNotice_t *notice;
-struct sockaddr_in *dest;
-int auth;
-ZClient_t *client;
+xmit(register ZNotice_t *notice, struct sockaddr_in *dest, int auth, ZClient_t *client)
 {
 	caddr_t noticepack;
 	register ZNotAcked_t *nacked;
 	int packlen;
 	Code_t retval;
 
+#if 0
 	zdbug((LOG_DEBUG,"xmit"));
-
+#endif
 
 	if (!(noticepack = (caddr_t) xmalloc(sizeof(ZPacket_t)))) {
 		syslog(LOG_ERR, "xmit malloc");
@@ -488,8 +506,10 @@ ZClient_t *client;
 			return;			/* DON'T put on nack list */
 		}
 	}
+#if 0
 	zdbug((LOG_DEBUG," to %s/%d",inet_ntoa(dest->sin_addr),
 	       ntohs(dest->sin_port)));
+#endif
 	if ((retval = ZSetDestAddr(dest)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "xmit set addr: %s",
 		       error_message(retval));
@@ -537,14 +557,16 @@ ZClient_t *client;
  */
 
 static void
-rexmit(nackpacket)
-register ZNotAcked_t *nackpacket;
+rexmit(void *arg)
 {
+	register ZNotAcked_t *nackpacket = (ZNotAcked_t*) arg;
 	int retval;
 	ZNotice_t dummy_notice;
 	register ZClient_t *client;
 
+#if 0
 	zdbug((LOG_DEBUG,"rexmit"));
+#endif
 
 	if (++(nackpacket->na_rexmits) > num_rexmits ||
 	    NOW > nackpacket->na_abstimo) {
@@ -568,9 +590,11 @@ register ZNotAcked_t *nackpacket;
 
 	/* retransmit the packet */
 	
+#if 0
 	zdbug((LOG_DEBUG," to %s/%d",
 	       inet_ntoa(nackpacket->na_addr.sin_addr),
 	       ntohs(nackpacket->na_addr.sin_port)));
+#endif
 	if ((retval = ZSetDestAddr(&nackpacket->na_addr))
 	    != ZERR_NONE) {
 		syslog(LOG_WARNING, "rexmit set addr: %s",
@@ -599,49 +623,62 @@ requeue:
  */
 
 void
-clt_ack(notice, who, sent)
-ZNotice_t *notice;
-struct sockaddr_in *who;
-ZSentType sent;
+clt_ack(ZNotice_t *notice, struct sockaddr_in *who, ZSentType sent)
 {
 	ZNotice_t acknotice;
 	ZPacket_t ackpack;
 	int packlen;
 	int notme = 0;
+	char *sent_name;
 	Code_t retval;
 
 	if (bdumping)	{		/* don't ack while dumping */
+#if 1
 		zdbug((LOG_DEBUG,"bdumping, no ack"));
+#endif
 		return;
 	}
-	zdbug((LOG_DEBUG,"clt_ack type %d for %d to %s/%d",
-	       (int) sent,
-	       ntohs(notice->z_port),
-	       inet_ntoa(who->sin_addr),
-	       ntohs(who->sin_port)));
 
-	if (!server_which_server(who) &&
-	    (hostm_find_server(&who->sin_addr) != me_server)) {
-		zdbug((LOG_DEBUG,"not me"));
-		notme = 1;
-	}
 	acknotice = *notice;
 
 	acknotice.z_kind = SERVACK;
 	switch (sent) {
 	case SENT:
 		acknotice.z_message = ZSRVACK_SENT;
+		sent_name = "sent";
 		break;
 	case NOT_FOUND:
 		acknotice.z_message = ZSRVACK_FAIL;
 		acknotice.z_kind = SERVNAK;
+		sent_name = "fail";
 		break;
 	case AUTH_FAILED:
 		acknotice.z_kind = SERVNAK;
-		/* fall thru */
+		acknotice.z_message = ZSRVACK_NOTSENT;
+		sent_name = "nak/not_sent";
+		break;
 	case NOT_SENT:
 		acknotice.z_message = ZSRVACK_NOTSENT;
+		sent_name = "not_sent";
 		break;
+	default:
+		abort ();
+	}
+
+#if 1
+	zdbug((LOG_DEBUG,"clt_ack type %s for %d to %s/%d",
+	       sent_name,
+	       ntohs(notice->z_port),
+	       inet_ntoa(who->sin_addr),
+	       ntohs(who->sin_port)));
+#endif
+
+	if (!server_which_server(who) &&
+	    (hostm_find_server(&who->sin_addr) != me_server)) {
+#if 0
+		zdbug((LOG_DEBUG,"not me"));
+#endif
+		notme = 1;
 	}
 
 	acknotice.z_multinotice = "";
@@ -666,6 +703,8 @@ ZSentType sent;
 		syslog(LOG_WARNING, "clt_ack xmit: %s", error_message(retval));
 		return;
 	}
+	else
+	    zdbug ((LOG_DEBUG, "packet sent"));
 	if (notme)
 		hostm_deathgram(who, me_server);
 	return;
@@ -677,14 +716,17 @@ ZSentType sent;
  */
 
 static void
-nack_cancel(notice, who)
-register ZNotice_t *notice;
-struct sockaddr_in *who;
+nack_cancel(register ZNotice_t *notice, struct sockaddr_in *who)
 {
 	register ZNotAcked_t *nacked;
 
 	/* search the not-yet-acked list for this packet, and
 	   flush it. */
+#if 1
+	zdbug((LOG_DEBUG, "nack_cancel: %s:%08X,%08X",
+	       inet_ntoa (notice->z_uid.zuid_addr),
+	       notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
+#endif
 	for (nacked = nacklist->q_forw;
 	     nacked != nacklist;
 	     nacked = nacked->q_forw)
@@ -697,7 +739,9 @@ struct sockaddr_in *who;
 				xfree(nacked);
 				return;
 			}
+#if 0
 	zdbug((LOG_DEBUG,"nack not found"));
+#endif
 	return;
 }
 
@@ -711,11 +755,7 @@ struct sockaddr_in *who;
  */
 
 Code_t
-control_dispatch(notice, auth, who, server)
-ZNotice_t *notice;
-int auth;
-struct sockaddr_in *who;
-ZServerDesc_t *server;
+control_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDesc_t *server)
 {
 	register char *opcode = notice->z_opcode;
 	ZClient_t *client;
@@ -731,10 +771,12 @@ ZServerDesc_t *server;
 	 *	CLIENT_CANCELSUB:   ""
 	 */
 
-	if (!strcasecmp(notice->z_class_inst, ZEPHYR_CTL_HM))
+	zdbug ((LOG_DEBUG, "ctl_disp: opc=%s", opcode));
+
+	if (!strcasecmp (notice->z_class_inst, ZEPHYR_CTL_HM))
 		return(hostm_dispatch(notice, auth, who, server));
-	else if (!strcmp(opcode, CLIENT_GIMMESUBS) ||
-		 !strcmp(opcode, CLIENT_GIMMEDEFS)) {
+	else if (!strcmp (opcode, CLIENT_GIMMESUBS) ||
+		 !strcmp (opcode, CLIENT_GIMMEDEFS)) {
 		/* this special case is before the auth check so that
 		   someone who has no subscriptions does NOT get a SERVNAK
 		   but rather an empty list.  Note we must therefore
@@ -742,7 +784,7 @@ ZServerDesc_t *server;
 #ifdef OLD_COMPAT
 		/* only acknowledge if *not* old version; the old version
 		   acknowledges the packet with the reply */
-		if (strcmp(notice->z_version, OLD_ZEPHYR_VERSION))
+		if (strcmp (notice->z_version, OLD_ZEPHYR_VERSION))
 			ack(notice, who);
 #else /* !OLD_COMPAT */
 		ack(notice, who);
@@ -750,7 +792,9 @@ ZServerDesc_t *server;
 		subscr_sendlist(notice, auth, who);
 		return(ZERR_NONE);
 	} else if (!auth) {
+#if 0
 		zdbug((LOG_DEBUG,"unauth ctrl_disp"));
+#endif
 		if (server == me_server)
 			clt_ack(notice, who, AUTH_FAILED);
 		return(ZERR_NONE);
@@ -762,8 +806,8 @@ ZServerDesc_t *server;
 	if (host && host->zh_locked)
 		return(ZSRV_REQUEUE);
 
-	wantdefs = strcmp(opcode, CLIENT_SUBSCRIBE_NODEFS);
-	if (!wantdefs || !strcmp(opcode, CLIENT_SUBSCRIBE)) {
+	wantdefs = strcmp (opcode, CLIENT_SUBSCRIBE_NODEFS);
+	if (!wantdefs || !strcmp (opcode, CLIENT_SUBSCRIBE)) {
 		/* subscription notice */
 		if (!(client = client_which_client(who, notice))) {
 			if ((retval = client_register(notice,
@@ -791,7 +835,7 @@ ZServerDesc_t *server;
 				abort();
 			}
 		}
-		if (strcmp(client->zct_principal, notice->z_sender)) {
+		if (strcmp (client->zct_principal.value (), notice->z_sender)) {
 			/* you may only subscribe for your own clients */
 			if (server == me_server)
 				clt_ack(notice, who, AUTH_FAILED);
@@ -811,7 +855,7 @@ ZServerDesc_t *server;
 		}
 	} else if (!strcmp(opcode, CLIENT_UNSUBSCRIBE)) {
 		if ((client = client_which_client(who,notice))) {
-			if (strcmp(client->zct_principal, notice->z_sender)) {
+			if (strcmp(client->zct_principal.value (), notice->z_sender)) {
 				/* you may only cancel for your own clients */
 				if (server == me_server)
 					clt_ack(notice, who, AUTH_FAILED);
@@ -826,7 +870,7 @@ ZServerDesc_t *server;
 		/* canceling subscriptions implies I can punt info about
 		 this client */
 		if ((client = client_which_client(who,notice))) {
-			if (strcmp(client->zct_principal, notice->z_sender)) {
+			if (strcmp(client->zct_principal.value (), notice->z_sender)) {
 				/* you may only cancel for your own clients */
 				if (server == me_server)
 					clt_ack(notice, who, AUTH_FAILED);
@@ -835,16 +879,20 @@ ZServerDesc_t *server;
 			if (host) {
 				/* don't flush locations here, let him
 				   do it explicitly */
+#if 0
 				if (zdebug)
 					syslog(LOG_DEBUG,
 					       "cancelsub clt_dereg");
+#endif
 				hostm_lose_ignore(client);
 				(void) client_deregister(client, host, 0);
 			}
 
 		} 
 		if (!client || !host) {
+#if 0
 			zdbug((LOG_DEBUG,"can_sub not found client"));
+#endif
 			if (server == me_server)
 				nack(notice, who);
 			return(ZERR_NONE);

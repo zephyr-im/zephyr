@@ -14,18 +14,19 @@
 #include <zephyr/mit-copyright.h>
 
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) $Revision$";
+extern const char version[] = "Zephyr Server (DEBUG) $Revision$";
 #else
-char version[] = "Zephyr Server $Revision$";
-#endif DEBUG
-#ifndef lint
-#ifndef SABER
-static char rcsid_version_c[] = "$Id$";
-char copyright[] = "Copyright (c) 1987,1988,1989 Massachusetts Institute of Technology.\n";
+extern const char version[] = "Zephyr Server $Revision$";
+#endif
+
+#if !defined (lint) && !defined (SABER)
+static const char rcsid_version_c[] =
+    "$Id$";
+extern const char copyright[] =
+    "Copyright (c) 1987,1988,1989,1990 Massachusetts Institute of Technology.\n";
 #ifdef CONCURRENT
-char concurrent[] = "Brain-dump concurrency enabled";
+extern const char concurrent[] = "Brain-dump concurrency enabled";
 #else
-char concurrent[] = "no brain-dump concurrency";
-#endif CONCURRENT
-#endif SABER
-#endif lint
+extern const char concurrent[] = "no brain-dump concurrency";
+#endif
+#endif
