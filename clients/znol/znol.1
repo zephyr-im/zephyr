@@ -1,10 +1,15 @@
-.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\"	$Source$
+.\"	$Author$
+.\"	$Header$
+.\"
+.\" Copyright 1987,1988 by the Massachusetts Institute of Technology
 .\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
 .\" specifies the terms and conditions for redistribution.
 .\"
 .\"	@(#)znol.1	6.1 (MIT) 7/9/87
 .\"
-.TH ZNOL 1 "July 14, 1987"
+.TH ZNOL 1 "July 1, 1988" "MIT Project Athena"
+.ds ]W MIT Project Athena
 .SH NAME
 znol \- notify on login or logout of interesting people
 .SH SYNOPSIS
@@ -20,12 +25,14 @@ znol \- notify on login or logout of interesting people
 ]
 .SH DESCRIPTION
 .I Znol
-provides a way for you to be notified when interesting people log in
+provides a way for you to be notified when "interesting" people log in
 or out.  It uses the
 .I Zephyr(1)
 Notification Service, which causes a message to appear on your screen
 for every person specified in a namelist (which defaults to
-$HOME/.anyone).  Anyone in the namelist who is logged in when
+$HOME/.anyone).  The namelist should have one login name per line.  Any
+line starting with `#' is considered a comment and ignored.
+Anyone in the namelist who is logged in when
 .I znol
 is executed is printed to stdout.  The control arguments are as
 follows:
@@ -60,12 +67,13 @@ $HOME/.anyone
 .SH SEE ALSO
 anyone(SIPB), nol(SIPB), zctl(1), zephyr(1), zwgc(1), zhm(8), zephyrd(8)
 .br
-`Zephyr Notification Service'
+Project Athena Technical Plan Section E.4.1, `Zephyr Notification
+Service'
 .SH AUTHOR
 .PP
 Robert S. French (MIT-Project Athena)
 .sp
-Copyright (c) 1987 by the Massachusetts Institute of Technology
+Copyright (c) 1987,1988 by the Massachusetts Institute of Technology
 .br
 See
 .I zephyr(1)

@@ -1,11 +1,14 @@
+.\"	$Source$
+.\"	$Author$
+.\"	$Header$
+.\"
 .\" Copyright (c) 1980 Regents of the University of California.
 .\" All rights reserved.  The Berkeley software License Agreement
 .\" specifies the terms and conditions for redistribution.
 .\"
-.\"	@(#)zleave.1	6.2 (Berkeley) 5/7/86
 .\"
-.TH ZLEAVE 1 "August 6, 1987"
-.UC
+.TH ZLEAVE 1 "July 1, 1988" "MIT Project Athena"
+.ds ]W MIT Project Athena
 .SH NAME
 zleave \- remind you when you have to leave
 .SH SYNOPSIS
@@ -30,7 +33,7 @@ hours (on a 12 or 24 hour clock).
 All times are converted to a 12 hour clock, and assumed to
 be in the next 12 hours.
 .PP
-If the time is preceeded by `+', the alarm will go off in hours and minutes
+If the time is preceded by `+', the alarm will go off in hours and minutes
 from the current time.
 .PP
 If no argument is given,
@@ -50,21 +53,28 @@ The
 option cancels the currently running \fIzleave\fR.  If another
 .I zleave
 is running, it is automatically killed when a new time to leave is
-set.  The process id is stored in the file /tmp/zleave.\fIuid\fR
+set.  The process id is stored in the file /tmp/zleave.\fIuid\fR, where
+\fIuid\fR is the user's UNIX uid.
 .PP
 .I Zleave
 automatically subscribes you to Zephyr class "MESSAGE",
-instance "LEAVE".  Therefore, you do not have to add anything to your
+instance "LEAVE".  You do not have to add anything to your
 default subscriptions file (see \fIzctl(1)\fR).
 .PP
-If Zephyr is unavailable, \fIzleave\fR beeps three times per reminder,
-and prints the reminder to the screen.
+If Zephyr is unavailable,
+.I zleave 
+acts essentially like 
+.I leave(1).
 .PP
-Zleave ignores interrupts, quits, and terminates.
+Zleave ignores SIGINT, SIGQUIT, and SIGTERM.
 To get rid of it you should either log off or use the
 .I cancel
 option.
 .SH FILES
-/tmp/zleave.\fIuid
+/tmp/zleave.\fIuid\fR
+/tmp/wg.*
 .SH SEE ALSO
-calendar(1), zephyr(1)
+calendar(1), zephyr(1), leave(1), zctl(1)
+.br
+Project Athena Technical Plan Section E.4.1, `Zephyr Notification
+Service'

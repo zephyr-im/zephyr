@@ -1,10 +1,14 @@
-.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\"	$Source$
+.\"	$Author$
+.\"	$Header$
+.\"
+.\" Copyright 1987,1988 by the Massachusetts Institute of Technology
 .\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
 .\" specifies the terms and conditions for redistribution.
 .\"
-.\"	@(#)zctl.1	6.1 (MIT) 7/9/87
 .\"
-.TH ZCTL 1 "February 7, 1988"
+.TH ZCTL 1 "July 1, 1988" "MIT Project Athena"
+.ds ]W MIT Project Athena
 .SH NAME
 zctl \- zephyr control program
 .SH SYNOPSIS
@@ -17,35 +21,54 @@ is a general purpose control program for the
 .I Zephyr(1)
 Notification Service.  It allows the user to subscribe to specific
 notice types, to save the subscriptions in a file (default
-$HOME/.zephyr.subs), and to send control messages to the HostManager,
+$HOME/.zephyr.subs), to change his location information, and to send
+control messages to the HostManager,
 .I zhm(8),
 and the WindowGram client,
 .I zwgc(1).
 .PP
 The commands may be typed on the command line, or may be entered
 interactively by just typing
-.I zctl.
+.I zctl
+and then typing commands to the prompt.
 The commands are as follows:
 .TP 25
 .B add \fIclass instance\fR [ \fIrecipient\fR ]
 Subscribe to \fIclass, instance, recipient\fR, and add this triplet to
 the subscriptions file.
 .TP
+.B add_unsubscription \fIclass instance\fR [ \fIrecipient\fR ]
+Unsubscribe to \fIclass, instance, recipient\fR, and add this triplet
+to the subscriptions file as an un-subscription.
+For an explanation of un-subscriptions, see below.
+.TP
 .B cancel
 Cancel all subscriptions.
+.TP
+.B defaults
+Retrieve the default subscription list from the Zephyr server.
 .TP
 .B delete \fIclass instance\fR [ \fIrecipient\fR ]
 Unsubscribe to \fIclass, instance, recipient\fR, and remove this triplet
 from the subscriptions file.
 .TP
-.B file \fIfile
-Set default subscriptions file to \fIfile.  If \fIfile isn't specified,
+.B delete_unsubscription \fIclass instance\fR [ \fIrecipient\fR ]
+Unsubscribe to \fIclass, instance, recipient\fR, and remove this triplet
+from the subscriptions file as an un-subscription.
+.TP
+.B file [ \fIfile\fR ]
+Set default subscriptions file to \fIfile\fR.  If \fIfile\fR isn't specified,
 show what the current subscriptions file is.
 .TP
 .B flush_locs
 Tell the Zephyr servers to flush all location information associated with
-the user.  This should only be used to remove any stale data that may have
+the user.  This should only be used to remove any incorrect data that may have
 been left after a system crash.
+.TP
+.B hide
+Hide your location as maintained by the Zephyr server.  This does not
+affect the value of the exposure variable (see below, under
+.B set).
 .TP
 .B hm_flush
 Tell the HostManager,
@@ -59,7 +82,8 @@ List contents of current subscriptions file or \fIfile.
 List all available commands.  May be abbreviated by '?'.
 .TP
 .B load [ \fIfile\fR ]
-Subscribe to all triplets in current subscriptions file or \fIfile.
+Subscribe to all subscription triplets and unsubscribe to all
+un-subscription triplets in current subscriptions file or \fIfile\fR.
 .TP
 .B new_server
 Tell the HostManager,
@@ -70,37 +94,52 @@ to find a new Zephyr server.
 Exit from \fIzctl.
 .TP
 .B retrieve
-Ask the current server to retrieve all current subscriptions.  These include
+Retrieve all current subscriptions from the Zephyr server.  These include
 subscriptions that might have been made by other programs, such as
 .I znol(1).
 .TP
 .B save [ \fIfile\fR ]
-Save subscriptions into current subscriptions file or \fIfile.
+Save all current subscriptions (as returned by the Zephyr server)
+into current subscriptions file or \fIfile\fR.  The 
+file will be replaced.
 .TP
 .B set \fIvar\fR [ \fIvalue\fR ]
 Set the value of Zephyr variable \fIvar\fR to \fIvalue\fR, or null if
 no \fIvalue\fR is specified.  The variable \fBexposure\fR has special
 significance, and can only be set to the values none, opstaff, realm-visible,
 realm-announced, net-visible, and net-announced.  Setting this variable
-immediately updates the information in the Zephyr servers.
+immediately updates the information in the Zephyr servers.  In addition,
+setting this variable to none automatically performs the equivalent of a 
+.B wg_shutdown
+command, and setting it to one of the other values automatically
+performs the equivalent of a 
+.B wg_startup
+command.
+.br
+Any variable settings you make will be stored in \fI$HOME/.zephyr.vars\fR
 .TP
 .B show \fIvar\fR [ \fIvar\fR \ ... ]
 Show the value of the specified Zephyr variables.  If a variable is not
 defined in the user's own variables file, the system variables file
-is searched for a default value.
+(\fI/etc/athena/zephyr.vars\fR) is searched for a default value.
 .TP
 .B subscribe \fIclass instance\fR [ \fIrecipient\fR ]
-Subscribe to \fIclass, instance, recipient, but don't add this triplet to
+Subscribe to \fIclass, instance, recipient\fR, but don't add this triplet to
 the subscriptions file.
 .TP
+.B unhide
+Make your location as maintained by the Zephyr server visible.  This does not
+affect the value of the exposure variable.
+.TP
 .B unload [ \fIfile\fR ]
-Unsubscribe to all triplets in current subscriptions file or \fIfile.
+Unsubscribe to all subscription triplets in current subscriptions file
+or \fIfile\fR.  Un-subscriptions in the file are ignored.
 .TP
 .B unset \fIvar\fR [ \fIvar\fR \ ... ]
 Delete the definitions of the specified Zephyr variables.
 .TP
 .B unsubscribe \fIclass instance\fR [ \fIrecipient\fR ]
-Unsubscribe to \fIclass, instance, recipient, but don't remove this triplet
+Unsubscribe to \fIclass, instance, recipient\fR, but don't remove this triplet
 from the subscriptions file.
 .TP
 .B wg_read
@@ -109,28 +148,27 @@ Tell the WindowGram client,
 to reread its description file.
 .TP
 .B wg_shutdown
-Tell the WindowGram client,
-.I zwgc(1),
-to shutdown; this causes it to ignore all notices until a wg_startup command
-is issued.
+Tell the WindowGram client to shutdown; this causes it to ignore all
+notices until a wg_startup command is issued.
 .TP
 .B wg_startup
-Tell the WindowGram client,
-.I zwgc(1),
-to start accepting notices again; useful after a wg_shutdown command has
-been issued.
+Tell the WindowGram client to start accepting notices again; useful
+after a wg_shutdown command has been issued.
 .PP
-The \fIrecipient\fR field defaults to your kerberos principle.  You
-may also subscribe to recipient ``*''.  There are three macros,
+The \fIrecipient\fR field defaults to your Kerberos principal.  You
+may also subscribe to recipient ``*''.  Any other recipient is silently
+converted to ``*''.  There are three macros,
 .I %host%, %canon%, \fRand\fI %me%.  %host%
-returns the current hostname, \fI%canon%\fR returns the canonical
-hostname, and \fI%me%\fR returns your username.  These macros can be
-used in your \fI$HOME/.zephyr.subs\fR file to specify the
+is converted to the current hostname, \fI%canon%\fR is converted to the
+official hostname as returned by 
+.I gethostbyname(3),
+and \fI%me%\fR is converted to your Kerberos principal.  These macros can be
+used in your \fI$HOME/.zephyr.subs\fR file or as arguments to commands
+to specify the
 .I class, instance, \fRor\fI recipient
 fields.  A sample file might contain the following:
 .PP
 .nf
-	message,personal,%me%
 	message,urgent,%me%
 	syslog,%host%,*
 	mail,pop,%me%
@@ -140,14 +178,29 @@ fields.  A sample file might contain the following:
 reads the environment variable \fBWGFILE\fR, to find the name of the
 file where the windowgram port resides.  If \fBWGFILE\fR does not
 exist, the file defaults to /tmp/wg.\fIuid\fR, where \fIuid\fR is the
-user's id.
+user's UNIX uid.
+.SH UN-SUBSCRIPTIONS
+The zephyr server,
+.I zephyrd(8),
+maintains default subscriptions which are automatically added to all
+users' subscriptions at the time of their first subscription during a
+login session.  If you wish to automatically remove some of these
+default subscriptions, you use 
+.B un-subscriptions.
+When you 
+.B load
+a subscription file containing
+un-subscriptions, the un-subscriptions are automatically sent to the
+server as if you had used the
+.B unsubscribe
+command.
 .SH EXAMPLES
 .TP 25
 .B zctl
 Runs \fIzctl\fR in interactive mode.
 .TP
 .B zctl load
-Loads default subscriptions from \fI$HOME/.zephyr.subs\fR file.
+Load subscriptions and un-subscriptions from \fI$HOME/.zephyr.subs\fR file.
 .TP
 .B zctl sub message personal
 Subscribe to personal messages, but don't add this to the
@@ -160,6 +213,7 @@ Save all current subscriptions to the default subscriptions file.
 Set your exposure level to `none', effectively turning off Zephyr.
 .SH SEE ALSO
 zephyr(1), zwgc(1), zhm(8), zephyrd(8)
+gethostbyname(3)
 .br
 Project Athena Technical Plan Section E.4.1, `Zephyr Notification
 Service'
@@ -170,10 +224,12 @@ $HOME/.zephyr.subs
 .br
 $HOME/.zephyr.vars
 .SH AUTHOR
+.br
+/etc/athena/zephyr.vars
 .PP
 Robert S. French (MIT-Project Athena)
 .sp
-Copyright (c) 1987 by the Massachusetts Institute of Technology
+Copyright (c) 1987,1988 by the Massachusetts Institute of Technology
 .br
 See
 .I zephyr(1)
