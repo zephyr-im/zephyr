@@ -813,6 +813,15 @@ entirely.
 Transient
 Secondary transient determining value [default False]
 .TP
+timeToLive
+Primary value which specifies the minimum amount of time (``time to
+live'') a WindowGram must be on-screen (in milliseconds) until it can
+be destroyed.  This feature is useful to avoid accidentally clicking
+on new WindowGrams when trying to delete old ones.
+.TP
+TimeToLive
+Secondary value of ``time to live.''
+.TP
 iconName
 (string) Primary icon name
 .TP
@@ -842,6 +851,17 @@ the pointer remains inside a WindowGram window will cause it to
 disappear. If the pointer leaves the window
 while the button is depressed, the window does not disappear; this
 provides a way to avoid accidentally losing messages.
+.PP
+If the control button is held down while clicking on a WindowGram,
+then that WindowGram and all windowgrams under the point where the
+button is released will be erased.
+.PP
+.B WARNING:
+If you do this with too many WindowGrams under the mouse, it is
+possible for your subscriptions to be lost.  If \fIzctl retrieve\fR
+returns nothing, then issue a \fIzctl load\fR command to re-subscribe
+to your default set of subscriptions.  If you use znol, then \fIznol
+-q &\fR will restore the subscriptions you need for \fIznol\fR.
 .PP
 Portions of the text of a message may be selected for "pasting" into other X
 applications by using the shift key in cooperation with the pointer
