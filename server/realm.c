@@ -1264,13 +1264,14 @@ ticket_lookup(char *realm)
     krb5_error_code result;
     krb5_timestamp sec;
     krb5_ccache ccache;
-    krb5_creds creds_in, *creds;
+    krb5_creds creds_in, creds;
 
     result = krb5_cc_default(Z_krb5_ctx, &ccache);
     if (result)
       return 0;
 
     memset(&creds_in, 0, sizeof(creds_in));
+    memset(&creds, 0, sizeof(creds));
 
     result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client);
     if (result) {
@@ -1288,18 +1289,18 @@ ticket_lookup(char *realm)
       return 0;
     }
 
-    result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache,
-                                  &creds_in, &creds);
+    result = krb5_cc_retrieve_cred(Z_krb5_ctx, ccache, 0, &creds_in, &creds);
     krb5_cc_close(Z_krb5_ctx, ccache);
     /* good ticket? */
 
     krb5_timeofday (Z_krb5_ctx, &sec);
     krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */
-    if ((result == 0) && (sec < creds->times.endtime)) {
-      krb5_free_creds(Z_krb5_ctx, creds);
+    if ((result == 0) && (sec < creds.times.endtime)) {
+      krb5_free_cred_contents(Z_krb5_ctx, &creds);
       return (1);
     }
-    if (!result) krb5_free_creds(Z_krb5_ctx, creds);
+    if (!result)
+      krb5_free_cred_contents(Z_krb5_ctx, &creds);
 
     return (0);
 }
