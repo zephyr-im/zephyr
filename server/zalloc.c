@@ -7,13 +7,6 @@
 
 #ifndef MPROF
 /*
- * Pick some size here that will help keep down the number of calls to
- * malloc, but doesn't waste too much space.  To avoid waste of space,
- * we leave some overhead before the next power of two.
- */
-const int alloc_size = 16368;
-
-/*
  * What's the maximum number of words to expect to allocate through
  * this mechanism?  (Larger requests will be fed to malloc.)
  */
@@ -22,6 +15,13 @@ const int max_size = 32;
 static void *free_space;
 static int free_space_size;
 static void *buckets[max_size];
+#ifdef ZALLOC_STATS
+enum zalloc_memtype {
+    FREE=0, ALLOCATED,
+    N_zalloc_memtype
+};
+static int count[max_size][(int) N_zalloc_memtype];
+#endif
 
 struct dummy {
     int a;
@@ -40,6 +40,13 @@ union misc_types {		/* used only for its size */
 };
 
 const unsigned int sz = sizeof (misc_types);
+
+/*
+ * Pick some size here that will help keep down the number of calls to
+ * malloc, but doesn't waste too much space.  To avoid waste of space,
+ * we leave some overhead before the next power of two.
+ */
+const int alloc_size = ((16384 - 32) / sz) * sz;
 
 inline unsigned int round (unsigned int size) {
     size += sz - 1;
@@ -76,15 +83,14 @@ void *zalloc (unsigned int size) {
 
     void *ret;
     void **ptr = &buckets[bucket];
-#ifdef ZALLOC_DEBUG
+#ifdef ZALLOC_DEBUG_PRINT
     fprintf (stderr, "zalloc(%d); looking in bucket %d, found %08X\n",
 	     size, bucket, *ptr);
 #endif
     if (*ptr) {
 	ret = *ptr;
 	*ptr = *(void**)ret;
-	memset (ret, size, 0xe5);
-	return ret;
+	goto return_it;
     }
 
     if (free_space_size < size) {
@@ -92,17 +98,20 @@ void *zalloc (unsigned int size) {
 	    ptr = &buckets[BUCKET (free_space_size)];
 	    *(void**)free_space = *ptr;
 	    *ptr = free_space;
-#ifdef ZALLOC_DEBUG
+#ifdef ZALLOC_DEBUG_PRINT
 	    fprintf (stderr, "tossing %08X into bucket %d\n",
 		     free_space, bucket);
 #endif
+#ifdef ZALLOC_STATS
+	    count[BUCKET (free_space_size)][FREE]++;
+#endif
 	}
 
-	free_space_size = (4080 / sizeof (void *)) * sizeof (void *);
+	free_space_size = alloc_size;
 	free_space = malloc (free_space_size);
 	if (!free_space)
 	    abort ();
-#ifdef ZALLOC_DEBUG
+#ifdef ZALLOC_DEBUG_PRINT
 	fprintf (stderr, "grabbing more free store at %08X\n", free_space);
 #endif
     }
@@ -110,10 +119,14 @@ void *zalloc (unsigned int size) {
     ret = free_space;
     free_space = (char *) free_space + size;
     free_space_size -= size;
-#ifdef ZALLOC_DEBUG
+return_it:
+#ifdef ZALLOC_DEBUG_PRINT
     fprintf (stderr, "returning %08X\n", ret);
 #endif
     memset (ret, size, 0xe5);
+#ifdef ZALLOC_STATS
+    count[bucket][FREE]--, count[bucket][ALLOCATED]++;
+#endif
     return ret;
 }
 
@@ -131,14 +144,21 @@ void zfree (void *ptr, unsigned int size) {
     *(void **) ptr = *b;
     *b = ptr;
 #ifdef ZALLOC_DEBUG
+#ifdef ZALLOC_DEBUG_PRINT
     fprintf (stderr, "putting %08X into bucket %d\n",
 	     ptr, bucket);
-#if 0
     fprintf (stderr, "bucket %d:");
     for (ptr = buckets[bucket]; ptr; ptr=*(void**)ptr)
 	fprintf (stderr, " %X", ptr);
     fprintf (stderr, "\n");
+#else
+    for (ptr = buckets[bucket]; ptr; ptr=*(void**)ptr)
+	/* do nothing, just read value */;
 #endif
+#endif
+
+#ifdef ZALLOC_STATS
+    count[bucket][FREE]++, count[bucket][ALLOCATED]--;
 #endif
 }
 #endif
