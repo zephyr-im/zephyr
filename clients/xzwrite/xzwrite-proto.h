@@ -56,7 +56,7 @@ void edit_yank_next P((void ));
 void edit_yank_store P((void ));
 
 /* zephyr.c */
-void zeph_dispatch P((caddr_t client_data , int source , XtInputId *input_id ));
+void zeph_dispatch P((XtPointer client_data , int *source , XtInputId *input_id ));
 void zeph_init P((void ));
 int zeph_locateable P((char *user ));
 void zeph_subto_logins P((char **users , int num ));
