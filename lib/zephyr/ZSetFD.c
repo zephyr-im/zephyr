@@ -16,12 +16,12 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZSetFD(port)
-	int	port;
+Code_t ZSetFD(fd)
+	int	fd;
 {
 	ZClosePort();
 
-	__Zephyr_fd = port;
+	__Zephyr_fd = fd;
 	__Zephyr_open = 0;
 	
 	return (ZERR_NONE);
