@@ -216,5 +216,35 @@
 	ec		AD_NOTGT,
 			"Don't have Kerberos ticket-granting ticket"
 
+	ec		KRB_RES72,
+			"Reserved 72"
+
+	ec		KRB_RES73,
+			"Reserved 73"
+
+	ec		KRB_RES74,
+			"Reserved 74"
+
+	ec		KRB_RES75,
+			"Reserved 75"
+
+	ec		NO_TKT_FIL,
+			"No ticket file found"
+
+	ec		TKT_FIL_ACC,
+			"Couldn't access ticket file"
+
+	ec		TKT_FIL_LCK,
+			"Couldn't lock ticket file"
+
+	ec		TKT_FIL_FMT,
+			"Bad ticket file format"
+
+	ec		TKT_FIL_INI,
+			"tf_init not called first"
+
+	ec		KNAME_FMT,
+			"Bad Kerberos name format"
+
 	end
 
