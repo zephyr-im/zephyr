@@ -36,7 +36,7 @@ static char sccsid[] = "@(#)syslog.c	5.14 (Berkeley) 5/20/88";
 #include <sys/socket.h>
 #include <sys/file.h>
 #include <sys/signal.h>
-#include <sys/syslog.h>
+#include <syslog.h>
 #include <netdb.h>
 #include <strings.h>
 
