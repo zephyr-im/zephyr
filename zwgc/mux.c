@@ -199,7 +199,7 @@ static int check_tty()
 
     if (tty < 0) return 0;
 
-#ifdef POSIX
+#ifdef defined(POSIX) || defined(SUNOS)
     result = ( ((pgrp = tcgetpgrp(tty)) < 0)      ? 0 : 1 );
 #else
     result = ( (ioctl(tty, TIOCGPGRP, &pgrp) < 0) ? 0 : 1 );
