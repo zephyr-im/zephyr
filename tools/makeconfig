@@ -27,12 +27,13 @@ SUBDIR	= et et/lib et/compile_et ss ss/lib ss/make_commands clients \
 	clients/zlocate clients/zmailnotify clients/znol clients/zpopnotify \
 	clients/zshutdown_notify clients/zstat clients/zwrite \
 	include include/zephyr lib man man/man1 man/man8 server zhm zwgc \
-	zwgc/String zwgc/Memory zwgc/Dictionary ozwgc ozwgc/zbrowser
+	zwgc/String zwgc/Memory zwgc/Dictionary ozwgc ozwgc/zbrowser \
+	libdyn clients/xzwrite
 
 
 # Empty directories which also need to be built.
 
-MTDIR	= et/lib/profiled ss/lib/profiled lib/profiled libs
+MTDIR	= et/lib/profiled ss/lib/profiled lib/profiled libdyn/profiled libs
 
 # Directories which need only be linked into the sources
 
