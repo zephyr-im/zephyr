@@ -497,5 +497,9 @@ string tty_filter(text, use_fonts)
 
     free_info(info);
     free(text_copy);
+    if (number_of_lines &&
+	(result_so_far[string_Length(result_so_far)-1] != '\n'))
+	/* CRLF-terminate all results */
+	result_so_far = string_Concat2(result_so_far, "\r\n");
     return(result_so_far);
 }
