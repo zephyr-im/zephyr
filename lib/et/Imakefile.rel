@@ -1,0 +1,113 @@
+#
+# Makefile for error-table routines
+#
+# Copyright 1987, 1989 MIT Student Information Processing Board
+# For copyright info, see mit-sipb-copyright.h.
+#
+#	$Header$
+#	$Locker$
+#
+
+#ifdef ULTRIX40
+DEFINES=-DULTRIX_40
+#endif
+
+#ifdef error_table
+#undef error_table
+#endif
+
+LINTFLAGS=-uhvb 
+LINTFILES= error_message.c et_name.c init_et.c com_err.c # perror.c
+LIBOBJS= error_message.o et_name.o init_et.o com_err.o # perror.o
+
+DOCDIR=/usr/doc/athena
+
+FILES=	Makefile et_name.c error_message.c compile_et.c \
+		et_lex.lex.l error_table.y init_et.c \
+		com_err.c com_err.h \
+		error_table.h mit-sipb-copyright.h \
+		test.c test1.et test2.et \
+		compiler.h internal.h \
+		com_err.texinfo texinfo.tex
+CFILES=	compile_et.c error_table.c error_message.c et_name.c \
+	init_et.c com_err.c
+
+#
+# what to build...
+#
+
+#
+# rules
+#
+.SUFFIXES: .h .c .et .ps .x9700 .mss .dvi .texinfo
+
+ProfiledObjectRule()
+
+error_table.o: et_lex.lex.c
+
+.et.c:
+	./compile_et $*.et
+
+.et.h:
+	./compile_et $*.et
+
+.texinfo.dvi:
+	tex $<
+
+.dvi.ps:
+	rm -f $@.new
+	dvi2ps -r $< > $@.new
+	mv $@.new $@
+
+#
+# real entries...
+#
+SimpleProgram(compile_et, compile_et.o error_table.o, -ll,$(ATHBINDIR))
+
+install_file(com_err.h,$(ATHINCDIR))
+install_file(mit-sipb-copyright.h,$(ATHINCDIR))
+install_man(com_err.3,com_err.3)
+install_man(compile_et.1,compile_et.1)
+
+#if 0
+create_dir($(DOCDIR))
+install_file(com_err.texinfo,${DOCDIR}/com_err.texinfo)
+#endif
+
+
+SimpleLibrary(com_err,$(LIBOBJS),$(ATHLIBDIR))
+
+SimpleLint(com_err,$(LINTFILES))
+
+clean::
+	rm -f *~ \#* *.bak \
+		*.otl *.aux *.toc *.PS *.dvi *.x9700 *.ps \
+		*.cp *.fn *.ky *.log *.pg *.tp *.vr \
+		*.o profiled/?*.o libcom_err.a libcom_err_p.a \
+		com_err.o compile_et \
+		et.ar TAGS y.tab.c lex.yy.c error_table.c \
+		et_lex.lex.c \
+		test1.h test1.c test2.h test2.c test \
+		eddep makedep *.ln
+
+
+
+com_err.ps : com_err.dvi
+com_err.dvi: com_err.texinfo
+
+libcom_err.o:	$(LIBOBJS)
+	ld -r -s -o libcom_err.o $(LIBOBJS)
+	chmod -x libcom_err.o
+
+
+archive:	et.tar
+
+TAGS:	et_name.c error_message.c compile_et.c error_table.c \
+		lex.yy.c perror.c init_et.c
+	etags et_name.c error_message.c compile_et.c \
+		error_table.c perror.c init_et.c
+
+# 'make depend' code
+depend:: ${CFILES} et_lex.lex.c
+	makedepend ${CFLAGS} ${CFILES}
+
