@@ -27,6 +27,7 @@ static char rcsid_ZLocations_c[] = "$Header$";
 #include <netdb.h>
 
 extern char *getenv();
+extern int errno;
 
 Code_t ZSetLocation(exposure)
     char *exposure;
@@ -64,6 +65,10 @@ Z_SendLocation(class, opcode, auth, format)
     char *display, *ttyp;
     struct hostent *hent;
     short wg_port = ZGetWGPort();
+    int gotone = 0;
+    fd_set t1, t2, t3;
+    register int i;
+    struct timeval tv;
 
     (void) bzero((char *)&notice, sizeof(notice));
     notice.z_kind = ACKED;
@@ -118,10 +123,22 @@ Z_SendLocation(class, opcode, auth, format)
     if ((retval = ZSendList(&notice, bptr, 3, auth)) != ZERR_NONE)
 	return (retval);
 
-    if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *)0, 
-			    ZCompareUIDPred, (char *)&notice.z_uid)) !=
-	ZERR_NONE)
-	return (retval);
+    for (i=0;i<HM_TIMEOUT*2;i++) {
+	tv.tv_sec = 0;
+	tv.tv_usec = 500000;
+	if (select(0, &t1, &t2, &t3, &tv) < 0)
+	    return (errno);
+	retval = ZCheckIfNotice(&retnotice, (struct sockaddr_in *)0,
+				ZCompareUIDPred, (char *)&notice.z_uid);
+	if (retval == ZERR_NONE) {
+	    gotone = 1;
+	    break;
+	}
+	if (retval != ZERR_NONOTICE)
+	    return (retval);
+    }
+    if (!gotone)
+	return(ETIMEDOUT);
 
     if (retnotice.z_kind == SERVNAK) {
 	if (!retnotice.z_message_len) {
