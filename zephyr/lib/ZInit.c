@@ -126,8 +126,11 @@ Code_t ZInitialize()
       strcpy(__Zephyr_realm, krealms[0]);
       krb5_free_host_realm(Z_krb5_ctx, krealms);
     } else {
+      char *p; /* XXX define this somewhere portable */
       /* XXX check ticket file here */
-      code = krb5_get_default_realm(Z_krb5_ctx, __Zephyr_realm);
+      code = krb5_get_default_realm(Z_krb5_ctx, &p);
+      strcpy(__Zephyr_realm, p);
+      krb5_free_default_realm(Z_krb5_ctx, p);
       if (code)
 	return code;
     }

@@ -48,101 +48,32 @@ Code_t ZCheckZcodeAuthentication(notice, from)
 #ifdef HAVE_KRB5
     {
         krb5_error_code result;
-        krb5_ccache ccache;
-        krb5_creds creds_in, *creds;
+        krb5_creds *creds;
         krb5_keyblock *keyblock;
         krb5_enctype enctype;
         krb5_cksumtype cksumtype;
         krb5_data cksumbuf;
-#if HAVE_KRB5_C_MAKE_CHECKSUM
-        krb5_checksum checksum;
-        krb5_boolean valid;
-#else
-        krb5_crypto cryptctx;
-        Checksum checksum;
-        size_t xlen;
-#endif
+	int valid;
         char *cksum0_base, *cksum1_base, *cksum2_base;
         char *svcinst, *x, *y;
         char *asn1_data, *key_data;
         int asn1_len, key_len, cksum0_len, cksum1_len, cksum2_len;
-        /* Get a pointer to the default ccache.  We don't need to free this. */
-        result = krb5_cc_default(Z_krb5_ctx, &ccache);
-        if (result)
-            return (ZAUTH_NO);
 
-        /* GRRR.  There's no allocator or constructor for krb5_creds */
-        /* GRRR.  It would be nice if this API were documented at all */
-        memset(&creds_in, 0, sizeof(creds_in));
-
-	result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client);
-	if (result) {
-	    krb5_cc_close(Z_krb5_ctx, ccache);
-	    return(result);
-	}
-
-        /* construct the service principal */
-	result = krb5_build_principal(Z_krb5_ctx, &creds_in.server,
-				      strlen(__Zephyr_realm),
-				      __Zephyr_realm,
-				      SERVER_KRB5_SERVICE, SERVER_INSTANCE, 0);
-        if (result) {
-	    krb5_free_cred_contents(Z_krb5_ctx, &creds_in);
-	    krb5_cc_close(Z_krb5_ctx, ccache);
-            return (ZAUTH_NO);
-	}
-        /* HOLDING: creds_in.server */
-
-        /* look up or get the credentials we need */
-        result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache,
-                                      &creds_in, &creds);
-        krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */
-	krb5_cc_close(Z_krb5_ctx, ccache);
+	result = ZGetCreds(&creds);
 
         if (result)
             return (ZAUTH_NO);
         /* HOLDING: creds */
 
         /* Figure out what checksum type to use */
-#if HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
-        keyblock = &creds->keyblock;
-        key_data = keyblock->contents;
-        key_len  = keyblock->length;
-        enctype  = keyblock->enctype;
-        result = Z_krb5_lookup_cksumtype(enctype, &cksumtype);
+	keyblock = Z_credskey(creds);
+	key_data = Z_keydata(keyblock);
+	key_len = Z_keylen(keyblock);
+	result = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
         if (result) {
 	    krb5_free_creds(Z_krb5_ctx, creds);
 	    return (ZAUTH_FAILED);
         }
-#else
-        keyblock = &creds->session;
-        key_data = keyblock->keyvalue.data;
-        key_len  = keyblock->keyvalue.length;
-	{
-	    unsigned int len;  
-	    ENCTYPE *val;  
-	    int i = 0;  
-  
-	    result  = krb5_keytype_to_enctypes(Z_krb5_ctx, keyblock->keytype,  
-					       &len, &val);  
-	    if (result) {  
-		krb5_free_creds(Z_krb5_ctx, creds);
-		return (ZAUTH_FAILED);
-	    }  
-  
-	    do {  
-		if (i == len) break; 
-		result = Z_krb5_lookup_cksumtype(val[i], &cksumtype);  
-		i++; 
-	    } while (result != 0);  
- 
-	    if (result) {  
-		krb5_free_creds(Z_krb5_ctx, creds);
-		return (ZAUTH_FAILED);
-	    }  
-	    enctype = val[i-1];  
-	}  
-#endif
         /* HOLDING: creds */
 
         /* Assemble the things to be checksummed */
@@ -232,48 +163,16 @@ Code_t ZCheckZcodeAuthentication(notice, from)
         }
         /* HOLDING: creds, asn1_data, cksumbuf.data */
 
-#if HAVE_KRB5_C_MAKE_CHECKSUM
-        /* Verify the checksum -- MIT crypto API */
-        memset(&checksum, 0, sizeof(checksum));
-        checksum.length = asn1_len;
-        checksum.contents = asn1_data;
-	checksum.checksum_type = cksumtype;
-        result = krb5_c_verify_checksum(Z_krb5_ctx,
-                                        keyblock, Z_KEYUSAGE_SRV_CKSUM,
-                                        &cksumbuf, &checksum, &valid);
+	valid = Z_krb5_verify_cksum(keyblock, &cksumbuf, cksumtype, asn1_data, asn1_len);
+
         free(asn1_data);
         krb5_free_creds(Z_krb5_ctx, creds);
         free(cksumbuf.data);
-        if (!result && valid)
-            return (ZAUTH_YES);
-        else
-            return (ZAUTH_FAILED);
-#else
-	checksum.checksum.length = asn1_len;
-	checksum.checksum.data = asn1_data;
-	checksum.cksumtype = cksumtype;
-	/* HOLDING: creds, asn1_data, cksumbuf.data */
 
-        result = krb5_crypto_init(Z_krb5_ctx, keyblock, enctype, &cryptctx);
-        krb5_free_creds(Z_krb5_ctx, creds);
-        if (result) {
-	    free(asn1_data);
-            free(cksumbuf.data);
-            return result;
-        }
-        /* HOLDING: cryptctx, checksum, cksumbuf.data */
-        result = krb5_verify_checksum(Z_krb5_ctx, cryptctx,
-                                      Z_KEYUSAGE_SRV_CKSUM,
-                                      cksumbuf.data, cksumbuf.length,
-                                      &checksum);
-        krb5_crypto_destroy(Z_krb5_ctx, cryptctx);
-	free(asn1_data);
-        free(cksumbuf.data);
-        if (result)
-            return (ZAUTH_FAILED);
-        else
-            return (ZAUTH_YES);
-#endif
+	if (valid)
+	  return ZAUTH_YES;
+	else
+	  return ZAUTH_FAILED;
     }
 #endif /* HAVE_KRB5 */
     return (notice->z_auth ? ZAUTH_YES : ZAUTH_NO);

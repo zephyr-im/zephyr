@@ -32,7 +32,8 @@ static char rcsid_ZCheckAuthentication_c[] =
 Code_t ZCheckAuthentication(notice, from)
     ZNotice_t *notice;
     struct sockaddr_in *from;
-{	
+{
+#if 0
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     int result;
     ZChecksum_t our_checksum;
@@ -80,5 +81,8 @@ Code_t ZCheckAuthentication(notice, from)
 
 #else
     return (notice->z_auth ? ZAUTH_YES : ZAUTH_NO);
+#endif
+#else
+    ZCheckZcodeAuthentication(notice, from);
 #endif
 } 

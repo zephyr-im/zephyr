@@ -117,6 +117,30 @@ void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz);
 
 #ifdef HAVE_KRB5
 int ZGetCreds(krb5_creds **creds_out);
+int ZGetCredsRealm(krb5_creds **creds_out, char *realm);
+Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, krb5_cksumtype cksumtype, char **asn1_data, int *asn1_len);
+Code_t Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, krb5_cksumtype *cksumtype);
+int Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, krb5_cksumtype cksumtype, char *asn1_data, int asn1_len);
+
 #endif
+
+#ifdef HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
+#define Z_keydata(keyblock)	((keyblock)->contents)
+#define Z_keylen(keyblock)	((keyblock)->length)
+#define Z_credskey(creds)	(&(creds)->keyblock)
+#else
+#define Z_keydata(keyblock)	((keyblock)->keyvalue.data)
+#define Z_keylen(keyblock)	((keyblock)->keyvalue.length)
+#define Z_credskey(creds)	(&(creds)->session)
+#endif
+
+#ifdef HAVE_KRB5_TICKET_ENC_PART2
+#define Z_tktprincp(tkt)	((tkt)->enc_part2 != 0)
+#define Z_tktprinc(tkt)		((tkt)->enc_part2->client)
+#else
+#define	Z_tktprincp(tkt)	((tkt)->client != 0)
+#define Z_tktprinc(tkt)		((tkt)->client)
+#endif
+
 #endif /* __INTERNAL_H__ */
 

@@ -1042,7 +1042,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     if (cstart)
 	*cstart = ptr;
     if (ZMakeAscii32(ptr, end-ptr, notice->z_checksum) == ZERR_FIELDLEN)
-	return (ZERR_HEADERLEN);
+        return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
     if (cend)
 	*cend = ptr;
@@ -1295,3 +1295,140 @@ void ZSetDebug(proc, arg)
 }
 #endif /* Z_DEBUG */
 
+#ifdef HAVE_KRB5
+Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, krb5_cksumtype cksumtype, char **asn1_data, int *asn1_len) {
+    krb5_error_code result;
+    char *data;
+    int len;
+#if HAVE_KRB5_C_MAKE_CHECKSUM
+    krb5_checksum checksum;
+#else
+    Checksum checksum;
+    krb5_crypto cryptctx;
+#endif
+    
+#if HAVE_KRB5_C_MAKE_CHECKSUM
+    /* Create the checksum -- MIT crypto API */
+    result = krb5_c_make_checksum(Z_krb5_ctx, cksumtype,
+				  keyblock, Z_KEYUSAGE_CLT_CKSUM,
+				  cksumbuf, &checksum);
+    if (result)
+	return result;
+    /* HOLDING: checksum */
+
+    data = checksum.contents;
+    len = checksum.length;
+#else
+    /* Create the checksum -- heimdal crypto API */
+    result = krb5_crypto_init(Z_krb5_ctx, keyblock, enctype, &cryptctx);
+    if (result)
+	return result;
+
+    /* HOLDING: cryptctx */
+    result = krb5_create_checksum(Z_krb5_ctx, cryptctx,
+				  Z_KEYUSAGE_CLT_CKSUM, cksumtype,
+				  cksumbuf->data, cksumbuf->length,
+				  &checksum);
+    krb5_crypto_destroy(Z_krb5_ctx, cryptctx);
+    if (result)
+	return result;
+
+    len = checksum.checksum.length;
+    data = checksum.checksum.data;
+    /* HOLDING: checksum */
+#endif
+
+    *asn1_data = malloc(len);
+    if (*asn1_data == NULL)
+	return errno;
+    memcpy(*asn1_data, data, len);
+    *asn1_len = len;
+
+#if HAVE_KRB5_C_MAKE_CHECKSUM
+    krb5_free_checksum_contents(Z_krb5_ctx, &checksum);
+#else
+    free_Checksum(&checksum);
+#endif
+
+    return 0;
+}
+
+Code_t
+Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, krb5_cksumtype *cksumtype) {
+#if HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
+    *enctype  = keyblock->enctype; 
+    return Z_krb5_lookup_cksumtype(*enctype, cksumtype); 
+#else 
+    unsigned int len; 
+    ENCTYPE *val; 
+    int i = 0; 
+ 
+    result = krb5_keytype_to_enctypes(Z_krb5_ctx, keyblock->keytype, 
+				      &len, &val); 
+    if (result)
+      return result;
+    
+    do { 
+      if (i == len) break;
+      result = Z_krb5_lookup_cksumtype(val[i], cksumtype); 
+      i++;
+    } while (result != 0); 
+    
+    if (result)
+      return result;
+
+    *enctype = val[i-1]; 
+#endif
+    return 0;
+}
+#endif
+
+#ifdef HAVE_KRB5
+/* returns 0 if invalid or losing, 1 if valid, *sigh* */
+int
+Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, krb5_cksumtype cksumtype, char *asn1_data, int asn1_len) {
+    krb5_error_code result;
+#if HAVE_KRB5_C_MAKE_CHECKSUM
+    krb5_checksum checksum;
+    krb5_boolean valid;
+#else
+    krb5_crypto cryptctx;
+    Checksum checksum;
+    size_t xlen;
+#endif
+
+    memset(&checksum, 0, sizeof(checksum));
+#if HAVE_KRB5_C_MAKE_CHECKSUM
+    /* Verify the checksum -- MIT crypto API */
+    checksum.length = asn1_len;
+    checksum.contents = asn1_data;
+    checksum.checksum_type = cksumtype;
+    result = krb5_c_verify_checksum(Z_krb5_ctx,
+				    keyblock, Z_KEYUSAGE_SRV_CKSUM,
+				    cksumbuf, &checksum, &valid);
+    if (!result && valid)
+	return 1;
+    else
+	return 0;
+#else
+    checksum.checksum.length = asn1_len;
+    checksum.checksum.data = asn1_data;
+    checksum.cksumtype = cksumtype;
+
+    result = krb5_crypto_init(Z_krb5_ctx, keyblock, enctype, &cryptctx);
+    if (result)
+	return result;
+    
+    /* HOLDING: cryptctx */
+    result = krb5_verify_checksum(Z_krb5_ctx, cryptctx,
+				  Z_KEYUSAGE_SRV_CKSUM,
+				  cksumbuf.data, cksumbuf.length,
+				  &checksum);
+    krb5_crypto_destroy(Z_krb5_ctx, cryptctx);
+    if (result)
+	return 0;
+    else
+	return 1;
+#endif
+}
+#endif

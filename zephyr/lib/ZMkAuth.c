@@ -34,6 +34,9 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     int buffer_len;
     int *len;
 {
+#if 1
+    return ZMakeZcodeAuthentication(notice, buffer, buffer_len, len/*?XXX*/);
+#else
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     int result;
     time_t now;
@@ -113,6 +116,7 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     notice->z_ascii_authent = "";
     return (Z_FormatRawHeader(notice, buffer, buffer_len, len, NULL, NULL));
 #endif
+#endif
 }
 
 Code_t ZMakeZcodeAuthentication(notice, buffer, buffer_len, phdr_len)
@@ -135,21 +139,13 @@ Code_t ZMakeZcodeRealmAuthentication(notice, buffer, buffer_len, phdr_len,
 {
 #ifdef HAVE_KRB5
     krb5_error_code result;
-    krb5_ccache ccache;
-    krb5_creds creds_in, *creds;
+    krb5_creds *creds;
     krb5_keyblock *keyblock;
     krb5_enctype enctype;
     krb5_cksumtype cksumtype;
     krb5_auth_context authctx;
     krb5_data *authent;
     krb5_data cksumbuf;
-#if HAVE_KRB5_C_MAKE_CHECKSUM
-    krb5_checksum checksum;
-#else
-    krb5_crypto cryptctx;
-    Checksum checksum;
-    size_t xlen;
-#endif
     char *svcinst, *x, *y;
     char *cksum_start, *cstart, *cend, *asn1_data;
     int plain_len;   /* length of part not to be checksummed */
@@ -158,79 +154,18 @@ Code_t ZMakeZcodeRealmAuthentication(notice, buffer, buffer_len, phdr_len,
     int cksum1_len;  /* length of part after checksum */
     int i, zcode_len, asn1_len;
     
-    /* Get a pointer to the default ccache.  We don't need to free this. */
-    result = krb5_cc_default(Z_krb5_ctx, &ccache);
-    if (result)
-	return result;
-    
-    /* GRRR.  There's no allocator or constructor for krb5_creds */
-    /* GRRR.  It would be nice if this API were documented at all */
-    memset(&creds_in, 0, sizeof(creds_in));
-
-    result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client);
-    if (result) {
-      krb5_cc_close(Z_krb5_ctx, ccache);
-      return(result);
-    }
-
-    /* construct the service principal */
-    result = krb5_build_principal(Z_krb5_ctx, &creds_in.server,
-				  strlen(realm),
-				  realm,
-				  SERVER_KRB5_SERVICE, SERVER_INSTANCE, 0);
-    if (result) {
-        krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */
-	krb5_cc_close(Z_krb5_ctx, ccache);
-	return result;
-    }
-    /* HOLDING: creds_in.server, ccache */
-    
-    /* look up or get the credentials we need */
-    result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache,
-				  &creds_in, &creds);
-    krb5_cc_close(Z_krb5_ctx, ccache);
-    krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */
+    result = ZGetCredsRealm(&creds, realm);
     if (result)
 	return result;
     /* HOLDING: creds */
     
     /* Figure out what checksum type to use */
-#if HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
-    keyblock = &creds->keyblock;
-    enctype  = keyblock->enctype;
-
-    result = Z_krb5_lookup_cksumtype(enctype, &cksumtype);
+    keyblock = Z_credskey(creds);
+    result = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
     if (result) {
 	krb5_free_creds(Z_krb5_ctx, creds);
 	return result;
     }
-#else
-    keyblock = &creds->session;
-    {
-       unsigned int len;
-       ENCTYPE *val;
-       int i = 0;
-
-       result  = krb5_keytype_to_enctypes(Z_krb5_ctx, keyblock->keytype,
-                                           &len, &val);
-       if (result) {
-           krb5_free_creds(Z_krb5_ctx, creds); 
-           return result;
-       }
-
-       do {
-           if (i == len) break;
-           result = Z_krb5_lookup_cksumtype(val[i], &cksumtype);
-           i++;
-       } while (result != 0);
-
-       if (result) {
-           krb5_free_creds(Z_krb5_ctx, creds); 
-           return result;
-       }
-       enctype = val[i-1];
-    }
-#endif
     /* HOLDING: creds */
     
     /* Create the authenticator */
@@ -239,7 +174,7 @@ Code_t ZMakeZcodeRealmAuthentication(notice, buffer, buffer_len, phdr_len,
 	krb5_free_creds(Z_krb5_ctx, creds);
 	return (result);
     }
-
+	
     authent = (krb5_data *)malloc(sizeof(krb5_data));
 
     /* HOLDING: creds, authctx */
@@ -300,43 +235,14 @@ Code_t ZMakeZcodeRealmAuthentication(notice, buffer, buffer_len, phdr_len,
     memcpy(cksumbuf.data + cksum0_len, cend, cksum1_len);
     memcpy(cksumbuf.data + cksum0_len + cksum1_len,
 	   notice->z_message, notice->z_message_len);
-    
-#if HAVE_KRB5_C_MAKE_CHECKSUM
-    /* Create the checksum -- MIT crypto API */
-    result = krb5_c_make_checksum(Z_krb5_ctx, cksumtype,
-				  keyblock, Z_KEYUSAGE_CLT_CKSUM,
-				  &cksumbuf, &checksum);
-    krb5_free_creds(Z_krb5_ctx, creds);
-    if (result) {
-	free(cksumbuf.data);
-	return result;
-    }
-    /* HOLDING: cksumbuf.data, checksum */
 
-    asn1_data = checksum.contents;
-    asn1_len = checksum.length;
-#else
-    /* Create the checksum -- heimdal crypto API */
-    result = krb5_crypto_init(Z_krb5_ctx, keyblock, enctype, &cryptctx);
+    /* compute the checksum */
+    result = Z_Checksum(&cksumbuf, keyblock, cksumtype, &asn1_data, &asn1_len);
     krb5_free_creds(Z_krb5_ctx, creds);
     if (result) {
 	free(cksumbuf.data);
 	return result;
     }
-    /* HOLDING: cksumbuf.data, cryptctx */
-    result = krb5_create_checksum(Z_krb5_ctx, cryptctx,
-				  Z_KEYUSAGE_CLT_CKSUM, cksumtype,
-				  cksumbuf.data, cksumbuf.length,
-				  &checksum);
-    krb5_crypto_destroy(Z_krb5_ctx, cryptctx);
-    if (result) {
-	free(cksumbuf.data);
-	return result;
-    }
-    asn1_len = checksum.checksum.length;
-    asn1_data = checksum.checksum.data;
-    /* HOLDING: cksumbuf.data, checksum */
-#endif
     
     /* 
      * OK....  we can zcode to a space starting at 'cstart',
@@ -356,17 +262,18 @@ Code_t ZMakeZcodeRealmAuthentication(notice, buffer, buffer_len, phdr_len,
     /* free stuff up, and then return the result from the last call */
 
     free(cksumbuf.data);
-#if HAVE_KRB5_C_MAKE_CHECKSUM
-    krb5_free_checksum_contents(Z_krb5_ctx, &checksum);
-#else
-    free_Checksum(&checksum);
-#endif
+    free(asn1_data);
+
     return (result);
 #endif /* HAVE_KRB5 */
 }
 
 #ifdef HAVE_KRB5
 int ZGetCreds(krb5_creds **creds_out) {
+  return ZGetCredsRealm(creds_out, __Zephyr_realm);
+}
+
+int ZGetCredsRealm(krb5_creds **creds_out, char *realm) {
   krb5_creds creds_in;
   krb5_ccache ccache; /* XXX make this a global or static?*/
   int result;
@@ -377,7 +284,8 @@ int ZGetCreds(krb5_creds **creds_out) {
 
   memset((char *)&creds_in, 0, sizeof(creds_in));
   result = krb5_build_principal(Z_krb5_ctx, &creds_in.server,
-			     strlen(__Zephyr_realm), __Zephyr_realm,
+				strlen(realm),
+				realm,
 				SERVER_SERVICE, SERVER_INSTANCE, 0);
   if (result) {
     krb5_cc_close(Z_krb5_ctx, ccache);
@@ -391,15 +299,12 @@ int ZGetCreds(krb5_creds **creds_out) {
     return result;
   }
   
-  creds_in.times.endtime = 0;
-  creds_in.keyblock.enctype = ENCTYPE_DES_CBC_CRC;
+  creds_in.keyblock.enctype = ENCTYPE_DES_CBC_CRC; /* XXX? */
   
   result = krb5_get_credentials(Z_krb5_ctx, 0, ccache, &creds_in, creds_out);
   krb5_cc_close(Z_krb5_ctx, ccache);
   krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* I also hope this is ok */
 
   return result;
-  
-  
 }
 #endif

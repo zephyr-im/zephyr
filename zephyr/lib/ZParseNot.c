@@ -212,11 +212,7 @@ Code_t ZParseNotice(buffer, len, notice)
     if (numfields && ptr < end) {
       notice->z_ascii_checksum = ptr;
 
-#ifdef xZCODE_K4SUM 
-      if (ZReadZcode32(ptr, end-ptr, &temp) == ZERR_BADFIELD) 
-#else
       if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
-#endif
 	notice->z_checksum = 0;
       else
 	notice->z_checksum = temp;

@@ -76,7 +76,7 @@ char *ZGetSender()
     pw = getpwuid((int) getuid());
     if (!pw)
 	return ("unknown");
-    sender = malloc(strlen(pw->pw_name) + strlen(__Zephyr_realm));
+    sender = malloc(strlen(pw->pw_name) + strlen(__Zephyr_realm) + 2);
     if (sender)
       (void) sprintf(sender, "%s@%s", pw->pw_name, __Zephyr_realm);
     return (sender);

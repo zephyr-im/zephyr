@@ -17,7 +17,7 @@ Milestone 3
 	  * client sends only new-style messages
 
 Milestone 3.5
-	  * offer to Derrick.
+	  * refactor checksumming code
 
 Milestone 4
 	  * server sends only newstyle messages, and can't brain dump the
@@ -38,6 +38,7 @@ Milestone 6.5
 
 Milestone 7
 	  * brain dump via krb5, encrypted
+	  (optional) brain dump to/from file
 
 Milestone 8
 	  * bring sourceforge up to date
