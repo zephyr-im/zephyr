@@ -6,15 +6,16 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZFormatNoticeList_c[] = "$Header$";
-#endif lint
+static char rcsid_ZFormatNoticeList_c[] =
+    "$Header$";
+#endif
 
 #include <zephyr/mit-copyright.h>
 
@@ -23,7 +24,7 @@ static char rcsid_ZFormatNoticeList_c[] = "$Header$";
 Code_t ZFormatNoticeList(notice, list, nitems, buffer, ret_len, 
 			 cert_routine)
     ZNotice_t *notice;
-    char *list[];
+    char **list;
     int nitems;
     char **buffer;
     int *ret_len;
