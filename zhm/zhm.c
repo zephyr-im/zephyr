@@ -29,7 +29,7 @@ static char rcsid_hm_c[] = "$Header$";
 #include <sys/file.h>
 
 int no_server = 1, timeout_type = 0, serv_loop = 0;
-int nserv = 0, nclt = 0, nservchang = 0;
+int nserv = 0, nclt = 0, nservchang = 0, sig_type = 0;
 struct sockaddr_in cli_sin, serv_sin, from;
 struct hostent *hp;
 char **serv_list, **cur_serv_list, **clust_info;
@@ -41,6 +41,7 @@ extern int errno;
 extern char *index();
 
 void init_hm(), detach(), handle_timeout(), resend_notices(), die_gracefully();
+void set_sig_type();
 char *upcase();
 
 main(argc, argv)
@@ -110,6 +111,21 @@ char *argv[];
 					 notice.z_kind);
 			    }
 		      }
+		}
+	  } else {
+		switch(sig_type) {
+		    case SIGHUP:
+		      new_server();
+		      break;
+		    case SIGTERM:
+		      die_gracefully();
+		      break;
+		    case SIGALRM:
+		      handle_timeout();
+		      break;
+		    default:
+		      syslog (LOG_INFO, "Unknown system interrupt.");
+		      break;
 		}
 	  }
     }
@@ -193,8 +209,9 @@ void init_hm()
 
       send_boot_notice(HM_BOOT);
 
-      (void)signal (SIGALRM, handle_timeout);
-      (void)signal (SIGTERM, die_gracefully);
+      (void)signal (SIGHUP,  set_sig_type);
+      (void)signal (SIGALRM, set_sig_type);
+      (void)signal (SIGTERM, set_sig_type);
 }
 
 char *upcase(s)
@@ -290,21 +307,32 @@ detach()
 find_next_server()
 {
       struct hostent *hp;
+      int done = 0;
 
-      if (++serv_loop > 3) {
+      if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
 	    serv_loop = 0;
 	    hp = gethostbyname(prim_serv);
 	    DPR2 ("Server = %s\n", prim_serv);
 	    cur_serv = prim_serv;
-      } else {
+      } else
+	do {
 	    if (*++cur_serv_list == NULL)
 	      cur_serv_list = serv_list;
-	    hp = gethostbyname(*cur_serv_list);
-	    DPR2 ("Server = %s\n", *cur_serv_list);
-	    cur_serv = *cur_serv_list;
-      }
+	    if (strcmp(*cur_serv_list, cur_serv)) {
+		  hp = gethostbyname(*cur_serv_list);
+		  DPR2 ("Server = %s\n", *cur_serv_list);
+		  cur_serv = *cur_serv_list;
+		  done = 1;
+	    }
+      } while (done == 0);
       bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
       nservchang++;
+}
+
+void set_sig_type(sig)
+     int sig;
+{
+      sig_type = sig;
 }
 
 server_manager(notice)
@@ -454,7 +482,7 @@ send_stats(notice, sin)
       Code_t ret;
       ZPacket_t bfr;
       char *list[10];
-      int len, i, nitems = 6;
+      int len, i, nitems = 7;
 
       if ((ret = ZSetDestAddr(sin)) != ZERR_NONE) {
 	    Zperr(ret);
@@ -474,6 +502,11 @@ send_stats(notice, sin)
       sprintf(list[4], "%d", nservchang);
       list[5] = (char *)malloc(64);
       strcpy(list[5], rcsid_hm_c);
+      list[6] = (char *)malloc(64);
+      if (no_server)
+	sprintf(list[6], "yes");
+      else
+	sprintf(list[6], "no");
 
       if ((ret = ZFormatRawNoticeList(notice, list, nitems, bfr,
 				      Z_MAXPKTLEN, &len)) != ZERR_NONE) {
