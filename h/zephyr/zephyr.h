@@ -218,7 +218,7 @@ extern "C" {
 #define ZERR_NONE		0
 
     /* Hostmanager wait time (in secs) */
-#define HM_TIMEOUT		5
+#define HM_TIMEOUT		10
 
 #define ZAUTH (ZMakeAuthentication)
 #define ZNOAUTH ((Z_AuthProc)0)
@@ -237,7 +237,7 @@ extern "C" {
 
     const int ZERR_NONE = 0;
 
-    const int HM_TIMEOUT = 5;
+    const int HM_TIMEOUT = 10;
 
     const Z_AuthProc ZAUTH = &ZMakeAuthentication;
     const Z_AuthProc ZNOAUTH = 0;
