@@ -28,6 +28,13 @@
 #include "access.h"
 #include "acl.h"
 
+#ifdef ZEPHYR_USES_KERBEROS
+/* Kerberos-specific library interfaces used only by the server. */
+extern C_Block __Zephyr_session;
+#define ZGetSession() (__Zephyr_session)
+Code_t ZFormatAuthenticNotice ZP((ZNotice_t*, char*, int, int*, C_Block));
+#endif
+
 /* For krb_rd_req prototype and definition. */
 #ifndef KRB_INT32
 #define KRB_INT32 ZEPHYR_INT32
