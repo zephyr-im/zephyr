@@ -500,7 +500,7 @@ xmit_frag(notice, buf, len, waitforack)
 	nacked->na_packsz = len;
 	nacked->na_uid = notice->z_uid;
 	nacked->q_forw = nacked->q_back = nacked;
-	nacked->na_abstimo = t_local.tv_sec + abs_timo;
+	nacked->na_abstimo = NOW + abs_timo;
 
 	/* set a timer to retransmit when done */
 	nacked->na_timer = timer_set_rel(rexmit_secs,
@@ -615,7 +615,7 @@ xmit(notice, dest, auth, client)
 	nacked->na_packsz = packlen;
 	nacked->na_uid = notice->z_uid;
 	nacked->q_forw = nacked->q_back = nacked;
-	nacked->na_abstimo = t_local.tv_sec + abs_timo;
+	nacked->na_abstimo = NOW + abs_timo;
 
 	/* set a timer to retransmit when done */
 	nacked->na_timer = timer_set_rel(rexmit_secs,
