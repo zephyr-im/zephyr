@@ -8,25 +8,15 @@
 /**/#	$Header$
 /**/#
 
-#if defined(DO_SYSLOG) && defined(SYSLOG_COMPAT42)
+#if defined(SYSLOG_COMPAT42)
 SYSLOG_LIB= ../clients/syslogd/syslog.o
 SYSLOG_DEF= -I../clients/syslogd
 #else
 SYSLOG_LIB=
 SYSLOG_DEF=
 #endif
-LIBS= ${SYSLOG_LIB} ${ZEPHYR_LIB} ${HES_LIB} ${KRB_LIB} \
-	${DES_LIB} ${COMERR_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${HES_LINTLIB} \
-	${KRB_LINTLIB} ${DES_LINTLIB}
 
-HDRS=	zserver.h \
-	zsrv_conf.h \
-	timer.h \
-	zstring.h \
-	unix.h \
-	zalloc.h \
-	access.h
+XDEFS = $(SYSLOG_DEF) -DCONCURRENT
 
 SRCS=	access.c \
 	acl_files.c \
@@ -65,31 +55,20 @@ OBJS=	access.o \
 	zsrv_err.o \
 	zstring.o
 
-OTHERSRCS= zsrv_err.et
-CONFIG_FILES= default.subscriptions
-SRCDIR= ${SRCTOP}/server
-CODE= ${SRCS} ${HDRS} ${OTHERSRCS} ${CONFIG_FILES} Imakefile
+error_table(zsrv_err)
+SimpleProgram(zephyrd,$(OBJS) version.o,$(ZLIBS) $(LIB_HES),$(ATHETCDIR))
+install_man(zephyrd.8,zephyrd.8)
+install_file(default.subscriptions,$(ZLIBDIR))
 
-DEFINES= $(SYSLOG_DEF) -DCONCURRENT
-normal_obj_rule()
-
-program(zephyrd,${OBJS} version.o,,${LIBS},${USRETCDIR})
-
-error_table_noprof(zsrv_err)
-
-src:: zsrv_err.h
+create_dir($(ZACLDIR))
+install::
+	$(RM) $(DESTDIR)$(ZACLDIR)/?*.acl
+	$(CP) acldir/?* $(DESTDIR)$(ZACLDIR)
 
 depend:: zsrv_err.h version.h
+$(OBJS): zsrv_err.h
 
-install::
-	-mkdir ${DESTDIR}${ACLDIR}
-	-rm -f ${DESTDIR}${ACLDIR}/?*.acl
-	cp acldir/?* ${DESTDIR}${ACLDIR}
-	${INSTALLFILE} default.subscriptions ${DESTDIR}${ACLDIR}/default.subscriptions
-
-zephyrd: version.o
 version.o: version.h
-
 version.h: $(SRCS)
 	$(RM) version.h
 	sh new_vers.sh

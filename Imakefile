@@ -1,74 +1,15 @@
-/**/#	Copyright 1988 Massachusetts Institute of Technology.
-/**/#
+/**/#	Copyright 1988,1993 Massachusetts Institute of Technology
 /**/#	For copying and distribution information, see the file
-/**/#	"mit-copyright.h". 
+/**/#	"mit-copyright.h"
 /**/#
-/**/#	$Source$
-/**/#	$Author$
-/**/#	$Header$
-/**/#
-#define have_subdirs
-#define no_curdir_lint
+/**/#	$Id$
 
-NEWTOP=.
-CODE=Imakefile
-#ifdef LOCAL_LIBS
-LOC_SUBDIRS = et ss
-#endif /*LOCAL_LIBS*/
-#ifdef BuildServer
-SERVER=server
-#endif
-SUBDIRS= ${LOC_SUBDIRS} include lib libdyn clients ${SERVER} zhm zwgc man #ozwgc
-/* Need to make sure `all' is the first target */
-all::
-/**/# we need to remove these here; it is not appropriate to remove them
-/**/# from lib/Makefile since someone may type 'make clean' there and nuke
-/**/# them by accident.
-
-clean::
-	rm -f libs/libzephyr.a libs/llib-lzephyr.ln
-
-#ifdef PROFILED_LIBS
-clean::
-	rm -f libs/libzephyr_p.a
+#define Project
+#ifndef ProjectRules
+#define ProjectRules "config/zephyr.rules"
+#include ProjectRules
 #endif
 
-#ifdef HaveUCode
-clean::
-	rm -f libs/libzephyr.b
-#endif
+#define ISUBDIRS util include lib libdyn clients server zhm zwgc /* man */
 
-#ifdef OTHER_IMAKE
-world:
-	make ${MFLAGS} Makefile
-	make ${MFLAGS} Makefiles
-	make ${MFLAGS} depend
-	make ${MFLAGS} all
-#else
-world:
-	(cd imake; make ${MFLAGS} clean; make ${MFLAGS} imake)
-	make ${MFLAGS} Makefile
-	make ${MFLAGS} Makefiles
-	make ${MFLAGS} depend
-	make ${MFLAGS} all
-#endif
-
-#ifdef LOCAL_makedepend
-/**/# We need to make makedepend before we make depend
-depend::
-	(cd makedepend; make ${MFLAGS} all)
-
-clean::
-	(cd makedepend; make ${MFLAGS} clean)
-
-#endif /* LOCAL_makedepend */
-
-#ifdef LOCAL_LIBS
-/**/# We need to make ss.h so that make depend can find it.
-/**/# and to make ss.h, we need et/compile_et
-depend::
-	(cd et; make ${MFLAGS} depend)
-	(cd et; make ${MFLAGS} all)
-	(cd ss; make ${MFLAGS} depend)
-#endif /* LOCAL_LIBS */
-
+create_dir($(ZLIBDIR))
