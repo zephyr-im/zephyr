@@ -1,0 +1,197 @@
+int ZCheckAuthentication(notice, from)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+
+Code_t ZCheckIfNotice(notice, from, predicate, args)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+    int (*predicate)();
+    char *args;
+
+Code_t ZClosePort()
+
+int ZCompareUID(uid1, uid2)
+    ZUnique_Id_t *uid1, *uid2;
+
+int ZCompareUIDPred(notice, uid)
+    ZNotice_t *notice;
+    ZUnique_Id_t *uid;
+
+Code_t ZFlushLocations()
+
+Code_t ZFlushSubscriptions()
+
+Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
+    ZNotice_t *notice;
+    char *buffer;
+    int buffer_len;
+    int *len;
+    C_Block session;
+
+Code_t ZFormatNotice(notice, buffer, ret_len, cert_routine)
+    ZNotice_t *notice;
+    char **buffer;
+    int *ret_len;
+    int (*cert_routine)();
+
+Code_t ZFormatNoticeList(notice, list, nitems, buffer, ret_len, 
+			 cert_routine)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+    char **buffer;
+    int *ret_len;
+    int (*cert_routine)();
+
+Code_t ZFormatRawNotice(notice, buffer, ret_len)
+    ZNotice_t *notice;
+    char **buffer;
+    int *ret_len;
+
+Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+    char **buffer;
+    int *ret_len;
+
+Code_t ZFormatSmallRawNotice(notice, buffer, ret_len)
+    ZNotice_t *notice;
+    ZPacket_t buffer;
+    int *ret_len;
+
+Code_t ZFormatSmallRawNoticeList(notice, list, nitems, buffer, ret_len)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+    ZPacket_t buffer;
+    int *ret_len;
+
+Code_t ZFreeNotice(notice)
+    ZNotice_t *notice;
+
+Code_t ZGetLocations(location, numlocs)
+    ZLocations_t *location;
+    int *numlocs;
+
+char *ZGetSender()
+
+Code_t ZGetSubscriptions(subscription, numsubs)
+    ZSubscription_t *subscription;
+    int *numsubs;
+
+short ZGetWGPort()
+
+Code_t ZIfNotice(notice, from, predicate, args)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+    int (*predicate)();
+    char *args;
+
+Code_t ZInitialize()
+
+Code_t ZLocateUser(user, nlocs)
+    char *user;
+    int *nlocs;
+
+Code_t ZSetLocation(exposure)
+    char *exposure;
+
+Code_t ZMakeAscii(ptr, len, field, num)
+    char *ptr;
+    int len;
+    unsigned char *field;
+    int num;
+
+Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
+    ZNotice_t *notice;
+    char *buffer;
+    int buffer_len;
+    int *len;
+
+Code_t ZOpenPort(port)
+    u_short *port;
+
+Code_t ZParseNotice(buffer, len, notice)
+    char *buffer;
+    int len;
+    ZNotice_t *notice;
+
+Code_t ZPeekIfNotice(notice, from, predicate, args)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+    int (*predicate)();
+    char *args;
+
+Code_t ZPeekNotice(notice, from)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+
+Code_t ZPeekPacket(buffer, ret_len, from)
+    char **buffer;
+    int *ret_len;
+    struct sockaddr_in *from;
+
+int ZPending()
+
+int ZReadAscii(ptr, len, field, num)
+    char *ptr;
+    int len;
+    unsigned char *field;
+    int num;
+
+Code_t ZReceiveNotice(notice, from)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+
+Code_t ZReceivePacket(buffer, ret_len, from)
+    ZPacket_t buffer;
+    int *ret_len;
+    struct sockaddr_in *from;
+
+Code_t ZRetrieveSubscriptions(port,nsubs)
+	u_short port;
+	int *nsubs;
+
+Code_t ZSendList(notice, list, nitems, cert_routine)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+    int (*cert_routine)();
+
+Code_t ZSendNotice(notice, cert_routine)
+    ZNotice_t *notice;
+    int (*cert_routine)();
+
+Code_t ZSendPacket(packet, len, waitforack)
+    char *packet;
+    int len;
+    int waitforack;
+
+Code_t ZSendRawList(notice, list, nitems)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+
+Code_t ZSendRawNotice(notice)
+    ZNotice_t *notice;
+
+Code_t ZSetDestAddr(addr)
+	struct	sockaddr_in *addr;
+
+Code_t ZSetFD(fd)
+	int	fd;
+
+Code_t ZSetServerState(state)
+	int	state;
+
+Code_t ZSubscribeTo(sublist, nitems, port)
+    ZSubscription_t *sublist;
+    int nitems;
+    u_short port;
+
+char *ZGetVariable(var)
+    char *var;
+
+Code_t Z_GetMyAddr()
+
