@@ -25,11 +25,13 @@ static char rcsid_tty_filter_c[] = "$Id$";
 /****************************************************************************/
 
 #include <stdio.h>
+#include <ctype.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "string_dictionary_aux.h"
 #include "formatter.h"
 #include "zwgc.h"
+#include "error.h"
 
 /***************************************************************************/
 
@@ -63,56 +65,74 @@ static string_dictionary termcap_dict;
  */
 
 #define TD_SET(k,v) (string_dictionary_Define(termcap_dict,(k),&ex)->value = (v))
+#define EAT_PADDING(var) while (*var && isdigit(*var)) var++
 
-int tty_filter_init()
+/* ARGSUSED */
+int tty_filter_init(drivername, pargc, argv)
+char *drivername;
+int *pargc;
+char **argv;
 {
     static char st_buf[128];
     char tc_buf[1024], *p = st_buf, *tmp, *term;
     int ex;
     string_dictionary_binding *b;
-    static int inited_retval = -1;
-
-    if (inited_retval != -1)
-      return(inited_retval);
-    else
-      inited_retval = 0;
+    int isrealtty = string_Eq(drivername, "tty");
 
     termcap_dict = string_dictionary_Create(7);
 
     if (!(term = getenv("TERM"))) {	/* Only use termcap if $TERM.	*/
-	fputs("zwgc: $TERM not set.  tty mode not functional.\n",stderr);
-	inited_retval = 1;
-	return(1);
-    }
-    tgetent(tc_buf, term);
+	if (isrealtty)
+	    /* only complain if initializing tty mode */
+	    ERROR("$TERM not set.  tty mode will be plain.\n");
+    } else {
+	tgetent(tc_buf, term);
     
-    /* Step 1: get all of {rv,bold,u,bell,blink} that are available.	*/
-    
-    if (tmp = tgetstr("md",&p)) {	/* bold ? */
-	TD_SET("B.bold",tmp);
-	TD_SET("E.bold",tgetstr("me",&p));
-    }
-    if (tmp = tgetstr("mr",&p)) {	/* reverse video? */
-	TD_SET("B.rv",tmp);
-	TD_SET("E.rv",tgetstr("me",&p));
-    }
-    if (tmp = tgetstr("bl",&p)) {	/* Bell ? */
-	TD_SET("B.bell",tmp);
-	TD_SET("E.bell",NULL);
-    }
-    if (tmp = tgetstr("mb",&p)) {	/* Blink ? */
-	TD_SET("B.blink",tmp);
-	TD_SET("E.blink",tgetstr("me",&p));
-    }
-    if (tmp = tgetstr("us",&p))	{ /* Underline ? */
-	TD_SET("B.u",tmp);
-	TD_SET("E.u", tgetstr("ue",&p));
-    }
-    if (tmp = tgetstr("so",&p))	{ /* Standout ? */
-	TD_SET("B.so",tmp);
-	TD_SET("E.so", tgetstr("se",&p));
-    }
-    
+	/* Step 1: get all of {rv,bold,u,bell,blink} that are available. */
+
+	/* We cheat here, and ignore the padding (if any) specified for
+	   the mode-change strings (it's a real pain to do "right") */
+
+	if (tmp = tgetstr("md",&p)) {	/* bold ? */
+	    EAT_PADDING(tmp);
+	    TD_SET("B.bold",tmp);
+	    tmp = tgetstr("me",&p);
+	    EAT_PADDING(tmp);
+	    TD_SET("E.bold",tmp);
+	}
+	if (tmp = tgetstr("mr",&p)) {	/* reverse video? */
+	    EAT_PADDING(tmp);
+	    TD_SET("B.rv",tmp);
+	    tmp = tgetstr("me",&p);
+	    EAT_PADDING(tmp);
+	    TD_SET("E.rv",tmp);
+	}
+	if (tmp = tgetstr("bl",&p)) {	/* Bell ? */
+	    TD_SET("B.bell",tmp);
+	    TD_SET("E.bell",NULL);
+	}
+	if (tmp = tgetstr("mb",&p)) {	/* Blink ? */
+	    EAT_PADDING(tmp);
+	    TD_SET("B.blink",tmp);
+	    tmp = tgetstr("me",&p);
+	    EAT_PADDING(tmp);
+	    TD_SET("E.blink",tmp);
+	}
+	if (tmp = tgetstr("us",&p))	{ /* Underline ? */
+	    EAT_PADDING(tmp);
+	    TD_SET("B.u",tmp);
+	    tmp = tgetstr("ue",&p);
+	    EAT_PADDING(tmp);
+	    TD_SET("E.u", tmp);
+	}
+	if (tmp = tgetstr("so",&p))	{ /* Standout ? */
+	    EAT_PADDING(tmp);
+	    TD_SET("B.so",tmp);
+	    tmp = tgetstr("se",&p);
+	    EAT_PADDING(tmp);
+	    TD_SET("E.so", tmp);
+	}
+    }    
     /* Step 2: alias others to the nearest substitute */
     
     /* Bold = so, else rv, else ul */
@@ -172,6 +192,7 @@ typedef struct _tty_str_info {
     char alignment; /* 'l', 'c', 'r', or ' ' to indicate newline */
     int bold_p;
     int italic_p;
+    int bell_p;
 } tty_str_info;
 
 static void free_info(info)
@@ -210,8 +231,10 @@ static int do_mode_change(current_mode_p, text, text_length)
     else if (fixed_string_eq("roman", text, text_length)) {
 	current_mode_p->bold_p = 0;
 	current_mode_p->italic_p = 0;
-    } else if (fixed_string_eq("beep", text, text_length))
+    } else if (fixed_string_eq("beep", text, text_length)) {
+	current_mode_p->bell_p = 1;
 	return 1;
+    }
     return 0;
 }
 
@@ -222,7 +245,7 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
     /* This is needed due to a bug in saber */
     tty_str_info current_mode;
 #else
-    tty_str_info current_mode = { NULL, "", 0, 'l', 0 , 0};
+    tty_str_info current_mode = { NULL, "", 0, 'l', 0 , 0, 0};
 #endif
     tty_str_info *temp;
     tty_str_info *result = NULL;
@@ -236,11 +259,12 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
     current_mode.alignment = 'l';
     current_mode.bold_p = 0;
     current_mode.italic_p = 0;
+    current_mode.bell_p = 0;
 #endif
 
     for (; desc->code!=DT_EOF; desc=desc->next) {
-	/* Handle environments: */
 	isbeep = 0;
+	/* Handle environments: */
 	if (desc->code == DT_ENV) {
 	    /* PUSH! */
 	    temp = (tty_str_info *)malloc(sizeof(struct _tty_str_info));
@@ -384,9 +408,10 @@ string tty_filter(text, use_fonts)
     if (zwgc_debug)
       { tty_str_info *ptr;
 	for (ptr=info; ptr; ptr=ptr->next) {
-	    printf("%c: %s %s <%s>\n", ptr->alignment,
+	    printf("%c: %s %s %s <%s>\n", ptr->alignment,
 		   ptr->bold_p ? "(bold)" : "",
 		   ptr->italic_p ? "(italic)" : "",
+		   ptr->bell_p ? "(bell)" : "",
 		   string_CreateFromData(ptr->str, ptr->len));
 	}
     }
@@ -415,7 +440,6 @@ string tty_filter(text, use_fonts)
 		if (temp = string_dictionary_Fetch(termcap_dict, "B.u"))
 		  item = string_Concat2(item, temp);
 	    }
-
 	    temp = string_CreateFromData(info->str, info->len);
 	    item = string_Concat2(item, temp);
 	    free(temp);
@@ -467,7 +491,7 @@ string tty_filter(text, use_fonts)
 
 	if (info && info->alignment == ' ') {
 	    info = info->next;
-	    result_so_far = string_Concat2(result_so_far, "\n");
+	    result_so_far = string_Concat2(result_so_far, "\r\n");
 	}
     }
 
