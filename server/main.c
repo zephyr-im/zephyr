@@ -74,15 +74,14 @@ static void detach __P((void));
 static short doreset = 0;		/* if it becomes 1, perform
 					   reset functions */
 
+int nfds;				/* max file descriptor for select() */
 int srv_socket;				/* dgram socket for clients
 					   and other servers */
 int bdump_socket = -1;			/* brain dump socket fd
 					   (closed most of the time) */
 fd_set interesting;			/* the file descrips we are listening
 					   to right now */
-int nfildes;				/* number to look at in select() */
 struct sockaddr_in srv_addr;		/* address of the socket */
-struct timeval nexthost_tv;		/* time till next timeout for select */
 
 Unacked *nacklist = NULL;		/* list of packets waiting for ack's */
 
@@ -97,6 +96,7 @@ char list_file[128];
 #endif
 #ifdef ZEPHYR_USES_KERBEROS
 char srvtab_file[128];
+char my_realm[REALM_SZ];
 static char tkt_file[128];
 #endif
 char acl_dir[128];
@@ -117,7 +117,7 @@ static int dump_db_flag = 0;
 static int dump_strings_flag = 0;
 
 u_long npackets;			/* number of packets processed */
-long uptime;				/* when we started operations */
+time_t uptime;				/* when we started operations */
 static int nofork;
 struct in_addr my_addr;
 char *bdump_version = "1.2";
@@ -129,7 +129,7 @@ main(argc, argv)
 {
     int nfound;			/* #fildes ready on select */
     fd_set readable;
-    struct timeval *tvp;
+    struct timeval tv;
     int init_from_dump = 0;
     char *dumpfile;
 #ifdef _POSIX_VERSION
@@ -154,7 +154,7 @@ main(argc, argv)
     programname = (programname) ? programname + 1 : argv[0];
 
     /* process arguments */
-    while ((optchar = getopt(argc, argv, "dsnv:f:")) != EOF) {
+    while ((optchar = getopt(argc, argv, "dsnv:f:r:")) != EOF) {
 	switch(optchar) {
 	  case 'd':
 	    zdebug = 1;
@@ -166,6 +166,11 @@ main(argc, argv)
 #endif
 	  case 'n':
 	    nofork = 1;
+	    break;
+	  case 'r':
+#ifdef ZEPHYR_USES_KERBEROS
+	    strncpy(my_realm, optarg, REALM_SZ);
+#endif
 	    break;
 	  case 'v':
 	    bdump_version = optarg;
@@ -193,6 +198,13 @@ main(argc, argv)
 	fprintf(stderr, "NO ZEPHYR SRVTAB (%s) available; exiting\n",
 		srvtab_file);
 	exit(1);
+    }
+    /* Use local realm if not specified on command line. */
+    if (!*my_realm) {
+	if (krb_get_lrealm(my_realm, 1) != KSUCCESS) {
+	    fputs("Couldn't get local Kerberos realm; exiting.\n", stderr);
+	    exit(1);
+	}
     }
 #endif /* ZEPHYR_USES_KERBEROS */
 
@@ -237,7 +249,7 @@ main(argc, argv)
     FD_ZERO(&interesting);
     FD_SET(srv_socket, &interesting);
 
-    nfildes = srv_socket + 1;
+    nfds = srv_socket + 1;
 
 
 #ifdef _POSIX_VERSION
@@ -301,24 +313,6 @@ main(argc, argv)
 	if (dump_strings_flag)
 	    dump_strings();
 
-	nexthost_tv.tv_usec = 0;
-	tvp = &nexthost_tv;
-
-	if (nexttimo != 0L) {
-	    nexthost_tv.tv_sec = nexttimo - NOW;
-	    if (nexthost_tv.tv_sec <= 0) {
-		/* timeout has passed! */
-		/* so we process one timeout, then pop to
-		   select, polling for input.  This way we get
-		   work done even if swamped with many
-		   timeouts */
-		/* this will reset nexttimo */
-		timer_process();
-		nexthost_tv.tv_sec = 0;
-	    }
-	} else {			/* no timeouts to process */
-	    nexthost_tv.tv_sec = 15;
-	}
 	readable = interesting;
 	if (msgs_queued()) {
 	    /* when there is input in the queue, we
@@ -326,7 +320,7 @@ main(argc, argv)
 	    nfound = 1;
 	    FD_ZERO(&readable);
 	} else  {
-	    nfound = select(nfildes, &readable, NULL, NULL, tvp);
+	    nfound = select(nfds, &readable, NULL, NULL, timer_timeout(&tv));
 	}
 
 	/* Initialize t_local for other uses */
@@ -476,9 +470,11 @@ static void
 usage()
 {
 #ifdef DEBUG
-	fprintf(stderr,"Usage: %s [-d] [-s] [-n] [-f dumpfile]\n",programname);
+	fprintf(stderr, "Usage: %s [-d] [-s] [-n] [-r realm] [-f dumpfile]\n",
+		programname);
 #else
-	fprintf(stderr,"Usage: %s [-d] [-n] [-f dumpfile]\n",programname);
+	fprintf(stderr, "Usage: %s [-d] [-n] [-r realm] [-f dumpfile]\n",
+		programname);
 #endif /* DEBUG */
 	exit(2);
 }
