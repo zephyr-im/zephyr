@@ -134,7 +134,7 @@ ulogin_dispatch(notice, auth, who, server)
 	int err_ret;
 	ZHostList_t *host;
 
-#if 1
+#if 0
 	zdbug((LOG_DEBUG,
 	       "ulogin_dispatch: opc=%s from=%s/%d auth=%d who=%s/%d",
 	       notice->z_opcode, notice->z_sender, ntohs (notice->z_port),
@@ -198,7 +198,8 @@ ulogin_dispatch(notice, auth, who, server)
 			server_forward(notice, auth, who);
 		return(ZERR_NONE);
 	}
-	if (!auth || strcmp(notice->z_sender, notice->z_class_inst)) {
+	if (!bdumping && 
+	    (!auth || strcmp(notice->z_sender, notice->z_class_inst)))  {
 #if 1
 		zdbug((LOG_DEBUG,"unauthentic ulogin: %d %s %s", auth,
 		       notice->z_sender, notice->z_class_inst));
@@ -240,14 +241,14 @@ ulogin_dispatch(notice, auth, who, server)
 		}
 		return(ZERR_NONE);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_OPSTAFF)) {
-#if 1
+#if 0
 		zdbug((LOG_DEBUG,"opstaff"));
 #endif
 		ulogin_add_user(notice, OPSTAFF_VIS, who);
 		if (server == me_server)
 			ack(notice, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_REALMVIS)) {
-#if 1
+#if 0
 		zdbug((LOG_DEBUG,"realmvis"));
 #endif
 		ulogin_add_user(notice, REALM_VIS, who);
@@ -255,21 +256,21 @@ ulogin_dispatch(notice, auth, who, server)
 					    so we ack it here */
 			ack(notice, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_REALMANN)) {
-#if 1
+#if 0
 		zdbug((LOG_DEBUG,"realmann"));
 #endif
 		ulogin_add_user(notice, REALM_ANN, who);
 		if (server == me_server) /* announce to the realm */
 			login_sendit(notice, auth, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_NETVIS)) {
-#if 1
+#if 0
 		zdbug((LOG_DEBUG,"netvis"));
 #endif
 		ulogin_add_user(notice, NET_VIS, who);
 		if (server == me_server) /* announce to the realm */
 			login_sendit(notice, auth, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_NETANN)) {
-#if 1
+#if 0
 		zdbug((LOG_DEBUG,"netann"));
 #endif
 		ulogin_add_user(notice, NET_ANN, who);
@@ -454,6 +455,7 @@ uloc_hflush(addr)
 	}
 
 	xfree(locations);
+	locations = NULLZLT;
 
 	if (!new_num) {
 #if 0
@@ -469,16 +471,6 @@ uloc_hflush(addr)
 	num_locs = new_num;
 
 	(void) sigsetmask(omask);
-#ifdef DEBUG
-	if (zdebug) {
-		register int i;
-
-		for (i = 0; i < num_locs; i++)
-			syslog(LOG_DEBUG, "%s/%d",
-			       locations[i].zlt_user->string,
-			       (int) locations[i].zlt_exposure);
-	}
-#endif
 	/* all done */
 	return;
 }
@@ -523,6 +515,7 @@ uloc_flush_client(sin)
 	}
 
 	xfree(locations);
+	locations = NULLZLT;
 
 	if (!new_num) {
 #if 0
@@ -623,17 +616,17 @@ ulogin_add_user(notice, exposure, who)
      exposure_type exposure;
      struct sockaddr_in *who;
 {
-	ZLocation_t *oldlocs, *newloc;
+	ZLocation_t *oldlocs, newloc;
 	register int i = 0;
 	int omask;
 
-#if 1
+#if 0
 	zdbug((LOG_DEBUG,"ul_add: %s type %d", notice->z_sender,
 	       (int) exposure));
 #endif
 
-	if (newloc = ulogin_find(notice,1)) {
-#if 1
+	if (oldlocs = ulogin_find(notice,1)) {
+#if 0
 		zdbug((LOG_DEBUG,"ul_add: already here"));
 #endif
 		(void) ulogin_expose_user(notice, exposure);
@@ -664,7 +657,7 @@ ulogin_add_user(notice, exposure, who)
 
 	/* not the first one, insert him */
 
-	if (ulogin_setup(notice, newloc, exposure, who)) {
+	if (ulogin_setup(notice, &newloc, exposure, who)) {
 		(void) sigsetmask(omask);
 		return;
 	}
@@ -672,13 +665,13 @@ ulogin_add_user(notice, exposure, who)
 
 	/* copy old locs */
 	while ((i < (num_locs - 1)) &&
-	       (comp_zstring(oldlocs[i].zlt_user,newloc->zlt_user) < 0)) {
+	       (comp_zstring(oldlocs[i].zlt_user,newloc.zlt_user) < 0)) {
 		locations[i] = oldlocs[i];
 		i++;
 	}
 
 	/* add him in here */
-	locations[i++] = *newloc;
+	locations[i++] = newloc;
 
 	/* copy the rest */
 	while (i < num_locs) {
@@ -690,16 +683,6 @@ ulogin_add_user(notice, exposure, who)
 
  dprnt:
 	(void) sigsetmask(omask);
-#ifdef DEBUG
-	if (zdebug) {
-		register int i;
-
-		for (i = 0; i < num_locs; i++)
-			syslog(LOG_DEBUG, "%s/%d",
-			       locations[i].zlt_user->string,
-			       (int) locations[i].zlt_exposure);
-	}
-#endif
 	return;
 }
 
@@ -760,14 +743,14 @@ ulogin_parse(notice, locs)
 		return(1);
 	}
 
-	locs->zlt_user = make_zstring(notice->z_class_inst,1);
+	locs->zlt_user = make_zstring(notice->z_class_inst,0);
 	cp = base = notice->z_message;
 
 #if 0
 	zdbug((LOG_DEBUG,"user %s",notice->z_class_inst));
 #endif
 
-	locs->zlt_machine = make_zstring(cp,1);
+	locs->zlt_machine = make_zstring(cp,0);
 #if 0
 	zdbug((LOG_DEBUG,"mach %s",cp));
 #endif
@@ -777,7 +760,7 @@ ulogin_parse(notice, locs)
 		syslog(LOG_ERR, "zloc bad format 1");
 		return(1);
 	}
-	locs->zlt_time = cp;
+	locs->zlt_time = strsave(cp);
 #if 0
 	zdbug((LOG_DEBUG,"time %s",cp));
 #endif
@@ -788,7 +771,7 @@ ulogin_parse(notice, locs)
 		syslog(LOG_ERR, "zloc bad format 2");
 		return(1);
 	} else {
-		locs->zlt_tty = make_zstring(cp,1);
+		locs->zlt_tty = make_zstring(cp,0);
 #if 0
 		zdbug((LOG_DEBUG,"tty %s",cp));
 #endif
@@ -818,10 +801,10 @@ ulogin_find(notice, strict)
 	int compar;
 	ZSTRING *inst;
 
-	if (num_locs == 0)
+	if (!locations)
 		return(NULLZLT);
 
-	inst = make_zstring(notice->z_class_inst,1);
+	inst = make_zstring(notice->z_class_inst,0);
 
 	/* i is the current loc we are checking */
 	/* rlo is the lowest we will still check, rhi is the highest we will
@@ -832,7 +815,7 @@ ulogin_find(notice, strict)
 	rhi = num_locs - 1;		/* first index is 0 */
 
 	while (compar = comp_zstring(locations[i].zlt_user, inst)) {
-#if 1
+#if 0
 		zdbug ((LOG_DEBUG, "ulogin_find: comparing %s %s %s %d %d",
 			notice->z_class_inst,
 			locations[i].zlt_user->string,
@@ -855,6 +838,7 @@ ulogin_find(notice, strict)
 #if 1
 		zdbug((LOG_DEBUG,"ul_find bad fmt"));
 #endif
+		free_zstring(inst);
 		return 0;
 	}
 	/* back up to the first of this guy */
@@ -882,8 +866,12 @@ ulogin_find(notice, strict)
 #if 1
 		zdbug((LOG_DEBUG,"ul_find final match loss"));
 #endif
+		free_zstring(inst);
 		return 0;
 	}
+	if (strict)
+	  free_loc(&tmploc);
+	free_zstring(inst);
 	return &locations[i];
 }
 
@@ -937,6 +925,7 @@ ulogin_remove_user(notice, auth, who, err_return)
 #if 0
 		zdbug((LOG_DEBUG,"last loc"));
 #endif
+		free_loc(locations);
 		xfree(locations);
 		locations = NULLZLT;
 		(void) sigsetmask(omask);
@@ -1011,7 +1000,7 @@ ulogin_flush_user(notice)
 
 	omask = sigblock(sigmask(SIGFPE)); /* don't let disk db dumps start */
 	while (num_left &&
-	       !strcmp(loc2[num_match].zlt_user->string,
+	       !strcasecmp(loc2[num_match].zlt_user->string,
 		       notice->z_class_inst)) {
 		/* as long as we keep matching, march up the list */
 		num_match++;
@@ -1107,7 +1096,7 @@ ulogin_expose_user(notice, exposure)
 	idx = loc -locations;
 
 	while ((idx < num_locs) &&
-	       locations[idx].zlt_user != loc2.zlt_user) {
+	       locations[idx].zlt_user == loc2.zlt_user) {
 
 		/* change exposure and owner for each loc on that host */
 		if (locations[idx].zlt_machine == loc2.zlt_machine) {
@@ -1117,7 +1106,7 @@ ulogin_expose_user(notice, exposure)
 			/* change time for the specific loc */
 			if (locations[idx].zlt_tty == loc2.zlt_tty) {
 			  xfree(locations[idx].zlt_time);
-			  locations[idx].zlt_time = loc2.zlt_time;
+			  locations[idx].zlt_time = strsave(loc2.zlt_time);
 			}
 		}
 		idx++;
@@ -1190,7 +1179,7 @@ ulogin_marshal_locs(notice, found, auth)
 
 	i = loc - locations;
 
-	inst = make_zstring(notice->z_class_inst,1);
+	inst = make_zstring(notice->z_class_inst,0);
 	while (i < num_locs && (inst == locations[i].zlt_user)) {
 		/* these locations match */
 #if 0
