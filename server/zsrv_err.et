@@ -13,6 +13,8 @@ ec ZSRV_NOCLASS,
 	"Class unkown"
 ec ZSRV_CLASSXISTS,
 	"Class already registered"
+ec ZSRV_CLASSRESTRICTED,
+	"Class already restricted"
 ec ZSRV_HNOTFOUND,
 	"Host manager unknown"
 ec ZSRV_WRONGSRV,
