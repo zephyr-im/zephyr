@@ -59,6 +59,12 @@ typedef int gid_t;
 #define	FD_CLR(n, p)	((p)->fds_bits[0] &= ~(1 << (n)))
 #endif /* ultrix */
 
+#ifdef macII
+#define FD_ZERO(p)  ((p)->fds_bits[0] = 0)
+#define FD_SET(n, p)   ((p)->fds_bits[0] |= (1 << (n)))
+#define FD_ISSET(n, p)   ((p)->fds_bits[0] & (1 << (n)))
+#endif
+
 #ifndef KERBEROS
 #define	REALM_SZ	MAXHOSTNAMELEN
 #define	INST_SZ		0		/* no instances w/o Kerberos */
