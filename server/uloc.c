@@ -295,7 +295,6 @@ struct sockaddr_in *who;
 	char *pkt;
 	ZClient_t *client;
 
-	(void) bzero((char *)&sense_notice, sizeof(sense_notice));
 	/* XXX todo: have the messsage print the IP addr */
 	/*
 	  someone tried an unauthentic logout.  Try to send a message
@@ -313,6 +312,8 @@ struct sockaddr_in *who;
 	owner.sin_addr.s_addr = loc->zlt_addr.s_addr;
 	owner.sin_port = loc->zlt_port;
 
+	sense_notice = *notice;		/* copy all fields */
+	/* and change the ones we need to */
 	sense_notice.z_kind = ACKED;
 	sense_notice.z_port = loc->zlt_port;
 	sense_notice.z_class = "MESSAGE";
