@@ -10,6 +10,9 @@
 #define have_subdirs
 #define no_curdir_lint
 
+SRCDIR= ${SRCTOP}/clients
+CODE= Imakefile
+
 #ifdef DO_SYSLOG
 SYSLOGD= syslogd
 #else /* !DO_SYSLOG */
