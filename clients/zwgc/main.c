@@ -355,11 +355,13 @@ static void signal_exit()
 static signal_child()
 {
   union wait status;
-  int pid;
+  extern int errno;
+  int pid, old_errno = errno;
 
   do {
       pid = wait3(&status, WNOHANG, (struct rusage *)0);
   } while (pid != 0 && pid != -1);
+  errno = old_errno;
 }
 
 static void setup_signals(dofork)
