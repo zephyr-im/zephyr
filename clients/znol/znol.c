@@ -194,7 +194,8 @@ main(argc,argv)
 		if (ind == SUBSATONCE) {
 			if (!justlist)
 				if ((retval = (onoff==ON)?
-				     ZSubscribeTo(subs,ind,(u_short)wgport):
+				     ZSubscribeToSansDefaults(subs,ind,
+							      (u_short)wgport):
 				     ZUnsubscribeTo(subs,ind,(u_short)wgport)) !=
 				    ZERR_NONE) {
 					com_err(argv[0],retval,(onoff==ON)?
@@ -210,7 +211,7 @@ main(argc,argv)
 
 	if (ind && !justlist)
 		if ((retval = (onoff==ON)?
-		     ZSubscribeTo(subs,ind,(u_short)wgport):
+		     ZSubscribeToSansDefaults(subs,ind,(u_short)wgport):
 		     ZUnsubscribeTo(subs,ind,(u_short)wgport)) !=
 		    ZERR_NONE) {
 			com_err(argv[0],retval,(onoff==ON)?
