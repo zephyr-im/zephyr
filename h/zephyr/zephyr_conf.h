@@ -30,6 +30,21 @@
 #define	HM_SVCNAME	"zephyr-hm"
 #define	SERVER_SVCNAME	"zephyr-clt"
 
+#if defined(vax) && !defined(ultrix)
+#define _BCOPY bcopy
+#define _BZERO bzero
+#define _BCMP  bcmp
+#else
+#define _BCOPY(a,b,n) memmove(b,a,n)
+#define _BZERO(a,n)   memset(a,0,n)
+#define _BCMP(a,b,n)  memcmp(a,b,n)
+#endif
+
+#if defined(vax) || defined(ibm032)
+#define strchr index
+#define strrchr rindex
+#endif
+
 #ifdef ultrix
 /* If you are using Ultrix versions prior to 3.0, uncomment the following
    three lines  so that users don't need to specify -DULTRIX22 on their
