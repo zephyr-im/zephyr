@@ -84,8 +84,8 @@ AC_PATH_XTRA
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(fcntl.h paths.h termios.h sgtty.h unistd.h libgen.h malloc.h)
-AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/uio.h sys/file.h)
-AC_CHECK_HEADERS(sys/utsname.h sys/select.h sys/msgbuf.h sys/cdefs.h)
+AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/file.h sys/utsname.h)
+AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h)
 
 if test "$no_x" != "yes"; then
 	XCLIENTS=xzwrite
@@ -97,7 +97,6 @@ AC_SUBST(ZWGC_LIBX11)
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIGNAL
 AC_TYPE_UID_T
-AC_CHECK_TYPE(ulong, unsigned long)
 AC_CHECK_SIZEOF(short)
 AC_CHECK_SIZEOF(int)
 AC_CHECK_SIZEOF(long)
@@ -123,11 +122,12 @@ AC_CHECK_LIB(dl, dlopen)
 # libsocket.so which has a bad implementation of gethostbyname (it
 # only looks in /etc/hosts), so we only look for -lsocket if we need
 # it.
-AC_FUNC_CHECK(connect, :, [AC_CHECK_LIB(socket, socket)
+AC_CHECK_FUNC(connect, :, [AC_CHECK_LIB(socket, socket)
 			   AC_CHECK_LIB(nsl, gethostbyname)])
 
 # Hesiod needs -lresolv on Sun systems for res_send.
 if test "$hesiod" != "no"; then
+	AC_CHECK_LIB(44bsd, strerror)
 	AC_CHECK_LIB(resolv, res_send)
 fi
 
