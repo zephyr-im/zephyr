@@ -499,7 +499,9 @@ nack_release(client)
     for (i = 0; i < NACKTAB_HASHSIZE; i++) {
 	for (nacked = nacktab[i]; nacked; nacked = next) {
 	    next = nacked->next;
-	    if (nacked->client == client) {
+	    if (nacked->dest.addr.sin_addr.s_addr ==
+		client->addr.sin_addr.s_addr &&
+		nacked->dest.addr.sin_port == client->addr.sin_port) {
 		timer_reset(nacked->timer);
 		LIST_DELETE(nacked);
 		free(nacked->packet);
@@ -532,7 +534,7 @@ xmit_frag(notice, buf, len, waitforack)
     retval = ZSendPacket(buf, len, 0);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "xmit_frag send: %s", error_message(retval));
-	if (retval != EAGAIN)
+	if (retval != EAGAIN && retval != ENOBUFS)
 	    return retval;
 	sendfail = 1;
     }
@@ -556,7 +558,6 @@ xmit_frag(notice, buf, len, waitforack)
     memcpy(savebuf, buf, len);
 
     sin = ZGetDestAddr();
-    nacked->client = NULL;
     nacked->rexmits = (sendfail) ? -1 : 0;
     nacked->packet = savebuf;
     nacked->dest.addr = sin;
@@ -642,7 +643,7 @@ xmit(notice, dest, auth, client)
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "xmit xmit: (%s/%d) %s", inet_ntoa(dest->sin_addr),
 	       ntohs(dest->sin_port), error_message(retval));
-	if (retval != EAGAIN) {
+	if (retval != EAGAIN && retval != ENOBUFS) {
 	    free(noticepack);
 	    return;
 	}
@@ -659,7 +660,6 @@ xmit(notice, dest, auth, client)
 	return;
     }
 
-    nacked->client = client;
     nacked->rexmits = (sendfail) ? -1 : 0;
     nacked->packet = noticepack;
     nacked->dest.addr = *dest;
@@ -681,6 +681,7 @@ rexmit(arg)
 {
     Unacked *nacked = (Unacked *) arg;
     int retval;
+    Client *client;
 
 #if 1
     syslog(LOG_DEBUG, "rexmit %s/%d #%d time %d",
@@ -690,23 +691,22 @@ rexmit(arg)
 
     nacked->rexmits++;
     if (rexmit_times[nacked->rexmits] == -1) {
-	if (!nacked->client
-	    || NOW - nacked->client->last_ack >= CLIENT_GIVEUP_MIN) {
-	    /* The client (if there was one) has been unresponsive.  Give up
-	     * sending this packet, and kill the client if there was one. */
-	    LIST_DELETE(nacked);
-	    free(nacked->packet);
-	    free(nacked);
-	    if (nacked->client) {
-		server_kill_clt(nacked->client);
-		client_deregister(nacked->client, 1);
-	    }
-	    return;
-	} else {
-	    /* The client has sent us an ack recently.  Retry with the maximum
-	     * retransmit time. */
-	    nacked->rexmits--;
+	/* Unresponsive client, find it in our database. */
+	client = client_find(&nacked->dest.addr.sin_addr,
+			     nacked->dest.addr.sin_port);
+
+	/* unlink & free nacked */
+	LIST_DELETE(nacked);
+	free(nacked->packet);
+	free(nacked);
+
+	/* Kill the client. */
+	if (client) {
+	    server_kill_clt(client);
+	    client_deregister(client, 1);
 	}
+
+	return;
     }
 
     /* retransmit the packet */
@@ -721,7 +721,7 @@ rexmit(arg)
 	retval = ZSendPacket(nacked->packet, nacked->packsz, 0);
 	if (retval != ZERR_NONE)
 	    syslog(LOG_WARNING, "rexmit xmit: %s", error_message(retval));
-	if (retval == EAGAIN)
+	if (retval == EAGAIN || retval == ENOBUFS)
 	    nacked->rexmits--;
     }
 
@@ -841,8 +841,6 @@ nack_cancel(notice, who)
 	if (nacked->dest.addr.sin_addr.s_addr == who->sin_addr.s_addr
 	    && nacked->dest.addr.sin_port == who->sin_port
 	    && ZCompareUID(&nacked->uid, &notice->z_uid)) {
-	    if (nacked->client)
-		nacked->client->last_ack = NOW;
 	    timer_reset(nacked->timer);
 	    free(nacked->packet);
 	    LIST_DELETE(nacked);
