@@ -499,10 +499,12 @@ subscr_cancel_client(client)
 #if 0
 		zdbug((LOG_DEBUG,"sub_can %s",
 		       subs->zst_dest.classname->string));
-		if (class_deregister(client, subs) != ZERR_NONE) {
-			zdbug((LOG_DEBUG,"sub_can_clt: not registered!"));
-		}
 #endif
+		if (class_deregister(client, subs) != ZERR_NONE) {
+#if 0
+			zdbug((LOG_DEBUG,"sub_can_clt: not registered!"));
+#endif
+		}
 		xremque(subs);
 		free_zstring(subs->zst_dest.classname);
 		free_zstring(subs->zst_dest.inst);
