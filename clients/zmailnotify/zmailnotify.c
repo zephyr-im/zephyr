@@ -481,13 +481,19 @@ char *host;
     return(OK);
 }
 
-/*VARARGS1*/
-pop_command(fmt, a, b, c, d)
-char *fmt;
+#ifdef __STDC__
+pop_command(char *fmt, ...)
+#else
+pop_command(fmt, va_alist)
+    va_dcl
+#endif
 {
+    va_list args;
     char buf[4096];
 
-    (void) sprintf(buf, fmt, a, b, c, d);
+    VA_START(args, fmt);
+    (void) vsprintf(buf, fmt, args);
+    va_end(args);
 
     if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
 
