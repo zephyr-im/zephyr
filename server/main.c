@@ -172,7 +172,7 @@ main(argc, argv)
 	    bdump_version = optarg;
 	    break;
 	  case 'f':
-	    init_from_dump = 0;
+	    init_from_dump = 1;
 	    dumpfile = optarg;
 	    break;
 	  case '?':
