@@ -39,7 +39,7 @@ static char rcsid_uloc_s_c[] = "$Header$";
  * void uloc_hflush(addr)
  *	struct in_addr *addr;
  *
- * void uloc_send_locations(host)
+ * Code_t uloc_send_locations(host)
  *	ZHostList_t *host;
  */
 
@@ -259,7 +259,7 @@ struct in_addr *addr;
  * Send the locations for host for a brain dump
  */
 
-void
+Code_t
 uloc_send_locations(host)
 ZHostList_t *host;
 {
@@ -289,70 +289,70 @@ ZHostList_t *host;
 						  NUM_FIELDS)) != ZERR_NONE) {
 			syslog(LOG_ERR, "uloc_send_locs: %s",
 			       error_message(retval));
-			return;
+			return(retval);
 		}
 	}
-	return;
+	return(ZERR_NONE);
 }
 
 /*
  * Add the user to the internal table of locations.
  */
 
-static
-void
+static void
 ulogin_add_user(notice, visible, who)
 ZNotice_t *notice;
 login_type visible;
 struct sockaddr_in *who;
 {
-	ZLocation_t *loc;
+	ZLocation_t *oldlocs, newloc;
+	register int i = 0;
 
-	if ((loc = ulogin_find(notice, 1))) {
+	if ((oldlocs = ulogin_find(notice, 1))) {
 		zdbug((LOG_DEBUG,"ul_add: already here"));
 		(void) ulogin_hide_user(notice, visible);
 		return;
 	}
 
+	oldlocs = locations;
+
+	if (!(locations = (ZLocation_t *) xmalloc((num_locs + 1) * sizeof(ZLocation_t)))) {
+		syslog(LOG_ERR, "zloc mem alloc");
+		locations = oldlocs;
+		return;
+	}
+
 	if (num_locs == 0) {		/* first one */
-		if (!(locations = (ZLocation_t *) malloc(sizeof(ZLocation_t)))) {
-			syslog(LOG_ERR, "zloc mem alloc");
-			return;
-		}
 		if (ulogin_setup(notice, locations, visible, who)) {
 			xfree(locations);
 			locations = NULLZLT;
 			return;
 		}
 		num_locs = 1;
-#ifdef DEBUG
-	if (zdebug) {
-		register int i;
-
-		for (i = 0; i < num_locs; i++)
-			syslog(LOG_DEBUG, "%s/%d",
-			       locations[i].zlt_user,
-			       (int) locations[i].zlt_visible);
-	}
-#endif DEBUG
 		return;
 	}
 
-	/* not the first one: reallocate, add him on and sort in */
+	/* not the first one, insert him */
 
-	if (!(loc = (ZLocation_t *) realloc((caddr_t) locations, (unsigned) ((num_locs + 1) * sizeof(ZLocation_t))))) {
-		syslog(LOG_ERR, "zloc realloc");
-		num_locs = 0;
-		locations = NULLZLT;
-		return;
-	}
-	locations = loc;
-	if (ulogin_setup(notice, &locations[num_locs], visible, who))
+	if (ulogin_setup(notice, &newloc, visible, who))
 		return;
 	num_locs++;
 
-	/* sort it in */
-	qsort((caddr_t)locations, num_locs, sizeof(ZLocation_t), uloc_compare);
+	/* copy old locs */
+	while (i < (num_locs - 1) && strcmp(oldlocs[i].zlt_user, newloc.zlt_user) < 0) {
+		locations[i] = oldlocs[i];
+		i++;
+	}
+
+	/* add him in here */
+	locations[i++] = newloc;
+	
+	/* copy the rest */
+	while (i < num_locs) {
+		locations[i] = oldlocs[i - 1];
+		i++;
+	}
+	xfree(oldlocs);
 	
 #ifdef DEBUG
 	if (zdebug) {
@@ -364,7 +364,6 @@ struct sockaddr_in *who;
 			       (int) locations[i].zlt_visible);
 	}
 #endif DEBUG
-	/* all done */
 	return;
 }
 
