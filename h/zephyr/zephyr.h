@@ -21,6 +21,9 @@
 
 #include <errno.h>
 #include <sys/types.h>
+#if defined(_AIX) && defined(_IBMR2)
+#include <time.h>
+#endif
 #include <sys/time.h>
 #include <stdio.h>
 
@@ -327,4 +330,4 @@ extern "C" {
 }
 #endif
 
-#endif !__ZEPHYR_H__
+#endif
