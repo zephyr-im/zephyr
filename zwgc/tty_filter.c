@@ -327,6 +327,7 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
 
 	/* Add new block (call it temp) to result: */
 	temp = (tty_str_info *)malloc(sizeof(struct _tty_str_info));
+	*temp = current_mode;
 	if (last_result_block) {
 	    last_result_block->next = temp;
 	    last_result_block = temp;
@@ -350,13 +351,13 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
 	}
 	if (desc->code == DT_STR) {
 	    /* just combine string info with current mode: */
-	    *temp = current_mode;
 	    temp->str = desc->str;
 	    temp->len = desc->len;
 	} else if (desc->code == DT_NL) {
 	    /* make the new block a ' ' alignment block with an empty string */
 	    temp->alignment = ' ';
 	    temp->len = 0;
+	    temp->ignore = 0;
 	}
     }
 
