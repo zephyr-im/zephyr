@@ -137,21 +137,3 @@ test2.c : test2.et
 depend: ${CFILES} et_lex.lex.c
 	touch Make.depend; makedepend -fMake.depend ${CFLAGS} ${CFILES}
 
-# DO NOT DELETE THIS LINE -- make depend depends on it.
-
-compile_et.o: compile_et.c /usr/include/stdio.h /usr/include/sys/file.h
-compile_et.o: /usr/include/string.h /usr/include/strings.h
-compile_et.o: /usr/include/sys/param.h /usr/include/machine/machparam.h
-compile_et.o: /usr/include/sys/signal.h /usr/include/sys/types.h
-compile_et.o: mit-sipb-copyright.h compiler.h
-error_table.o: error_table.c /usr/include/stdio.h /usr/include/string.h
-error_table.o: /usr/include/strings.h /usr/include/assert.h
-error_table.o: /usr/include/ctype.h /usr/include/sys/types.h
-error_table.o: /usr/include/sys/time.h /usr/include/sys/time.h internal.h
-error_table.o: mit-sipb-copyright.h error_table.h et_lex.lex.c
-error_message.o: error_message.c /usr/include/stdio.h error_table.h
-error_message.o: mit-sipb-copyright.h internal.h
-et_name.o: et_name.c error_table.h mit-sipb-copyright.h internal.h
-init_et.o: init_et.c /usr/include/stdio.h error_table.h mit-sipb-copyright.h
-com_err.o: com_err.c /usr/include/stdio.h mit-sipb-copyright.h
-com_err.o: /usr/include/varargs.h error_table.h internal.h com_err.h
