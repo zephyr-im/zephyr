@@ -48,8 +48,9 @@ static char rcsid_subscr_s_c[] = "$Header$";
  */
 
 #include "zserver.h"
+#include <ctype.h>
 
-extern char *re_comp(), *rindex(), *index();
+extern char *re_comp(), *re_conv(), *rindex(), *index();
 static ZSubscr_t *extract_subscriptions();
 static int subscr_equiv(), clt_unique();
 static void free_subscriptions(), free_sub();
@@ -111,10 +112,7 @@ ZNotice_t *notice;
 
 		subs3->zst_class = strsave(subs->zst_class);
 		subs3->zst_classinst = strsave(subs->zst_classinst);
-
-		/* since we are authenticated when we get here,
-		   we can trust the sender field */
-		subs3->zst_recipient = strsave(notice->z_sender);
+		subs3->zst_recipient = strsave(subs->zst_recipient);
 
 		subs3->q_forw = subs3->q_back = subs3;
 
@@ -138,8 +136,9 @@ struct sockaddr_in *sin;
 ZNotice_t *notice;
 {
 	ZClient_t *who;
-	register ZSubscr_t *subs, *subs2;
+	register ZSubscr_t *subs, *subs2, *subs3, *subs4;
 	Code_t retval;
+	int found = 0;
 
 	zdbug((LOG_DEBUG,"subscr_cancel"));
 	if (!(who = client_which_client(sin, notice)))
@@ -152,32 +151,38 @@ ZNotice_t *notice;
 		return(ZERR_NONE);	/* no subscr -> no error */
 
 	
-	for (subs2 = who->zct_subs->q_forw;
-	     subs2 != who->zct_subs;
-	     subs2 = subs2->q_forw) {
-		/* for each existing subscription */
-		/* is this what we are canceling? */
-		if (subscr_equiv(subs->q_forw, subs2, notice)) { 
-			xremque(subs2);
-			if (class_deregister(who, subs2->zst_class) != ZERR_NONE) {
-				syslog(LOG_ERR, "subscr_cancel: not registered!");
-				abort();
-				/*NOTREACHED*/
-			}
-			free_sub(subs2);
-			/* make sure we are still registered for all the
-			   classes */
-			for (subs2 = who->zct_subs->q_forw;
-			     subs2 != who->zct_subs;
-			     subs2 = subs2->q_forw)
-				if ((retval = class_register(who, subs2->zst_class)) != ZERR_NONE)
-					return(retval);
-			free_subscriptions(subs);
-			return(ZERR_NONE);
-		}
-	}
+	for (subs4 = subs->q_forw;
+	     subs4 != subs;
+	     subs4 = subs4->q_forw)
+		for (subs2 = who->zct_subs->q_forw;
+		     subs2 != who->zct_subs;)
+			/* for each existing subscription */
+			/* is this what we are canceling? */
+			if (subscr_equiv(subs4, subs2, notice)) { 
+				/* go back, since remque will change things */
+				subs3 = subs2->q_back;
+				xremque(subs2);
+				(void) class_deregister(who, subs2->zst_class);
+				free_sub(subs2);
+				found = 1;
+				/* now that the remque adjusted the linked
+				   list, we go forward again */
+				subs2 = subs3->q_forw;
+			} else
+				subs2 = subs2->q_forw;
+	/* make sure we are still registered for all the
+	   classes */
+	if (found)
+		for (subs2 = who->zct_subs->q_forw;
+		     subs2 != who->zct_subs;
+		     subs2 = subs2->q_forw)
+			if ((retval = class_register(who, subs2->zst_class)) != ZERR_NONE)
+				return(retval);
 	free_subscriptions(subs);
-	return(ZSRV_NOSUB);
+	if (found)
+		return(ZERR_NONE);
+	else
+		return(ZSRV_NOSUB);
 }
 
 /*
@@ -249,17 +254,32 @@ ZNotice_t *notice;
 ZAcl_t *acl;
 {
 	register ZClientList_t *hits, *clients, *majik, *clients2, *hit2;
+	register char *cp;
+	char *newclass, *saveclass;
 
 	if (!(hits = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))))
 		return(NULLZCLT);
 	hits->q_forw = hits->q_back = hits;
 
-	if (!(clients = class_lookup(notice->z_class))) {
-		if  (!(majik = class_lookup(MATCHALL_CLASS)))
+	
+	saveclass = notice->z_class;
+	cp = newclass = strsave(notice->z_class);
+
+	while (*cp) {
+		if (isupper(*cp))
+			*cp = tolower(*cp);
+		cp++;
+	}
+
+	if (!(clients = class_lookup(newclass))) {
+		if  (!(majik = class_lookup(MATCHALL_CLASS))) {
+			xfree(newclass);
 			return(NULLZCLT);
+		}
 	} else
 		majik = class_lookup(MATCHALL_CLASS);
 
+	notice->z_class = newclass;
 	if (clients)
 		for (clients2 = clients->q_forw;
 		     clients2 != clients;
@@ -274,6 +294,8 @@ ZAcl_t *acl;
 				if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
 					syslog(LOG_WARNING,
 					       "subscr_match: punting/no mem");
+					notice->z_class = saveclass;
+					xfree(newclass);
 					return(hits);
 				}
 				hit2->zclt_client = clients2->zclt_client;
@@ -296,6 +318,8 @@ ZAcl_t *acl;
 			if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
 				syslog(LOG_WARNING,
 				       "subscr_match(majik): punting/no mem");
+				notice->z_class = saveclass;
+				xfree(newclass);
 				return(hits);
 			}
 			hit2->zclt_client = clients2->zclt_client;
@@ -304,9 +328,13 @@ ZAcl_t *acl;
 			xinsque(hit2, hits);
 		}
 	if (hits->q_forw == hits) {
+		notice->z_class = saveclass;
+		xfree(newclass);
 		xfree(hits);
 		return(NULLZCLT);
 	}
+	notice->z_class = saveclass;
+	xfree(newclass);
 	return(hits);
 }
 
@@ -378,19 +406,13 @@ ZAcl_t *acl;
 			if (strcmp(notice->z_class_inst, subs->zst_classinst))
 				continue;
 		} else {
-			if ((reresult = re_comp(subs->zst_classinst))) {
-				syslog(LOG_WARNING, "re_comp error %s on '%s'",
-				       reresult, subs->zst_classinst);
-				continue;
-			}
-			if (!re_exec(notice->z_class_inst))
+			if (strcmp(subs->zst_classinst, "*") &&
+			    strcmp(subs->zst_classinst, notice->z_class_inst))
 				continue;
 		}
-		if (*notice->z_recipient) /* Non-blank recipient */
-			if (strcmp(notice->z_recipient, subs->zst_recipient))
-				continue;
+		if (strcmp(notice->z_recipient, subs->zst_recipient))
+			continue;
 		
-		/* either blank recip. field (wildcard) or exact match */
 		return(1);
 	}
 	/* fall through */
@@ -445,7 +467,7 @@ register ZNotice_t *notice;
 		return(0);
 	if (strcmp(s1->zst_classinst,s2->zst_classinst))
 		return(0);
-	if (strcmp(notice->z_sender,s2->zst_recipient))
+	if (strcmp(s1->zst_recipient,s2->zst_recipient))
 		return(0);
 	return(1);
 }
@@ -476,6 +498,14 @@ register ZNotice_t *notice;
 		if (*buf == '\0')
 			/* we've exhausted the subscriptions */
 			return(subs);
+		/* we lowercase the class so we can be case insensitive on
+		   comparisons */
+		while (*cp) {
+			if (isupper(*cp))
+				*cp = tolower(*cp);
+			cp++;
+		}
+		cp = class;
 		zdbug((LOG_DEBUG,"class %s",cp));
 		ADVANCE(1);
 		classinst = buf = cp;
