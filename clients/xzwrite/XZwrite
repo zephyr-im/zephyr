@@ -1,0 +1,243 @@
+*resize: on
+*allowShellResize: on
+
+*reverseVideo:		on
+*maxYanks:		25
+*ping:			on
+*verbose:		on
+*auth:			on
+*yankDest:		off
+*addGlobals:		on
+*classInst:		on
+*closeOnSend:		off
+*trackLogins:		on
+*pongScan:		off
+*readAnyone:		on
+*readXzwrite:		on
+
+*icon.bitmap:		/usr/sipb/bitmaps.x11/z
+*icon.translations:	#override\
+	<BtnDown>:	set() \n\
+	<Btn1Up>:	OpenSend() unset() \n\
+	Ctrl<Btn2Up>:	Quit() \n\
+	<Btn3Up>:	OpenMenu() unset()
+
+*sendForm.defaultDistance: -1
+*sendForm.borderWidth:	0
+
+*sendClose.label:	Close Window
+*sendClose.top:		ChainTop
+*sendClose.bottom:	ChainTop
+*sendClose.left:	ChainLeft
+*sendClose.right:	ChainRight
+*sendClose.width:	671
+*sendClose.translations:#override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	CloseSend() unset() \n\
+
+*editPane.fromVert:	sendClose
+*editPane.top:		ChainTop
+*editPane.bottom:	ChainBottom
+*editPane.left:		ChainLeft
+
+*editTitle.showGrip:	false
+*editTitle.width:	480
+*editTitle.borderWidth:	0
+
+*editForm.showGrip:	false
+*editForm.borderWidth:	2
+*editForm.borderColor:	black
+
+*editSend.label:	Send Message
+*editSend.left:		ChainLeft
+*editSend.translations:#override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	YankStore() SendMessage() unset() \n\
+
+*editClear.label:	Clear Editor
+*editClear.fromHoriz:	editSend
+*editClear.translations:#override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	ClearEditor() unset() \n\
+
+*editPrev.label:	Yank-Prev
+*editPrev.fromHoriz:	editClear
+*editPrev.translations:#override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	YankPrev() unset() \n\
+
+*editNext.label:	Yank-Next
+*editNext.fromHoriz:	editPrev
+*editNext.right:	ChainRight
+*editNext.translations:#override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	YankNext() unset() \n\
+
+*editor.width:		480
+*editor.height:		130
+*editor*editType:	edit
+*editor*wrap:		never
+*editor*autoFill:	true
+*editor*useStringInPlace: false
+*editor.translations:	#override\
+	Ctrl<Key>Return: YankStore() SendMessage() ClearEditor() \n\
+	Ctrl<Key>Y:	YankStore() YankPrev() \n\
+	Meta<Key>O:	YankStore() YankPrev() \n\
+	Meta<Key>P:	YankPrev() \n\
+	Meta<Key>N:	YankNext()
+
+*destForm.borderWidth:	0
+*destForm.defaultDistance: 0
+*destForm.fromVert:	sendClose
+*destForm.top:		ChainTop
+*destForm.bottom:	ChainBottom
+*destForm.right:	ChainRight
+*destForm.fromHoriz:	editPane
+
+*destScroll.top:	ChainTop
+*destScroll.bottom:	ChainBottom
+*destScroll.left:	ChainLeft
+*destScroll.right:	ChainRight
+*destScroll.width:	190
+*destScroll.height:	178
+*destScroll.resizable:	false
+*destScroll.allowVert:	true
+*destScroll.allowHoriz: false
+*destScroll.forceBars:  true
+
+*destList.forceColumns:	on
+*destList.defaultColumns: 1
+*destList.translations: #override\
+	<Motion>:	Set() \n\
+	<Btn1Up>:	Set() SelectDest() Unset() \n\
+	<Btn2Up>:	CreateDest() \n\
+	<Btn3Up>:	Set() DeleteDest() Unset() \n\
+	<LeaveWindow>:	Unset()
+
+*menuClose.label:	Close Window
+*menuClose.top:		ChainTop
+*menuClose.left:	ChainLeft
+*menuClose.right:	ChainRight
+*menuClose.width:	200
+*menuClose.translations:#override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	CloseMenu() unset() \n\
+
+*signature.label:	Change Signature
+*signature.fromVert:	menuClose
+*signature.left:	ChainLeft
+*signature.right:	ChainRight
+*signature.width:	200
+*signature.translations: #override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	Signature()
+
+*closeOnSend.label:	Close On Send
+*closeOnSend.fromVert:	signature
+*closeOnSend.left:	ChainLeft
+*closeOnSend.right:	ChainRight
+*closeOnSend.width:	200
+*closeOnSend.translations: #override\
+	<BtnDown>,<BtnUp>: toggle() ToggleOption()
+
+*pings.label:		Pings
+*pings.fromVert:	closeOnSend
+*pings.left:		ChainLeft
+*pings.right:		ChainRight
+*pings.width:		200
+*pings.translations: #override\
+	<BtnDown>,<BtnUp>: toggle() ToggleOption()
+
+*verbose.label:		Verbose
+*verbose.fromVert:	pings
+*verbose.left:		ChainLeft
+*verbose.right:		ChainRight
+*verbose.width:		200
+*verbose.translations: #override\
+	<BtnDown>,<BtnUp>: toggle() ToggleOption()
+
+*authentic.label:	Authenticate
+*authentic.fromVert:	verbose
+*authentic.left:	ChainLeft
+*authentic.right:	ChainRight
+
+*authentic.width:	200
+*authentic.translations: #override\
+	<BtnDown>,<BtnUp>: toggle() ToggleOption()
+
+*yankDest.label:	Yank Destinations
+*yankDest.fromVert:	authentic
+*yankDest.left:		ChainLeft
+*yankDest.right:	ChainRight
+*yankDest.width:	200
+*yankDest.translations: #override\
+	<BtnDown>,<BtnUp>: toggle() ToggleOption()
+
+*addGlobals.label:	Add Globals
+*addGlobals.fromVert:	yankDest
+*addGlobals.left:	ChainLeft
+*addGlobals.right:	ChainRight
+*addGlobals.width:	200
+*addGlobals.translations: #override\
+	<BtnDown>,<BtnUp>: toggle() ToggleOption()
+
+*classInst.label:	Class/Inst
+*classInst.fromVert:	addGlobals
+*classInst.left:	ChainLeft
+*classInst.right:	ChainRight
+*classInst.width:	200
+*classInst.translations: #override\
+	<BtnDown>,<BtnUp>: toggle() ToggleOption()
+
+*exitProgram.label:	Quit XZWRITE
+*exitProgram.fromVert:	classInst
+*exitProgram.left:	ChainLeft
+*exitProgram.right:	ChainRight
+*exitProgram.width:	200
+*exitProgram.translations:#override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	Quit()
+
+*getStringWindow.resize: true
+
+*getStringTitle.borderWidth: 0
+*getStringTitle.top:    ChainTop
+*getStringTitle.bottom: ChainTop
+*getStringTitle.left:   ChainLeft
+*getStringTitle.right:  ChainRight
+
+*getStringForm.width:   210
+
+*getStringEdit*editType: edit
+*getStringEdit.resize:  width
+*getStringEdit.resizable: true
+*getStringEdit.top:     ChainTop
+*getStringEdit.bottom:  ChainTop
+*getStringEdit.left:    ChainLeft
+*getStringEdit.right:   ChainRight
+*getStringEdit.fromVert: getStringTitle
+*getStringEdit.translations: 	#override\
+	<Key>Return:	Accept() \n\
+
+*getStringAccept.width: 105
+*getStringAccept.label: Accept
+*getStringAccept.fromVert: getStringEdit
+*getStringAccept.top:   ChainTop
+*getStringAccept.bottom: ChainTop
+*getStringAccept.left:  ChainRight
+*getStringAccept.right: ChainRight
+*getStringAccept.translations: #override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	Accept() unset()
+
+*getStringCancel.width: 105
+*getStringCancel.label: Cancel
+*getStringCancel.fromVert: getStringEdit
+*getStringCancel.fromHoriz: getStringAccept
+*getStringCancel.top:   ChainTop
+*getStringCancel.bottom: ChainTop
+*getStringCancel.left: ChainRight
+*getStringCancel.right: ChainRight
+*getStringCancel.translations: #override\
+	<BtnDown>:	set() \n\
+	<BtnUp>:	Cancel() unset()
