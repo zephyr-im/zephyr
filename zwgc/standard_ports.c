@@ -191,7 +191,7 @@ void init_standard_ports(pargc, argv)
         if (p->port_setup_status==2)
           continue;
 
-        if (p->port_init && (*(p->port_init))(pargc, argv)) {
+        if (p->port_init && (*(p->port_init))(p->port_name, pargc, argv)) {
             p->port_setup_status = 2;
             continue;
         }
