@@ -1,11 +1,14 @@
-.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\"	$Source$
+.\"	$Author$
+.\"	$Header$
+.\"
+.\" Copyright 1987,1988 by the Massachusetts Institute of Technology
 .\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
 .\" specifies the terms and conditions for redistribution.
 .\"
-.\"	@(#)zstat.8	6.1 (MIT) 7/9/87
 .\"
-.TH ZSTAT 8 "July 30, 1987"
-.UC 6
+.TH ZSTAT 8 "July 1, 1988" "MIT Project Athena"
+.ds ]W MIT Project Athena
 .SH NAME
 zstat \- display Zephyr statistics
 .SH SYNOPSIS
@@ -19,10 +22,11 @@ zstat \- display Zephyr statistics
 ]
 .SH DESCRIPTION
 .I Zstat
-is used to display statistics about a HostManager,
+is used to display statistics reported by a HostManager,
 .I zhm(8),
-or Zephyr Server
-.I zephyrd(8).
+or a Zephyr Server
+.I zephyrd(8),
+or both.
 .TP 12
 .B \-h
 is used to indicate that only HostManager statistics should be displayed.
@@ -31,15 +35,18 @@ is used to indicate that only HostManager statistics should be displayed.
 is used to indicate that only server statistics should be displayed.
 .TP
 If no hosts are specified, the current host is assumed.
+When both HostManager and server statistics are displayed,
+statistics from the current server for each host are displayed.
 .SH SEE ALSO
-zctl(1), zephyr(1), zhide(1), znol(1), zwgc(1), zhm(8), zephyrd(8)
+zephyr(1), zhm(8), zephyrd(8)
 .br
-`Zephyr Notification Service'
+Project Athena Technical Plan Section E.4.1, `Zephyr Notification
+Service'
 .SH AUTHOR
 .PP
-Robert S. French (MIT-Project Athena)
+David C. Jedlinsky (MIT-Project Athena)
 .sp
-Copyright (c) 1987 by the Massachusetts Institute of Technology
+Copyright (c) 1987,1988 by the Massachusetts Institute of Technology
 .br
 See
 .I zephyr(1)
