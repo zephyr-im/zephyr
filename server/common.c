@@ -15,30 +15,69 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_common_c[] = "$Header$";
+static const char rcsid_common_c[] =
+    "$Header$";
 #endif SABER
 #endif lint
 
 #include <stdio.h>
-#include <zephyr/zsyslog.h>
-#include <strings.h>
-
-extern char *malloc();
+#include <assert.h>
+#include <ctype.h>
+#include "zserver.h"
 
 /* common routines for the server */
 
 /* copy the string into newly allocated area */
 
 char *
-strsave(sp)
-char *sp;
+strsave (const char *sp)
 {
     register char *ret;
 
-    if((ret = malloc((unsigned) strlen(sp)+1)) == NULL) {
-	    syslog(LOG_ERR, "no mem strsave'ing");
+    if((ret = (char *) xmalloc((unsigned) strlen(sp)+1)) == NULL) {
+	    syslog(LOG_ERR, "no mem strdup'ing");
 	    abort();
     }
     (void) strcpy(ret,sp);
     return(ret);
+}
+
+/* generic string hash function */
+
+unsigned long
+hash (const char *string)
+{
+	register int hval = 0;
+	register char cp;
+
+	while (1) {
+	    cp = *string++;
+	    if (!cp)
+		break;
+	    hval += cp;
+
+	    cp = *string++;
+	    if (!cp)
+		break;
+	    hval += cp * 9;
+
+	    cp = *string++;
+	    if (!cp)
+		break;
+	    hval += cp * 17;
+
+	    cp = *string++;
+	    if (!cp)
+		break;
+	    hval += cp * 65;
+
+	    cp = *string++;
+	    if (!cp)
+		break;
+	    hval += cp * 129;
+
+	    hval += (hval & 0x7fffff) * 256;
+	    hval &= 0x7fffffff;
+	}
+	return hval;
 }

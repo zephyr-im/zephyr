@@ -41,9 +41,9 @@ typedef struct _timer {
 	/* time for timer to go off, absolute time */
 	long 	alarm_time;
 	/* procedure to call when timer goes off */
-	void 	(*func)();
+	void 	(*func)(void*);
 	/* argument for that procedure */
-	caddr_t	arg;
+	void *	arg;
 } *timer;
 
 #define ALARM_TIME(x) ((x)->alarm_time)
@@ -53,10 +53,15 @@ typedef struct _timer {
 #define ALARM_ARG(x)  ((x)->arg)
 #define TIMER_SIZE sizeof(struct _timer)
 
-time_t time();
+#ifdef mips
+#define time_t long /* sigh */
+#endif
+extern "C" time_t time(time_t*);
 #define NOW (time((time_t *)NULL))
-extern timer timer_set_rel(), timer_set_abs();
-extern void timer_reset(), timer_process();
+typedef void (*timer_proc) (void *);
+extern timer timer_set_rel(long, timer_proc, void*);
+extern timer timer_set_abs(long, timer_proc, void*);
+extern void timer_reset(timer), timer_process(void);
 
 #define	timer_when(x)	ALARM_TIME(x)
 
