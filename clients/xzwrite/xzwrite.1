@@ -1,0 +1,400 @@
+.TH XZWRITE 1 "7 February 1989"
+.SH NAME
+xzwrite \- X application to write to another user via Zephyr
+.SH SYNOPSIS
+.B xzwrite 
+[ -toolkitoption ... ] [-s signature] [+d | -d] [+n | -n] [+v | -v]
+[+yd | -yd] [+av | -av] [+ci | -ci] [-my yanks] [+l | -l] [+a | -a]
+[+x | -x] [+z | -z] [+pong | -pong] [+reply | -reply]
+
+.SH DESCRIPTION
+.I Xzwrite
+is an X application that sends messages to other users
+through the 
+.IR Zephyr (1)
+notification service.  It puts an icon on the
+screen that allows the user to send a message, select the destination
+of a message, or exit.  The program remains active until explicity
+told to exit, thus eliminating the need to run a program every time
+the user wants to send a zephyr message.
+.SH USING THE DESTINATION LIST
+.PP
+.I Xzwrite 
+maintains a list of 'destinations'; that is, a list of
+<class, instance, recipient> triples that a user can send messages to.
+When a user selects a destination, all subsequent messages will be
+sent to that triple, until a new destination is selected.  
+.I Xzwrite
+can get its list of destinations from the files .xzwrite.dest,
+.anyone, or .zephyr.vars in the
+user's home directory.  These files must consist of a list of lines, and
+each is interpreted in the following way: a line containing no commas
+is taken to mean <MESSAGE,PERSONAL,string>; a line with one comma is
+taken to be either <class,instance,*> or <MESSAGE,instance,recipient>
+depending on the value of the classInst resource (see below); a line
+with two commas is taken to be <class,instance,recipient>.  The lines
+must appear
+.B WITHOUT WHITESPACE 
+between the fields and with a linefeed between each line.  Blank lines
+and lines beginning with an octothorpe (#) are ignored.
+.PP
+
+Clicking the left button in the 
+.I xzwrite 
+icon pops up the editor and
+destination list.  Clicking with the left button in the destination
+list selects the highlighted destination; clicking with the right
+button deletes the highlighed destination.  Clicking the middle button
+invokes the action CreateDest (see ACTIONS below) that prompts the
+user for a new <class,instance,recipient> triple to be added to the list.
+
+.PP
+
+If the user specifies a destination in the .xzwrite.dest file
+with an instance or recipient of "...", 
+.I xzwrite 
+will prompt the user to enter an instance or recipient when the
+message editor is popped up.  Setting both instance and recipient to
+"..." (ie: <MESSAGE,...,...>) works.  The new
+<class,instance,recipient> triple formed each time a destination with
+"..." is used may or may not be added to the destination list, depending
+on the addVars resource (see below.)
+
+.PP
+
+While the mouse pointer is inside the 
+.I xzwrite 
+icon, the mouse buttons have the following effect:
+.TP
+.B Left button:        
+Pops up the editor and destination list so the user can create and 
+send messages.
+.TP
+.B Right button:
+Pops up a list of things that can be changed while xzwrite is running.
+Clicking the "Change Signature" box causes
+.I xzwrite
+to prompt for a new signature, to be used in future messages.  All the
+others toggle options which are initially set by resources or
+command-line arguments.  The "Quit XZWRITE" causes 
+.I xzwrite
+to exit.
+.TP
+.B Ctrl-Right button:
+Exits
+.IR xzwrite .
+
+.SH USING THE MESSAGE EDITOR
+There are four buttons in the message editor.  The Send button
+sends the text currently in the message editor to the current
+destination, optionally clearing the message editor at the same time.
+The Clear Editor button clears the message editor.  The Yank-Prev button yanks
+the previous message, along with its destination, into the message
+editor.  The Yank-Next button yanks the next message (or the first
+message in the yank buffer, if Yank-Prev has not been called) into the
+message editor.  The yank buffer is circular, so old messages are
+periodically overwritten by new ones, and stores the previous (by
+default) 25 messages.
+.PP
+The following key sequences have been defined for convenience:
+.PP
+.nf
+	Ctrl-Return		Send message
+	Meta-O			Store current message, yank previous
+	Meta-P			Yank Previous
+	Meta-N			Yank Next
+
+.SH OPTIONS
+
+.I Xzwrite 
+will accept all X Toolkit command-line options and
+resource database specifications, under the name 'XZwrite'; for more
+information, see 
+.IR X (1). 
+The instance names of the different parts of
+.I xzwrite 
+are as follows (each should be preceded by XZwrite* in the
+user's .Xresources file.  For examples of how to use these resource
+names, look in /mit/sipb/usr/lib/app-defaults/XZwrite.) 
+
+.nf
+ toplevel - the top level shell
+      icon - the top level "Z" icon
+
+ sendWindow - the popup shell for the editor/destlist
+      sendForm - the form holding the edit tree and dest tree
+      sendClose - button to close sendWindow
+
+      editPane - the pane holding editor widgets
+              editTitle - the label holding the zephyr triple
+              editForm - the box holding editor command buttons
+                      editSend - button to send message
+                      editClear - button to clear editor
+                      editPrev - button to yank previous
+                      editNext - button to yank next
+              editor - the text editor
+
+      destForm - the form holding the destinations list/button
+              destScroll - the scrollbar holding the list
+                      destList - the destination list
+
+ menuWindow - the popup shell for the menu
+      menuForm - the form holding the menu list/button
+              menuClose - the Close Window button for the dest list
+              signature - button to change signature
+              closeOnSend
+              pings
+              verbose
+              authentic
+              yankDest
+              addGlobals
+              classInst
+              exitProgram
+
+ getStringWindow - the popup shell for dialog boxes (GetString.c)
+      getStringForm - the form containing the dialog widgets
+              getStringTitle - the title label width
+              getStringEdit - the text editor
+              getStringAccept - the accept button
+              getStringCancel - the cancel button
+
+.fi
+
+.PP
+In addition, 
+.I xzwrite 
+will accept the following command-line options
+(or resource database specifications).  Each should be preceded by
+XZwrite* in the user's .Xresources file.  When a command-lie
+.TP
+.B +d (auth = true)
+.br
+.ns
+.HP 5
+.B -d (auth = false)
+.br
+When true, Zephyr messages to be sent authentic.  When false, Zephyr
+messages are sent unauthentic.
+.TP
+.B +v (verbose = true)
+.br
+.ns
+.HP 5
+.B -v (verbose = false)
+.br
+When true, causes
+.I xzwrite
+to inform the user no one received a sent message by beeping.  This
+is useful if the user wants to know if someone logged out between
+the time when the editor is popped up (when a PING is sent) and when
+the message is actually sent. 
+.TP
+.B +z (readZephyr = true)
+.br
+.ns
+.HP 5
+.B -z (readZephyr = false)
+.br
+When true, causes 
+.I xzwrite 
+to include the .zephyr.subs file for its initial list of destinations. 
+.TP
+.B +a (readAnyone = true)
+.br
+.ns
+.HP 5
+.B -a (readAnyone = false)
+.br
+When true, causes
+.I xzwrite
+to include the user's .anyone file for its initial list of destinations.
+.TP
+.B +x (readXzwrite = true)
+.br
+.ns
+.HP 5
+.B -x (readXzwrite = false)
+.br
+When true, causes
+.I xzwrite
+to include the user's .xzwrite.dest file for its initial list of destinations.
+.TP
+.B +l (trackLogins = true)
+.br
+.ns
+.HP 5
+.B -l (trackLogins = false)
+.br
+When true, 
+.I xzwrite 
+determines (at startup) if each username on the destination
+list is logged on and removes those usernames that are not.  It then
+subscribes to login and logout messages for each
+username on the list, and keeps the destination list up to date with
+respect to which users are zwrite-able.
+.TP
+.B +pong (pongScan = true)
+.br
+.ns
+.HP 5
+.B -pong (pongScan = false)
+.br
+Controls the method
+.I xzwrite
+uses determine whether a certain user is logged in.  If true, 
+.I xzwrite
+sends a notice with an opcode of PING (and a message body of PONG) and
+awaits a response; if false,
+.I xzwrite
+performs a "zlocate".  Note that this resource is only used when
+trackLogins is true.
+.TP
+.B -s (signature)
+Specifies the 'signature' for all messages sent.  The signature will
+appear as the first field in every message sent.
+.I Xzwrite
+will also look in the user's .zephyr.vars file to a signature, first
+for the variable xzwrite-signature and then for the variable
+zwrite-signature.
+.TP
+.B +n (ping = true)
+.br
+.ns
+.HP 5
+.B -n (ping = false)
+.br
+When ping is set to true,
+.I xzwrite
+sends a PING to the destination when it is initially selected.
+.I Xzwrite
+uses the PING to determine if anyone will actually receive a message
+sent to that destination, and will not allow it to be selected if not.
+.TP
+.B +ci (classInst = true)
+.br
+.ns
+.HP 5
+.B -ci (classInst = false)
+.br
+When ci is set to true, a destination that contains two strings
+separated by a comma is interpreted as a class and instance, with
+a recipient of "*".  When it is false, the same string is interpreted
+as an instance and recipient, with a class of MESSAGE.
+.TP
+.B +yd (yankDest = true)
+.br
+.ns
+.HP 5
+.B -yd (yankDest = false)
+.br
+When yd is set to true, yanking a previous message in the message editor
+also restores the original destination of the message.  When set to false,
+only the message text is yanked, and the current destination remains
+unchanged.
+.TP
+.B +av (addVars = true)
+.br
+.ns
+.HP 5
+.B -av (addVars = false)
+.br
+When av is set to true, destinations that are specified as the result
+of a recipient or instance of "..." are added to the destinations list
+so they can be selected again.
+.TP
+.B +reply (autoReply = true)
+.br
+.ns
+.HP 5
+.B -reply (autoReply = false)
+.br
+When autoReply is set to true, xzwrite subscribes to <MESSAGE,*,%me%>
+(in other words, all messages sent directly to the user).  Each time
+such a message is received, a destination that will reply to the
+sender on the same instance is added to the destination list, if it is
+not already there.
+
+.SH ACTIONS
+
+Every useful action that 
+.I xzwrite
+can perform can be bound to any sequence of X events through the
+mechanism of translation tables.  The following action procedures
+available to the user.
+.PP
+.nf
+  OpenSend
+  CloseSend
+     Pops up/Pops down the message editor/destination list.  
+
+  SendMessage
+     Sends the message in the editor to the current destination.
+
+  ClearEditor
+     Clears the editor.
+
+  YankStore
+     Stores the contents in the message editor in the Yank buffer.
+
+  YankPrev
+  YankNext
+     Puts the previous/next item in the yank buffer into the editor,
+     optionally restoring the destination as well.
+
+  SelectDest
+  DeleteDest
+     Selects/deletes the hightlighed destination.
+
+  CreateDest
+     Prompts the user for a <class,instance,recipient> triple to
+     be added to the destinations list.
+
+  OpenMenu
+  CloseMenu
+     Pops up/Pops down the options menu.
+
+  ToggleOption
+     Toggles the option corresponding to the hightlighed item on the
+     options menu.
+
+  Signature
+     Pops up a dialog box and changes the Zephyr signature to whatever
+     is typed into it.
+
+For examples on how to use these action procedures, look in
+/usr/sipb/lib/app-defaults/XZwrite.
+
+.SH FILES
+.TP
+/usr/sipb/bitmaps.x11/z
+Default icon bitmap
+.TP
+/usr/sipb/lib/app-defaults/XZwrite
+Xzwrite program defaults
+.TP
+~/.Xresources
+user X resources database file
+.TP
+~/.xzwrite.dest
+The user's xzwrite destinations list.
+~/.anyone
+The user's .anyone file.
+~/.zephyr.subs
+The user's zephyr subscription file.
+.SH SEE ALSO
+X(1), zephyr(1)
+
+.SH BUGS
+
+.I xzwrite
+occasionally decided to ignore the state of the "Pings" and
+"Authentic" menu options, unless you happen to be running the program
+under a debugger.
+
+This man page contains many errors and omissions.
+
+.SH AUTHOR
+
+Written by Barr3y Jaspan (bjaspan@athena.mit.edu), MIT Project Athena
+and MIT Student Information Processing Board, for X11R4, the X
+Toolkit, and the Athena Widgets.
