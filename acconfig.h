@@ -1,8 +1,8 @@
 /* Define to compile with Hesiod support. */
-#undef ZEPHYR_USES_HESIOD
+#undef HAVE_HESIOD
 
 /* Define to compile with Kerberos support. */
-#undef ZEPHYR_USES_KERBEROS
+#undef HAVE_KRB4
 
 /* Define to a signed 32-bit integral type. */
 #define ZEPHYR_INT32 long
