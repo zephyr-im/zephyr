@@ -21,7 +21,7 @@ DOCDIR=/usr/doc/athena
 DESTDIR=
 
 FILES=	Makefile et_name.c error_message.c compile_et.c \
-		error_table.y et_lex.lex.l init_et.c \
+		et_lex.lex.l error_table.y init_et.c \
 		com_err.c com_err.h \
 		error_table.h mit-sipb-copyright.h \
 		test.c test1.et test2.et \
@@ -33,7 +33,7 @@ CFILES=	compile_et.c error_table.c error_message.c et_name.c \
 #
 # what to build...
 #
-all:	compile_et libcom_err.a libcom_err_p.a llib-lcom_err.ln
+all:	et_lex.lex.c compile_et libcom_err.a libcom_err_p.a llib-lcom_err.ln
 
 lint:	llib-lcom_err.ln
 
@@ -123,7 +123,7 @@ clean:
 		et.ar TAGS y.tab.c lex.yy.c error_table.c \
 		et_lex.lex.c \
 		test1.h test1.c test2.h test2.c test \
-		eddep makedep
+		eddep makedep *.ln
 
 # for testing
 test:	test.o test1.o test2.o libcom_err.a
@@ -137,3 +137,21 @@ test2.c : test2.et
 depend: ${CFILES} et_lex.lex.c
 	makedepend ${CFLAGS} ${CFILES}
 
+# DO NOT DELETE THIS LINE -- make depend depends on it.
+
+compile_et.o: compile_et.c /usr/include/stdio.h /usr/include/sys/file.h
+compile_et.o: /usr/include/string.h /usr/include/strings.h
+compile_et.o: /usr/include/sys/param.h /usr/include/machine/machparam.h
+compile_et.o: /usr/include/sys/signal.h /usr/include/sys/types.h
+compile_et.o: mit-sipb-copyright.h compiler.h
+error_table.o: error_table.c /usr/include/stdio.h /usr/include/string.h
+error_table.o: /usr/include/strings.h /usr/include/assert.h
+error_table.o: /usr/include/ctype.h /usr/include/sys/types.h
+error_table.o: /usr/include/sys/time.h /usr/include/sys/time.h internal.h
+error_table.o: mit-sipb-copyright.h error_table.h et_lex.lex.c
+error_message.o: error_message.c /usr/include/stdio.h error_table.h
+error_message.o: mit-sipb-copyright.h internal.h
+et_name.o: et_name.c error_table.h mit-sipb-copyright.h internal.h
+init_et.o: init_et.c /usr/include/stdio.h error_table.h mit-sipb-copyright.h
+com_err.o: com_err.c /usr/include/stdio.h mit-sipb-copyright.h
+com_err.o: /usr/include/varargs.h error_table.h internal.h com_err.h
