@@ -40,6 +40,7 @@ static char rcsid_hm_c[] = "$Header$";
 #define MACHINE "unknown"
 #endif ok
 
+int hmdebug = 0; /* Goddamned kerberos stole debug variable!!! */
 int no_server = 1, timeout_type = 0, serv_loop = 0;
 int nserv = 0, nclt = 0, nservchang = 0, sig_type = 0;
 long starttime;
@@ -55,7 +56,7 @@ extern char *index();
 
 void init_hm(), detach(), handle_timeout(), resend_notices(), die_gracefully();
 void set_sig_type();
-char *upcase();
+char *upcase(), *convert();
 
 main(argc, argv)
 char *argv[];
@@ -63,6 +64,8 @@ char *argv[];
     ZPacket_t packet;
     ZNotice_t notice;
     Code_t ret;
+    int optch;
+    extern int optind;
 
     /* Override server argument? */
     if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
@@ -70,8 +73,10 @@ char *argv[];
 	  exit(-1);
     }
     (void)strcpy(prim_serv, "");
-    if (argc > 1) 
-      (void)strcpy(prim_serv, argv[1]);
+    if ((optch = getopt(argc, argv, "d")) != EOF)
+      hmdebug++;
+    if (optind <= argc) 
+      (void)strcpy(prim_serv, argv[optind]);
     else {
 	  if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
 		printf("No hesiod information available.\n");
@@ -209,6 +214,8 @@ void init_hm()
 	    fprintf(fp, "%d\n", getpid());
 	    (void) fclose(fp);
       }
+      if (hmdebug)
+	syslog(LOG_DEBUG, "Debugging on.");
 #endif DEBUG
 
       bzero(&serv_sin, sizeof(struct sockaddr_in));
@@ -244,6 +251,26 @@ char *upcase(s)
       for (; *s; s++)
 	if (islower(*s)) *s = toupper(*s);
       return(r);
+}
+
+/* This must first change the \0 at the end of addr to a '.' */
+char *convert(addr)
+     caddr_t addr;
+{
+      static char result[4];
+      char *c, *r;
+      int i;
+
+      *index(addr, '\0') = '.';
+      c = addr;
+      for (i=0; i<4; i++) {
+	    if ((r = index(c, '.')) > 0) {
+		  *r = '\0';
+		  result[i] = (char)atoi(c);
+		  c = r+1;
+	    }
+      }
+      return(result);
 }
 
 /* Argument is whether we are actually booting, or just attaching
@@ -340,9 +367,11 @@ find_next_server(sugg_serv)
 	    } while ((done == 0) && (*++parse != NULL));
       }
       if (done) {
+	    if (hmdebug)
+	      syslog(LOG_DEBUG, "Suggested server: %s\n", sugg_serv);
 	    hp = gethostbyname(sugg_serv);
 	    DPR2 ("Server = %s\n", sugg_serv);
-	    cur_serv = sugg_serv;
+	    strcpy(cur_serv, sugg_serv);
       } else {		  
 	    if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
 		  serv_loop = 0;
@@ -401,12 +430,12 @@ hm_control(notice)
 {
       Code_t ret;
       struct hostent *hp;
-      char *suggested_server;
+      char suggested_server[64];
 
       DPR("Control message!\n");
       if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN)) {
-	    if ((hp = gethostbyaddr(notice->z_message,
-				    notice->z_message_len,
+	    if ((hp = gethostbyaddr(convert(notice->z_message),
+				    4,
 				    AF_INET)) != NULL) {
 		  strcpy(suggested_server, hp->h_name);
 		  new_server(suggested_server);
