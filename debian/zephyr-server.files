@@ -33,3 +33,4 @@ etc/zephyr/acl/xmt-user_locate.acl
 etc/zephyr/acl/xmt-wg_ctl.acl
 etc/zephyr/acl/xmt-zephyr_admin.acl
 etc/zephyr/acl/xmt-zephyr_ctl.acl
+etc/zephyr/default.subscriptions

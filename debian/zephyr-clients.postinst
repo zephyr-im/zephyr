@@ -26,8 +26,9 @@ case "$1" in
     configure)
 
 	. /usr/share/debconf/confmodule
+	db_version 2.0
 
-	tmpfile=`tempfile`
+	db_set zephyr-clients/read_conf true
 
 	if test -f /etc/zephyr/zephyr.conf
 	then
@@ -37,21 +38,22 @@ case "$1" in
 		fi
 	fi
 
-	zhm_args=""
+	# if /etc/default/zephyr-clients already exists and has a zhm_args
+        # line, the config script should have sucked it into debconf
+	db_get zephyr-clients/servers
+
+	tmpfile=/etc/default/zephyr-client.dpkg-new
 	if test -f /etc/default/zephyr-clients
 	then
-		. /etc/default/zephyr-clients
+		grep -v ^zhm_args /etc/default/zephyr-clients > $tmpfile || true
+	else
+		cat > $tmpfile << EOF
+# This file is automatically rewritten by the zephyr-clients post-install
+# script.  So treat it right.
+EOF
 	fi
-	if test -z "$zhm_args"
-	then
-		db_get zephyr-clients/servers
-		if test -f /etc/default/zephyr-clients
-		then
-			grep -v ^zhm_args /etc/default/zephyr-clients > $tmpfile || true
-		fi
-		echo zhm_args=\"${RET}\" >> $tmpfile
-		cat $tmpfile > /etc/default/zephyr-clients
-	fi
+	echo zhm_args=\"${RET}\" >> $tmpfile
+	cat $tmpfile > /etc/default/zephyr-clients
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

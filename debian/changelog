@@ -1,3 +1,15 @@
+zephyr (2.1.20000421.SNAPSHOT-13) unstable; urgency=low
+
+  * The unlucky version.  No warranty express or implied.  YMMV.
+  * zephyr-server should have a default.subscriptions file now, closes: #94125
+  * libzephyr3-krb and zephyr-server-krb now depend on krb4-config, should
+    improve out-of-box functionality
+  * alter init script to print a message and exit 0 if no zephyr servers
+    were specified. closes: #96723
+  * rework debconf stuff to be more clever about where the data is coming from.
+
+ -- Karl Ramm <kcr@debian.org>  Sun, 10 Jun 2001 07:29:56 -0400
+
 zephyr (2.1.20000421.SNAPSHOT-12) unstable; urgency=low
 
   * libzephyr-dev failed to have any files in it... and no one noticed.

@@ -27,6 +27,18 @@ fi
 
 case "$1" in
   start)
+	# note that the following will need revisting when we get hesiod support
+	if test -z "$zhm_args"
+	then
+		cat <<EOF
+The zephyr-clients package for whatever reason does not have any zephyr servers
+configured.  This is often because you have the threshold for debconf 
+asking question cranked up too high but regardless, please edit the file
+/etc/default/zephyr-clients and add the names of your zephyr servers, seperated
+by spaces to the zhm_args variable.
+EOF
+		exit 0
+	fi
 	echo -n "Starting $DESC: "
 	start-stop-daemon --start --quiet --pidfile /var/run/$NAME.pid \
 		--exec $DAEMON -- $zhm_args

@@ -26,6 +26,9 @@ case "$1" in
     configure)
 
 	. /usr/share/debconf/confmodule
+	db_version 2.0
+
+	db_set zephyr-server/read_conf true
 
 	db_get zephyr-server/servers
 	: > /etc/zephyr/server.list

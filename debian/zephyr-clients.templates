@@ -3,3 +3,14 @@ Type: string
 Description: What are your zephyr servers?
  Please type the full names of your zephyr servers, seperated by spaces.
  (note that this can be a subset of what you're telling the servers)
+
+Template: zephyr-clients/read_conf
+Type: boolean
+Default: true
+Description: You should never see this
+ We want to try and capture user changes when they edit a config file 
+ manually.  To do this we look at the file in the config script.
+ However, in the case of preconfigure, the config script is run twice
+ before the postinst is run.  Thus we may read the wrong value before the 
+ edited value is written out in postinst.
+ If this is false we skip reading config files until postinst runs.

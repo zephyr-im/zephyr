@@ -78,6 +78,7 @@ install: build
 	mkdir -p debian/tmp/etc/zephyr/acl
 	set -x; for i in debian/acl/*; do install -c -m 644 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
 	install -c -m 644 debian/zephyr.vars debian/tmp/etc/zephyr
+	install -c -m 644 debian/default.subscriptions debian/tmp/etc/zephyr
 	cp -pr debian/tmp/etc/zephyr/acl debian/tmp-krb/etc/zephyr
 
 # Build architecture-independent files here.
