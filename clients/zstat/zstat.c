@@ -212,6 +212,8 @@ hm_stat(host,server)
 
 	strcpy(server,line[0]);
 
+	printf("HostManager protocol version = %s\n",notice.z_version);
+
 	for (i=0;i<nf;i++) {
 		if (!strncmp("Time",head[i],4)) {
 			runtime = atol(line[i]);
@@ -303,6 +305,8 @@ srv_stat(host)
 		mp += strlen(mp)+1;
 	}
 
+	printf("Server protocol version = %s\n",notice.z_version);
+	
 	for (i=0; i<nf; i++) {
 		if (i < 2)
 			printf("%s %s\n",srv_head[i],line[i]);
