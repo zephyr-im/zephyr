@@ -25,6 +25,6 @@
 
 typedef char character_class[NUMBER_OF_CHARACTERS];
 
-extern character_class *string_to_character_class();
+extern /* character_class */ char * string_to_character_class();
 
 #endif

@@ -179,10 +179,10 @@ string verbatim(str)
    if (strlen(str) == pure_text_length(str,0)) {
       /* No environments, so consider the fast-and-easy methods */
 
-      if (not_contains(str,&allbracket_set))
+      if (not_contains(str,allbracket_set))
 	 return(string_Copy(str));
 
-      if (not_contains(str,&abracket_set)) {
+      if (not_contains(str,abracket_set)) {
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='<';
@@ -191,7 +191,7 @@ string verbatim(str)
 	 temp[len+3]='\0';
 	 return(temp);
       }
-      if (not_contains(str,&sbracket_set)) {
+      if (not_contains(str,sbracket_set)) {
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='[';
@@ -200,7 +200,7 @@ string verbatim(str)
 	 temp[len+3]='\0';
 	 return(temp);
       }
-      if (not_contains(str,&cbracket_set)) {
+      if (not_contains(str,cbracket_set)) {
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='{';
@@ -209,7 +209,7 @@ string verbatim(str)
 	 temp[len+3]='\0';
 	 return(temp);
       }
-      if (not_contains(str,&paren_set)) {
+      if (not_contains(str,paren_set)) {
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='(';
@@ -220,14 +220,14 @@ string verbatim(str)
       }
    }
 
-   temp=lbreak(&str,&allmaskable_set);
+   temp=lbreak(&str,allmaskable_set);
    while(*str) {
       bracketnum=(int) (index(brackets,str[0])-brackets);
       temp=string_Concat2(temp,openbracket[bracketnum]);
       temp=string_Concat2(temp,temp2=lany(&str," "));
       free(temp2);
       temp=string_Concat2(temp,closebracket[bracketnum]);
-      temp=string_Concat2(temp,temp2=lbreak(&str,&allmaskable_set));
+      temp=string_Concat2(temp,temp2=lbreak(&str,allmaskable_set));
       free(temp2);
    }
    free(str);  /* str is "" at this point, anyway */
@@ -381,9 +381,9 @@ string protect(str)
 
 int not_contains(str, set)
      string str;
-     character_class *set;
+     character_class set;
 {
-   while (*str && ! (*set)[*str]) str++;
+   while (*str && ! set[*str]) str++;
    return (! *str);
 }
 
