@@ -55,7 +55,7 @@ const
 
 int outoftime = 0;
 
-#if defined(ultrix) || defined(_POSIX_SOURCE)
+#if defined(ultrix) || defined(POSIX)
 void
 #endif
 timeout()
@@ -164,7 +164,7 @@ hm_stat(host,server)
 	struct tm *tim;
 	ZNotice_t notice;
 	
-	bzero((char *)&sin,sizeof(struct sockaddr_in));
+	_BZERO((char *)&sin,sizeof(struct sockaddr_in));
 
 	sin.sin_port = hm_port;
 
@@ -179,11 +179,11 @@ hm_stat(host,server)
 		fprintf(stderr,"Unknown host: %s\n",host);
 		exit(-1);
 	}
-	bcopy(hp->h_addr, (char *) &sin.sin_addr, hp->h_length);
+	_BCOPY(hp->h_addr, (char *) &sin.sin_addr, hp->h_length);
 
 	printf("Hostmanager stats: %s\n",hp->h_name);
 	
-	(void) bzero((char *)&notice, sizeof(notice));
+	(void) _BZERO((char *)&notice, sizeof(notice));
 	notice.z_kind = STAT;
 	notice.z_port = 0;
 	notice.z_class = HM_STAT_CLASS;
@@ -260,7 +260,7 @@ srv_stat(host)
 	long runtime;
 	struct tm *tim;
 	
-	bzero((char *) &sin,sizeof(struct sockaddr_in));
+	_BZERO((char *) &sin,sizeof(struct sockaddr_in));
 
 	sin.sin_port = srv_port;
 
@@ -275,11 +275,11 @@ srv_stat(host)
 		fprintf(stderr,"Unknown host: %s\n",host);
 		exit(-1);
 	}
-	bcopy(hp->h_addr, (char *) &sin.sin_addr, hp->h_length);
+	_BCOPY(hp->h_addr, (char *) &sin.sin_addr, hp->h_length);
 
 	printf("Server stats: %s\n",hp->h_name);
 	
-	(void) bzero((char *)&notice, sizeof(notice));
+	(void) _BZERO((char *)&notice, sizeof(notice));
 	notice.z_kind = UNSAFE;
 	notice.z_port = 0;
 	notice.z_class = ZEPHYR_ADMIN_CLASS;
