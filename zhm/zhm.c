@@ -241,9 +241,9 @@ hm_control(notice)
       Code_t ret;
 
       DPR("Control message!\n");
-      if (strcmp(notice->z_opcode, SERVER_SHUTDOWN))
+      if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN))
 	    new_server();
-      else if (strcmp(notice->z_opcode, SERVER_PING)) {
+      else if (!strcmp(notice->z_opcode, SERVER_PING)) {
 	    notice->z_kind = HMACK;
 	    if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
 		  Zperr(ret);
@@ -329,24 +329,25 @@ transmission_tower(notice, packet)
       Code_t ret;
       struct sockaddr_in gsin;
 
-      gack = *notice;
-      DPR2 ("Message = %s\n", gack.z_message);
-      gack.z_kind = HMACK;
-      gack.z_message_len = 0;
-      gsin = cli_sin;
-      gsin.sin_port = from.sin_port;
-      if (gack.z_port == 0)
-	gack.z_port = from.sin_port;
-      DPR2 ("Client Port = %u\n", ntohs(gack.z_port));
-      notice->z_port = gack.z_port;
-      if ((ret = ZSetDestAddr(&gsin)) != ZERR_NONE) {
-	    Zperr(ret);
-	    com_err("hm", ret, "setting destination");
-      }
-      /* Bounce ACK to library */
-      if ((ret = ZSendRawNotice(&gack)) != ZERR_NONE) {
-	    Zperr(ret);
-	    com_err("hm", ret, "sending raw notice");
+      if (notice->z_kind != UNSAFE) {
+	    gack = *notice;
+	    gack.z_kind = HMACK;
+	    gack.z_message_len = 0;
+	    gsin = cli_sin;
+	    gsin.sin_port = from.sin_port;
+	    if (gack.z_port == 0)
+	      gack.z_port = from.sin_port;
+	    DPR2 ("Client Port = %u\n", ntohs(gack.z_port));
+	    notice->z_port = gack.z_port;
+	    if ((ret = ZSetDestAddr(&gsin)) != ZERR_NONE) {
+		  Zperr(ret);
+		  com_err("hm", ret, "setting destination");
+	    }
+	    /* Bounce ACK to library */
+	    if ((ret = ZSendRawNotice(&gack)) != ZERR_NONE) {
+		  Zperr(ret);
+		  com_err("hm", ret, "sending raw notice");
+	    }
       }
       DPR2 ("Server Port = %u\n", ntohs(serv_sin.sin_port));
       if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
@@ -366,7 +367,7 @@ new_server()
       Code_t ret;
 
       no_server = 1;
-      DPR ("server going down.\n");
+      DPR ("Finding new server.\n");
       notice.z_kind = ACKED;
       notice.z_port = cli_port;
       notice.z_class = ZEPHYR_CTL_CLASS;
@@ -385,6 +386,6 @@ new_server()
       }
       find_next_server();
       send_boot_notice();
-      retransmit_queue();
+      retransmit_queue(&serv_sin);
 }
 
