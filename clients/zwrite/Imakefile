@@ -8,14 +8,8 @@
 /**/#	$Id$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} ${COMERR_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB} ${COMERR_LINTLIB}
 SRCS = zwrite.c
 OBJS = zwrite.o
 
-SRCDIR= ${SRCTOP}/clients/zwrite
-CODE= ${SRCS} Imakefile
-
-normal_obj_rule()
-
-program(zwrite,${OBJS},,${LIBS},${CLIENTDIR})
+zprogram(zwrite,)
+install_man(zwrite.1,zwrite.1)

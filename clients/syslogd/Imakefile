@@ -9,32 +9,22 @@
 /**/#
 
 #ifdef _AIX
-LIBS= $(ZEPHYR_LIB) $(KRB_LIB) $(COMERR_LIB) -lsrc
-#else
-LIBS= $(ZEPHYR_LIB) $(KRB_LIB) $(COMERR_LIB)
+MACHLIBS= -lsrc
 #endif
-LINCLUDES=-I.
-LINTLIBS=$(ZEPHYR_LINTLIB) $(KRB_LINTLIB) $(COMERR_LINTLIB)
-SRCS = syslogd.c
-OBJS = syslogd.o
-HDRS= syslog.h
 
-TSRCS= logger.c syslog.c 
-TOBJS= logger.o syslog.o
+LIBS= $(ZLIBS) $(MACHLIBS)
 
-SRCDIR= ${SRCTOP}/clients/syslogd
-CODE= ${SRCS} ${HDRS} ${TSRCS} Imakefile
+SRCS = syslogd.c logger.c syslog.c 
+
+DOBJS = syslogd.o
+LOBJS= logger.o syslog.o
 
 #ifdef SYSLOG_COMPAT42
-DEFINES = -DCOMPAT42
+COMPAT = -DCOMPAT42
+SimpleProgram(logger,$(LOBJS),,$(ATHETCDIR))
 #endif
 
-normal_obj_rule()
+XDEFS = -I. $(COMPAT)
 
-#ifdef SYSLOG_COMPAT42
-genutil(logger, $(TOBJS),,)
-#endif
-
-program(syslogd,$(OBJS),,$(LIBS),$(ETCATHDIR))
-
-manpage(8,syslogd.8)
+SimpleProgram(syslogd,$(DOBJS),$(LIBS),$(ATHRETCDIR))
+install_man(syslogd.8,syslogd.8)

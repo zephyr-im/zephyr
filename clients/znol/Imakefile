@@ -8,14 +8,8 @@
 /**/#	$Id$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} ${COMERR_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB} ${COMERR_LINTLIB}
 SRCS = znol.c
 OBJS = znol.o
 
-SRCDIR= ${SRCTOP}/clients/znol
-CODE= ${SRCS} Imakefile
-
-normal_obj_rule()
-
-program(znol,${OBJS},,${LIBS},${CLIENTDIR})
+zprogram(znol,)
+install_man(znol.1,znol.1)

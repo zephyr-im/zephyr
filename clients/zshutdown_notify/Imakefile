@@ -8,14 +8,9 @@
 /**/#	$Id$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} ${COMERR_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB} ${COMERR_LINTLIB}
 SRCS = zshutdown_notify.c
 OBJS = zshutdown_notify.o
 
-SRCDIR= ${SRCTOP}/clients/zshutdown_notify
-CODE= ${SRCS} Imakefile
-
-normal_obj_rule()
-
-program(zshutdown_notify,${OBJS},,${LIBS},${ETCATHDIR})
+SimpleProgram(zshutdown_notify,$(OBJS),$(ZLIBS),$(ATHETCDIR))
+install_man(zshutdown_notify.8,zshutdown_notify.8)
+create_depend($(SRCS))

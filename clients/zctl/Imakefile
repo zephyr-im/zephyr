@@ -8,22 +8,9 @@
 /**/#	$Id$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${SS_LIB} ${KRB_LIB} ${DES_LIB} ${COMERR_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${SS_LINTLIB} ${KRB_LINTLIB} \
-	${DES_LINTLIB} ${COMERR_LINTLIB}
-SRCS = zctl.c
+SRCS = zctl.c zctl_cmds.c
 OBJS = zctl.o zctl_cmds.o
-OTHERSRCS= zctl_cmds.ct
 
-#ifdef LOCAL_LIBS
-LINCLUDES=-I$(BUILDTOP)/ss
-#endif
-
-SRCDIR= ${SRCTOP}/clients/zctl
-CODE= ${OTHERSRCS} ${SRCS} Imakefile
-
-normal_obj_rule()
-
-program(zctl,${OBJS},,${LIBS},${CLIENTDIR})
-
-command_table_noprof(zctl_cmds)
+cmd_table(zctl_cmds)
+zprogram(zctl,$(LIB_SS))
+install_man(zctl.1,zctl.1)
