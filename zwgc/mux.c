@@ -24,6 +24,8 @@ static char rcsid_mux_c[] = "$Id$";
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/file.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
 #include <zephyr/zephyr.h>
@@ -42,6 +44,14 @@ static char rcsid_mux_c[] = "$Id$";
  */
 
 int mux_end_loop_p;
+
+/*
+ * have_tty - is defined to be true if there is a controlling tty for this
+ * 	      process.  When we can no longer access the controlling tty,
+ * 	      the process will die.
+ */
+
+static int have_tty = 0;
 
 /*
  * max_source - the maximum file descriptor that a handler was ever
@@ -74,6 +84,8 @@ void mux_init()
     
     for (i=0; i<MAX_SOURCES; i++)
       input_handler[i] = NULL;
+
+    have_tty = check_tty();
 }
 
 /*
@@ -122,6 +134,7 @@ void mux_loop()
 {
     int i;
     fd_set input_sources_copy;
+    struct timeval tv;
 
     mux_end_loop_p = 0;
 
@@ -132,17 +145,34 @@ void mux_loop()
 	if (mux_end_loop_p)
 	  break;
 
+	if (have_tty) {
+	    tv.tv_sec = 10;
+	    tv.tv_usec = 0;
+	} else {
+	    tv.tv_sec = tv.tv_usec = 0;
+	}
+
 	/*
 	 * Do a select on all the file descriptors we care about to
 	 * wait until at least one of them has input available:
 	 */
 	input_sources_copy = input_sources;
-	if ( select(max_source+1, &input_sources_copy, (fd_set *)NULL,
-		   (fd_set *)NULL, (struct timeval *)NULL) == -1 )
-	  if (errno == EINTR)
-	    continue;    /* on a signal restart checking mux_loop_end_p */
-	  else
-	    FATAL_TRAP( errno, "while selecting" );
+
+	i = select(max_source+1, &input_sources_copy, (fd_set *)0,
+		   (fd_set *)NULL, &tv);
+
+	if (i == -1) {
+	    if (errno == EINTR)
+		continue;    /* on a signal restart checking mux_loop_end_p */
+	    else
+		FATAL_TRAP( errno, "while selecting" );
+	}
+	else if (i == 0) {
+	    if (have_tty && !check_tty()) {
+		mux_end_loop_p = 1;
+		continue;
+	    }
+	}
 
 	/*
 	 * Call all input handlers whose corresponding file descriptors have
@@ -159,4 +189,22 @@ void mux_loop()
 	      input_handler[i](input_handler_arg[i]);
 	  }
     }
+}
+
+static int check_tty()
+{
+    register int result;
+    int pgrp;
+    int tty = open("/dev/tty", O_RDONLY|O_NDELAY);
+
+    if (tty < 0) return 0;
+
+#ifdef POSIX
+    result = ( ((pgrp = tcgetpgrp(tty)) < 0)      ? 0 : 1 );
+#else
+    result = ( (ioctl(tty, TIOCGPGRP, &pgrp) < 0) ? 0 : 1 );
+#endif
+
+    close(tty);
+    return(result);
 }
