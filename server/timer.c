@@ -9,11 +9,8 @@
  *
  */
 
-#ifndef lint
-#ifndef SABER
-static char rcsid_timer_c[] = "$Header$";
-#endif SABER
-#endif lint
+static char rcsid[] =
+    "$Header$";
 
 /*
  * timer_manager_ -- routines for handling timers in login_shell
@@ -68,8 +65,7 @@ long nexttimo = 0L;			/* the Unix time of the next
 static timer timers = NULL;
 static long right_now;
 
-char *calloc(), *malloc(), *realloc();
-static void timer_botch(), insert_timer(), add_timer();
+static void timer_botch(void*), insert_timer(timer), add_timer(timer);
 
 /*
  * timer_set_rel(time_rel, proc)
@@ -79,11 +75,7 @@ static void timer_botch(), insert_timer(), add_timer();
  * creates a "timer" and adds it to the current list, returns "timer"
  */
 
-timer timer_set_rel (time_rel, proc, arg)
-     long time_rel;
-     void (*proc)();
-     caddr_t arg;
-{
+timer timer_set_rel (long time_rel, void (*proc)(void*), void *arg) {
 	timer new_t;
 	right_now = NOW;
 	new_t = (timer) xmalloc(TIMER_SIZE);
@@ -94,7 +86,7 @@ timer timer_set_rel (time_rel, proc, arg)
 	ALARM_PREV(new_t) = NULL;
 	ALARM_ARG(new_t)  = arg;
 	add_timer(new_t);
-	return(new_t);
+	return new_t;
 }
 
 #ifdef notdef
@@ -124,7 +116,7 @@ timer timer_set_abs (time_abs, proc, arg)
 	ALARM_PREV(new_t) = NULL;
 	ALARM_ARG(new_t)  = arg;
 	add_timer(new_t);
-	return(new_t);
+	return new_t;
 }
 #endif notdef
 
@@ -139,15 +131,13 @@ timer timer_set_abs (time_abs, proc, arg)
  */
 
 void
-timer_reset(tmr)
-     timer tmr;
-{
+timer_reset(timer tmr) {
 	if (!ALARM_PREV(tmr) || !ALARM_NEXT(tmr)) {
-		zdbug((LOG_DEBUG,"timer_reset() of unscheduled timer\n"));
+		syslog (LOG_ERR, "timer_reset() of unscheduled timer\n");
 		abort();
 	}
 	if (tmr == timers) {
-		zdbug((LOG_DEBUG,"timer_reset of timer head\n"));
+		syslog (LOG_ERR,"timer_reset of timer head\n");
 		abort();
 	}
 	xremque(tmr);
@@ -155,11 +145,10 @@ timer_reset(tmr)
 	ALARM_NEXT(tmr) = NULL;
 	xfree(tmr);
 	if (timers == NULL) {
-		zdbug((LOG_DEBUG,"reset with no timers\n"));
+		syslog (LOG_ERR,"reset with no timers\n");
 		abort();
 	}
 	nexttimo = ALARM_TIME(ALARM_NEXT(timers));
-	return;
 }
 
 
@@ -176,15 +165,12 @@ timer_reset(tmr)
  *
  */
 static void
-add_timer(new_t)
-     timer new_t;
-{
+add_timer(timer new_t) {
 	if (ALARM_PREV(new_t) || ALARM_NEXT(new_t)) {
-		zdbug((LOG_DEBUG,"add_timer of enqueued timer\n"));
+		syslog (LOG_ERR,"add_timer of enqueued timer\n");
 		abort();
 	}
 	insert_timer(new_t);
-	return;
 }
 
 /*
@@ -195,9 +181,7 @@ add_timer(new_t)
  */
 
 static void
-insert_timer(new_t)
-     timer new_t;
-{
+insert_timer(timer new_t) {
 	register timer t;
 
 	if (timers == NULL) {
@@ -216,7 +200,6 @@ insert_timer(new_t)
 	}
 	xinsque(new_t, ALARM_PREV(timers));
 	nexttimo = ALARM_TIME(ALARM_NEXT(timers));
-	return;
 }
 
 /*
@@ -226,11 +209,10 @@ insert_timer(new_t)
  */
 
 void
-timer_process()
-{
-	register struct _timer *t;
-	void (*queue)();
-	caddr_t queue_arg;
+timer_process(void) {
+	register timer t;
+	timer_proc queue;
+	void * queue_arg;
 	int valid = 0;
 
 	right_now = NOW;
@@ -258,12 +240,10 @@ timer_process()
 	if (valid) {
 		(queue)(queue_arg);
 	}
-	return;
 }
 
 static void
-timer_botch()
-{
+timer_botch(void *arg) {
 	syslog(LOG_CRIT, "Timer botch\n");
 	abort();
 }

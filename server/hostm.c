@@ -16,8 +16,8 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_hostm_c[] = "$Header$";
-#endif SABER
-#endif lint
+#endif
+#endif
 
 #include "zserver.h"
 #include <sys/socket.h>			/* for AF_INET */
@@ -98,9 +98,13 @@ static long lose_timo = LOSE_TIMO;
 static losinghost *losing_hosts = NULLLH; /* queue of pings for hosts we
 					     doubt are really there */
 
-static void host_detach(), insert_host(), remove_host();
-static void host_not_losing(), host_lost(), ping();
-static Code_t host_attach();
+static void host_detach(register ZHostList_t *host, ZServerDesc_t *server),
+    insert_host(ZHostList_t *host, ZServerDesc_t *server),
+    remove_host(ZHostList_t *host);
+static void host_not_losing(struct sockaddr_in *who),
+    host_lost(void *which),
+    ping(struct sockaddr_in *sin);
+static Code_t host_attach(struct sockaddr_in *who, ZServerDesc_t *server);
 
 /*
  * We received a HostManager packet.  process accordingly.
@@ -108,19 +112,16 @@ static Code_t host_attach();
 
 /*ARGSUSED*/
 Code_t
-hostm_dispatch(notice, auth, who, server)
-ZNotice_t *notice;
-int auth;
-struct sockaddr_in *who;
-ZServerDesc_t *server;
+hostm_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDesc_t *server)
 {
 	ZServerDesc_t *owner;
 	ZHostList_t *host = NULLZHLT;
 	char *opcode = notice->z_opcode;
 	Code_t retval;
 
-
+#if 0
 	zdbug((LOG_DEBUG,"hm_disp"));
+#endif
 
 	host = hostm_find_host(&who->sin_addr);
 	if (host && host->zh_locked)
@@ -130,21 +131,29 @@ ZServerDesc_t *server;
 		host_not_losing(who);
 		return(ZERR_NONE);
 	} else if (notice->z_kind != HMCTL) {
+#if 0
 		zdbug((LOG_DEBUG, "bogus HM packet"));
+#endif
 		clt_ack(notice, who, AUTH_FAILED);
 		return(ZERR_NONE);
 	}
 	owner = hostm_find_server(&who->sin_addr);
 	if (!strcmp(opcode, HM_ATTACH)) {
+#if 0
 		zdbug((LOG_DEBUG,"attach %s",inet_ntoa(who->sin_addr)));
+#endif
 		if (owner == server) {
+#if 0
 			zdbug((LOG_DEBUG,"no change"));
+#endif
 			/* Same server owns him.  do nothing */
 		} else if (owner) {
 			/* He has switched servers.
 			   he was lost but has asked server to work for him.
 			   We need to transfer him to server */
+#if 0
 			zdbug((LOG_DEBUG,"hm_disp transfer"));
+#endif
 			hostm_transfer(host, server);
 		} else {
 			/* no owner.  attach him to server. */
@@ -161,7 +170,9 @@ ZServerDesc_t *server;
 			ack(notice, who);
 		}
 	} else if (!strcmp(opcode, HM_BOOT)) {
+#if 0
 		zdbug((LOG_DEBUG, "boot %s",inet_ntoa(who->sin_addr)));
+#endif
 		/* Booting is just like flushing and attaching */
 		if (owner)		/* if owned, flush */
 			hostm_flush(host, owner);
@@ -175,7 +186,9 @@ ZServerDesc_t *server;
 			ack(notice, who);
 		}
 	} else if (!strcmp(opcode, HM_FLUSH)) {
+#if 0
 		zdbug((LOG_DEBUG, "hm_flush %s",inet_ntoa(who->sin_addr)));
+#endif
 		if (!owner)
 			return(ZERR_NONE);
 		/* flush him */
@@ -183,7 +196,9 @@ ZServerDesc_t *server;
 		if (server == me_server)
 			server_forward(notice, auth, who);
 	} else if (!strcmp(opcode, HM_DETACH)) {
+#if 0
 		zdbug((LOG_DEBUG, "hm_detach %s",inet_ntoa(who->sin_addr)));
+#endif
 		/* ignore it */
 	} else {
 		syslog(LOG_WARNING, "hm_disp: unknown opcode %s",opcode);
@@ -201,9 +216,7 @@ ZServerDesc_t *server;
  */
 
 void
-hostm_flush(host, server)
-ZHostList_t *host;
-ZServerDesc_t *server;
+hostm_flush(ZHostList_t *host, ZServerDesc_t *server)
 {
 	register ZClientList_t *clist = NULLZCLT, *clt;
 	losinghost *lhp, *lhp2;
@@ -214,7 +227,9 @@ ZServerDesc_t *server;
 	    return;
 	}
 
+#if 0
 	zdbug((LOG_DEBUG,"hostm_flush"));
+#endif
 
 	if (losing_hosts)
 		for (lhp = losing_hosts->q_forw;
@@ -232,8 +247,10 @@ ZServerDesc_t *server;
 		for (clt = clist->q_forw; clt != clist; clt = clist->q_forw) {
 			/* client_deregister frees this client & subscriptions
 			   & locations and remque()s the client */
+#if 0
 			if (zdebug)
 				syslog(LOG_DEBUG, "hostm_flush clt_dereg");
+#endif
 			client_deregister(clt->zclt_client, host, 1);
 		}
 
@@ -248,13 +265,15 @@ ZServerDesc_t *server;
  */
 
 void
-hostm_shutdown()
+hostm_shutdown(void)
 {
 	register ZHostList_t *hosts = otherservers[me_server_idx].zs_hosts;
 	register ZHostList_t *host;
 	int newserver, i;
 
+#if 0
 	zdbug((LOG_DEBUG,"hostm_shutdown"));
+#endif
 	if (!hosts)
 		return;
 
@@ -294,13 +313,13 @@ hostm_shutdown()
  */
 
 void
-hostm_losing(client, host)
-ZClient_t *client;
-ZHostList_t *host;
+hostm_losing(ZClient_t *client, ZHostList_t *host)
 {
 	losinghost *newhost;
 
+#if 0
 	zdbug((LOG_DEBUG,"losing host"));
+#endif
 	if (!losing_hosts) {
 		if (!(losing_hosts = (losinghost *) xmalloc(sizeof(losinghost)))) {
 			syslog(LOG_ERR, "no mem losing host");
@@ -312,7 +331,9 @@ ZHostList_t *host;
 	     newhost != losing_hosts;
 	     newhost = newhost->q_forw)
 		if (newhost->lh_client == client) {
+#if 0
 			zdbug((LOG_DEBUG,"clt already losing"));
+#endif
 			return;
 		}
 	if (!(newhost = (losinghost *) xmalloc(sizeof(losinghost)))) {
@@ -334,9 +355,9 @@ ZHostList_t *host;
  */
 
 static void
-host_lost(which)
-losinghost *which;
+host_lost(void* arg)
 {
+	losinghost *which = (losinghost *) arg;
 	ZServerDesc_t *server;
 	ZNotice_t notice;
 	struct sockaddr_in who;
@@ -346,11 +367,15 @@ losinghost *which;
 
 	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
+#if 0
 	zdbug((LOG_DEBUG,"lost host %s",
 	       inet_ntoa(which->lh_host->zh_addr.sin_addr)));
+#endif
 
 	if (!(server = hostm_find_server(&which->lh_host->zh_addr.sin_addr))) {
+#if 0
 		zdbug((LOG_DEBUG,"no server"));
+#endif
 		xremque(which);
 		xfree(which);
 		(void) sigsetmask(omask);
@@ -398,8 +423,7 @@ losinghost *which;
  */
 
 static void
-host_not_losing(who)
-struct sockaddr_in *who;
+host_not_losing(struct sockaddr_in *who)
 {
 	losinghost *lhp, *lhp2;
 	int omask;
@@ -413,13 +437,17 @@ struct sockaddr_in *who;
 			/* go back, since remque will change things */
 			lhp2 = lhp->q_back;
 			timer_reset(lhp->lh_timer);
+#if 0
 			zdbug((LOG_DEBUG,"lost client %s/%d",
 			       inet_ntoa(lhp->lh_client->zct_sin.sin_addr),
 			       ntohs(lhp->lh_client->zct_sin.sin_port)));
+#endif
 			/* deregister all subscriptions, and flush locations
 			   associated with the client. */
+#if 0
 			if (zdebug)
 				syslog(LOG_DEBUG,"h_not_lose clt_dereg");
+#endif
 			client_deregister(lhp->lh_client, lhp->lh_host, 1);
 			server_kill_clt(lhp->lh_client);
 			xremque(lhp);
@@ -439,8 +467,7 @@ struct sockaddr_in *who;
  */
 
 void
-hostm_lose_ignore(client)
-ZClient_t *client; 
+hostm_lose_ignore(ZClient_t *client)
 {
 	losinghost *lhp, *lhp2;
 	int omask;
@@ -455,9 +482,11 @@ ZClient_t *client;
 			/* go back, since remque will change things */
 			lhp2 = lhp->q_back;
 			timer_reset(lhp->lh_timer);
+#if 0
 			zdbug((LOG_DEBUG,"hm_l_ign client %s/%d",
 			       inet_ntoa(client->zct_sin.sin_addr),
 			       ntohs(client->zct_sin.sin_port)));
+#endif
 			xremque(lhp);
 			xfree(lhp);
 			/* now that the remque adjusted the linked list,
@@ -475,15 +504,15 @@ ZClient_t *client;
  */
 
 void
-hostm_transfer(host, server)
-ZHostList_t *host;
-ZServerDesc_t *server;
+hostm_transfer(ZHostList_t *host, ZServerDesc_t *server)
 {
 	int omask;
 
 	/* we need to unlink and relink him, and change the table entry */
 
+#if 0
 	zdbug((LOG_DEBUG, "hostm_transfer 0x%x to 0x%x", host, server));
+#endif
 
 	/* is this the same server? */
 	if (hostm_find_server(&host->zh_addr.sin_addr) == server)
@@ -509,9 +538,7 @@ ZServerDesc_t *server;
  */
 
 static Code_t
-host_attach(who, server)
-struct sockaddr_in *who;
-ZServerDesc_t *server;
+host_attach(struct sockaddr_in *who, ZServerDesc_t *server)
 {
 	register ZHostList_t *hlist;
 	register ZClientList_t *clist;
@@ -552,9 +579,7 @@ ZServerDesc_t *server;
  */
 
 static void
-host_detach(host, server)
-register ZHostList_t *host;
-ZServerDesc_t *server;
+host_detach(register ZHostList_t *host, ZServerDesc_t *server)
 {
 	/* undo what we did in host_attach */
 	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
@@ -586,16 +611,16 @@ ZServerDesc_t *server;
  */
 
 void
-hostm_deathgram(sin, server)
-struct sockaddr_in *sin;
-ZServerDesc_t *server;
+hostm_deathgram(struct sockaddr_in *sin, ZServerDesc_t *server)
 {
 	Code_t retval;
 	int shutlen;
 	ZNotice_t shutnotice;
 	char *shutpack;
 
+#if 0
 	zdbug((LOG_DEBUG,"deathgram %s",inet_ntoa(sin->sin_addr)));
+#endif
 
 	/* fill in the shutdown notice */
 
@@ -612,7 +637,9 @@ ZServerDesc_t *server;
 	if (server) {
 		shutnotice.z_message = inet_ntoa(server->zs_addr.sin_addr);
 		shutnotice.z_message_len = strlen(shutnotice.z_message) + 1;
+#if 0
 		zdbug((LOG_DEBUG, "suggesting %s",shutnotice.z_message));
+#endif
 	} else {
 		shutnotice.z_message = NULL;
 		shutnotice.z_message_len = 0;
@@ -646,15 +673,16 @@ ZServerDesc_t *server;
  */
 
 static void
-ping(sin)
-struct sockaddr_in *sin;
+ping(struct sockaddr_in *sin)
 {
 	Code_t retval;
 	int shutlen;
 	ZNotice_t shutnotice;
 	char *shutpack;
 
+#if 0
 	zdbug((LOG_DEBUG,"ping %s",inet_ntoa(sin->sin_addr)));
+#endif
 
 	/* fill in the shutdown notice */
 
@@ -702,8 +730,7 @@ struct sockaddr_in *sin;
  */
 
 ZHostList_t *
-hostm_find_host(addr)
-struct in_addr *addr;
+hostm_find_host(struct in_addr *addr)
 {
 	register int i, rlo, rhi;
 
@@ -735,8 +762,7 @@ struct in_addr *addr;
  */
 
 ZServerDesc_t *
-hostm_find_server(addr)
-struct in_addr *addr;
+hostm_find_server(struct in_addr *addr)
 {
 	register int i, rlo, rhi;
 
@@ -768,15 +794,13 @@ struct in_addr *addr;
  */
 
 static void
-insert_host(host, server)
-ZHostList_t *host;
-ZServerDesc_t *server;
+insert_host(ZHostList_t *host, ZServerDesc_t *server)
 {
 	struct hostlist *oldlist;
 	register int i = 0;
 	int omask;
 
-#ifdef DEBUG
+#if defined (DEBUG) && 0
 	char buf[512];
 	if (zdebug) {
 		(void) strcpy(buf, inet_ntoa(host->zh_addr.sin_addr));
@@ -784,7 +808,7 @@ ZServerDesc_t *server;
 		       buf,
 		       inet_ntoa(server->zs_addr.sin_addr));
 	}
-#endif DEBUG
+#endif
 	if (hostm_find_host(&host->zh_addr.sin_addr))
 		return;
 
@@ -822,7 +846,7 @@ ZServerDesc_t *server;
 	}
 	xfree(oldlist);
 	(void) sigsetmask(omask);
-#ifdef DEBUG
+#if defined (DEBUG) && 0
         if (zdebug) {
                 register int i = 0;
                 char buf[512];
@@ -841,20 +865,23 @@ ZServerDesc_t *server;
  */
 
 static void
-remove_host(host)
-ZHostList_t *host;
+remove_host(ZHostList_t *host)
 {
 	struct hostlist *oldlist;
 	register int i = 0;
 	int omask;
 
+#if 0
 	zdbug((LOG_DEBUG,"remove_host %s", inet_ntoa(host->zh_addr.sin_addr)));
+#endif
 	if (!hostm_find_host(&host->zh_addr.sin_addr))
 		return;
 
 	omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 	if (--num_hosts == 0) {
+#if 0
 		zdbug((LOG_DEBUG,"last host"));
+#endif
 		xfree(all_hosts);
 		all_hosts = NULLHLT;
 		(void) sigsetmask(omask);
@@ -892,8 +919,7 @@ ZHostList_t *host;
  */
 
 void
-hostm_dump_hosts(fp)
-FILE *fp;
+hostm_dump_hosts(FILE *fp)
 {
 	register int i;
 	for (i = 0; i < num_hosts; i++) {
@@ -903,4 +929,23 @@ FILE *fp;
 		client_dump_clients(fp,(all_hosts[i].host)->zh_clients);
 	}
 	return;
+}
+
+/*
+ * Readjust server-array indices according to the supplied new vector.
+ */
+
+void
+hostm_renumber_servers (int *srv)
+{
+    int i;
+    for (i = 0; i < num_hosts; i++) {
+	int idx = srv[all_hosts[i].server_index];
+	if (idx < 0) {
+	    syslog (LOG_ERR, "hostm_renumber_servers error: [%d] = %d",
+		    all_hosts[i].server_index, idx);
+	    idx = 0;
+	}
+	all_hosts[i].server_index = idx;
+    }
 }

@@ -16,8 +16,8 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_main_c[] = "$Id$";
-#endif SABER
-#endif lint
+#endif
+#endif
 
 /*
  * Server loop for Zephyr.
@@ -46,6 +46,10 @@ static char rcsid_main_c[] = "$Id$";
   (if the client has not acknowledged a packet after a given timeout).
 */
 
+#include <new.h>
+#ifndef __GNUG__
+#define NO_INLINING	/* bugs in cfront inlining... */
+#endif
 #include "zserver.h"			/* which includes
 					   zephyr/zephyr.h
 					   	<errno.h>
@@ -61,22 +65,33 @@ static char rcsid_main_c[] = "$Id$";
 					   zsrv_err.h
 					 */
 
+extern "C" {
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
+#include <sys/wait.h>
+}
 
 #define	EVER		(;;)		/* don't stop looping */
 
-static int do_net_setup(), initialize();
-static void usage(), do_reset();
-static int bye(), dbug_on(), dbug_off(), dump_db(), reset();
+static int do_net_setup(void), initialize(void);
+static void usage(void), do_reset (void);
+#ifdef __GNUG__
+typedef int SIGNAL_RETURN_TYPE;
+#define SIG_RETURN return 0
+#else
+#define SIGNAL_RETURN_TYPE void
+#define SIG_RETURN return
+#endif
+static SIGNAL_RETURN_TYPE bye(int sig), dbug_on(int), dbug_off(int);
+static SIGNAL_RETURN_TYPE dump_db(int), reset(int), reap(int);
+static SIGNAL_RETURN_TYPE dump_strings(int);
 #ifndef DEBUG
-static void detach();
+static void detach(void);
 #endif DEBUG
-/* So lint shuts up: */
-void perror();
+extern "C" void perror(const char *);
 
 static short doreset = 0;		/* if it becomes 1, perform
 					   reset functions */
@@ -90,7 +105,6 @@ fd_set interesting;			/* the file descrips we are listening
 int nfildes;				/* number to look at in select() */
 struct sockaddr_in sock_sin;		/* address of the socket */
 struct sockaddr_in bdump_sin;		/* addr of brain dump socket */
-struct in_addr my_addr;			/* for convenience, my IP address */
 struct timeval nexthost_tv;		/* time till next timeout for select */
 
 ZNotAcked_t *nacklist;			/* list of packets waiting for ack's */
@@ -105,10 +119,9 @@ int zalone = 0;
 #endif DEBUG
 u_long npackets = 0;			/* number of packets processed */
 long uptime;				/* when we started operations */
+static int nofork;
 
-main(argc,argv)
-int argc;
-char **argv;
+main(int argc, char **argv)
 {
 	int nfound;			/* #fildes ready on select */
 	fd_set readable;
@@ -118,6 +131,12 @@ char **argv;
 	extern char *optarg;
 	extern int optind;
 
+#ifndef __GNUG__
+	set_new_handler ((void(*)()) abort);
+#else
+	set_new_handler (abort);
+#endif
+
 	/* set name */
 	if (programname = rindex(argv[0],'/'))
 		programname++;
@@ -125,7 +144,7 @@ char **argv;
 
 	/* process arguments */
 	
-	while ((optchar = getopt(argc, argv, "ds")) != EOF) {
+	while ((optchar = getopt(argc, argv, "ds3")) != EOF) {
 		switch(optchar) {
 		case 'd':
 			zdebug = 1;
@@ -134,7 +153,10 @@ char **argv;
 		case 's':
 			zalone = 1;
 			break;
-#endif DEBUG
+#endif
+		case '3':
+			nofork = 1;
+			break;
 		case '?':
 		default:
 			usage();
@@ -158,19 +180,21 @@ char **argv;
 #endif KERBEROS
 
 #ifndef DEBUG
-	detach();
+	if (!nofork)
+		detach();
 #endif DEBUG
 
 	/* open log */
 	OPENLOG(programname, LOG_PID, LOG_LOCAL6);
 
-#ifdef DEBUG
+#if defined (DEBUG) && 0
 	if (zalone)
 		syslog(LOG_DEBUG, "standalone operation");
-	
-#endif DEBUG
+#endif
+#if 0
 	if (zdebug)
 		syslog(LOG_DEBUG, "debugging on");
+#endif
 
 	/* set up sockets & my_addr and myname, 
 	   find other servers and set up server table, initialize queues
@@ -180,12 +204,14 @@ char **argv;
 	if (initialize())
 		exit(1);
 
+#ifndef __SABER__
 	/* chdir to somewhere where a core dump will survive */
 	if (chdir("/usr/tmp") != 0)
 		syslog(LOG_ERR,"chdir failed (%m) (execution continuing)");
 
 	if (setpriority(PRIO_PROCESS, getpid(), -10))
 		syslog(LOG_ERR,"setpriority failed (%m)");
+#endif
 
 	FD_ZERO(&interesting);
 	FD_SET(srv_socket, &interesting);
@@ -199,6 +225,10 @@ char **argv;
 	(void) signal(SIGALRM, bye);	
 
 	(void) signal(SIGTERM, bye);
+#ifdef SignalIgnore
+#undef SIG_IGN
+#define SIG_IGN SignalIgnore
+#endif
 	(void) signal(SIGINT, SIG_IGN);
 	syslog(LOG_INFO, "Ready for action");
 #else
@@ -207,7 +237,9 @@ char **argv;
 #endif DEBUG
 	(void) signal(SIGUSR1, dbug_on);
 	(void) signal(SIGUSR2, dbug_off);
+	(void) signal(SIGCHLD, reap);
 	(void) signal(SIGFPE, dump_db);
+	(void) signal(SIGEMT, dump_strings);
 	(void) signal(SIGHUP, reset);
 
 	/* GO! */
@@ -257,12 +289,12 @@ char **argv;
 		else {
 			if ((bdump_socket >= 0) &&
 			    FD_ISSET(bdump_socket,&readable))
-				bdump_send();
+			    bdump_send();
 			else if (msgs_queued() ||
 				 FD_ISSET(srv_socket, &readable)) {
-				handle_packet();
+			    handle_packet();
 			} else
-				syslog(LOG_ERR, "select weird?!?!");
+			    syslog(LOG_ERR, "select weird?!?!");
 		}
 	}
 }
@@ -275,7 +307,7 @@ char **argv;
    */
 
 static int
-initialize()
+initialize(void)
 {
 	if (do_net_setup())
 		return(1);
@@ -310,7 +342,7 @@ initialize()
  */
 
 static int
-do_net_setup()
+do_net_setup(void)
 {
 	struct servent *sp;
 	struct hostent *hp;
@@ -368,7 +400,7 @@ do_net_setup()
  */
 
 static void
-usage()
+usage(void)
 {
 #ifdef DEBUG
 	fprintf(stderr,"Usage: %s [-d] [-s]\n",programname);
@@ -382,9 +414,8 @@ usage()
  * interrupt routine
  */
 
-static int
-bye(sig)
-int sig;
+static SIGNAL_RETURN_TYPE
+bye(int sig)
 {
 	server_shutdown();		/* tell other servers */
 	hostm_shutdown();		/* tell our hosts */
@@ -396,31 +427,62 @@ int sig;
 	/*NOTREACHED*/
 }
 
-static int
-dbug_on()
+static SIGNAL_RETURN_TYPE
+dbug_on(int sig)
 {
 	syslog(LOG_DEBUG, "debugging turned on");
 	zdebug = 1;
-	return(0);
+	SIG_RETURN;
 }
 
-static int
-dbug_off()
+static SIGNAL_RETURN_TYPE
+dbug_off(int sig)
 {
 	syslog(LOG_DEBUG, "debugging turned off");
 	zdebug = 0;
-	return(0);
+	SIG_RETURN;
 }
 
-static int
-dump_db()
+int fork_for_dump = 0;
+
+static SIGNAL_RETURN_TYPE
+dump_strings (int sig) {
+    FILE *fp;
+    fp = fopen ("/usr/tmp/zephyr.strings", "w");
+    if (!fp) {
+	syslog (LOG_ERR, "can't open strings dump file: %m");
+	SIG_RETURN;
+    }
+    syslog (LOG_INFO, "dumping strings to disk");
+    ZString::print (fp);
+    if (fclose (fp) == EOF)
+	syslog (LOG_ERR, "error writing strings dump file");
+    SIG_RETURN;
+}
+
+static SIGNAL_RETURN_TYPE
+dump_db(int sig)
 {
 	/* dump the in-core database to human-readable form on disk */
 	FILE *fp;
+	int pid;
 
+#ifdef __SABER__
+	pid = -1;
+#else
+	if (fork_for_dump) {
+	    moncontrol (0);
+	    pid = fork ();
+	    moncontrol (1);
+	}
+	else
+	    pid = -1;
+#endif
+	if (pid > 0)
+	    SIG_RETURN;
 	if ((fp = fopen("/usr/tmp/zephyr.db", "w")) == (FILE *)0) {
 		syslog(LOG_ERR, "can't open dump database");
-		return(0);
+		SIG_RETURN;
 	}
 	syslog(LOG_INFO, "dumping to disk");
 	server_dump_servers(fp);
@@ -430,25 +492,46 @@ dump_db()
 	if (fclose(fp) == EOF) {
 		syslog(LOG_ERR, "can't close dump db");
 	}
-	return(0);
+	if (pid == 0)
+	    exit (0);
+	SIG_RETURN;
 }
 
-static int
-reset()
+static SIGNAL_RETURN_TYPE
+reset(int sig)
 {
+#if 0
 	zdbug((LOG_DEBUG,"reset()"));
+#endif
 	doreset = 1;
-	return(0);
+	SIG_RETURN;
+}
+
+#ifdef __GNUG__
+#define wait WaitStatus
+#endif
+
+static SIGNAL_RETURN_TYPE
+reap(int sig)
+{
+	wait waitb;
+	(void) wait3 (&waitb, WNOHANG, (struct rusage*) 0);
+	SIG_RETURN;
 }
 
 static void
-do_reset()
+do_reset(void)
 {
+#if 0
 	zdbug((LOG_DEBUG,"do_reset()"));
+#endif
 	/* reset various things in the server's state */
+	SignalBlock no_hups (sigmask (SIGHUP));
+
 	subscr_reset();
 	server_reset();
 	access_reinit();
+	syslog (LOG_INFO, "restart completed");
 	doreset = 0;
 }
 
@@ -458,12 +541,20 @@ do_reset()
  */
 
 static void
-detach()
+detach(void)
 {
 	/* detach from terminal and fork. */
 	register int i, size = getdtablesize();
 
-	if (i = fork()) {
+	/* profiling seems to get confused by fork() */
+#ifndef __SABER__
+	moncontrol (0);
+#endif
+	i = fork ();
+#ifndef __SABER__
+	moncontrol (1);
+#endif
+	if (i) {
 		if (i < 0)
 			perror("fork");
 		exit(0);
@@ -478,3 +569,49 @@ detach()
 
 }
 #endif !DEBUG
+
+static /*const*/ ZString popular_ZStrings[] = {
+    "filsrv",
+    "",
+    "login",
+    "message",
+    "personal",
+    "operations",
+    "athena.mit.edu:root.cell",
+    "athena.mit.edu",
+    "artemis.mit.edu",
+    "athena.mit.edu:contrib",
+    "athena.mit.edu:contrib.sipb",
+    "talos.mit.edu",
+    "unix:0.0",
+    "aphrodite.mit.edu",
+    "mail",
+    "*",
+    "cyrus.mit.edu",
+    "odysseus.mit.edu",
+    "discuss",
+    "themis.mit.edu",
+    "pop",
+    "cyrus.mit.edu:/u2/lockers/games",
+    "athena.mit.edu:contrib.xpix.nb",
+    "talos.mit.edu:/u2/lockers/athenadoc",
+    "pollux.mit.edu",
+    "popret",
+    "syslog",
+    "maeander.mit.edu",
+    "athena.mit.edu:contrib.consult",
+    "athena.mit.edu:astaff",
+    "athena.mit.edu:project",
+    "aeneas.mit.edu",
+    "aeneas.mit.edu:/u1/x11r3",
+    "athena.mit.edu:project.gnu.nb",
+    "odysseus.mit.edu:/u3/lockers/softbone",
+    "urgent",
+    "aphrodite.mit.edu:/u2/lockers/andrew",
+    "helen.mit.edu",
+    "help",
+    "consult",
+    "athena.mit.edu:contrib.watchmaker",
+    "%me%",
+    "testers.athena.mit.edu:x11r4",
+};
