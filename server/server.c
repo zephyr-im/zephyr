@@ -497,7 +497,8 @@ ZNotice_t *notice;
 		syslog(LOG_WARNING, "no clt kill_clt");
 		return;
 	}
-	client_deregister(client, host);
+	/* remove the locations, too */
+	client_deregister(client, host, 1);
 	return;
 }
 
