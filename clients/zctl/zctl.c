@@ -377,11 +377,14 @@ do_hide(argc,argv)
 		return;
 	}
 	if (!strcmp(argv[0],"unhide")) {
+		/* Reset default exposure, or set exposure to realm-
+		 * visible if the default exposure is less than that. */
 		exp_level = ZGetVariable("exposure");
 		if (exp_level)
 		    exp_level = ZParseExposureLevel(exp_level);
-		if (!exp_level)
-		    exp_level = EXPOSE_NONE;
+		if (!exp_level || exp_level == EXPOSE_NONE
+		    || exp_level == EXPOSE_OPSTAFF)
+		    exp_level = EXPOSE_REALMVIS;
 	} else {
 		exp_level = EXPOSE_OPSTAFF;
 	}
