@@ -62,8 +62,7 @@ static char rcsid_bdump_c[] = "$Id$";
 # define P(s) ()
 #endif
 
-static void close_bdump P((void* arg)),
-    cleanup P((ZServerDesc_t *server, int omask));
+static void close_bdump P((void* arg));
 static Code_t bdump_send_loop P((register ZServerDesc_t *server, char *vers)),
     bdump_ask_for P((char *inst)),
     bdump_recv_loop P((ZServerDesc_t *server));
@@ -89,13 +88,24 @@ static int net_write P((FILE *f, register char *buf, int len));
 static int setup_file_pointers  P((void));
 static void shutdown_file_pointers  P((void));
 
+#ifdef POSIX
+static void cleanup P((ZServerDesc_t *server, sigset_t *omask));
+#else
+static void cleanup P((ZServerDesc_t *server, int *omask));
+#endif
+
 #ifdef KERBEROS
 static int get_tgt P((void));
 static long ticket_time;
 static char my_realm[REALM_SZ];
 
-#define TKTLIFETIME	96
+#define TKTLIFETIME	120
 #define tkt_lifetime(val) ((long) val * 5L * 60L)
+
+#ifndef NOENCRYPTION
+C_Block	serv_key;
+Sched	serv_ksched;
+#endif
 #endif /* KERBEROS */
 
 #undef P
@@ -142,9 +152,9 @@ bdump_offer(who)
 		bdump_socket = -1;
 		return;
 	}
-	bzero((caddr_t) &bdump_sin, sizeof(bdump_sin));
+	(void) memset((caddr_t) &bdump_sin, 0, sizeof(bdump_sin));
 	/* a port field of 0 makes the UNIX
-	   kernel choose an appropriate port/address pair */
+	 * kernel choose an appropriate port/address pair */
  
 	bdump_sin.sin_port = 0;
 	bdump_sin.sin_addr = my_addr;
@@ -175,7 +185,7 @@ bdump_offer(who)
 		bdump_socket = -1;
 		return;
 	}
-	bzero((caddr_t) &bdump_sin, sizeof(bdump_sin));
+	(void) memset((caddr_t) &bdump_sin, 0, sizeof(bdump_sin));
 	bdump_sin.sin_port = htons((unsigned short)bdump_port);
 	bdump_sin.sin_addr = my_addr;
 	bdump_sin.sin_family = AF_INET;
@@ -228,15 +238,13 @@ bdump_send()
 	ZServerDesc_t *server;
 	Code_t retval;
 	int fromlen = sizeof(from);
-	int omask;
 	int on = 1;
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
+	sigset_t mask, omask;
 	struct sigaction action;
-    /* Set up sigaction structure */
-    /* This is all done because the RS/6000 emulation of signal sets the */
-    /* signal action back to the default action when the signal handler is */
-    /* called, instead of leaving well enough alone.. */
-#endif /* _POSIX_SOURCE */
+#else
+	int omask;
+#endif
 
 #ifdef KERBEROS
 	KTEXT_ST ticket;
@@ -261,18 +269,21 @@ bdump_send()
  
 #ifndef KERBEROS
 	fromport = ntohs(from.sin_port);
-#endif /* !KERBEROS */
+#endif
  
-	omask = sigblock(sigmask(SIGFPE)); /* don't let ascii dumps start */
- 
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
+	(void) sigemptyset(&mask);
+	(void) sigaddset(&mask, SIGFPE);
+	(void) sigprocmask(SIG_BLOCK, &mask, &omask);
+
 	action.sa_flags = 0;
-	sigemptyset(&action.sa_mask);
+	(void) sigemptyset(&action.sa_mask);
 	action.sa_handler = SIG_IGN;
-	sigaction(SIGPIPE, &action, NULL);
+	(void) sigaction(SIGPIPE, &action, NULL);
 #else
+	omask = sigblock(sigmask(SIGFPE)); /* don't let ascii dumps start */
 	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect failures */
-#endif /* _POSIX_SOURCE */
+#endif
  
 	from.sin_port = sock_sin.sin_port; /* we don't care what port
 					    it came from, and we need to
@@ -333,36 +344,42 @@ bdump_send()
 #ifdef KERBEROS
 	/* receive the authenticator */
 	if ((retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
-				      "zephyr", ZEPHYR_SRVTAB)) != KSUCCESS) {
-	  syslog(LOG_ERR, "bdump_send: getkdata: %s",
-		 krb_err_txt[retval]);
-	  cleanup(server, omask);
-	  return;
+				      SERVER_SERVICE, ZEPHYR_SRVTAB))
+	    != KSUCCESS)
+	{
+	    syslog(LOG_ERR, "bdump_send: getkdata: %s",
+		   krb_err_txt[retval]);
+	    cleanup(server, &omask);
+	    return;
 	}
-	if (strcmp(kdata.pname,"zephyr") || strcmp(kdata.pinst,"zephyr")) {
-		syslog(LOG_ERR, "bdump_send: peer not zephyr: %s.%s@%s",
-		       kdata.pname, kdata.pinst,kdata.prealm);
-		cleanup(server, omask);
+	if (get_tgt()) {
+		cleanup(server, &omask);
 		return;
+	}
+	if (strcmp(kdata.pname,SERVER_SERVICE) ||
+	    strcmp(kdata.pinst, SERVER_INSTANCE) ||
+	    strcmp(kdata.prealm, my_realm))
+	{
+	    syslog(LOG_ERR, "bdump_send: peer not zephyr: %s.%s@%s",
+		   kdata.pname, kdata.pinst, kdata.prealm);
+	    cleanup(server, &omask);
+	    return;
 	}
 	/* authenticate back */
-	if (get_tgt()) {
-		cleanup(server, omask);
-		return;
-	}
-	if ((retval = SendKerberosData(live_socket, &ticket, "zephyr",
-				      "zephyr")) != 0) {
-	  syslog(LOG_ERR,"bdump_send: SendKerberosData: %s",
-		 error_message (retval));
-	  cleanup(server, omask);
-	  return;
+	if ((retval = SendKerberosData(live_socket, &ticket,
+				       SERVER_SERVICE, SERVER_INSTANCE)) != 0)
+	{
+	    syslog(LOG_ERR,"bdump_send: SendKerberosData: %s",
+		   error_message (retval));
+	    cleanup(server, &omask);
+	    return;
 	}
 #else /* !KERBEROS */
 	if ((fromport > IPPORT_RESERVED) ||
 	    (fromport < (IPPORT_RESERVED / 2))) {
 		syslog(LOG_ERR, "bdump_send: bad port from peer: %d",
 		       fromport);
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
 #endif /* KERBEROS */
@@ -370,19 +387,19 @@ bdump_send()
 	if ((retval = setup_file_pointers()) != 0) {
 	    syslog (LOG_WARNING, "bdump_send: can't set up file pointers: %s",
 		    error_message (retval));
-	    cleanup (server, omask);
+	    cleanup(server, &omask);
 	    return;
 	}
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "bdump_send: sbd_loop failed: %s",
 		       error_message(retval));
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 	    syslog(LOG_WARNING, "bdump_send: gbd_loop failed: %s",
 		   error_message(retval));
-	    cleanup(server, omask);
+	    cleanup(server, &omask);
 	    return;
 	}
 #if 1
@@ -399,21 +416,24 @@ bdump_send()
 #endif
 	shutdown_file_pointers ();
 
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_handler = SIG_DFL;
 	sigaction(SIGPIPE, &action, NULL);
 #else
 	(void) signal(SIGPIPE, SIG_DFL);
-#endif /* _POSIX_SOURCE */
+#endif
 	bdump_inited = 1;
 	bdumping = 0;
 	server->zs_dumping = 0;
 #ifdef CONCURRENT
 	/* Now that we are finished dumping, send all the queued packets */
 	server_send_queue(server);
-#endif /* CONCURRENT */
- 
+#endif
+#ifdef POSIX
+	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
 	(void) sigsetmask(omask);
+#endif
 	return;
 }
 
@@ -427,11 +447,13 @@ bdump_get_v1_guts (notice, auth, who, server)
 {
 	struct sockaddr_in from;
 	Code_t retval;
-	int omask;
 	int on = 1;
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	struct sigaction action;
-#endif /* _POSIX_SOURCE */
+	sigset_t mask, omask;
+#else
+	int omask;
+#endif
 #ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
@@ -442,14 +464,14 @@ bdump_get_v1_guts (notice, auth, who, server)
 	bdumping = 1;
 	server->zs_dumping = 1;
  
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
 	action.sa_handler = SIG_IGN;
 	sigaction(SIGPIPE, &action, NULL);
 #else
 	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect problems */
-#endif /* _POSIX_SOURCE */
+#endif /* POSIX */
  
 	if (bdump_socket >= 0) {
 		/* We cannot go get a brain dump when someone may
@@ -466,23 +488,29 @@ bdump_get_v1_guts (notice, auth, who, server)
 
 	if ((retval = extract_sin(notice, &from)) != ZERR_NONE) {
 		syslog(LOG_ERR, "bdump_get: sin: %s", error_message(retval));
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 		action.sa_handler = SIG_DFL;
 		sigaction(SIGPIPE, &action, NULL);
 #else
 		(void) signal(SIGPIPE, SIG_DFL);
-#endif /* _POSIX_SOURCE */
+#endif
 		bdumping = 0;
 		server->zs_dumping = 0;
 		return;
 	}
+#ifdef POSIX
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGFPE);
+	sigprocmask(SIG_BLOCK, &mask, &omask);
+#else
 	omask = sigblock(sigmask(SIGFPE)); /* don't let ascii dumps start */
+#endif
 #ifndef KERBEROS
 	if (ntohs(from.sin_port) > IPPORT_RESERVED ||
 	    ntohs(from.sin_port) < IPPORT_RESERVED / 2) {
 		syslog(LOG_ERR, "bdump_get: port not reserved: %d",
 		       ntohs(from.sin_port));
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
 	live_socket = rresvport(&reserved_port);
@@ -491,12 +519,12 @@ bdump_get_v1_guts (notice, auth, who, server)
 #endif /* KERBEROS */
 	if (live_socket < 0) {
 		syslog(LOG_ERR, "bdump_get: socket: %m");
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
 	if (connect(live_socket, (struct sockaddr *) &from, sizeof(from))) {
 		syslog(LOG_ERR, "bdump_get: connect: %m");
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
 	if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *)&on,
@@ -512,14 +540,15 @@ bdump_get_v1_guts (notice, auth, who, server)
 #ifdef KERBEROS
 	/* send an authenticator */
 	if (get_tgt()) {
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
-	if ((retval = SendKerberosData(live_socket, &ticket, "zephyr",
-				       "zephyr")) != 0) {
+	if ((retval = SendKerberosData(live_socket, &ticket,
+				       SERVER_SERVICE, SERVER_INSTANCE)) != 0)
+	{
 		syslog(LOG_ERR,"bdump_get: %s",
 		       error_message (retval));
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
 #if 1
@@ -527,32 +556,36 @@ bdump_get_v1_guts (notice, auth, who, server)
 #endif
  
 	/* get his authenticator */
-	if ((retval = GetKerberosData(live_socket, from.sin_addr, &kdata, "zephyr",
-				      ZEPHYR_SRVTAB)) != KSUCCESS) {
+	if ((retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
+				      SERVER_SERVICE, ZEPHYR_SRVTAB))
+	    != KSUCCESS)
+	{
 		syslog(LOG_ERR, "bdump_get getkdata: %s",krb_err_txt[retval]);
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
 	/* my_realm is filled in inside get_tgt() */
-	if (strcmp(kdata.pname,"zephyr") || strcmp(kdata.pinst,"zephyr")
-	    || strcmp(kdata.prealm, my_realm)) {
+	if (strcmp(kdata.pname, SERVER_SERVICE) ||
+	    strcmp(kdata.pinst, SERVER_INSTANCE) ||
+	    strcmp(kdata.prealm, my_realm))
+	{
 		syslog(LOG_ERR,
 		       "bdump_get: peer not zephyr in lrealm: %s.%s@%s",
 		       kdata.pname, kdata.pinst,kdata.prealm);
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
 #endif /* KERBEROS */
 	if ((retval = setup_file_pointers()) != 0) {
 	    syslog (LOG_WARNING, "bdump_get: can't set up file pointers: %s",
 		    error_message (retval));
-	    cleanup (server, omask);
+	    cleanup(server, &omask);
 	    return;
 	}
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "bdump_get: gbd_loop failed: %s",
 		       error_message(retval));
-		cleanup(server, omask);
+		cleanup(server, &omask);
 		return;
 	}
 #if 1
@@ -561,7 +594,7 @@ bdump_get_v1_guts (notice, auth, who, server)
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 	    syslog(LOG_WARNING, "sbd_loop failed: %s",
 		   error_message(retval));
-	    cleanup(server, omask);
+	    cleanup(server, &omask);
 	    return;
 	}
 #if 1
@@ -576,7 +609,7 @@ bdump_get_v1_guts (notice, auth, who, server)
 	zdbug((LOG_DEBUG,"cleanup gbd"));
 #endif
 	shutdown_file_pointers ();
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_handler = SIG_DFL;
 	sigaction(SIGPIPE, &action, NULL);
 #else
@@ -588,9 +621,13 @@ bdump_get_v1_guts (notice, auth, who, server)
 #ifdef CONCURRENT
 	/* Now that we are finished dumping, send all the queued packets */
 	server_send_queue(server);
-#endif /* CONCURRENT */
+#endif
 
+#ifdef POSIX
+	(void) sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
 	(void) sigsetmask(omask);
+#endif
 	return;
 }
  
@@ -663,10 +700,14 @@ bdump_get(notice, auth, who, server)
 		syslog(LOG_DEBUG, "bdump_get: bdump v%s avail %s",
 		       notice->z_class_inst, inet_ntoa(who->sin_addr));
 #endif
-	if (!strcmp (notice->z_class_inst, "1")
+	/*
+	 * We do not listen to version "1" or "1A" because they are a
+	 * security threat (they send the CBlock in clear-text).
+	 */
+	if (!strcmp (notice->z_class_inst, "1.1")
 	    || !strcmp (notice->z_class_inst, ""))
 	    proc = bdump_get_v1;
-	if (!strcmp (notice->z_class_inst, "1A"))
+	if (!strcmp (notice->z_class_inst, "1.1A"))
 	    proc = bdump_get_v1a;
 
 	if (proc)
@@ -761,38 +802,46 @@ shutdown_file_pointers () {
 
 static void
 cleanup(server, omask)
-     ZServerDesc_t *server;
-     int omask;
+    ZServerDesc_t *server;
+#ifdef POSIX
+    sigset_t *omask;
+#else
+    int *omask;
+#endif
 {
-#ifdef _POSIX_SOURCE
-	struct sigaction action;
-#endif /* _POSIX_SOURCE */
+#ifdef POSIX
+    struct sigaction action;
+#endif
 
 #if 1
-	zdbug((LOG_DEBUG, "bdump cleanup"));
+    zdbug((LOG_DEBUG, "bdump cleanup"));
 #endif
-	if (server != limbo_server) {
-		server->zs_state = SERV_DEAD;
-		timer_reset(server->zs_timer);
-		server->zs_timer =
-			timer_set_rel(0L, server_timo, (void *) server);
-	}
-	shutdown_file_pointers ();
-#ifdef _POSIX_SOURCE
-	action.sa_flags = 0;
-	sigemptyset(&action.sa_mask);
-	action.sa_handler = SIG_DFL;
-	sigaction(SIGPIPE,&action, NULL);
+    if (server != limbo_server) {
+	server->zs_state = SERV_DEAD;
+	timer_reset(server->zs_timer);
+	server->zs_timer =
+	    timer_set_rel(0L, server_timo, (void *) server);
+    }
+    shutdown_file_pointers ();
+#ifdef POSIX
+    action.sa_flags = 0;
+    sigemptyset(&action.sa_mask);
+    action.sa_handler = SIG_DFL;
+    sigaction(SIGPIPE,&action, NULL);
 #else
-	(void) signal(SIGPIPE, SIG_DFL);
-#endif /* _POSIX_SOURCE */
-	bdumping = 0;
-	server->zs_dumping = 0;
+    (void) signal(SIGPIPE, SIG_DFL);
+#endif						/* POSIX */
+    bdumping = 0;
+    server->zs_dumping = 0;
 #ifdef CONCURRENT
-	/* XXX need to flush the server and the updates to it */
-#endif /* CONCURRENT */
-	(void) sigsetmask(omask);
-	return;
+    /* XXX need to flush the server and the updates to it */
+#endif
+#ifdef POSIX
+    (void) sigprocmask(SIG_SETMASK, omask, (sigset_t *)0);
+#else
+    (void) sigsetmask(*omask);
+#endif
+    return;
 }
   
 #ifdef KERBEROS
@@ -800,6 +849,10 @@ static int
 get_tgt()
 {
 	int retval;
+#ifndef NOENCRYPTION
+	Sched *s;
+#endif
+	
 	if (!*my_realm)
 		if ((retval = krb_get_lrealm(my_realm, 1)) != KSUCCESS) {
 			syslog(LOG_ERR,"krb_get_lrealm: %s",
@@ -823,19 +876,38 @@ get_tgt()
 		     * this argument writable and at least INST_SZ
 		     * bytes long.
 		     */
-		    static char buf[INST_SZ+1] = "zephyr";
+		    static char buf[INST_SZ+1] = SERVER_INSTANCE;
 
-		    retval = krb_get_svc_in_tkt ("zephyr", buf/*XXX*/,
-						 my_realm, "zephyr", "zephyr",
+		    retval = krb_get_svc_in_tkt (SERVER_SERVICE, buf/*XXX*/,
+						 my_realm,
+						 SERVER_SERVICE, SERVER_INSTANCE,
 						 TKTLIFETIME, ZEPHYR_SRVTAB);
 		}
 		if (retval != KSUCCESS) {
-			syslog(LOG_ERR,"get_tkt: %s",
+			syslog(LOG_ERR,"get_tgt: krb_get_svc_in_tkt: %s",
 			       krb_err_txt[retval]);
 			ticket_time = 0L;
 			return(1);
 		} else
 			ticket_time = NOW;
+
+#ifndef NOENCRYPTION
+		retval = read_service_key(SERVER_SERVICE, SERVER_INSTANCE,
+					  my_realm, 0 /*kvno*/,
+					  ZEPHYR_SRVTAB, serv_key);
+		if (retval != KSUCCESS) {
+		    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
+			   krb_err_txt[retval]);
+		    return 1;
+		}
+		s = (Sched *)check_key_sched_cache(serv_key);
+		if (s) {
+		    serv_ksched = *s;
+		} else {
+		    des_key_sched(serv_key, serv_ksched.s);
+		    add_to_key_sched_cache(serv_key, &serv_ksched);
+		}
+#endif /* !NOENCRYPTION */
 	}
 	return(0);
 }
@@ -1031,6 +1103,7 @@ bdump_recv_loop(server)
 	int flushing_subs = 0;
 #ifdef KERBEROS
 	register char *cp;
+	C_Block cblock;
 #endif /* KERBEROS */
 #ifdef CONCURRENT
 	fd_set readable, initial;
@@ -1163,22 +1236,28 @@ bdump_recv_loop(server)
 				return(retval);
 			}
 #ifdef KERBEROS
-			bzero((caddr_t) client->zct_cblock,
-					      sizeof(C_Block));
+			(void) memset((caddr_t) client->zct_cblock, 0,
+				      sizeof(C_Block));
 			if (*notice.z_class_inst) {
-				/* a C_Block is there */
-				cp = notice.z_message +
-					strlen(notice.z_message) + 1;
-				retval = ZReadAscii(cp,strlen(cp),
-						    client->zct_cblock,
-						    sizeof(C_Block));
-				if (retval != ZERR_NONE) {
-					bzero((caddr_t) client->zct_cblock,
-					      sizeof(C_Block));
-					syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
-					       error_message(retval),
-					       cp);
-				}
+			    /* a C_Block is there */
+			    cp = notice.z_message +
+				strlen(notice.z_message) + 1;
+			    retval = ZReadAscii(cp,strlen(cp),
+						cblock, sizeof(C_Block));
+			    if (retval != ZERR_NONE) {
+				syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
+				       error_message(retval),
+				       cp);
+			    } else {
+#ifdef NOENCRYPTION
+				memcpy((caddr_t)cblock,
+				       (caddr_t)client->zct_cblock,
+				       sizeof(C_Block));
+#else
+				des_ecb_encrypt(cblock, client->zct_cblock,
+						serv_ksched.s, DES_DECRYPT);
+#endif
+			    }
 			}
 #endif /* KERBEROS */
 		} else if (!strcmp(notice.z_opcode, CLIENT_SUBSCRIBE)) { 
