@@ -22,10 +22,12 @@ static char copyright[] =
 
 #include <zephyr/zephyr_internal.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <utmp.h>
+#include <krb.h>
 
 #ifdef SOLARIS
 #include <sys/filio.h>
@@ -68,6 +70,78 @@ void (*__Z_debug_print) Zproto((const char *fmt, va_list args, void *closure));
 #endif
 
 #define min(a,b) ((a)<(b)?(a):(b))
+
+/* Find or insert uid in the old uids buffer.  The buffer is a sorted
+ * circular queue.  We make the assumption that most packets arrive in
+ * order, so we can usually search for a uid or insert it into the buffer
+ * by looking back just a few entries from the end.  Since this code is
+ * only executed by the client, the implementation isn't microoptimized. */
+static int find_or_insert_uid(uid, kind)
+    ZUnique_Id_t *uid;
+    ZNotice_Kind_t kind;
+{
+    static struct _filter {
+	ZUnique_Id_t	uid;
+	ZNotice_Kind_t	kind;
+	time_t		t;
+    } *buffer;
+    static long size;
+    static long start;
+    static long num;
+
+    time_t now;
+    struct _filter *new;
+    long i, j, new_size;
+    int result;
+
+    /* Initialize the uid buffer if it hasn't been done already. */
+    if (!buffer) {
+	size = Z_INITFILTERSIZE;
+	buffer = (struct _filter *) malloc(size * sizeof(*buffer));
+	if (!buffer)
+	    return 0;
+    }
+
+    /* Age the uid buffer, discarding any uids older than the clock skew. */
+    time(&now);
+    while (num && (now - buffer[start % size].t) > CLOCK_SKEW)
+	start++, num--;
+    start %= size;
+
+    /* Make room for a new uid, since we'll probably have to insert one. */
+    if (num == size) {
+	new_size = size * 2 + 2;
+	new = (struct _filter *) malloc(new_size * sizeof(*new));
+	if (!new)
+	    return 0;
+	for (i = 0; i < num; i++)
+	    new[i] = buffer[(start + i) % size];
+	free(buffer);
+	buffer = new;
+	size = new_size;
+	start = 0;
+    }
+
+    /* Search for this uid in the buffer, starting from the end. */
+    for (i = start + num - 1; i >= start; i--) {
+	result = memcmp(uid, &buffer[i % size].uid, sizeof(*uid));
+	if (result == 0 && buffer[i % size].kind == kind)
+	    return 1;
+	if (result > 0)
+	    break;
+    }
+
+    /* We didn't find it; insert the uid into the buffer after i. */
+    i++;
+    for (j = start + num; j > i; j--)
+	buffer[j % size] = buffer[(j - 1) % size];
+    buffer[i % size].uid = *uid;
+    buffer[i % size].kind = kind;
+    buffer[i % size].t = now;
+    num++;
+
+    return 0;
+}
 
 /* Get the address of the local host and cache it */
 
@@ -192,10 +266,6 @@ Code_t Z_ReadWait()
     int from_len, packet_len, part, partof;
     char *slash;
     Code_t retval;
-    static struct _filter {
-	ZUnique_Id_t	uid;
-	ZNotice_Kind_t	kind;
-    } old_uids[Z_FILTERDEPTH];
     static int filter_idx = -1;
     register int i;
 
@@ -237,12 +307,17 @@ Code_t Z_ReadWait()
 	    ZNotice_t tmpnotice;
 	    ZPacket_t pkt;
 	    int len;
+	    time_t now;
 
 	    tmpnotice = notice;
 	    tmpnotice.z_kind = CLIENTACK;
 	    tmpnotice.z_message_len = 0;
 	    olddest = __HM_addr;
 	    __HM_addr = from;
+	    time(&now);
+	    printf("%d seconds elapsed between packet and ack.\n",
+		   now - tmpnotice.z_time.tv_sec);
+	    fflush(stdout);
 	    if ((retval = ZFormatSmallRawNotice(&tmpnotice, pkt, &len))
 		!= ZERR_NONE)
 		return(retval);
@@ -250,23 +325,13 @@ Code_t Z_ReadWait()
 		return (retval);
 	    __HM_addr = olddest;
 	}
-	if (filter_idx == -1) {
-	    (void) memset((char *) old_uids, 0,
-			  Z_FILTERDEPTH*(sizeof(struct _filter)));
-	    old_uids[0].uid = notice.z_uid;
-	    old_uids[0].kind = notice.z_kind;
-	    filter_idx = 1;
-	} else {
-	    for (i = 0; i < Z_FILTERDEPTH; i++)
-		if (old_uids[i].uid.tv.tv_sec != 0)
-		    if (ZCompareUID(&notice.z_uid, &old_uids[i].uid) &&
-			(notice.z_kind == old_uids[i].kind))
-			    return(ZERR_NONE);
-	    old_uids[filter_idx].uid = notice.z_uid;
-	    old_uids[filter_idx++].kind = notice.z_kind;
-	    filter_idx %= Z_FILTERDEPTH;
-	}
+	if (find_or_insert_uid(&notice.z_uid, notice.z_kind))
+	    return(ZERR_NONE);
     }
+
+    /* Check authentication on the notice. */
+    notice.z_checked_auth = ZCheckAuthentication(&notice, &from);
+
     /*
      * Parse apart the z_multinotice field - if the field is blank for
      * some reason, assume this packet stands by itself.
@@ -359,12 +424,11 @@ Code_t Z_ReadWait()
 	__Q_Head = qptr;
 
     
-    /* Copy the from field... */
+    /* Copy the from field, multiuid, kind, and checked authentication. */
     qptr->from = from;
-    /* And the multiuid... */
     qptr->uid = notice.z_multiuid;
-    /* And the kind... */
     qptr->kind = notice.z_kind;
+    qptr->auth = notice.z_checked_auth;
     
     /*
      * If this is the first part of the notice, we take the header
@@ -443,6 +507,12 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
     int last, oldfirst, oldlast;
     struct _Z_Hole *hole, *lasthole;
     struct timeval tv;
+
+    /* Incorporate this notice's checked authentication. */
+    if (notice->z_checked_auth == ZAUTH_FAILED)
+	qptr->auth = ZAUTH_FAILED;
+    else if (notice->z_checked_auth == ZAUTH_NO && qptr->auth != ZAUTH_FAILED)
+	qptr->auth = ZAUTH_NO;
 
     (void) gettimeofday(&tv, (struct timezone *)0);
     qptr->timep = tv.tv_sec;
@@ -551,9 +621,23 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
 {
     Code_t retval;
     static char version[BUFSIZ]; /* default init should be all \0 */
-	
+    struct sockaddr_in name;
+    int namelen = sizeof(name);
+
     if (!notice->z_sender)
 	notice->z_sender = ZGetSender();
+
+    if (notice->z_port == 0) {
+	if (ZGetFD() < 0) {
+	    retval = ZOpenPort((u_short *)0);
+	    if (retval != ZERR_NONE)
+		return (retval);
+	}
+	retval = getsockname(ZGetFD(), (struct sockaddr *) &name, &namelen);
+	if (retval != 0)
+	    return (retval);
+	notice->z_port = name.sin_port;
+    }
 
     notice->z_multinotice = "";
     
@@ -573,24 +657,34 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
 			   ZVERSIONMINOR);
     notice->z_version = version;
 
+    return Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine);
+}
+
+Code_t Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
+    ZNotice_t *notice;
+    char *buffer;
+    int buffer_len;
+    int *len;
+    int (*cert_routine)();
+{
     if (!cert_routine) {
 	notice->z_auth = 0;
 	notice->z_authent_len = 0;
 	notice->z_ascii_authent = "";
 	notice->z_checksum = 0;
 	return (Z_FormatRawHeader(notice, buffer, buffer_len,
-				  len, (char **) 0));
+				  len, NULL, NULL));
     }
     
     return ((*cert_routine)(notice, buffer, buffer_len, len));
 } 
 	
-Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
+Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     ZNotice_t *notice;
     char *buffer;
     int buffer_len;
     int *len;
-    char **sumend_ptr;
+    char **cstart, **cend;
 {
     union {
 	int i;
@@ -681,14 +775,15 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
 	return (ZERR_HEADERLEN);
 
     /* copy back the end pointer location for crypto checksum */
-    if (sumend_ptr)
-	*sumend_ptr = ptr;
-
+    if (cstart)
+	*cstart = ptr;
     temp.sum = htonl(notice->z_checksum);
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.sum,
 		   sizeof(temp.sum)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
+    if (cend)
+	*cend = ptr;
 
     if (Z_AddField(&ptr, notice->z_multinotice, end))
 	return (ZERR_HEADERLEN);
@@ -810,15 +905,16 @@ void Z_RemQueue(qptr)
     return;
 }
 
-Code_t Z_SendFragmentedNotice(notice, len, send_func)
+Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
     ZNotice_t *notice;
     int len;
+    Code_t (*cert_func)();
     Code_t (*send_func)();
 {
     ZNotice_t partnotice;
     ZPacket_t buffer;
     char multi[64];
-    int offset, hdrsize, fragsize, ret_len, waitforack;
+    int offset, hdrsize, fragsize, ret_len, message_len, waitforack;
     Code_t retval;
     
     hdrsize = len-notice->z_message_len;
@@ -846,14 +942,15 @@ Code_t Z_SendFragmentedNotice(notice, len, send_func)
 	    (void) memcpy((char *)&partnotice.z_uid.zuid_addr, __My_addr, 
 			   __My_length);
 	}
+	message_len = min(notice->z_message_len-offset, fragsize);
 	partnotice.z_message = notice->z_message+offset;
-	partnotice.z_message_len = min(notice->z_message_len-offset,
-				       fragsize);
-	if ((retval = ZFormatSmallRawNotice(&partnotice, buffer,
-					    &ret_len)) != ZERR_NONE) {
+	partnotice.z_message_len = message_len;
+	if ((retval = Z_FormatAuthHeader(&partnotice, buffer, Z_MAXHEADERLEN,
+					 &ret_len, cert_func)) != ZERR_NONE) {
 	    return (retval);
 	}
-	if ((retval = (*send_func)(&partnotice, buffer, ret_len,
+	memcpy(buffer + ret_len, partnotice.z_message, message_len);
+	if ((retval = (*send_func)(&partnotice, buffer, ret_len+message_len,
 				   waitforack)) != ZERR_NONE) {
 	    return (retval);
 	}
