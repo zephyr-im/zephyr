@@ -20,35 +20,40 @@ static char rcsid_ZFormatRawNoticeList_c[] = "$Header$";
 
 #include <zephyr/zephyr.h>
 
-Code_t ZFormatRawNoticeList(notice,list,nitems,buffer,buffer_len,ret_len)
-	ZNotice_t	*notice;
-	char		*list[];
-	int		nitems;
-	ZPacket_t	buffer;
-	int		buffer_len;
-	int		*ret_len;
+Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len, 
+			    cert_routine)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+    char **buffer;
+    int *ret_len;
+    int (*cert_routine)();
 {
-	char *ptr,*end;
-	Code_t retval;
+    char header[Z_MAXHEADERLEN];
+    int hdrlen, i, size;
+    char *ptr, *end;
+    Code_t retval;
 
-	end = buffer+buffer_len;
+    if ((retval = Z_FormatRawHeader(notice, header, sizeof(header), &hdrlen,
+				    cert_routine)) != ZERR_NONE)
+	return (retval);
 
-	if ((retval = Z_FormatRawHeader(notice,buffer,buffer_len,ret_len)) !=
-	    ZERR_NONE)
-		return (retval);
+    size = 0;
+    for (i=0;i<nitems;i++)
+	size += strlen(list[i])+1;
 
-	ptr = buffer+*ret_len;
+    *ret_len = hdrlen+size;
+    
+    if (!(*buffer = malloc(*ret_len)))
+	return (ENOMEM);
 
-	for (;nitems;nitems--,list++) {
-		if (ptr+strlen(*list)+1 > end)
-			return (ZERR_PKTLEN);
-		bcopy(*list,ptr,strlen(*list)+1);
-		*ret_len += strlen(*list)+1;
-		ptr += strlen(*list)+1;
-	}
+    ptr = *buffer+hdrlen;
 
-	if (*ret_len > Z_MAXPKTLEN)
-		return (ZERR_PKTLEN);
+    for (;nitems;nitems--, list++) {
+	i = strlen(*list)+1;
+	bcopy(*list, ptr, i);
+	ptr += i;
+    }
 
-	return (ZERR_NONE);
+    return (ZERR_NONE);
 }
