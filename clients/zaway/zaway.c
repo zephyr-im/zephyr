@@ -16,6 +16,7 @@
 #include <zephyr/zephyr.h>
 
 #include <pwd.h>
+#include <string.h>
 
 #ifndef lint
 static char rcsid_zaway_c[] = "$Header$";
@@ -24,18 +25,20 @@ static char rcsid_zaway_c[] = "$Header$";
 #define MESSAGE_CLASS "MESSAGE"
 #define DEFAULT_MSG "I'm sorry, but I am currently away from the terminal and am\nnot able to receive your message.\n"
 
+extern char *getenv(), *malloc();
+extern uid_t getuid();
+
 main(argc,argv)
 	int argc;
 	char *argv[];
 {
 	FILE *fp;
 	ZNotice_t notice;
-	ZPacket_t packet;
 	ZSubscription_t sub;
 	u_short port;
 	int retval;
 	struct passwd *pw;
-	char awayfile[BUFSIZ],inrep[BUFSIZ],*ptr,*msg[2],*envptr;
+	char awayfile[BUFSIZ],*ptr,*msg[2],*envptr;
 	char *find_message();
 	
 	if ((retval = ZInitialize()) != ZERR_NONE) {
@@ -54,17 +57,17 @@ main(argc,argv)
 	sub.recipient = ZGetSender();
 
 	if (argc > 1)
-		strcpy(awayfile,argv[1]);
+		(void) strcpy(awayfile,argv[1]);
 	else {
-		envptr = (char *)getenv("HOME");
+		envptr = getenv("HOME");
 		if (envptr)
-			sprintf(awayfile,"%s/.away",envptr);
+			(void) sprintf(awayfile,"%s/.away",envptr);
 		else {
-			if (!(pw = getpwuid(getuid()))) {
+			if (!(pw = getpwuid((int) getuid()))) {
 				fprintf(stderr,"Who are you?\n");
 				exit(1);
 			}
-			sprintf(awayfile,"%s/.away",pw->pw_dir);
+			(void) sprintf(awayfile,"%s/.away",pw->pw_dir);
 		} 
 	}
 
@@ -80,8 +83,7 @@ main(argc,argv)
 	}
 
 	for (;;) {
-		if ((retval = ZReceiveNotice(packet,sizeof packet,
-					     &notice,0)) != ZERR_NONE) {
+		if ((retval = ZReceiveNotice(&notice, (struct sockaddr_in *)0)) != ZERR_NONE) {
 			com_err(argv[0],retval,"while receiving notice");
 			continue;
 		}
@@ -94,12 +96,12 @@ main(argc,argv)
 				continue;
 		}
 		else {
-			ptr = (char *)malloc(sizeof(DEFAULT_MSG)+1);
+			ptr = malloc(sizeof(DEFAULT_MSG)+1);
 			if (!ptr) {
 				com_err(argv[0],errno,"while getting default message");
 				exit(1);
 			}
-			strcpy(ptr,DEFAULT_MSG);
+			(void) strcpy(ptr,DEFAULT_MSG);
 		}
 		notice.z_recipient = notice.z_sender;
 		notice.z_sender = 0;
@@ -114,6 +116,7 @@ main(argc,argv)
 			continue;
 		}
 		free(ptr);
+		ZFreeNotice(&notice);
 	}
 }
 
@@ -127,8 +130,8 @@ char *find_message(notice,fp)
 	
 	rewind(fp);
 
-	strcpy(sender,notice->z_sender);
-	ptr2 = (char *)index(sender,'@');
+	(void) strcpy(sender,notice->z_sender);
+	ptr2 = index(sender,'@');
 	if (ptr2)
 		*ptr2 = '\0';
 	
@@ -141,7 +144,7 @@ char *find_message(notice,fp)
 			if (lastwasnt)
 				gotone = 0;
 			bfr[strlen(bfr)-1] = '\0';
-			ptr2 = (char *)index(bfr,'@');
+			ptr2 = index(bfr,'@');
 			if (ptr2)
 				*ptr2 = '\0';
 			if (!strcmp(bfr+1,sender) ||
@@ -153,13 +156,12 @@ char *find_message(notice,fp)
 		else {
 			if (gotone) {
 				if (!ptr) {
-					ptr = (char *)malloc(strlen(bfr)+1);
+					ptr = malloc((unsigned)(strlen(bfr)+1));
 					*ptr = '\0';
 				} 
 				else
-					ptr = (char *)realloc(ptr,strlen(bfr)+
-							      strlen(ptr)+1);
-				strcat(ptr,bfr);
+					ptr = realloc(ptr,(unsigned)(strlen(bfr)+strlen(ptr)+1));
+				(void) strcat(ptr,bfr);
 			}
 			lastwasnt = 1;
 		}
