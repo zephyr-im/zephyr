@@ -728,7 +728,8 @@ struct sockaddr_in *who;
 	responses[2] = upt;
 
 	num_resp = NUM_FIXED;
-	for (i = 0; i < nservers ; i++) {
+	/* start at 1 and ignore limbo */
+	for (i = 1; i < nservers ; i++) {
 		(void) sprintf(buf, "%s/%s",
 			       inet_ntoa(otherservers[i].zs_addr.sin_addr),
 			       srv_states[(int) otherservers[i].zs_state]);
