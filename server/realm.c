@@ -1231,8 +1231,8 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 	    (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
 	    partnotice.z_multinotice = multi;
 	    if (offset > 0) {
-		(void) gettimeofday(&partnotice.z_uid.tv, 
-				    (struct timezone *)0);
+		(void) Z_gettimeofday(&partnotice.z_uid.tv, 
+				      (struct timezone *)0);
 		partnotice.z_uid.tv.tv_sec = htonl((u_long) 
 						   partnotice.z_uid.tv.tv_sec);
 		partnotice.z_uid.tv.tv_usec = 
