@@ -1,0 +1,122 @@
+.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
+.\" specifies the terms and conditions for redistribution.
+.\"
+.\"	@(#)zctl.1	6.1 (MIT) 7/9/87
+.\"
+.TH ZCTL 1 "July 14, 1987"
+.SH NAME
+zctl \- zephyr subscription control program
+.SH SYNOPSIS
+.B zctl [
+.I options
+]
+.SH DESCRIPTION
+.I Zctl
+is a general purpose subscription handler for the
+.I Zephyr(1)
+Notification Service.  It allows the user to subscribe to specific
+notice types, and to save the subscriptions in a file (default
+$HOME/.subscriptions).
+.PP
+The commands may be typed on the command line, or may be entered
+interactively by just typing
+.I zctl.
+The commands are as follows:
+.TP 25
+.B add \fIclass instance\fR [ \fIrecipient\fR ]
+Subscribe to \fIclass, instance, recipient\fR, and add this triplet to
+the subscriptions file.
+.TP
+.B cancel
+Cancel all subscriptions.
+.TP
+.B delete \fIclass instance\fR [ \fIrecipient\fR ]
+Unsubscribe to \fIclass, instance, recipient\fR, and remove this triplet
+from the subscriptions file.
+.TP
+.B file \fIfile
+Set default subscriptions file to \fIfile.
+.TP
+.B get
+Ask the current server to retrieve all current subscriptions.  These include
+subscriptions that might have been made by other programs, such as
+.I znol(1).
+.TP
+.B list [ \fIfile\fR ]
+List contents of current subscriptions file or \fIfile.
+.TP
+.B list_requests
+List all available commands.  May be abbreviated by '?'.
+.TP
+.B load [ \fIfile\fR ]
+Subscribe to all triplets in current subscriptions file or \fIfile.
+.TP
+.B quit
+Exit from \fIzctl.
+.TP
+.B save [ \fIfile\fR ]
+Save subscriptions into current subscriptions file or \fIfile.
+.TP
+.B subscribe \fIclass instance\fR [ \fIrecipient\fR ]
+Subscribe to \fIclass, instance, recipient.
+.TP
+.B unload [ \fIfile\fR ]
+Unsubscribe to all triplets in current subscriptions file or \fIfile.
+.TP
+.B unsubscribe \fIclass instance\fR [ \fIrecipient\fR ]
+Unsubscribe to \fIclass, instance, recipient.
+.PP
+The \fIrecipient\fR field defaults to your kerberos principle.  You
+may also subscribe to recipient ``*''.  There are three macros,
+.I %host%, %canon%, \fRand\fI %me%.  %host%
+returns the current hostname, \fI%canon%\fR returns the canonical
+hostname, and \fI%me%\fR returns your username.  These macros can be
+used in your \fI$HOME/.subscriptions\fR file to specify the
+.I class, instance, \fRor\fI recipient
+fields.  A sample file might contain the following:
+.PP
+.nf
+	message,personal,%me%
+	message,urgent,%me%
+	syslog,%host%,*
+	mail,pop,%me%
+.fi
+.PP
+.I Zctl
+reads the environment variable \fBWGFILE\fR, to find the name of the
+file where the windowgram port resides.  If \fBWGFILE\fR does not
+exist, the file defaults to /tmp/wg.\fIuid\fR, where \fIuid\fR is the
+user's id.
+.SH EXAMPLES
+.TP 25
+.B zctl
+Runs \fIzctl\fR in interactive mode.
+.TP
+.B zctl load
+Loads default subscriptions from \fI$HOME/.subscriptions\fR file.
+.TP
+.B zctl sub message personal
+Subscribe to personal messages, but don't add this to the
+subscriptions file.
+.TP
+.B zctl save
+Save all current subscriptions to the default subscriptions file.
+.SH SEE ALSO
+zephyr(1), zwgc(1), hm(8), zephyrd(8)
+.br
+Project Athena Technical Plan Section E.4.1, `Zephyr Notification
+Service'
+.SH FILES
+/tmp/wg.*
+.br
+$HOME/.subscriptions
+.SH AUTHOR
+.PP
+Robert S. French (MIT-Project Athena)
+.sp
+Copyright (c) 1987 by the Massachusetts Institute of Technology
+.br
+See
+.I zephyr(1)
+for a full copyright notice.
