@@ -26,3 +26,10 @@ int ZCompareUIDPred(notice, uid)
 {
     return (ZCompareUID(&notice->z_uid, uid));
 }
+
+int ZCompareMultiUIDPred(notice, uid)
+    ZNotice_t *notice;
+    ZUnique_Id_t *uid;
+{
+    return (ZCompareUID(&notice->z_multiuid, uid));
+}
