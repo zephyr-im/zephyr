@@ -771,8 +771,10 @@ nack_cancel(register ZNotice_t *notice, struct sockaddr_in *who)
 				xfree(nacked);
 				return;
 			}
-#if 0
-	zdbug((LOG_DEBUG,"nack not found"));
+#if 1
+	zdbug((LOG_DEBUG,"nack_cancel: nack not found %s:%08X,%08X",
+	       inet_ntoa (notice->z_uid.zuid_addr),
+	       notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
 #endif
 	return;
 }
