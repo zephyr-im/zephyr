@@ -127,7 +127,7 @@ triplet_register(client, dest)
 
     /* Triplet not present in hash table, insert it. */
     triplet = triplet_alloc(dest->classname, dest->inst, dest->recip);
-    LIST_INSERT(triplet_bucket[hashval], triplet);
+    LIST_INSERT(&triplet_bucket[hashval], triplet);
     return insert_client(triplet, client);
 }
 
@@ -265,7 +265,7 @@ class_setup_restricted(class_name, acl)
     if (!triplet)
 	return ENOMEM;
     triplet->acl = acl;
-    LIST_INSERT(triplet_bucket[hashval], triplet);
+    LIST_INSERT(&triplet_bucket[hashval], triplet);
     return ZERR_NONE;
 }
 
@@ -377,11 +377,11 @@ void triplet_dump_subs(fp)
     for (i = 0; i < HASHSIZE; i++) {
 	for (triplet = triplet_bucket[i]; triplet; triplet = triplet->next) {
 	    fputs("Triplet '", fp);
-	    subscr_quote(triplet->dest.classname->string, fp);
+	    dump_quote(triplet->dest.classname->string, fp);
 	    fputs("' '", fp);
-	    subscr_quote(triplet->dest.inst->string, fp);
+	    dump_quote(triplet->dest.inst->string, fp);
 	    fputs("' '", fp);
-	    subscr_quote(triplet->dest.recip->string, fp);
+	    dump_quote(triplet->dest.recip->string, fp);
 	    fputs("':\n", fp);
 	    if (triplet->clients) {
 		for (clientp = triplet->clients; *clientp; clientp++) {
