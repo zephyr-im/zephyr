@@ -27,7 +27,6 @@ static char rcsid_notice_c[] = "$Id$";
 #include <zephyr/zephyr.h>
 #include <netdb.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include "new_memory.h"
 #include "error.h"
