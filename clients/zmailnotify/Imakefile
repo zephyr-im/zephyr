@@ -5,12 +5,12 @@
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Header$
+/**/#	$Id$
 /**/#
 
 LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB} ${DES_LIB} ${HES_LIB}
 LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB}
-DEFINES= -DKPOP -DATHENA_COMPAT
+DEFINES= -DKPOP
 
 SRCS = zmailnotify.c
 OBJS = zmailnotify.o
