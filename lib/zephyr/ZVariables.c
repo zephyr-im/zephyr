@@ -123,7 +123,7 @@ static int get_localvarfile(bfr)
 	(void) strcpy(bfr, envptr);
     else {
 	if (!(pwd = getpwuid((int) getuid()))) {
-	    fprintf(stderr, "Zephyr internal failure: Can't find your entry in /etc/passwd\n");
+	    fprintf(stderr, "Zephyr internal failure: Can't determine your home directory.\n");
 	    return (1);
 	}
 	(void) strcpy(bfr, pwd->pw_dir);
