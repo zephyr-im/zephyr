@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_tty_filter_c[] = "$Header$";
+static char rcsid_tty_filter_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -185,7 +185,7 @@ static void free_info(info)
     }
 }
 
-static void do_mode_change(current_mode_p, text, text_length)
+static int do_mode_change(current_mode_p, text, text_length)
      tty_str_info *current_mode_p;
      char *text;
      int text_length;
@@ -209,13 +209,16 @@ static void do_mode_change(current_mode_p, text, text_length)
     else if (fixed_string_eq("roman", text, text_length)) {
 	current_mode_p->bold_p = 0;
 	current_mode_p->italic_p = 0;
-    }
+    } else if (fixed_string_eq("beep", text, text_length))
+	return 1;
+    return 0;
 }
 
 static tty_str_info *convert_desc_to_tty_str_info(desc)
      desctype *desc;
 {
-#ifdef SABER  /* This is needed due to a bug in saber */
+#if defined(SABER) || !defined(__STDC__)
+    /* This is needed due to a bug in saber */
     tty_str_info current_mode;
 #else
     tty_str_info current_mode = { NULL, "", 0, 'l', 0 , 0};
@@ -223,8 +226,9 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
     tty_str_info *temp;
     tty_str_info *result = NULL;
     tty_str_info *last_result_block = NULL;
+    int isbeep;
 
-#ifdef SABER
+#if defined(SABER) || !defined(__STDC__)
     current_mode.next = NULL;
     current_mode.str = "";
     current_mode.len = 0;
@@ -241,8 +245,10 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
 	    *temp = current_mode;
 	    current_mode.next = temp;
 
-	    do_mode_change(&current_mode, desc->str, desc->len);
-	    continue;
+	    
+	    if (!(isbeep = do_mode_change(&current_mode, desc->str,
+					  desc->len)))
+		continue;		/* if not a beep */
 	} else if (desc->code == DT_END) {
 	    /* POP! */
 	    temp = current_mode.next;
@@ -261,6 +267,18 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
 	    last_result_block = temp;
 	}
 
+	if (isbeep) {
+	    /* special processing: need to insert a bell */
+	    string_dictionary_binding *b;
+	    b = string_dictionary_Lookup(termcap_dict,"B.bell");
+	    if (b) {
+		temp->str = b->value;
+		temp->len = string_Length(temp->str);
+	    } else
+		/* shouldn't get here! */
+		abort();
+	    continue;
+	}
 	if (desc->code == DT_STR) {
 	    /* just combine string info with current mode: */
 	    *temp = current_mode;
