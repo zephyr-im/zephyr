@@ -1,38 +1,70 @@
-/**/#	Copyright 1988,1993 Massachusetts Institute of Technology
+/**/#	Copyright 1993 Massachusetts Institute of Technology
 /**/#	For copying and distribution information, see the file
 /**/#	"mit-copyright.h"
 /**/#
 /**/#	$Id$
 
-#define HAVE_IMAKE
-#define HAVE_MKDEP
-#define HAVE_LIBS
+/* General system configuration */
+#define KERBEROS	/* Has Kerberos installed */
+#define HESIOD		/* Has Hesiod installed */
 
-#define KERBEROS
-#define HESIOD
+/* Other defines that one may wish to use */
+#if 0
+#define NO_IMAKE	/* Need to build imake */
+#define NO_ET		/* Need to build com_err library */
+#define NO_SS		/* Need to build ss library */
+#endif
 
 #ifndef UseSharedLibs
 #define UseSharedLibs
+#endif
+
+#ifdef NO_IMAKE
+D_IMAKE = $(PTOP)/util/imake
+IMAKE = $(D_IMAKE)/imake
+OTHER_IFLAGS = -DNO_IMAKE
+Makefile Makefiles:: $(IMAKE)
+#endif
+
+#ifdef KERBEROS
+CDEFS_KRB = -DKERBEROS
+#endif
+
+#ifdef HESIOD
+CDEFS_HES = -DHESIOD
+#endif
+
+#ifdef NO_ET
+D_ET = $(PTOP)/util/et
+CDEFS_ET = -I$(D_ET)
+#define EtLibs $(D_ET)/libcom_err.a
+#endif
+
+#ifdef NO_SS
+D_UTIL = $(PTOP)/util
+D_SS = $(D_UTIL)/ss
+CDEFS_SS = -I$(D_UTIL)
+#define SsLibs $(D_SS)/libss.a
 #endif
 
 ZLIBDIR = $(ATHLIBDIR)/zephyr
 ZINCDIR = $(ATHINCDIR)/zephyr
 ZACLDIR = $(ZLIBDIR)/acl
 
-BINC = $(PTOP)/include
+BINC = $(PTOP)/h
 
 ZLIBS = $(PTOP)/lib/libzephyr.a $(LIB_KRB) $(LIB_ET)
 DYN_LIB = $(PTOP)/libdyn/libdyn.a
 
-#ifdef KERBEROS
-CDEFS_KRB = -DKERBEROS
-#endif
-#ifdef HESIOD
-CDEFS_HES = -DHESIOD
-#endif
+DEFINES = $(XDEFS) -I$(BINC) \
+	$(CDEFS_KRB) $(CDEFS_HES) $(CDEFS_ET) $(CDEFS_SS) \
+	$(MACHDEFS)
 
-DEFINES = $(CDEFS_KRB) $(CDEFS_HES) $(XDEFS) -I$(BINC) $(MACHDEFS)
+AnsiCC()
 
+/* 
+ * Supplemental rules
+ */
 #define make_err(name) \
 error_table(name)							@@\
 all:: concat3($(BINC)/zephyr/,name,.h)					@@\
@@ -46,4 +78,22 @@ clean::									@@\
 SimpleProgram(name,$(OBJS),libs $(ZLIBS),$(ATHBINDIR))			@@\
 create_depend($(SRCS))
 
-AnsiCC()
+
+/*
+ * Other site-specific rules, defines, and overrides.
+ */
+#ifdef ultrix
+#define SYSLOG_COMPAT42
+#endif
+
+#ifdef UseInstalled
+ATHBINDIR = /mit/zephyr/@sys/bin
+ATHLIBDIR = /mit/zephyr/@sys/lib
+ATHINCDIR = /mit/zephyr/include
+ATHMANDIR = /mit/zephyr/man
+
+ZLIBDIR = /mit/zephyr/configs
+ATHCONFDIR = $(ZLIBDIR)
+ATHETCDIR = $(ATHBINDIR)
+ATHRETCDIR = $(ATHBINDIR)
+#endif
