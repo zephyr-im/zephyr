@@ -44,9 +44,6 @@ static char rcsid_client_s_c[] = "$Header$";
 
 #include "zserver.h"
 #include <sys/socket.h>
-#ifdef lint
-#include <sys/uio.h>
-#endif lint
 
 static void clt_free();
 
