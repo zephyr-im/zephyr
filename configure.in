@@ -102,7 +102,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(fcntl.h paths.h termios.h sgtty.h unistd.h libgen.h malloc.h)
 AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/uio.h sys/file.h)
-AC_CHECK_HEADERS(sys/utsname.h sys/select.h sys/msgbuf.h)
+AC_CHECK_HEADERS(sys/utsname.h sys/select.h sys/msgbuf.h sys/cdefs.h)
 
 if test "$no_x" != "yes"; then
 	XCLIENTS=xzwrite

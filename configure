@@ -1424,7 +1424,7 @@ else
 fi
 done
 
-for ac_hdr in sys/utsname.h sys/select.h sys/msgbuf.h
+for ac_hdr in sys/utsname.h sys/select.h sys/msgbuf.h sys/cdefs.h
 do
 ac_safe=`echo "$ac_hdr" | tr './\055' '___'`
 echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
