@@ -232,7 +232,7 @@ static int
 binary_find_dest(key)
 char *key;
 {
-    register int low = 0, high = DynSize(dests), mid;
+    register int low = 0, high = DynHigh(dests), mid;
     register int val;
     register char **d;
 
