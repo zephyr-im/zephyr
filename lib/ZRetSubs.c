@@ -20,17 +20,13 @@ static char rcsid_ZRetrieveSubscriptions_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-#define MAXSUBPACKETS 200 /* If a person has more than 1000
-			   *  subscriptions, he loses! */
-
-#ifdef notdef
 Code_t ZRetrieveSubscriptions(port,nsubs)
 	u_short port;
 	int *nsubs;
 {
 	int subscription_pred();
 	
-	int i,retval,nrecv,totalrecv,npacket,thispacket,returncode,gimmeack;
+	int i,retval,nrecv,gimmeack;
 	ZNotice_t notice,retnotice;
 	ZPacket_t buffer;
 	char *ptr,*end,*ptr2;
@@ -59,70 +55,48 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	if ((retval = ZSendNotice(&notice,ZAUTH)) != ZERR_NONE)
 		return (retval);
 
-	for (i=0;i<MAXSUBPACKETS;i++)
-		subs_recvd[i] = 'n';
-	
 	nrecv = 0;
-	totalrecv = -1;
 	gimmeack = 0;
-	__subscriptions_num = 0;
 	__subscriptions_list = (ZSubscription_t *) 0;
 
-	returncode = ZERR_NONE;
-
-	while (nrecv < totalrecv || totalrecv == -1 || !gimmeack) {
-		if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,NULL,
+	while (!nrecv || !gimmeack) {
+		if ((retval = ZIfNotice(&retnotice,NULL,
 					ZCompareUIDPred,
-					(char *)&notice.z_uid)) !=
-		    ZERR_NONE)
+					(char *)&notice.z_uid)) != ZERR_NONE)
 			return (retval);
 
-		if (retnotice.z_kind == SERVNAK)
+		if (retnotice.z_kind == SERVNAK) {
+			ZFreeNotice(&retnotice);
 			return (ZERR_SERVNAK);
-	
-		if (retnotice.z_kind != SERVACK)
-			return (ZERR_INTERNAL);
+		}	
 
-		if (!strcmp(retnotice.z_opcode,CLIENT_GIMMESUBS)) {
+		if (retnotice.z_kind == SERVACK &&
+		    !strcmp(retnotice.z_opcode,CLIENT_GIMMESUBS)) {
 			gimmeack = 1;
 			continue;
 		} 
-		ptr = index(retnotice.z_opcode,'/');
-		if (!ptr)
+
+		if (retnotice.z_kind != ACKED)
 			return (ZERR_INTERNAL);
-		*ptr = '\0';
-		totalrecv = atoi(ptr+1);
-		if (totalrecv > MAXSUBPACKETS) {
-			returncode = ZERR_TOOMANYSUBS;
-			totalrecv = MAXSUBPACKETS;
-		} 
-		thispacket = atoi(retnotice.z_opcode);
-		if (thispacket > MAXSUBPACKETS)
-			continue;
-		
-		if (subs_recvd[thispacket] == 'y')
-			continue;
-		subs_recvd[thispacket] = 'y';
+
 		nrecv++;
 
 		end = retnotice.z_message+retnotice.z_message_len;
 
-		npacket = 0;
+		__subscriptions_num = 0;
 		for (ptr=retnotice.z_message;ptr<end;ptr++)
 			if (!*ptr)
-				npacket++;
+				__subscriptions_num++;
 
-		npacket /= 3;
+		__subscriptions_num /= 3;
 
 		__subscriptions_list = (ZSubscription_t *)
-			realloc(__subscriptions_list,
-				(unsigned)(__subscriptions_num+npacket)*
-			       sizeof(ZSubscription_t));
+			malloc((unsigned)(__subscriptions_num*
+					  sizeof(ZSubscription_t)));
 		if (!__subscriptions_list)
 			return (ENOMEM);
 	
-		for (ptr=retnotice.z_message,i=__subscriptions_num;
-		     i<__subscriptions_num+npacket;i++) {
+		for (ptr=retnotice.z_message,i = 0; i< __subscriptions_num; i++) {
 			__subscriptions_list[i].class = (char *)
 				malloc((unsigned)strlen(ptr)+1);
 			if (!__subscriptions_list[i].class)
@@ -145,13 +119,11 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 			(void) strcpy(__subscriptions_list[i].recipient,ptr2);
 			ptr += strlen(ptr)+1;
 		}
-
-		__subscriptions_num += npacket;
-	} 
+		ZFreeNotice(&retnotice);
+	}
 
 	__subscriptions_next = 0;
 	*nsubs = __subscriptions_num;
 
-	return (returncode);
+	return (ZERR_NONE);
 }
-#endif
