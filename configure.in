@@ -34,7 +34,7 @@ dnl Checks for header files.
 AC_PATH_XTRA
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h paths.h termios.h sgtty.h unistd.h libgen.h malloc.h)
+AC_CHECK_HEADERS(fcntl.h paths.h termios.h sgtty.h unistd.h malloc.h)
 AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/file.h sys/utsname.h)
 AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h)
 
@@ -83,7 +83,6 @@ if test "$hesiod" != "no"; then
 fi
 
 AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
-AC_CHECK_LIB(gen, regcmp, [RLIB=-lgen])
 AC_CHECK_LIB(src, srcsrpy, [SLIB=-lsrc; AC_DEFINE(HAVE_SRC)])
 AC_SUBST(TLIB)
 AC_SUBST(RLIB)
@@ -97,8 +96,9 @@ LIBS="$KRB4_LIBS $HESIOD_LIBS $LIBS"
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_VPRINTF
+AC_FUNC_SETPGRP
 AC_CHECK_FUNCS(putenv strchr memcpy memmove waitpid getlogin strerror random)
-AC_CHECK_FUNCS(lrand48 gethostid krb_get_err_text krb_log)
+AC_CHECK_FUNCS(lrand48 gethostid getsid getpgid krb_get_err_text krb_log)
 
 AC_CONFIG_HEADER(h/config.h)
 AC_OUTPUT(Makefile clients/Makefile clients/syslogd/Makefile
