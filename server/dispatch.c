@@ -151,7 +151,7 @@ struct sockaddr_in *who;
 				ack(notice, who);
 			}
 		}
-		subscr_list_free(clientlist);
+		subscr_free_list(clientlist);
 	}
 
 	if (!acked)

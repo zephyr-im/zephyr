@@ -42,7 +42,7 @@ static char rcsid_subscr_s_c[] = "$Header$";
  *	ZNotice_t *notice;
  *	ZAcl_t *acl;
  *
- * void subscr_list_free(list)
+ * void subscr_free_list(list)
  *	ZClientList_t *list;
  *
  * void subscr_sendlist(notice, who)
@@ -365,7 +365,7 @@ ZAcl_t *acl;
  */
 
 void
-subscr_list_free(list)
+subscr_free_list(list)
 ZClientList_t *list;
 {
 	register ZClientList_t *lyst;
