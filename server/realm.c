@@ -70,8 +70,10 @@ char *realmname;
 			return(krb_realm);
 		}
 	}
+#ifdef KERBEROS
 	if (!strncmp(my_realm, expand, strlen(expand)))
 	    return(my_realm);
+#endif
 	return(expand);
 }
 
