@@ -138,7 +138,7 @@ clean::
 #define ProfCcFlags -pg
 #define CDebugFlags -O2
 #define LdPath -L/usr/gcc/lib -L/usr/ccs/lib -L/usr/openwin/lib -L$(ATHLIBDIR)
-#define LdLibs /usr/athena/lib/libresolv.a -lsocket -lnsl -lucb -lelf
+#define LdLibs /usr/athena/lib/libresolv.a -lsocket -lnsl /usr/ucblib/libucb.a -lelf
 #define AnsiCcCmd /usr/gcc/bin/gcc -B/usr/gcc/lib/ -traditional
 #define AnsiLdCmd /usr/gcc/bin/gcc -B/usr/gcc/lib/
 #define CcCmd AnsiCcCmd
