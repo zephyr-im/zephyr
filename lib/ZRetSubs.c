@@ -39,7 +39,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	notice.z_message_len = strlen(asciiport)+1;
 	notice.z_opcode = CLIENT_GIMMESUBS;
 
-	return(Z_RetSubs(&notice, nsubs));
+	return(Z_RetSubs(&notice, nsubs, ZAUTH));
 }
 
 Code_t ZRetrieveDefaultSubscriptions(nsubs)
@@ -52,13 +52,14 @@ Code_t ZRetrieveDefaultSubscriptions(nsubs)
 	notice.z_message_len = 0;
 	notice.z_opcode = CLIENT_GIMMEDEFS;
 
-	return(Z_RetSubs(&notice, nsubs));
+	return(Z_RetSubs(&notice, nsubs, ZNOAUTH));
 
 }
 
-static Code_t Z_RetSubs(notice, nsubs)
+static Code_t Z_RetSubs(notice, nsubs, auth_routine)
 	register ZNotice_t *notice;
 	int *nsubs;
+	int (*auth_routine)();
 {
 	int retval,nrecv,gimmeack;
 	register int i;
@@ -86,7 +87,7 @@ static Code_t Z_RetSubs(notice, nsubs)
 	notice->z_recipient = "";
 	notice->z_default_format = "";
 
-	if ((retval = ZSendNotice(notice,ZAUTH)) != ZERR_NONE)
+	if ((retval = ZSendNotice(notice,auth_routine)) != ZERR_NONE)
 		return (retval);
 
 	nrecv = 0;
