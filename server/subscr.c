@@ -62,12 +62,18 @@ static ZSubscr_t *extract_subscriptions();
 static int subscr_equiv(), clt_unique();
 static void free_subscriptions(), free_sub();
 
+static ZSubscr_t matchall_sub = {
+	(ZSubscr_t *) 0,
+	(ZSubscr_t *) 0,
+	MATCHALL_CLASS,
+	NULL,
+	NULL };
+
 /* WARNING: make sure this is the same as the number of strings you */
 /* plan to hand back to the user in response to a subscription check, */
 /* else you will lose.  See subscr_sendlist() */  
 #define	NUM_FIELDS	3
 
-#define	WILDCARD_INSTANCE	"*"
 /*
  * subscribe the client to types described in notice.
  */
@@ -150,7 +156,7 @@ ZNotice_t *notice;
 			return(ENOMEM);
 		}
 
-		if ((retval = class_register(who, subs->zst_class)) != ZERR_NONE) {
+		if ((retval = class_register(who, subs)) != ZERR_NONE) {
 			xfree(subs3);
 			free_subscriptions(newsubs);
 			return(retval);
@@ -217,7 +223,7 @@ ZNotice_t *notice;
 				/* go back, since remque will change things */
 				subs3 = subs2->q_back;
 				xremque(subs2);
-				(void) class_deregister(who, subs2->zst_class);
+				(void) class_deregister(who, subs2);
 				free_sub(subs2);
 				found = 1;
 				/* now that the remque adjusted the linked
@@ -232,7 +238,7 @@ ZNotice_t *notice;
 		for (subs2 = who->zct_subs->q_forw;
 		     subs2 != who->zct_subs;
 		     subs2 = subs2->q_forw)
-			if ((retval = class_register(who, subs2->zst_class)) != ZERR_NONE) {
+			if ((retval = class_register(who, subs2)) != ZERR_NONE) {
 				free_subscriptions(subs);
 				return(retval);
 			}
@@ -261,7 +267,7 @@ register ZClient_t *client;
 	     subs != client->zct_subs;
 	     subs = client->zct_subs->q_forw) {
 		zdbug((LOG_DEBUG,"sub_can %s",subs->zst_class));
-		if (class_deregister(client, subs->zst_class) != ZERR_NONE) {
+		if (class_deregister(client, subs) != ZERR_NONE) {
 			zdbug((LOG_DEBUG,"sub_can_clt: not registered!"));
 		}
 
@@ -314,6 +320,7 @@ ZAcl_t *acl;
 	register ZClientList_t *hits, *clients, *majik, *clients2, *hit2;
 	register char *cp;
 	char *newclass, *saveclass, *newclinst, *saveclinst;
+	ZSubscr_t check_sub;
 
 	if (!(hits = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))))
 		return(NULLZCLT);
@@ -337,8 +344,13 @@ ZAcl_t *acl;
 		cp++;
 	}
 
-	if (!(clients = class_lookup(newclass))) {
-		if  (!(majik = class_lookup(MATCHALL_CLASS))) {
+	check_sub.zst_class = newclass;
+	check_sub.zst_classinst = newclinst;
+	check_sub.zst_recipient = notice->z_recipient;
+	check_sub.q_forw = check_sub.q_back = &check_sub;
+
+	if (!(clients = class_lookup(&check_sub))) {
+		if  (!(majik = class_lookup(&matchall_sub))) {
 			notice->z_class = saveclass;
 			notice->z_class_inst = saveclinst;
 			xfree(newclass);
@@ -347,11 +359,11 @@ ZAcl_t *acl;
 			return(NULLZCLT);
 		}
 	} else
-		majik = class_lookup(MATCHALL_CLASS);
+		majik = class_lookup(&matchall_sub);
 
 	notice->z_class = newclass;
 	notice->z_class_inst = newclinst;
-	if (clients)
+	if (clients) {
 		for (clients2 = clients->q_forw;
 		     clients2 != clients;
 		     clients2 = clients2->q_forw)
@@ -371,8 +383,10 @@ ZAcl_t *acl;
 				hit2->zclt_client = clients2->zclt_client;
 				hit2->q_forw = hit2->q_back = hit2;
 				xinsque(hit2, hits);
-			} 	
-	if (majik)
+			}
+		class_free(clients);
+	}
+	if (majik) {
 		for (clients2 = majik->q_forw;
 		     clients2 != majik;
 		     clients2 = clients2->q_forw) {
@@ -393,6 +407,8 @@ ZAcl_t *acl;
 
 			xinsque(hit2, hits);
 		}
+		class_free(majik);
+	}
 	notice->z_class = saveclass;
 	xfree(newclass);
 	notice->z_class_inst = saveclinst;
@@ -437,8 +453,10 @@ struct sockaddr_in *who;
 	Code_t retval;
 	ZNotice_t reply;
 	ZPacket_t reppacket;
-	int packlen, i, found = 0;
+	register int i;
+	int packlen, found = 0, count;
 	char **answer = (char **) NULL;
+	char buf[64];
 
 	if (client && client->zct_subs) {
 
@@ -482,33 +500,38 @@ struct sockaddr_in *who;
 
 	packlen = sizeof(reppacket);
 
-	/* if it's too long, chop off one at a time till it fits */
-	while ((retval = ZFormatRawNoticeList(&reply,
-					      answer,
-					      found * NUM_FIELDS,
-					      reppacket,
-					      packlen,
-					      &packlen)) == ZERR_PKTLEN) {
-		found--;
-		reply.z_opcode = CLIENT_INCOMPSUBS;
-	}
-	if (retval != ZERR_NONE) {
-		syslog(LOG_ERR, "subscr_sendlist format: %s",
-		       error_message(retval));
-		xfree(answer);
-		return;
-	}
 	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "subscr_sendlist set addr: %s",
 		       error_message(retval));
 		xfree(answer);
 		return;
 	}
-	if ((retval = ZSendPacket(reppacket, packlen)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "subscr_sendlist xmit: %s",
-		       error_message(retval));
-		xfree(answer);
-		return;
+
+	/* send 5 at a time until we are finished */
+	count = found / 5 + 1;		/* total # to be sent */
+	i = 0;				/* pkt # counter */
+	while (found > 0) {
+		retval = ZFormatRawNoticeList(&reply,
+					      answer,
+					      ((found > 5) ? 5 : found) * NUM_FIELDS,
+					      reppacket, packlen, &packlen);
+		(void) sprintf(buf, "%d/%d", ++i, count);
+		reply.z_opcode = buf; 
+		if (retval != ZERR_NONE) {
+			syslog(LOG_ERR, "subscr_sendlist format: %s",
+			       error_message(retval));
+			xfree(answer);
+			return;
+		}
+		if ((retval = ZSendPacket(reppacket, packlen)) != ZERR_NONE) {
+			syslog(LOG_WARNING, "subscr_sendlist xmit: %s",
+			       error_message(retval));
+			xfree(answer);
+			return;
+		}
+		found -= 5;
+		if (found < 0)
+			found = 0;
 	}
 	zdbug((LOG_DEBUG,"subscr_sendlist acked"));
 	xfree(answer);
