@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -14,13 +14,12 @@
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr.h>
-#include <ctype.h>
 #include <ss.h>
 #include <pwd.h>
 #include <netdb.h>
 #include <string.h>
 #include <sys/file.h>
-
+#include <sys/param.h>
 #ifndef lint
 static char rcsid_zctl_c[] = "$Header$";
 #endif lint
@@ -33,20 +32,26 @@ static char rcsid_zctl_c[] = "$Header$";
 #define USERS_SUBS "/.zephyr.subs"
 #define OLD_SUBS "/.subscriptions"
 
-#define TOKEN_HOSTNAME "%host%"
-#define TOKEN_CANONNAME "%canon%"
-#define TOKEN_ME "%me%"
+#define	TOKEN_HOSTNAME	"%host%"
+#define	TOKEN_CANONNAME	"%canon%"
+#define	TOKEN_ME	"%me%"
+#define	TOKEN_WILD	"*"
 
-#define _toupper(c) (islower(c)?toupper(c):c)
+#define	ALL		0
+#define	UNSUBONLY	1
+#define	SUBONLY		2
 
-char *index(),*malloc();
+#define	ERR		(-1)
+#define	NOT_REMOVED	0
+#define	REMOVED		1
+int purge_subs();
 
 int sci_idx;
 char subsname[BUFSIZ];
-char ourhost[BUFSIZ],ourhostcanon[BUFSIZ];
+char ourhost[MAXHOSTNAMELEN],ourhostcanon[MAXHOSTNAMELEN];
 
 extern ss_request_table zctl_cmds;
-extern char *getenv(), *malloc();
+extern char *getenv(), *malloc(), *index(),*malloc();
 extern uid_t getuid();
 
 main(argc,argv)
@@ -81,7 +86,7 @@ main(argc,argv)
 		/* only if old one exists and new one does not exist */
 		printf("The .subscriptions file in your home directory is now being used as\n.zephyr.subs . I will rename it to .zephyr.subs for you.\n");
 		if (rename(oldsubsname,subsname))
-			com_err(argv[0], retval, "renaming .subscriptions");
+			com_err(argv[0], errno, "renaming .subscriptions");
 	}
 	
 	if (gethostname(ourhost,BUFSIZ) == -1) {
@@ -90,7 +95,8 @@ main(argc,argv)
 	}
 
 	if (!(hent = gethostbyname(ourhost))) {
-		com_err(argv[0],errno,"while canonicalizing host name");
+		fprintf(stderr,"%s: Can't get canonical name for host %s",
+			argv[0], ourhost);
 		exit (1);
 	}
 
@@ -113,7 +119,8 @@ main(argc,argv)
 		exit((code != 0));
 	} 
 
-	printf("ZCTL version %d.%d - Type '?' for a list of commands.\n\n",
+	printf("ZCTL $Version:$ (Protocol %s%d.%d) - Type '?' for a list of commands.\n\n",
+	       ZVERSIONHDR,
 	       ZVERSIONMAJOR,ZVERSIONMINOR);
 	
 	ss_listen(sci_idx,&code);
@@ -188,7 +195,12 @@ wgc_control(argc,argv)
 		notice.z_opcode = USER_SHUTDOWN;
 	if (!strcmp(argv[0],"wg_startup"))
 		notice.z_opcode = USER_STARTUP;
-	
+	if (!notice.z_opcode) {
+		fprintf(stderr,
+			"unknown WindowGram client control command %s\n",
+			argv[0]);
+		return;
+	}
 	notice.z_sender = 0;
 	notice.z_recipient = "";
 	notice.z_default_format = "";
@@ -224,7 +236,11 @@ hm_control(argc,argv)
 		notice.z_opcode = CLIENT_FLUSH;
 	if (!strcmp(argv[0],"new_server"))
 		notice.z_opcode = CLIENT_NEW_SERVER;
-
+	if (!notice.z_opcode) {
+		fprintf(stderr, "unknown HostManager control command %s\n",
+			argv[0]);
+		return;
+	}
 	notice.z_sender = 0;
 	notice.z_recipient = "";
 	notice.z_default_format = "";
@@ -271,24 +287,24 @@ set_var(argc,argv)
 
 	setting_exp = 0;
 
-	if (!cistrcmp(argv[1],"exposure")) {
+	if (!strcasecmp(argv[1],"exposure")) {
 		setting_exp = 1;
 		if (argc != 3) {
 			fprintf(stderr,"An exposure setting must be specified.\n");
 			return;
 		}
 		exp_level = (char *)0;
-		if (!cistrcmp(argv[2],EXPOSE_NONE))
+		if (!strcasecmp(argv[2],EXPOSE_NONE))
 			exp_level = EXPOSE_NONE;
-		if (!cistrcmp(argv[2],EXPOSE_OPSTAFF))
+		if (!strcasecmp(argv[2],EXPOSE_OPSTAFF))
 			exp_level = EXPOSE_OPSTAFF;
-		if (!cistrcmp(argv[2],EXPOSE_REALMVIS))
+		if (!strcasecmp(argv[2],EXPOSE_REALMVIS))
 			exp_level = EXPOSE_REALMVIS;
-		if (!cistrcmp(argv[2],EXPOSE_REALMANN))
+		if (!strcasecmp(argv[2],EXPOSE_REALMANN))
 			exp_level = EXPOSE_REALMANN;
-		if (!cistrcmp(argv[2],EXPOSE_NETVIS))
+		if (!strcasecmp(argv[2],EXPOSE_NETVIS))
 			exp_level = EXPOSE_NETVIS;
-		if (!cistrcmp(argv[2],EXPOSE_NETANN))
+		if (!strcasecmp(argv[2],EXPOSE_NETANN))
 			exp_level = EXPOSE_NETANN;
 		if (!exp_level) {
 			fprintf(stderr,"The exposure setting must be one of:\n");
@@ -305,10 +321,9 @@ set_var(argc,argv)
 	if (argc == 2)
 		retval = ZSetVariable(argv[1],"");
 	else {
-		varcat[0] = '\0';
-		for (i=2;i<argc;i++) {
-			if (i != 2)
-				(void) strcat(varcat," ");
+		(void) strcpy(varcat,argv[2]);
+		for (i=3;i<argc;i++) {
+			(void) strcat(varcat," ");
 			(void) strcat(varcat,argv[i]);
 		} 
 		retval = ZSetVariable(argv[1],varcat);
@@ -335,18 +350,6 @@ set_var(argc,argv)
 	} 
 }
 
-cistrcmp(s1,s2)
-	char *s1,*s2;
-{
-	while (*s1 && *s2) {
-		if (_toupper(*s1) != _toupper(*s2))
-			return 1;
-		s1++;
-		s2++;
-	}
-	return (*s1 || *s2);
-} 
-
 unset_var(argc,argv)
 	int argc;
 	char *argv[];
@@ -354,7 +357,7 @@ unset_var(argc,argv)
 	int retval,i;
 	
 	if (argc < 2) {
-		fprintf(stderr,"Usage: %s <varname> <varname> ...\n",
+		fprintf(stderr,"Usage: %s <varname> [<varname> ... ]\n",
 			argv[0]);
 		return;
 	}
@@ -420,123 +423,206 @@ sub_file(argc,argv)
 	int argc;
 	char *argv[];
 {
-	ZSubscription_t sub,sub2;
-	FILE *fp,*fpout;
-	char errbuf[BUFSIZ],subline[BUFSIZ],ourline[BUFSIZ];
-	char backup[BUFSIZ];
-	int delflag,retval;
+	ZSubscription_t sub;
 	short wgport;
-	
+
 	if (argc > 4 || argc < 3) {
 		fprintf(stderr,"Usage: %s class instance [*]\n",argv[0]);
 		return;
 	}
 
+	if (argv[1][0] == '!') {
+		ss_perror(sci_idx,0,
+			  (!strcmp(argv[0],"add_unsubscription") ||
+			   !strcmp(argv[0],"add_un") ||
+			   !strcmp(argv[0],"delete_unsubscription") ||
+			   !strcmp(argv[0],"del_un")) ?
+			  "Do not use `!' as the first character of a class.\n\tIt is automatically added before modifying the subscription file." :
+			  "Do not use `!' as the first character of a class.\n\tIt is reserved for internal use with un-subscriptions.");
+		return;
+	}
 	sub.class = argv[1];
 	sub.classinst = argv[2];
-	sub.recipient = (argc == 3)?TOKEN_ME:argv[3];
+	sub.recipient = (argc == 3)?TOKEN_ME:TOKEN_WILD;
 
+
+	if (make_exist(subsname))
+		return;
  	if ((wgport = ZGetWGPort()) == -1) {
 		ss_perror(sci_idx,errno,"while finding WindowGram port");
 		return;
 	} 
 
-	if (!strcmp(argv[0],"add")) {
-		if (make_exist(subsname))
-			return;
-		if (!(fp = fopen(subsname,"a"))) {
-			(void) sprintf(errbuf,"while opening %s for append",subsname);
-			ss_perror(sci_idx,errno,errbuf);
-			return;
-		} 
-		fprintf(fp,"%s,%s,%s\n",sub.class,sub.classinst,
-			sub.recipient);
-		if (fclose(fp) == EOF) {
-			(void) sprintf(errbuf, "while closing %s", subsname);
-			ss_perror(sci_idx, errno, errbuf);
-			return;
-		}
-		fix_macros(&sub,&sub2,1);
-		if ((retval = ZSubscribeTo(&sub2,1,(u_short)wgport)) !=
-		    ZERR_NONE)
-			ss_perror(sci_idx,retval,"while subscribing");
-		return;
-	}
+	if (!strcmp(argv[0],"add"))
+		add_file(wgport,&sub,0);
+	else if (!strcmp(argv[0],"add_unsubscription") ||
+		 !strcmp(argv[0],"add_un"))
+		add_file(wgport,&sub,1);
+	else if (!strcmp(argv[0],"delete") ||
+		 !strcmp(argv[0],"del") ||
+		 !strcmp(argv[0],"dl"))
+		del_file(wgport,&sub,0);
+	else if (!strcmp(argv[0],"delete_unsubscription") ||
+		 !strcmp(argv[0],"del_un")) {
+		del_file(wgport,&sub,1);
+	} else
+		ss_perror(sci_idx,0,"unknown command name");
+	return;
+}
 
-	delflag = 0;
-	(void) sprintf(ourline,"%s,%s,%s",
-		       sub.class,
-		       sub.classinst,
-		       sub.recipient);
-	if (make_exist(subsname))
-		return;
-	if (!(fp = fopen(subsname,"r"))) {
-		(void) sprintf(errbuf,"while opening %s for read",subsname);
+add_file(wgport,subs,unsub)
+short wgport;
+ZSubscription_t *subs;
+int unsub;
+{
+	FILE *fp;
+	char errbuf[BUFSIZ];
+	ZSubscription_t sub2;
+	Code_t retval;
+
+	(void) purge_subs(subs,ALL);	/* remove copies in the subs file */
+	if (!(fp = fopen(subsname,"a"))) {
+		(void) sprintf(errbuf,"while opening %s for append",subsname);
 		ss_perror(sci_idx,errno,errbuf);
 		return;
 	} 
-	(void) sprintf(backup,"%s.temp",subsname);
+	fprintf(fp,"%s%s,%s,%s\n",
+		unsub ? "!" : "",
+		subs->class, subs->classinst, subs->recipient);
+	if (fclose(fp) == EOF) {
+		(void) sprintf(errbuf, "while closing %s", subsname);
+		ss_perror(sci_idx, errno, errbuf);
+		return;
+	}
+	fix_macros(subs,&sub2,1);
+	if (retval = (unsub ? ZUnsubscribeTo(&sub2,1,(u_short)wgport) :
+		       ZSubscribeTo(&sub2,1,(u_short)wgport)))
+		ss_perror(sci_idx,retval,
+			  unsub ? "while unsubscribing" :
+			  "while subscribing");
+	return;
+}
+
+del_file(wgport,subs,unsub)
+short wgport;
+register ZSubscription_t *subs;
+int unsub;
+{
+	ZSubscription_t sub2;
+	int retval;
+	
+	retval = purge_subs(subs, unsub ? UNSUBONLY : SUBONLY);
+	if (retval == ERR)
+		return;
+	if (retval == NOT_REMOVED)
+		fprintf(stderr,
+			"Couldn't find %sclass %s instance %s recipient %s in\n\tfile %s\n",
+			unsub ? "unsubscription " : "",
+			subs->class,subs->classinst,subs->recipient,subsname);
+	fix_macros(subs,&sub2,1);
+	if ((retval = ZUnsubscribeTo(&sub2,1,(u_short)wgport)) !=
+	    ZERR_NONE)
+		ss_perror(sci_idx,retval,"while unsubscribing");
+	return;
+}
+
+int
+purge_subs(subs,which)
+register ZSubscription_t *subs;
+int which;
+{
+	FILE *fp,*fpout;
+	char errbuf[BUFSIZ],subline[BUFSIZ];
+	char backup[BUFSIZ],ourline[BUFSIZ];
+	int delflag = NOT_REMOVED;
+	int keep;
+
+	switch (which) {
+	case SUBONLY:
+	case UNSUBONLY:
+	case ALL:
+		break;
+	default:
+		ss_perror(sci_idx,0,"internal error in purge_subs");
+		return(ERR);
+	}
+
+	(void) sprintf(ourline,"%s,%s,%s",
+		       subs->class,
+		       subs->classinst,
+		       subs->recipient);
+
+	if (!(fp = fopen(subsname,"r"))) {
+		(void) sprintf(errbuf,"while opening %s for read",subsname);
+		ss_perror(sci_idx,errno,errbuf);
+		return(ERR);
+	} 
+	(void) strcpy(backup, subsname);
+	(void) strcat(backup, ".temp");
 	(void) unlink(backup);
 	if (!(fpout = fopen(backup,"w"))) {
 		(void) sprintf(errbuf,"while opening %s for writing",backup);
 		ss_perror(sci_idx,errno,errbuf);
-		return;
+		(void) fclose(fp);
+		return(ERR);
 	} 
 	for (;;) {
 		if (!fgets(subline,sizeof subline,fp))
 			break;
 		if (*subline)
-			subline[strlen(subline)-1] = '\0';
-		if (strcmp(subline,ourline))
-			fprintf(fpout,"%s\n",subline);
-		else
-			delflag = 1;
+			subline[strlen(subline)-1] = '\0'; /* nuke newline */
+		switch (which) {
+		case SUBONLY:
+			keep = strcmp(subline,ourline);
+			break;
+		case UNSUBONLY:
+			keep = (*subline != '!' || strcmp(subline+1,ourline));
+			break;
+		case ALL:
+			keep = (strcmp(subline,ourline) &&
+				(*subline != '!' || strcmp(subline+1,
+							   ourline)));
+			break;
+		}
+		if (keep) {
+			fputs(subline, fpout);
+			if (ferror(fpout) || (fputc('\n', fpout) == EOF)) {
+				(void) sprintf(errbuf, "while writing to %s",
+					       backup);
+				ss_perror(sci_idx, errno, errbuf);
+			}
+		} else
+			delflag = REMOVED;
 	}
-	if (!delflag)
-		fprintf(stderr,
-			"Couldn't find class %s instance %s recipient %s\n",
-			sub.class,sub.classinst,subsname);
 	(void) fclose(fp);		/* open read-only, ignore errs */
 	if (fclose(fpout) == EOF) {
 		(void) sprintf(errbuf, "while closing %s",backup);
 		ss_perror(sci_idx, errno, errbuf);
-		return;
+		return(ERR);
 	}
 	if (rename(backup,subsname) == -1) {
 		(void) sprintf(errbuf,"while renaming %s to %s\n",
 			       backup,subsname);
 		ss_perror(sci_idx,errno,errbuf);
-		return;
+		return(ERR);
 	}
-	fix_macros(&sub,&sub2,1);
-	if ((retval = ZUnsubscribeTo(&sub2,1,(u_short)wgport)) !=
-	    ZERR_NONE)
-		ss_perror(sci_idx,retval,"while subscribing");
+	return(delflag);
 }
 
 load_subs(argc,argv)
 	int argc;
 	char *argv[];
 {
-	ZSubscription_t subs[SUBSATONCE],subs2[SUBSATONCE];
+	ZSubscription_t subs[SUBSATONCE],subs2[SUBSATONCE],unsubs[SUBSATONCE];
 	FILE *fp;
-	int ind,lineno,i,retval,type;
+	int ind,unind,lineno,i,retval,type;
 	short wgport;
-	char *comma,*comma2,*file,subline[BUFSIZ],errbuf[BUFSIZ];
+	char *comma,*comma2,*file,subline[BUFSIZ];
 
 	if (argc > 2) {
 		fprintf(stderr,"Usage: %s [file]\n",argv[0]);
 		return;
 	}
-
- 	if ((wgport = ZGetWGPort()) == -1) {
-		ss_perror(sci_idx,errno,"while finding WindowGram port");
-		return;
-	} 
-
-	file = (argc == 1) ? subsname : argv[1];
-	
-	fp = fopen(file,"r");
 
 	if (*argv[0] == 'u')
 		type = UNSUB;
@@ -545,8 +631,20 @@ load_subs(argc,argv)
 			type = LIST;
 		else
 			type = SUB;
+
+	if (type != LIST) 
+		if ((wgport = ZGetWGPort()) == -1) {
+			ss_perror(sci_idx,errno,
+				  "while finding WindowGram port");
+			return;
+		} 
+
+	file = (argc == 1) ? subsname : argv[1];
 	
-	ind = 0;
+	fp = fopen(file,"r");
+
+	
+	ind = unind = 0;
 	lineno = 1;
 	
 	if (fp)	for (;;lineno++) {
@@ -554,7 +652,7 @@ load_subs(argc,argv)
 			break;
 		if (*subline == '#' || !*subline)
 			continue;
-		subline[strlen(subline)-1] = '\0';
+		subline[strlen(subline)-1] = '\0'; /* nuke newline */
 		comma = index(subline,',');
 		if (comma)
 			comma2 = index(comma+1,',');
@@ -568,52 +666,102 @@ load_subs(argc,argv)
 		}
 		*comma = '\0';
 		*comma2 = '\0';
-		subs[ind].class = malloc((unsigned)(strlen(subline)+1));
-		(void) strcpy(subs[ind].class,subline);
-		subs[ind].classinst = malloc((unsigned)(strlen(comma+1)+1));
-		(void) strcpy(subs[ind].classinst,comma+1);
-		subs[ind].recipient = malloc((unsigned)(strlen(comma2+1)+1));
-		(void) strcpy(subs[ind].recipient,comma2+1);
-		ind++;
-		if (type == LIST)
-			printf("Class %s instance %s recipient %s\n",
-			       subs[0].class,subs[0].classinst,
-			       subs[0].recipient);
-		else {
-			if (ind == SUBSATONCE) {
-				fix_macros(subs,subs2,ind);
-				if ((retval = (type == SUB)?
-				     ZSubscribeTo(subs2,ind,(u_short)wgport):
-				     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) !=
-				    ZERR_NONE) {
-					ss_perror(sci_idx,retval,(type == SUB)?
-						"while subscribing":
-						"while unsubscribing");
-					return;
-				}
+		if (type == LIST) {
+			if (*subline == '!') 
+				printf("(Unsubscription) Class %s instance %s recipient %s\n",
+				       subline+1, comma+1, comma2+1);
+			else
+				printf("Class %s instance %s recipient %s\n",
+				       subline, comma+1, comma2+1);
+			continue;
+		}
+		if (*subline == '!') {	/* an un-subscription */
+			/* if we are explicitly un-subscribing to
+			   the contents of a subscription file, ignore
+			   any un-subscriptions in that file */
+			if (type == UNSUB)
+				continue;
+			unsubs[unind].class =
+				malloc((unsigned)(strlen(subline)+1));
+			(void) strcpy(unsubs[unind].class,subline);
+			unsubs[unind].classinst =
+				malloc((unsigned)(strlen(comma+1)+1));
+			(void) strcpy(unsubs[unind].classinst,comma+1);
+			unsubs[unind].recipient =
+				malloc((unsigned)(strlen(comma2+1)+1));
+			(void) strcpy(unsubs[unind].recipient,comma2+1);
+			unind++;
+		} else {
+			subs[ind].class =
+				malloc((unsigned)(strlen(subline)+1));
+			(void) strcpy(subs[ind].class,subline);
+			subs[ind].classinst =
+				malloc((unsigned)(strlen(comma+1)+1));
+			(void) strcpy(subs[ind].classinst,comma+1);
+			subs[ind].recipient =
+				malloc((unsigned)(strlen(comma2+1)+1));
+			(void) strcpy(subs[ind].recipient,comma2+1);
+			ind++;
+		}
+		if (ind == SUBSATONCE) {
+			fix_macros(subs,subs2,ind);
+			if ((retval = (type == SUB)?
+			     ZSubscribeTo(subs2,ind,(u_short)wgport):
+			     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) !=
+			    ZERR_NONE) {
+				ss_perror(sci_idx,retval,(type == SUB)?
+					  "while subscribing":
+					  "while unsubscribing");
+				goto cleanup;
 			}
-		} 
-		if (type == LIST || ind == SUBSATONCE) {
 			for (i=0;i<ind;i++) {
 				free(subs[i].class);
 				free(subs[i].classinst);
 				free(subs[i].recipient);
 			} 
 			ind = 0;
-		} 
+		}
+		if (unind == SUBSATONCE) {
+			fix_macros(unsubs,subs2,unind);
+			if ((retval = ZUnsubscribeTo(subs2,unind,(u_short)wgport)) != ZERR_NONE) {
+				ss_perror(sci_idx,retval,
+					  "while unsubscribing to un-subscriptions");
+				goto cleanup;
+			}
+			for (i=0;i<unind;i++) {
+				free(unsubs[i].class);
+				free(unsubs[i].classinst);
+				free(unsubs[i].recipient);
+			} 
+			unind = 0;
+		}
 	}
 	
-	fix_macros(subs,subs2,ind);
-	if ((retval = (type == SUB)?ZSubscribeTo(subs2,ind,(u_short)wgport):
-	     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) != ZERR_NONE) {
-		ss_perror(sci_idx,retval,(type == SUB)?
-			  "while subscribing":
-			  "while unsubscribing");
-		return;
+	if (type != LIST) {
+		/* even if we have no subscriptions, be sure to send
+		   an empty packet to trigger the default subscriptions */
+		fix_macros(subs,subs2,ind);
+		if ((retval = (type == SUB)?ZSubscribeTo(subs2,ind,(u_short)wgport):
+		     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) != ZERR_NONE) {
+			ss_perror(sci_idx,retval,(type == SUB)?
+				  "while subscribing":
+				  "while unsubscribing");
+			goto cleanup;
+		}
+		if (unind) {
+			fix_macros(unsubs,subs2,unind);
+			if ((retval =
+			     ZUnsubscribeTo(subs2,unind,(u_short)wgport)) != ZERR_NONE) {
+				ss_perror(sci_idx,retval,
+					  "while unsubscribing to un-subscriptions");
+				goto cleanup;
+			}
+		}
 	}
-
+cleanup:
 	if (fp)
 		(void) fclose(fp);	/* ignore errs--file is read-only */
+	return;
 }
 
 current(argc,argv)
@@ -671,7 +819,7 @@ current(argc,argv)
 		(void) strcat(backup,".temp");
 		if (!(fp = fopen(backup,"w"))) {
 			(void) sprintf(errbuf,"while opening %s for write",
-				       file);
+				       backup);
 			ss_perror(sci_idx,errno,errbuf);
 			return;
 		}
@@ -714,7 +862,7 @@ current(argc,argv)
 make_exist(filename)
 	char *filename;
 {
-	char bfr[BUFSIZ],errbuf[BUFSIZ];
+	char errbuf[BUFSIZ];
 	FILE *fpout;
 	
 	if (!access(filename,F_OK))
