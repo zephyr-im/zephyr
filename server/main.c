@@ -14,9 +14,9 @@
 #include <zephyr/mit-copyright.h>
 
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 3.7";
+char version[] = "Zephyr Server (DEBUG) 3.8";
 #else
-char version[] = "Zephyr Server 3.7";
+char version[] = "Zephyr Server 3.8";
 #endif DEBUG
 #ifndef lint
 #ifndef SABER
@@ -152,6 +152,7 @@ char **argv;
 		}
 	}
 
+#ifdef KERBEROS
 	/* if there is no readable srvtab and we are not standalone, there
 	   is no possible way we can succeed, so we exit */
 
@@ -160,9 +161,11 @@ char **argv;
 	    && !zalone
 #endif DEBUG
 	    ) {
-		fprintf(stderr, "NO ZEPHYR SRVTAB available; exiting\n");
+		fprintf(stderr, "NO ZEPHYR SRVTAB (%s) available; exiting\n",
+			ZEPHYR_SRVTAB);
 		exit(1);
 	}
+#endif KERBEROS
 
 #ifndef DEBUG
 	detach();
