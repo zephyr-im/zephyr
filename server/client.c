@@ -22,11 +22,12 @@ static char rcsid_client_c[] = "$Header$";
 /*
  * External functions:
  *
- * Code_t client_register(notice, who, client, server)
+ * Code_t client_register(notice, who, client, server, wantdefaults)
  *	ZNotice_t *notice;
  *	struct sockaddr_in *who;
  *	ZClient_t **client; (RETURN)
  *	ZServerDesc_t *server;
+ *	int wantdefaults;
  *
  * Code_t client_deregister(client, host, flush)
  *	ZClient_t *client;
@@ -57,11 +58,12 @@ static void clt_free();
  */
 
 Code_t
-client_register(notice, who, client, server)
+client_register(notice, who, client, server, wantdefaults)
 ZNotice_t *notice;
 struct sockaddr_in *who;
 register ZClient_t **client;		/* RETURN */
 ZServerDesc_t *server;
+int wantdefaults;
 {
 	register ZHostList_t *hlp = server->zs_hosts;
 	register ZHostList_t *hlp2;
@@ -113,9 +115,10 @@ ZServerDesc_t *server;
 	xinsque(clist, hlp2->zh_clients);
 	(void) sigsetmask(omask);
 
-	if (!server->zs_dumping)
+	if (!server->zs_dumping || wantdefaults)
 		/* add default subscriptions only if this is not
-		   resulting from a brain dump */
+		   resulting from a brain dump, or this request
+		   wants defaults */
 		return(subscr_def_subs(*client));
 	else
 		return(ZERR_NONE);
