@@ -1,3 +1,10 @@
+zephyr (2.1.20010518.SNAPSHOT-4) unstable; urgency=low
+
+  * moved into main
+  * flesh out extended descriptions in control file, closes: #135513
+
+ -- Karl Ramm <kcr@debian.org>  Tue,  2 Apr 2002 01:05:32 -0500
+
 zephyr (2.1.20010518.SNAPSHOT-3) unstable; urgency=low
 
   * hopefully build non-Kerberos packages successfully, closes: #106610
