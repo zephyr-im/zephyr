@@ -116,7 +116,8 @@ main(argc,argv)
 		ssline[strlen(ssline)-1] = '\0';
 		code = ss_execute_line(sci_idx,ssline);
 		if (code)
-			ss_perror(sci_idx,code,ssline);
+		    fprintf (stderr, "%s: %s: %s",
+			     argv[0], error_message (code), ssline);
 		exit((code != 0));
 	} 
 
