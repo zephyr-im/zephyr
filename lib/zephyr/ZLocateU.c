@@ -33,8 +33,12 @@ Code_t ZLocateUser(user, nlocs)
     if (retval != ZERR_NONE && retval != ZERR_NOLOCATIONS)
 	return (retval);
 	
+    if (ZGetFD() < 0)
+	    if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
+		    return (retval);
+
     notice.z_kind = ACKED;
-    notice.z_port = 0;
+    notice.z_port = __Zephyr_port;
     notice.z_class = LOCATE_CLASS;
     notice.z_class_inst = user;
     notice.z_opcode = LOCATE_LOCATE;
@@ -42,6 +46,7 @@ Code_t ZLocateUser(user, nlocs)
     notice.z_recipient = "";
     notice.z_default_format = "";
     notice.z_message_len = 0;
+    notice.z_num_other_fields = 0;
 
     if ((retval = ZSendNotice(&notice, ZAUTH)) != ZERR_NONE)
 	return (retval);
@@ -49,8 +54,8 @@ Code_t ZLocateUser(user, nlocs)
     nrecv = ack = 0;
 
     while (!nrecv || !ack) {
-	    if ((retval = ZIfNotice(&retnotice, NULL, ZCompareUIDPred,
-				    (char *)&notice.z_uid)) != ZERR_NONE)
+	    if ((retval = ZIfNotice(&retnotice, NULL, ZCompareMultiUIDPred,
+				    (char *)&notice.z_multiuid)) != ZERR_NONE)
 		    return (retval);
 
 	    if (retnotice.z_kind == SERVNAK) {
