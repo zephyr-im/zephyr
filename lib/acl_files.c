@@ -28,6 +28,7 @@ static char rcsid_acl_files_c[] = "$Id$";
 #include <zephyr/zephyr.h>
 #include <strings.h>
 #include <sys/file.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <ctype.h>
 #include <sys/param.h>			/* for MAXHOSTNAMELEN */
@@ -68,8 +69,8 @@ char *canon;
     char *dot, *atsign, *end;
     int len;
 
-    dot = index(principal, INST_SEP);
-    atsign = index(principal, REALM_SEP);
+    dot = strchr(principal, INST_SEP);
+    atsign = strchr(principal, REALM_SEP);
 
     /* Maybe we're done already */
     if(dot != NULL && atsign != NULL) {
@@ -477,8 +478,8 @@ char *principal;
 	return 1;
 
     /* Try the wildcards */
-    realm = index(canon, REALM_SEP);
-    *index(canon, INST_SEP) = '\0';	/* Chuck the instance */
+    realm = strchr(canon, REALM_SEP);
+    *strchr(canon, INST_SEP) = '\0';	/* Chuck the instance */
 
     sprintf(buf, "%s.*%s", canon, realm);
     if(acl_exact_match(acl, buf)) return 1;
