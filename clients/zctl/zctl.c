@@ -11,6 +11,9 @@
  *	"mit-copyright.h". 
  */
 
+#ifdef POSIX
+#include <unistd.h>
+#endif
 #include <zephyr/zephyr.h>
 #include <ss/ss.h>
 #include <com_err.h>
@@ -19,6 +22,9 @@
 #include <string.h>
 #include <sys/file.h>
 #include <sys/param.h>
+#ifdef SOLARIS
+#include <sys/utsname.h>
+#endif
 #ifndef lint
 static char *rcsid_zctl_c = "$Id$";
 #endif
@@ -50,8 +56,6 @@ char subsname[BUFSIZ];
 char ourhost[MAXHOSTNAMELEN],ourhostcanon[MAXHOSTNAMELEN];
 
 extern ss_request_table zctl_cmds;
-extern char *getenv(), *malloc();
-extern uid_t getuid();
 
 main(argc,argv)
 	int argc;
@@ -61,13 +65,16 @@ main(argc,argv)
 	struct hostent *hent;
 	char ssline[BUFSIZ],oldsubsname[BUFSIZ],*envptr;
 	int retval,code,i;
+#ifdef SOLARIS
+	struct utsname name;
+#endif
 
 	if ((retval = ZInitialize()) != ZERR_NONE) {
 		com_err(argv[0],retval,"while initializing");
 		exit (1);
 	}
 
-	envptr = getenv("HOME");
+	envptr = (char *)getenv("HOME");
 	if (envptr)
 		(void) strcpy(subsname,envptr);
 	else {
@@ -87,11 +94,16 @@ main(argc,argv)
 		if (rename(oldsubsname,subsname))
 			com_err(argv[0], errno, "renaming .subscriptions");
 	}
-	
-	if (gethostname(ourhost,BUFSIZ) == -1) {
+
+#ifdef SOLARIS
+	uname(&name);
+	strcpy(ourhost, name.nodename);
+#else
+	if (gethostname(ourhost,MAXHOSTNAMELEN) == -1) {
 		com_err(argv[0],errno,"while getting host name");
 		exit (1);
 	}
+#endif
 
 	if (!(hent = gethostbyname(ourhost))) {
 		fprintf(stderr,"%s: Can't get canonical name for host %s",
@@ -184,7 +196,7 @@ wgc_control(argc,argv)
 		return;
 	}
 
-	(void) bzero((char *)&notice, sizeof(notice));
+	(void) _BZERO((char *)&notice, sizeof(notice));
 	notice.z_kind = UNSAFE;
 	notice.z_port = 0;
 	notice.z_class = WG_CTL_CLASS;
@@ -227,7 +239,7 @@ hm_control(argc,argv)
 		return;
 	}
 	
-	(void) bzero((char *)&notice, sizeof(notice));
+	(void) _BZERO((char *)&notice, sizeof(notice));
 	notice.z_kind = HMCTL;
 	notice.z_port = 0;
 	notice.z_class = HM_CTL_CLASS;
@@ -665,11 +677,16 @@ load_subs(argc,argv)
 	
 	fp = fopen(file,"r");
 
+	if (fp == NULL) {
+		ss_perror(sci_idx,errno,
+			  "while loading subscription file");
+		return;
+	}
 	
 	ind = unind = 0;
 	lineno = 1;
 	
-	if (fp)	for (;;lineno++) {
+	for (;;lineno++) {
 		if (!fgets(subline,sizeof subline,fp))
 			break;
 		if (*subline == '#' || !*subline)
@@ -704,30 +721,30 @@ load_subs(argc,argv)
 			if (type == UNSUB)
 				continue;
 			unsubs[unind].zsub_class =
-				malloc((unsigned)(strlen(subline)));
+			    (char *)malloc((unsigned)(strlen(subline)));
 			/* XXX check malloc return */
 			/* skip the leading '!' */
 			(void) strcpy(unsubs[unind].zsub_class,subline+1);
 			unsubs[unind].zsub_classinst =
-				malloc((unsigned)(strlen(comma+1)+1));
+			    (char *)malloc((unsigned)(strlen(comma+1)+1));
 			/* XXX check malloc return */
 			(void) strcpy(unsubs[unind].zsub_classinst,comma+1);
 			unsubs[unind].zsub_recipient =
-				malloc((unsigned)(strlen(comma2+1)+1));
+			    (char *)malloc((unsigned)(strlen(comma2+1)+1));
 			/* XXX check malloc return */
 			(void) strcpy(unsubs[unind].zsub_recipient,comma2+1);
 			unind++;
 		} else {
 			subs[ind].zsub_class =
-				malloc((unsigned)(strlen(subline)+1));
+			    (char *)malloc((unsigned)(strlen(subline)+1));
 			/* XXX check malloc return */
 			(void) strcpy(subs[ind].zsub_class,subline);
 			subs[ind].zsub_classinst =
-				malloc((unsigned)(strlen(comma+1)+1));
+			    (char *)malloc((unsigned)(strlen(comma+1)+1));
 			/* XXX check malloc return */
 			(void) strcpy(subs[ind].zsub_classinst,comma+1);
 			subs[ind].zsub_recipient =
-				malloc((unsigned)(strlen(comma2+1)+1));
+			    (char *)malloc((unsigned)(strlen(comma2+1)+1));
 			/* XXX check malloc return */
 			(void) strcpy(subs[ind].zsub_recipient,comma2+1);
 			ind++;
@@ -798,8 +815,8 @@ cleanup:
 	  free(unsubs[i].zsub_classinst);
 	  free(unsubs[i].zsub_recipient);
 	} 
-	if (fp)
-		(void) fclose(fp);	/* ignore errs--file is read-only */
+
+	(void) fclose(fp);	/* ignore errs--file is read-only */
 	return;
 }
 
