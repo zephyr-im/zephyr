@@ -74,12 +74,11 @@ static char rcsid_class_c[] =
 /* Private variables */ 
 #define	EMPTY_CLASS	2000
 
-#define	HASHSIZE	511
-#define	HASHMUL		243
+#define	HASHSIZE	1023
+#define CLASS_HASHVAL(cl,in) (cl->hash_val ^ in->hash_val) % HASHSIZE
 
 static ZClass_t *class_bucket[HASHSIZE]; /* the hash table of pointers */
 
-#define CLASS_HASHVAL(cl,in) (cl->hash_val ^ in->hash_val) % HASHSIZE
 
 #ifdef __STDC__
 # define        P(s) s
