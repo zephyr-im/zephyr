@@ -16,7 +16,7 @@ SRCDIR= ${SRCTOP}/clients/zstat
 CODE= ${SRCS} Imakefile
 
 depend::
-	(cd ../../server; make zserver.h)
+	(cd ../../server; make src)
 normal_obj_rule()
 
 program(zstat,${OBJS},,${LIBS},${CLIENTDIR})
