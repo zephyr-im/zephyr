@@ -42,8 +42,9 @@ static char rcsid_uloc_s_c[] = "$Header$";
  * void uloc_flush_client(sin)
  *	struct sockaddr_in *sin;
  *
- * Code_t uloc_send_locations(host)
+ * Code_t uloc_send_locations(host, version)
  *	ZHostList_t *host;
+ *	char *version;
  */
 
 /*
@@ -275,14 +276,14 @@ ZServerDesc_t *server;
 	if (!strcmp(notice->z_version, OLD_ZEPHYR_VERSION)) {
 		if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
 			zdbug((LOG_DEBUG,"old hide"));
-			if (ulogin_expose_user(notice, EXPOSE_OPSTAFF)) {
+			if (ulogin_expose_user(notice, OPSTAFF_VIS)) {
 				if (server == me_server)
 					clt_ack(notice, who, NOT_FOUND);
 				return;
 			}
 		} else if (!strcmp(notice->z_opcode, LOCATE_UNHIDE)) {
-			zdbug((LOG_DEBUG,"user unhide"));
-			if (ulogin_expose_user(notice, EXPOSE_REALMVIS)) {
+			zdbug((LOG_DEBUG,"old unhide"));
+			if (ulogin_expose_user(notice, REALM_VIS)) {
 				if (server == me_server)
 					clt_ack(notice, who, NOT_FOUND);
 				return;
@@ -410,9 +411,11 @@ struct sockaddr_in *sin;
  * Send the locations for host for a brain dump
  */
 
+/*ARGSUSED*/
 Code_t
-uloc_send_locations(host)
+uloc_send_locations(host, version)
 ZHostList_t *host;
+char *version;
 {
 	register ZLocation_t *loc;
 	register int i;
@@ -429,6 +432,28 @@ ZHostList_t *host;
 		lyst[2] = loc->zlt_tty;
 
 
+#ifdef OLD_COMPAT
+		if (!strcmp(version, OLD_ZEPHYR_VERSION))
+			/* the other server is using the old
+			   protocol version; send old-style
+			   location/login information */
+			switch(loc->zlt_exposure) {
+			case OPSTAFF_VIS:
+				exposure_level = LOGIN_QUIET_LOGIN;
+				break;
+			case REALM_VIS:
+			case REALM_ANN:
+			case NET_VIS:
+			case NET_ANN:
+				exposure_level = LOGIN_USER_LOGIN;
+				break;
+			default:
+				syslog(LOG_ERR,"broken location state %s/%d",
+				       loc->zlt_user, (int) loc->zlt_exposure);
+				break;
+			}
+		else
+#endif /* OLD_COMPAT */
 		switch (loc->zlt_exposure) {
 		case OPSTAFF_VIS:
 			exposure_level = EXPOSE_OPSTAFF;
@@ -476,6 +501,9 @@ struct sockaddr_in *who;
 	ZLocation_t *oldlocs, newloc;
 	register int i = 0;
 
+	zdbug((LOG_DEBUG,"ul_add: %s type %d", notice->z_sender,
+	       (int) exposure));
+
 	if ((oldlocs = ulogin_find(notice, 1))) {
 		zdbug((LOG_DEBUG,"ul_add: already here"));
 		(void) ulogin_expose_user(notice, exposure);
@@ -497,7 +525,11 @@ struct sockaddr_in *who;
 			return;
 		}
 		num_locs = 1;
+#ifdef DEBUG
+		goto dprnt;
+#else
 		return;
+#endif DEBUG
 	}
 
 	/* not the first one, insert him */
@@ -523,6 +555,7 @@ struct sockaddr_in *who;
 	xfree(oldlocs);
 	
 #ifdef DEBUG
+ dprnt:
 	if (zdebug) {
 		register int i;
 
@@ -874,6 +907,9 @@ exposure_type exposure;
 {
 	ZLocation_t *loc, loc2;
 	int index, notfound = 1;
+
+	zdbug((LOG_DEBUG,"ul_expose: %s type %d", notice->z_sender,
+	       (int) exposure));
 
 	if (ulogin_parse(notice, &loc2))
 		return(1);
