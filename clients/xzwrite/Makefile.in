@@ -24,7 +24,7 @@ CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h @X_CFLAGS@ ${CPPFLAGS}
-LDFLAGS=${DEBUG} -L${BUILDTOP}/lib -L${BUILDTOP}/libdyn @X_LIBS@ @LDFLAGS@
+LDFLAGS=-L${BUILDTOP}/lib -L${BUILDTOP}/libdyn @X_LIBS@ @LDFLAGS@
 LIBS=-lzephyr -ldyn -lXaw -lXmu -lXt @X_PRE_LIBS@ -lX11 -lXext @X_EXTRA_LIBS@ \
      @LIBS@ -lcom_err
 

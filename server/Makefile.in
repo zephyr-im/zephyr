@@ -22,7 +22,7 @@ CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h -I. ${CPPFLAGS}
-LDFLAGS=${DEBUG} -L${BUILDTOP}/lib @LDFLAGS@
+LDFLAGS=-L${BUILDTOP}/lib @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \
