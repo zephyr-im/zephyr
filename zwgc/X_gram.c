@@ -434,8 +434,9 @@ void x_gram_draw(dpy, w, gram, region)
    XChangeGC(dpy,gc,GCFunction,&gcvals);
 
    for (i=0,xb=gram->blocks ; i<gram->numblocks ; i++,xb++) {
-      if (XRectInRegion(region,xb->x1,xb->y1,xb->x2-xb->x1,
-			xb->y2-xb->y1) != RectangleOut) {
+      if ((xb->strlen > 0) &&
+	  (XRectInRegion(region,xb->x1,xb->y1,xb->x2-xb->x1,
+			 xb->y2-xb->y1) != RectangleOut)) {
 	 SetFG(gram->bgcolor^xb->fgcolor);
 	 text.chars=gram->text+xb->strindex;
 	 text.nchars=xb->strlen;

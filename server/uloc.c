@@ -150,7 +150,7 @@ ulogin_dispatch(notice, auth, who, server)
 	  case REALM_ANN:
 	  case NET_VIS:
 	    if (server == me_server)
-		sendit(notice, 1, who, 0);
+		sendit(notice, 1, who, 0, 1);
 	    break;
 	  case NET_ANN:
 	    /* currently no distinction between these.
@@ -160,7 +160,7 @@ ulogin_dispatch(notice, auth, who, server)
 	       authentic.  ulogin_remove_user checks the
 	       ip addrs */
 	    if (server == me_server)
-		sendit(notice, 1, who, 1);
+		sendit(notice, 1, who, 1, 1);
 	    break;
 	  default:
 	    syslog(LOG_ERR,"bogus location exposure %d/%s",
@@ -267,7 +267,7 @@ login_sendit(notice, auth, who, external)
     log_notice = *notice;
 
     log_notice.z_opcode = LOGIN_USER_LOGIN;
-    sendit(&log_notice, auth, who, external);
+    sendit(&log_notice, auth, who, external, 1);
 }
 
 
@@ -287,11 +287,7 @@ ulocate_dispatch(notice, auth, who, server)
     if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
 	/* we are talking to a current-rev client; send an ack */
 	ack(notice, who);
-	cp = strchr(notice->z_class_inst, '@');
-	if (cp && (realm = realm_get_realm_by_name(cp + 1)))
-	    ulogin_locate_forward(notice, who, realm);
-	else
-	    ulogin_locate(notice, who, auth);
+	ulogin_locate(notice, who, auth);
 	return ZERR_NONE;
     } else {
 	syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
@@ -827,8 +823,29 @@ ulogin_locate(notice, who, auth)
     int found;
     Code_t retval;
     struct sockaddr_in send_to_who;
+    char *cp;
+    Realm *realm;
 
     answer = ulogin_marshal_locs(notice, &found, auth);
+
+    /* XXX do more parsing, like in dispatch() */
+
+    if (found == 0) {
+	cp = strrchr(notice->z_class_inst, '@');
+	if (cp && (realm = realm_get_realm_by_name(cp + 1))) {
+	    char *inlhsat;
+
+	    /* XXX eeew. */
+	    *cp = '\0';
+	    inlhsat = strrchr(notice->z_class_inst, '@');
+
+	    if (!inlhsat)
+		*cp = '@';
+
+	    ulogin_locate_forward(notice, who, realm);
+	    return;
+	}
+    }
 
     send_to_who = *who;
     send_to_who.sin_port = notice->z_port;
@@ -869,7 +886,7 @@ ulogin_marshal_locs(notice, found, auth)
     char **answer;
     int i = 0;
     String *inst;
-    int local = (auth && realm_sender_in_realm(ZGetRealm(), notice->z_sender));
+    int local = (auth && realm_sender_in_realm(my_galaxy, notice->z_sender));
 
     *found = 0;			/* # of matches */
 
@@ -921,7 +938,6 @@ ulogin_marshal_locs(notice, found, auth)
 
     /* OK, now we have a list of user@host's to return to the client
        in matches */
-	
 	
 #ifdef DEBUG
     if (zdebug) {

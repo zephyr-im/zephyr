@@ -3,7 +3,7 @@
  *
  *	Created by:	Robert French
  *
- *	$Id$
+n *	$Id$
  *
  *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
@@ -28,8 +28,8 @@ Code_t ZFormatRawNoticeList(notice, list, nitems, buffer, ret_len)
     char *ptr;
     Code_t retval;
 
-    if ((retval = Z_FormatRawHeader(notice, header, sizeof(header),
-				    &hdrlen, NULL, NULL)) != ZERR_NONE)
+    if ((retval = Z_FormatRawHeader(notice, header, sizeof(header), &hdrlen,
+				    NULL, NULL, NULL, NULL)) != ZERR_NONE)
 	return (retval);
 
     size = 0;

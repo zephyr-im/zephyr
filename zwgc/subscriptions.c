@@ -32,6 +32,7 @@ static char rcsid_subscriptions_c[] = "$Id$";
 #include "error.h"
 #include "file.h"
 #include "main.h"
+#include "zutils.h"
 
 /****************************************************************************/
 /*                                                                          */
@@ -128,6 +129,8 @@ void unpunt(class, instance, recipient)
       int_dictionary_Delete(puntable_addresses_dict, binding);
 }
 
+#if 0
+
 /****************************************************************************/
 /*                                                                          */
 /*           Code to implement batching [un]subscription requests:          */
@@ -161,7 +164,7 @@ static void free_subscription_list(list, number_of_elements)
 
 static void flush_subscriptions()
 {
-      TRAP(ZSubscribeTo(subscription_list,subscription_list_size, 0),
+      TRAP(ZSubscribeTo(NULL, subscription_list,subscription_list_size, 0),
 	   "while subscribing");
 
     free_subscription_list(subscription_list, subscription_list_size);
@@ -171,7 +174,8 @@ static void flush_subscriptions()
 static void flush_unsubscriptions()
 {
     if (unsubscription_list_size)
-      TRAP(ZUnsubscribeTo(unsubscription_list, unsubscription_list_size, 0),
+      TRAP(ZUnsubscribeTo(NULL, unsubscription_list,
+			  unsubscription_list_size, 0),
 	   "while unsubscribing");
 
     free_subscription_list(unsubscription_list, unsubscription_list_size);
@@ -232,7 +236,7 @@ static void inithosts()
 	strncpy(ourhostcanon, ourhost, sizeof(ourhostcanon)-1);
 	return;
     }
-    strncpy(ourhostcanon, hent->h_name, sizeof(ourhostcanon)-1);
+    (void) strncpy(ourhostcanon,hent->h_name, sizeof(ourhostcanon)-1);
     return;
 }
 
@@ -317,19 +321,28 @@ static void load_subscriptions_from_file(file)
     fclose(file);
 }
 
+#endif /* 0 */
+
 #define DEFSUBS "/dev/null"
 
 static void load_subscriptions()
 {
-    FILE *subscriptions_file;
+    char subsname[MAXPATHLEN];
+    int i, cnt;
+    char *home, *galaxy;
 
-    /* no system default sub file on client--they live on the server */
-    /* BUT...we need to use something to call load_subscriptions_from_file,
-       so we use /dev/null */
-    subscriptions_file = locate_file(subscriptions_filename_override,
-				     USRSUBS, DEFSUBS);
-    if (subscriptions_file)
-      load_subscriptions_from_file(subscriptions_file);
+    if (subscriptions_filename_override) {
+	strcpy(subsname, subscriptions_filename_override);
+    } else if (home = get_home_directory()) {
+	strcpy(subsname, home?home:"");
+	strcat(subsname, "/");
+	strcat(subsname, USRSUBS);
+    } else {
+	strcpy(subsname, "");
+    }
+
+    FATAL_TRAP(load_all_sub_files(SUB, *subsname?subsname:NULL),
+	       "while loading subscription files");
 }
 
 /****************************************************************************/
@@ -340,45 +353,94 @@ static void load_subscriptions()
 
 int zwgc_active = 0;
 
-static ZSubscription_t *saved_subscriptions = NULL;
-static int number_of_saved_subscriptions;
+static ZSubscription_t **saved_subscriptions = NULL;
+static int *number_of_saved_subscriptions;
 
 void zwgc_shutdown()
 {
+    int cnt, i;
+    char *galaxy;
+
     if (!zwgc_active)
       return;
 
-    TRAP(ZRetrieveSubscriptions(0, &number_of_saved_subscriptions),
-	 "while retrieving zephyr subscription list");
+    TRAP(ZGetGalaxyCount(&cnt), "while getting galaxy count");
     if (error_code)
-      return;
-    saved_subscriptions = (ZSubscription_t *)
-      malloc(number_of_saved_subscriptions*sizeof(ZSubscription_t));
-    if (number_of_saved_subscriptions)
-      TRAP(ZGetSubscriptions(saved_subscriptions,
-			     &number_of_saved_subscriptions),
-	   "while getting subscriptions");
-    if (error_code) {
-	free(saved_subscriptions);
-	saved_subscriptions = NULL;
+	return;
+
+    if ((saved_subscriptions =
+	 (ZSubscription_t **) malloc(sizeof(ZSubscription_t *)*cnt)) == NULL) {
+	fprintf(stderr, "out of memory allocating list of subscription lists");
+	return;
     }
-    TRAP(ZCancelSubscriptions(0), "while canceling subscriptions") ;
+    if ((number_of_saved_subscriptions =
+	 (int *) malloc(sizeof(int)*cnt)) == NULL) {
+	fprintf(stderr,
+		"out of memory allocating number of subscription lists");
+	return;
+    }
+
+    for (i=0; i<cnt; i++) {
+	TRAP(ZGetGalaxyName(i, &galaxy), "while getting galaxy name")
+	    if (error_code)
+		continue;
+
+	TRAP(ZRetrieveSubscriptions(galaxy, 0,
+				    &number_of_saved_subscriptions[i]),
+	     "while retrieving zephyr subscription list");
+	if (error_code)
+	    return;
+
+	saved_subscriptions[i] = (ZSubscription_t *)
+	    malloc(number_of_saved_subscriptions[i]*sizeof(ZSubscription_t));
+
+	if (number_of_saved_subscriptions[i])
+	    TRAP(ZGetSubscriptions(saved_subscriptions[i],
+				   &number_of_saved_subscriptions[i]),
+		 "while getting subscriptions");
+	if (error_code) {
+	    free(saved_subscriptions[i]);
+	    saved_subscriptions[i] = NULL;
+	}
+	TRAP(ZCancelSubscriptions(galaxy, 0), "while canceling subscriptions");
+    }
 
     zwgc_active = 0;
 }
 
 void zwgc_startup()
 {
+    int cnt, i;
+    char *galaxy;
+
     if (zwgc_active)
       return;
 
     if (saved_subscriptions) {
-	TRAP(ZSubscribeTo(saved_subscriptions,number_of_saved_subscriptions,0),
-	     "while resubscribing to zephyr messages");
-	free(saved_subscriptions);
+	TRAP(ZGetGalaxyCount(&cnt), "while getting galaxy count");
+	if (error_code)
+	    return;
+
+	for (i=0; i<cnt; i++) {
+	    TRAP(ZGetGalaxyName(i, &galaxy), "while getting galaxy name");
+	    if (error_code)
+		continue;
+
+	    if (saved_subscriptions[i]) {
+		TRAP(ZSubscribeToSansDefaults(galaxy, saved_subscriptions[i],
+					      number_of_saved_subscriptions[i],
+					      0),
+		     "while resubscribing to zephyr messages");
+		free(saved_subscriptions[i]);
+		saved_subscriptions[i] = NULL;
+	    }
+	}
+
 	saved_subscriptions = NULL;
-    } else
-      load_subscriptions();
+    } else {
+	load_subscriptions();
+    }
+
 
     zwgc_active = 1;
 }

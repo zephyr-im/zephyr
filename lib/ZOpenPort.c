@@ -68,3 +68,11 @@ Code_t ZOpenPort(port)
 
     return (ZERR_NONE);
 }
+
+int ZGetPort()
+{
+    if (__Zephyr_open)
+	return(__Zephyr_port);
+    else
+	return(-1);
+}

@@ -25,3 +25,8 @@
 /* Define if `regcomp' exists and works. */
 #undef HAVE_REGCOMP
 
+/* Define if `struct sockaddr' has an `sa_len' field.  */
+#undef HAVE_SA_LEN
+
+/* Define if `resolv' libary exists and has either res_send or __res_send.  */
+#undef HAVE_LIB_RESOLV

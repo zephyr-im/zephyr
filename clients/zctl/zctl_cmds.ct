@@ -1,4 +1,6 @@
-#	$Id$
+#	$Source$
+#	$Author$
+#	$Header$
 #
 	command_table	zctl_cmds;
 
@@ -7,6 +9,12 @@
 
 	request		cancel_subs, "Cancel all subscriptions.",
 			cancel;
+
+	request		loadall, "Subscribe to all subscriptions files.",
+			loadall, ldall;
+
+	request		loadall, "List all subscriptions files.",
+			listall, lsall;
 
 	request		load_subs, "Subscribe to a subscriptions file.",
 			load, ld;
@@ -23,16 +31,28 @@
 	request		subscribe, "Unsubscribe to a class/class instance.",
 			unsubscribe, unsub;
 
+	request		subscribe, "Suppress a class/class instance.",
+			suppress, punt;
+
+	request		subscribe, "Unsuppress to a class/class instance.",
+			unsuppress, unpunt;
+
 	request		sub_file, "Subscribe and add to subscriptions file.",
 			add;
 
 	request		sub_file, "Unsubscribe and add to subscriptions file\n                         as un-subscription.",
 			add_unsubscription, add_un;
 
-	request		sub_file, "Unsubscribe and delete subscription from\n                         subscriptions file.",
+	request		sub_file, "Suppress and add to subscriptions file\n\t\t\t as suppression.",
+			add_suppression, add_punt;
+
+	request		sub_file, "Unsubscribe and delete subscription from\n\t\t\t subscriptions file.",
 			delete, del, dl;
 	request		sub_file, "Delete un-subscription from subscriptions file.",
 			delete_unsubscription, del_un;
+
+	request		sub_file, "Unsuppress and delete suppression from\n\t\t\t subscriptions file.",
+			delete_suppression, del_punt;
 
 	request		current, "Retrieve current subscriptions.",
 			retrieve, ret;
@@ -80,7 +100,7 @@
 			unhide;
 
 	request		ss_list_requests, "List available commands.",
-			list_requests, lr, "?";
+			list_requests, help, lr, "?";
 
 	request		ss_quit, "Quit.",
 			quit, exit, q;

@@ -53,5 +53,13 @@ ec  ZERR_TOOMANYSUBS,
 	"Too many subscriptions to transmit"
 ec  ZERR_EOF,
 	"End of file detected during read"
+ec  ZERR_BADCONF,
+	"Error parsing configuration file"
+ec  ZERR_BADCONFHOST,
+	"Unknown host parsing configuration file"
+ec  ZERR_BADCONFGALAXY,
+	"Galaxy had no servers while parsing configuration file"
+ec  ZERR_GALAXYUNKNOWN,
+	"Unknown zephyr galaxy"
 
 	end

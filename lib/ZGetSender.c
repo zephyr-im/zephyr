@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for the ZGetSender.c function.
+ * It contains source for the ZGetSender function.
  *
  *	Created by:	Robert French
  *
@@ -47,6 +47,6 @@ char *ZGetSender()
     pw = getpwuid((int) getuid());
     if (!pw)
 	return ("unknown");
-    (void) sprintf(sender, "%s@%s", pw->pw_name, __Zephyr_realm);
+    (void) sprintf(sender, "%s@%s", pw->pw_name, ZGetRhs(NULL));
     return (sender);
 }

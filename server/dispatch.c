@@ -52,11 +52,12 @@ ZCONST char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
  * void nack_release(client)
  *	Client *client;
  *
- * void sendit(notice, auth, who, external)
+ * void sendit(notice, auth, who, external, local_dest)
  *	ZNotice_t *notice;
  *	int auth;
  *	struct sockaddr_in *who;
  *      int external;
+ *	int local_dest;
  *
  * void xmit(notice, dest, auth, client)
  *	ZNotice_t *notice;
@@ -251,13 +252,24 @@ dispatch(notice, auth, who, from_server)
     String *notice_class;
     struct sockaddr_in who2;
     int authflag;
-    Realm *realm;
-    char *cp;
 #ifdef DEBUG
     char dbg_buf[BUFSIZ];
 #endif
 
-    authflag = (auth == ZAUTH_YES);
+    /* Set "authflag" to 1 or 0 for handler functions.  Treat
+     * ZAUTH_CKSUM_FAILED as authentic except for sendit(), which is
+     * handled below. */
+    switch (auth) {
+      case ZAUTH_YES:
+      case ZAUTH_CKSUM_FAILED:
+	authflag = 1;
+	break;
+      case ZAUTH_FAILED:
+      case ZAUTH_NO:
+      default:
+	authflag = 0;
+	break;
+    }
 
     if ((int) notice->z_kind < (int) UNSAFE ||
 	(int) notice->z_kind > (int) CLIENTACK) {
@@ -311,21 +323,122 @@ dispatch(notice, auth, who, from_server)
 	admin_notices.val++;
 	status = server_adispatch(notice, authflag, who, me_server);
     } else {
-	if (!realm_bound_for_realm(ZGetRealm(), notice->z_recipient)) {
-	    cp = strchr(notice->z_recipient, '@');
-	    if (!cp ||
-		!(realm = realm_get_realm_by_name(cp + 1))) {
-		/* Foreign user, local realm */
-		sendit(notice, authflag, who, 0);
-	    } else
+	char *finalat, *inlhsat;
+	Realm *realm;
+
+	if (auth == ZAUTH_CKSUM_FAILED)
+	    authflag = 0;
+
+	/*
+
+shadow@ANDREW.CMU.EDU:
+
+according to my whiteboard [external==0 indicates]:
+
+a message from a remote server to a local user
+
+a message from a remote server for remote broadcast (which i
+don't think happens)
+
+a message from a remote server for remote user (also doesn't happen)
+
+and a message from a remote server for a local foreign user (a message
+from ANDREW.CMU.EDU to ATHENA.MIT.EDU for jesse@FSCK.COM)
+
+it also claims a local client to local user message "could be external
+== 0 but is not"
+
+	*/
+	/* The idea is that an individual recipient is either a
+	   kerberos-form name or a galaxy-augmented kerberos-form
+	   name.
+
+	   possible cases:
+
+	   1. The recipient is name-with-ats@rhs.  The message has a
+	   remote individual destination name-with-ats in the rhs
+	   galaxy. [galaxy-augmented kerberos-form name]
+
+	   2. The recipient is lhs@rhs. [kerberos-form name]
+
+	   2a. lhs@rhs has a subscription in the local galaxy.  The
+	   message has a local individual destination
+	   lhs@rhs. [kerberos-form name for local galaxy]
+
+	   2b. rhs is a trusted galaxy whose kerberos realm, if any,
+	   is also (case insensitively) rhs.  The message has a remote
+	   individual destination lhs@rhs in the rhs galaxy.  A
+	   trusted galaxy is one for which is is believed that a user
+	   who may subscribe locally as lhs@rhs (case 2a) is the same
+	   user as lhs@rhs in the rhs galaxy.  Such determination is
+	   currently made by static configuration of trusted galaxies.
+	   [kerberos-form name for remote galaxy]
+
+	   3. The recipient is @rhs, and rhs is a trusted remote
+	   galaxy.  The message has a remote broadcast destination in
+	   the rhs galaxy. [broadcast recipient in remote galaxy]
+
+	   4. The recipient has no @s.  The message has a local
+	   individual destination. [unqualified kerberos-form name]
+
+	   5. The recipient is empty.  The message has a local
+	   broadcast destination. [broadcast recipient in local
+	   galaxy]
+
+	   6. The recipient has some other form.  The message is
+	   invalid.
+
+	*/
+
+	finalat = strrchr(notice->z_recipient, '@');
+
+	if (finalat && finalat > notice->z_recipient) {
+	    /* XXX eeew. */
+	    *finalat = '\0';
+	    inlhsat = strrchr(notice->z_recipient, '@');
+	    *finalat = '@';
+
+	    if (inlhsat == finalat-1) {
+		/* @foo@bar is not legal */
+		nack(notice, who);
+	    } else if (inlhsat) {
+		/* foo@bar@galaxy */
+		Realm *realm = realm_get_realm_by_name(finalat+1);
+		if (!realm) {
+		    /* case 1, unknown galaxy */
+		    nack(notice, who);
+		} else if (strcmp(realm->name, my_galaxy) == 0) {
+		    /* case 1, explict local galaxy */
+		    *finalat = '\0';
+		    sendit(notice, authflag, who, 0, 1);
+		} else {
+		    /* case 1 */
+		    *finalat = '\0';
+		    realm_handoff(notice, authflag, who, realm, 1);
+		}
+	    } else {
+		/* foo@bar */
+		/* 2a is handled by sendit directly; 2b is handled at
+		   the end of sendit if there were no subscriptions */
+		sendit(notice, authflag, who, 1, 1);
+	    }
+	} else if (finalat) {
+	    /* case 3: @foo */
+	    Realm *realm = realm_get_realm_by_name(finalat+1);
+	    if (!realm) {
+		nack(notice, who);
+	    } else if (strcmp(realm->name, my_galaxy) == 0) {
+		sendit(notice, authflag, who, 1, 1);
+	    } else {
 		realm_handoff(notice, authflag, who, realm, 1);
+	    }
+	} else if (notice->z_recipient[0] != '\0') {
+	    /* case 4: foo */
+	    sendit(notice, authflag, who, 0, 1);
 	} else {
-	    if (notice->z_recipient[0] == '@')
-		notice->z_recipient = "";
-	    sendit(notice, authflag, who, 1);
+	    /* case 5: null recipient */
+	    sendit(notice, authflag, who, 1, 1);
 	}
-	free_string(notice_class);
-	return;
     }
 
     if (status == ZSRV_REQUEUE)
@@ -337,12 +450,15 @@ dispatch(notice, auth, who, from_server)
  * Send a notice off to those clients who have subscribed to it.
  */
 
+/* this never gets called with external==1; local_dest==0 */
+
 void
-sendit(notice, auth, who, external)
+sendit(notice, auth, who, external, local_dest)
     ZNotice_t *notice;
     int auth;
     struct sockaddr_in *who;
     int external;
+    int local_dest;
 {
     static int send_counter = 0;
     char recipbuf[ANAME_SZ + INST_SZ + REALM_SZ + 3], *recipp;
@@ -352,7 +468,8 @@ sendit(notice, auth, who, external)
     String *class;
 
     class = make_string(notice->z_class, 1);
-    if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient)) {
+    /* if (realm_bound_for_my_galaxy(notice->z_recipient)) { */
+    if (local_dest) {
       Realm *rlm;
 
       acl = class_get_acl(class);
@@ -435,10 +552,10 @@ sendit(notice, auth, who, external)
     /* Send to clients subscribed to the triplet itself. */
     dest.classname = class;
     dest.inst = make_string(notice->z_class_inst, 1);
-    if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient) && 
-	*notice->z_recipient == '@') 
+    /* if (realm_bound_for_my_galaxy(notice->z_recipient) && */
+    if (local_dest && *notice->z_recipient == '@') {
       dest.recip = make_string("", 0);
-    else {
+    } else {
       strncpy(recipbuf, notice->z_recipient, sizeof(recipbuf));
       recipp = strrchr(recipbuf, '@');
       if (recipp)
@@ -458,17 +575,29 @@ sendit(notice, auth, who, external)
 
     free_string(class);
     free_string(dest.recip);
-    if (any)
+    if (any) {
 	ack(notice, who);
-    else
+    } else if (external) {
+	/* check to see if the recipient is really a name in another
+	   known galaxy */
+	Realm *realm;
+	char *galaxy = strchr(notice->z_recipient, '@');
+
+	if (galaxy && galaxy > notice->z_recipient &&
+	    (realm = realm_get_realm_by_name(galaxy)))
+	    realm_handoff(notice, auth, who, realm, 1);
+	else
+	    nack(notice, who);
+    } else {
 	nack(notice, who);
+    }
 }
 
 /*
  * Send to each client in the list.  Avoid duplicates by setting
  * last_send on each client to send_counter, a nonce which is updated
- * by sendit() above.
- */
+ * by sendit() above.  If the destination is a remote galaxy, send
+ * there only if external==1 */
 
 static int
 send_to_dest(notice, auth, dest, send_counter, external)
@@ -602,6 +731,7 @@ xmit(notice, dest, auth, client)
     Unacked *nacked;
     int packlen, sendfail = 0;
     Code_t retval;
+    struct in_addr my_addr;
 
 #if 0
     zdbug((LOG_DEBUG,"xmit"));
@@ -678,7 +808,7 @@ xmit(notice, dest, auth, client)
           buffer_len = sizeof(ZPacket_t);
 
           retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
-                                     &hdrlen, NULL, NULL);
+                                     &hdrlen, NULL, NULL, NULL, NULL);
           if (retval != ZERR_NONE) {
             syslog(LOG_ERR, "xmit unauth refrag fmt: failed");
             free(buffer);
@@ -694,7 +824,9 @@ xmit(notice, dest, auth, client)
                 return;
               }
 
-              fragsize = Z_MAXPKTLEN-hdrlen-Z_FRAGFUDGE;
+	  fragsize = Z_MAXPKTLEN-hdrlen-Z_FRAGFUDGE;
+
+	  Z_SourceAddr(&client->addr.sin_addr, &my_addr);
 
           while (offset < notice->z_message_len || !notice->z_message_len) {
             (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
@@ -705,15 +837,15 @@ xmit(notice, dest, auth, client)
                                                  partnotice.z_uid.tv.tv_sec);
               partnotice.z_uid.tv.tv_usec = htonl((u_long)
                                                   partnotice.z_uid.tv.tv_usec);
-              (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr,
-                            sizeof(__My_addr));
+              (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &my_addr,
+                            sizeof(my_addr));
             }
             partnotice.z_message = notice->z_message+offset;
             message_len = min(notice->z_message_len-offset, fragsize);
             partnotice.z_message_len = message_len;
 
             retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
-                                       &hdrlen, &ptr, NULL);
+                                       &hdrlen, NULL, NULL, &ptr, NULL);
             if (retval != ZERR_NONE) {
               syslog(LOG_WARNING, "xmit unauth refrag raw: %s",
                      error_message(retval));
@@ -991,11 +1123,6 @@ nack_cancel(notice, who)
 #endif
 }
 
-/* for compatibility when sending subscription information to old clients */
-#ifdef OLD_COMPAT
-#define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
-#endif /* OLD_COMPAT */
-
 /* Dispatch an HM_CTL notice. */
 
 Code_t
@@ -1122,14 +1249,7 @@ control_dispatch(notice, auth, who, server)
 	   someone who has no subscriptions does NOT get a SERVNAK
 	   but rather an empty list.  Note we must therefore
 	   check authentication inside subscr_sendlist */
-#ifdef OLD_COMPAT
-	/* only acknowledge if *not* old version; the old version
-	   acknowledges the packet with the reply */
-	if (strcmp(notice->z_version, OLD_ZEPHYR_VERSION) != 0)
-	    ack(notice, who);
-#else /* !OLD_COMPAT */
 	ack(notice, who);
-#endif /* OLD_COMPAT */
 	subscr_sendlist(notice, auth, who);
 	return ZERR_NONE;
     } else if (!auth) {
@@ -1337,17 +1457,13 @@ static char *
 hm_recipient()
 {
     static char *recipient;
-    char *realm;
 
     if (recipient)
 	return recipient;
 
-    realm = ZGetRealm();
-    if (!realm)
-	realm = "???";
-    recipient = (char *) malloc(strlen(realm) + 4);
+    recipient = (char *) malloc(strlen(my_galaxy) + 4);
     strcpy (recipient, "hm@");
-    strcat (recipient, realm);
+    strcat (recipient, my_galaxy);
     return recipient;
 }
 

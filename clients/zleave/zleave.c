@@ -88,7 +88,7 @@ char **argv;
 			sub.zsub_class = MESSAGE_CLASS;
 			sub.zsub_classinst = INSTANCE;
 			sub.zsub_recipient = ZGetSender();
-			if (ZSubscribeToSansDefaults(&sub,1,(u_short)port)
+			if (ZSubscribeToSansDefaults(NULL, &sub,1,(u_short)port)
 			    != ZERR_NONE) {
 				fprintf(stderr,
 					"Subscription error!  Writing to your terminal...\n");

@@ -71,7 +71,7 @@ main(argc,argv)
 	lines[1] = "You have new mail.";
 	
 	(void) strcpy(mysender,"pop@");
-	(void) strcat(mysender,ZGetRealm());
+	(void) strcat(mysender,ZGetRhs(NULL));
 
 	for (i = 1; i < argc; i++) {
 	    (void) memset((char *)&notice, 0, sizeof(notice));

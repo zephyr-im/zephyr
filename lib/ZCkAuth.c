@@ -33,6 +33,7 @@ Code_t ZCheckAuthentication(notice, from)
     int result;
     ZChecksum_t our_checksum;
     CREDENTIALS cred;
+    char *realm;
 
     /* If the value is already known, return it. */
     if (notice->z_checked_auth != ZAUTH_UNSET)
@@ -41,8 +42,12 @@ Code_t ZCheckAuthentication(notice, from)
     if (!notice->z_auth)
 	return (ZAUTH_NO);
 	
+    /* yes, this really is a realm, not a rhs */
+    if ((realm = ZGetRhs(notice->z_dest_galaxy)) == NULL)
+	return (ZAUTH_NO);
+
     if ((result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
-			       __Zephyr_realm, &cred)) != 0)
+			       realm, &cred)) != 0)
 	return (ZAUTH_NO);
 
 #ifdef NOENCRYPTION

@@ -17,7 +17,8 @@ static const char rcsid_ZNewLocateUser_c[] =
     "$Id$";
 #endif
 
-Code_t ZLocateUser(user, nlocs, auth)
+Code_t ZLocateUser(galaxy, user, nlocs, auth)
+    char *galaxy;
     char *user;
     int *nlocs;
     Z_AuthProc auth;
@@ -29,7 +30,8 @@ Code_t ZLocateUser(user, nlocs, auth)
     (void) ZFlushLocations();	/* ZFlushLocations never fails (the library
 				   is allowed to know this). */
 
-    if ((retval = ZRequestLocations(user, &zald, UNACKED, auth)) != ZERR_NONE)
+    if ((retval = ZRequestLocations(galaxy, user, &zald, UNACKED,
+				    auth)) != ZERR_NONE)
 	return(retval);
 
     retval = Z_WaitForNotice (&notice, ZCompareALDPred, &zald, SRV_TIMEOUT);

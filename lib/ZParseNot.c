@@ -17,55 +17,7 @@ static char rcsid_ZParseNotice_c[] =
 
 #include <internal.h>
 
-/* Assume that strlen is efficient on this machine... */
 #define next_field(ptr)	ptr += strlen (ptr) + 1
-
-#if defined (__GNUC__) && defined (__vax__)
-#undef next_field
-static __inline__ char * Istrend (char *str) {
-    /*
-     * This should be faster on VAX models outside the 2 series.  Don't
-     * use it if you are using MicroVAX 2 servers.  If you are using a
-     * VS2 server, use something like
-     *	#define next_field(ptr)		while(*ptr++)
-     * instead of this code.
-     *
-     * This requires use of GCC to get the optimized code, but
-     * everybody uses GCC, don't they? :-)
-     */
-    register char *str2 asm ("r1");
-    /* Assumes that no field is longer than 64K.... */
-    asm ("locc $0,$65535,(%1)" : "=r" (str2) : "r" (str) : "r0");
-    return str2;
-}
-#define next_field(ptr) ptr = Istrend (ptr) + 1
-#endif
-
-#ifdef mips
-#undef next_field
-/*
- * The compiler doesn't optimize this macro as well as it does the
- * following function.
- */
-#define next_fieldXXX(ptr) do{register unsigned c1,c2;c1= *ptr;	\
-		   while((ptr++,c2= *ptr,c1)&&(ptr++,c1= *ptr,c2));}while(0)
-static char *next_field_1 (s) char *s; {
-    /*
-     * Calling overhead is still present, but this routine is faster
-     * than strlen, and doesn't bother with some of the other math
-     * that we'd just have to undo later anyways.
-     */
-    register unsigned c1 = *s, c2;
-    while (1) {
-	s++; c2 = *s; if (c1 == 0) break;
-	s++; c1 = *s; if (c2 == 0) break;
-	s++; c2 = *s; if (c1 == 0) break;
-	s++; c1 = *s; if (c2 == 0) break;
-    }
-    return s;
-}
-#define next_field(ptr)	ptr=next_field_1(ptr)
-#endif
 
 Code_t ZParseNotice(buffer, len, notice)
     char *buffer;
@@ -74,7 +26,7 @@ Code_t ZParseNotice(buffer, len, notice)
 {
     char *ptr, *end;
     unsigned long temp;
-    int maj, numfields, i;
+    int maj, min, numfields, i;
 
 #ifdef __LINE__
     int lineno;
@@ -110,7 +62,16 @@ Code_t ZParseNotice(buffer, len, notice)
     maj = atoi(ptr);
     if (maj != ZVERSIONMAJOR)
 	return (ZERR_VERS);
+    while (*ptr != '.') ptr++;
+    min = atoi(ptr+1);
     next_field (ptr);
+
+    if (min == ZVERSIONMINOR_GALAXY) {
+       notice->z_dest_galaxy = ptr;
+       next_field (ptr);
+       /* skip the dummy version field */
+       next_field (ptr);
+    }
 
     if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	BAD_PACKET;

@@ -18,30 +18,15 @@ static char rcsid_hm_server_c[] = "$Id$";
 #endif /* SABER */
 #endif /* lint */
 
+static void send_back __P((galaxy_info *, ZNotice_t *));
 static void boot_timeout __P((void *));
-static int get_serv_timeout __P((void));
 
-static Timer *boot_timer = NULL;
-static int serv_rexmit_times[] = { 5, 10, 20, 40 };
-static int serv_timeouts = 0;
-
-int serv_loop = 0;
+extern int hmdebug;
 extern u_short cli_port;
-extern struct sockaddr_in serv_sin, from;
-extern int timeout_type, hmdebug, nservchang, booting, nserv, no_server;
-extern int deactivated, rebootflag;
-extern int numserv;
-extern char **serv_list;
-extern char cur_serv[], prim_serv[];
-extern void die_gracefully();
 
-void hm_control(), send_back(), new_server();
-
-/* Argument is whether we are actually booting, or just attaching
- * after a server switch */
-void
-send_boot_notice(op)
-char *op;
+static void send_hmctl_notice(gi, op)
+     galaxy_info *gi;
+     char *op;
 {
      ZNotice_t notice;
      Code_t ret;
@@ -55,271 +40,244 @@ char *op;
      notice.z_sender = "HM";
      notice.z_recipient = "";
      notice.z_default_format = "";
+     notice.z_dest_galaxy = "";
      notice.z_num_other_fields = 0;
      notice.z_message_len = 0;
   
-     /* Notify server that this host is here */
-     if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
+     if ((ret = ZSetDestAddr(&gi->sin)) != ZERR_NONE) {
 	  Zperr(ret);
 	  com_err("hm", ret, "setting destination");
      }
      if ((ret = ZSendNotice(&notice, ZNOAUTH)) != ZERR_NONE) {
 	  Zperr(ret);
-	  com_err("hm", ret, "sending startup notice");
-     }
-     boot_timer = timer_set_rel(get_serv_timeout(), boot_timeout, NULL);
-}
-
-/* Argument is whether we are detaching or really going down */
-void
-send_flush_notice(op)
-char *op;
-{
-     ZNotice_t notice;
-     Code_t ret;
-     
-     /* Set up server notice */
-     notice.z_kind = HMCTL;
-     notice.z_port = cli_port;
-     notice.z_class = ZEPHYR_CTL_CLASS;
-     notice.z_class_inst = ZEPHYR_CTL_HM;
-     notice.z_opcode = op;
-     notice.z_sender = "HM";
-     notice.z_recipient = "";
-     notice.z_default_format = "";
-     notice.z_num_other_fields = 0;
-     notice.z_message_len = 0;
-
-     /* Tell server to lose us */
-     if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
-	  Zperr(ret);
-	  com_err("hm", ret, "setting destination");
-     }
-     if ((ret = ZSendNotice(&notice, ZNOAUTH)) != ZERR_NONE) {
-	  Zperr(ret);
-	  com_err("hm", ret, "sending flush notice");
+	  com_err("hm", ret, "sending hmctl notice %s", op);
      }
 }
 
-void
-find_next_server(sugg_serv)
-char *sugg_serv;
+static int choose_next_server(gi)
+     galaxy_info *gi;
 {
-     struct hostent *hp;
-     int done = 0;
-     char **parse = serv_list;
-     char *new_serv;
-  
-     if (sugg_serv) {
-	  do {
-	       if (!strcmp(*parse, sugg_serv))
-		    done = 1;
-	  } while ((done == 0) && (*++parse != NULL));
-     }
-     if (done) {
-	  if ((hp = gethostbyname(sugg_serv)) != NULL) {
-	       DPR2 ("Server = %s\n", sugg_serv);	
-	       (void)strncpy(cur_serv, sugg_serv, MAXHOSTNAMELEN);
-	       cur_serv[MAXHOSTNAMELEN - 1] = '\0';
-	       if (hmdebug)
-		    syslog(LOG_DEBUG, "Suggested server: %s\n", sugg_serv);
-	  } else {
-	       done = 0; 
-	  }
-     }
-     while (!done) {
-	 if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
-	     serv_loop = 0;
-	     if ((hp = gethostbyname(prim_serv)) != NULL) {
-		 DPR2 ("Server = %s\n", prim_serv);
-		 (void)strncpy(cur_serv, prim_serv, MAXHOSTNAMELEN);
-		 cur_serv[MAXHOSTNAMELEN - 1] = '\0';
-		 done = 1;
-		 break;
-	     }
-	 }
+    int new_server;
 
-	 switch (numserv) {
-	 case 1:
-	     if ((hp = gethostbyname(*serv_list)) != NULL) {
-		 DPR2 ("Server = %s\n", *serv_list);
-		 (void)strncpy(cur_serv, *serv_list, MAXHOSTNAMELEN);
-		 cur_serv[MAXHOSTNAMELEN - 1] = '\0';
-		 done = 1;
-		 break;
-	     }
-	     /* fall through */
-	 case 0:
-	     if (rebootflag)
-		 die_gracefully();
-	     else
-		 sleep(1);
-	     break;
-	 default:
-	     do {
-		 new_serv = serv_list[random() % numserv];
-	     } while (!strcmp(new_serv, cur_serv));
-
-	     if ((hp = gethostbyname(new_serv)) != NULL) {
-		 DPR2 ("Server = %s\n", new_serv);
-		 (void)strncpy(cur_serv, new_serv, MAXHOSTNAMELEN);
-		 cur_serv[MAXHOSTNAMELEN - 1] = '\0';
-		 done = 1;
-	     } else
-		 sleep(1);
-
-	     break;
-	 }
+     if (gi->current_server < 0) {
+	 new_server = random() % gi->galaxy_config.nservers;
+     } else if (gi->galaxy_config.nservers == 1) {
+	 new_server = NO_SERVER;
+     } else if ((new_server = (random() % (gi->galaxy_config.nservers - 1))) ==
+		gi->current_server) {
+	 new_server = gi->galaxy_config.nservers - 1;
      }
-     (void) memcpy((char *)&serv_sin.sin_addr, hp->h_addr, 4);
-     nservchang++;
+
+     return(new_server);
 }
 
-void
-server_manager(notice)
-ZNotice_t *notice;
+void server_manager(notice, from)
+     ZNotice_t *notice;
+     struct sockaddr_in *from;
 {
-    if (memcmp((char *)&serv_sin.sin_addr, (char *)&from.sin_addr, 4) ||
-	(serv_sin.sin_port != from.sin_port)) {
-	syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
-    } else {
-	/* This is our server, handle the notice */
-	booting = 0;
-	serv_timeouts = 0;
-	if (boot_timer) {
-	    timer_reset(boot_timer);
-	    boot_timer = NULL;
-	}
-	DPR ("A notice came in from the server.\n");
-	nserv++;
-	switch(notice->z_kind) {
-	case HMCTL:
-	    hm_control(notice);
-	    break;
-	case SERVNAK:
-	case SERVACK:
-	    send_back(notice);
-	    break;
-	default:
-	    syslog (LOG_INFO, "Bad notice kind!?");
+    int i;
+    galaxy_info *gi;
+
+    for (i=0; i<ngalaxies; i++)
+	if ((memcmp((char *)&galaxy_list[i].sin.sin_addr,
+		    (char *)&from->sin_addr, 4) == 0) &&
+	    (galaxy_list[i].sin.sin_port == from->sin_port)) {
+	    gi = &galaxy_list[i];
 	    break;
 	}
+
+    if (!gi) {
+	syslog(LOG_INFO, "Bad server notice from %s:%u.",
+	       inet_ntoa(from->sin_addr), from->sin_port);
+	return;
+    }
+
+    DPR ("A notice came in from the server.\n");
+
+    if (gi->boot_timer) {
+	timer_reset(gi->boot_timer);
+	gi->boot_timer = NULL;
+    }
+
+    gi->nsrvpkts++;
+
+    switch (gi->state) {
+    case NEED_SERVER:
+	/* there's a server which thinks it cares about us.  it's
+	   wrong.  reboot the hm. */
+	send_hmctl_notice(gi, HM_BOOT);
+
+	gi->state = BOOTING;
+	gi->boot_timer = timer_set_rel(BOOT_TIMEOUT, boot_timeout, gi);
+
+	return;
+    case DEAD_SERVER:
+	/* the server is back from the dead.  reanimate the queue and
+	   pretend it never went away */
+	/* fall through */
+    case BOOTING:
+	/* got the ack. */
+	retransmit_galaxy(gi);
+	gi->state = ATTACHED;
+	break;
+    }
+
+    switch(notice->z_kind) {
+    case HMCTL:
+	hm_control(gi, notice);
+	break;
+    case SERVNAK:
+    case SERVACK:
+	send_back(gi, notice);
+	break;
+    default:
+	syslog (LOG_INFO, "Bad notice kind %d", notice->z_kind);
+	break;
     }
 }
 
-void
-hm_control(notice)
-ZNotice_t *notice;
+void hm_control(gi, notice)
+     galaxy_info *gi;
+     ZNotice_t *notice;
 {
     Code_t ret;
     struct hostent *hp;
-    char suggested_server[MAXHOSTNAMELEN];
-    unsigned long addr;
+    char suggested_server[64];
+    struct in_addr addr;
      
     DPR("Control message!\n");
     if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN)) {
 	if (notice->z_message_len) {
-	    addr = inet_addr(notice->z_message);
-	    hp = gethostbyaddr((char *) &addr, sizeof(addr), AF_INET);
-	    if (hp != NULL) {
-		strncpy(suggested_server, hp->h_name, sizeof(suggested_server));
-		suggested_server[sizeof(suggested_server) - 1] = '\0';
-		new_server(suggested_server);
-	    } else {
-		new_server(NULL);
-	    }
+	    addr.s_addr = inet_addr(notice->z_message);
+	    galaxy_new_server(gi, &addr);
 	} else {
-	    new_server((char *)NULL);
+	    galaxy_new_server(gi, NULL);
 	}
     } else if (!strcmp(notice->z_opcode, SERVER_PING)) {
 	notice->z_kind = HMACK;
-	if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
-	    Zperr(ret);
-	    com_err("hm", ret, "setting destination");
-	}
-	if ((ret = send_outgoing(notice)) != ZERR_NONE) {
+	if ((ret = send_outgoing(&gi->sin, notice)) != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("hm", ret, "sending ACK");
-	}
-	if (no_server) {
-	    no_server = 0;
-	    retransmit_queue(&serv_sin);
 	}
     } else {
 	syslog (LOG_INFO, "Bad control message.");
     }
 }
 
-void
-send_back(notice)
-ZNotice_t *notice;
+static void send_back(gi, notice)
+     galaxy_info *gi;
+     ZNotice_t *notice;
 {
     ZNotice_Kind_t kind;
     struct sockaddr_in repl;
     Code_t ret;
   
-    if (!strcmp(notice->z_opcode, HM_BOOT) ||
-	!strcmp(notice->z_opcode, HM_ATTACH)) {
-	/* ignore message, just an ack from boot, but exit if we
-	 * are rebooting.
-	 */
-	if (rebootflag)
-	    die_gracefully();
-    } else {
-	if (remove_notice_from_queue(notice, &kind, &repl) != ZERR_NONE) {
-	    syslog (LOG_INFO, "Hey! This packet isn't in my queue!");
-	} else {
-	    /* check if client wants an ACK, and send it */
-	    if (kind == ACKED) {
-		DPR2 ("Client ACK port: %u\n", ntohs(repl.sin_port));
-		if ((ret = ZSetDestAddr(&repl)) != ZERR_NONE) {
-		    Zperr(ret);
-		    com_err("hm", ret, "setting destination");
-		}
-		if ((ret = send_outgoing(notice)) != ZERR_NONE) {
-		    Zperr(ret);
-		    com_err("hm", ret, "sending ACK");
-		}
-	    }
-	}
+    if ((strcmp(notice->z_opcode, HM_BOOT) == 0) ||
+	(strcmp(notice->z_opcode, HM_ATTACH) == 0))
+	return;
+
+    if (remove_notice_from_galaxy(gi, notice, &kind, &repl) != ZERR_NONE) {
+	syslog (LOG_INFO, "Hey! This packet isn't in my queue!");
+	return;
     }
-    if (no_server) {
-	no_server = 0;
-	retransmit_queue(&serv_sin);
+
+    /* check if client wants an ACK, and send it */
+    if (kind == ACKED) {
+	DPR2 ("Client ACK port: %u\n", ntohs(repl.sin_port));
+	if ((ret = send_outgoing(&repl, notice)) != ZERR_NONE) {
+	    Zperr(ret);
+	    com_err("hm", ret, "sending ACK");
+	}
     }
 }
 
-void
-new_server(sugg_serv)
-char *sugg_serv;
+void galaxy_new_server(gi, addr)
+     galaxy_info *gi;
+     struct in_addr *addr;
 {
-    no_server = 1;
-    syslog (LOG_INFO, "Server went down, finding new server.");
-    send_flush_notice(HM_DETACH);
-    find_next_server(sugg_serv);
-    if (booting) {
-	send_boot_notice(HM_BOOT);
-	deactivated = 0;
-    } else {
-	send_boot_notice(HM_ATTACH);
+    int i;
+    int new_server;
+
+    if (gi->state == ATTACHED) {
+	disable_galaxy_retransmits(gi);
+	gi->nchange++;
+	syslog(LOG_INFO, "Server went down, finding new server.");
     }
-    disable_queue_retransmits();
+
+    if (gi->current_server != NO_SERVER)
+	send_hmctl_notice(gi, HM_DETACH);
+
+    if (gi->boot_timer) {
+	timer_reset(gi->boot_timer);
+	gi->boot_timer = 0;
+    }
+
+    if (addr) {
+	gi->current_server = EXCEPTION_SERVER;
+	gi->sin.sin_addr = *addr;
+
+	for (i=0; i<gi->galaxy_config.nservers; i++)
+	    if (gi->galaxy_config.server_list[i].addr.s_addr ==
+		gi->sin.sin_addr.s_addr) {
+		gi->current_server = i;
+		break;
+	    }
+
+	gi->state = ATTACHING;
+    } else if ((new_server = choose_next_server(gi)) == NO_SERVER) {
+	/* the only server went away.  Set a boot timer, try again
+	   later */
+
+	gi->current_server = NO_SERVER;
+
+	gi->state = (gi->state == BOOTING)?NEED_SERVER:DEAD_SERVER;
+	gi->boot_timer = timer_set_rel(DEAD_TIMEOUT, boot_timeout, gi);
+
+	return;
+    } else {
+	gi->current_server = new_server;
+	gi->sin.sin_addr =
+	    gi->galaxy_config.server_list[gi->current_server].addr;
+
+	gi->state = (gi->state == NEED_SERVER)?BOOTING:ATTACHING;
+    }
+
+    send_hmctl_notice(gi, (gi->state == BOOTING)?HM_BOOT:HM_ATTACH);
+    gi->boot_timer = timer_set_rel(BOOT_TIMEOUT, boot_timeout, gi);
+}
+
+void galaxy_flush(gi)
+     galaxy_info *gi;
+{
+    init_galaxy_queue(gi);
+
+    /* to flush, actually do a boot, because this causes an ACK to
+       come back when it completes */
+
+    if (gi->state == ATTACHED) {
+	send_hmctl_notice(gi, HM_BOOT);
+
+	gi->state = BOOTING;
+	gi->boot_timer = timer_set_rel(BOOT_TIMEOUT, boot_timeout, gi);
+    } else {
+	gi->state = NEED_SERVER;
+    }
+}
+
+void galaxy_reset(gi)
+     galaxy_info *gi;
+{
+    gi->current_server = NO_SERVER;
+    gi->nchange = 0;
+    gi->nsrvpkts = 0;
+    gi->ncltpkts = 0;
+
+    galaxy_flush(gi);
 }
 
 static void boot_timeout(arg)
 void *arg;
 {
-    serv_timeouts++;
-    new_server(NULL);
+    galaxy_new_server((galaxy_info *) arg, NULL);
 }
 
-static int get_serv_timeout(void)
-{
-    int ind, ntimeouts;
-
-    ind = (numserv == 0) ? serv_timeouts : serv_timeouts / numserv;
-    ntimeouts = sizeof(serv_rexmit_times) / sizeof(*serv_rexmit_times);
-    if (ind >= ntimeouts)
-	ind = ntimeouts - 1;
-    return serv_rexmit_times[ind];
-}

@@ -70,29 +70,14 @@ Sched	serv_ksched;
 
 /* for compatibility when sending subscription information to old clients */
 
-#ifdef OLD_COMPAT
-#define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
-#define	OLD_CLIENT_INCOMPSUBS	"INCOMP"
-static void old_compat_subscr_sendlist __P((ZNotice_t *notice, int auth,
-					  struct sockaddr_in *who));
-extern int old_compat_count_subscr;	/* counter of old use */
-#endif /* OLD_COMPAT */
-#ifdef NEW_COMPAT
-#define NEW_OLD_ZEPHYR_VERSION	"ZEPH0.1"
-static void new_old_compat_subscr_sendlist __P((ZNotice_t *notice, int auth,
-					      struct sockaddr_in *who)); 
-extern int new_compat_count_subscr;	/* counter of old use */
-#endif /* NEW_COMPAT */
-
 extern char *re_comp(), *re_conv();
 static Code_t add_subscriptions __P((Client *who, Destlist *subs_queue,
 				   ZNotice_t *notice, Server *server));
 static Destlist *extract_subscriptions __P((ZNotice_t *notice));
 static void free_subscriptions __P((Destlist *subs));
 static void free_subscription __P((Destlist *sub));
-static char **subscr_marshal_subs __P((ZNotice_t *notice, int auth,
-				     struct sockaddr_in *who,
-				     int *found));
+static char **subscr_marshal_subs __P((Destlist *subs, 
+				       int *found));
 static Destlist *subscr_copy_def_subs __P((char *person));
 static Code_t subscr_realm_sendit __P((Client *who, Destlist *subs,
 				       ZNotice_t *notice, Realm *realm));
@@ -157,7 +142,7 @@ add_subscriptions(who, subs, notice, server)
 	/* check the recipient for a realm which isn't ours */
 	realm = NULL;
 	if (subs->dest.recip->string[0] == '@' &&
-	    strcmp((subs->dest.recip->string + 1), ZGetRealm()) != 0)
+	    strcmp((subs->dest.recip->string + 1), my_galaxy) != 0)
 	    realm = realm_get_realm_by_name(subs->dest.recip->string + 1);
 	if (!bdumping) {
 	    if (subs->dest.recip != empty && subs->dest.recip != sender
@@ -186,14 +171,19 @@ add_subscriptions(who, subs, notice, server)
 		}
 	    }
 	}
-	if (realm && !bdumping && server && server == me_server) {
-	    retval = subscr_realm_sendit(who, subs, notice, realm);
-	    if (retval != ZERR_NONE) {
-		free_subscriptions(subs);
-		free_string(sender);
-		return(retval);
+	if (realm && !bdumping) {
+	    if (server && server == me_server) {
+	        retval = subscr_realm_sendit(who, subs, notice, realm);
+	        if (retval != ZERR_NONE) {
+		    free_subscriptions(subs);
+		    free_string(sender);
+		    return(retval);
+		} else {
+		    /* free this one, will get from ADD */
+		    free_subscription(subs);
+		}
 	    } else {
-	      free_subscription(subs); /* free this one, will get from ADD */
+	            /* Indicates we leaked traffic back to our realm */
 	    }
 	} else {
 	  retval = triplet_register(who, &subs->dest, NULL);
@@ -485,28 +475,15 @@ subscr_sendlist(notice, auth, who)
     int auth;
     struct sockaddr_in *who;
 {
-    char **answer;
+    unsigned short temp;
+    int defsubs = 0;
+    Destlist *subs = NULL;
+    Client *client;
+    char **answer = NULL;
     int found;
     struct sockaddr_in send_to_who;
     Code_t retval;
 
-#ifdef OLD_COMPAT
-    if (strcmp(notice->z_version, OLD_ZEPHYR_VERSION) == 0) {
-	/* we are talking to an old client; use the old-style
-	   acknowledgement-message */
-	old_compat_subscr_sendlist(notice, auth, who);
-	return;
-    }
-#endif /* OLD_COMPAT */
-#ifdef NEW_COMPAT
-    if (strcmp(notice->z_version, NEW_OLD_ZEPHYR_VERSION) == 0) {
-	/* we are talking to a new old client; use the new-old-style
-	   acknowledgement-message */
-	new_old_compat_subscr_sendlist(notice, auth, who);
-	return;
-    }
-#endif /* NEW_COMPAT */
-    answer = subscr_marshal_subs(notice, auth, who, &found);
     send_to_who = *who;
     send_to_who.sin_port = notice->z_port;  /* Return port */
 
@@ -514,55 +491,13 @@ subscr_sendlist(notice, auth, who)
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "subscr_sendlist set addr: %s",
 	       error_message(retval));
-	if (answer)
-	    free(answer);
 	return;
     }
 
-    /* XXX for now, don't do authentication */
-    auth = 0;
-
-    notice->z_kind = ACKED;
-
-    /* use xmit_frag() to send each piece of the notice */
-
-    retval = ZSrvSendRawList(notice, answer, found * NUM_FIELDS, xmit_frag);
-    if (retval != ZERR_NONE)
-	syslog(LOG_WARNING, "subscr_sendlist xmit: %s", error_message(retval));
-    if (answer)
-	free(answer);
-}
-
-static char **
-subscr_marshal_subs(notice, auth, who, found)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    int *found;
-{
-    char **answer = NULL;
-    unsigned short temp;
-    Code_t retval;
-    Client *client;
-    Destlist *subs = NULL, *sub;
-    int i;
-    int defsubs = 0;
-
-#if 0
-    zdbug((LOG_DEBUG, "subscr_marshal"));
-#endif
-    *found = 0;
-
-    /* Note that the following code is an incredible crock! */
-	
-    /* We cannot send multiple packets as acknowledgements to the client,
-       since the hostmanager will ignore the later packets.  So we need
-       to send directly to the client. */
-
-    /* Make our own copy so we can send directly back to the client */
-    /* RSF 11/07/87 */
-
     if (strcmp(notice->z_opcode, CLIENT_GIMMESUBS) == 0) {
+	if (!auth)
+	    goto got_answer;
+
 	/* If the client has requested his current subscriptions,
 	   the message field of the notice contains the port number
 	   of the client for which the sender desires the subscription
@@ -572,10 +507,24 @@ subscr_marshal_subs(notice, auth, who, found)
 	if (retval != ZERR_NONE) {
 	    syslog(LOG_WARNING, "subscr_marshal read port num: %s",
 		   error_message(retval));
-	    return(NULL);
+	    goto got_answer;
 	}
 
 	client = client_find(&who->sin_addr, htons(temp));
+
+	if (!client)
+	    goto got_answer;
+
+	/* check authenticity here.  The user must be authentic to get
+	   a list of subscriptions. */
+
+	if (strcmp(client->principal->string, notice->z_sender) != 0) {
+	    zdbug ((LOG_DEBUG,
+		    "subscr_marshal: %s requests subs for %s at %s/%d",
+		    notice->z_sender, client->principal->string,
+		    inet_ntoa(who->sin_addr), ntohs(who->sin_port)));
+	    goto got_answer;
+	}
 
 	if (client)
 	    subs = client->subs;
@@ -591,237 +540,74 @@ subscr_marshal_subs(notice, auth, who, found)
     } else {
 	syslog(LOG_ERR, "subscr_marshal bogus opcode %s",
 	       notice->z_opcode);
-	return(NULL);
+	goto got_answer;
     }
 
-    if (subs) {
+    answer = subscr_marshal_subs(subs, &found);
 
-	/* check authenticity here.  The user must be authentic to get
-	   a list of subscriptions. If he is not subscribed to
-	   anything, this if-clause fails, and he gets a response
-	   indicating no subscriptions.
-	   if retrieving default subscriptions, don't care about
-	   authentication. */
+ got_answer:
+    notice->z_kind = ACKED;
 
-	if (!auth && !defsubs)
-	    return(NULL);
-	if (!defsubs) {
-	    if (client && (strcmp(client->principal->string,
-				  notice->z_sender) != 0)) {
-		zdbug ((LOG_DEBUG,
-			"subscr_marshal: %s requests subs for %s at %s/%d",
-			notice->z_sender, client->principal->string,
-			inet_ntoa(who->sin_addr), ntohs(who->sin_port)));
-		return 0;
-	    }
-	}
+    /* use xmit_frag() to send each piece of the notice */
 
-	for (sub = subs; sub; sub = sub->next)
-	    (*found)++;
-
-	/* found is now the number of subscriptions */
-
-	/* coalesce the subscription information into a list of char *'s */
-	answer = (char **) malloc((*found) * NUM_FIELDS * sizeof(char *));
-	if (answer == NULL) {
-	    syslog(LOG_ERR, "subscr no mem(answer)");
-	    *found = 0;
-	} else {
-	    i = 0;
-	    for (sub = subs; sub; sub = sub->next) {
-		answer[i * NUM_FIELDS] = sub->dest.classname->string;
-		answer[i * NUM_FIELDS + 1] = sub->dest.inst->string;
-		answer[i * NUM_FIELDS + 2] = sub->dest.recip->string;
-		i++;
-	    }
-	}
-    }
+    retval = ZSrvSendRawList(notice, answer, found * NUM_FIELDS, xmit_frag);
+    if (retval != ZERR_NONE)
+	syslog(LOG_WARNING, "subscr_sendlist xmit: %s", error_message(retval));
     if (defsubs)
 	free_subscriptions(subs);
-    return answer;
+    if (answer)
+	free(answer);
 }
 
-#ifdef NEW_COMPAT
-static void
-new_old_compat_subscr_sendlist(notice, auth, who)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
+static char **
+subscr_marshal_subs(subs, found)
+    Destlist *subs;
+    int *found;
 {
+    char **answer = NULL;
     Code_t retval;
-    ZNotice_t reply;
-    ZPacket_t reppacket;
-    int packlen, found, count, initfound, zerofound;
-    char buf[64];
-    const char **answer;
-    struct sockaddr_in send_to_who;
+    Destlist *sub;
     int i;
 
-    new_compat_count_subscr++;
+#if 0
+    zdbug((LOG_DEBUG, "subscr_marshal"));
+#endif
+    *found = 0;
 
-    syslog(LOG_INFO, "new old subscr, %s", inet_ntoa(who->sin_addr));
-    reply = *notice;
-    reply.z_kind = SERVACK;
-    reply.z_authent_len = 0; /* save some space */
-    reply.z_auth = 0;
+    /* Note that the following code is an incredible crock! */
+	
+    /* We cannot send multiple packets as acknowledgements to the client,
+       since the hostmanager will ignore the later packets.  So we need
+       to send directly to the client. */
 
-    send_to_who = *who;
-    send_to_who.sin_port = notice->z_port;  /* Return port */
+    /* Make our own copy so we can send directly back to the client */
+    /* RSF 11/07/87 */
 
-    retval = ZSetDestAddr(&send_to_who);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "new_old_subscr_sendlist set addr: %s",
-	       error_message(retval));
-	return;
+    if (!subs)
+	return(NULL);
+
+    for (sub = subs; sub; sub = sub->next)
+	(*found)++;
+
+    /* found is now the number of subscriptions */
+
+    /* coalesce the subscription information into a list of char *'s */
+    answer = (char **) malloc((*found) * NUM_FIELDS * sizeof(char *));
+    if (answer == NULL) {
+	syslog(LOG_ERR, "subscr no mem(answer)");
+	*found = 0;
+    } else {
+	i = 0;
+	for (sub = subs; sub; sub = sub->next) {
+	    answer[i * NUM_FIELDS] = sub->dest.classname->string;
+	    answer[i * NUM_FIELDS + 1] = sub->dest.inst->string;
+	    answer[i * NUM_FIELDS + 2] = sub->dest.recip->string;
+	    i++;
+	}
     }
 
-    /* retrieve  the subscriptions */
-    answer = subscr_marshal_subs(notice, auth, who, &found);
-
-    /* note that when there are no subscriptions, found == 0, so
-       we needn't worry about answer being NULL since
-       ZFormatSmallRawNoticeList won't reference the pointer */
-
-    /* send 5 at a time until we are finished */
-    count = found?((found-1) / 5 + 1):1;	/* total # to be sent */
-    i = 0;					/* pkt # counter */
-#if 0
-    zdbug((LOG_DEBUG,"Found %d subscriptions for %d packets", found, count));
-#endif
-    initfound = found;
-    zerofound = (found == 0);
-    while (found > 0 || zerofound) {
-	packlen = sizeof(reppacket);
-	sprintf(buf, "%d/%d", ++i, count);
-	reply.z_opcode = buf;
-	retval = ZFormatSmallRawNoticeList(&reply,
-					   answer + (initfound - found)
-					    * NUM_FIELDS,
-					   ((found > 5) ? 5 : found)
-					    * NUM_FIELDS,
-					   reppacket, &packlen);
-	if (retval != ZERR_NONE) {
-	    syslog(LOG_ERR, "subscr_sendlist format: %s",
-		   error_message(retval));
-	    if (answer)
-		free(answer);
-	    return;
-	}
-	retval = ZSendPacket(reppacket, packlen, 0);
-	if (retval != ZERR_NONE) {
-	    syslog(LOG_WARNING, "subscr_sendlist xmit: %s",
-		   error_message(retval));
-	    if (answer)
-		free(answer);
-	    return;
-	}
-	found -= 5;
-	zerofound = 0;
-    }
-#if 0
-    zdbug((LOG_DEBUG,"subscr_sendlist acked"));
-#endif
-    if (answer)
-	free(answer);
+    return answer;
 }
-#endif /* NEW_COMPAT */
-
-#ifdef OLD_COMPAT
-static void
-old_compat_subscr_sendlist(notice, auth, who)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-{
-    Client *client = client_find(&who->sin_addr, notice->z_port);
-    Destlist *subs;
-    Code_t retval;
-    ZNotice_t reply;
-    ZPacket_t reppacket;
-    int packlen, i, found = 0;
-    char **answer = NULL;
-
-    old_compat_count_subscr++;
-
-    syslog(LOG_INFO, "old old subscr, %s", inet_ntoa(who->sin_addr));
-    if (client && client->subs) {
-
-	/* check authenticity here.  The user must be authentic to get
-	   a list of subscriptions. If he is not subscribed to
-	   anything, the above test fails, and he gets a response
-	   indicating no subscriptions */
-
-	if (!auth) {
-	    clt_ack(notice, who, AUTH_FAILED);
-	    return;
-	}
-
-	for (subs = client->subs; subs; subs = subs->next)
-	    found++;
-	/* found is now the number of subscriptions */
-
-	/* coalesce the subscription information into a list of char *'s */
-	answer = (char **) malloc(found * NUM_FIELDS * sizeof(char *));
-	if (!answer) {
-	    syslog(LOG_ERR, "old_subscr_sendlist no mem(answer)");
-	    found = 0;
-	} else {
-	    i = 0;
-	    for (subs = client->subs; subs; subs = subs->next) {
-		answer[i*NUM_FIELDS] = subs->dest.classname->string;
-		answer[i*NUM_FIELDS + 1] = subs->dest.inst->string;
-		answer[i*NUM_FIELDS + 2] = subs->dest.recip->string;
-		i++;
-	    }
-	}
-    }
-
-    /* note that when there are no subscriptions, found == 0, so
-       we needn't worry about answer being NULL */
-
-    reply = *notice;
-    reply.z_kind = SERVACK;
-    reply.z_authent_len = 0; /* save some space */
-    reply.z_auth = 0;
-
-    /* if it's too long, chop off one at a time till it fits */
-    while ((retval = ZFormatSmallRawNoticeList(&reply, answer,
-					       found * NUM_FIELDS,
-					       reppacket,
-					       &packlen)) != ZERR_PKTLEN) {
-	found--;
-	reply.z_opcode = OLD_CLIENT_INCOMPSUBS;
-    }
-    if (retval != ZERR_NONE) {
-	syslog(LOG_ERR, "old_subscr_sendlist format: %s",
-	       error_message(retval));
-	if (answer)
-	    free(answer);
-	return;
-    }
-    retval = ZSetDestAddr(who);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "subscr_sendlist set addr: %s",
-	       error_message(retval));
-	if (answer)
-	    free(answer);
-	return;
-    }
-    retval = ZSendPacket(reppacket, packlen, 0);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "subscr_sendlist xmit: %s",
-	       error_message(retval));
-	if (answer)
-	    free(answer);
-	return;
-    }
-#if 0
-    zdbug((LOG_DEBUG,"subscr_sendlist acked"));
-#endif
-    if (answer)
-	free(answer);
-}
-#endif /* OLD_COMPAT */
 
 /*
  * Send the client's subscriptions to another server
@@ -992,7 +778,7 @@ extract_subscriptions(notice)
 	sub->dest.classname = make_string(class_name, 1);
 	sub->dest.inst = make_string(classinst, 1);
 	/* Nuke @REALM if REALM is us. */
-	if (recip[0] == '@' && !strcmp(recip + 1, ZGetRealm()))
+	if (recip[0] == '@' && !strcmp(recip + 1, my_galaxy))
 	    sub->dest.recip = make_string("", 0);
 	else
 	    sub->dest.recip = make_string(recip, 0);
@@ -1238,6 +1024,7 @@ subscr_unsub_sendit(who, subs, realm)
   list[1] = subs->dest.inst->string;
   list[2] = "";
 
+  (void) memset((char *)&unotice, 0, sizeof(unotice));
   unotice.z_class = ZEPHYR_CTL_CLASS;
   unotice.z_class_inst = ZEPHYR_CTL_REALM;
   unotice.z_opcode = REALM_UNSUBSCRIBE;
@@ -1381,6 +1168,7 @@ subscr_realm_subs(realm)
     text[4] = subs->dest.recip->string;
 
     /* format snotice */
+    (void) memset((char *)&snotice, 0, sizeof(snotice));
     snotice.z_class_inst = ZEPHYR_CTL_REALM;
     snotice.z_opcode = REALM_REQ_SUBSCRIBE;
     snotice.z_port = 0;
@@ -1429,7 +1217,7 @@ subscr_check_foreign_subs(notice, who, server, realm, newsubs)
     Realm *realm;
     Destlist *newsubs;
 {
-    Destlist *subs, *subs2, *next;
+    Destlist *subs, *subs2;
     Acl *acl;
     char **text;
     int found = 0;
@@ -1438,6 +1226,7 @@ subscr_check_foreign_subs(notice, who, server, realm, newsubs)
     int packlen;
     Code_t retval;
     String *sender;
+    Realm *rlm;
 
     for (subs = newsubs; subs; subs = subs->next)
 	found++;
@@ -1464,18 +1253,27 @@ subscr_check_foreign_subs(notice, who, server, realm, newsubs)
     I_ADVANCE(3);
 
     found = 0;
-    for (subs = newsubs; subs; subs = next) {
-	next=subs->next;
+
+    rlm = realm_which_realm(who); 
+
+    for (subs = newsubs; subs; subs = subs->next) {
+	if (subs->dest.recip->string[0] != '\0') {
+	    syslog(LOG_WARNING, "subscr bad recip %s by %s (%s)", 
+                   subs->dest.recip->string, 
+                   sender->string, rlm->name); 
+	    continue;
+	}
 	acl = class_get_acl(subs->dest.classname);
 	if (acl) {
-	    Realm *rlm;
-	    rlm = realm_which_realm(who); 
 	    if (rlm && server == me_server) { 
 		if (!realm_sender_in_realm(rlm->name, sender->string)) { 
 		    syslog(LOG_WARNING, "subscr auth not verifiable %s (%s) class %s",
 			   sender->string, rlm->name, 
 			   subs->dest.classname->string);
-		    continue; 
+		    free_subscriptions(newsubs);
+		    free_string(sender);
+		    free(text);
+		    return ZSRV_CLASSRESTRICTED;
 		} 
 	    } 
 	    if (!access_check(sender->string, acl, SUBSCRIBE)) {

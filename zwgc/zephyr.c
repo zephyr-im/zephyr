@@ -132,14 +132,6 @@ void zephyr_init(notice_handler)
 	fprintf(stderr, "zwgc: and try again.\n");
 	exit(1);
     }
-    port_file = fopen(temp, "w");
-    if (port_file) {
-	fprintf(port_file, "%d\n", port);
-	fclose(port_file);
-    } else {
-	fprintf(stderr, "zwgc: error while opening %s for writing: ", temp);
-	perror("");
-    }
 
     /* Set hostname and tty for locations.  If we support X, use the
      * display string for the default tty name. */
@@ -159,28 +151,22 @@ void zephyr_init(notice_handler)
      * not one of the allowed ones, print an error and treat it as
      * EXPOSE_NONE.
      */
-    if (temp = ZGetVariable("exposure")) {
-	if (!(exposure = ZParseExposureLevel(temp))) {
-	    ERROR2("invalid exposure level %s, using exposure level none instead.\n", temp);
-	    exposure = EXPOSE_NONE;
-	}
-    } else
-      exposure = EXPOSE_OPSTAFF;
-    error_code = ZSetLocation(exposure); /* <<<>>> */
-    if (error_code != ZERR_LOGINFAIL)
+
+    error_code = set_exposure("*", exposure = ZGetVariable("exposure"));
+    if (error_code)
       TRAP( error_code, "while setting location" );
 
     /*
-     * If the exposure level isn't EXPOSE_NONE, turn on recieving notices.
+     * If the exposure level isn't EXPOSE_NONE, turn on receiving notices.
      * (this involves reading in the subscription file, etc.)
      */
     if (string_Neq(exposure, EXPOSE_NONE))
       zwgc_startup();
 
     /*
-     * Set $realm to our realm and $user to our zephyr username:
+     * Set $galaxy to our galaxy and $user to our zephyr username:
      */
-    var_set_variable("realm", ZGetRealm());
+    var_set_variable("galaxy", ZGetDefaultGalaxy());
     var_set_variable("user", ZGetSender());
 
     /*
@@ -189,6 +175,16 @@ void zephyr_init(notice_handler)
     mux_add_input_source(ZGetFD(), (void (*)())handle_zephyr_input,
 			 notice_handler);
     zephyr_inited = 1;
+
+    port_file = fopen(temp, "w");
+    if (port_file) {
+	fprintf(port_file, "%d\n", port);
+	fclose(port_file);
+    } else {
+	fprintf(stderr, "zwgc: error while opening %s for writing: ", temp);
+	perror("");
+    }
+
     return;
 }
 
@@ -199,6 +195,8 @@ void zephyr_init(notice_handler)
 void finalize_zephyr() /* <<<>>> */
 {
     string temp;
+    int i, cnt;
+    char *galaxy;
 
     if (zephyr_inited) {
 	/*
@@ -216,17 +214,28 @@ void finalize_zephyr() /* <<<>>> */
 	 * Cancel our subscriptions, unset our location, and close our zephyr
 	 * connection:
 	 */
+
+	TRAP(ZGetGalaxyCount(&cnt), "while getting galaxy count");
+	if (error_code)
+	    return;
+
+	for (i=0; i<cnt; i++) {
+	    TRAP(ZGetGalaxyName(i, &galaxy), "while getting galaxy name");
+	    if (error_code)
+		continue;
 #ifdef DEBUG
-	if (zwgc_debug) {
-	    TRAP( ZUnsetLocation(), "while unsetting location" );
-	    TRAP( ZCancelSubscriptions(0), "while canceling subscriptions" );
-	} else {
+	    if (zwgc_debug) {
+		TRAP( ZCancelSubscriptions(galaxy, 0),
+		      "while canceling subscriptions" );
+		TRAP( ZUnsetLocation(galaxy), "while unsetting location" );
+	    } else {
 #endif /* DEBUG */
-	    (void) ZUnsetLocation();
-	    (void) ZCancelSubscriptions(0);
+		(void) ZCancelSubscriptions(galaxy, 0);
+		(void) ZUnsetLocation(galaxy);
 #ifdef DEBUG
+	    }
+#endif /* DEBUG */
 	}
-#endif /* DEBUG */
 	ZClosePort();
     }
     return;

@@ -8,8 +8,7 @@
  *	"mit-copyright.h". 
  */
 /*
- *	$Source$
- *	$Header$
+ *	$Id$
  */
 
 #include "zserver.h"
@@ -21,6 +20,8 @@ static const char rcsid_kstuff_c[] = "$Id$";
 #endif
 
 #ifdef HAVE_KRB4
+
+C_Block __Zephyr_session;
 
 /* Keep a hash table mapping tickets to session keys, so we can do a fast
  * check of the cryptographic checksum without doing and DES decryptions.
@@ -43,9 +44,11 @@ struct hash_entry {
 
 Hash_entry *hashtab[HASHTAB_SIZE];
 
+#ifdef BAD_KRB4_HACK
 static int hash_ticket __P((unsigned char *, int));
 static void add_session_key __P((KTEXT, C_Block, char *, time_t));
 static int find_session_key __P((KTEXT, C_Block, char *));
+#endif
 static ZChecksum_t compute_checksum __P((ZNotice_t *, C_Block));
 static ZChecksum_t compute_rlm_checksum __P((ZNotice_t *, C_Block));
 
@@ -125,7 +128,7 @@ SendKerberosData(fd, ticket, service, host)
     int written;
     int size_to_write;
 
-    rem = krb_mk_req(ticket, service, host, ZGetRealm(), (u_long) 0);
+    rem = krb_mk_req(ticket, service, host, my_galaxy, (u_long) 0);
     if (rem != KSUCCESS)
 	return rem + krb_err_base;
 
@@ -152,7 +155,10 @@ ZCheckRealmAuthentication(notice, from, realm)
     int result;
     char rlmprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
     char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
-    KTEXT_ST authent, ticket;
+    KTEXT_ST authent;
+#ifdef BAD_KRB4_HACK
+    KTEXT_ST ticket;
+#endif
     AUTH_DAT dat;
     ZChecksum_t checksum;
     CREDENTIALS cred;
@@ -174,12 +180,13 @@ ZCheckRealmAuthentication(notice, from, realm)
     }
     authent.length = notice->z_authent_len;
 
+    (void) sprintf(rlmprincipal, "%s.%s@%s", SERVER_SERVICE,
+                   SERVER_INSTANCE, realm);
+
+#ifdef BAD_KRB4_HACK
     /* Copy the ticket out of the authentication data. */
     if (krb_find_ticket(&authent, &ticket) != RD_AP_OK)
         return ZAUTH_FAILED;
-
-    (void) sprintf(rlmprincipal, "%s.%s@%s", SERVER_SERVICE,
-                   SERVER_INSTANCE, realm);
 
     /* Try to do a fast check against the cryptographic checksum. */
     if (find_session_key(&ticket, session_key, srcprincipal) >= 0) {
@@ -189,12 +196,13 @@ ZCheckRealmAuthentication(notice, from, realm)
             return ZAUTH_FAILED;
         checksum = compute_rlm_checksum(notice, session_key);
 
-        /* If checksum matches, packet is authentic.  If not, we might
-         * have an outdated session key, so keep going the slow way.
-         */
+        /* If checksum matches, packet is authentic.  Otherwise, check
+         * the authenticator as if we didn't have the session key cached
+         * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
+         * ticket isn't cached after a checksum failure), so don't worry
+         * about the extra des_quad_cksum() call. */
         if (checksum == notice->z_checksum) {
-          (void) memcpy((char *)__Zephyr_session, (char *)session_key, 
-                        sizeof(C_Block)); /* For control_dispatch() */
+          memcpy(__Zephyr_session, session_key, sizeof(C_Block)); 
           return ZAUTH_YES;
         }
 
@@ -207,6 +215,7 @@ ZCheckRealmAuthentication(notice, from, realm)
 	    return ZAUTH_YES;
         }
     }
+#endif
 
     /* We don't have the session key cached; do it the long way. */
     result = krb_rd_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
@@ -231,13 +240,15 @@ ZCheckRealmAuthentication(notice, from, realm)
       checksum = compute_checksum(notice, dat.session);
       if (checksum != notice->z_checksum)
 #endif
-        return ZAUTH_FAILED;
+         return ZAUTH_CKSUM_FAILED;
     }
 
+#ifdef BAD_KRB4_HACK
     /* Record the session key, expiry time, and source principal in the
      * hash table, so we can do a fast check next time. */
     add_session_key(&ticket, dat.session, srcprincipal,
                     (time_t)(dat.time_sec + dat.life * 5 * 60));
+#endif
 
     return ZAUTH_YES;
 
@@ -254,7 +265,10 @@ ZCheckAuthentication(notice, from)
 #ifdef HAVE_KRB4
     int result;
     char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
-    KTEXT_ST authent, ticket;
+    KTEXT_ST authent;
+#ifdef BAD_KRB4_HACK
+    KTEXT_ST ticket;
+#endif
     AUTH_DAT dat;
     ZChecksum_t checksum;
     C_Block session_key;
@@ -275,6 +289,7 @@ ZCheckAuthentication(notice, from)
     }
     authent.length = notice->z_authent_len;
 
+#ifdef BAD_KRB4_HACK
     /* Copy the ticket out of the authentication data. */
     if (krb_find_ticket(&authent, &ticket) != RD_AP_OK)
 	return ZAUTH_FAILED;
@@ -287,14 +302,17 @@ ZCheckAuthentication(notice, from)
 	    return ZAUTH_FAILED;
 	checksum = compute_checksum(notice, session_key);
 
-        /* If checksum matches, packet is authentic.  If not, we might
-	 * have an outdated session key, so keep going the slow way.
-	 */
+	/* If the checksum matches, the packet is authentic.  Otherwise,
+	 * check authenticator as if we didn't have the session key cached
+	 * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
+	 * ticket isn't cached after a checksum failure), so don't worry
+	 * about the extra des_quad_cksum() call. */
 	if (checksum == notice->z_checksum) {
 	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
 	    return ZAUTH_YES;
 	}
     }
+#endif
 
     /* We don't have the session key cached; do it the long way. */
     result = krb_rd_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
@@ -316,12 +334,14 @@ ZCheckAuthentication(notice, from)
     checksum = compute_checksum(notice, dat.session);
 #endif
     if (checksum != notice->z_checksum)
-	return ZAUTH_FAILED;
+	return ZAUTH_CKSUM_FAILED;
 
+#ifdef BAD_KRB4_HACK
     /* Record the session key, expiry time, and source principal in the
      * hash table, so we can do a fast check next time. */
     add_session_key(&ticket, dat.session, srcprincipal,
 		    (time_t)(dat.time_sec + dat.life * 5 * 60));
+#endif
 
     return ZAUTH_YES;
 
@@ -331,6 +351,8 @@ ZCheckAuthentication(notice, from)
 }
 
 #ifdef HAVE_KRB4
+
+#ifdef BAD_KRB4_HACK
 
 static int hash_ticket(p, len)
     unsigned char *p;
@@ -399,6 +421,8 @@ static int find_session_key(ticket, key, srcprincipal)
     }
     return -1;
 }
+
+#endif
 
 static ZChecksum_t compute_checksum(notice, session_key)
     ZNotice_t *notice;

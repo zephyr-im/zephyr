@@ -289,7 +289,7 @@ bdump_send()
     }
     if (strcmp(kdata.pname, SERVER_SERVICE) ||
 	strcmp(kdata.pinst, SERVER_INSTANCE) ||
-	strcmp(kdata.prealm, ZGetRealm())) {
+	strcmp(kdata.prealm, my_krealm)) {
 	syslog(LOG_ERR, "bdump_send: peer not zephyr: %s.%s@%s",
 	       kdata.pname, kdata.pinst, kdata.prealm);
 	cleanup(server);
@@ -478,7 +478,7 @@ bdump_get_v12 (notice, auth, who, server)
 
     if (strcmp(kdata.pname, SERVER_SERVICE) ||
 	strcmp(kdata.pinst, SERVER_INSTANCE) ||
-	strcmp(kdata.prealm, ZGetRealm())) {
+	strcmp(kdata.prealm, my_krealm)) {
 	syslog(LOG_ERR, "bdump_get: peer not zephyr in lrealm: %s.%s@%s",
 	       kdata.pname, kdata.pinst,kdata.prealm);
 	cleanup(server);
@@ -691,9 +691,6 @@ get_tgt()
     static char buf[INST_SZ + 1] = SERVER_INSTANCE;
     int retval = 0;
     CREDENTIALS cred;
-#ifndef NOENCRYPTION
-    Sched *s;
-#endif
 	
     /* have they expired ? */
     if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + (15L * 60L)) {
@@ -704,8 +701,8 @@ get_tgt()
 #endif
 	dest_tkt();
 
-	retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, ZGetRealm(),
-				    "krbtgt", ZGetRealm(),
+	retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, my_krealm,
+				    "krbtgt", my_krealm,
 				    TKTLIFETIME, srvtab_file);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR,"get_tgt: krb_get_svc_in_tkt: %s",
@@ -718,20 +715,27 @@ get_tgt()
 
 #ifndef NOENCRYPTION
 	retval = read_service_key(SERVER_SERVICE, SERVER_INSTANCE,
-				  ZGetRealm(), 0 /*kvno*/,
+				  my_krealm, 0 /*kvno*/,
 				  srvtab_file, serv_key);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
 		   krb_get_err_text(retval));
 	    return 1;
 	}
-	s = (Sched *) check_key_sched_cache(serv_key);
-	if (s) {
-	    serv_ksched = *s;
-	} else {
-	    des_key_sched(serv_key, serv_ksched.s);
-	    add_to_key_sched_cache(serv_key, &serv_ksched);
+#ifdef BAD_KRB4_HACK
+	{
+		Sched *s;
+		s = (Sched *) check_key_sched_cache(serv_key);
+		if (s) {
+			serv_ksched = *s;
+		} else {
+			des_key_sched(serv_key, serv_ksched.s);
+			add_to_key_sched_cache(serv_key, &serv_ksched);
+		}
 	}
+#else
+	des_key_sched(serv_key, serv_ksched.s);
+#endif
 #endif /* !NOENCRYPTION */
     }
     return(0);

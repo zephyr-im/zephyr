@@ -22,7 +22,7 @@ static const char rcsid_zstat_c[] = "$Id$";
 #endif
 
 const char *hm_head[] = {
-    "Current server =",
+    "Current server:",
     "Items in queue:",
     "Client packets received:",
     "Server packets received:",
@@ -124,22 +124,18 @@ do_stat(host)
 		return;
 	}
 
-	if (hm_stat(host,srv_host))
-		return;
-
-	if (!hmonly)
-		(void) srv_stat(srv_host);
+	hm_stat(host, !hmonly);
 }
 
-int
-hm_stat(host,server)
-	char *host,*server;
+hm_stat(host, do_server)
+	char *host;
+	int do_server;
 {
 	struct in_addr inaddr;
 	Code_t code;
 
-	char *line[20],*mp;
-	int i,nf;
+	char **line,*mp;
+	int sock,i,nf,ret;
 	struct hostent *hp;
 	time_t runtime;
 	struct tm *tim;
@@ -161,36 +157,55 @@ hm_stat(host,server)
 	}
 	
 	if ((code = ZhmStat(&inaddr, &notice)) != ZERR_NONE) {
-	    com_err("zstat", code, "getting hostmanager status");
+	    com_err("zstat", ret, "getting hostmanager status");
 	    exit(-1);
 	}
 	
+	for (nf=0, mp = notice.z_message;
+	     mp<notice.z_message+notice.z_message_len;
+	     nf++, mp += strlen(mp)+1)
+		;
+
+	line = (char **) malloc(sizeof(char *)*nf);
+
 	mp = notice.z_message;
-	for (nf=0;mp<notice.z_message+notice.z_message_len;nf++) {
+	for (nf=0, mp = notice.z_message;
+	     mp<notice.z_message+notice.z_message_len;
+	     nf++, mp += strlen(mp)+1) 
 		line[nf] = mp;
-		mp += strlen(mp)+1;
-	}
 
-	(void) strcpy(server,line[0]);
 
-	printf("HostManager protocol version = %s\n",notice.z_version);
+	printf("HostManager protocol version = %s\n\n",notice.z_version);
 
-	for (i=0; (i < nf) && (i < HM_SIZE); i++) {
-		if (!strncmp("Time",hm_head[i],4)) {
+	for (i=0; i<nf; i++) {
+		if (((i%(HM_SIZE+2)) == 0) && (i+HM_SIZE<nf)) {
+			printf("Zephyr galaxy = %s\n", line[i+HM_SIZE]);
+			printf("%s %s\n",hm_head[i%(HM_SIZE+2)],line[i]);
+		} else if ((i%(HM_SIZE+2)) == 7) {
 			runtime = atol(line[i]);
 			tim = gmtime(&runtime);
-			printf("%s %d days, %02d:%02d:%02d\n", hm_head[i],
+			printf("%s %d days, %02d:%02d:%02d\n", hm_head[i%(HM_SIZE+1)],
 				tim->tm_yday,
 				tim->tm_hour,
 				tim->tm_min,
 				tim->tm_sec);
+		} else if ((i%(HM_SIZE+2)) == HM_SIZE) {
+			/* do nothing */
+		} else if (((i%(HM_SIZE+2)) == (HM_SIZE+1)) ||
+			   (i == nf-1)) {
+			printf("\n");
+			if (do_server) {
+				srv_stat(line[i-(i%(HM_SIZE+2))]);
+				printf("\n");
+			}
+		} else {
+			printf("%s %s\n",hm_head[i%(HM_SIZE+2)],line[i]);
 		}
-		else
-			printf("%s %s\n",hm_head[i],line[i]);
 	}
-
-	printf("\n");
 	
+	free(line);
+
+	(void) close(sock);
 	ZFreeNotice(&notice);
 	return(0);
 }
@@ -300,7 +315,6 @@ srv_stat(host)
 			printf("%s\n",line[i]);
 		} else printf("%s\n",line[i]);
 	}
-	printf("\n");
 	
 	(void) close(sock);
 	ZFreeNotice(&notice);

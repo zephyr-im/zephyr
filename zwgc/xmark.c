@@ -48,7 +48,7 @@ void xmarkSetBound(gram,x,y,which)
      int x,y;
      int which;
 {
-   int i,xofs,yofs;
+   int i,j,xofs,yofs;
    XFontStruct *font;
    xblock *xb;
    unsigned char *s;
@@ -104,26 +104,34 @@ void xmarkSetBound(gram,x,y,which)
    }
 
    for (yofs=xb->y1;(i<gram->numblocks) && (xb->y1 == yofs);i++,xb++) {
-
       if (x <= xb->x2) {
 	 markblock[which]=i;
 
 	 xofs=xb->x1;
+	 
 	 if ((x < xofs) || (y < xb->y1)) {
 	    markchar[which]=0;
+	    markpixel[which]=0;
 	    RETURN;
 	 }
+
+	 if (xb->strlen == -1) {
+	    markchar[which]=0;
+	    markpixel[which]=0;
+	    RETURN;
+	 }
+
 	 font=get_fontst_from_fid(xb->fid);
-	 for (i=0,s=(unsigned char *)((gram->text)+(xb->strindex));
-	      xofs<x && i<xb->strlen;
-	      i++,s++) {
-	     /* if font->per_char is NULL, then we should use min_bounds */
-	     short usewidth = font->per_char ? font->per_char[*s - font->min_char_or_byte2].width : font->min_bounds.width;
-	   if (x <= (xofs+=usewidth)) {
-	      markchar[which]=i;
-	      markpixel[which]=xofs - xb->x1 - usewidth;
-	      RETURN;
-	   }
+	 for (j=0,s=(unsigned char *)((gram->text)+(xb->strindex));
+	      xofs<x && j<xb->strlen;
+	      j++,s++) {
+	    /* if font->per_char is NULL, then we should use min_bounds */
+	    short usewidth = font->per_char ? font->per_char[*s - font->min_char_or_byte2].width : font->min_bounds.width;
+	    if (x <= (xofs+=usewidth)) {
+	       markchar[which]=j;
+	       markpixel[which]=xofs - xb->x1 - usewidth;
+	       RETURN;
+	    }
 	 }
       }
    }
@@ -364,21 +372,24 @@ char *xmarkGetText()
        }
 
        for (i=startblock; i<=endblock; i++) {
-	  if (last_y != -1 && last_y != markgram->blocks[i].y)
-	    text_so_far = string_Concat2(text_so_far, "\n");
 	  index = markgram->blocks[i].strindex;
 	  len = markgram->blocks[i].strlen;
-	  if (startblock == endblock)
-	    temp = string_CreateFromData(text+index+startchar,
-					 endchar-startchar);
-	  else if (i==startblock)
-	    temp = string_CreateFromData(text+index+startchar,len-startchar);
-	  else if (i==endblock)
-	    temp = string_CreateFromData(text+index,endchar);
-	  else
-	    temp = string_CreateFromData(text+index,len);
-	  text_so_far = string_Concat2(text_so_far, temp);
-	  free(temp);
+	  if ((len == -1) && (i != endblock)) {
+	     text_so_far = string_Concat2(text_so_far, "\n");
+	  } else {
+	     if (startblock == endblock)
+		temp = string_CreateFromData(text+index+startchar,
+					     endchar-startchar);
+	     else if (i==startblock)
+		temp = string_CreateFromData(text+index+startchar,
+					     len-startchar);
+	     else if (i==endblock)
+		temp = string_CreateFromData(text+index, endchar);
+	     else
+		temp = string_CreateFromData(text+index, len);
+	     text_so_far = string_Concat2(text_so_far, temp);
+	     free(temp);
+	  }
 	  last_y = markgram->blocks[i].y;
        }
     }

@@ -1,4 +1,4 @@
-/* h/config.h.in.  Generated automatically from configure.in by autoheader.  */
+/* h/config.h.in.  Generated automatically from configure.in by autoheader 2.13.  */
 
 /* Define if the `getpgrp' function takes no argument.  */
 #undef GETPGRP_VOID
@@ -51,6 +51,12 @@
 /* Define to the type of the host system. */
 #define MACHINE_TYPE "unknown"
 
+/* Define if `struct sockaddr' has an `sa_len' field.  */
+#undef HAVE_SA_LEN
+
+/* Define if `resolv' libary exists and has either res_send or __res_send.  */
+#undef HAVE_LIB_RESOLV
+
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
 
@@ -102,8 +108,17 @@
 /* Define if you have the waitpid function.  */
 #undef HAVE_WAITPID
 
+/* Define if you have the <X11/Xaw/Label.h> header file.  */
+#undef HAVE_X11_XAW_LABEL_H
+
+/* Define if you have the <dlfcn.h> header file.  */
+#undef HAVE_DLFCN_H
+
 /* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H
+
+/* Define if you have the <ifaddrs.h> header file.  */
+#undef HAVE_IFADDRS_H
 
 /* Define if you have the <malloc.h> header file.  */
 #undef HAVE_MALLOC_H
