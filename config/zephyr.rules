@@ -58,7 +58,7 @@ ZLIB = $(PTOP)/lib/libzephyr.a
 ZLIBS = $(LIB_KRB) $(LIB_ET)
 DYN_LIB = $(PTOP)/libdyn/libdyn.a
 
-DEFINES = $(XDEFS) -I$(BINC) \
+DEFINES = $(XDEFS) -DX11 -I$(BINC) \
 	$(CDEFS_KRB) $(CDEFS_HES) $(CDEFS_ET) $(CDEFS_SS) \
 	$(MACHDEFS)
 
