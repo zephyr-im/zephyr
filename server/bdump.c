@@ -21,13 +21,7 @@ static char rcsid_bdump_s_c[] = "$Header$";
 
 #include "zserver.h"
 #include <sys/socket.h>
-
-static void close_bdump();
-static Code_t bdump_send_loop(), bdump_ask_for(), bdump_recv_loop();
-static Code_t get_packet(), extract_sin(), send_done(), send_list();
-static Code_t send_host_register(), sbd_loop(), gbd_loop(), send_normal_tcp();
-
-static timer bdump_timer;
+#include <signal.h>
 
 /*
  * External functions are:
@@ -51,7 +45,20 @@ static timer bdump_timer;
  *	char *lyst[];
  *	int num;
  */
+
+static void close_bdump(), cleanup();
+static Code_t bdump_send_loop(), bdump_ask_for(), bdump_recv_loop();
+static Code_t get_packet(), extract_sin(), send_done(), send_list();
+static Code_t send_host_register(), sbd_loop(), gbd_loop(), send_normal_tcp();
+static int get_tgt();
+
+static timer bdump_timer;
+static long ticket_time;
+static char my_realm[REALM_SZ] = "\0";
  
+
+int bdumping = 0;
+
 /*
  * Functions for performing a brain dump between servers.
  */
@@ -108,7 +115,7 @@ struct sockaddr_in *who;
 	}
 
 	/* myname is the hostname */
-	send_list(ACKED, sock_sin.sin_port, ZEPHYR_ADMIN_CLASS, "",
+	(void) send_list(ACKED, sock_sin.sin_port, ZEPHYR_ADMIN_CLASS, "",
 		  ADMIN_BDUMP, myname, "", lyst, 2);
 	
 	return;
@@ -126,10 +133,17 @@ bdump_send()
 	ZServerDesc_t *server;
 	Code_t retval;
 	int fromlen = sizeof(from);
+	KTEXT_ST ticket;
+	AUTH_DAT kdata;
 
 	zdbug((LOG_DEBUG, "bdump_send"));
 	/* accept the connection, and send the brain dump */
-	sock = accept(bdump_socket, &from, &fromlen);
+	if ((sock = accept(bdump_socket, &from, &fromlen)) < 0) {
+		syslog(LOG_ERR,"accept: %m");
+		return;
+	}
+
+	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect failures */
 
 	from.sin_port = sock_sin.sin_port; /* we don't care what port
 					    it came from, and we need to
@@ -141,6 +155,7 @@ bdump_send()
 	}
 	zdbug((LOG_DEBUG, "sbd connected"));
 
+	bdumping = 1;
 	if (bdump_socket) {
 		/* shut down the listening socket and the timer */
 		FD_CLR(bdump_socket, &interesting);
@@ -155,10 +170,30 @@ bdump_send()
 	   work even on TCP connections, but the sockaddr_in addresses
 	   are ignored */
 	(void) ZSetFD(sock);
-#ifdef notdef
 	/* receive the authenticator */
-	/* mutually authenticate */
-#endif notdef
+	if ((retval = GetKerberosData(sock, from.sin_addr, &kdata, "zephyr",
+				      ZEPHYR_SRVTAB)) != KSUCCESS) {
+		syslog(LOG_ERR, "sbd getkdata: %s",krb_err_txt[retval]);
+		cleanup(server, sock);
+		return;
+	}
+	if (strcmp(kdata.pname,"zephyr") || strcmp(kdata.pinst,"zephyr")) {
+		syslog(LOG_ERR, "sbd peer not zephyr: %s.%s@%s",
+		       kdata.pname, kdata.pinst,kdata.prealm);
+		cleanup(server, sock);
+		return;
+	}
+	/* authenticate back */
+	if (get_tgt()) {
+		cleanup(server, sock);
+		return;
+	}
+	if ((retval = SendKerberosData(sock, &ticket, "zephyr", "zephyr"))
+	    != KSUCCESS) {
+		syslog(LOG_ERR,"bdump_send: %s",krb_err_txt[retval]);
+		cleanup(server, sock);
+		return;
+	}
 
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sbd_loop failed: %s",
@@ -178,8 +213,11 @@ bdump_send()
 			}
 		}
 	}
+	zdbug((LOG_DEBUG,"cleanup sbd"));
 	(void) ZSetFD(srv_socket);
 	(void) close(sock);
+	(void) signal(SIGPIPE, SIG_DFL);
+	bdumping = 0;
 	return;
 }
 
@@ -191,42 +229,84 @@ int auth;
 struct sockaddr_in *who;
 ZServerDesc_t *server;
 {
-	struct sockaddr_in target;
+	struct sockaddr_in from;
 	int sock;
 	Code_t retval;
+	KTEXT_ST ticket;
+	AUTH_DAT kdata;
 
 	zdbug((LOG_DEBUG, "bdump avail"));
 
-	if ((retval = extract_sin(notice, &target)) != ZERR_NONE) {
+	bdumping = 1;
+	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect problems */
+
+	if (bdump_socket) {
+		/* We cannot go get a brain dump when someone may
+		   potentially be connecting to us (if that other
+		   server is the server to whom we are connecting,
+		   we will deadlock. so we shut down the listening
+		   socket and the timer */
+		FD_CLR(bdump_socket, &interesting);
+		(void) close(bdump_socket);
+		nfildes = srv_socket + 1;
+		bdump_socket = 0;
+		timer_reset(bdump_timer);
+	}
+
+	if ((retval = extract_sin(notice, &from)) != ZERR_NONE) {
 		syslog(LOG_ERR, "gbd sin: %s", error_message(retval));
+		bdumping = 0;
 		return;
 	}
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		syslog(LOG_ERR, "gbd socket: %m");
+		bdumping = 0;
 		return;
 	}
-	if (connect(sock, &target, sizeof(target))) {
+	if (connect(sock, &from, sizeof(from))) {
 		syslog(LOG_ERR, "gbd connect: %m");
 		(void) close(sock);
+		bdumping = 0;
 		return;
 	}
 	zdbug((LOG_DEBUG, "gbd connected"));
 
 	/* Now begin the brain dump.  Set the Zephyr port to be the
-	   TCP connection.  This will work since recvfrom and sendto
-	   work even on TCP connections, but the sockaddr_in addresses
-	   are ignored */
+	   TCP connection. */
 	(void) ZSetFD(sock);
 
-#ifdef notdef
-	/* send the authenticator over */
-	/* and receive mutual authent */
-#endif notdef
+	/* send an authenticator */
+	if (get_tgt()) {
+		cleanup(server, sock);
+		return;
+	}
+	if ((retval = SendKerberosData(sock, &ticket, "zephyr", "zephyr"))
+	    != KSUCCESS) {
+		syslog(LOG_ERR,"bdump_send: %s",krb_err_txt[retval]);
+		cleanup(server, sock);
+		return;
+	}
+	zdbug((LOG_DEBUG,"skd ok"));
+
+	/* get his authenticator */
+	if ((retval = GetKerberosData(sock, from.sin_addr, &kdata, "zephyr",
+				      ZEPHYR_SRVTAB)) != KSUCCESS) {
+		syslog(LOG_ERR, "sbd getkdata: %s",krb_err_txt[retval]);
+		cleanup(server, sock);
+		return;
+	}
+	if (strcmp(kdata.pname,"zephyr") || strcmp(kdata.pinst,"zephyr")) {
+		syslog(LOG_ERR, "sbd peer not zephyr: %s.%s@%s",
+		       kdata.pname, kdata.pinst,kdata.prealm);
+		cleanup(server, sock);
+		return;
+	}
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "gbd_loop failed: %s",
 		       error_message(retval));
 	} else {
-		if ((retval = sbd_loop(&target)) != ZERR_NONE) {
+		zdbug((LOG_DEBUG,"gbdl ok"));
+		if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "sbd_loop failed: %s",
 			       error_message(retval));
 		} else {
@@ -239,8 +319,11 @@ ZServerDesc_t *server;
 		}
 	}
 
+	zdbug((LOG_DEBUG,"cleanup gbd"));
 	(void) ZSetFD(srv_socket);
 	(void) close(sock);
+	(void) signal(SIGPIPE, SIG_DFL);
+	bdumping = 0;
 	return;
 }
 
@@ -299,15 +382,65 @@ int num;
 	return(ZERR_NONE);
 }
 
+static void
+cleanup(server, sock)
+ZServerDesc_t *server;
+int sock;
+{
+	zdbug((LOG_DEBUG, "cleanup"));
+	if (server != limbo_server) {
+		server->zs_state = SERV_DEAD;
+		timer_reset(server->zs_timer);
+		server->zs_timer =
+			timer_set_rel(0L, server_timo, (caddr_t) server);
+	}
+	(void) close(sock);
+	(void) ZSetFD(srv_socket);
+	(void) signal(SIGPIPE, SIG_DFL);
+	bdumping = 0;
+	return;
+}
+
+static int
+get_tgt()
+{
+	int retval;
+
+	if (!*my_realm)
+		if ((retval = get_krbrlm(my_realm, 1)) != KSUCCESS) {
+			syslog(LOG_ERR,"krbrlm: %s",
+			       krb_err_txt[retval]);
+			return(1);
+		}
+	if (ticket_time < NOW - (long) (96 * 5)) {
+		(void) dest_tkt();
+		if ((retval =
+		     get_svc_in_tkt("zephyr","zephyr",my_realm,"zephyr","zephyr",
+				    96, ZEPHYR_SRVTAB)) != KSUCCESS) {
+			syslog(LOG_ERR,"get_tkt: %s",
+			       krb_err_txt[retval]);
+			ticket_time = 0L;
+			return(1);
+		} else
+			ticket_time = NOW;
+	}
+	return(0);
+}
+
 static Code_t
 sbd_loop(from)
 struct sockaddr_in *from;
 {
 	ZNotice_t bd_notice;
 	ZPacket_t pack;
+	ZServerDesc_t *server;
 	int packlen = sizeof(pack);
 	Code_t retval;
 	int auth;
+	struct sockaddr_in bogus_from;
+
+	bogus_from = *from;
+	bogus_from.sin_port = sock_sin.sin_port;
 
 	while (1) {
 		packlen = sizeof(pack);
@@ -341,6 +474,18 @@ struct sockaddr_in *from;
 			if ((retval = bdump_send_loop(limbo_server)) != ZERR_NONE)
 				return(retval);
 			continue;
+		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_ME)) {
+			/* he wants his state */
+			zdbug((LOG_DEBUG, "his state req"));
+			if (server = server_which_server(&bogus_from)) {
+				if ((retval = bdump_send_loop(server)) != ZERR_NONE)
+					return(retval);
+			} else {
+				syslog(LOG_ERR,"sbd_loop: no state");
+				if ((retval = send_done()) != ZERR_NONE)
+					return(retval);
+			}
+			continue;
 		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_YOU)) {
 			/* he wants my state */
 			zdbug((LOG_DEBUG, "my state req"));
@@ -369,13 +514,20 @@ ZServerDesc_t *server;
 	   ask for the other server to send us the limbo state. */
 	if (otherservers[limbo_server_idx()].zs_hosts->q_forw ==
 	    otherservers[limbo_server_idx()].zs_hosts) {
-		if ((retval = bdump_ask_for("LIMBO")) != ZERR_NONE)
+		if ((retval = bdump_ask_for(ADMIN_LIMBO)) != ZERR_NONE)
 			return(retval);
 		if ((retval = bdump_recv_loop(&otherservers[limbo_server_idx()], &target)) != ZERR_NONE)
 			return(retval);
 	}
 
-	if ((retval = bdump_ask_for("YOUR_STATE")) != ZERR_NONE)
+	if (otherservers[me_server_idx].zs_hosts->q_forw ==
+	    otherservers[me_server_idx].zs_hosts) {
+		if ((retval = bdump_ask_for(ADMIN_ME)) != ZERR_NONE)
+			return(retval);
+		if ((retval = bdump_recv_loop(me_server, &target)) != ZERR_NONE)
+			return(retval);
+	}
+	if ((retval = bdump_ask_for(ADMIN_YOU)) != ZERR_NONE)
 		return(retval);
 	retval = bdump_recv_loop(server, &target);
 	return(retval);
@@ -488,7 +640,7 @@ struct sockaddr_in *target;
 			ulogin_dispatch(&notice, 1, &current_who, server);
 		} else if (!strcmp(notice.z_opcode, ADMIN_NEWCLT)) {
 			/* register a new client */
-			notice.z_port = ntohs((u_short)atoi(notice.z_message));
+			notice.z_port = htons((u_short)atoi(notice.z_message));
 			if ((retval = client_register(&notice,
 						      &current_who,
 						      &client,
@@ -497,13 +649,19 @@ struct sockaddr_in *target;
 				       error_message(retval));
 				return(retval);
 			}
-			if (strlen(notice.z_message) + 1 < notice.z_message_len) {
+			bzero((caddr_t) client->zct_cblock,
+					      sizeof(C_Block));
+			if (*notice.z_class_inst) {
 				/* a C_Block is there */
 				cp = notice.z_message +
 					strlen(notice.z_message) + 1;
-				if (ZReadAscii(cp,strlen(cp),client->zct_cblock,sizeof(C_Block)) != ZERR_NONE)
+				if ((retval = ZReadAscii(cp,strlen(cp),client->zct_cblock,sizeof(C_Block))) != ZERR_NONE) {
 					bzero((caddr_t) client->zct_cblock,
 					      sizeof(C_Block));
+					syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
+					       error_message(retval),
+					       cp);
+				}
 			}
 		} else if (!strcmp(notice.z_opcode, CLIENT_SUBSCRIBE)) { 
 			/* a subscription packet */
@@ -519,7 +677,6 @@ struct sockaddr_in *target;
 		} else {
 			syslog(LOG_ERR, "brl bad opcode %s",notice.z_opcode);
 			return(ZSRV_UNKNOWNOPCODE);
-			break;
 		}
 	}
 }
@@ -696,7 +853,6 @@ int len;
 			return(ZSRV_LEN);
 		}
 	}
-
 	if ((count = write(ZGetFD(), pack, packlen)) != packlen)
 		if (count < 0) {
 			syslog(LOG_WARNING, "snt xmit: %m");
