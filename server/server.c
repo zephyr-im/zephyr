@@ -1417,7 +1417,7 @@ ZNotice_t *notice;
 	nacked->na_packet = pack;
 	nacked->na_srv_idx = server - otherservers;
 	nacked->na_packsz = packlen;
-	nacked->na_uid = notice->z_multiuid;
+	nacked->na_uid = notice->z_uid;
 	nacked->q_forw = nacked->q_back = nacked;
 	nacked->na_abstimo = 0;
 
@@ -1483,7 +1483,7 @@ struct sockaddr_in *who;
 	     nacked != srv_nacklist;
 	     nacked = nacked->q_forw)
 		if (&otherservers[nacked->na_srv_idx] == which)
-			if (ZCompareUID(&nacked->na_uid, &notice->z_multiuid)) {
+			if (ZCompareUID(&nacked->na_uid, &notice->z_uid)) {
 				timer_reset(nacked->na_timer);
 				xfree(nacked->na_packet);
 				xremque(nacked);
