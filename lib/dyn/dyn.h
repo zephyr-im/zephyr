@@ -31,6 +31,10 @@ typedef struct _DynObject DynObjectRec, *DynObject;
 #define DynHigh(obj)	(DynSize(obj) - 1)
 #define DynLow(obj)	(0)
 
+#ifdef SUNOS
+#define memmove(a, b, c) bcopy(b, a, c)
+#endif
+
 /* Return status codes */
 #define DYN_OK		-1000
 #define DYN_NOMEM	-1001
