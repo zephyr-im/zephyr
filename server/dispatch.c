@@ -266,7 +266,7 @@ dispatch(notice, auth, who, from_server)
 
 	if ((int) notice->z_kind < (int) UNSAFE ||
 	    (int) notice->z_kind > (int) CLIENTACK) {
-		syslog(LOG_INFO, "bad notice kind 0x%x from %s",
+		syslog(LOG_NOTICE, "bad notice kind 0x%x from %s",
 		       (int) notice->z_kind,
 		       inet_ntoa(who->sin_addr));
 		return;
@@ -909,7 +909,7 @@ control_dispatch(notice, auth, who, server)
 						      server,
 						      wantdefs)) != ZERR_NONE)
 			{
-				syslog(LOG_WARNING,
+				syslog(LOG_NOTICE,
 				       "subscr. register %s/%s/%d failed: %s",
 				       notice->z_sender,
 				       inet_ntoa(who->sin_addr),
