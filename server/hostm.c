@@ -42,17 +42,22 @@ static char rcsid_hostm_s_c[] = "$Header$";
  * void hostm_shutdown()
  *
  */
-#define	NULLZHLTP	((ZHostList_t **) 0)
-#define	NULLZSDTP	((ZServerDesc_t **) 0)
 
-static ZHostList_t **all_hosts = NULLZHLTP;
-static ZServerDesc_t **all_hosts_servers = NULLZSDTP;
+struct hostlist {
+	ZHostList_t *host;
+	ZServerDesc_t *server;
+};
+
+#define	NULLHLT		((struct hostlist *) 0)
+
+static struct hostlist *all_hosts;
 
 static int num_hosts;			/* number of hosts in all_hosts */
 
 
 static void host_detach(), flush(), deathgram(), insert_host(), remove_host();
 static Code_t host_attach();
+static int cmp_hostlist();
 
 /*
  * We received a HostManager packet.  process accordingly.
@@ -64,24 +69,30 @@ int auth;
 struct sockaddr_in *who;
 {
 	ZServerDesc_t *owner;
+	ZHostList_t *host;
 	char *opcode = notice->z_opcode;
 	Code_t retval;
 
+
+	zdbug1("hm_disp");
+	owner = hostm_find_server(&who->sin_addr);
 	if (!strcmp(opcode, HM_BOOT)) {
-		if ((owner = hostm_find_server(&who->sin_addr)) == me_server) {
+		zdbug2("boot %s",inet_ntoa(who->sin_addr));
+		if (owner == &otherservers[me_server_idx]) {
 			zdbug1("hm_disp flushing");
 			/* I own him.  Just cancel any subscriptions */
 			flush(who, me_server);
 		
 		} else if (owner == NULLZSDT) {
-			zdbug1("hm_disp acquiring");
+			zdbug1("acquiring");
 			/* no owner.  Acquire him. */
-			if ((retval = host_attach(who, me_server)) != ZERR_NONE)
+			if ((retval = host_attach(who, me_server)) != ZERR_NONE) {
 				syslog(LOG_WARNING, "hattach failed: %s",
 				       error_message(retval));
 				return;
+			}
 		} else {
-			zdbug1("hm_disp hostm_flush'ing");
+			zdbug1("hostm_flush'ing");
 			/* He has switched servers.  Take him, then
 			   tell the owner and other hosts to flush. */
 			hostm_flush(hostm_find_host(&who->sin_addr), owner);
@@ -91,6 +102,13 @@ struct sockaddr_in *who;
 				syslog(LOG_WARNING, "hattach failed: %s",
 				       error_message(retval));
 		}
+		ack(notice, who);
+	} else if (!strcmp(opcode, HM_FLUSH)) {
+		zdbug2("hm_disp flush %s", inet_ntoa(who->sin_addr));
+		if (owner == NULLZSDT || (host = hostm_find_host(&who->sin_addr)) == NULLZHLT)
+			return;
+		hostm_flush(host, owner);
+		return;
 	} else {
 		syslog(LOG_WARNING, "hm_disp: unknown opcode %s",opcode);
 		return;
@@ -112,6 +130,7 @@ ZServerDesc_t *server;
 			/* and remque()s the client */
 			client_deregister(clt->zclt_client, host);
 
+	uloc_hflush(&host->zh_addr);
 	host_detach(&host->zh_addr.sin_addr, server);
 	/* XXX tell other servers */
 	return;
@@ -126,6 +145,7 @@ hostm_shutdown()
 	register ZHostList_t *hosts = otherservers[me_server_idx].zs_hosts;
 	register ZHostList_t *host;
 
+	zdbug1("hostm_shutdown");
 	if (hosts == NULLZHLT)
 		return;
 
@@ -150,7 +170,7 @@ struct in_addr *addr;
 {
 	register int i, rlo, rhi;
 
-	if (all_hosts == (ZHostList_t **) 0)
+	if (all_hosts == NULLHLT)
 		return(NULLZHLT);
 
 	/* i is the current host we are checking */
@@ -161,8 +181,8 @@ struct in_addr *addr;
 	rlo = 0;
 	rhi = num_hosts - 1;		/* first index is 0 */
 
-	while (all_hosts[i]->zh_addr.sin_addr.s_addr != addr->s_addr) {
-		if (all_hosts[i]->zh_addr.sin_addr.s_addr < addr->s_addr)
+	while ((all_hosts[i].host)->zh_addr.sin_addr.s_addr != addr->s_addr) {
+		if ((all_hosts[i].host)->zh_addr.sin_addr.s_addr < addr->s_addr)
 			rlo = i + 1;
 		else
 			rhi = i - 1;
@@ -170,7 +190,7 @@ struct in_addr *addr;
 			return(NULLZHLT);
 		i = (rhi + rlo) >> 1; /* split the diff */
 	}
-	return(all_hosts[i]);
+	return(all_hosts[i].host);
 }
 
 ZServerDesc_t *
@@ -179,7 +199,7 @@ struct in_addr *addr;
 {
 	register int i, rlo, rhi;
 
-	if (all_hosts == (ZHostList_t **) 0)
+	if (all_hosts == NULLHLT)
 		return(NULLZSDT);
 
 	/* i is the current host we are checking */
@@ -190,8 +210,8 @@ struct in_addr *addr;
 	rlo = 0;
 	rhi = num_hosts - 1;		/* first index is 0 */
 
-	while (all_hosts[i]->zh_addr.sin_addr.s_addr != addr->s_addr) {
-		if (all_hosts[i]->zh_addr.sin_addr.s_addr < addr->s_addr)
+	while ((all_hosts[i].host)->zh_addr.sin_addr.s_addr != addr->s_addr) {
+		if ((all_hosts[i].host)->zh_addr.sin_addr.s_addr < addr->s_addr)
 			rlo = i + 1;
 		else
 			rhi = i - 1;
@@ -199,7 +219,7 @@ struct in_addr *addr;
 			return(NULLZSDT);
 		i = (rhi + rlo) >> 1; /* split the diff */
 	}
-	return(all_hosts_servers[i]);
+	return(all_hosts[i].server);
 }
 
 static void
@@ -207,52 +227,48 @@ insert_host(host, server)
 ZHostList_t *host;
 ZServerDesc_t *server;
 {
-	ZHostList_t **oldlist;
-	ZServerDesc_t **oldservs;
+	struct hostlist *oldlist;
 	register int i = 0;
+
+	zdbug2("insert_host %s",inet_ntoa(host->zh_addr.sin_addr));
 
 	if (hostm_find_host(&host->zh_addr.sin_addr) != NULLZHLT)
 		return;
 
 	num_hosts++;
 	oldlist = all_hosts;
-	oldservs = all_hosts_servers;
 
-	if ((all_hosts = (ZHostList_t **) malloc(num_hosts * sizeof(ZHostList_t *))) == NULLZHLTP) {
+	if (!oldlist) {			/* this is the first */
+		if ((all_hosts = (struct hostlist *) xmalloc(num_hosts * sizeof(struct hostlist))) == NULLHLT) {
+			syslog(LOG_CRIT, "insert_host: nomem");
+			abort();
+		}
+		all_hosts[0].host = host;
+		all_hosts[0].server = server;
+		return;
+	}
+
+	if ((all_hosts = (struct hostlist *) realloc((caddr_t) oldlist, (unsigned) num_hosts * sizeof(struct hostlist))) == NULLHLT) {
 		syslog(LOG_CRIT, "insert_host: nomem");
 		abort();
 	}
 
-	if ((all_hosts_servers = (ZServerDesc_t **) malloc(num_hosts * sizeof(ZServerDesc_t *))) == NULLZSDTP) {
-		syslog(LOG_CRIT, "insert_host: nomem servers");
-		abort();
-	}
+	all_hosts[num_hosts - 1].host = host;
+	all_hosts[num_hosts - 1].server = server;
 
-	if (!oldlist) {			/* this is the first */
-		all_hosts[0] = host;
-		all_hosts_servers[0] = server;
-		return;
-	}
+	/* sort it */
 
-	/* copy old pointers */
-	while (i < (num_hosts - 1) && oldlist[i]->zh_addr.sin_addr.s_addr < host->zh_addr.sin_addr.s_addr) {
-		all_hosts[i] = oldlist[i];
-		all_hosts_servers[i] = oldservs[i];
-		i++;
-	}
+	qsort((caddr_t) all_hosts, num_hosts, sizeof(struct hostlist), cmp_hostlist);
 
-	/* add this one */
-	all_hosts[i] = host;
-	all_hosts_servers[i++] = server;
-
-	/* copy the rest */
-	while (i < num_hosts) {
-		all_hosts[i] = oldlist[i - 1];
-		all_hosts_servers[i] = oldservs[i - 1];
-		i++;
+#ifdef DEBUG
+	if (zdebug) {
+		char buf[512];
+		for (i = 0; i < num_hosts; i++)
+			syslog(LOG_DEBUG, "%d: %s %s",i,
+			       strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr)),
+			       inet_ntoa((all_hosts[i].server)->zs_addr.sin_addr));
 	}
-	free(oldlist);
-	free(oldservs);
+#endif DEBUG
 	return;
 }
 
@@ -260,46 +276,63 @@ static void
 remove_host(host)
 ZHostList_t *host;
 {
-	ZHostList_t **oldlist;
-	ZServerDesc_t **oldservs;
+	struct hostlist *oldlist;
 	register int i = 0;
 
+	zdbug1("remove_host");
 	if (hostm_find_host(&host->zh_addr.sin_addr) == NULLZHLT)
 		return;
 
-	num_hosts--;
-	oldlist = all_hosts;
-	oldservs = all_hosts_servers;
-
-	if ((all_hosts = (ZHostList_t **) malloc(num_hosts * sizeof(ZHostList_t *))) == NULLZHLTP) {
-		syslog(LOG_CRIT, "remove_host: nomem");
-		abort();
+	if (--num_hosts == 0) {
+		zdbug1("last host");
+		xfree(all_hosts);
+		all_hosts = NULLHLT;
+		return;
 	}
-	if ((all_hosts_servers = (ZServerDesc_t **) malloc(num_hosts * sizeof(ZServerDesc_t *))) == NULLZSDTP) {
-		syslog(LOG_CRIT, "remove_host: nomem servers");
+
+	oldlist = all_hosts;
+
+	if ((all_hosts = (struct hostlist *) xmalloc(num_hosts * sizeof(struct hostlist))) == NULLHLT) {
+		syslog(LOG_CRIT, "remove_host: nomem");
 		abort();
 	}
 
 	/* copy old pointers */
-	while (i < num_hosts && oldlist[i]->zh_addr.sin_addr.s_addr < host->zh_addr.sin_addr.s_addr) {
+	while (i < num_hosts && (oldlist[i].host)->zh_addr.sin_addr.s_addr < host->zh_addr.sin_addr.s_addr) {
 		all_hosts[i] = oldlist[i];
-		all_hosts_servers[i] = oldservs[i];
 		i++;
 	}
 
 	i++;				/* skip over this one */
 
 	/* copy the rest */
-	while (i < num_hosts) {
+	while (i <= num_hosts) {
 		all_hosts[i - 1] = oldlist[i];
-		all_hosts_servers[i - 1] = oldservs[i];
 		i++;
 	}
-	free(oldlist);
-	free(oldservs);
+	xfree(oldlist);
+#ifdef DEBUG
+	if (zdebug) {
+		char buf[512];
+		for (i = 0; i < num_hosts; i++)
+			syslog(LOG_DEBUG, "%d: %s %s",i,
+			       strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr)),
+			       inet_ntoa((all_hosts[i].server)->zs_addr.sin_addr));
+	}
+#endif DEBUG
 	return;
 }
 
+static int
+cmp_hostlist(el1, el2)
+struct hostlist *el1, *el2;
+{
+	if (el1->host->zh_addr.sin_addr.s_addr <
+	    el2->host->zh_addr.sin_addr.s_addr) return (-1);
+	else if (el1->host->zh_addr.sin_addr.s_addr ==
+		 el2->host->zh_addr.sin_addr.s_addr) return (0);
+	else return(1);
+}
 /*
  * Flush the info for this host, but maintain ownership.
  */
@@ -311,6 +344,7 @@ ZServerDesc_t *server;
 {
 	register ZHostList_t *hlp = server->zs_hosts;
 	register ZHostList_t *hlp2;
+	Code_t retval;
 
 	zdbug2("flush %s",inet_ntoa(who->sin_addr));
 
@@ -324,7 +358,9 @@ ZServerDesc_t *server;
 		return;
 	}
 	hostm_flush(hlp2, server);
-	host_attach(who, server);
+	if ((retval = host_attach(who, server)) != ZERR_NONE)
+		syslog(LOG_ERR, "flush h_attach: %s",
+		       error_message(retval));
 }
 
 /*
@@ -340,13 +376,13 @@ ZServerDesc_t *server;
 	register ZClientList_t *clist;
 
 	/* allocate a header */
-	if ((hlist = (ZHostList_t *)malloc(sizeof(ZHostList_t))) == NULLZHLT) {
+	if ((hlist = (ZHostList_t *)xmalloc(sizeof(ZHostList_t))) == NULLZHLT) {
 		syslog(LOG_WARNING, "hm_attach malloc");
 		return(ENOMEM);
 	}
 	/* set up */
-	if ((clist = (ZClientList_t *)malloc(sizeof(ZClientList_t))) == NULLZCLT) {
-		free(hlist);
+	if ((clist = (ZClientList_t *)xmalloc(sizeof(ZClientList_t))) == NULLZCLT) {
+		xfree(hlist);
 		return(ENOMEM);
 	}
 	clist->q_forw = clist->q_back = clist;
@@ -357,7 +393,7 @@ ZServerDesc_t *server;
 
 	/* chain in */
 	insert_host(hlist, server);
-	insque(hlist, server->zs_hosts);
+	xinsque(hlist, server->zs_hosts);
 	return(ZERR_NONE);
 }
 
@@ -380,10 +416,10 @@ ZServerDesc_t *server;
 		return;
 	}
 
-	free(hlist->zh_clients);
-	remque(hlist);
+	xfree(hlist->zh_clients);
+	xremque(hlist);
 	remove_host(hlist);
-	free(hlist);
+	xfree(hlist);
 	return;
 }
 
@@ -396,15 +432,17 @@ struct sockaddr_in *sin;
 	ZNotice_t shutnotice;
 	ZPacket_t shutpack;
 
+	zdbug2("deathgram %s",inet_ntoa(sin->sin_addr));
+
 	/* fill in the shutdown notice */
 
 	shutnotice.z_kind = HMCTL;
 	shutnotice.z_port = sock_sin.sin_port;
-	shutnotice.z_class = HM_CLASS;
-	shutnotice.z_class_inst = ZEPHYR_CTL_SERVER;
+	shutnotice.z_class = HM_CTL_CLASS;
+	shutnotice.z_class_inst = HM_CTL_SERVER;
 	shutnotice.z_opcode = SERVER_SHUTDOWN;
-	shutnotice.z_sender = ZEPHYR_CTL_SERVER;
-	shutnotice.z_recipient = ZEPHYR_CTL_HM;
+	shutnotice.z_sender = HM_CTL_SERVER;
+	shutnotice.z_recipient = "foo";
 	shutnotice.z_message = NULL;
 	shutnotice.z_message_len = 0;
 	

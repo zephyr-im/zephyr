@@ -14,24 +14,29 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
+#ifndef SABER
 static char rcsid_client_s_c[] = "$Header$";
+#endif SABER
 #endif lint
 /*
  * External functions:
  *
- * Code_t client_register(notice, client, server)
+ * Code_t client_register(notice, who, client, server)
  * ZNotice_t *notice;
+ * struct sockaddr_in *who;
  * ZClient_t **client; (RETURN)
  * ZServerDesc_t *server;
  *
  * Code_t client_deregister(client)
  * ZClient_t *client;
  *
- * ZClient_t *client_which_client(notice)
+ * ZClient_t *client_which_client(who, notice)
+ * struct sockaddr_in *who;
  * ZNotice_t *notice;
  */
 
 #include "zserver.h"
+#include <sys/socket.h>
 
 /*
  * register a client: allocate space, find or insert the address in the
@@ -42,17 +47,18 @@ static char rcsid_client_s_c[] = "$Header$";
  * The caller should check by calling client_which_client
  */
 Code_t
-client_register(notice, client, server)
+client_register(notice, who, client, server)
 ZNotice_t *notice;
+struct sockaddr_in *who;
 register ZClient_t **client;		/* RETURN */
 ZServerDesc_t *server;
 {
 	register ZHostList_t *hlp = server->zs_hosts;
 	register ZHostList_t *hlp2;
-	register ZClientList_t *clist, *clist2;
+	register ZClientList_t *clist;
 
 	/* allocate a client struct */
-	if ((*client = (ZClient_t *) malloc(sizeof(ZClient_t))) == NULLZCNT)
+	if ((*client = (ZClient_t *) xmalloc(sizeof(ZClient_t))) == NULLZCNT)
 		return(ENOMEM);
 
 	/* chain the client's host onto this server's host list */
@@ -60,36 +66,19 @@ ZServerDesc_t *server;
 	if (!hlp)			/* bad host list */
 		return(EINVAL);
 
-	for (hlp2 = hlp->q_forw; hlp2 != hlp; hlp2 = hlp2->q_forw) {
-		if (bcmp(&hlp2->zh_addr, &notice->z_sender_addr, sizeof(struct in_addr)))
-			/* already here */
-			break;
-	}
-	if (hlp2 == hlp) {		/* not here */
-		if (!(hlp2 = (ZHostList_t *) malloc(sizeof(ZHostList_t)))) {
-			free(*client);
-			return(ENOMEM);
-		}
-		hlp2->zh_addr = notice->z_sender_addr;
-		hlp2->zh_clients = NULLZCLT;
-		insque(hlp2, hlp);
-	}
+	if ((hlp2 = hostm_find_host(&who->sin_addr)) == NULLZHLT)
+		/* not here */
+		return(ZSRV_HNOTFOUND);
 
 	/* hlp2 is now pointing to the client's host's address struct */
 
-	if ((clist = hlp2->zh_clients) == NULLZCLT) {
-		/* doesn't already have a client on this ip addr */
-		if ((clist2 = (ZClientList_t *)malloc(sizeof(ZClientList_t))) == NULLZCLT) {
-			free(*client);
-			return(ENOMEM);
-		}
-		clist2->q_forw = clist2->q_back = clist;
-
-		hlp2->zh_clients = clist2;
+	if (hlp2->zh_clients == NULLZCLT) {
+		xfree(*client);
+		return(EINVAL);
 	}
 
-	if ((clist = (ZClientList_t *)malloc(sizeof(ZClientList_t))) == NULLZCLT) {
-		free(*client);
+	if ((clist = (ZClientList_t *)xmalloc(sizeof(ZClientList_t))) == NULLZCLT) {
+		xfree(*client);
 		return(ENOMEM);
 	}
 
@@ -97,30 +86,90 @@ ZServerDesc_t *server;
 	clist->zclt_client = *client;
 
 	/* initialize the struct */
-	bzero(&(*client)->zct_sin, sizeof(struct sockaddr_in));
+	bzero((caddr_t) &(*client)->zct_sin, sizeof(struct sockaddr_in));
+	(*client)->zct_sin.sin_addr.s_addr = who->sin_addr.s_addr;
 	(*client)->zct_sin.sin_port = notice->z_port;
-	(*client)->zct_sin.sin_addr = notice->z_sender_addr;
+	(*client)->zct_sin.sin_family = AF_INET;
 	(*client)->zct_subs = NULLZST;
 
-	/* chain him in */
+	/* chain him in to the clients list in the host list*/
 
-	insque(clist2, clist);
+	xinsque(clist, hlp2->zh_clients);
 
 	return(ZERR_NONE);
 }
 
 /*
- * Deregister the client, freeing resources.
+ * Deregister the client, freeing resources.  
+ * Remove any packets in the nack queue, release subscriptions, and
+ * dequeue him from the host.
  */
 
-Code_t
-client_deregister(client)
+void
+client_deregister(client, host)
 ZClient_t *client;
+ZHostList_t *host;
 {
+	ZClientList_t *clients;
+
+	/* release any not-acked packets in the rexmit queue */
+	nack_release(client);
+
+	/* release subscriptions */
+	(void) subscr_cancel_client(client);
+
+	/* unthread and release this client */
+
+	if (host->zh_clients != NULLZCLT)
+		for (clients = host->zh_clients->q_forw;
+		     clients != host->zh_clients;
+		     clients = clients->q_forw)
+			if (clients->zclt_client == client) {
+				xremque(clients);
+				xfree(client);
+				xfree(clients);
+				return;
+			}
+	syslog(LOG_CRIT, "clt_dereg: clt not in host list");
+	abort();
+	/*NOTREACHED*/
 }
 
+/*
+ * find the client which sent the notice
+ */
+
 ZClient_t *
-client_which_client(notice)
+client_which_client(who, notice)
+struct sockaddr_in *who;
 ZNotice_t *notice;
 {
+	register ZHostList_t *hlt;
+	register ZClientList_t *clients;
+
+	zdbug1("which_client entry");
+
+	if ((hlt = hostm_find_host(&who->sin_addr)) == NULLZHLT) {
+		zdbug1("host not found");
+		return(NULLZCNT);
+	}
+
+	zdbug2("host %s",inet_ntoa(hlt->zh_addr.sin_addr));
+	
+	if (hlt->zh_clients == NULLZCLT) {
+		zdbug1("no clients");
+		return(NULLZCNT);
+	}
+
+	for (clients = hlt->zh_clients->q_forw;
+	     clients != hlt->zh_clients;
+	     clients = clients->q_forw)
+		if (clients->zclt_client->zct_sin.sin_port == notice->z_port) {
+			zdbug2("match port %d", ntohs(notice->z_port));
+			return(clients->zclt_client);
+		}
+	zdbug1("no port");
+
+	return(NULLZCNT);
 }
+
