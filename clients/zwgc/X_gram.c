@@ -137,8 +137,7 @@ void x_gram_init(dpy)
     reset_saver =  get_bool_resource("resetSaver", "ResetSaver", 1);
     /* The default here should be 1, but mwm sucks */
     set_transient = get_bool_resource("transient", "Transient", 0);
-    /* This should go away, or become default 1, after a release cycle */
-    enable_delete = get_bool_resource("enableDelete", "EnableDelete", 0);
+    enable_delete = get_bool_resource("enableDelete", "EnableDelete", 1);
 
     temp = get_string_resource("borderWidth", "BorderWidth");
     /* <<<>>> */
