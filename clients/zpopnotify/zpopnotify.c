@@ -70,7 +70,7 @@ main(argc,argv)
 	(void) strcat(mysender,ZGetRealm());
 
 	for (i = 1; i < argc; i++) {
-	    (void) bzero((char *)&notice, sizeof(notice));
+	    (void) _BZERO((char *)&notice, sizeof(notice));
 	    notice.z_kind = UNSAFE;
 	    notice.z_class = MAIL_CLASS;
 	    notice.z_class_inst = MAIL_INSTANCE;

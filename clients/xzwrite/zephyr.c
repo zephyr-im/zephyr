@@ -135,7 +135,7 @@ int zeph_send_message(dest, msg)
 			       NULL);
      sprintf(sig_msg, "%s%c%s", defs.signature, '\0', msg);
           
-     bzero((char *) &notice, sizeof(ZNotice_t));
+     _BZERO((char *) &notice, sizeof(ZNotice_t));
      notice.z_kind = ACKED;
      notice.z_class = dest->zclass;
      notice.z_class_inst = dest->zinst;
@@ -170,7 +170,7 @@ int zeph_ping(dest)
 {
      ZNotice_t		notice;
 
-     bzero((char *) &notice, sizeof(ZNotice_t));
+     _BZERO((char *) &notice, sizeof(ZNotice_t));
      notice.z_kind = ACKED;
      notice.z_class = dest->zclass;
      notice.z_class_inst = dest->zinst;
@@ -186,7 +186,7 @@ int zeph_pong(dest)
 {
      ZNotice_t		notice;
 
-     bzero((char *) &notice, sizeof(ZNotice_t));
+     _BZERO((char *) &notice, sizeof(ZNotice_t));
      notice.z_kind = ACKED;
      notice.z_class = dest->zclass;
      notice.z_class_inst = dest->zinst;
