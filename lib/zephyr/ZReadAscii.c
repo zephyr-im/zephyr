@@ -29,13 +29,13 @@ int ZReadAscii(ptr,len,field,num)
 	for (i=0;i<num;i++) {
 		if (*ptr == ' ') {
 			ptr++;
-			if (--len < 1)
+			if (--len < 0)
 				return (ZERR_BADFIELD);
 		} 
 		if (ptr[0] == '0' && ptr[1] == 'x') {
 			ptr += 2;
 			len -= 2;
-			if (len < 1)
+			if (len < 0)
 				return (ZERR_BADFIELD);
 		} 
 		bfr[0] = ptr[0];
@@ -47,7 +47,7 @@ int ZReadAscii(ptr,len,field,num)
 		field[i] = hexbyte;
 		ptr += 2;
 		len -= 2;
-		if (len < 1)
+		if (len < 0)
 			return (ZERR_BADFIELD);
 	}
 
