@@ -9,7 +9,7 @@
 /**/#
 
 LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} $(DYN_LIB) ${COMERR_LIB} \
-	-lXaw -lXmu -lXt -lXext -lX11
+	${XAW_LIB} ${XMU_LIB} ${XT_LIB} ${X11_LIB}
 LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB} \
 	$(DYN_LINTLIB) ${COMERR_LINTLIB}
 
@@ -34,6 +34,7 @@ program(xzwrite,${OBJS},,${LIBS},${CLIENTDIR})
 manpage(1,xzwrite.1)
 
 install::
+	-mkdir $(DESTDIR)$(ACLDIR)
 	$(RM) $(DESTDIR)$(ACLDIR)/XZwrite
 	sed -e "s,ACLDIR,$(ACLDIR)," < XZwrite \
 					> $(DESTDIR)$(ACLDIR)/XZwrite
