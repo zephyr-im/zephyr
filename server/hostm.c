@@ -359,7 +359,9 @@ struct sockaddr_in *who;
 			zdbug((LOG_DEBUG,"lost client %s/%d",
 			       inet_ntoa(lhp->lh_client->zct_sin.sin_addr),
 			       ntohs(lhp->lh_client->zct_sin.sin_port)));
-			client_deregister(lhp->lh_client, lhp->lh_host);
+			/* deregister all subscriptions, and flush locations
+			   associated with the client. */
+			client_deregister(lhp->lh_client, lhp->lh_host, 1);
 			server_kill_clt(lhp->lh_client);
 			xremque(lhp);
 			xfree(lhp);
