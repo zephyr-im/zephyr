@@ -16,20 +16,21 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZFormatNoticeList(notice,list,nitems,buffer,buffer_len,ret_len)
+Code_t ZFormatNoticeList(notice,list,nitems,buffer,buffer_len,ret_len,cert)
 	ZNotice_t	*notice;
 	char		*list[];
 	int		nitems;
 	ZPacket_t	buffer;
 	int		buffer_len;
 	int		*ret_len;
+	int		cert;
 {
 	char *ptr,*end;
 	Code_t retval;
 
 	end = buffer+buffer_len;
 
-	if ((retval = Z_FormatHeader(notice,buffer,buffer_len,ret_len)) !=
+	if ((retval = Z_FormatHeader(notice,buffer,buffer_len,ret_len,cert)) !=
 	    ZERR_NONE)
 		return (retval);
 
