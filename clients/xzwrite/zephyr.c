@@ -70,7 +70,7 @@ int zeph_locateable(user)
      char	buf[BUFSIZ];
      int   n;
 
-     if (index(user, '@') == NULL)
+     if (strchr(user, '@') == NULL)
 	  sprintf(buf, "%s@%s", user, ZGetRealm());
      ZLocateUser(buf, &n, ZAUTH);
      return (!! n);
@@ -96,7 +96,7 @@ void zeph_subto_logins(users, num)
 	  name = (char *) Malloc(strlen(users[c])+rlen+2,
 				 "while subscribing to login, ", users[c],
 				 NULL);
-	  if (index(users[c], '@'))
+	  if (strchr(users[c], '@'))
 	       sprintf(name, "%s", users[c]);
 	  else
 	       sprintf(name, "%s@%s", users[c], realm);
@@ -135,7 +135,7 @@ int zeph_send_message(dest, msg)
 			       NULL);
      sprintf(sig_msg, "%s%c%s", defs.signature, '\0', msg);
           
-     _BZERO((char *) &notice, sizeof(ZNotice_t));
+     (void) memset((char *) &notice, 0, sizeof(ZNotice_t));
      notice.z_kind = ACKED;
      notice.z_class = dest->zclass;
      notice.z_class_inst = dest->zinst;
@@ -170,7 +170,7 @@ int zeph_ping(dest)
 {
      ZNotice_t		notice;
 
-     _BZERO((char *) &notice, sizeof(ZNotice_t));
+     (void) memset((char *) &notice, 0, sizeof(ZNotice_t));
      notice.z_kind = ACKED;
      notice.z_class = dest->zclass;
      notice.z_class_inst = dest->zinst;
@@ -186,7 +186,7 @@ int zeph_pong(dest)
 {
      ZNotice_t		notice;
 
-     _BZERO((char *) &notice, sizeof(ZNotice_t));
+     (void) memset((char *) &notice, 0, sizeof(ZNotice_t));
      notice.z_kind = ACKED;
      notice.z_class = dest->zclass;
      notice.z_class_inst = dest->zinst;
