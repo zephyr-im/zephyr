@@ -23,12 +23,12 @@ servers for each host manager by giving each host a
 If such a record is found, the host manager will resolve
 "<serverset>.sloc" instead of "zephyr.sloc".
 
-2b. If you configured Zephyr without Hesiod support, each server
-should have a file "server.list" in the configuration directory (which
-is /etc/athena/zephyr if you built with --enable-athena, or
-/usr/local/etc/zephyr if you installed Zephyr in /usr/local and didn't
-use --enable-athena).  This file should contain a list of the servers,
-one per line.
+2b. If you configured Zephyr without Hesiod support, and you have
+multiple Zephyr servers, each server should have a file "server.list"
+in the configuration directory (which is /etc/athena/zephyr if you
+built with --enable-athena, or /usr/local/etc/zephyr if you installed
+Zephyr in /usr/local and didn't use --enable-athena).  This file
+should contain a list of the servers, one per line.
 
 3. If you configured Zephyr with Kerberos 4 support, make a service
 key "zephyr.zephyr@<your realm>" and install a srvtab for that service
