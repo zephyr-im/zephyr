@@ -29,9 +29,8 @@ static char rcsid_ZVariables_c[] = "$Header$";
 char *ZGetVariable(var)
 	char *var;
 {
-	char varfile[128],*ret,*ptr;
+	char varfile[128],*ret;
 	char *get_varval();
-	int i;
 
 	if (get_localvarfile(varfile))
 		return ((char *)0);
@@ -60,7 +59,7 @@ Code_t ZSetVariable(var,value)
 	if (!(fpout = fopen(varfilebackup,"w")))
 		return (errno);
 	if (fpin = fopen(varfile,"r")) {
-		while (fgets(varbfr,sizeof varbfr,fpin) > 0) {
+		while (fgets(varbfr,sizeof varbfr,fpin) != (char *) 0) {
 			if (varbfr[strlen(varbfr)-1] < ' ')
 				varbfr[strlen(varbfr)-1] = '\0';
 			if (varline(varbfr,var)) {
@@ -97,7 +96,7 @@ Code_t ZUnsetVariable(var)
 		return (errno);
 	}
 	if (fpin = fopen(varfile,"r")) {
-		while (fgets(varbfr,sizeof varbfr,fpin) > 0) {
+		while (fgets(varbfr,sizeof varbfr,fpin) != (char *) 0) {
 			if (varbfr[strlen(varbfr)-1] < ' ')
 				varbfr[strlen(varbfr)-1] = '\0';
 			if (!varline(varbfr,var))
@@ -145,7 +144,7 @@ static char *get_varval(fn,var)
 	if (!fp)
 		return ((char *)0);
 
-	while (fgets(varbfr,sizeof varbfr,fp) > 0) {
+	while (fgets(varbfr,sizeof varbfr,fp) != (char *) 0) {
 		if (varbfr[strlen(varbfr)-1] < ' ')
 			varbfr[strlen(varbfr)-1] = '\0';
 		if (!(i = varline(varbfr,var)))
