@@ -187,8 +187,8 @@ client_dump_clients(fp)
 
     for (i = 0; i < HASHSIZE; i++) {
 	for (client = client_bucket[i]; client; client = client->next) {
-	    fprintf(fp, "\t%d (%s):\n", ntohs(client->addr.sin_port),
-		    client->principal->string);
+	    fprintf(fp, "%s/%d (%s):\n", inet_ntoa(client->addr.sin_addr),
+		    ntohs(client->addr.sin_port), client->principal->string);
 	    subscr_dump_subs(fp, client->subs);
 	}
     }
