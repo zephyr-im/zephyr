@@ -75,7 +75,7 @@ parser.o: y.tab.c y.tab.h
 	${CC} -c ${ALL_CFLAGS} -o $@ y.tab.c
 
 y.tab.c y.tab.h: parser.y
-	${YACC} ${YFLAGS} parser.y
+	${YACC} ${YFLAGS} ${srcdir}/parser.y
 
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<
