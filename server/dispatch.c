@@ -134,7 +134,8 @@ struct sockaddr_in *who;
 	register ZClientList_t *clientlist, *ptr;
 
 	if ((acl = class_get_acl(notice->z_class)) &&
-	    (!auth || !access_check(notice, acl, TRANSMIT))) {
+	    (!auth || !access_check(notice, acl, TRANSMIT) ||
+	     strcmp(notice->z_class_inst, notice->z_sender))) {
 		syslog(LOG_WARNING, "sendit unauthorized %s", notice->z_class);
 		clt_ack(notice, who, AUTH_FAILED);
 		return;
