@@ -91,8 +91,8 @@ static ZSubscr_t matchall_sub = {
 	(ZSubscr_t *) 0,
 	(ZSubscr_t *) 0,
 	MATCHALL_CLASS,
-	NULL,
-	NULL };
+	"",
+	"" };
 
 /* WARNING: make sure this is the same as the number of strings you */
 /* plan to hand back to the user in response to a subscription check, */
