@@ -60,13 +60,13 @@ char *argv[];
      Code_t ret;
      int opt, pak_len;
      extern int optind;
-     register int i;
+     register int i, j;
 
      if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
 	  printf("Can't find my hostname?!\n");
 	  exit(-1);
      }
-     *prim_serv = '\0';
+     prim_serv[0] = '\0';
      while ((opt = getopt(argc, argv, "drhi")) != EOF)
 	  switch(opt) {
 	  case 'd':
@@ -100,7 +100,6 @@ char *argv[];
      if (optind < argc) {
 	 if ((hp = gethostbyname(argv[optind++])) == NULL) {
 	     printf("Unknown server name: %s\n", prim_serv);
-	     *prim_serv = NULL;
 	 } else
 	     (void) strcpy(prim_serv, hp->h_name);
 	 /* argc-optind is the # of other servers on the command line */
@@ -118,7 +117,6 @@ char *argv[];
      }
 #ifdef HESIOD
      else {
-	 register int j;
 
 	 if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
 	     zcluster = NULL;
@@ -165,18 +163,25 @@ char *argv[];
 	     sleep(30);
 	 }
 	 clust_info = (char **)malloc(2*sizeof(char *));
-	 clust_info[0] = prim_serv;
-	 j = 1;
+	 if (prim_serv[0]) {
+	     clust_info[0] = prim_serv;
+	     j = 1;
+	 } else
+	     j = 0;
 	 for (i = 0; serv_list[i]; i++)
 	     /* copy in non-duplicates */
 	     /* assume the names returned in the sloc are full domain names */
-	     if (strcasecmp(prim_serv, serv_list[i])) {
+	     if (!prim_serv[0] || strcasecmp(prim_serv, serv_list[i])) {
 		 clust_info = (char **) realloc(clust_info,
 						(j+2) * sizeof(char *));
 		 clust_info[j++] = strsave(serv_list[i]);
 	     }
 	 clust_info[j] = NULL;
 	 serv_list = clust_info;
+     }
+     if (!prim_serv[0]) {
+	 srandom(time((long *) 0));
+	 (void) strcpy(prim_serv, serv_list[random() % j]);
      }
 #endif HESIOD	       
      if (*prim_serv == NULL) {
