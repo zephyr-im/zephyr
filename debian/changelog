@@ -1,6 +1,5 @@
 zephyr (2.1.20000421.SNAPSHOT-8) unstable; urgency=low
 
-  * 
   * zephyr-client -> zephyr-clients
   * Produce libzephyr3 package and used shared libs
   * Clean up debian/rules to only call movefiles once
