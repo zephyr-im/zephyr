@@ -33,7 +33,7 @@ char * string_to_character_class(str)
 {
     int i;
 
-    _BZERO(cache, sizeof(cache));
+    (void) memset(cache, 0, sizeof(cache));
 
     for (i=0; i<strlen(str); i++)
       cache[str[i]] = 1;
