@@ -437,8 +437,9 @@ subscr_cancel_client(ZClient_t *client)
 	register ZSubscr_t *subs;
 	int omask;
 
-#if 1
-	zdbug((LOG_DEBUG,"subscr_cancel_client"));
+#if 0
+	zdbug((LOG_DEBUG,"subscr_cancel_client %s",
+	       inet_ntoa (client->zct_addr.sin_addr)));
 #endif
 	if (!client->zct_subs)
 		return;
@@ -447,7 +448,7 @@ subscr_cancel_client(ZClient_t *client)
 	for (subs = client->zct_subs->q_forw;
 	     subs != client->zct_subs;
 	     subs = client->zct_subs->q_forw) {
-#if 1
+#if 0
 		zdbug((LOG_DEBUG,"sub_can %s",
 		       subs->zst_dest.classname.value()));
 #endif
@@ -736,6 +737,20 @@ subscr_marshal_subs(ZNotice_t *notice, int auth, struct sockaddr_in *who, regist
 
 		if (!auth && !defsubs) {
 			return((char **) 0);
+		}
+		if (!defsubs) {
+		    if (!auth)
+			return 0;
+		    if (client && !strcmp (client->zct_principal.value (),
+					   notice->z_sender)) {
+			zdbug ((LOG_DEBUG,
+			"subscr_marshal: %s requests subs for %s at %s/%d",
+				notice->z_sender,
+				client->zct_principal.value (),
+				inet_ntoa (who->sin_addr),
+				ntohs (who->sin_port)));
+			return 0;
+		    }
 		}
 
 		for (subs = subs2->q_forw;
