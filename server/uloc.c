@@ -95,7 +95,7 @@ static void ulogin_locate(), ulogin_add_user(), ulogin_flush_user();
 static ZLocation_t *ulogin_find();
 static int ulogin_setup(), ulogin_parse(), ul_equiv(), ulogin_expose_user();
 static exposure_type ulogin_remove_user();
-static void login_sendit();
+static void login_sendit(), sense_logout();
 
 static ZLocation_t *locations = NULLZLT; /* ptr to first in array */
 static int num_locs = 0;		/* number in array */
@@ -130,8 +130,10 @@ ZServerDesc_t *server;
 				zdbug((LOG_DEBUG, "unauth logout: %s %d",
 				       inet_ntoa(who->sin_addr),
 				       ntohs(notice->z_port)));
-				if (server == me_server)
+				if (server == me_server) {
 					clt_ack(notice, who, AUTH_FAILED);
+					sense_logout(notice, who);
+				}
 				return(ZERR_NONE);
 			} else if (err_ret == NOLOC) {
 				if (server == me_server)
@@ -271,6 +273,46 @@ struct sockaddr_in *who;
 }
 
 
+static void
+sense_logout(notice, who)
+ZNotice_t *notice;
+struct sockaddr_in *who;
+{
+	ZNotice_t sense_notice;
+	ZLocation_t *loc;
+	struct sockaddr_in owner;
+
+	/*
+	  someone tried an unauthentic logout.  Try to send a message
+	  to the person named in the message, warning them of this.
+	  If there is nobody listening on that port, the retransmission
+	  will eventually result in a flush of the location.
+	 */
+
+	   
+	if (!(loc = ulogin_find(notice, 1)))
+		return;
+
+	/* fabricate an addr descriptor for him */
+	(void) bzero((char *)&owner, sizeof(owner));
+	owner.sin_addr.s_addr = loc->zlt_addr.s_addr;
+	owner.sin_port = loc->zlt_port;
+
+	sense_notice.z_kind = ACKED;
+	sense_notice.z_port = sock_sin.sin_port; /* we are sending it */
+	sense_notice.z_class = "MESSAGE";
+	sense_notice.z_class_inst = "URGENT";
+	sense_notice.z_opcode = "";
+	sense_notice.z_sender = "Zephyr Server";
+	sense_notice.z_recipient = loc->zlt_user;
+	sense_notice.z_default_format = "Urgent Message from $sender at $time:\n\n$1";
+	sense_notice.z_message = "Someone tried an unauthentic logout for you";
+	sense_notice.z_message_len = strlen(sense_notice.z_message);
+	sense_notice.z_uid = notice->z_uid;
+
+	/* transmit the message to the owning port of the location. */
+	xmit(&sense_notice, &owner, 0, NULLZCLT);
+}
 /*
  * Dispatch a LOCATE notice.
  */
@@ -1149,7 +1191,7 @@ register FILE *fp;
 		fputs(inet_ntoa(locations[i].zlt_addr), fp);
 		fputs("/", fp);
 		fprintf(fp, "%d", ntohs(locations[i].zlt_port));
-		putc('\n', fp);
+		(void) putc('\n', fp);
 	}
 	return;
 }
