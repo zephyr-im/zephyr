@@ -15,6 +15,10 @@
 #ifndef __ZEPHYR_H__
 #define __ZEPHYR_H__
 
+#ifdef POSIX
+#include <unistd.h>
+#endif
+
 #include <zephyr/zephyr_err.h>
 #include <zephyr/zephyr_conf.h>
 
