@@ -16,8 +16,8 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_hm_server_c[] = "$Header$";
-#endif SABER
-#endif lint
+#endif /* SABER */
+#endif /* lint */
 
 int serv_loop = 0;
 extern u_short cli_port;
