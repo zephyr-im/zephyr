@@ -50,8 +50,8 @@ char *upcase();
 main(argc, argv)
 char *argv[];
 {
-     ZPacket_t packet;
      ZNotice_t notice;
+     ZPacket_t packet;
      Code_t ret;
      int opt, pak_len;
      extern int optind;
@@ -170,7 +170,7 @@ char *argv[];
 	       syslog (LOG_INFO, "Unknown system interrupt.");
 	       break;
 	  }
-	  ret = ZReceivePacket(packet, Z_MAXPKTLEN, &pak_len, &from);
+	  ret = ZReceivePacket(packet, &pak_len, &from);
 	  if ((ret != ZERR_NONE) && (ret != EINTR)){
 	       Zperr(ret);
 	       com_err("hm", ret, "receiving notice");
@@ -191,6 +191,7 @@ char *argv[];
 		   DPR2("\tz_sender: %s\n", notice.z_sender);
 		   DPR2("\tz_recip: %s\n", notice.z_recipient);
 		   DPR2("\tz_def_format: %s\n", notice.z_default_format);
+		   DPR2("\tz_message: %s\n", notice.z_message);
 		   if ((bcmp(loopback, (char *)&from.sin_addr, 4) != 0) &&
 		       ((notice.z_kind == SERVACK) ||
 			(notice.z_kind == SERVNAK) ||
@@ -387,16 +388,19 @@ send_stats(notice, sin)
      ZNotice_t *notice;
      struct sockaddr_in *sin;
 {
+     ZNotice_t newnotice;
      Code_t ret;
-     ZPacket_t bfr;
+     char *bfr;
      char *list[20];
      int len, i, nitems = 10;
-  
+
+     newnotice = *notice;
+     
      if ((ret = ZSetDestAddr(sin)) != ZERR_NONE) {
 	  Zperr(ret);
 	  com_err("hm", ret, "setting destination");
      }
-     notice->z_kind = HMACK;
+     newnotice.z_kind = HMACK;
 
      list[0] = (char *)malloc(MAXHOSTNAMELEN);
      (void)strcpy(list[0], cur_serv);
@@ -422,14 +426,15 @@ send_stats(notice, sin)
      list[9] = (char *)malloc(32);
      (void)strcpy(list[9], MACHINE);
 
-     if ((ret = ZFormatRawNoticeList(notice, list, nitems, bfr,
-				     Z_MAXPKTLEN, &len)) != ZERR_NONE) {
+     if ((ret = ZFormatRawNoticeList(&newnotice, list, nitems, &bfr,
+				     &len)) != ZERR_NONE) {
 	  syslog(LOG_INFO, "Couldn't format stats packet");
      } else
-	  if ((ret = ZSendPacket(bfr, len)) != ZERR_NONE) {
+	  if ((ret = ZSendPacket(bfr, len, 0)) != ZERR_NONE) {
 	       Zperr(ret);
 	       com_err("hm", ret, "sending stats");
 	  }
+     free(bfr);
      for(i=0;i<nitems;i++)
 	  free(list[i]);
 }
