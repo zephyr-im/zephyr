@@ -88,7 +88,7 @@ typedef struct _losinghost {
 
 static struct hostlist *all_hosts;
 
-static int num_hosts;			/* number of hosts in all_hosts */
+static int num_hosts = 0;		/* number of hosts in all_hosts */
 static long lose_timo = LOSE_TIMO;
 
 static losinghost *losing_hosts = NULLLH; /* queue of pings for hosts we
