@@ -29,6 +29,9 @@ Code_t ZInitialize()
     struct servent *hmserv;
     char addr[4];
 #ifdef ZEPHYR_USES_KERBEROS
+    Code_t code;
+    ZNotice_t notice;
+    char *krealm;
     int krbval;
     char d1[ANAME_SZ], d2[INST_SZ];
 
@@ -54,19 +57,39 @@ Code_t ZInitialize()
 
     __HM_set = 0;
 
+    /* Initialize the input queue */
+    __Q_Tail = NULL;
+    __Q_Head = NULL;
+    
 #ifdef ZEPHYR_USES_KERBEROS
-    if (krb_get_tf_fullname(TKT_FILE, d1, d2, __Zephyr_realm) != KSUCCESS
-	&& (krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)
+    if ((code = ZOpenPort(NULL)) != ZERR_NONE)
+       return(code);
+
+    if ((code = ZhmStat(NULL, &notice)) != ZERR_NONE)
+       return(code);
+
+    ZClosePort();
+
+    /* the first field, which is NUL-terminated, is the server name.
+       If this code ever support a multiplexing zhm, this will have to
+       be made smarter, and probably per-message */
+
+    krealm = krb_realmofhost(notice.z_message);
+
+    ZFreeNotice(&notice);
+
+    if (krealm) {
+	strcpy(__Zephyr_realm, krealm);
+    } else if ((krb_get_tf_fullname(TKT_FILE, d1, d2, __Zephyr_realm)
+		!= KSUCCESS) &&
+	       ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)) {
 	return (krbval);
+    }
 #endif
 
     /* Get the sender so we can cache it */
     (void) ZGetSender();
 
-    /* Initialize the input queue */
-    __Q_Tail = NULL;
-    __Q_Head = NULL;
-    
     return (ZERR_NONE);
 }
 
