@@ -127,7 +127,6 @@ handle_packet()
 	 * queue/socket
 	 */
 	if (status = ZReceivePacket(input_packet,
-				    sizeof(input_packet),
 				    &input_len,
 				    &whoisit)) {
 		syslog(LOG_ERR,
@@ -155,12 +154,10 @@ handle_packet()
 		input_sin.sin_port = new_notice.z_port;
 		input_sin.sin_family = AF_INET;
 		authentic = ZCheckAuthentication(&new_notice,
-						 input_packet,
 						 &input_sin);
 	}
 	else
 		authentic = ZCheckAuthentication(&new_notice,
-						 input_packet,
 						 &whoisit);
 	if (whoisit.sin_port != hm_port &&
 	    strcmp(new_notice.z_class,ZEPHYR_ADMIN_CLASS) &&
@@ -326,6 +323,61 @@ ZClient_t *client;
 }
 
 /*
+ * Send one packet of a fragmented message to a client.  After transmitting,
+ * put it onto the not ack'ed list.
+ */
+
+/* the arguments must be the same as the arguments to Z_XmitFragment */
+/*ARGSUSED*/
+Code_t
+xmit_frag(notice, buf, len, waitforack)
+ZNotice_t *notice;
+char *buf;
+int len, waitforack;
+{
+	char *savebuf;
+	register ZNotAcked_t *nacked;
+
+	if ((retval = ZSendPacket(buf, len, 0)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "xmit_frag send: %s",
+		       error_message(retval));
+		return(retval);
+	}
+
+	/* now we've sent it, mark it as not ack'ed */
+
+	if (!(nacked = (ZNotAcked_t *)xmalloc(sizeof(ZNotAcked_t)))) {
+		/* no space: just punt */
+		syslog(LOG_WARNING, "xmit_frag nack malloc");
+		return(ENOMEM);
+	}
+
+	if (!(savebuf = (char *)xmalloc(len))) {
+		/* no space: just punt */
+		syslog(LOG_WARNING, "xmit_frag pack malloc");
+		return(ENOMEM);
+	}
+
+	(void) bcopy(buf, savebuf, len);
+
+	nacked->na_rexmits = 0;
+	nacked->na_packet = savebuf;
+	nacked->na_addr = ZGetDestAddr();
+	nacked->na_packsz = len;
+	nacked->na_uid = notice->z_multiuid;
+	nacked->q_forw = nacked->q_back = nacked;
+	nacked->na_abstimo = NOW + abs_timo;
+
+	/* set a timer to retransmit when done */
+	nacked->na_timer = timer_set_rel(rexmit_secs,
+					 rexmit,
+					 (caddr_t) nacked);
+	/* chain in */
+	xinsque(nacked, nacklist);
+	return(ZERR_NONE);
+}
+
+/*
  * Send the notice to the client.  After transmitting, put it onto the
  * not ack'ed list.
  */
@@ -343,18 +395,19 @@ ZClient_t *client;
 	Code_t retval;
 
 	zdbug((LOG_DEBUG,"xmit"));
-	if (!(noticepack = (caddr_t) xmalloc(sizeof(ZPacket_t)))) {
-		syslog(LOG_ERR, "xmit malloc");
-		return;			/* DON'T put on nack list */
-	}
 
-
-	packlen = sizeof(ZPacket_t);
 
 	if (auth && client) {		/*
 					  we are distributing authentic and
 					  we have a pointer to auth info
 					 */
+#ifdef KERBEROS
+		if (!(noticepack = (caddr_t) xmalloc(sizeof(ZPacket_t)))) {
+			syslog(LOG_ERR, "xmit malloc");
+			return;			/* DON'T put on nack list */
+		}
+		packlen = sizeof(ZPacket_t);
+
 		if ((retval = ZFormatAuthenticNotice(notice,
 						     noticepack,
 						     packlen,
@@ -366,17 +419,26 @@ ZClient_t *client;
 			xfree(noticepack);
 			return;
 		}
+#else /* !KERBEROS */
+		notice->z_auth = 1;
+		if ((retval = ZFormatRawNotice(notice,
+					       &noticepack,
+					       &packlen))
+		    != ZERR_NONE) {
+			syslog(LOG_ERR, "xmit auth/raw format: %s",
+			       error_message(retval));
+			return;
+		}
+#endif /* KERBEROS */
 	} else {
 		notice->z_auth = 0;
 		notice->z_authent_len = 0;
 		notice->z_ascii_authent = (char *)"";
 		if ((retval = ZFormatRawNotice(notice,
-					       noticepack,
-					       packlen,
+					       &noticepack,
 					       &packlen)) != ZERR_NONE) {
 			syslog(LOG_ERR, "xmit format: %s",
 			       error_message(retval));
-			xfree(noticepack);
 			return;			/* DON'T put on nack list */
 		}
 	}
@@ -388,7 +450,7 @@ ZClient_t *client;
 		xfree(noticepack);
 		return;
 	}
-	if ((retval = ZSendPacket(noticepack, packlen)) != ZERR_NONE) {
+	if ((retval = ZSendPacket(noticepack, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "xmit xmit: %s", error_message(retval));
 		xfree(noticepack);
 		return;
@@ -407,7 +469,7 @@ ZClient_t *client;
 	nacked->na_packet = noticepack;
 	nacked->na_addr = *dest;
 	nacked->na_packsz = packlen;
-	nacked->na_uid = notice->z_uid;
+	nacked->na_uid = notice->z_multiuid;
 	nacked->q_forw = nacked->q_back = nacked;
 	nacked->na_abstimo = NOW + abs_timo;
 
@@ -469,7 +531,7 @@ register ZNotAcked_t *nackpacket;
 
 	}
 	if ((retval = ZSendPacket(nackpacket->na_packet,
-				  nackpacket->na_packsz)) != ZERR_NONE)
+				  nackpacket->na_packsz, 0)) != ZERR_NONE)
 		syslog(LOG_WARNING, "rexmit xmit: %s", error_message(retval));
 
 requeue:
@@ -539,9 +601,8 @@ ZSentType sent;
 
 	packlen = sizeof(ackpack);
 
-	if ((retval = ZFormatRawNotice(&acknotice,
+	if ((retval = ZFormatSmallRawNotice(&acknotice,
 				       ackpack,
-				       packlen,
 				       &packlen)) != ZERR_NONE) {
 		syslog(LOG_ERR, "clt_ack format: %s",error_message(retval));
 		return;
@@ -551,7 +612,7 @@ ZSentType sent;
 		       error_message(retval));
 		return;
 	}
-	if ((retval = ZSendPacket(ackpack, packlen)) != ZERR_NONE) {
+	if ((retval = ZSendPacket(ackpack, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "clt_ack xmit: %s", error_message(retval));
 		return;
 	}
@@ -579,7 +640,7 @@ struct sockaddr_in *who;
 	     nacked = nacked->q_forw)
 		if ((nacked->na_addr.sin_addr.s_addr == who->sin_addr.s_addr) &&
 		     (nacked->na_addr.sin_port == who->sin_port))
-			if (ZCompareUID(&nacked->na_uid, &notice->z_uid)) {
+			if (ZCompareUID(&nacked->na_uid, &notice->z_multiuid)) {
 				timer_reset(nacked->na_timer);
 				xfree(nacked->na_packet);
 				xremque(nacked);

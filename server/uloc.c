@@ -90,12 +90,19 @@ typedef struct _ZLocation_t {
 #define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
 #define	LOGIN_QUIET_LOGIN	"QUIET_LOGIN"
 #endif /* OLD_COMPAT */
+#ifdef NEW_COMPAT
+#define	NEW_OLD_ZEPHYR_VERSION	"ZEPH0.1"
+#endif NEW_COMPAT
+#if defined(OLD_COMPAT) || defined(NEW_COMPAT)
+static void old_compat_ulogin_locate();
+#endif /* OLD_COMPAT || NEW_COMPAT */
 
 static void ulogin_locate(), ulogin_add_user(), ulogin_flush_user();
 static ZLocation_t *ulogin_find();
 static int ulogin_setup(), ulogin_parse(), ul_equiv(), ulogin_expose_user();
 static exposure_type ulogin_remove_user();
 static void login_sendit(), sense_logout();
+static char **ulogin_marshal_locs();
 
 static ZLocation_t *locations = NULLZLT; /* ptr to first in array */
 static int num_locs = 0;		/* number in array */
@@ -154,7 +161,7 @@ ZServerDesc_t *server;
 		case NET_ANN:
 			/* currently no distinction between these.
 			 just announce */
-			/* XXX we assume that if this user is at a certain
+			/* we assume that if this user is at a certain
 			   IP address, we can trust the logout to be
 			   authentic.  ulogin_remove_user checks the
 			   ip addrs */
@@ -308,7 +315,7 @@ struct sockaddr_in *who;
 	sense_notice.z_default_format = "Urgent Message from $sender at $time:\n\n$1";
 	sense_notice.z_message = "Someone tried an unauthentic logout for you";
 	sense_notice.z_message_len = strlen(sense_notice.z_message);
-	sense_notice.z_uid = notice->z_uid;
+	sense_notice.z_uid = notice->z_multiuid;
 
 	/* transmit the message to the owning port of the location. */
 	xmit(&sense_notice, &owner, 0, NULLZCLT);
@@ -1037,31 +1044,74 @@ exposure_type exposure;
 	return(notfound);
 }
 
-/*
- * Locate the user and send the locations in the acknowledgement to the client.
- */
 
 static void
 ulogin_locate(notice, who)
 ZNotice_t *notice;
 struct sockaddr_in *who;
 {
+	char **answer;
+	int found;
+
+#if defined(NEW_COMPAT) || defined(OLD_COMPAT)
+	if (!strcmp(notice->z_version, NEW_OLD_ZEPHYR_VERSION) ||
+	    !strcmp(notice->z_version, OLD_ZEPHYR_VERSION)) {
+		/* we are talking to a new old client; use the new-old-style
+		   acknowledgement-message */
+		old_compat_ulogin_locate(notice, who);
+		return;
+	}
+#endif /* NEW_COMPAT || OLD_COMPAT */
+	answer = ulogin_marshal_locs(notice, who, &found);
+
+	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "ulogin_locate set addr: %s",
+		       error_message(retval));
+		if (answer)
+			xfree(answer);
+		return;
+	}
+
+	notice->z_kind = ACKED;
+
+	/* use xmit_frag() to send each piece of the notice */
+
+	if ((retval = ZSrvSendRawList(notice, answer, found*NUM_FIELDS,
+				      xmit_frag))
+	    != ZERR_NONE) {
+		syslog(LOG_WARNING, "ulog_locate xmit: %s",
+		       error_message(retval));
+	}
+	if (answer)
+		xfree(answer);
+	return;
+}
+
+/*
+ * Locate the user and collect the locations into an array.  Return the # of
+ * locations in *found.
+ */
+
+static char **
+ulogin_marshal_locs(notice, who, found)
+ZNotice_t *notice;
+struct sockaddr_in *who;
+register int *found;
+{
 	ZLocation_t **matches = (ZLocation_t **) 0;
 	ZLocation_t *loc;
 	char **answer;
 	register int i = 0;
-	register int found = 0;		/* # of matches */
-	Code_t retval;
-	ZNotice_t reply;
-	ZPacket_t reppacket;
-	int packlen;
+
+	*found = 0;			/* # of matches */
 
 	if (!(loc = ulogin_find(notice, 0)))
 		/* not here anywhere */
-		goto rep;
+		return(NULL);
 
 	i = loc - locations;
-	while (i < num_locs && !strcmp(notice->z_class_inst, locations[i].zlt_user)) {
+	while ((i < num_locs) &&
+	       !strcmp(notice->z_class_inst, locations[i].zlt_user)) {
 		/* these locations match */
 		zdbug((LOG_DEBUG,"match %s", locations[i].zlt_user));
 		switch (locations[i].zlt_exposure) {
@@ -1075,20 +1125,20 @@ struct sockaddr_in *who;
 		default:
 			break;
 		}
-		if (!found) {
+		if (!*found) {
 			if ((matches = (ZLocation_t **) xmalloc(sizeof(ZLocation_t *))) == (ZLocation_t **) 0) {
 				syslog(LOG_ERR, "ulog_loc: no mem");
 				break;	/* from the while */
 			}
 			matches[0] = &locations[i];
-			found++;
+			(*found)++;
 		} else {
 			if ((matches = (ZLocation_t **) realloc((caddr_t) matches, (unsigned) ++found * sizeof(ZLocation_t *))) == (ZLocation_t **) 0) {
 				syslog(LOG_ERR, "ulog_loc: realloc no mem");
-				found = 0;
+				*found = 0;
 				break;	/* from the while */
 			}
-			matches[found - 1] = &locations[i];
+			matches[*found - 1] = &locations[i];
 		}
 		i++;
 	}
@@ -1096,11 +1146,7 @@ struct sockaddr_in *who;
 	/* OK, now we have a list of user@host's to return to the client
 	   in matches */
 
-rep:
-	reply = *notice;
-	reply.z_kind = SERVACK;
 
-	packlen = sizeof(reppacket);
 
 #ifdef DEBUG
 	if (zdebug) {
@@ -1122,11 +1168,30 @@ rep:
 
 	xfree(matches);
 	/* if it's too long, chop off one at a time till it fits */
-	while ((retval = ZFormatRawNoticeList(&reply,
+}
+
+#if defined(OLD_COMPAT) || defined(NEW_COMPAT)
+static void
+old_compat_ulogin_locate(notice, who)
+ZNotice_t *notice;
+struct sockaddr_in *who;
+{
+	char **answer;
+	int found;
+	int packlen;
+	ZPacket_t reppacket;
+	ZNotice_t reply;
+	Code_t retval;
+
+	answer = ulogin_marshal_locs(notice, who, &found);
+
+	reply = *notice;
+	reply.z_kind = SERVACK;
+
+	while ((retval = ZFormatSmallRawNoticeList(&reply,
 					      answer,
 					      found * NUM_FIELDS,
 					      reppacket,
-					      packlen,
 					      &packlen)) == ZERR_PKTLEN)
 		found--;
 
@@ -1137,12 +1202,12 @@ rep:
 		return;
 	}
 	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "ulog_locate set addr: %s",
+		syslog(LOG_WARNING, "old_ulog_locate set addr: %s",
 		       error_message(retval));
 		xfree(answer);
 		return;
 	}
-	if ((retval = ZSendPacket(reppacket, packlen)) != ZERR_NONE) {
+	if ((retval = ZSendPacket(reppacket, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "ulog_locate xmit: %s",
 		       error_message(retval));
 		xfree(answer);
@@ -1152,6 +1217,7 @@ rep:
 	xfree(answer);
 	return;
 }
+#endif /* OLD_COMPAT || NEW_COMPAT */
 
 void
 uloc_dump_locs(fp)
