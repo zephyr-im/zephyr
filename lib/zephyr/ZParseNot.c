@@ -14,7 +14,7 @@
 
 #ifndef lint
 static char rcsid_ZParseNotice_c[] =
-    "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZParseNotice.c,v 1.19 90/11/26 12:26:33 raeburn Exp $";
+    "$Zephyr: /mit/zephyr/src/lib/RCS/ZParseNotice.c,v 1.22 91/03/29 03:34:46 raeburn Exp $";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -111,7 +111,9 @@ Code_t ZParseNotice(buffer, len, notice)
 	return (ZERR_VERS);
     ptr += sizeof(ZVERSIONHDR) - 1;
     if (!*ptr) {
+#ifdef Z_DEBUG
 	Z_debug ("ZParseNotice: null version string");
+#endif
 	return ZERR_BADPKT;
     }
     maj = atoi(ptr);
@@ -131,14 +133,18 @@ Code_t ZParseNotice(buffer, len, notice)
 #ifdef __LINE__
 	lineno = __LINE__;
       badpkt:
+#ifdef Z_DEBUG
 	Z_debug ("ZParseNotice: bad packet from %s/%d (line %d)",
 		 inet_ntoa (notice->z_uid.zuid_addr.s_addr),
 		 notice->z_port, lineno);
+#endif
 #else
     badpkt:
+#ifdef Z_DEBUG
 	Z_debug ("ZParseNotice: bad packet from %s/%d",
 		 inet_ntoa (notice->z_uid.zuid_addr.s_addr),
 		 notice->z_port);
+#endif
 #endif
 	return ZERR_BADPKT;
     }
