@@ -19,7 +19,7 @@
 Code_t ZSetFD(fd)
 	int	fd;
 {
-	ZClosePort();
+	(void) ZClosePort();
 
 	__Zephyr_fd = fd;
 	__Zephyr_open = 0;

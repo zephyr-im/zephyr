@@ -19,5 +19,5 @@
 int ZCompareUID(uid1,uid2)
 	ZUnique_Id_t *uid1,*uid2;
 {
-	return (!bcmp(uid1,uid2,sizeof (*uid1)));
+	return (!bcmp((char *)uid1,(char *)uid2,sizeof (*uid1)));
 }

@@ -31,15 +31,16 @@ char *ZGetSender()
 
 	tktfile = (char *)TKT_FILE;
 	if (!(fp = fopen(tktfile,"r"))) {
+		/*NOSTRICT*/
 		pw = getpwuid(getuid());
 		if (!pw)
 			return ("unauth");
-		sprintf(sender,"%s@UNAUTH",pw->pw_name);
+		(void) sprintf(sender,"%s@UNAUTH",pw->pw_name);
 		return (sender);
 	} 
 	getst(fp,pname,ANAME_SZ);
 	getst(fp,pinst,INST_SZ);
-	sprintf(sender,"%s%s%s@%s",pname,(pinst[0]?".":""),pinst,
+	(void) sprintf(sender,"%s%s%s@%s",pname,(pinst[0]?".":""),pinst,
 		__Zephyr_realm);
 	
 	return (sender);

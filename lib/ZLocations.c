@@ -26,8 +26,9 @@ Code_t ZSetLocation()
 	struct passwd *pw;
 	
         quiet = 0;
+	/*NOSTRICT*/
 	if (pw = getpwuid(getuid())) {
-		sprintf(bfr,"%s/.hideme",pw->pw_dir);
+		(void) sprintf(bfr,"%s/.hideme",pw->pw_dir);
 		quiet = !access(bfr,F_OK);
 	} 
 

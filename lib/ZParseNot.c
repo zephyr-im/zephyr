@@ -34,34 +34,36 @@ Code_t ZParseNotice(buffer,len,notice,auth,from)
 	ptr = buffer;
 	end = buffer+len;
 	
-	if (ZReadAscii(ptr,end-ptr,temp,sizeof(int)) == ZERR_BADFIELD)
+	if (ZReadAscii(ptr,end-ptr,(char *)temp,sizeof(int)) == ZERR_BADFIELD)
 		return (ZERR_BADPKT);
 	ptr += strlen(ptr)+1;
 	
 	if (*temp != ZVERSION)
 		return (ZERR_VERS);
 
-	if (ZReadAscii(ptr,end-ptr,temp,sizeof(int)) == ZERR_BADFIELD)
+	if (ZReadAscii(ptr,end-ptr,(char *)temp,sizeof(int)) == ZERR_BADFIELD)
 		return (ZERR_BADPKT);
 	notice->z_kind = (ZNotice_Kind_t)*temp;
 	ptr += strlen(ptr)+1;
 	
-	if (ZReadAscii(ptr,end-ptr,temp,sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
+	if (ZReadAscii(ptr,end-ptr,(char *)temp,sizeof(ZUnique_Id_t)) ==
+	    ZERR_BADFIELD)
 		return (ZERR_BADPKT);
-	bcopy(temp,&notice->z_uid,sizeof(ZUnique_Id_t));
+	bcopy((char *)temp,(char *)&notice->z_uid,sizeof(ZUnique_Id_t));
 	ptr += strlen(ptr)+1;
 	
-	if (ZReadAscii(ptr,end-ptr,temp,sizeof(u_short)) == ZERR_BADFIELD)
+	if (ZReadAscii(ptr,end-ptr,(char *)temp,sizeof(u_short)) ==
+	    ZERR_BADFIELD)
 		return (ZERR_BADPKT);
 	notice->z_port = (u_short)*temp;
 	ptr += strlen(ptr)+1;
 	
-	if (ZReadAscii(ptr,end-ptr,temp,sizeof(int)) == ZERR_BADFIELD)
+	if (ZReadAscii(ptr,end-ptr,(char *)temp,sizeof(int)) == ZERR_BADFIELD)
 		return (ZERR_BADPKT);
 	notice->z_auth = *temp;
 	ptr += strlen(ptr)+1;
 
-	if (ZReadAscii(ptr,end-ptr,temp,sizeof(int)) == ZERR_BADFIELD)
+	if (ZReadAscii(ptr,end-ptr,(char *)temp,sizeof(int)) == ZERR_BADFIELD)
 		return (ZERR_BADPKT);
 	notice->z_authent_len = *temp;
 	ptr += strlen(ptr)+1;
@@ -81,7 +83,8 @@ Code_t ZParseNotice(buffer,len,notice,auth,from)
 
 	cksum = ptr;
 	
-	if (ZReadAscii(ptr,end-ptr,&notice->z_checksum,sizeof(ZChecksum_t))
+	if (ZReadAscii(ptr,end-ptr,(char *)&notice->z_checksum,
+		       sizeof(ZChecksum_t))
 	    == ZERR_BADFIELD)
 		return (ZERR_BADPKT);
 	ptr += strlen(ptr)+1;
@@ -98,7 +101,8 @@ Code_t ZParseNotice(buffer,len,notice,auth,from)
 	
 	if (__Zephyr_server) {
 		if (ZReadAscii(notice->z_ascii_authent,
-			       strlen(notice->z_ascii_authent)+1,authent.dat,
+			       strlen(notice->z_ascii_authent)+1,
+			       (char *)authent.dat,
 			       notice->z_authent_len) == ZERR_BADFIELD) {
 			*auth = 0;
 			return (ZERR_NONE);
@@ -107,9 +111,10 @@ Code_t ZParseNotice(buffer,len,notice,auth,from)
 		result = rd_ap_req(&authent,SERVER_SERVICE,
 				   SERVER_INSTANCE,from->sin_addr.s_addr,
 				   &dat,SERVER_SRVTAB);
-		bcopy(dat.session,__Zephyr_session,sizeof(C_Block));
+		bcopy((char *)dat.session,(char *)__Zephyr_session,
+		      sizeof(C_Block));
 		*auth = (result == RD_AP_OK);
-		sprintf(srcprincipal,"%s%s%s@%s",dat.pname,
+		(void) sprintf(srcprincipal,"%s%s%s@%s",dat.pname,
 			dat.pinst[0]?".":"",dat.pinst,dat.prealm);
 		if (strcmp(srcprincipal,notice->z_sender))
 			*auth = 0;

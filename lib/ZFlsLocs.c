@@ -28,7 +28,7 @@ Code_t ZFlushLocations()
 		free(__locate_list[i].time);
 	}
 	
-	free(__locate_list);
+	free((char *)__locate_list);
 
 	__locate_list = 0;
 	__locate_num = 0;

@@ -23,7 +23,7 @@ Code_t ZOpenPort(port)
 	int retval;
 	struct sockaddr_in bindin;
 
-	ZClosePort();
+	(void) ZClosePort();
 
 	if ((__Zephyr_fd = socket(AF_INET,SOCK_DGRAM,0)) < 0) {
 		__Zephyr_fd = -1;
@@ -35,8 +35,9 @@ Code_t ZOpenPort(port)
 	if (port && *port)
 		bindin.sin_port = *port;
 	else
-		bindin.sin_port = htons(((getpid()*8)&0xfff)+
-					((random()>>4)&0xf)+1024);
+		/*NOSTRICT*/
+		bindin.sin_port = htons((u_short)((getpid()*8)&0xfff)+
+					(((int)random()>>4)&0xf)+1024);
 
 	bindin.sin_addr.s_addr = INADDR_ANY;
 
@@ -46,6 +47,7 @@ Code_t ZOpenPort(port)
 				if (port)
 					return (ZERR_PORTINUSE);
 				else
+					/*NOSTRICT*/
 					bindin.sin_port = htons(ntohs(bindin.
 								      sin_port)
 								+1);
