@@ -365,7 +365,7 @@ mail_notify(mail)
 	char *fields[3];
 	ZNotice_t notice;
 
-	(void) _BZERO((char *)&notice, sizeof(notice));
+	(void) memset((char *)&notice, 0, sizeof(notice));
 	notice.z_kind = UNACKED;
 	notice.z_port = 0;
 	notice.z_class = "MAIL";
@@ -427,7 +427,7 @@ char *host;
 	return NOTOK;
     }
     sin.sin_family = hp->h_addrtype;
-    _BCOPY(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
+    (void) memcpy((char *)&sin.sin_addr, hp->h_addr, hp->h_length);
     sin.sin_port = sp->s_port;
 #ifdef KPOP
     s = socket(AF_INET, SOCK_STREAM, 0);
