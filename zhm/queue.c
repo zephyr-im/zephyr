@@ -16,8 +16,8 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_queue_c[] = "$Header$";
-#endif SABER
-#endif lint
+#endif /* SABER */
+#endif /* lint */
 
 typedef struct _Queue {
      long timeout;
@@ -87,7 +87,7 @@ int len;
      if (!is_in_queue(notice))
 	  return(ZERR_NONOTICE);
      else
-#endif DEBUG
+#endif /* DEBUG */
 	  return(ZERR_NONE);
 }
 
@@ -112,7 +112,7 @@ struct sockaddr_in *repl;
 	       (void)alarm(0);
 #ifdef DEBUG
 	  dump_queue();
-#endif DEBUG
+#endif /* DEBUG */
 	  return(ZERR_NONE);
      }
 }
@@ -184,7 +184,7 @@ Code_t dump_queue()
 	  srch = srch->q_forw;
      } while (srch != &hm_queue);
 }
-#endif DEBUG
+#endif /* DEBUG */
 
 int queue_len()
 {
