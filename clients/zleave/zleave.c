@@ -66,9 +66,6 @@ char *reminder_message = NULL;
 char buff[100];
 int use_zephyr=1, oldpid;
 
-extern uid_t getuid();
-long time();
-
 main(argc, argv)
 char **argv;
 {
@@ -333,7 +330,7 @@ char *msg;
 	    }
 	    sprintf(real_message,"%c%s\n%s",'\0',msg,reminder_message);
 
-	    (void) _BZERO((char *)&notice, sizeof(notice));
+	    (void) memset((char *)&notice, 0, sizeof(notice));
 	    notice.z_kind = ACKED;
 	    notice.z_port = 0;
 	    notice.z_class = MESSAGE_CLASS;
