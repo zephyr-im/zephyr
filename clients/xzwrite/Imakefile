@@ -24,8 +24,8 @@ OBJS	= interface.o resource.o destlist.o util.o bfgets.o \
 HDRS	= GetString.h associate.h xzwrite.h xzwrite-proto.h
 
 SRCDIR= ${SRCTOP}/clients/xzwrite
-CODE= ${SRCS} ${HDRS} Imakefile xzwrite.1 XZwrite
-DEFINES=-DXZWRITE_SEARCH_PATHS=\"$(ACLDIR)\"
+CODE= ${SRCS} ${HDRS} Imakefile xzwrite.1 XZwrite xzwrite.bitmap
+DEFINES=-DXZWRITE_SEARCH_PATHS=\"$(ACLDIR)/%N\"
 
 normal_obj_rule()
 
@@ -35,4 +35,7 @@ manpage(1,xzwrite.1)
 
 install::
 	$(RM) $(DESTDIR)$(ACLDIR)/XZwrite
-	$(CP) XZwrite $(DESTDIR)$(ACLDIR)/XZwrite
+	sed -e "s,ACLDIR,$(ACLDIR)," < XZwrite \
+					> $(DESTDIR)$(ACLDIR)/XZwrite
+	$(RM) $(DESTDIR)$(ACLDIR)/xzwrite.bitmap
+	$(CP) xzwrite.bitmap $(DESTDIR)$(ACLDIR)/xzwrite.bitmap
