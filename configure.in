@@ -107,5 +107,4 @@ AC_OUTPUT(Makefile clients/Makefile clients/syslogd/Makefile
 	  clients/zmailnotify/Makefile clients/znol/Makefile
 	  clients/zpopnotify/Makefile clients/zshutdown_notify/Makefile
 	  clients/zstat/Makefile clients/zwrite/Makefile lib/Makefile
-	  libdyn/Makefile server/Makefile zhm/Makefile zwgc/Makefile
-	  clients/xzwrite/XZwrite)
+	  libdyn/Makefile server/Makefile zhm/Makefile zwgc/Makefile)
