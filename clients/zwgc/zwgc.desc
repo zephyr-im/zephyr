@@ -118,14 +118,7 @@ match "message"
 		" on "+$date+"\n"+$ftext+" on "+$fromhost+"\nTo: "+
 		$recipient+")\n\n"
 	print $body
-	case $auth
-	match "yes"
-	  put
-	match "no","forged"
-	  set X_geometry="-0-80"
-	  put
-	  set X_geometry=""
-	endcase
+	put
 	exit
 
 match "login"
