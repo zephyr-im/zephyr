@@ -1,3 +1,4 @@
+#ifdef KERBEROS
 /*
  *	$Source$
  *	$Header$
@@ -123,3 +124,4 @@ tkt_string()
 {
 	return(tkt_file);
 }
+#endif KERBEROS
