@@ -2,8 +2,8 @@
  * $Source$
  * $Author$
  *
- * Copyright 1985, 1986, 1987, 1988, 1990 by the Massachusetts Institute
- * of Technology.
+ * Copyright 1985, 1986, 1987, 1988, 1990, 1991 by the Massachusetts
+ * Institute of Technology.
  *
  * For copying and distribution information, please see the file
  * <mit-copyright.h>.
@@ -11,18 +11,18 @@
 
 /*
  * This includes code taken from:
- * $Kerberos: rd_req.c,v 4.16 89/03/22 14:52:06 jtkohl Exp $
- * $Kerberos: prot.h,v 4.13 89/01/24 14:27:22 jtkohl Exp $
- * $Kerberos: krb_conf.h,v 4.0 89/01/23 09:59:27 jtkohl Exp $
+ * Kerberos: rd_req.c,v 4.16 89/03/22 14:52:06 jtkohl Exp
+ * Kerberos: prot.h,v 4.13 89/01/24 14:27:22 jtkohl Exp
+ * Kerberos: krb_conf.h,v 4.0 89/01/23 09:59:27 jtkohl Exp
  */
-
-#ifdef KERBEROS
-#ifndef NOENCRYPTION
 
 #ifndef lint
 static char *rcsid_rd_req_c =
     "$Header$";
 #endif /* lint */
+
+#ifdef KERBEROS
+#ifndef NOENCRYPTION
 
 #include <zephyr/mit-copyright.h>
 #include <stdio.h>
@@ -479,3 +479,92 @@ krb_get_lrealm(r,n)
 }
 
 #endif /* KERBEROS */
+
+#ifdef ibm032
+
+#if defined (__GNUC__) || defined (__HIGHC__)
+#ifdef __HIGHC__
+#define asm _ASM
+#endif
+
+/*
+ * Copyright (C) 1990 by the Massachusetts Institute of Technology
+ *
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation for any purpose and without fee is hereby granted.
+ */
+
+void asm_wrapper_kopt_c () {
+    /*
+     * Multiply routine.  The C library routine tries to optimize around
+     * the multiply-step instruction, which was slower in earlier versions
+     * of the processor; this is no longer useful.  Derived from assembly
+     * code written by John Carr.
+     */
+    
+    /* data section */
+    asm(".data\n.align 2");
+    asm(".globl _ulmul$$ \n _ulmul$$:");
+    asm(".globl _lmul$$  \n _lmul$$: .long lmul$$");
+    /* text section */
+    asm(".text \n .align 1");
+    asm(".globl lmul$$    \n lmul$$:");
+    asm(".globl ulmul$$   \n ulmul$$:");
+    asm(".globl _.lmul$$  \n _.lmul$$:");
+    asm(".globl _.ulmul$$ \n _.ulmul$$:");
+    asm("   s r0,r0 \n mts r10,r2"); /* set up multiply, and go: */
+    asm("   m r0,r3 \n m r0,r3 \n m r0,r3 \n m r0,r3"); /* execute 4 steps */
+    asm("   m r0,r3 \n m r0,r3 \n m r0,r3 \n m r0,r3"); /* execute 4 steps */
+    asm("   m r0,r3 \n m r0,r3 \n m r0,r3 \n m r0,r3"); /* execute 4 steps */
+    asm("   m r0,r3 \n m r0,r3 \n m r0,r3 \n m r0,r3"); /* execute 4 steps */
+    asm("   brx r15 \n mfs r10,r2"); /* return result */
+    asm("   .long 0xdf02df00");	/* for debugging */
+    
+    /*
+     * Fast strlen, with optional trapping of null pointers.  Also from
+     * John Carr.
+     */
+    /* data */
+    asm(".data\n.align 2");
+    asm(".globl _strlen \n _strlen: .long _.strlen");
+    /* text */
+    asm(".text\n.align 1");
+    asm(".globl _.strlen \n _.strlen:");
+#if 1
+    asm("	ti	2,r2,0"); /* trap if r2 is NULL */
+#endif
+    asm("	ls      r4,0(r2)");
+    asm("	mr	r0,r2");
+    asm("	nilz	r3,r2,3");
+    asm("	beqx	0f");
+    asm("	nilo	r2,r2,0xfffc");	/* clear low bits */
+    asm("	sis	r3,2");	/* test appropriate bytes of 1st word */
+    asm("	jeq	2f");	/* s & 3 == 2 */
+    asm("	jm	1f");	/* s & 3 == 1 */
+    asm("	j	3f");	/* s & 3 == 3 */
+    asm("0:	srpi16	r4,8");	/* byte 0 */
+    asm("	jeq	4f");
+    asm("1:	niuz	r5,r4,0xff"); /* byte 1 */
+    asm("	jeq	5f");
+    asm("2:	nilz	r5,r4,0xff00");	/* byte 2 */
+    asm("	jeq	6f");
+    asm("3:	sli16	r4,8");	/* byte 3 */
+    asm("	jeq	7f");
+    asm("	ls	r4,4(r2)"); /* get next word and continue */
+    asm("	bx	0b");
+    asm("	inc	r2,4");
+    asm("4:	brx	r15");	/* byte 0 is zero */
+    asm("	s	r2,r0");
+    asm("5:	s	r2,r0"); /* byte 1 is zero */
+    asm("	brx	r15");
+    asm("	inc	r2,1");
+    asm("6:	s	r2,r0"); /* byte 2 is zero */
+    asm("	brx	r15");
+    asm("	inc	r2,2");
+    asm("7:	s	r2,r0"); /* byte 3 is zero */
+    asm("	brx	r15");
+    asm("	inc	r2,3");
+    asm("	.long	0xdf02df00"); /* trace table */
+}
+#endif /* __GNUC__ || __HIGHC__ */
+#endif /* ibm032 */
