@@ -33,14 +33,14 @@ static char rcsid_hm_c[] = "$Header$";
 #define ok
 #endif vax
 #ifdef ibm032
-#define MACHINE "rtpc"
+#define MACHINE "rt"
 #define ok
 #endif ibm032
 #ifndef ok
 #define MACHINE "unknown"
 #endif ok
 
-int hmdebug = 0; /* Goddamned kerberos stole debug variable!!! */
+int hmdebug = 0; /* %&*^@ kerberos stole debug variable!!! */
 int no_server = 1, timeout_type = 0, serv_loop = 0;
 int nserv = 0, nclt = 0, nservchang = 0, sig_type = 0;
 long starttime;
@@ -48,8 +48,9 @@ struct sockaddr_in cli_sin, serv_sin, from;
 struct hostent *hp;
 char **serv_list, **cur_serv_list, **clust_info;
 u_short cli_port;
-char hostname[MAXHOSTNAMELEN], prim_serv[MAXHOSTNAMELEN], loopback[4];
-char *cur_serv, *PidFile = "/etc/athena/hm.pid";
+char hostname[MAXHOSTNAMELEN], cur_serv[MAXHOSTNAMELEN]; 
+char prim_serv[MAXHOSTNAMELEN], loopback[4];
+char *PidFile = "/etc/athena/hm.pid";
 
 extern int errno;
 extern char *index();
@@ -64,7 +65,7 @@ char *argv[];
     ZPacket_t packet;
     ZNotice_t notice;
     Code_t ret;
-    int optch;
+    int optch, pak_len;
     extern int optind;
 
     /* Override server argument? */
@@ -72,19 +73,29 @@ char *argv[];
 	  printf("Can't find my hostname?!\n");
 	  exit(-1);
     }
-    (void)strcpy(prim_serv, "");
+    *prim_serv = NULL;
     if ((optch = getopt(argc, argv, "d")) != EOF)
       hmdebug++;
-    if (optind <= argc) 
-      (void)strcpy(prim_serv, argv[optind]);
-    else {
+    if (optind <= argc) {
+	  (void)strcpy(prim_serv, argv[optind]);
+	  if ((hp = gethostbyname(prim_serv)) == NULL) {
+		printf("Unknown server name: %s\n", prim_serv);
+		*prim_serv = NULL;
+	  }
+    }
+    if (*prim_serv == NULL) {
 	  if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
 		printf("No hesiod information available.\n");
 		exit(ZERR_SERVNAK);
 	  }
 	  for ( ; *clust_info; clust_info++)
 	    if (!strncmp("ZEPHYR", upcase(*clust_info), 6)) {
-		  (void)strcpy(prim_serv, index(*clust_info, ' ')+1);
+		  register char *c;
+
+		  if ((c = index(*clust_info, ' ')) == 0) {
+			printf("Hesiod error getting cluster info.\n");
+		  } else
+		    (void)strcpy(prim_serv, c+1);
 		  break;
 	    }
     }
@@ -97,57 +108,69 @@ char *argv[];
     /* Main loop */
     for ever {
 	  DPR ("Waiting for a packet...");
-	  ret = ZReceiveNotice(packet, Z_MAXPKTLEN, &notice, &from);
+	  switch(sig_type) {
+	      case 0:
+		break;
+	      case SIGHUP:
+		sig_type = 0;
+		new_server(NULL);
+		break;
+	      case SIGTERM:
+		sig_type = 0;
+		die_gracefully();
+		break;
+	      case SIGALRM:
+		sig_type = 0;
+		handle_timeout();
+		break;
+	      default:
+		sig_type = 0;
+		syslog (LOG_INFO, "Unknown system interrupt.");
+		break;
+	  }
+	  ret = ZReceivePacket(packet, Z_MAXPKTLEN, &pak_len, &from);
 	  if ((ret != ZERR_NONE) && (ret != EINTR)){
 		Zperr(ret);
 		com_err("hm", ret, "receiving notice");
 	  } else if (ret != EINTR) {
 		/* Where did it come from? */
-		DPR ("Got a packet.\n");
-		DPR ("notice:\n");
-		DPR2("\tz_kind: %d\n", notice.z_kind);
-		DPR2("\tz_port: %u\n", ntohs(notice.z_port));
-		DPR2("\tz_class: %s\n", notice.z_class);
-		DPR2("\tz_class_inst: %s\n", notice.z_class_inst);
-		DPR2("\tz_opcode: %s\n", notice.z_opcode);
-		DPR2("\tz_sender: %s\n", notice.z_sender);
-		DPR2("\tz_recip: %s\n", notice.z_recipient);
-		DPR2("\tz_default_format: %s\n", notice.z_default_format);
-		if ((notice.z_kind == SERVACK) ||
-		    (notice.z_kind == SERVNAK) ||
-		    (notice.z_kind == HMCTL)) {
-		      server_manager(&notice);
+		if ((ret = ZParseNotice(packet, pak_len, &notice))
+		    != ZERR_NONE) {
+		      Zperr(ret);
+		      com_err("hm", ret, "parsing notice");
 		} else {
-		      if ((bcmp(loopback, &from.sin_addr, 4) == 0) &&
-			  ((notice.z_kind == UNSAFE) ||
-			   (notice.z_kind == UNACKED) ||
-			   (notice.z_kind == ACKED))) {
-			    /* Client program... */
-			    transmission_tower(&notice, packet);
-			    DPR2 ("Pending = %d\n", ZPending());
+		      DPR ("Got a packet.\n");
+		      DPR ("notice:\n");
+		      DPR2("\tz_kind: %d\n", notice.z_kind);
+		      DPR2("\tz_port: %u\n", ntohs(notice.z_port));
+		      DPR2("\tz_class: %s\n", notice.z_class);
+		      DPR2("\tz_class_inst: %s\n", notice.z_class_inst);
+		      DPR2("\tz_opcode: %s\n", notice.z_opcode);
+		      DPR2("\tz_sender: %s\n", notice.z_sender);
+		      DPR2("\tz_recip: %s\n", notice.z_recipient);
+		      DPR2("\tz_def_format: %s\n", notice.z_default_format);
+		      if ((notice.z_kind == SERVACK) ||
+			  (notice.z_kind == SERVNAK) ||
+			  (notice.z_kind == HMCTL)) {
+			    server_manager(&notice);
 		      } else {
-			    if (notice.z_kind == STAT) {
-				  send_stats(&notice, &from);
+			    if ((bcmp(loopback, &from.sin_addr, 4) == 0) &&
+				((notice.z_kind == UNSAFE) ||
+				 (notice.z_kind == UNACKED) ||
+				 (notice.z_kind == ACKED))) {
+				  /* Client program... */
+				  transmission_tower(&notice, packet, pak_len);
+				  DPR2 ("Pending = %d\n", ZPending());
 			    } else {
-				  syslog(LOG_INFO, "Unknown notice type: %d",
-					 notice.z_kind);
+				  if (notice.z_kind == STAT) {
+					send_stats(&notice, &from);
+				  } else {
+					syslog(LOG_INFO,
+					       "Unknown notice type: %d",
+					       notice.z_kind);
+				  }
 			    }
 		      }
-		}
-	  } else {
-		switch(sig_type) {
-		    case SIGHUP:
-		      new_server(NULL);
-		      break;
-		    case SIGTERM:
-		      die_gracefully();
-		      break;
-		    case SIGALRM:
-		      handle_timeout();
-		      break;
-		    default:
-		      syslog (LOG_INFO, "Unknown system interrupt.");
-		      break;
 		}
 	  }
     }
@@ -174,11 +197,15 @@ void init_hm()
 	    syslog(LOG_ERR, "No servers or no hesiod");
 	    serv_list = (char **)malloc(2 * sizeof(char *));
 	    serv_list[0] = (char *)malloc(MAXHOSTNAMELEN);
-	    strcpy(serv_list[0], prim_serv);
+	    (void)strcpy(serv_list[0], prim_serv);
 	    serv_list[1] = "";
+	    if (*prim_serv == NULL) {
+		  printf("No hesiod, no valid server found, exiting.\n");
+		  exit(ZERR_SERVNAK);
+	    }
       }
       cur_serv_list = serv_list;
-      if (!strcmp(prim_serv, ""))
+      if (*prim_serv == NULL)
 	(void)strcpy(prim_serv, *cur_serv_list);
       
       loopback[0] = 127;
@@ -218,9 +245,10 @@ void init_hm()
 	    fprintf(fp, "%d\n", getpid());
 	    (void) fclose(fp);
       }
+#endif DEBUG
+
       if (hmdebug)
 	syslog(LOG_DEBUG, "Debugging on.");
-#endif DEBUG
 
       bzero(&serv_sin, sizeof(struct sockaddr_in));
       serv_sin.sin_port = sp->s_port;
@@ -236,7 +264,7 @@ void init_hm()
 	    find_next_server(NULL);
       } else {
 	    DPR2 ("Server = %s\n", prim_serv);
-	    cur_serv = prim_serv;
+	    (void)strcpy(cur_serv, prim_serv);
 	    bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
       }
 
@@ -271,7 +299,7 @@ send_boot_notice(op)
       notice.z_class = ZEPHYR_CTL_CLASS;
       notice.z_class_inst = ZEPHYR_CTL_HM;
       notice.z_opcode = op;
-      notice.z_sender = "sender";
+      notice.z_sender = "HM";
       notice.z_recipient = "";
       notice.z_default_format = 0;
       notice.z_message_len = 0;
@@ -302,7 +330,7 @@ send_flush_notice(op)
       notice.z_class = ZEPHYR_CTL_CLASS;
       notice.z_class_inst = ZEPHYR_CTL_HM;
       notice.z_opcode = op;
-      notice.z_sender = "sender";
+      notice.z_sender = "HM";
       notice.z_recipient = "";
       notice.z_default_format = 0;
       notice.z_message_len = 0;
@@ -318,8 +346,7 @@ send_flush_notice(op)
       }
 }
 
-static void
-detach()
+void detach()
 {
         /* detach from terminal and fork. */
         register int i, x = ZGetFD(), size = getdtablesize();
@@ -334,9 +361,12 @@ detach()
 	  if (i != x)
 	    (void) close(i);
 
-        i = open("/dev/tty", O_RDWR, 666);
-        (void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
-        (void) close(i);
+        if ((i = open("/dev/tty", O_RDWR, 666)) < 0)
+	  syslog(LOG_ERR, "Cannot open /dev/tty to detach.");
+	else {
+	      (void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
+	      (void) close(i);
+	}
 }
 
 find_next_server(sugg_serv)
@@ -357,13 +387,13 @@ find_next_server(sugg_serv)
 	      syslog(LOG_DEBUG, "Suggested server: %s\n", sugg_serv);
 	    hp = gethostbyname(sugg_serv);
 	    DPR2 ("Server = %s\n", sugg_serv);
-	    strcpy(cur_serv, sugg_serv);
+	    (void)strcpy(cur_serv, sugg_serv);
       } else {		  
 	    if ((++serv_loop > 3) && (strcmp(cur_serv, prim_serv))) {
 		  serv_loop = 0;
 		  hp = gethostbyname(prim_serv);
 		  DPR2 ("Server = %s\n", prim_serv);
-		  cur_serv = prim_serv;
+		  (void)strcpy(cur_serv, prim_serv);
 	    } else
 	      do {
 		    if (*++cur_serv_list == NULL)
@@ -371,7 +401,7 @@ find_next_server(sugg_serv)
 		    if (strcmp(*cur_serv_list, cur_serv)) {
 			  hp = gethostbyname(*cur_serv_list);
 			  DPR2 ("Server = %s\n", *cur_serv_list);
-			  cur_serv = *cur_serv_list;
+			  (void)strcpy(cur_serv, *cur_serv_list);
 			  done = 1;
 		    }
 	      } while (done == 0);
@@ -392,7 +422,6 @@ server_manager(notice)
       if ((bcmp(&serv_sin.sin_addr, &from.sin_addr, 4) != 0) ||
 	  (serv_sin.sin_port != from.sin_port)) {
 	    syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
-	    /* Sent a notice back saying this hostmanager isn't theirs */
       } else {
 	    /* This is our server, handle the notice */
 	    DPR ("A notice came in from the server.\n");
@@ -427,7 +456,7 @@ hm_control(notice)
 		      if ((hp = gethostbyaddr(&addr,
 					      4,
 					      AF_INET)) != NULL) {
-			      strcpy(suggested_server, hp->h_name);
+			      (void)strcpy(suggested_server, hp->h_name);
 			      new_server(suggested_server);
 		      } else
 			      new_server(NULL);
@@ -491,9 +520,10 @@ send_back(notice)
       }
 }
 
-transmission_tower(notice, packet)
+transmission_tower(notice, packet, pak_len)
      ZNotice_t *notice;
      caddr_t packet;
+     int pak_len;
 {
       ZNotice_t gack;
       Code_t ret;
@@ -538,7 +568,7 @@ transmission_tower(notice, packet)
 		  (void)alarm(NOTICE_TIMEOUT);
 	    }
       }
-      (void)add_notice_to_queue(notice, packet, &gsin);
+      (void)add_notice_to_queue(notice, packet, &gsin, pak_len);
 }
 
 send_stats(notice, sin)
@@ -557,7 +587,7 @@ send_stats(notice, sin)
       notice->z_kind = HMACK;
 
       list[0] = (char *)malloc(MAXHOSTNAMELEN);
-      strcpy(list[0], cur_serv);
+      (void)strcpy(list[0], cur_serv);
       list[1] = (char *)malloc(64);
       sprintf(list[1], "%d", queue_len());
       list[2] = (char *)malloc(64);
@@ -567,7 +597,7 @@ send_stats(notice, sin)
       list[4] = (char *)malloc(64);
       sprintf(list[4], "%d", nservchang);
       list[5] = (char *)malloc(64);
-      strcpy(list[5], rcsid_hm_c);
+      (void)strcpy(list[5], rcsid_hm_c);
       list[6] = (char *)malloc(64);
       if (no_server)
 	sprintf(list[6], "yes");
@@ -578,7 +608,7 @@ send_stats(notice, sin)
       list[8] = (char *)malloc(64);
       sprintf(list[8], "%ld", sbrk(0));
       list[9] = (char *)malloc(32);
-      strcpy(list[9], MACHINE);
+      (void)strcpy(list[9], MACHINE);
 
       if ((ret = ZFormatRawNoticeList(notice, list, nitems, bfr,
 				      Z_MAXPKTLEN, &len)) != ZERR_NONE) {
