@@ -308,8 +308,8 @@ void x_gram_draw(dpy, w, gram, region)
 	 endpixel=STARTPIXEL;
       }
    } else {
-      startblock=-1;
-      endblock=-1;
+      startblock = -1;
+      endblock = -1;
    }
 
    SetFG(bg);
