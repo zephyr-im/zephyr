@@ -8,7 +8,7 @@ sbindir=@sbindir@
 lsbindir=@lsbindir@
 
 includedir=${prefix}/include
-mandir=${prefix}/man
+mandir=@mandir@
 libdir=${exec_prefix}/lib
 
 srcdir=@srcdir@
