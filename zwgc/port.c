@@ -507,7 +507,7 @@ void create_file_append_port(name, filename)
     oumask = umask(077);		/* allow read/write for us only */
     out = fopen(filename, "a");
     (void) umask(oumask);
-    if (errno) {
+    if (out == NULL) {
 	var_set_variable("error", perror_to_string(errno));
 	return;
     }
@@ -523,7 +523,7 @@ void create_file_input_port(name, filename)
 
     errno = 0;
     in = fopen(filename, "r");
-    if (errno) {
+    if (in == NULL) {
 	var_set_variable("error", perror_to_string(errno));
 	return;
     }
@@ -543,7 +543,7 @@ void create_file_output_port(name, filename)
     oumask = umask(077);		/* allow read/write for us only */
     out = fopen(filename, "w");
     (void) umask(oumask);
-    if (errno) {
+    if (out == NULL) {
 	var_set_variable("error", perror_to_string(errno));
 	return;
     }
