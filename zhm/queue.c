@@ -35,13 +35,21 @@ struct _qelem {
 
 typedef struct _qelem Qelem;
 
-Qelem hm_queue, *is_in_queue();
+Qelem hm_queue = { &hm_queue, &hm_queue, NULL }, *is_in_queue();
 
 long time();
 extern int timeout_type;
 
 Code_t init_queue()
 {
+      if (hm_queue.q_forw != &hm_queue)
+	do {
+	      free(hm_queue.q_forw->q_data->z_packet);
+	      free(hm_queue.q_forw->q_data);
+	      remque(hm_queue.q_forw);
+	      free(hm_queue.q_forw);
+	} while (hm_queue.q_forw != &hm_queue);
+
       hm_queue.q_forw = hm_queue.q_back = &hm_queue;
       hm_queue.q_data = NULL;
       DPR ("Queue initialized and flushed.\n");
@@ -62,7 +70,8 @@ Code_t add_notice_to_queue(notice, packet, repl)
 	    entry->timeout = time(NULL) + NOTICE_TIMEOUT;
 	    entry->retries = 0;
 	    entry->z_notice = *notice;
-	    entry->z_packet = packet;
+	    entry->z_packet = (char *)malloc(Z_MAXPKTLEN);
+	    bcopy(packet, entry->z_packet, Z_MAXPKTLEN);
 	    entry->reply = *repl;
 	    elem->q_data = entry;
 	    elem->q_forw = elem;
@@ -90,7 +99,10 @@ Code_t remove_notice_from_queue(notice, kind, repl)
       else {
 	    *kind = elem->q_data->z_notice.z_kind;
 	    *repl = elem->q_data->reply;
+	    free(elem->q_data->z_packet);
+	    free(elem->q_data);
 	    remque(elem);
+	    free(elem);
 	    if (hm_queue.q_forw == &hm_queue)
 	      (void)alarm(0);
 #ifdef DEBUG
@@ -165,6 +177,20 @@ Code_t dump_queue()
 	    }
 	    srch = srch->q_forw;
       } while (srch != &hm_queue);
+}
+
+int queue_len()
+{
+      int length = 0;
+      Qelem *srch;
+
+      if ((srch = hm_queue.q_forw) != &hm_queue) {
+	    do {
+		  length++;
+		  srch = srch->q_forw;
+	    } while (srch != &hm_queue);
+      }
+      return(length);
 }
 
 Qelem *is_in_queue(notice)
