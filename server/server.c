@@ -140,11 +140,13 @@ ZClient_t *client;
 	zdbug1("server recover");
 	/* XXX */
 	if ((host = hostm_find_host(&client->zct_sin.sin_addr)) != NULLZHLT)
-		client_deregister(client, host);
+		/* send a ping, set up a timeout, and return */
+		hostm_losing(client, host);
 	else
 		syslog(LOG_ERR, "srv_recover: no host for client");
 	return;
 }
+
 /* flush all data associated with the server which */
 static void
 server_flush(which)
