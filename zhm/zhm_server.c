@@ -19,8 +19,11 @@ static char rcsid_hm_server_c[] = "$Id$";
 #endif /* lint */
 
 static void boot_timeout __P((void *));
+static int get_serv_timeout __P((void));
 
 static Timer *boot_timer = NULL;
+static int serv_rexmit_times[] = { 5, 10, 20, 40 };
+static int serv_timeouts = 0;
 
 int serv_loop = 0;
 extern u_short cli_port;
@@ -64,7 +67,7 @@ char *op;
 	  Zperr(ret);
 	  com_err("hm", ret, "sending startup notice");
      }
-     boot_timer = timer_set_rel(SERV_TIMEOUT, boot_timeout, NULL);
+     boot_timer = timer_set_rel(get_serv_timeout(), boot_timeout, NULL);
 }
 
 /* Argument is whether we are detaching or really going down */
@@ -182,6 +185,7 @@ ZNotice_t *notice;
     } else {
 	/* This is our server, handle the notice */
 	booting = 0;
+	serv_timeouts = 0;
 	if (boot_timer) {
 	    timer_reset(boot_timer);
 	    boot_timer = NULL;
@@ -305,6 +309,17 @@ char *sugg_serv;
 static void boot_timeout(arg)
 void *arg;
 {
+    serv_timeouts++;
     new_server(NULL);
 }
 
+static int get_serv_timeout(void)
+{
+    int ind, ntimeouts;
+
+    ind = (numserv == 0) ? serv_timeouts : serv_timeouts / numserv;
+    ntimeouts = sizeof(serv_rexmit_times) / sizeof(*serv_rexmit_times);
+    if (ind >= ntimeouts)
+	ind = ntimeouts - 1;
+    return serv_rexmit_times[ind];
+}
