@@ -272,7 +272,7 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
 
     XMapWindow(dpy, w);
 
-    while (beepcount--)
+    if (beepcount)
 	XBell(dpy, 0);
 
    if (reset_saver)
