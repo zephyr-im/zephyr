@@ -275,7 +275,6 @@ extern char list_file[];
 #endif
 #ifdef ZEPHYR_USES_KERBEROS
 extern char srvtab_file[];
-extern char tkt_file[];
 #endif
 extern char acl_dir[];
 extern char subs_file[];
