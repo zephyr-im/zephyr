@@ -171,10 +171,14 @@ sent.  The message may be terminated by typing ^D or ``.'' on a line
 by itself.
 .PP
 The default class for messages is ``MESSAGE'', and the default instance
-is ``PERSONAL''.  These defaults can be changed by setting the Zephyr
+is ``PERSONAL''.  These defaults can be overridden by setting the Zephyr
 variables \fIzwrite-class\fR and \fIzwrite-inst\fR, respectively.
 .br
 Command-line options override the defaults.
+.PP
+If the class is ``MESSAGE'' and the instance is either ``PERSONAL'' or
+``URGENT'', a recipient must be specified.  These comparisons are
+case-sensitive.
 .PP
 If the Zephyr variable \fIzwrite-signature\fR is set, its contents are used
 to augment the user's username in the message, unless the
