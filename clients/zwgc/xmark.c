@@ -222,14 +222,14 @@ void xmarkRedraw(dpy,w,gram,range)
      x_gram *gram;
      int range;
 {
-#define ob1 (oldblock[XMARK_START_BOUND])
-#define ob2 (oldblock[XMARK_END_BOUND])
-#define nb1 (markblock[XMARK_START_BOUND])
-#define nb2 (markblock[XMARK_END_BOUND])
-#define op1 (oldpixel[XMARK_START_BOUND])
-#define op2 (oldpixel[XMARK_END_BOUND])
-#define np1 (markpixel[XMARK_START_BOUND])
-#define np2 (markpixel[XMARK_END_BOUND])
+#define ob1 ((unsigned int) oldblock[XMARK_START_BOUND])
+#define ob2 ((unsigned int) oldblock[XMARK_END_BOUND])
+#define nb1 ((unsigned int) markblock[XMARK_START_BOUND])
+#define nb2 ((unsigned int) markblock[XMARK_END_BOUND])
+#define op1 ((unsigned int) oldpixel[XMARK_START_BOUND])
+#define op2 ((unsigned int) oldpixel[XMARK_END_BOUND])
+#define np1 ((unsigned int) markpixel[XMARK_START_BOUND])
+#define np2 ((unsigned int) markpixel[XMARK_END_BOUND])
 
    if (range==XMARK_REDRAW_CURRENT) {
       if (!markgram) return;
