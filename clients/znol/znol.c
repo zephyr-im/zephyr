@@ -24,7 +24,7 @@ static char rcsid_znol_c[] = "$Id$";
 #define ON 1
 #define OFF 0
 
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 #include <stdlib.h>
 #else
 extern char *getenv(), *malloc();
