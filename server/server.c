@@ -668,9 +668,13 @@ server_recover(client)
 	if ((server = hostm_find_server(&client->zct_sin.sin_addr)) !=
 	    NULLZSDT) {
 		if (server == limbo_server) {
-#if 0
-			zdbug((LOG_DEBUG, "no server to recover"));
-#endif
+			/* We can't verify whether the host is losing without
+			 * knowing what server it thinks it's talking to, so
+			 * we will assume the host is not losing and flush
+			 * the client. */
+			server_kill_clt(client);
+			client_deregister(client,
+				hostm_find_host(&client->zct_sin.sin_addr), 1);
 			return;
 		} else if (server == me_server) {
 			/* send a ping, set up a timeout, and return */
@@ -678,6 +682,11 @@ server_recover(client)
 			return;
 		} else {
 			/* some other server */
+			syslog(LOG_DEBUG,
+			       "Sending ADMIN_LOST_HOST to %s for %s/%d",
+			       server->addr,
+			       inet_ntoa(client->zct_sin.sin_addr),
+			       ntohs(client->zct_sin.sin_port));
 			lyst[0] = inet_ntoa(client->zct_sin.sin_addr);
 			(void) sprintf(buf, "%d", ntohs(client->zct_sin.sin_port));
 			lyst[1] = buf;
