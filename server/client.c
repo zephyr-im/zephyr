@@ -113,7 +113,12 @@ ZServerDesc_t *server;
 	xinsque(clist, hlp2->zh_clients);
 	(void) sigsetmask(omask);
 
-	return(subscr_def_subs(*client)); /* add default subscriptions */
+	if (!server->zs_dumping)
+		/* add default subscriptions only if this is not
+		   resulting from a brain dump */
+		return(subscr_def_subs(*client));
+	else
+		return(ZERR_NONE);
 }
 
 /*
