@@ -205,7 +205,7 @@ ZNotice_t *notice;
 	       Zperr(ret);
 	       com_err("hm", ret, "setting destination");
 	  }
-	  if ((ret = ZSendRawNotice(notice)) != ZERR_NONE) {
+	  if ((ret = send_outgoing(notice)) != ZERR_NONE) {
 	       Zperr(ret);
 	       com_err("hm", ret, "sending ACK");
 	  }
@@ -245,7 +245,7 @@ ZNotice_t *notice;
 			 Zperr(ret);
 			 com_err("hm", ret, "setting destination");
 		    }
-		    if ((ret = ZSendRawNotice(notice)) != ZERR_NONE) {
+		    if ((ret = send_outgoing(notice)) != ZERR_NONE) {
 			 Zperr(ret);
 			 com_err("hm", ret, "sending ACK");
 		    }
