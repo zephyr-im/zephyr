@@ -3,24 +3,24 @@
 ec  ZERR_PKTLEN,
 	"Packet too long or buffer too small."
 ec  ZERR_ILLVAL,
-	"Illegal value in notice."
+	"Illegal value in notice"
 ec  ZERR_HMPORT,
-	"Can't get host manager port."
+	"Can't get host manager port"
 ec  ZERR_NOMEM,
-	"Out of memory."
+	"Out of memory"
 ec  ZERR_PORTINUSE,
-	"Can't assign port."
+	"Can't assign port"
 ec  ZERR_BADPKT,
-	"Bad packet format."
+	"Bad packet format"
 ec  ZERR_VERS,
-	"Incompatible version numbers."
+	"Incompatible version numbers"
 ec  ZERR_NOPORT,
-	"No port opened."
+	"No port opened"
 ec  ZERR_NONOTICE,
-	"No notices match criteria."
+	"No notices match criteria"
 ec  ZERR_QLEN,
-	"Input queue too long."
+	"Input queue too long"
 ec  ZERR_HMDEAD,
-	"Hostmanager not responding."
+	"Hostmanager not responding"
 
 	end
