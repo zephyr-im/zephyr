@@ -115,9 +115,9 @@ int wantdefaults;
 	xinsque(clist, hlp2->zh_clients);
 	(void) sigsetmask(omask);
 
-	if (!server->zs_dumping || wantdefaults)
+	if (!server->zs_dumping && wantdefaults)
 		/* add default subscriptions only if this is not
-		   resulting from a brain dump, or this request
+		   resulting from a brain dump, AND this request
 		   wants defaults */
 		return(subscr_def_subs(*client));
 	else
