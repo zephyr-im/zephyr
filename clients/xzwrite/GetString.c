@@ -80,11 +80,13 @@ int GetString(getStringWindow, label, value, pop_type, buf, len)
 
      if (accepted) {
 	  char *s;
+	  Widget text_source;
 
-	  XtVaGetValues(edit, XtNstring, (XtArgVal) &s, NULL);
+	  XtVaGetValues(edit, XtNstring, (XtArgVal) &s, XtNtextSource,
+			(XtArgVal) &text_source, NULL);
 	  strncpy(buf, s, len-2);
 	  buf[len-1] = '\0';
-	  XawAsciiSourceFreeString(edit);
+	  XawAsciiSourceFreeString(text_source);
 	  
 	  return GETSTRING_ACCEPT;
      }
