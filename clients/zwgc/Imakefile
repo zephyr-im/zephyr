@@ -55,7 +55,7 @@ GENERATED= port_dictionary.c port_dictionary.h \
 	char_stack.h \
 	string_stack.h \
 	xmode_stack.h \
-	y.tab.h
+	y.tab.h y.tab.c
 	
 
 DEPENDSRCS= ${CODE} ${GENERATED}
