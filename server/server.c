@@ -12,15 +12,14 @@
  */
 
 #include <zephyr/mit-copyright.h>
+#include "zserver.h"
+#include <sys/socket.h>
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_server_c[] = "$Id$";
+static const char rcsid_server_c[] = "$Id$";
 #endif
 #endif
-
-#include "zserver.h"
-#include <sys/socket.h>
 
 /*
  * Server manager.  Deal with  traffic to and from other servers.

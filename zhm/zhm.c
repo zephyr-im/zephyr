@@ -13,7 +13,7 @@
 
 #include "zhm.h"
 
-static char rcsid_hm_c[] = "$Id$";
+static const char rcsid_hm_c[] = "$Id$";
 
 #ifdef ZEPHYR_USES_HESIOD
 int ZEPHYR_USES_hesiod = 0;
@@ -26,7 +26,7 @@ int ZEPHYR_USES_hesiod = 0;
 #ifdef _PATH_VARRUN
 #define PIDDIR _PATH_VARRUN
 #else
-#define PIDDIR CONFDIR
+#define PIDDIR "/etc/"
 #endif
 
 int hmdebug, rebootflag, errflg, dieflag, inetd, oldpid, nofork;
@@ -68,7 +68,7 @@ char *argv[];
      extern int optind;
      register int i, j = 0;
 
-     sprintf(PidFile, "%s/zhm.pid", PIDDIR);
+     sprintf(PidFile, "%szhm.pid", PIDDIR);
 
      if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
 	  printf("Can't find my hostname?!\n");

@@ -12,9 +12,11 @@
  */
 
 #include <zephyr/mit-copyright.h>
+#include "zserver.h"
+#include <sys/socket.h>
 
 #if !defined (lint) && !defined (SABER)
-static char rcsid_client_c[] =
+static const char rcsid_client_c[] =
 "$Id$";
 #endif
 
@@ -41,9 +43,6 @@ static char rcsid_client_c[] =
  *	FILE *fp;
  *	Client *clist;
  */
-
-#include "zserver.h"
-#include <sys/socket.h>
 
 /*
  * a client: allocate space, find or insert the address in the

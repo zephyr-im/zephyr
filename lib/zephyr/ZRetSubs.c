@@ -13,12 +13,12 @@
  */
 /* $Header$ */
 
+#include <internal.h>
+
 #ifndef lint
-static char rcsid_ZRetrieveSubscriptions_c[] =
+static const char rcsid_ZRetrieveSubscriptions_c[] =
     "$Id$";
 #endif
-
-#include <internal.h>
 
 static Code_t Z_RetSubs ();
 

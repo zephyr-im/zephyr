@@ -13,14 +13,13 @@
  */
 
 #include <zephyr/mit-copyright.h>
-
-#ifndef lint
-static char rcsid_bdump_c[] = "$Id$";
-#endif /* lint */
-
 #include "zserver.h"
 #include <sys/socket.h>
 #include <com_err.h>
+
+#ifndef lint
+static const char rcsid_bdump_c[] = "$Id$";
+#endif /* lint */
 
 /*
  * External functions are:

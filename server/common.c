@@ -12,15 +12,14 @@
  */
 
 #include <zephyr/mit-copyright.h>
+#include "zserver.h"
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_common_c[] =
+static const char rcsid_common_c[] =
     "$Id$";
 #endif /* SABER */
 #endif /* lint */
-
-#include "zserver.h"
 
 /* common routines for the server */
 

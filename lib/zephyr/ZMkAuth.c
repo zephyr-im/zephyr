@@ -12,11 +12,12 @@
  */
 /* $Id$ */
 
+#include <internal.h>
+
 #ifndef lint
-static char rcsid_ZMakeAuthentication_c[] = "$Id$";
+static const char rcsid_ZMakeAuthentication_c[] = "$Id$";
 #endif
 
-#include <internal.h>
 #ifdef ZEPHYR_USES_KERBEROS
 #include <krb_err.h>
 static long last_authent_time = 0L;

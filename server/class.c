@@ -12,15 +12,13 @@
  */
 
 #include <zephyr/mit-copyright.h>
+#include "zserver.h"			/* includes zephyr/zephyr.h */
+#include <assert.h>
 
 #if !defined (lint) && !defined (SABER)
-static char rcsid_class_c[] =
+static const char rcsid_class_c[] =
 "$Id$";
 #endif
-
-#include "zserver.h"			/* includes zephyr/zephyr.h */
-
-#include <assert.h>
 
 /*
  * Class manager subsystem.
@@ -98,8 +96,7 @@ static void free_triplet __P((Triplet *));
  * been case-sensitive in the recipient string.  In most cases, a
  * failed match will fail on the classname or instance, and a successful
  * match will succeed on the (d1->recip == d2->recip) check, so this
- * shouldn't affect performance.  Note that this invalidates the overall
- * hash value check, which was of dubious value to start with.
+ * shouldn't affect performance.
  */
 
 int ZDest_eq(d1, d2)
@@ -151,7 +148,7 @@ triplet_deregister(client, dest)
 #endif
     hashval = DEST_HASHVAL(*dest);
     for (triplet = triplet_bucket[hashval]; triplet; triplet = triplet->next) {
-	if (ZDest_eq(triplet->dest, client)) {
+	if (ZDest_eq(&triplet->dest, dest)) {
 	    retval = remove_client(triplet, client);
 	    if (retval != ZERR_NONE)
 		return retval;
@@ -319,6 +316,7 @@ insert_client(triplet, client)
 					     new_size * sizeof(Client *));
 	    if (newclients == NULL)
 		return ENOMEM;
+	    clientp = newclients + (clientp - triplet->clients);
 	    triplet->clients = newclients;
 	    triplet->clients_size = new_size;
 	}

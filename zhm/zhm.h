@@ -54,83 +54,38 @@ void resend_notices __P((struct sockaddr_in *));
 extern int rexmit_times[];
 
 #ifdef vax
-#define MACHINE_TYPE "vax"
 #define use_etext
-#define ok
 #endif /* vax */
 
 #ifdef ibm032
-#define MACHINE_TYPE "rt"
 #define adjust_size(size)	size -= 0x10000000
-#define ok
 #endif /* ibm032 */
 
-#ifdef NeXT
-#define MACHINE_TYPE "NeXT"
-#define ok
-#endif /* NeXT */
-
-#ifdef sun
-#ifdef SUN2_ARCH
-#define MACHINE_TYPE "sun2"
-#define ok
-#endif /* SUN2_ARCH */
-
-#ifdef SUN3_ARCH
-#define MACHINE_TYPE "sun3"
-#define ok
-#endif /* SUN3_ARCH */
-
-#if defined (SUN4_ARCH) || defined (sparc)
-#define MACHINE_TYPE "sun4"
+#if defined(sun) && (defined (SUN4_ARCH) || defined (sparc))
 #define use_etext
-#define ok
-#endif /* SUN4_ARCH */
-
-#ifndef ok
-#if defined (m68k)
-#define MACHINE_TYPE "sun (unknown 68k)"
-#else
-#define MACHINE_TYPE "sun (unknown)"
 #endif
-#define ok
-#endif /* ! ok */
-#endif /* sun */
 
 #ifdef _AIX
 #ifdef i386
-#define	MACHINE_TYPE	"ps2"
 #define adjust_size(size)	size -= 0x400000
 #endif
 #ifdef _IBMR2
-#define	MACHINE_TYPE "IBM RISC/6000"
 #define	adjust_size(size)	size -= 0x20000000
 #endif
-#define	ok
 #endif
 
 #if defined(ultrix) && defined(mips)
-#define MACHINE_TYPE "decmips"
 #define adjust_size(size)	size -= 0x10000000
-#define ok
 #endif /* ultrix && mips */
 
 #if defined(__alpha)
-#define MACHINE_TYPE "alpha"
 #define adjust_size(size)	size -= 0x140000000
-#define ok
 #endif /* alpha */
-
 
 #ifdef use_etext
 extern int etext;
 #define adjust_size(size)	size -= (unsigned int) &etext;
 #undef use_etext
 #endif
-
-#ifndef ok
-#define MACHINE_TYPE "unknown"
-#endif
-#undef ok
 
 #endif

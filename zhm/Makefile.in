@@ -19,8 +19,9 @@ CC=@CC@
 INSTALL=@INSTALL@
 
 DEBUG=-O
-CFLAGS=	$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+CFLAGS=	$(DEBUG) -DCONFDIR=\"$(confdir)\" -I$(top_srcdir)/h -I$(BUILDTOP)/h \
+	@CPPFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	queue.o zhm.o zhm_client.o zhm_server.o
@@ -33,8 +34,8 @@ zhm: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a @ETDEP@
 check:
 
 install: zhm
-	$(INSTALL) -m 755 -c -s zhm $(lsbindir)
-	$(INSTALL) -m 644 -c $(srcdir)/zhm.8 $(mandir)/man8
+	$(INSTALL) -m 755 -s zhm $(lsbindir)
+	$(INSTALL) -m 644 $(srcdir)/zhm.8 $(mandir)/man8
 
 clean:
 	rm -f $(OBJS) zhm

@@ -13,17 +13,17 @@
  */
 /* $Header$ */
 
-#ifndef lint
-static char rcsid_Zinternal_c[] =
-  "$Id$";
-static char copyright[] =
-  "Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.";
-#endif
-
 #include <internal.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <utmp.h>
+
+#ifndef lint
+static const char rcsid_Zinternal_c[] =
+  "$Id$";
+static const char copyright[] =
+  "Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.";
+#endif
 
 extern char *inet_ntoa ();
 

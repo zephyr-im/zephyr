@@ -20,7 +20,8 @@ RANLIB=@RANLIB@
 COMPILE_ET=@COMPILE_ET@
 
 DEBUG=-O
-CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @X_CFLAGS@ @CPPFLAGS@
+CFLAGS= $(DEBUG) -DCONFDIR=\"$(confdir)\" -I$(top_srcdir)/h -I$(BUILDTOP)/h \
+	@X_CFLAGS@ @CPPFLAGS@
 
 OBJS =	zephyr_err.o ZAsyncLocate.o ZCkAuth.o ZCkIfNot.o ZClosePort.o \
 	ZCmpUID.o ZCmpUIDP.o ZFlsLocs.o ZFlsSubs.o ZFmtAuth.o ZFmtList.o \
@@ -45,8 +46,8 @@ zephyr_err.c $(BUILDTOP)/h/zephyr/zephyr_err.h: zephyr_err.et
 check:
 
 install: libzephyr.a
-	$(INSTALL) -m 644 -c libzephyr.a $(libdir)
-	$(INSTALL) -m 644 -c $(srcdir)/zephyr.1 $(mandir)/man1
+	$(INSTALL) -m 644 libzephyr.a $(libdir)
+	$(INSTALL) -m 644 $(srcdir)/zephyr.1 $(mandir)/man1
 
 clean:
 	rm -f $(OBJS) libzephyr.a zephyr_err.c zephyr_err.h

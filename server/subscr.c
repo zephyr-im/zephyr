@@ -12,10 +12,11 @@
  */
 
 #include <zephyr/mit-copyright.h>
+#include "zserver.h"
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_subscr_c[] = "$Id$";
+static const char rcsid_subscr_c[] = "$Id$";
 #endif
 #endif
 
@@ -59,8 +60,6 @@ static char rcsid_subscr_c[] = "$Id$";
  * void subscr_reset();
  *
  */
-
-#include "zserver.h"
 
 #ifdef ZEPHYR_USES_KERBEROS
 #ifndef NOENCRYPTION

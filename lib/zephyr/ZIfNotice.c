@@ -12,11 +12,11 @@
  */
 /* $Header$ */
 
-#ifndef lint
-static char rcsid_ZIfNotice_c[] = "$Id$";
-#endif
-
 #include <internal.h>
+
+#ifndef lint
+static const char rcsid_ZIfNotice_c[] = "$Id$";
+#endif
 
 Code_t ZIfNotice(notice, from, predicate, args)
     ZNotice_t *notice;

@@ -12,13 +12,13 @@
  *	$Header$
  */
 
+#include "zserver.h"
+
 #ifndef lint
 #ifndef SABER
-static char rcsid_kstuff_c[] = "$Id$";
+static const char rcsid_kstuff_c[] = "$Id$";
 #endif
 #endif
-
-#include "zserver.h"
 
 #ifdef ZEPHYR_USES_KERBEROS
 

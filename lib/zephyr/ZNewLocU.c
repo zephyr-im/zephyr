@@ -12,12 +12,12 @@
  */
 /* $Header$ */
 
+#include <internal.h>
+
 #ifndef lint
-static char rcsid_ZNewLocateUser_c[] =
+static const char rcsid_ZNewLocateUser_c[] =
     "$Id$";
 #endif
-
-#include <internal.h>
 
 Code_t ZLocateUser(user, nlocs, auth)
     char *user;

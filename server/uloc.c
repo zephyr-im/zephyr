@@ -12,16 +12,15 @@
  */
 
 #include <zephyr/mit-copyright.h>
+#include "zserver.h"
+#include <sys/socket.h>
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_uloc_c[] =
+static const char rcsid_uloc_c[] =
 "$Id$";
 #endif /* SABER */
 #endif /* lint */
-
-#include "zserver.h"
-#include <sys/socket.h>
 
 /*
  * The user locator functions.

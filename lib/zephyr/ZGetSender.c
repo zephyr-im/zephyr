@@ -12,12 +12,12 @@
  */
 /* $Header$ */
 
+#include <internal.h>
+
 #ifndef lint
-static char rcsid_ZGetSender_c[] =
+static const char rcsid_ZGetSender_c[] =
     "$Id$";
 #endif
-
-#include <internal.h>
 
 #include <pwd.h>
 

@@ -12,11 +12,11 @@
  */
 /* $Header$ */
 
-#ifndef lint
-static char rcsid_ZAsyncLocate_c[] = "$Id$";
-#endif
-
 #include <internal.h>
+
+#ifndef lint
+static const char rcsid_ZAsyncLocate_c[] = "$Id$";
+#endif
 
 Code_t ZRequestLocations(user, zald, kind, auth)
      char *user;

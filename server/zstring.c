@@ -12,15 +12,14 @@
  */
 
 #include <zephyr/mit-copyright.h>
+#include "zserver.h"
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_zstring_c[] =
+static const char rcsid_zstring_c[] =
 "$Id$";
 #endif
 #endif
-
-#include "zserver.h"
 
 static String *zhash[STRING_HASH_TABLE_SIZE];
 

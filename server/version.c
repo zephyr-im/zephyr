@@ -25,9 +25,9 @@ const char version[] = "Zephyr server $Revision$";
 #endif
 
 #if !defined (lint) && !defined (SABER)
-const char rcsid_version_c[] =
+static const char rcsid_version_c[] =
     "$Id$";
-const char copyright[] =
+static const char copyright[] =
     "Copyright (c) 1987,1988,1989,1990 Massachusetts Institute of Technology.\n";
 #endif
 

@@ -151,6 +151,7 @@ Code_t bdump_send_list_tcp __P((ZNotice_Kind_t kind, struct sockaddr_in *addr,
 /* found in class.c */
 extern String *class_control, *class_admin, *class_hm;
 extern String *class_ulogin, *class_ulocate;
+int ZDest_eq __P((Destination *d1, Destination *d2));
 Code_t triplet_register __P((Client *client, Destination *dest));
 Code_t triplet_deregister __P((Client *client, Destination *dest));
 Code_t class_restrict __P((char *class, Acl *acl));

@@ -13,11 +13,11 @@
  */
 /* $Header$ */
 
-#ifndef lint
-static char rcsid_ZSubscriptions_c[] = "$Id$";
-#endif
-
 #include <internal.h>
+
+#ifndef lint
+static const char rcsid_ZSubscriptions_c[] = "$Id$";
+#endif
 
 static Code_t Z_Subscriptions __P((register ZSubscription_t *sublist,
 				   int nitems, unsigned int port,

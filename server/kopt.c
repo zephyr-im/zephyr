@@ -16,15 +16,15 @@
  * Kerberos: krb_conf.h,v 4.0 89/01/23 09:59:27 jtkohl Exp
  */
 
+#include <zephyr/mit-copyright.h>
+#include "zserver.h"
+
 #ifndef lint
 #ifndef SABER
-static char *rcsid_rd_req_c =
+static const char *rcsid_rd_req_c =
     "$Id$";
 #endif /* lint */
 #endif /* SABER */
-
-#include <zephyr/mit-copyright.h>
-#include "zserver.h"
 
 #ifdef ZEPHYR_USES_KERBEROS
 #ifndef NOENCRYPTION

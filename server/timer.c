@@ -9,9 +9,11 @@
  *
  */
 
+#include "zserver.h"
+
 #ifndef SABER
 #ifndef lint
-static char rcsid[] =
+static const char rcsid[] =
 "$Id$";
 #endif /* lint */
 #endif /* SABER */
@@ -60,9 +62,6 @@ static char rcsid[] =
  * void timer_process()
  *
  */
-
-#include <stdio.h>
-#include "zserver.h"
 
 /* DELTA is just an offset to keep the size a bit less than a power 
  * of two.  It's measured in pointers, so it's 32 bytes on most

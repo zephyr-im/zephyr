@@ -12,11 +12,11 @@
  */
 /* $Header$ */
 
-#ifndef lint
-static char rcsid_ZMakeAscii_c[] = "$Id$";
-#endif
-
 #include <internal.h>
+
+#ifndef lint
+static const char rcsid_ZMakeAscii_c[] = "$Id$";
+#endif
 
 Code_t ZMakeAscii(ptr, len, field, num)
     register char *ptr;
