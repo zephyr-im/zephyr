@@ -745,6 +745,7 @@ ZServerDesc_t *server;
 	ZClient_t *client = NULLZCNT;
 	struct sockaddr_in current_who;
 	int who_valid = 0;
+	int flushing_subs = 0;
 #ifdef KERBEROS
 	register char *cp;
 #endif /* KERBEROS */
@@ -845,6 +846,15 @@ ZServerDesc_t *server;
 		} else if (!strcmp(notice.z_opcode, ADMIN_NEWCLT)) {
 			/* register a new client */
 			notice.z_port = htons((u_short)atoi(notice.z_message));
+			if (ntohs(notice.z_port) == 0) {
+			    /* this is a bogus client from an older rev.
+			       server, so we just flush it. */
+			    syslog(LOG_ERR, "brl flushing %s/0",
+				   inet_ntoa(current_who.sin_addr));
+			    flushing_subs = 1;
+			    continue;	/* while loop */
+			}
+			flushing_subs = 0;
 			if ((retval = client_register(&notice,
 						      &current_who,
 						      &client,
@@ -871,6 +881,8 @@ ZServerDesc_t *server;
 			}
 #endif /* KERBEROS */
 		} else if (!strcmp(notice.z_opcode, CLIENT_SUBSCRIBE)) { 
+			if (flushing_subs)
+			    continue;	/* while loop */
 			/* a subscription packet */
 			if (!client) {
 				syslog(LOG_ERR, "brl no client");
