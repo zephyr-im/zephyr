@@ -460,6 +460,7 @@ struct sockaddr_in *from;
 	int packlen = sizeof(pack);
 	Code_t retval;
 	struct sockaddr_in bogus_from;
+	char *zeph_version = NULL;
 
 	bogus_from = *from;
 	bogus_from.sin_port = sock_sin.sin_port;
@@ -476,6 +477,8 @@ struct sockaddr_in *from;
 			       error_message(retval));
 			return(retval);
 		}
+		if (!zeph_version)
+			zeph_version = strsave(bd_notice.z_version);
 #ifdef DEBUG
 		if (zdebug) {
 			char buf[4096];
@@ -493,14 +496,18 @@ struct sockaddr_in *from;
 		if (!strcmp(bd_notice.z_class_inst, ADMIN_LIMBO)) {
 			/* he wants limbo */
 			zdbug((LOG_DEBUG, "limbo req"));
-			if ((retval = bdump_send_loop(limbo_server)) != ZERR_NONE)
+			if ((retval = bdump_send_loop(limbo_server,
+						      zeph_version))
+			    != ZERR_NONE)
 				return(retval);
 			continue;
 		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_ME)) {
 			/* he wants his state */
 			zdbug((LOG_DEBUG, "his state req"));
 			if (server = server_which_server(&bogus_from)) {
-				if ((retval = bdump_send_loop(server)) != ZERR_NONE)
+				if ((retval = bdump_send_loop(server,
+							      zeph_version))
+				    != ZERR_NONE)
 					return(retval);
 			} else {
 				syslog(LOG_ERR,"sbd_loop: no state");
@@ -511,7 +518,8 @@ struct sockaddr_in *from;
 		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_YOU)) {
 			/* he wants my state */
 			zdbug((LOG_DEBUG, "my state req"));
-			if ((retval = bdump_send_loop(me_server)) != ZERR_NONE)
+			if ((retval = bdump_send_loop(me_server, zeph_version))
+			    != ZERR_NONE)
 				return(retval);
 			break;
 		} else if (!strcmp(bd_notice.z_class_inst, ADMIN_DONE)) {
@@ -705,8 +713,9 @@ ZServerDesc_t *server;
  */
 
 static Code_t
-bdump_send_loop(server)
+bdump_send_loop(server, version)
 register ZServerDesc_t *server;
+char *version;
 {
 	register ZHostList_t *host;
 	register ZClientList_t *clist;
@@ -720,7 +729,7 @@ register ZServerDesc_t *server;
 		/* for each host */
 		if ((retval = send_host_register(host)) != ZERR_NONE)
 			return(retval);
-		if ((retval = uloc_send_locations(host)) != ZERR_NONE)
+		if ((retval = uloc_send_locations(host, version)) != ZERR_NONE)
 			return(retval);
 		if (!host->zh_clients)
 			continue;
@@ -730,8 +739,8 @@ register ZServerDesc_t *server;
 			/* for each client */
 			if (!clist->zclt_client->zct_subs)
 				continue;
-			if ((retval = subscr_send_subs(clist->zclt_client))
-			    != ZERR_NONE)
+			if ((retval = subscr_send_subs(clist->zclt_client,
+						       version)) != ZERR_NONE)
 				return(retval);
 		}
 	}
