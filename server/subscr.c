@@ -16,8 +16,8 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_subscr_c[] = "$Id$";
-#endif SABER
-#endif lint
+#endif
+#endif
 
 /*
  * The subscription manager.
@@ -154,16 +154,17 @@ subscr_subscribe_real(ZClient_t *who, register ZSubscr_t *newsubs, ZNotice_t *no
 		if (!bdumping
 		    && *(subs->zst_dest.recip.value ())
 		    && subs->zst_dest.recip != sender) {
-		    syslog(LOG_WARNING, "subscr unauth to rcpt %s by %s",
-			   subs->zst_dest.recip.value (),
-			   sender.value ());
+		    syslog(LOG_WARNING, "subscr unauth %s recipient %s",
+			   sender.value (),
+			   subs->zst_dest.recip.value ());
 		    continue;
 		}
 		if (!bdumping) {
 		    acl = class_get_acl(subs->zst_dest.classname);
 		    if (acl) {
 			if (!acl->ok (sender, SUBSCRIBE)) {
-				syslog(LOG_WARNING, "subscr unauth %s %s",
+				syslog(LOG_WARNING,
+				       "subscr unauth %s class %s",
 				       sender.value (),
 				       subs->zst_dest.classname.value ());
 				continue; /* the for loop */
@@ -171,7 +172,7 @@ subscr_subscribe_real(ZClient_t *who, register ZSubscr_t *newsubs, ZNotice_t *no
 			if (wildcard_instance == subs->zst_dest.inst) {
 			    if (!acl->ok (sender, INSTWILD)) {
 				syslog(LOG_WARNING,
-				       "subscr unauth wild %s %s.*",
+				       "subscr unauth %s class %s wild inst",
 				       notice->z_sender,
 				       subs->zst_dest.classname.value ());
 				continue;
@@ -334,13 +335,15 @@ subscr_copy_def_subs(const ZString& person)
 	subs = extract_subscriptions(&default_notice);
 	/* replace any non-* recipients with "person" */
 
-	for (subs2 = subs->q_forw; subs2 != subs; subs2 = subs2->q_forw)
+	for (subs2 = subs->q_forw; subs2 != subs; subs2 = subs2->q_forw) {
 		/* if not a wildcard, replace it with person */
 		if (strcmp(subs2->zst_dest.recip.value (), "*")) {
 			subs2->zst_dest.recip = person;
 		} else {		/* replace with null recipient */
 			subs2->zst_dest.recip = empty;
 		}
+		subs2->zst_dest.set_hash ();
+	}
 	return(subs);
 }
 
@@ -357,7 +360,7 @@ subscr_cancel(struct sockaddr_in *sin, ZNotice_t *notice)
 	int found = 0;
 	int omask;
 
-#if 0
+#if 1
 	zdbug((LOG_DEBUG,"subscr_cancel"));
 #endif
 	if (!(who = client_which_client(sin, notice)))
@@ -371,39 +374,34 @@ subscr_cancel(struct sockaddr_in *sin, ZNotice_t *notice)
 
 	
 	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
-	for (subs4 = subs->q_forw;
-	     subs4 != subs;
-	     subs4 = subs4->q_forw)
-		for (subs2 = who->zct_subs->q_forw;
-		     subs2 != who->zct_subs;) {
-			/* for each existing subscription */
-			/* is this what we are canceling? */
-			if (subs4->zst_dest.classname != subs2->zst_dest.classname) {
-			    subs2 = subs2->q_forw;
-			    continue;
-			}
-			if (*subs4 == *subs2) {
-			    /* go back, since remque will change things */
-			    subs3 = subs2->q_back;
-			    xremque(subs2);
-			    (void) class_deregister(who, subs2);
-			    delete subs2;
-			    found = 1;
-			    /* now that the remque adjusted the linked
-			       list, we go forward again */
-			    subs2 = subs3->q_forw;
-			} else if (*subs4 >= *subs2) {
-			    break;
-			} else {
+	for (subs4 = subs->q_forw; subs4 != subs; subs4 = subs4->q_forw) {
+	    for (subs2 = who->zct_subs->q_forw;
+		 subs2 != who->zct_subs;) {
+		/* for each existing subscription */
+		/* is this what we are canceling? */
+		if (*subs4 == *subs2) {
+		    /* go back, since remque will change things */
+		    subs3 = subs2->q_back;
+		    xremque(subs2);
+		    (void) class_deregister(who, subs2);
+		    delete subs2;
+		    found = 1;
+		    /* now that the remque adjusted the linked
+		      list, we go forward again */
+		    subs2 = subs3->q_forw;
+		    break;
+		} else {
 #if 0
-			    zdbug((LOG_DEBUG, "not %s.%s.%s",
-				   subs2->zst_dest.classname.value(),
-				   subs2->zst_dest.inst.value(),
-				   subs2->zst_dest.recip.value()));
+		    zdbug((LOG_DEBUG, "not %s.%s.%s",
+			   subs2->zst_dest.classname.value(),
+			   subs2->zst_dest.inst.value(),
+			   subs2->zst_dest.recip.value()));
 #endif
-			    subs2 = subs2->q_forw;
-			}
+		    subs2 = subs2->q_forw;
 		}
+	    }
+	}
+
 	/* make sure we are still registered for all the classes */
 	if (found)
 		for (subs2 = who->zct_subs->q_forw;
@@ -434,7 +432,7 @@ subscr_cancel(struct sockaddr_in *sin, ZNotice_t *notice)
  */
 
 void
-subscr_cancel_client(register ZClient_t *client)
+subscr_cancel_client(ZClient_t *client)
 {
 	register ZSubscr_t *subs;
 	int omask;
@@ -512,7 +510,6 @@ subscr_match_list(ZNotice_t *notice)
 {
 	register ZClientList_t *hits, *clients, *majik, *clients2, *hit2;
 	char *saveclass, *saveclinst;
-	ZString newclass, newclinst;
 	/* Use this where we can't use "goto" thanks to cfront... */
 	int get_out = 0;
 
@@ -520,12 +517,11 @@ subscr_match_list(ZNotice_t *notice)
 		return(NULLZCLT);
 	hits->q_forw = hits->q_back = hits;
 
-
 	saveclass = notice->z_class;
-	newclass = ZString (notice->z_class, 1);
+	ZString newclass (notice->z_class, 1);
 
 	saveclinst = notice->z_class_inst;
-	newclinst = ZString (saveclinst, 1);
+	ZString newclinst (saveclinst, 1);
 
 	ZSubscr_t check_sub (newclass, newclinst, notice->z_recipient);
 	check_sub.q_forw = check_sub.q_back = &check_sub;
