@@ -1,6 +1,6 @@
 /*
 
-Copyright 1987, 1989 by the Student Information Processing Board
+Copyright 1987, 1989, 1995 by the Student Information Processing Board
 	of the Massachusetts Institute of Technology
 
 Permission to use, copy, modify, and distribute this software
