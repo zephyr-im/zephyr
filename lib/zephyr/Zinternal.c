@@ -672,10 +672,6 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     int *len;
     char **cstart, **cend;
 {
-    union {
-	int i;
-	ZChecksum_t sum;
-    } temp;
     char newrecip[BUFSIZ];
     char *ptr, *end;
     int i;
@@ -704,36 +700,29 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     (void) strcpy(ptr, notice->z_version);
     ptr += strlen(ptr)+1;
 
-    temp.i = htonl((u_long) (Z_NUMFIELDS+notice->z_num_other_fields));
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i), 4) == ZERR_FIELDLEN)
+    if (ZMakeAscii32(ptr, end-ptr, Z_NUMFIELDS + notice->z_num_other_fields)
+	== ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
-	
-    temp.i = htonl((u_long) notice->z_kind);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i), 4) == ZERR_FIELDLEN)
+
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_kind) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
-	
+
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid, 
-		   sizeof(ZUnique_Id_t), 12) == ZERR_FIELDLEN)
-	return (ZERR_HEADERLEN);
-    ptr += strlen(ptr)+1;
-	
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_port, 
-		   sizeof(u_short), 2) == ZERR_FIELDLEN)
+		   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_auth, 
-		   sizeof(int), 4) == ZERR_FIELDLEN)
+    if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_port)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
-    temp.i = htonl((u_long) notice->z_authent_len);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i), 4) == ZERR_FIELDLEN)
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_auth) == ZERR_FIELDLEN)
+	return (ZERR_HEADERLEN);
+    ptr += strlen(ptr)+1;
+
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_authent_len) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
@@ -752,8 +741,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	    return (ZERR_HEADERLEN);
     }
     else {
-	(void) sprintf(newrecip, "%s@%s", notice->z_recipient, 
-		       __Zephyr_realm);
+	(void) sprintf(newrecip, "%s@%s", notice->z_recipient, __Zephyr_realm);
 	if (Z_AddField(&ptr, newrecip, end))
 	    return (ZERR_HEADERLEN);
     }		
@@ -763,9 +751,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     /* copy back the end pointer location for crypto checksum */
     if (cstart)
 	*cstart = ptr;
-    temp.sum = htonl(notice->z_checksum);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.sum,
-		   sizeof(temp.sum), 4) == ZERR_FIELDLEN)
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_checksum) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
     if (cend)
@@ -775,7 +761,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	return (ZERR_HEADERLEN);
 
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid, 
-		   sizeof(ZUnique_Id_t), 12) == ZERR_FIELDLEN)
+		   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	

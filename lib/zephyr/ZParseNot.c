@@ -75,13 +75,8 @@ Code_t ZParseNotice(buffer, len, notice)
     ZNotice_t *notice;
 {
     char *ptr, *end;
+    unsigned long temp;
     int maj, numfields, i;
-    union {
-	int i;
-	ZUnique_Id_t uid;
-	u_short us;
-	ZChecksum_t sum;
-    } temp;
 
 #ifdef __LINE__
     int lineno;
@@ -119,10 +114,9 @@ Code_t ZParseNotice(buffer, len, notice)
 	return (ZERR_VERS);
     next_field (ptr);
 
-    if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i), 4) == ZERR_BADFIELD)
+    if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	BAD_PACKET;
-    numfields = ntohl((u_long) temp.i);
+    numfields = temp;
     next_field (ptr);
 
     /*XXX 3 */
@@ -148,10 +142,9 @@ Code_t ZParseNotice(buffer, len, notice)
     }
 
     if (numfields) {
-	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		       sizeof(temp.i), 4) == ZERR_BADFIELD)
+	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	    BAD_PACKET;
-	notice->z_kind = (ZNotice_Kind_t)ntohl((u_long) temp.i);
+	notice->z_kind = temp;
 	numfields--;
 	next_field (ptr);
     }
@@ -159,10 +152,9 @@ Code_t ZParseNotice(buffer, len, notice)
 	BAD_PACKET;
 	
     if (numfields) {
-	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.uid,
-		       sizeof(ZUnique_Id_t), 12) == ZERR_BADFIELD)
+	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid,
+		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
 	    BAD_PACKET;
-	notice->z_uid = temp.uid;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_uid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_uid.tv.tv_usec);
 	numfields--;
@@ -172,11 +164,9 @@ Code_t ZParseNotice(buffer, len, notice)
 	BAD_PACKET;
 	
     if (numfields) {
-	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.us,
-		       sizeof(u_short), 2) ==
-	    ZERR_BADFIELD)
+	if (ZReadAscii16(ptr, end-ptr, &notice->z_port) == ZERR_BADFIELD)
 	    BAD_PACKET;
-	notice->z_port = temp.us;
+	notice->z_port = htons(notice->z_port);
 	numfields--;
 	next_field (ptr);
     }
@@ -184,10 +174,9 @@ Code_t ZParseNotice(buffer, len, notice)
 	BAD_PACKET;
 
     if (numfields) {
-	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		       sizeof(int), 4) == ZERR_BADFIELD)
+	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	    BAD_PACKET;
-	notice->z_auth = temp.i;
+	notice->z_auth = temp;
 	numfields--;
 	next_field (ptr);
     }
@@ -196,10 +185,9 @@ Code_t ZParseNotice(buffer, len, notice)
     notice->z_checked_auth = ZAUTH_UNSET;
 	
     if (numfields) {
-	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		       sizeof(int), 4) == ZERR_BADFIELD)
+	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	    BAD_PACKET;
-	notice->z_authent_len = ntohl((u_long) temp.i);
+	notice->z_authent_len = temp;
 	numfields--;
 	next_field (ptr);
     }
@@ -263,11 +251,9 @@ Code_t ZParseNotice(buffer, len, notice)
 	notice->z_default_format = "";
 	
 /*XXX*/
-    if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.sum,
-		   sizeof(ZChecksum_t), 4)
-	== ZERR_BADFIELD)
+    if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	BAD_PACKET;
-    notice->z_checksum = ntohl((u_long) temp.sum);
+    notice->z_checksum = temp;
     numfields--;
     next_field (ptr);
 
@@ -280,10 +266,9 @@ Code_t ZParseNotice(buffer, len, notice)
 	notice->z_multinotice = "";
 
     if (numfields) {
-	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.uid,
-		       sizeof(ZUnique_Id_t), 12) == ZERR_BADFIELD)
+	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid,
+		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
 	    BAD_PACKET;
-	notice->z_multiuid = temp.uid;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_multiuid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_multiuid.tv.tv_usec);
 	numfields--;
@@ -294,7 +279,6 @@ Code_t ZParseNotice(buffer, len, notice)
 
     for (i=0;i<Z_MAXOTHERFIELDS && numfields;i++,numfields--) {
 	notice->z_other_fields[i] = ptr;
-	numfields--;
 	next_field (ptr);
     }
     notice->z_num_other_fields = i;
@@ -302,16 +286,6 @@ Code_t ZParseNotice(buffer, len, notice)
     for (i=0;i<numfields;i++)
 	next_field (ptr);
 	
-#ifdef notdef
-    if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
-		   sizeof(ZChecksum_t))
-	== ZERR_BADFIELD)
-	BAD_PACKET;
-    notice->z_checksum = ntohl(*temp);
-    numfields--;
-    next_field (ptr);
-#endif
-    
     notice->z_message = (caddr_t) ptr;
     notice->z_message_len = len-(ptr-buffer);
 

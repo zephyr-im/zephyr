@@ -38,9 +38,8 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	if (!port)			/* use default port */
 	    port = __Zephyr_port;
 
-	if ((retval = ZMakeAscii(asciiport,sizeof(asciiport),
-				 (unsigned char *)&port,
-				 sizeof(u_short), 2)) != ZERR_NONE)
+	retval = ZMakeAscii16(asciiport, sizeof(asciiport), ntohs(port));
+	if (retval != ZERR_NONE)
 		return (retval);
 
 	(void) memset((char *)&notice, 0, sizeof(notice));
