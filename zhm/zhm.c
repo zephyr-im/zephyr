@@ -25,6 +25,8 @@ static char rcsid_hm_c[] = "$Header$";
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <hesiod.h>
+#include <sys/ioctl.h>
+#include <sys/file.h>
 
 int serv_sock, no_server = 1, timeout_type = 0, serv_loop = 0;
 struct sockaddr_in cli_sin, serv_sin, from;
@@ -36,7 +38,7 @@ char hostname[MAXHOSTNAMELEN], prim_serv[MAXHOSTNAMELEN], loopback[4];
 extern int errno;
 extern char *index();
 
-void init_hm(), handle_timeout(), resend_notices();
+void init_hm(), detach(), handle_timeout(), resend_notices(), die_gracefully();
 char *upcase();
 
 main(argc, argv)
@@ -51,24 +53,23 @@ char *argv[];
     (void)strcpy(prim_serv, "");
     if (argc > 1) 
       (void)strcpy(prim_serv, argv[1]);
-    else
-      for (clust_info = hes_resolve(hostname, "CLUSTER");
-	   *clust_info; clust_info++)
-	if (!strncmp("ZEPHYR", upcase(*clust_info), 6)) {
-	      (void)strcpy(prim_serv, index(*clust_info, ' ')+1);
-	      break;
-	}
+    else {
+	  if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
+		printf("No hesiod information available.\n");
+		exit(ZERR_SERVNAK);
+	  }
+	  for ( ; *clust_info; clust_info++)
+	    if (!strncmp("ZEPHYR", upcase(*clust_info), 6)) {
+		  (void)strcpy(prim_serv, index(*clust_info, ' ')+1);
+		  break;
+	    }
+    }
     
     init_hm();
 
     DPR2 ("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
     DPR2 ("zephyr client port: %u\n", ntohs(cli_port));
     
-#ifndef DEBUG
-    if (fork())
-      exit(0);
-#endif DEBUG
-
     /* Main loop */
     for ever {
 	  DPR ("Waiting for a packet...");
@@ -114,13 +115,20 @@ void init_hm()
       struct servent *sp;
       Code_t ret;
 
-      openlog("hm", LOG_PID, LOG_LOCAL6);
+      openlog("hm", LOG_PID, LOG_DAEMON);
+
+#ifndef DEBUG
+      detach();
+#endif DEBUG
+
       (void)ZInitialize();
       (void)ZSetServerState(1);  /* Aargh!!! */
       init_queue();
       if ((serv_list = hes_resolve("zephyr", "sloc")) == (char **)NULL) {
-	    syslog(LOG_ERR, "No servers?!?");
-	    exit(1);
+	    syslog(LOG_ERR, "No servers or no hesiod");
+	    serv_list = (char **)malloc(sizeof(char *));
+	    serv_list[0] = (char *)malloc(MAXHOSTNAMELEN);
+	    strcpy(serv_list[0], prim_serv);
       }
       cur_serv = serv_list;
       if (!strcmp(prim_serv, ""))
@@ -133,19 +141,26 @@ void init_hm()
       
       /* Open client socket, for receiving client and server notices */
       
-      sp = getservbyname("zephyr-hm", "udp");
+      if ((sp = getservbyname("zephyr-hm", "udp")) == NULL) {
+	    printf("No zephyr-hm entry in /etc/services.\n");
+	    exit(1);
+      }
       cli_port = sp->s_port;
       
       if ((ret = ZOpenPort(&cli_port)) != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("hm", ret, "opening port");
+	    exit(ret);
       }
       cli_sin = ZGetDestAddr();
       cli_sin.sin_port = sp->s_port;
       
       /* Open the server socket */
       
-      sp = getservbyname("zephyr-clt", "udp");
+      if ((sp = getservbyname("zephyr-clt", "udp")) == NULL) {
+	    printf("No zephyr-clt entry in /etc/services.\n");
+	    exit(1);
+      }
       bzero(&serv_sin, sizeof(struct sockaddr_in));
       serv_sin.sin_port = sp->s_port;
       
@@ -171,6 +186,7 @@ void init_hm()
       send_boot_notice();
 
       (void)signal (SIGALRM, handle_timeout);
+      (void)signal (SIGTERM, die_gracefully);
 }
 
 char *upcase(s)
@@ -189,7 +205,7 @@ send_boot_notice()
       Code_t ret;
 
       /* Set up server notice */
-      notice.z_kind = ACKED;
+      notice.z_kind = HMCTL;
       notice.z_port = cli_port;
       notice.z_class = ZEPHYR_CTL_CLASS;
       notice.z_class_inst = ZEPHYR_CTL_HM;
@@ -203,12 +219,58 @@ send_boot_notice()
 	    Zperr(ret);
 	    com_err("hm", ret, "setting destination");
       }
-      if ((ret = ZSendNotice(&notice, 0)) != ZERR_NONE) {
+      if ((ret = ZSendNotice(&notice, ZNOAUTH)) != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("hm", ret, "sending startup notice");
       }
       timeout_type = BOOTING;
       (void)alarm(SERV_TIMEOUT);
+}
+
+send_flush_notice()
+{
+      ZNotice_t notice;
+      Code_t ret;
+
+      /* Set up server notice */
+      notice.z_kind = HMCTL;
+      notice.z_port = cli_port;
+      notice.z_class = ZEPHYR_CTL_CLASS;
+      notice.z_class_inst = ZEPHYR_CTL_HM;
+      notice.z_opcode = HM_FLUSH;
+      notice.z_sender = "sender";
+      notice.z_recipient = "recip";
+      notice.z_message_len = 0;
+
+      /* Tell server to look the other way */
+      if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
+	    Zperr(ret);
+	    com_err("hm", ret, "setting destination");
+      }
+      if ((ret = ZSendNotice(&notice, ZNOAUTH)) != ZERR_NONE) {
+	    Zperr(ret);
+	    com_err("hm", ret, "sending flush notice");
+      }
+}
+
+static void
+detach()
+{
+        /* detach from terminal and fork. */
+        register int i, size = getdtablesize();
+
+        if (i = fork()) {
+                if (i < 0)
+                        perror("fork");
+                exit(0);
+        }
+
+        for (i = 0; i < size; i++) {
+                (void) close(i);
+        }
+        i = open("/dev/tty", O_RDWR, 666);
+        (void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
+        (void) close(i);
 }
 
 find_next_server()
@@ -372,22 +434,7 @@ new_server()
 
       no_server = 1;
       syslog (LOG_INFO, "Server went down, finding new server.");
-      notice.z_kind = ACKED;
-      notice.z_port = cli_port;
-      notice.z_class = ZEPHYR_CTL_CLASS;
-      notice.z_class_inst = ZEPHYR_CTL_HM;
-      notice.z_opcode = HM_FLUSH;
-      notice.z_sender = "sender";
-      notice.z_recipient = "recip";
-      notice.z_message_len = 0;
-      if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
-	    Zperr(ret);
-	    com_err("hm", ret, "setting destination");
-      }
-      if ((ret = ZSendNotice(&notice, 0)) != ZERR_NONE) {
-	    Zperr(ret);
-	    com_err("hm", ret, "sending flush notice");
-      }
+      send_flush_notice();
       find_next_server();
       send_boot_notice();
 }
@@ -406,4 +453,12 @@ void handle_timeout()
 	    syslog (LOG_ERR, "Unknown timeout type: %d\n", timeout_type);
 	    break;
       }
+}
+
+void die_gracefully()
+{
+      syslog(LOG_INFO, "Terminate signal caught...");
+      send_flush_notice();
+      closelog();
+      exit(0);
 }
