@@ -393,7 +393,6 @@ int sig;
 	/*NOTREACHED*/
 }
 
-#ifdef DEBUG
 static void
 dbug_on()
 {
@@ -407,8 +406,8 @@ dbug_off()
 	syslog(LOG_DEBUG, "debugging turned off");
 	zdebug = 0;
 }
-#endif
 
+#ifndef DEBUG
 /*
  * detach from the terminal
  */
@@ -433,3 +432,4 @@ detach()
 	(void) close(i);
 
 }
+#endif !DEBUG
