@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for the ZFormatRawNotice function.
+ * It contains source for the ZFormatSmallRawNotice function.
  *
  *	Created by:	Robert French
  *
@@ -20,26 +20,24 @@ static char rcsid_ZFormatRawNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZFormatRawNotice(notice, buffer, ret_len)
+Code_t ZFormatSmallRawNotice(notice, buffer, ret_len)
     ZNotice_t *notice;
-    char **buffer;
+    ZPacket_t buffer;
     int *ret_len;
 {
-    char header[Z_MAXHEADERLEN];
-    int hdrlen;
     Code_t retval;
-
-    if ((retval = Z_FormatRawHeader(notice, header, sizeof(header), &hdrlen))
+    int hdrlen;
+    
+    if ((retval = Z_FormatRawHeader(notice, buffer, Z_MAXHEADERLEN, &hdrlen))
 	!= ZERR_NONE)
 	return (retval);
 
     *ret_len = hdrlen+notice->z_message_len;
 
-    if (!(*buffer = malloc(*ret_len)))
-	return (ENOMEM);
+    if (*ret_len > Z_MAXPKTLEN)
+	return (ZERR_PKTLEN);
 
-    bcopy(header, *buffer, hdrlen);
-    bcopy(notice->z_message, *buffer+hdrlen, notice->z_message_len);
+    bcopy(notice->z_message, buffer+hdrlen, notice->z_message_len);
 
     return (ZERR_NONE);
 }

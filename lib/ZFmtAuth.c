@@ -20,47 +20,47 @@ static char rcsid_ZFormatAuthenticNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZFormatAuthenticNotice(notice,buffer,buffer_len,len,session)
-	ZNotice_t	*notice;
-	ZPacket_t	buffer;
-	int		buffer_len;
-	int		*len;
-	C_Block		session;
+Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
+    ZNotice_t *notice;
+    char *buffer;
+    int buffer_len;
+    int *len;
+    C_Block session;
 {
-	ZNotice_t newnotice;
-	char *ptr;
-	int retval,hdrlen;
+    ZNotice_t newnotice;
+    char *ptr;
+    int retval, hdrlen;
 
-	newnotice = *notice;
-	newnotice.z_auth = 1;
-	newnotice.z_authent_len = 0;
-	newnotice.z_ascii_authent = (char *)"";
+    newnotice = *notice;
+    newnotice.z_auth = 1;
+    newnotice.z_authent_len = 0;
+    newnotice.z_ascii_authent = (char *)"";
 	
-	if ((retval = Z_FormatRawHeader(&newnotice,buffer,buffer_len,&hdrlen))
-	    != ZERR_NONE)
-		return (retval);
+    if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen))
+	!= ZERR_NONE)
+	return (retval);
 
-	for (hdrlen--;buffer[hdrlen-1];hdrlen--)
-		;
+    for (hdrlen--;buffer[hdrlen-1];hdrlen--)
+	;
 	
-	newnotice.z_checksum = (ZChecksum_t)quad_cksum(buffer,NULL,hdrlen,0,
-						     session);
+    newnotice.z_checksum = (ZChecksum_t)quad_cksum(buffer, NULL, hdrlen, 0, 
+						   session);
 
-	if ((retval = Z_FormatRawHeader(&newnotice,buffer,buffer_len,&hdrlen))
-	    != ZERR_NONE)
-		return (retval);
+    if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen))
+	!= ZERR_NONE)
+	return (retval);
 
-	ptr = buffer+hdrlen;
+    ptr = buffer+hdrlen;
 
-	if (newnotice.z_message_len+hdrlen > buffer_len)
-		return (ZERR_PKTLEN);
+    if (newnotice.z_message_len+hdrlen > buffer_len)
+	return (ZERR_PKTLEN);
 
-	bcopy(newnotice.z_message,ptr,newnotice.z_message_len);
+    bcopy(newnotice.z_message, ptr, newnotice.z_message_len);
 
-	*len = hdrlen+newnotice.z_message_len;
+    *len = hdrlen+newnotice.z_message_len;
 
-	if (*len > Z_MAXPKTLEN)
-		return (ZERR_PKTLEN);
+    if (*len > Z_MAXPKTLEN)
+	return (ZERR_PKTLEN);
 
-	return (ZERR_NONE);
+    return (ZERR_NONE);
 }

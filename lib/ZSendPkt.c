@@ -31,12 +31,14 @@ Code_t ZSendPacket(packet, len, waitforack)
     struct timeval tv;
     int i;
     fd_set t1, t2, t3;
-    char *ackpacket;
     ZNotice_t notice, acknotice;
 	
-    if (!packet || len < 0 || len > Z_MAXPKTLEN)
+    if (!packet || len < 0)
 	return (ZERR_ILLVAL);
 
+    if (len > Z_MAXPKTLEN)
+	return (ZERR_PKTLEN);
+    
     if (ZGetFD() < 0)
 	if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
 	    return (retval);
@@ -58,8 +60,8 @@ Code_t ZSendPacket(packet, len, waitforack)
     for (i=0;i<HM_TIMEOUT*2;i++) {
 	if (select(0, &t1, &t2, &t3, &tv) < 0)
 	    return (errno);
-	retval = ZCheckIfNotice(&acknotice, NULL, ZCompareUIDPred, 
-				(char *)&notice.z_uid);
+	retval = ZCheckIfNotice(&acknotice, (struct sockaddr_in *)0,
+				ZCompareUIDPred, (char *)&notice.z_uid);
 	if (retval == ZERR_NONE) {
 	    ZFreeNotice(&acknotice);
 	    return (ZERR_NONE);

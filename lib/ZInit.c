@@ -27,8 +27,9 @@ Code_t ZInitialize()
 {
     struct servent *hmserv;
     char addr[4];
-    int retval;
-#ifndef KERBEROS
+#ifdef KERBEROS
+    int krbval;
+#else
     char hostname[MAXHOSTNAMELEN+1];
     struct hostent *hent;
 #endif
@@ -59,8 +60,8 @@ Code_t ZInitialize()
     __HM_set = 0;
 
 #ifdef KERBEROS    
-    if ((retval = get_krbrlm(__Zephyr_realm, 1)) != KSUCCESS)
-	return (retval);
+    if ((krbval = get_krbrlm(__Zephyr_realm, 1)) != KSUCCESS)
+	return (krbval);
 #else
     if (gethostname(hostname, MAXHOSTNAMELEN))
 	return (errno);

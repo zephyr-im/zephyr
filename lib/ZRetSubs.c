@@ -23,6 +23,7 @@ static char rcsid_ZRetrieveSubscriptions_c[] = "$Header$";
 #define MAXSUBPACKETS 200 /* If a person has more than 1000
 			   *  subscriptions, he loses! */
 
+#ifdef notdef
 Code_t ZRetrieveSubscriptions(port,nsubs)
 	u_short port;
 	int *nsubs;
@@ -153,3 +154,4 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 
 	return (returncode);
 }
+#endif

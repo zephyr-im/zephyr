@@ -20,18 +20,21 @@ static char rcsid_ZReceiveNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZReceiveNotice(buffer,buffer_len,notice,from)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	ZNotice_t	*notice;
-	struct		sockaddr_in *from;
+Code_t ZReceiveNotice(notice, from)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
 {
-	int len;
-	Code_t retval;
-	
-	if ((retval = ZReceivePacket(buffer,buffer_len,&len,from)) !=
-	    ZERR_NONE)
-		return (retval);
+    char *buffer;
+    int len;
+    Code_t retval;
 
-	return (ZParseNotice(buffer,len,notice));
+    if (!(buffer = malloc(Z_MAXPKTLEN)))
+	return (ENOMEM);
+    
+    if ((retval = ZReceivePacket(buffer, &len, from)) != ZERR_NONE)
+	return (retval);
+
+    buffer = realloc(buffer, len); /* XXX */
+    
+    return (ZParseNotice(buffer, len, notice));
 }

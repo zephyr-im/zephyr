@@ -31,7 +31,7 @@ Code_t ZFormatNoticeList(notice, list, nitems, buffer, ret_len,
 {
     char header[Z_MAXHEADERLEN];
     int hdrlen, i, size;
-    char *ptr, *end;
+    char *ptr;
     Code_t retval;
 
     if ((retval = Z_FormatHeader(notice, header, sizeof(header), &hdrlen,
@@ -46,6 +46,8 @@ Code_t ZFormatNoticeList(notice, list, nitems, buffer, ret_len,
     
     if (!(*buffer = malloc(*ret_len)))
 	return (ENOMEM);
+
+    bcopy(header, *buffer, hdrlen);
 
     ptr = *buffer+hdrlen;
 
