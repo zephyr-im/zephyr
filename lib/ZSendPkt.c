@@ -26,6 +26,7 @@ Code_t ZSendPacket(packet, len, waitforack)
     int len;
     int waitforack;
 {
+    int wait_for_hmack();
     Code_t retval;
     struct sockaddr_in dest;
     struct timeval tv;
@@ -61,7 +62,7 @@ Code_t ZSendPacket(packet, len, waitforack)
 	if (select(0, &t1, &t2, &t3, &tv) < 0)
 	    return (errno);
 	retval = ZCheckIfNotice(&acknotice, (struct sockaddr_in *)0,
-				ZCompareUIDPred, (char *)&notice.z_uid);
+				wait_for_hmack, (char *)&notice.z_uid);
 	if (retval == ZERR_NONE) {
 	    ZFreeNotice(&acknotice);
 	    return (ZERR_NONE);
@@ -70,4 +71,11 @@ Code_t ZSendPacket(packet, len, waitforack)
 	    return (retval);
     }
     return (ZERR_HMDEAD);
+}
+
+static wait_for_hmack(notice, uid)
+    ZNotice_t *notice;
+    ZUnique_Id_t *uid;
+{
+    return (notice->z_kind == HMACK && ZCompareUID(&notice->z_uid, uid));
 }
