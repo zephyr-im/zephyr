@@ -7,9 +7,9 @@
  *	$Author$
  *	$Id$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
- *	For copying and distribution information, see the file
- *	"mit-copyright.h".
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of
+ *	Technology. For copying and distribution information, see the
+ *	file "mit-copyright.h".
  */
 
 #ifndef __ZEPHYR_H__
@@ -223,7 +223,6 @@ extern "C" {
 
 #ifdef Z_HaveKerberos
     /* ZGetSession() macro */
-    extern C_Block ZGetSession ();
 #define ZGetSession() (__Zephyr_session)
 #endif
 
