@@ -47,7 +47,7 @@ typedef struct _ZNotice_t {
 	ZNotice_Kind_t	z_kind;
 	ZChecksum_t	z_checksum;
 	ZUnique_Id_t	z_uid;
-#define z_sender_addr	z_uid.zuid_addr;
+#define z_sender_addr	z_uid.zuid_addr
 	short		z_port;
 	char		*z_class;
 	char		*z_class_inst;
@@ -75,6 +75,9 @@ extern int __Zephyr_port;
 
 	/* External UNIX errors */
 extern int errno;
+
+/* XXX some magic numbers--will need tuning */
+#define	SERVER_KEEPALIVE_INTERVAL	(3*60) /* seconds */
 
 /* Error codes */
 
