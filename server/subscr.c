@@ -331,13 +331,10 @@ char *person;
 	for (subs2 = subs->q_forw; subs2 != subs; subs2 = subs2->q_forw)
 		/* if not a wildcard, replace it with person */
 		if (strcmp(subs2->zst_recipient, "*")) {
-			xfree(subs2->zst_recipient);
-			subs2->zst_recipient = strsave(person);
+			subs2->zst_recipient = person;
 		} else {		/* replace with null recipient */
-			xfree(subs2->zst_recipient);
-			subs2->zst_recipient = strsave("");
+			subs2->zst_recipient = "";
 		}
-			
 	return(subs);
 }
 
