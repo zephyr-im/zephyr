@@ -140,7 +140,7 @@ struct sockaddr_in *sin;
 	       DPR2 ("\tz_opcode: %s\n", srch->q_data->z_notice.z_opcode);
 	       DPR2 ("\tz_sender: %s\n", srch->q_data->z_notice.z_sender);
 	       DPR2 ("\tz_recip: %s\n", srch->q_data->z_notice.z_recipient);
-	       if ((ret = ZSendRawNotice(&srch->q_data->z_notice))
+	       if ((ret = send_outgoing(&srch->q_data->z_notice))
 		   != ZERR_NONE) {
 		    Zperr (ret);
 		    com_err("queue", ret, "sending raw notice");
@@ -249,7 +249,7 @@ struct sockaddr_in *sin;
 			  srch->q_data->z_notice.z_sender);
 		    DPR2 ("\tz_recip: %s\n",
 			  srch->q_data->z_notice.z_recipient);
-		    if ((ret = ZSendRawNotice(&srch->q_data->z_notice)) 
+		    if ((ret = send_outgoing(&srch->q_data->z_notice)) 
 			!= ZERR_NONE) {
 			 Zperr(ret);
 			 com_err("queue", ret, "sending raw notice");
