@@ -139,7 +139,7 @@ main(argc,argv)
 	(void) strcpy(user,argv[loc]);
 	if (!strchr(user,'@')) {
 	    (void) strcat(user,"@");
-	    (void) strcat(user,ZGetRhs(NULL));
+	    (void) strcat(user,ZGetRhs(realm));
 	} 
 	if (parallel) {
 	    if ((retval = ZRequestLocations(realm, user, &ald,
