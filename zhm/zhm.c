@@ -332,13 +332,13 @@ static void init_hm()
      starttime = time((time_t *)0);
      OPENLOG("hm", LOG_PID, LOG_DAEMON);
   
+     ZSetServerState(1);	/* Aargh!!! */
      if ((ret = ZInitialize()) != ZERR_NONE) {
 	 Zperr(ret);
 	 com_err("hm", ret, "initializing");
 	 closelog();
 	 exit(-1);
      }
-     ZSetServerState(1);	/* Aargh!!! */
      init_queue();
 
      if (*prim_serv == '\0')
