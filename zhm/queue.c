@@ -11,8 +11,7 @@
  *      "mit-copyright.h". 
  */
 
-#include <zephyr/mit-copyright.h>
-#include <zephyr/zephyr.h>
+#include "hm.h"
 
 #ifndef lint
 #ifndef SABER
@@ -20,18 +19,8 @@ static char rcsid_queue_c[] = "$Header$";
 #endif SABER
 #endif lint
 
-#ifdef DEBUG
-#define DPR(a) fprintf(stderr, a)
-#define DPR2(a,b) fprintf(stderr, a, b)
-#else
-#define DPR(a)
-#define DPR2(a,b)
-#endif
-
-#define TIMEOUT 10
-
 typedef struct _Queue {
-      int timeout;
+      long timeout;
       int retries;
       ZNotice_t z_notice;
       caddr_t z_packet;
@@ -46,9 +35,10 @@ struct _qelem {
 
 typedef struct _qelem Qelem;
 
-extern char *malloc();
-
 Qelem hm_queue, *is_in_queue();
+
+long time();
+extern int timeout_type;
 
 Code_t init_queue()
 {
@@ -69,7 +59,7 @@ Code_t add_notice_to_queue(notice, packet, repl)
       if (!is_in_queue(*notice)) {
 	    elem = (Qelem *)malloc(sizeof(Qelem));
 	    entry = (Queue *)malloc(sizeof(Queue));
-	    entry->timeout = TIMEOUT;
+	    entry->timeout = time(NULL) + NOTICE_TIMEOUT;
 	    entry->retries = 0;
 	    entry->z_notice = *notice;
 	    entry->z_packet = packet;
@@ -87,23 +77,25 @@ Code_t add_notice_to_queue(notice, packet, repl)
 	return(ZERR_NONE);
 }
 
-Code_t remove_notice_from_queue(notice, packet, repl)
+Code_t remove_notice_from_queue(notice, kind, repl)
      ZNotice_t *notice;
-     caddr_t *packet;
+     ZNotice_Kind_t *kind;
      struct sockaddr_in *repl;
 {
       Qelem *elem;
 
       DPR ("Removing notice from queue...\n");
-      /* Set notice & packet to the one removed, so we can acknowledge */
       if ((elem = is_in_queue(*notice)) == NULL)
 	return(ZERR_NONOTICE);
       else {
-	    *notice = elem->q_data->z_notice;
-	    *packet = elem->q_data->z_packet;
+	    *kind = elem->q_data->z_notice.z_kind;
 	    *repl = elem->q_data->reply;
 	    remque(elem);
+	    if (hm_queue.q_forw == &hm_queue)
+	      (void)alarm(0);
+#ifdef DEBUG
 	    dump_queue();
+#endif DEBUG
 	    return(ZERR_NONE);
       }
 }
@@ -116,27 +108,33 @@ Code_t retransmit_queue(sin)
 
       DPR ("Retransmitting queue to new server...\n");
       if ((ret = ZSetDestAddr(sin)) != ZERR_NONE) {
-	    fprintf(stderr, "Error = %d\n", ret);
+	    Zperr (ret);
 	    com_err("queue", ret, "setting destination");
       }
-      if ((srch = hm_queue.q_forw) != &hm_queue)
-	do {
-	    DPR ("notice:\n");
-	    DPR2 ("\tz_kind: %d\n", srch->q_data->z_notice.z_kind);
-	    DPR2 ("\tz_port: %u\n", ntohs(srch->q_data->z_notice.z_port));
-	    DPR2 ("\tz_class: %s\n", srch->q_data->z_notice.z_class);
-	    DPR2 ("\tz_clss_inst: %s\n", srch->q_data->z_notice.z_class_inst);
-	    DPR2 ("\tz_opcode: %s\n", srch->q_data->z_notice.z_opcode);
-	    DPR2 ("\tz_sender: %s\n", srch->q_data->z_notice.z_sender);
-	    DPR2 ("\tz_recip: %s\n", srch->q_data->z_notice.z_recipient);
-	    if ((ret = ZSendRawNotice(&srch->q_data->z_notice)) != ZERR_NONE) {
-		  fprintf(stderr, "Error = %d\n", ret);
-		  com_err("queue", ret, "sending raw notice");
-	    }
-	    srch->q_data->timeout = TIMEOUT;
-	    srch->q_data->retries = 0;
-	    srch = srch->q_forw;
-      } while (srch != &hm_queue);
+      if ((srch = hm_queue.q_forw) != &hm_queue) {
+	    do {
+		  DPR ("notice:\n");
+		  DPR2 ("\tz_kind: %d\n", srch->q_data->z_notice.z_kind);
+		  DPR2 ("\tz_port: %u\n",
+			ntohs(srch->q_data->z_notice.z_port));
+		  DPR2 ("\tz_class: %s\n", srch->q_data->z_notice.z_class);
+		  DPR2 ("\tz_clss_inst: %s\n",
+			srch->q_data->z_notice.z_class_inst);
+		  DPR2 ("\tz_opcode: %s\n", srch->q_data->z_notice.z_opcode);
+		  DPR2 ("\tz_sender: %s\n", srch->q_data->z_notice.z_sender);
+		  DPR2 ("\tz_recip: %s\n", srch->q_data->z_notice.z_recipient);
+		  if ((ret = ZSendRawNotice(&srch->q_data->z_notice))
+		      != ZERR_NONE) {
+			Zperr (ret);
+			com_err("queue", ret, "sending raw notice");
+		  }
+		  srch->q_data->timeout = NOTICE_TIMEOUT;
+		  srch->q_data->retries = 0;
+		  srch = srch->q_forw;
+	    } while (srch != &hm_queue);
+	    timeout_type = NOTICES;
+	    (void)alarm(NOTICE_TIMEOUT);
+      }
 }
 
 Code_t dump_queue()
@@ -183,4 +181,51 @@ Qelem *is_in_queue(notice)
 	    srch = srch->q_forw;
       } while (srch != &hm_queue);
       return(NULL);
+}
+
+void resend_notices(sin)
+     struct sockaddr_in *sin;
+{
+      Qelem *srch;
+      Code_t ret;
+
+      DPR ("Resending notices...\n");
+      if ((ret = ZSetDestAddr(sin)) != ZERR_NONE) {
+	    Zperr(ret);
+	    com_err("queue", ret, "setting destination");
+      }
+      if ((srch = hm_queue.q_forw) == &hm_queue) {
+	    syslog (LOG_INFO, "No notices, shouldn't have happened!");
+      } else do {
+	    if (srch->q_data->timeout <= time(NULL)) {
+		  if (++(srch->q_data->retries) > MAXRETRIES) {
+			new_server();
+			break;
+		  } else {
+			DPR ("notice:\n");
+			DPR2 ("\tz_kind: %d\n", srch->q_data->z_notice.z_kind);
+			DPR2 ("\tz_port: %u\n",
+			      ntohs(srch->q_data->z_notice.z_port));
+			DPR2 ("\tz_class: %s\n",
+			      srch->q_data->z_notice.z_class);
+			DPR2 ("\tz_clss_inst: %s\n",
+			      srch->q_data->z_notice.z_class_inst);
+			DPR2 ("\tz_opcode: %s\n",
+			      srch->q_data->z_notice.z_opcode);
+			DPR2 ("\tz_sender: %s\n", 
+			      srch->q_data->z_notice.z_sender);
+			DPR2 ("\tz_recip: %s\n",
+			      srch->q_data->z_notice.z_recipient);
+			if ((ret = ZSendRawNotice(&srch->q_data->z_notice)) 
+			    != ZERR_NONE) {
+			      Zperr(ret);
+			      com_err("queue", ret, "sending raw notice");
+			}
+			srch->q_data->timeout = time(NULL) + NOTICE_TIMEOUT;
+			srch = srch->q_forw;
+		  }
+	    }
+      } while (srch != &hm_queue);
+      timeout_type = NOTICES;
+      (void)alarm(NOTICE_TIMEOUT);
 }
