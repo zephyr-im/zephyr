@@ -139,10 +139,10 @@ clean::
 #define CDebugFlags -O2
 #define LdPath -L/usr/gcc/lib -L/usr/ccs/lib -L/usr/openwin/lib -L$(ATHLIBDIR)
 #define LdLibs /usr/athena/lib/libresolv.a -lsocket -lnsl /usr/ucblib/libucb.a -lelf
-#define AnsiCcCmd /usr/gcc/bin/gcc -traditional
+#define AnsiCcCmd /usr/gcc/bin/gcc
 #define AnsiLdCmd /usr/gcc/bin/gcc
-#define CcCmd AnsiCcCmd
-#define LdCmd AnsiLdCmd
+#define CcCmd /usr/gcc/bin/gcc -traditional
+#define LdCmd /usr/gcc/bin/gcc
 #define RanLibCmd \:
 #define AfsDir /usr/transarc
 #define ExtraXLibs -lm
