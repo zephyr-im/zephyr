@@ -11,10 +11,10 @@
 ! Zwgc2 application specific global resources:
 !
 
-*style*fontfamily.default: default
-*style.message.personal*fontfamily.title: huge
+*style*substyle.default.fontfamily:			default
+*style.message.personal*substyle.title.fontfamily:	huge
 
-*style*geometry:		+0+0
+*style*geometry:					+0+0
 
 !
 ! The following is the adobe-courier font family.  Availiable sizes are
