@@ -89,21 +89,18 @@ struct sockaddr_in *who;
 		return;
 	}
 	bzero((caddr_t) &bdump_sin, sizeof(bdump_sin));
-	bdump_sin.sin_port = htons((u_short)((getpid()*8)&0xfff)+(((int)random()>>4)&0xf)+1024);
-	bdump_sin.sin_addr = my_addr;
+	/* a port field of 0 and an address of INADDR_ANY makes the UNIX
+	   kernel choose an appropriate port/address pair */
+
+	bdump_sin.sin_port = 0;
+	bdump_sin.sin_addr.s_addr = INADDR_ANY;
 	bdump_sin.sin_family = AF_INET;
-	do {
-		if ((retval = bind(bdump_socket, (struct sockaddr *) &bdump_sin, sizeof(bdump_sin))) < 0) {
-			if (errno == EADDRINUSE)
-				bdump_sin.sin_port = htons(ntohs(bdump_sin.sin_port) + 1);
-			else {
-				syslog(LOG_ERR, "bdump bind %d: %m", htons(bdump_sin.sin_port));
-				(void) close(bdump_socket);
-				bdump_socket = -1;
-				return;
-			}
-		}
-	} while (retval < 0);
+	if ((retval = bind(bdump_socket, (struct sockaddr *) &bdump_sin, sizeof(bdump_sin))) < 0) {
+		syslog(LOG_ERR, "bdump bind %d: %m", htons(bdump_sin.sin_port));
+		(void) close(bdump_socket);
+		bdump_socket = -1;
+		return;
+	}
 #else
 	int bdump_port = IPPORT_RESERVED - 1;
 	/*
@@ -439,7 +436,7 @@ int num;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
-	ZPacket_t pack;
+	char *pack;
 	int packlen, count;
 	Code_t retval;
 	u_short length;
@@ -456,28 +453,31 @@ int num;
 	pnotice->z_recipient = recip;
 	pnotice->z_default_format = 0;
 
-	packlen = sizeof(pack);
-	
-	if ((retval = ZFormatNoticeList(pnotice, lyst, num, pack, packlen, &packlen, ZNOAUTH)) != ZERR_NONE)
+	if ((retval = ZFormatNoticeList(pnotice, lyst, num, &pack, &packlen, ZNOAUTH)) != ZERR_NONE)
 		return(retval);
 	
 	length = htons((u_short) packlen);
 
 	if ((count = net_write(live_socket, (caddr_t) &length, sizeof(length))) != sizeof(length))
-		if (count < 0)
+		if (count < 0) {
+			xfree(pack);	/* free allocated storage */
 			return(errno);
-		else {
+		} else {
 			syslog(LOG_WARNING, "slt xmit: %d vs %d",sizeof(length),count);
+			xfree(pack);	/* free allocated storage */
 			return(ZSRV_PKSHORT);
 		}
 
 	if ((count = net_write(live_socket, pack, packlen)) != packlen)
-		if (count < 0)
+		if (count < 0) {
+			xfree(pack);	/* free allocated storage */
 			return(errno);
-		else {
+		} else {
 			syslog(LOG_WARNING, "slt xmit: %d vs %d",packlen, count);
+			xfree(pack);	/* free allocated storage */
 			return(ZSRV_PKSHORT);
 		}
+	xfree(pack);			/* free allocated storage */
 	return(ZERR_NONE);
 }
 
@@ -984,7 +984,7 @@ int num;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
-	ZPacket_t pack;
+	char *pack;
 	int packlen;
 	Code_t retval;
 
@@ -1000,17 +1000,18 @@ int num;
 	pnotice->z_recipient = recip;
 	pnotice->z_default_format = 0;
 	
-	packlen = sizeof(pack);
 	
-	if ((retval = ZFormatNoticeList(pnotice, lyst, num, pack, packlen, &packlen, ZNOAUTH)) != ZERR_NONE) {
+	if ((retval = ZFormatNoticeList(pnotice, lyst, num, &pack, &packlen, ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sl format: %s", error_message(retval));
 		return(retval);
 	}
 	
-	if ((retval = ZSendPacket(pack, packlen)) != ZERR_NONE) {
+	if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sl xmit: %s", error_message(retval));
+		xfree(pack);		/* free allocated storage */
 		return(retval);
 	}
+	xfree(pack);			/* free allocated storage */
 	return(ZERR_NONE);
 }
 
@@ -1028,7 +1029,7 @@ int len;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
-	ZPacket_t pack;
+	char *pack;
 	int packlen, count;
 	Code_t retval;
 	u_short length;
@@ -1047,9 +1048,7 @@ int len;
 	pnotice->z_message = message;
 	pnotice->z_message_len = len;
 
-	packlen = sizeof(pack);
-	
-	if ((retval = ZFormatNotice(pnotice, pack, packlen, &packlen, ZNOAUTH)) != ZERR_NONE) {
+	if ((retval = ZFormatNotice(pnotice, &pack, &packlen, ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sn format: %s", error_message(retval));
 		return(retval);
 	}
@@ -1059,20 +1058,25 @@ int len;
 	if ((count = net_write(live_socket, (caddr_t) &length, sizeof(length))) != sizeof(length)) {
 		if (count < 0) {
 			syslog(LOG_WARNING, "snt xmit/len: %m");
+			xfree(pack);	/* free allocated storage */
 			return(errno);
 		} else {
 			syslog(LOG_WARNING, "snt xmit: %d vs %d",sizeof(length),count);
+			xfree(pack);	/* free allocated storage */
 			return(ZSRV_LEN);
 		}
 	}
-	if ((count = net_write(live_socket, pack, packlen)) != packlen)
+	if ((count = net_write(live_socket, *pack, packlen)) != packlen)
 		if (count < 0) {
 			syslog(LOG_WARNING, "snt xmit: %m");
+			xfree(pack);	/* free allocated storage */
 			return(errno);
 		} else {
 			syslog(LOG_WARNING, "snt xmit: %d vs %d",packlen, count);
+			xfree(pack);	/* free allocated storage */
 			return(ZSRV_LEN);
 		}
+	xfree(pack);			/* free allocated storage */
 	return(ZERR_NONE);
 }
 
