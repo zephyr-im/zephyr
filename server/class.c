@@ -39,6 +39,8 @@ static char rcsid_class_s_c[] = "$Header$";
  *
  * int class_is_admin(notice)
  *
+ * int class_is_hm(notice)
+ *
  * int class_is_ulogin(notice)
  *
  * int class_is_ulocate(notice)
