@@ -55,12 +55,15 @@ static char rcsid_server_s_c[] = "$Header$";
  * ZServerDesc_t *server_which_server(who)
  *	struct sockaddr_in *who;
  *
+ * void server_kill_clt(client);
+ *	ZClient_t *client;
+ *
  */
 
 static void server_hello(), server_flush(), admin_dispatch(), setup_server();
 static void hello_respond(), srv_responded(), send_msg(), send_msg_list();
 static void srv_alive(), srv_nack_cancel(), srv_rexmit(), srv_nack_release();
-static void recover_clt();
+static void recover_clt(), kill_clt(), server_lost();
 
 static Code_t server_register();
 static struct in_addr *get_server_addrs();
@@ -212,7 +215,7 @@ ZServerDesc_t *which;
 			which->zs_state = SERV_DEAD;
 			which->zs_numsent = 0;
 			which->zs_timeout = timo_dead;
-			server_flush(which);
+			server_lost(which);
 		}
 		auth = 0;
 		break;
@@ -370,6 +373,129 @@ ZClient_t *client;
 }
 
 /*
+ * Tell the other servers that this client died.
+ */
+
+void
+server_kill_clt(client)
+ZClient_t *client;
+{
+	register int i;
+	ZServerDesc_t *server;
+	char buf[512], *lyst[2];
+	ZNotice_t notice;
+	register ZNotAcked_t *nacked;
+	register ZNotice_t *pnotice; /* speed hack */
+	caddr_t pack;
+	int packlen, auth;
+	Code_t retval;
+
+
+	zdbug((LOG_DEBUG, "server kill clt"));
+	lyst[0] = inet_ntoa(client->zct_sin.sin_addr),
+	(void) sprintf(buf, "%d", ntohs(client->zct_sin.sin_port));
+	lyst[1] = buf;
+
+	pnotice = &notice;
+
+	pnotice->z_kind = ACKED;
+
+	pnotice->z_port = sock_sin.sin_port;
+	pnotice->z_class = ZEPHYR_ADMIN_CLASS;
+	pnotice->z_class_inst = "";
+	pnotice->z_opcode = ADMIN_KILL_CLT;
+	pnotice->z_sender = myname;	/* myname is the hostname */
+	pnotice->z_recipient = "";
+
+
+	/* XXX */
+	auth = 0;
+
+	/* don't tell limbo to flush, start at 1*/
+	for (i = 1; i < nservers; i++) {
+		if (i == me_server_idx)	/* don't xmit to myself */
+			continue;
+		if (otherservers[i].zs_state == SERV_DEAD)
+			continue;
+
+		if (!(pack = (caddr_t) xmalloc(sizeof(ZPacket_t)))) {
+			syslog(LOG_ERR, "srv_forw malloc");
+			continue;	/* DON'T put on nack list */
+		}
+
+		packlen = sizeof(ZPacket_t);
+		if ((retval = ZFormatNoticeList(pnotice, lyst, 2, pack, packlen, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
+			syslog(LOG_WARNING, "kill_clt format: %s",
+			       error_message(retval));
+			return;
+		}
+		if ((retval = ZSetDestAddr(&otherservers[i].zs_addr))
+		    != ZERR_NONE) {
+			syslog(LOG_WARNING, "kill_clt set addr: %s",
+			       error_message(retval));
+			return;
+		}
+		if ((retval = ZSendPacket(pack, packlen)) != ZERR_NONE) {
+			syslog(LOG_WARNING,
+			       "kill_clt xmit: %s", error_message(retval));
+			return;
+		}
+
+		/* now we've sent it, mark it as not ack'ed */
+		
+		if (!(nacked = (ZNotAcked_t *)xmalloc(sizeof(ZNotAcked_t)))) {
+			/* no space: just punt */
+			syslog(LOG_ERR, "srv_forw nack malloc");
+			xfree(pack);
+			continue;
+		}
+
+		nacked->na_rexmits = 0;
+		nacked->na_packet = pack;
+		nacked->na_srv_idx = i;
+		nacked->na_packsz = packlen;
+		nacked->na_uid = pnotice->z_uid;
+		nacked->q_forw = nacked->q_back = nacked;
+		nacked->na_abstimo = 0;
+
+		/* set a timer to retransmit */
+		nacked->na_timer = timer_set_rel(srv_rexmit_secs,
+						 srv_rexmit,
+						 (caddr_t) nacked);
+		/* chain in */
+		xinsque(nacked, srv_nacklist);
+	}
+	
+}
+
+/*
+ * A client has died.  remove it
+ */
+
+static void
+kill_clt(notice)
+ZNotice_t *notice;
+{
+	struct sockaddr_in who;
+	ZHostList_t *host;
+	ZClient_t *client;
+
+	zdbug((LOG_DEBUG, "kill_clt"));
+	if (extract_addr(notice, &who) != ZERR_NONE)
+		return;
+	if (!(host = hostm_find_host(&who.sin_addr))) {
+		syslog(LOG_WARNING, "no host kill_clt");
+		return;
+	}
+	if (!(client = client_which_client(&who, notice))) {
+		syslog(LOG_WARNING, "no clt kill_clt");
+		return;
+	}
+	client_deregister(client, host);
+	return;
+}
+
+/*
  * Another server asked us to initiate recovery protocol with the hostmanager
  */
 static void
@@ -377,23 +503,11 @@ recover_clt(notice)
 register ZNotice_t *notice;
 {
 	struct sockaddr_in who;
-	register char *cp = notice->z_message;
 	ZClient_t *client;
 	ZHostList_t *host;
 
-	if (!notice->z_message_len) {
-		syslog(LOG_WARNING, "bad recover_clt pkt");
+	if (extract_addr(notice, &who) != ZERR_NONE)
 		return;
-	}
-	who.sin_addr.s_addr = inet_addr(notice->z_message);
-	cp += strlen(cp);
-	if (cp >= notice->z_message + notice->z_message_len) {
-		syslog(LOG_WARNING, "short recover_clt pkt");
-		return;
-	}
-	who.sin_port = notice->z_port = htons((u_short) atoi(cp));
-	who.sin_family = AF_INET;
-
 	if (!(host = hostm_find_host(&who.sin_addr))) {
 		syslog(LOG_WARNING, "recover_clt h not found");
 		return;
@@ -403,6 +517,34 @@ register ZNotice_t *notice;
 		return;
 	}
 	hostm_losing(client, host);
+}
+
+/*
+ * extract a sockaddr_in from a message body
+ */
+
+static Code_t
+extract_addr(notice, who)
+ZNotice_t *notice;
+struct sockaddr_in *who;
+{
+	register char *cp = notice->z_message;
+
+	if (!notice->z_message_len) {
+		syslog(LOG_WARNING, "bad addr pkt");
+		return(ZSRV_PKSHORT);
+	}
+	who->sin_addr.s_addr = inet_addr(notice->z_message);
+	cp += strlen(cp) + 1;
+	if (cp >= notice->z_message + notice->z_message_len) {
+		syslog(LOG_WARNING, "short addr pkt");
+		return(ZSRV_PKSHORT);
+	}
+	who->sin_port = notice->z_port = htons((u_short) atoi(cp));
+	who->sin_family = AF_INET;
+	zdbug((LOG_DEBUG,"ext %s/%d", inet_ntoa(who->sin_addr),
+	       ntohs(who->sin_port)));
+	return(ZERR_NONE);
 }
 
 /*
@@ -456,7 +598,6 @@ struct sockaddr_in *who;
 ZServerDesc_t *server;
 {
 	register char *opcode = notice->z_opcode;
-	register ZHostList_t *host, *hishost;
 
 	zdbug((LOG_DEBUG, "ADMIN received"));
 
@@ -468,13 +609,7 @@ ZServerDesc_t *server;
 		zdbug((LOG_DEBUG, "server shutdown"));
 		/* we need to transfer all of its hosts to limbo */
 		if (server) {
-			hishost = server->zs_hosts;
-			for (host = hishost->q_forw;
-			     host != hishost;
-			     host = hishost->q_forw)
-				/* hostm transfer remque's the host and
-				   attaches it to the new server */
-				hostm_transfer(host, limbo_server);
+			server_lost(server);
 			server->zs_state = SERV_DEAD;
 			server->zs_timeout = timo_dead;
 			/* don't worry about the timer, it will
@@ -487,11 +622,32 @@ ZServerDesc_t *server;
 		bdump_get(notice, auth, who, server);
 	} else if (!strcmp(opcode, ADMIN_LOST_CLT)) {
 		recover_clt(notice);
+	} else if (!strcmp(opcode, ADMIN_KILL_CLT)) {
+		kill_clt(notice);
+		ack(notice, who);
 	} else
 		syslog(LOG_WARNING, "ADMIN unknown opcode %s",opcode);
 	return; 
 }
 
+/*
+ * Transfer all the hosts on server to limbo
+ */
+
+static void
+server_lost(server)
+ZServerDesc_t *server;
+{
+	register ZHostList_t *host, *hishost;
+
+	hishost = server->zs_hosts;
+	for (host = hishost->q_forw;
+	     host != hishost;
+	     host = hishost->q_forw)
+		/* hostm transfer remque's the host and
+		   attaches it to the new server */
+		hostm_transfer(host, limbo_server);
+}
 
 /*
  * Handle an ADMIN message from some random client.
