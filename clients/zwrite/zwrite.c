@@ -368,23 +368,27 @@ send_off(notice, real)
 	    }
 	} else if (!strcmp(retnotice.z_message, ZSRVACK_NOTSENT)) {
 	    if (verbose && real && !quiet) {
-		if (strcmp(class, DEFAULT_CLASS))
-		    printf("Not logged in or not subscribing to class %s, instance %s\n", 
+		if (strcmp(class, DEFAULT_CLASS)) {
+		    fprintf(stderr, "Not logged in or not subscribing to class %s, instance %s\n", 
 			   class, inst);
-		else
-		    printf("Not logged in or not subscribing to messages\n");
+		} else {
+		    fprintf(stderr,
+			    "Not logged in or not subscribing to messages\n");
+		}
 	    } 
 	    else if (!quiet) {
-		if (!nrecips)
-		    printf("No one subscribing to class %s, instance %s\n", 
-			   class, inst);
-		else {
-		    if (strcmp(class, DEFAULT_CLASS))
-			printf("%s: Not logged in or not subscribing to class %s, instance %s\n", 
+		if (!nrecips) {
+		    fprintf(stderr,
+			    "No one subscribing to class %s, instance %s\n", 
+			    class, inst);
+		} else {
+		    if (strcmp(class, DEFAULT_CLASS)) {
+			fprintf(stderr, "%s: Not logged in or not subscribing to class %s, instance %s\n", 
 			       notice->z_recipient, class, inst);
-		    else
-			printf("%s: Not logged in or not subscribing to messages\n", 
+		    } else {
+			fprintf(stderr, "%s: Not logged in or not subscribing to messages\n", 
 			       notice->z_recipient);
+		    }
 		}
 	    }
 	} 
