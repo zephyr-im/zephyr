@@ -120,6 +120,8 @@ binary-arch: build install
 	dh_fixperms
 	# You may want to make some executables suid here.
 	dh_makeshlibs
+	# sigh
+	cp debian/libzephyr3/DEBIAN/shlibs debian/libzephyr3-krb/DEBIAN/shlibs
 	dh_shlibdeps
 	dh_installdeb
 #	dh_perl

@@ -84,7 +84,7 @@ Description: The original "Instant Message" system-server with Kerberos
 Package: libzephyr-dev
 Section: devel
 Architecture: any
-Depends: libc6-dev
+Depends: libzephyr3 (= ${Source-Version}) | libzephyr3-krb (= ${Source-Version}), libc6-dev
 Description: The original "Instant Message" system development libraries
  This package is needed to compile certain other zephyr clients. There are
  various other clients available, including a totally gratuitous Motif client,

@@ -3,8 +3,12 @@ zephyr (2.1.20010518.SNAPSHOT-7) unstable; urgency=low
   * Stop using some egregious ?roff hacks in the zwgc man page that seem
     to be not quite compatible with either groff or groff's -man
     implementation.  closes: #134480
+  * Fix shlibs file for libzephyr3-krb so that depending packages end up
+    pointing at libzephyr3 instead.  closes: #148175
+  * Add dependency on the shared library to the -dev package.
+    <slaps self on forehead>  closes: #110486
 
- --
+ -- 
 
 zephyr (2.1.20010518.SNAPSHOT-6) unstable; urgency=low
 
