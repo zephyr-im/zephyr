@@ -2,7 +2,7 @@
 
 SHELL=/bin/sh
 
-configure:
+prepare:
 	imake -DTOPDIR=`pwd` -I./config
 	${MAKE} Makefiles
 
