@@ -16,7 +16,7 @@ OBJS = zctl.o zctl_cmds.o
 OTHERSRCS= zctl_cmds.ct
 
 #ifdef LOCAL_LIBS
-LINCLUDES=-I$(BUILDTOP)/ss/lib
+LINCLUDES=-I$(BUILDTOP)/ss
 #endif
 
 SRCDIR= ${SRCTOP}/clients/zctl
