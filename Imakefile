@@ -48,6 +48,8 @@ depend::
 clean::
 	(cd makedepend; make ${MFLAGS} clean)
 
+#endif /* LOCAL_makedepend */
+
 #ifdef LOCAL_LIBS
 /**/# We need to make ss.h so that make depend can find it.
 /**/# and to make ss.h, we need et/compile_et
@@ -57,5 +59,4 @@ depend::
 	(cd ss; make ${MFLAGS} depend)
 	(cd ss/lib; make ${MFLAGS} ss.h)
 #endif /* LOCAL_LIBS */
-#endif
 
