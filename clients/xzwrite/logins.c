@@ -9,10 +9,11 @@ extern Defaults defs;
 void logins_deal(notice)
    ZNotice_t *notice;
 {
-     char		*newdest;
+     char		*newdest, *p;
      int		d;
 
-     d = notice->z_class_inst - strchr(notice->z_class_inst, '@');
+     p = strchr(notice->z_class_inst, '@');
+     d = (p) ? p - notice->z_class_inst : strlen(notice->z_class_inst);
      newdest = (char *) Malloc(d+1, "while dealing with login/logout notice",
 			       NULL);
      strncpy(newdest, notice->z_class_inst, d);
