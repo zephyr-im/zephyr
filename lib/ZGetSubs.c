@@ -16,9 +16,7 @@
 static char rcsid_ZGetSubscriptions_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 #define min(a,b) ((a)<(b)?(a):(b))
 	

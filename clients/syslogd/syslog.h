@@ -19,6 +19,9 @@
 #define LOG_LPR		(6<<3)	/* line printer subsystem */
 #define LOG_NEWS	(7<<3)	/* network news subsystem */
 #define LOG_UUCP	(8<<3)	/* UUCP subsystem */
+#define LOG_CRON	(9<<3)	/* clock daemon */
+#define LOG_AUTHPRIV	(10<<3) /* security/authorization messages (private) */
+#define LOG_FTP		(11<<3) /* ftp daemon */
 	/* other codes through 15 reserved for system use */
 #define LOG_LOCAL0	(16<<3)	/* reserved for local use */
 #define LOG_LOCAL1	(17<<3)	/* reserved for local use */
@@ -47,7 +50,7 @@
 #define LOG_INFO	6	/* informational */
 #define LOG_DEBUG	7	/* debug-level messages */
 
-#define LOG_PRIMASK	0x0007	/* mask to extract priority part (internal) */
+#define LOG_PRIMASK	0x07	/* mask to extract priority part (internal) */
 #define LOG_PRI(p)	((p) & LOG_PRIMASK)	/* extract priority */
 
 #define	LOG_MAKEPRI(fac, pri)	(((fac) << 3) | (pri))

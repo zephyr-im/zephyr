@@ -17,22 +17,23 @@ static char rcsid_ZInitialize_c[] =
     "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZInitialize.c,v 1.17 89/05/30 18:11:25 jtkohl Exp $";
 #endif
 
-#include <zephyr/mit-copyright.h>
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
-#include <netdb.h>
 #include <sys/socket.h>
-#include <sys/param.h>
-#ifdef Z_HaveKerberos
-#include "krb_err.h"
+#ifdef ZEPHYR_USES_KERBEROS
+#include <krb_err.h>
 #endif
 
 Code_t ZInitialize()
 {
     struct servent *hmserv;
     char addr[4];
-#ifdef Z_HaveKerberos
+#ifdef ZEPHYR_USES_KERBEROS
+    Code_t code;
+    ZNotice_t notice;
+    char *krealm;
     int krbval;
+    char d1[ANAME_SZ], d2[INST_SZ];
 
     initialize_krb_error_table();
 #endif
@@ -50,26 +51,54 @@ Code_t ZInitialize()
     addr[3] = 1;
 
     hmserv = (struct servent *)getservbyname(HM_SVCNAME, "udp");
-    if (!hmserv)
-	return (ZERR_HMPORT);
-
-    __HM_addr.sin_port = hmserv->s_port;
+    __HM_addr.sin_port = (hmserv) ? hmserv->s_port : HM_SVC_FALLBACK;
 
     (void) memcpy((char *)&__HM_addr.sin_addr, addr, 4);
 
     __HM_set = 0;
 
-#ifdef Z_HaveKerberos    
-    if ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)
+    /* Initialize the input queue */
+    __Q_Tail = NULL;
+    __Q_Head = NULL;
+    
+#ifdef ZEPHYR_USES_KERBEROS
+
+    /* if the application is a server, there might not be a zhm.  The
+       code will fall back to something which might not be "right",
+       but this is is ok, since none of the servers call krb_rd_req. */
+
+    if (! __Zephyr_server) {
+       if ((code = ZOpenPort(NULL)) != ZERR_NONE)
+	  return(code);
+
+       if ((code = ZhmStat(NULL, &notice)) != ZERR_NONE)
+	  return(code);
+
+       ZClosePort();
+
+       /* the first field, which is NUL-terminated, is the server name.
+	  If this code ever support a multiplexing zhm, this will have to
+	  be made smarter, and probably per-message */
+
+       krealm = krb_realmofhost(notice.z_message);
+
+       ZFreeNotice(&notice);
+    } else {
+       krealm = NULL;
+    }
+
+    if (krealm) {
+	strcpy(__Zephyr_realm, krealm);
+    } else if ((krb_get_tf_fullname(TKT_FILE, d1, d2, __Zephyr_realm)
+		!= KSUCCESS) &&
+	       ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)) {
 	return (krbval);
+    }
 #endif
 
     /* Get the sender so we can cache it */
     (void) ZGetSender();
 
-    /* Initialize the input queue */
-    __Q_Tail = NULL;
-    __Q_Head = NULL;
-    
     return (ZERR_NONE);
 }
+

@@ -9,10 +9,12 @@
  *
  */
 
+#include "zserver.h"
+
 #ifndef SABER
 #ifndef lint
-static char rcsid[] =
-    "$Id$";
+static const char rcsid[] =
+"$Id$";
 #endif /* lint */
 #endif /* SABER */
 
@@ -24,45 +26,42 @@ static char rcsid[] =
  * Massachusetts Institute of Technology
  *
  * written by Ken Raeburn
-
-Permission to use, copy, modify, and distribute this
-software and its documentation for any purpose and without
-fee is hereby granted, provided that the above copyright
-notice appear in all copies and that both that copyright
-notice and this permission notice appear in supporting
-documentation, and that the name of M.I.T. and the Student
-Information Processing Board not be used in
-advertising or publicity pertaining to distribution of the
-software without specific, written prior permission.
-M.I.T. and the Student Information Processing Board
-make no representations about the suitability of
-this software for any purpose.  It is provided "as is"
-without express or implied warranty.
-
+ 
+ Permission to use, copy, modify, and distribute this
+ software and its documentation for any purpose and without
+ fee is hereby granted, provided that the above copyright
+ notice appear in all copies and that both that copyright
+ notice and this permission notice appear in supporting
+ documentation, and that the name of M.I.T. and the Student
+ Information Processing Board not be used in
+ advertising or publicity pertaining to distribution of the
+ software without specific, written prior permission.
+ M.I.T. and the Student Information Processing Board
+ make no representations about the suitability of
+ this software for any purpose.  It is provided "as is"
+ without express or implied warranty.
+ 
  */
 
 
 /*
  * External functions:
  *
- * timer timer_set_rel (time_rel, proc, arg)
+ * Timer *timer_set_rel (time_rel, proc, arg)
  *      long time_rel;
  *      void (*proc)();
  *      caddr_t arg;
- * timer timer_set_abs (time_abs, proc, arg)
+ * Timer *timer_set_abs (time_abs, proc, arg)
  *      long time_abs;
  *      void (*proc)();
  *      caddr_t arg;
  *
  * void timer_reset(tmr)
- *      timer tmr;
+ *      Timer *tmr;
  *
  * void timer_process()
  *
  */
-
-#include <stdio.h>
-#include "zserver.h"
 
 /* DELTA is just an offset to keep the size a bit less than a power 
  * of two.  It's measured in pointers, so it's 32 bytes on most
@@ -109,180 +108,149 @@ without express or implied warranty.
 #define PARENT(i) (((i) - 1) / 2)
 #define CHILD1(i) ((i) * 2 + 1)
 #define CHILD2(i) ((i) * 2 + 2)
-#define TIME(i) (heap[i]->time)
+#define TIME(i) (heap[i]->abstime)
 #define HEAP_ASSIGN(pos, tmr) ((heap[pos] = (tmr))->heap_pos = (pos))
 
-long nexttimo = 0L;                     /* the Unix time of the next
-                                           alarm */
-static timer *heap;
+static Timer **heap;
 static int num_timers = 0;
 static int heap_size = 0;
 
-#ifdef __STDC__
-# define        P(s) s
-#else
-# define P(s) ()
-#endif
+static void timer_botch __P((void*));
+static Timer *add_timer __P((Timer *));
 
-static void timer_botch P((void*));
-static timer add_timer P((timer));
-
-/*
- * timer_set_rel(time_rel, proc)
- *   time_rel: alarm time relative to now, in seconds
- *   proc: subroutine to be called (no args, returns void)
- *
- * creates a "timer" and adds it to the current list, returns "timer"
- */
-
-timer timer_set_rel (time_rel, proc, arg)
-     long time_rel;
-     void (*proc) P((void *));
-     void *arg;
+Timer *timer_set_rel(time_rel, proc, arg)
+    long time_rel;
+    void (*proc) __P((void *));
+    void *arg;
 {
-        timer new_t;
-        new_t = (timer) xmalloc(sizeof(*new_t));
-        if (new_t == NULL)
-                return(NULL);
-        new_t->time = time_rel + NOW;
-        new_t->func = proc;
-        new_t->arg = arg;
-        return add_timer(new_t);
-}
+    Timer *new_t;
 
-/*
- * timer_reset
- *
- * args:
- *   tmr: timer to be removed from the list
- *
- * removes any timers matching tmr and reallocates list
- *
- */
+    new_t = (Timer *) malloc(sizeof(*new_t));
+    if (new_t == NULL)
+	return(NULL);
+    new_t->abstime = time_rel + NOW;
+    new_t->func = proc;
+    new_t->arg = arg;
+    return add_timer(new_t);
+}
 
 void
 timer_reset(tmr)
-     timer tmr;
+    Timer *tmr;
 {
-        int pos, min;
+    int pos, min;
 
-        /* Free the timer, saving its heap position. */
-        pos = tmr->heap_pos;
-        xfree(tmr);
+    /* Free the timer, saving its heap position. */
+    pos = tmr->heap_pos;
+    free(tmr);
 
-	if (pos != num_timers - 1) {
-	    /* Replace the timer with the last timer in the heap and
-	     * restore the heap, propagating the timer either up or
-	     * down, depending on which way it violates the heap
-	     * property to insert the last timer in place of the
-	     * deleted timer. */
-	    if (pos > 0 && TIME(num_timers - 1) < TIME(PARENT(pos))) {
-                do {
-		    HEAP_ASSIGN(pos, heap[PARENT(pos)]);
-		    pos = PARENT(pos);
-                } while (pos > 0 && TIME(num_timers - 1) < TIME(PARENT(pos)));
-                HEAP_ASSIGN(pos, heap[num_timers - 1]);
-	    } else {
-                while (CHILD2(pos) < num_timers) {
-		    min = num_timers - 1;
-		    if (TIME(CHILD1(pos)) < TIME(min))
-			min = CHILD1(pos);
-		    if (TIME(CHILD2(pos)) < TIME(min))
-			min = CHILD2(pos);
-		    HEAP_ASSIGN(pos, heap[min]);
-		    pos = min;
-                }
-		if (pos != num_timers - 1)
-		    HEAP_ASSIGN(pos, heap[num_timers - 1]);
+    if (pos != num_timers - 1) {
+	/* Replace the timer with the last timer in the heap and
+	 * restore the heap, propagating the timer either up or
+	 * down, depending on which way it violates the heap
+	 * property to insert the last timer in place of the
+	 * deleted timer. */
+	if (pos > 0 && TIME(num_timers - 1) < TIME(PARENT(pos))) {
+	    do {
+		HEAP_ASSIGN(pos, heap[PARENT(pos)]);
+		pos = PARENT(pos);
+	    } while (pos > 0 && TIME(num_timers - 1) < TIME(PARENT(pos)));
+	    HEAP_ASSIGN(pos, heap[num_timers - 1]);
+	} else {
+	    while (CHILD2(pos) < num_timers) {
+		min = num_timers - 1;
+		if (TIME(CHILD1(pos)) < TIME(min))
+		    min = CHILD1(pos);
+		if (TIME(CHILD2(pos)) < TIME(min))
+		    min = CHILD2(pos);
+		HEAP_ASSIGN(pos, heap[min]);
+		pos = min;
 	    }
+	    if (pos != num_timers - 1)
+		HEAP_ASSIGN(pos, heap[num_timers - 1]);
 	}
-        num_timers--;
-
-        /* Fix up the next timeout. */
-        nexttimo = (num_timers == 0) ? 0 : heap[0]->time;
+    }
+    num_timers--;
 }
 
 
 #define set_timeval(t,s) ((t).tv_sec=(s),(t).tv_usec=0,(t))
 
-/* add_timer(t:timer)
- *
- * args:
- *   t: new "timer" to be added
- *
- * returns:
- *   0 if successful
- *   -1 if error (errno set) -- old time table may have been destroyed
- *
- */
-static timer
+static Timer *
 add_timer(new)
-     timer new;
+    Timer *new;
 {
-        int pos;
+    int pos;
 
-        /* Create or resize the heap as necessary. */
-        if (heap_size == 0) {
-                heap_size = INITIAL_HEAP_SIZE;
-                heap = (timer *) xmalloc(heap_size * sizeof(timer));
-        } else if (num_timers >= heap_size) {
-                heap_size = heap_size * 2 + DELTA;
-                heap = (timer *) xrealloc(heap, heap_size * sizeof(timer));
-        }
-        if (!heap) {
-                xfree(new);
-                return NULL;
-        }
+    /* Create or resize the heap as necessary. */
+    if (heap_size == 0) {
+	heap_size = INITIAL_HEAP_SIZE;
+	heap = (Timer **) malloc(heap_size * sizeof(Timer *));
+    } else if (num_timers >= heap_size) {
+	heap_size = heap_size * 2 + DELTA;
+	heap = (Timer **) realloc(heap, heap_size * sizeof(Timer *));
+    }
+    if (!heap) {
+	free(new);
+	return NULL;
+    }
 
-        /* Insert the timer into the heap. */
-        pos = num_timers;
-        while (pos > 0 && new->time < TIME(PARENT(pos))) {
-                HEAP_ASSIGN(pos, heap[PARENT(pos)]);
-                pos = PARENT(pos);
-        }
-        HEAP_ASSIGN(pos, new);
-        num_timers++;
+    /* Insert the Timer *into the heap. */
+    pos = num_timers;
+    while (pos > 0 && new->abstime < TIME(PARENT(pos))) {
+	HEAP_ASSIGN(pos, heap[PARENT(pos)]);
+	pos = PARENT(pos);
+    }
+    HEAP_ASSIGN(pos, new);
+    num_timers++;
 
-        /* Fix up the next timeout. */
-        nexttimo = heap[0]->time;
-        return new;
+    return new;
 }
-
-/*
- * timer_process -- checks for next timer execution time
- * and execute 
- *
- */
 
 void
 timer_process()
 {
-        register timer t;
-        timer_proc func;
-        void *arg;
-        int valid = 0;
+    Timer *t;
+    timer_proc func;
+    void *arg;
+    int valid = 0;
 
-        if (num_timers == 0 || heap[0]->time > NOW)
-                return;
+    if (num_timers == 0 || heap[0]->abstime > NOW)
+	return;
 
-        /* Remove the first timer from the heap, remembering it's 
-         * function and argument.  timer_reset() updates nexttimo. */
-        t = heap[0];
-        func = t->func;
-        arg = t->arg;
-        t->func = timer_botch;
-        t->arg = NULL;
-        timer_reset(t);
+    /* Remove the first timer from the heap, remembering its
+     * function and argument. */
+    t = heap[0];
+    func = t->func;
+    arg = t->arg;
+    t->func = timer_botch;
+    t->arg = NULL;
+    timer_reset(t);
+	
+    /* Run the function. */
+    func(arg);
+}
 
-        /* Run the function. */
-        (func)(arg);
+struct timeval *
+timer_timeout(tvbuf)
+    struct timeval *tvbuf;
+{
+    if (num_timers > 0) {
+	tvbuf->tv_sec = heap[0]->abstime - NOW;
+	if (tvbuf->tv_sec < 0)
+	    tvbuf->tv_sec = 0;
+	tvbuf->tv_usec = 0;
+	return tvbuf;
+    } else {
+	return NULL;
+    }
 }
 
 static void
 timer_botch(arg)
-     void *arg;
+    void *arg;
 {
-        syslog(LOG_CRIT, "Timer botch\n");
-        abort();
+    syslog(LOG_CRIT, "timer botch\n");
+    abort();
 }
 

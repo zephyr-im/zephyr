@@ -12,10 +12,12 @@
  */
 
 #include <zephyr/mit-copyright.h>
+#include "zserver.h"
+#include <sys/socket.h>
 
 #if !defined (lint) && !defined (SABER)
-static char rcsid_client_c[] =
-    "$Id$";
+static const char rcsid_client_c[] =
+"$Id$";
 #endif
 
 /*
@@ -24,29 +26,26 @@ static char rcsid_client_c[] =
  * Code_t client_register(notice, who, client, server, wantdefaults)
  *	ZNotice_t *notice;
  *	struct sockaddr_in *who;
- *	ZClient_t **client; (RETURN)
- *	ZServerDesc_t *server;
+ *	Client **client; (RETURN)
+ *	Server *server;
  *	int wantdefaults;
  *
  * Code_t client_deregister(client, host, flush)
- *	ZClient_t *client;
- *	ZHostList_t *host;
+ *	Client *client;
+ *	Host *host;
  *	int flush;
  *
- * ZClient_t *client_which_client(who, notice)
+ * Client *client_which_client(who, notice)
  *	struct sockaddr_in *who;
  *	ZNotice_t *notice;
  *
  * void client_dump_clients(fp, clist)
  *	FILE *fp;
- *	ZClientList_t *clist;
+ *	Client *clist;
  */
 
-#include "zserver.h"
-#include <sys/socket.h>
-
 /*
- * register a client: allocate space, find or insert the address in the
+ * a client: allocate space, find or insert the address in the
  * 	server's list of hosts, initialize and insert the client into
  *	the host's list of clients.
  *
@@ -54,90 +53,61 @@ static char rcsid_client_c[] =
  * The caller should check by calling client_which_client
  */
 
+#define HASHSIZE 1024
+static Client *client_bucket[HASHSIZE];
+
+#define INET_HASH(host, port) ((htonl((host)->s_addr) + \
+				htons((unsigned short) (port))) % HASHSIZE)
+
+static Client *client_find __P((struct in_addr *host, unsigned int port));
+
 Code_t
-client_register(notice, who, client, server, wantdefaults)
-     ZNotice_t *notice;
-     struct sockaddr_in *who;
-     register ZClient_t **client;
-     ZServerDesc_t *server;
-     int wantdefaults;
+client_register(notice, host, client_p, wantdefaults)
+    ZNotice_t *notice;
+    struct in_addr *host;
+    Client **client_p;
+    int wantdefaults;
 {
-	register ZHostList_t *hlp = server->zs_hosts;
-	register ZHostList_t *hlp2;
-	register ZClientList_t *clist;
+    Client *client;
+    Code_t retval;
 
-	/* chain the client's host onto this server's host list */
-
-	if (!hlp) {			/* bad host list */
-		syslog(LOG_ERR, "cl_register: bad server host list");
-		abort();
-	}
+    /* chain the client's host onto this server's host list */
 
 #if 1
-	zdbug ((LOG_DEBUG, "client_register: adding %s at %s/%d",
-		notice->z_sender, inet_ntoa (who->sin_addr),
-		ntohs (notice->z_port)));
+    zdbug((LOG_DEBUG, "client_register: adding %s at %s/%d",
+	   notice->z_sender, inet_ntoa(*host), ntohs(notice->z_port)));
 #endif
 
-	if (!notice->z_port) {
-	    /* must be a non-zero port # */
-	    return(ZSRV_BADSUBPORT);
-	}
-	if (!(hlp2 = hostm_find_host(&who->sin_addr))) {
-		/* not here */
-		return(ZSRV_HNOTFOUND);
-	}
+    if (!notice->z_port)
+	return ZSRV_BADSUBPORT;
 
-	/* hlp2 is now pointing to the client's host's address struct */
-
-	if (!hlp2->zh_clients) {
-		return(EINVAL);
-	}
-
-	/* allocate a client struct */
-	if (!(*client = (ZClient_t *) xmalloc(sizeof(ZClient_t))))
-	  return(ENOMEM);
-
-	(*client)->last_msg = 0;
-	(*client)->last_check = 0;
-	(*client)->last_send = 0;
-
-	if (!(clist = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
-	  xfree(*client);
-		return(ENOMEM);
-	}
-
-	clist->q_forw = clist->q_back = clist;
-	clist->zclt_client = *client;
-
-	/* initialize the struct */
-	(void) memset((caddr_t) &(*client)->zct_sin, 0,
-		      sizeof(struct sockaddr_in));
+    *client_p = client = client_find(host, notice->z_port);
+    if (!client) {
+	*client_p = client = (Client *) malloc(sizeof(Client));
+	if (!client)
+	    return ENOMEM;
+	memset(&client->addr, 0, sizeof(struct sockaddr_in));
 #ifdef KERBEROS
-	(void) memset((caddr_t) &(*client)->zct_cblock, 0,
-		      sizeof((*client)->zct_cblock));
+	memset(&client->session_key, 0, sizeof(client->session_key));
 #endif
-	(*client)->zct_sin.sin_addr.s_addr = who->sin_addr.s_addr;
-	(*client)->zct_sin.sin_port = notice->z_port;
-	(*client)->zct_sin.sin_family = AF_INET;
-	(*client)->zct_subs = NULLZST;
-	(*client)->zct_principal = make_zstring(notice->z_sender,0);
+	client->last_msg = 0;
+	client->last_send = 0;
+	client->addr.sin_family = AF_INET;
+	client->addr.sin_addr.s_addr = host->s_addr;
+	client->addr.sin_port = notice->z_port;
+	client->subs = NULL;
+	client->realm = NULL;
+	client->principal = make_string(notice->z_sender, 0);
+	LIST_INSERT(&client_bucket[INET_HASH(&client->addr.sin_addr,
+					     notice->z_port)], client);
+    }
 
-	/* chain him in to the clients list in the host list*/
-
-	START_CRITICAL_CODE;
-
-	xinsque(clist, hlp2->zh_clients);
-
-	END_CRITICAL_CODE;
-
-	if (!server->zs_dumping && wantdefaults)
-		/* add default subscriptions only if this is not
-		   resulting from a brain dump, AND this request
-		   wants defaults */
-		return(subscr_def_subs(*client));
-	else
-		return(ZERR_NONE);
+    /* Add default subscriptions only if this is not resulting from a brain
+     * dump, AND this request wants defaults. */
+    if (!bdumping && wantdefaults)
+	return subscr_def_subs(client);
+    else
+	return ZERR_NONE;
 }
 
 /*
@@ -147,81 +117,73 @@ client_register(notice, who, client, server, wantdefaults)
  */
 
 void
-client_deregister(client, host, flush)
-     ZClient_t *client;
-     ZHostList_t *host;
-     int flush;
+client_deregister(client, flush)
+    Client *client;
+    int flush;
 {
-	ZClientList_t *clients;
+    LIST_DELETE(client);
+    nack_release(client);
+    subscr_cancel_client(client);
+    free_string(client->principal);
+    if (flush)
+	uloc_flush_client(&client->addr);
+    free(client);
+}
 
-	START_CRITICAL_CODE;
+void
+client_flush_host(host)
+    struct in_addr *host;
+{
+    int i;
+    Client *client, *next;
 
-	/* release any not-acked packets in the rexmit queue */
-	nack_release(client);
-
-	/* release subscriptions */
-	(void) subscr_cancel_client(client);
-
-	if (flush)
-		/* release locations if this is a punted client */
-		(void) uloc_flush_client(&client->zct_sin);
-
-	/* unthread and release this client */
-
-	if (host->zh_clients)
-		for (clients = host->zh_clients->q_forw;
-		     clients != host->zh_clients;
-		     clients = clients->q_forw)
-			if (clients->zclt_client == client) {
-				xremque(clients);
-				free_zstring(client->zct_principal);
-				xfree(client);
-				xfree(clients);
-				END_CRITICAL_CODE;
-				return;
-			}
-	syslog(LOG_CRIT, "clt_dereg: clt not in host list");
-	abort();
-	/*NOTREACHED*/
+    for (i = 0; i < HASHSIZE; i++) {
+	for (client = client_bucket[i]; client; client = next) {
+	    next = client->next;
+	    if (client->addr.sin_addr.s_addr == host->s_addr)
+		client_deregister(client, 1);
+	}
+    }
+    uloc_hflush(host);
 }
 
 /*
  * find the client which sent the notice
  */
 
-ZClient_t *
-client_which_client(who, notice)
-     struct sockaddr_in *who;
-     ZNotice_t *notice;
+Client *
+client_which_client(host, notice)
+    struct in_addr *host;
+    ZNotice_t *notice;
 {
-	register ZHostList_t *hlt;
-	register ZClientList_t *clients;
+    return client_find(host, notice->z_port);
+}
 
-	if (!(hlt = hostm_find_host(&who->sin_addr))) {
-#if 0
-		zdbug((LOG_DEBUG,"cl_wh_clt: host not found"));
-#endif
-		return(NULLZCNT);
+Code_t
+client_send_clients()
+{
+    int i;
+    Client *client;
+    Code_t retval;
+
+    for (i = 0; i < HASHSIZE; i++) {
+	/* Allow packets to be processed between rows of the hash table. */
+	if (packets_waiting()) {
+	    bdumping = 0;
+	    bdump_concurrent = 1;
+	    handle_packet();
+	    bdump_concurrent = 0;
+	    bdumping = 1;
 	}
-
-	if (!hlt->zh_clients) {
-#if 1
-		zdbug((LOG_DEBUG,"cl_wh_clt: no clients"));
-#endif
-		return(NULLZCNT);
+	for (client = client_bucket[i]; client; client = client->next) {
+	    if (client->subs) {
+		retval = subscr_send_subs(client);
+		if (retval != ZERR_NONE)
+		    return retval;
+	    }
 	}
-
-	for (clients = hlt->zh_clients->q_forw;
-	     clients != hlt->zh_clients;
-	     clients = clients->q_forw)
-		if (clients->zclt_client->zct_sin.sin_port == notice->z_port) {
-			return(clients->zclt_client);
-		}
-
-#if 1
-	zdbug((LOG_DEBUG, "cl_wh_clt: no port"));
-#endif
-	return(NULLZCNT);
+    }
+    return ZERR_NONE;
 }
 
 /*
@@ -231,17 +193,35 @@ client_which_client(who, notice)
  */
 
 void
-client_dump_clients(fp, clist)
-     FILE *fp;
-     ZClientList_t *clist;
+client_dump_clients(fp)
+    FILE *fp;
 {
-	register ZClientList_t *ptr;
+    Client *client;
+    int i;
 
-	for (ptr = clist->q_forw; ptr != clist; ptr = ptr->q_forw) {
-		(void) fprintf(fp, "\t%d (%s):\n",
-			       ntohs(ptr->zclt_client->zct_sin.sin_port),
-			       ptr->zclt_client->zct_principal->string);
-		subscr_dump_subs(fp, ptr->zclt_client->zct_subs);
+    for (i = 0; i < HASHSIZE; i++) {
+	for (client = client_bucket[i]; client; client = client->next) {
+	    fprintf(fp, "\t%d (%s):\n", ntohs(client->addr.sin_port),
+		    client->principal->string);
+	    subscr_dump_subs(fp, client->subs);
 	}
-	return;
+    }
 }
+
+static Client *
+client_find(host, port)
+    struct in_addr *host;
+    unsigned int port;
+{
+    Client *client;
+    long hashval;
+
+    hashval = INET_HASH(host, port);
+    for (client = client_bucket[hashval]; client; client = client->next) {
+	if (client->addr.sin_addr.s_addr == host->s_addr
+	    && client->addr.sin_port == port)
+	    return client;
+    }
+    return NULL;
+}
+

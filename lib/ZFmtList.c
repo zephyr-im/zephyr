@@ -12,12 +12,12 @@
  */
 /* $Header$ */
 
+#include <internal.h>
+
 #ifndef lint
-static char rcsid_ZFormatNoticeList_c[] =
+static const char rcsid_ZFormatNoticeList_c[] =
     "$Id$";
 #endif
-
-#include <zephyr/zephyr_internal.h>
 
 Code_t ZFormatNoticeList(notice, list, nitems, buffer, ret_len, 
 			 cert_routine)

@@ -12,7 +12,6 @@
 
 static int accepted, cancelled;
 static void Accept(), Cancel(), Focus();
-static int HierEvent();
 
 extern void Popup();
 
@@ -92,30 +91,6 @@ int GetString(getStringWindow, label, value, pop_type, buf, len)
      }
      else
 	  return GETSTRING_CANCEL;
-}
-
-/*
- * I thought I needed this routine becaues XtAppNextEvent was
- * returning events for widgets that should have been blocked by the
- * XtGrabExclusive.. but it turns out that XtDispatch deals with that
- * (correctly) so this code is useless.
- */
-static int HierEvent(w, event)
-   Widget w;
-   XAnyEvent *event;
-{
-     Widget event_w;
-
-     event_w = XtWindowToWidget(XtDisplay(w), event->window);
-
-     while (event_w = XtParent(event_w)) {
-	  if (w == event_w)
-	       return 1;
-	  else if (XtIsShell(event_w))
-	       break;
-     }
-
-     return 0;
 }
 
 /* ARGSUSED */

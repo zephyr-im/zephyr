@@ -16,9 +16,7 @@
 static char rcsid_ZCompareUID_c[] = "$Id$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 int ZCompareUID(uid1, uid2)
     ZUnique_Id_t *uid1, *uid2;

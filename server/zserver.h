@@ -16,27 +16,9 @@
 
 #include <zephyr/mit-copyright.h>
 
-#include <zephyr/zephyr.h>		/* which includes <errno.h>,
-					   <sys/types.h>,
-					   <netinet/in.h>,
-					   <sys/time.h>, 
-					   <stdio.h>,
-					   <krb.h> */
+#include <internal.h>
 #include <arpa/inet.h>
-#include <zephyr/acl.h>
-#include <sys/file.h>
-#include <fcntl.h>
 
-#include <zephyr/zsyslog.h>
-
-#include <string.h>
-#include <signal.h>
-#ifdef lint
-#include <sys/uio.h>			/* so it shuts up about struct iovec */
-#endif /* lint */
-#ifdef _IBMR2
-#include <sys/select.h>
-#endif
 #include "zsrv_err.h"
 
 #include "timer.h"
@@ -44,277 +26,299 @@
 
 #include "zstring.h"
 #include "access.h"
-#include "unix.h"
-#include "zalloc.h"
+#include "acl.h"
 
-/* definitions for the Zephyr server */
+/* For krb_rd_req prototype and definition. */
+#ifndef KRB_INT32
+#define KRB_INT32 ZEPHYR_INT32
+#endif
 
-/* structures */
+/* These macros are for insertion into and deletion from a singly-linked list
+ * with back pointers to the previous element's next pointer.  In order to
+ * make these macros act like expressions, they use the comma operator for
+ * sequenced evaluations of assignment, and "a && b" for "evaluate assignment
+ * b if expression a is true". */
+#define LIST_INSERT(head, elem) \
+	((elem)->next = *(head), \
+	 (*head) && ((*(head))->prev_p = &(elem)->next), \
+	 (*head) = (elem), (elem)->prev_p = (head))
+#define LIST_DELETE(elem) \
+	(*(elem)->prev_p = (elem)->next, \
+	 (elem)->next && ((elem)->next->prev_p = (elem)->prev_p))
 
-/*
- * ZDestination: Where is this notice going to?  This includes class,
- * instance, and recipient at the moment.
- */
+/* Current time as cached by main(); use instead of time(). */
+#define NOW t_local.tv_sec
 
-typedef struct _ZDestination {
-    ZSTRING *classname;
-    ZSTRING *inst;
-    ZSTRING *recip;
-} ZDestination;
+#ifdef ZEPHYR_USES_KERBEROS
+#ifndef NOENCRYPTION
+/* Kerberos shouldn't stick us with array types... */
+typedef struct {
+    des_key_schedule s;
+} Sched;
+#endif
+#endif
 
-/* typedef struct _Notice {
-    ZNotice_t *notice;
-    struct _ZDestination dest;
-    ZSTRING *sender;
-    int msg_no;
-} Notice;
-*/
-typedef struct _ZSubscr_t {
-	struct _ZSubscr_t *q_forw;	/* links in client's subscr. queue */
-	struct _ZSubscr_t *q_back;
-	struct _ZDestination zst_dest;	/* destination of messages */
-} ZSubscr_t;
+typedef struct _Destination Destination;
+typedef struct _Destlist Destlist;
+typedef struct _Realm Realm;
+typedef struct _Realmname Realmname;
+typedef struct _Client Client;
+typedef struct _Triplet Triplet;
+typedef enum _Server_state Server_state;
+typedef struct _Unacked Unacked;
+typedef struct _Pending Pending;
+typedef struct _Server Server;
+typedef enum _Sent_type Sent_type;
+typedef struct _Statistic Statistic;
 
-typedef struct _ZClient_t {
-	struct sockaddr_in zct_sin;	/* ipaddr/port of client */
-	struct _ZSubscr_t *zct_subs;	/* subscriptions */
-#ifdef KERBEROS
-	C_Block zct_cblock;		/* session key for this client */
-#endif /* KERBEROS */
-	ZSTRING	*zct_principal;		/* krb principal of user */
-	long	last_msg;		/* last message sent to this client */
-	long	last_check;		/* actually, last time the other
-					   server was asked to check... */
-	int	last_send;		/* The send counter value for the
-					 * last packet sent to the client,
-					 * used to prevent duplicates.  See
-					 * sendit() in dispatch.c. */
-} ZClient_t;
+struct _Destination {
+    String		*classname;
+    String		*inst;
+    String		*recip;
+};
 
-typedef struct _ZClientList_t {
-	struct _ZClientList_t	*q_forw;
-	struct _ZClientList_t	*q_back;
-	struct _ZClient_t	*zclt_client;
-} ZClientList_t;
+struct _Destlist {
+    Destination	dest;
+    struct _Destlist	*next, **prev_p;
+};
 
-typedef struct _ZTriplet_t {
-	struct _ZTriplet_t *q_forw;
-	struct _ZTriplet_t *q_back;
-	ZDestination zct_dest;
-	ZAcl_t	*zct_acl;
-	ZClientList_t	*zct_clientlist;
-} ZTriplet_t;
+struct _Realm {
+    char name[REALM_SZ];
+    int count;
+    struct sockaddr_in *addrs;
+    int idx;				/* which server we are connected to */
+    Destlist *subs;
+    Client *client;
+    long tkt_try;
+};
 
-typedef struct _ZHostList_t {
-	struct _ZHostList_t *q_forw;
-	struct _ZHostList_t *q_back;
-	ZClientList_t	*zh_clients;
-	struct sockaddr_in zh_addr;	/* IP addr/port of hostmanager */
-	unsigned int zh_locked;		/* 1 if this host is locked for
-					   a braindump */
-} ZHostList_t;
+struct _Realmname {
+    char name[REALM_SZ];
+    char **servers;
+    int nused;
+    int nservers;
+};
 
-typedef enum _server_state {
-	SERV_UP,			/* Server is up */
-	SERV_TARDY,			/* Server due for a hello */
-	SERV_DEAD,			/* Server is considered dead */
-	SERV_STARTING			/* Server is between dead and up */
-} server_state;
+struct _Client {
+    struct sockaddr_in	addr;		/* ipaddr/port of client */
+    Destlist		*subs	;	/* subscriptions */
+#ifdef ZEPHYR_USES_KERBEROS
+    C_Block		session_key;	/* session key for this client */
+#endif /* ZEPHYR_USES_KERBEROS */
+    String		*principal;	/* krb principal of user */
+    time_t		last_check;	/* last time the other server was
+					   asked to check */
+    long		last_msg;	/* last message sent to this client */
+    int			last_send;	/* Counter for last sent packet. */
+    Realm		*realm;
+    struct _Client	*next, **prev_p;
+};
 
-typedef struct _ZNotAcked_t {
-	struct _ZNotAcked_t *q_forw;	/* link to next */
-	struct _ZNotAcked_t *q_back;	/* link to prev */
-	timer na_timer;			/* timer for retransmit */
-	long na_abstimo;		/* absolute timeout to drop after */
-	short na_rexmits;		/* number of retransmits */
-	short na_packsz;		/* size of packet */
-	caddr_t na_packet;		/* ptr to packet */
-	ZUnique_Id_t na_uid;		/* uid of packet */
-	union {				/* address to send to */
-		struct sockaddr_in na_sin; /* client address */
-		int srv_idx;		/* index of server */
-	} dest;
-#define na_addr	dest.na_sin
-#define na_srv_idx	dest.srv_idx
-} ZNotAcked_t;
+struct _Triplet {
+    Destination		dest;
+    Acl			*acl;
+    Client		**clients;
+    int			clients_size;
+    struct _Triplet	*next, **prev_p;
+};
 
-typedef struct _ZSrvPending_t {
-	struct _ZSrvPending_t *q_forw;	/* link to next */
-	struct _ZSrvPending_t *q_back;	/* link to prev */
-	caddr_t pend_packet;		/* the notice (in pkt form) */
-	short pend_len;			/* len of pkt */
-	unsigned int pend_auth;		/* whether it is authentic */
-	struct sockaddr_in pend_who;	/* the addr of the sender */
-} ZSrvPending_t;
+enum _Server_state {
+    SERV_UP,				/* Server is up */
+    SERV_TARDY,				/* Server due for a hello */
+    SERV_DEAD,				/* Server is considered dead */
+    SERV_STARTING			/* Server is between dead and up */
+};
 
-typedef struct _ZServerDesc_t {
-	server_state zs_state;		/* server's state */
-	struct sockaddr_in zs_addr;	/* server's address */
-	long zs_timeout;		/* Length of timeout in sec */
-	timer zs_timer;			/* timer struct for this server */
-	struct _ZHostList_t *zs_hosts;	/* pointer to list of info from this
-					   server */
-	struct _ZSrvPending_t *zs_update_queue;	/* queue of packets to send
+struct _Unacked {
+    Timer		*timer;		/* timer for retransmit */
+    short		rexmits;	/* number of retransmits */
+    short		packsz;		/* size of packet */
+    char		*packet;	/* ptr to packet */
+    ZUnique_Id_t	uid;		/* uid of packet */
+    struct sockaddr_in	ack_addr;
+    union {				/* address to send to */
+	struct sockaddr_in addr;	/* client address */
+	int	srv_idx;		/* index of server */
+	struct {
+	    int rlm_idx;		/* index of realm */
+	    int rlm_srv_idx;		/* index of server in realm */
+	} rlm;
+    } dest;
+    struct _Unacked *next, **prev_p;
+};
+
+struct _Pending {
+    char		*packet;	/* the notice (in pkt form) */
+    short		len;		/* len of pkt */
+    unsigned int	auth;		/* whether it is authentic */
+    struct sockaddr_in who;		/* the addr of the sender */
+    struct _Pending *next;
+};
+
+struct _Server {
+    Server_state	state;		/* server's state */
+    struct sockaddr_in	addr;		/* server's address */
+    long		timeout;	/* Length of timeout in sec */
+    Timer		*timer;		/* timer for this server */
+    Pending		*queue;		/* queue of packets to send
 					   to this server when done dumping */
-	short zs_numsent;		/* number of hello's sent */
-	unsigned int zs_dumping;	/* 1 if dumping, so we should queue */
-	char addr[16];			/* text version of address */
-} ZServerDesc_t;
+    Pending		*queue_last;	/* last packet on queue */
+    short		num_hello_sent;	/* number of hello's sent */
+    unsigned int	dumping;	/* 1 if dumping, so we should queue */
+    char		addr_str[16];	/* text version of address */
+};
 
-typedef enum ZSentType {
-	NOT_SENT,			/* message was not xmitted */
-	SENT,				/* message was xmitted */
-	AUTH_FAILED,			/* authentication failed */
-	NOT_FOUND			/* user not found for uloc */
-} ZSentType;
+enum _Sent_type {
+    NOT_SENT,				/* message was not xmitted */
+    SENT,				/* message was xmitted */
+    AUTH_FAILED,			/* authentication failed */
+    NOT_FOUND				/* user not found for uloc */
+};
 
 /* statistics gathering */
-typedef struct _ZStatistic_t {
-  int val;
-  char *str;
-} ZStatistic;
-
-#ifdef __STDC__
-# define        P(s) s
-#else
-# define P(s) ()
-#endif
+struct _Statistic {
+    int			val;
+    char		*str;
+};
 
 /* Function declarations */
 	
 /* found in bdump.c */
-extern void bdump_get P((ZNotice_t *notice, int auth, struct sockaddr_in *who,
-		      ZServerDesc_t *server));
-extern void bdump_send P((void));
-extern void bdump_offer P((struct sockaddr_in *who));
-extern Code_t bdump_send_list_tcp P((ZNotice_Kind_t kind, int port,
-				  char *class_name, char *inst, char *opcode,
-				  char *sender, char *recip,
-				  char **lyst, int num));
+void bdump_get __P((ZNotice_t *notice, int auth, struct sockaddr_in *who,
+		    Server *server));
+void bdump_send __P((void));
+void bdump_offer __P((struct sockaddr_in *who));
+Code_t bdump_send_list_tcp __P((ZNotice_Kind_t kind, struct sockaddr_in *addr,
+				char *class_name, char *inst, char *opcode,
+				char *sender, char *recip, char **lyst,
+				int num));
+int get_tgt __P((void));
 
 /* found in class.c */
-extern Code_t triplet_register P((ZClient_t *client, ZDestination *dest));
-extern Code_t triplet_deregister P((ZClient_t *client, ZDestination *dest));
-extern Code_t class_restrict P((char *z_class, ZAcl_t *acl));
-extern Code_t class_setup_restricted P((char *z_class, ZAcl_t *acl));
-extern ZClientList_t *triplet_lookup P((ZDestination *dest));
-extern ZAcl_t *class_get_acl P((ZSTRING *z_class));
-extern void class_free P((ZClientList_t *lyst));
-extern ZSTRING *class_control, *class_admin, *class_hm;
-extern ZSTRING *class_ulogin, *class_ulocate;
-extern void set_ZDestination_hash P((ZDestination *zd));
-extern int ZDest_eq P((ZDestination *zd1, ZDestination *zd2));
-extern int order_dest_strings P((ZDestination *zd1, ZDestination *zd2));
-extern void class_dump_subs P((register FILE *fp));
+extern String *class_control, *class_admin, *class_hm;
+extern String *class_ulogin, *class_ulocate;
+int ZDest_eq __P((Destination *d1, Destination *d2));
+Code_t triplet_register __P((Client *client, Destination *dest, Realm *realm));
+Code_t triplet_deregister __P((Client *client, Destination *dest,
+			       Realm *realm));
+Code_t class_restrict __P((char *class, Acl *acl));
+Code_t class_setup_restricted __P((char *class, Acl *acl));
+Client **triplet_lookup __P((Destination *dest));
+Acl *class_get_acl __P((String *class));
+int dest_eq __P((Destination *d1, Destination *d2));
+int order_dest_strings __P((Destination *d1, Destination *d2));
+void triplet_dump_subs __P((FILE *fp));
 
 /* found in client.c */
-extern Code_t client_register P((ZNotice_t *notice, struct sockaddr_in *who,
-			      register ZClient_t **client,
-			      ZServerDesc_t *server, int wantdefaults));
-extern void client_deregister P((ZClient_t *client, ZHostList_t *host,
-				 int flush)); 
-extern void client_dump_clients P((FILE *fp, ZClientList_t *clist));
-extern ZClient_t *client_which_client P((struct sockaddr_in *who,
-				      ZNotice_t *notice));
+Code_t client_register __P((ZNotice_t *notice, struct in_addr *host,
+			    Client **client_p, int wantdefaults));
+void client_deregister __P((Client *client, int flush)); 
+void client_flush_host __P((struct in_addr *host));
+void client_dump_clients __P((FILE *fp));
+Client *client_which_client __P((struct in_addr *host, ZNotice_t *notice));
+Code_t client_send_clients __P((void));
 
 /* found in common.c */
-extern char *strsave P((Zconst char *str));
-extern unsigned long hash  P((Zconst char *));
-extern void subscr_quote P((char *p, FILE *fp));
+char *strsave __P((const char *str));
+unsigned long hash  __P((const char *));
+void dump_quote __P((char *p, FILE *fp));
 
 /* found in dispatch.c */
-extern void handle_packet P((void));
-extern void clt_ack P((ZNotice_t *notice, struct sockaddr_in *who,
-		    ZSentType sent));
-extern void nack_release P((ZClient_t *client));
-extern void sendit P((register ZNotice_t *notice, int auth,
-		   struct sockaddr_in *who));
-extern void rexmit P((void *));
-extern void xmit P((register ZNotice_t *notice, struct sockaddr_in *dest,
-		 int auth, ZClient_t *client));
-extern Code_t control_dispatch P((ZNotice_t *notice, int auth,
-			       struct sockaddr_in *who,
-				  ZServerDesc_t *server));
-extern Code_t xmit_frag P((ZNotice_t *notice, char *buf, int len,
-			   int waitforack));
-
-/* found in hostm.c */
-extern void hostm_flush P((ZHostList_t *host, ZServerDesc_t *server));
-extern void hostm_shutdown P((void));
-extern void hostm_losing P((ZClient_t *client, ZHostList_t *host));
-extern ZHostList_t *hostm_find_host P((struct in_addr *addr));
-extern ZServerDesc_t *hostm_find_server P((struct in_addr *addr));
-extern void hostm_transfer P((ZHostList_t *host, ZServerDesc_t *server));
-extern void hostm_deathgram P((struct sockaddr_in *sin,
-			       ZServerDesc_t *server));
-extern void hostm_dump_hosts P((FILE *fp));
-extern Code_t hostm_dispatch P((ZNotice_t *notice, int auth,
-			     struct sockaddr_in *who, ZServerDesc_t *server));
-extern void hostm_lose_ignore P((ZClient_t *client));
-extern void hostm_renumber_servers  P((int *));
+void handle_packet __P((void));
+void clt_ack __P((ZNotice_t *notice, struct sockaddr_in *who, Sent_type sent));
+void nack_release __P((Client *client));
+void sendit __P((ZNotice_t *notice, int auth, struct sockaddr_in *who,
+		 int external));
+void rexmit __P((void *));
+void xmit __P((ZNotice_t *notice, struct sockaddr_in *dest, int auth,
+	       Client *client));
+Code_t hostm_dispatch __P((ZNotice_t *notice, int auth,
+			   struct sockaddr_in *who, Server *server));
+Code_t control_dispatch __P((ZNotice_t *notice, int auth,
+			     struct sockaddr_in *who, Server *server));
+Code_t xmit_frag __P((ZNotice_t *notice, char *buf, int len, int waitforack));
+void hostm_shutdown __P((void));
 
 /* found in kstuff.c */
-#ifdef KERBEROS
-extern int GetKerberosData  P((int, struct in_addr, AUTH_DAT*, char*, char*));
-extern Code_t SendKerberosData  P((int, KTEXT, char*, char*));
+#ifdef ZEPHYR_USES_KERBEROS
+int GetKerberosData  __P((int, struct in_addr, AUTH_DAT *, char *, char *));
+Code_t SendKerberosData  __P((int, KTEXT, char *, char *));
+void sweep_ticket_hash_table __P((void *));
+#endif
+
+/* found in kopt.c */
+#ifdef ZEPHYR_USES_KERBEROS
+#ifndef NOENCRYPTION
+Sched *check_key_sched_cache __P((des_cblock key));
+void add_to_key_sched_cache __P((des_cblock key, Sched *sched));
+int krb_set_key __P((char *key, int cvt));
+int krb_rd_req __P((KTEXT authent, char *service, char *instance,
+		    unsigned KRB_INT32 from_addr, AUTH_DAT *ad, char *fn));
+int krb_find_ticket __P((KTEXT authent, KTEXT ticket));
+int krb_get_lrealm __P((char *r, int n));
+#endif
 #endif
 
 /* found in server.c */
-extern void server_timo P((void *which));
-extern void server_recover P((ZClient_t *client)),
-    server_dump_servers P((FILE *fp));
-extern void server_init P((void)),
-    server_shutdown P((void));
-extern void server_forward P((ZNotice_t *notice, int auth,
-			   struct sockaddr_in *who));
-extern void server_kill_clt P((ZClient_t *client));
-extern void server_pending_free P((register ZSrvPending_t *pending));
-extern void server_self_queue P((ZNotice_t*, int, struct sockaddr_in *)),
-    server_send_queue P((ZServerDesc_t *)),
-    server_reset P((void));
-extern int is_server();
-extern ZServerDesc_t *server_which_server P((struct sockaddr_in *who));
-extern ZSrvPending_t *server_dequeue P((register ZServerDesc_t *server));
-extern Code_t server_dispatch P((ZNotice_t *notice, int auth,
-			      struct sockaddr_in *who));
-extern Code_t server_adispatch P((ZNotice_t *notice, int auth,
-				  struct sockaddr_in *who,
-				  ZServerDesc_t *server));
-
+void server_timo __P((void *which));
+void server_dump_servers __P((FILE *fp));
+void server_init __P((void));
+void server_shutdown __P((void));
+void server_forward __P((ZNotice_t *notice, int auth,
+			 struct sockaddr_in *who));
+void server_kill_clt __P((Client *client));
+void server_pending_free __P((Pending *pending));
+void server_self_queue __P((ZNotice_t *, int, struct sockaddr_in *));
+void server_send_queue __P((Server *));
+void server_reset __P((void));
+int is_server();
+Server *server_which_server __P((struct sockaddr_in *who));
+Pending *server_dequeue __P((Server *server));
+Code_t server_dispatch __P((ZNotice_t *notice, int auth,
+			    struct sockaddr_in *who));
+Code_t server_adispatch __P((ZNotice_t *notice, int auth,
+			     struct sockaddr_in *who, Server *server));
 
 /* found in subscr.c */
-extern Code_t subscr_cancel P((struct sockaddr_in *sin, ZNotice_t *notice));
-extern Code_t subscr_subscribe P((ZClient_t *who, ZNotice_t *notice)),
-    subscr_send_subs P((ZClient_t *client, char *vers));;
-extern void subscr_free_list P((ZClientList_t *list)),
-    subscr_cancel_client P((register ZClient_t *client)),
-    subscr_sendlist P((ZNotice_t *notice, int auth, struct sockaddr_in *who));
-extern void subscr_dump_subs P((FILE *fp, ZSubscr_t *subs)),
-    subscr_reset P((void));
-extern int compare_subs P((ZSubscr_t *s1, ZSubscr_t *s2, int do_wildcard));
-extern Code_t subscr_def_subs P((ZClient_t *who));
+Code_t subscr_cancel __P((struct sockaddr_in *sin, ZNotice_t *notice));
+Code_t subscr_subscribe __P((Client *who, ZNotice_t *notice));
+Code_t subscr_send_subs __P((Client *client));
+void subscr_cancel_client __P((Client *client));
+void subscr_sendlist __P((ZNotice_t *notice, int auth,
+			  struct sockaddr_in *who));
+void subscr_dump_subs __P((FILE *fp, Destlist *subs));
+void subscr_reset __P((void));
+Code_t subscr_def_subs __P((Client *who));
 
 /* found in uloc.c */
-extern void uloc_hflush P((struct in_addr *addr)),
-    uloc_flush_client P((struct sockaddr_in *sin)),
-    uloc_dump_locs P((register FILE *fp));
-extern Code_t ulogin_dispatch P((ZNotice_t *notice, int auth,
-			      struct sockaddr_in *who, ZServerDesc_t *server)),
-    ulocate_dispatch P((ZNotice_t *notice, int auth, struct sockaddr_in *who,
-		     ZServerDesc_t *server)),
-    uloc_send_locations P((ZHostList_t *host, char *vers));
+void uloc_hflush __P((struct in_addr *addr));
+void uloc_flush_client __P((struct sockaddr_in *sin));
+void uloc_dump_locs __P((FILE *fp));
+Code_t ulogin_dispatch __P((ZNotice_t *notice, int auth,
+			    struct sockaddr_in *who, Server *server));
+Code_t ulocate_dispatch __P((ZNotice_t *notice, int auth,
+			     struct sockaddr_in *who, Server *server));
+Code_t uloc_send_locations __P((void));
+
+/* found in realm.c */
+Realm *realm_which_realm __P((struct sockaddr_in *who));
+Realm *realm_get_realm_by_name __P((char *name));
+void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, Realm *, int);
+char *realm_expand_realm(char *);
+void realm_init __P((void));
+Code_t ZCheckRealmAuthentication __P((ZNotice_t *, struct sockaddr_in *,
+				      char *));
 
 /* found in version.c */
-extern char *get_version P((void));
-
-#undef P
-
+char *get_version __P((void));
 
 /* global identifiers */
 
 /* found in main.c */
-extern struct sockaddr_in sock_sin;	/* socket descriptors */
-extern u_short hm_port;			/* port # of hostmanagers */
+int packets_waiting __P((void));
+extern struct sockaddr_in srv_addr;	/* server socket address */
+extern unsigned short hm_port;		/* host manager receiver port */
+extern unsigned short hm_srv_port;	/* host manager server sending port */
 extern int srv_socket;			/* dgram sockets for clients
 					   and other servers */
 extern int bdump_socket;		/* brain dump socket
@@ -322,31 +326,41 @@ extern int bdump_socket;		/* brain dump socket
 
 extern fd_set interesting;		/* the file descrips we are listening
 					 to right now */
-extern int nfildes;			/* number to look at in select() */
+extern int nfds;			/* number to look at in select() */
 extern int zdebug;
 extern char myname[];			/* domain name of this host */
-extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
-extern Zconst char version[];
+#ifndef ZEPHYR_USES_HESIOD
+extern char list_file[];
+#endif
+#ifdef ZEPHYR_USES_KERBEROS
+extern char srvtab_file[];
+extern char my_realm[];
+#endif
+extern char acl_dir[];
+extern char subs_file[];
+extern const char version[];
 extern u_long npackets;			/* num of packets processed */
-extern long uptime;			/* time we started */
+extern time_t uptime;			/* time we started */
 extern struct in_addr my_addr;
+extern struct timeval t_local;		/* current time */
 
 /* found in bdump.c */
-extern int bdumping;			/* are we dumping right now? */
+extern int bdumping;			/* are we processing a bdump packet? */
+extern int bdump_concurrent;		/* set while processing a packet
+					 * concurrently during a braindump. */
 
 /* found in dispatch.c */
-extern ZStatistic i_s_ctls, i_s_logins, i_s_admins, i_s_locates;
-extern int num_rexmits;
-extern long rexmit_secs, abs_timo;
+extern Statistic i_s_ctls, i_s_logins, i_s_admins, i_s_locates;
+extern int rexmit_times[];
 
 /* found in server.c */
-extern ZServerDesc_t *otherservers;	/* array of servers */
+extern Server *otherservers;		/* array of servers */
 extern int me_server_idx;		/* me (in the array of servers) */
 extern int nservers;			/* number of other servers*/
 
 /* found in subscr.c */
-extern ZSTRING *empty;
-extern ZSTRING *wildcard_instance;
+extern String *empty;
+extern String *wildcard_instance;
 
 extern struct in_addr my_addr;	/* my inet address */
 
@@ -363,24 +377,12 @@ extern struct in_addr my_addr;	/* my inet address */
 #define	ADMIN_DONE	"DUMP_DONE"	/* Opcode: brain dump for this server
 					   is complete */
 #define	ADMIN_NEWCLT	"NEXT_CLIENT"	/* Opcode: this is a new client */
-#define	ADMIN_LOST_CLT	"LOST_CLIENT"	/* Opcode: client not ack'ing */
 #define	ADMIN_KILL_CLT	"KILL_CLIENT"	/* Opcode: client is dead, remove */
 #define	ADMIN_STATUS	"STATUS"	/* Opcode: please send status */
 
-#define	ADMIN_LIMBO	"LIMBO"		/* Class inst: please send limbo info*/
-#define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
-#define	ADMIN_ME	"MY_STATE"	/* Class inst: please send my info */
-
-#define	NULLZT		((ZTriplet_t *) 0)
-#define	NULLZCNT	((ZClient_t *) 0)
-#define	NULLZCLT	((ZClientList_t *) 0)
-#define	NULLZST		((ZSubscr_t *) 0)
-#define	NULLZHLT	((ZHostList_t *) 0)
-#define	NULLZNAT	((ZNotAcked_t *) 0)
-#define	NULLZACLT	((ZAcl_t *) 0)
-#define	NULLZPT		((ZPacket_t *) 0)
-#define	NULLZSDT	((ZServerDesc_t *) 0)
-#define	NULLZSPT	((ZSrvPending_t *) 0)
+#define ADMIN_NEWREALM	"NEXT_REALM"	/* Opcode: this is a new realm */
+#define REALM_REQ_LOCATE "REQ_LOCATE"	/* Opcode: request a location */
+#define REALM_ANS_LOCATE "ANS_LOCATE"	/* Opcode: answer to location */
 
 /* me_server_idx is the index into otherservers of this server descriptor. */
 /* the 'limbo' server is always the first server */
@@ -389,11 +391,12 @@ extern struct in_addr my_addr;	/* my inet address */
 #define limbo_server_idx()	(0)
 #define	limbo_server	(&otherservers[limbo_server_idx()])
 
-#define msgs_queued()	(ZQLength() || otherservers[me_server_idx].zs_update_queue)
+#define msgs_queued()	(ZQLength() || otherservers[me_server_idx].queue)
 
 #define	ack(a,b)	clt_ack(a,b,SENT)
 #define	nack(a,b)	clt_ack(a,b,NOT_SENT)
 
+#define	min(a,b)	((a) < (b) ? (a) : (b))
 #define	max(a,b)	((a) > (b) ? (a) : (b))
 
 #define START_CRITICAL_CODE
@@ -401,18 +404,6 @@ extern struct in_addr my_addr;	/* my inet address */
 
 /* the instance that matches all instances */
 #define	WILDCARD_INSTANCE	"*"
-
-/* SERVER_SRVTAB is defined in zephyr.h */
-#define	ZEPHYR_SRVTAB	SERVER_SRVTAB
-
-#ifdef KERBEROS
-#ifndef NOENCRYPTION
-/* Kerberos shouldn't stick us with array types... */
-typedef struct {
-    des_key_schedule s;
-} Sched;
-#endif
-#endif
 
 /* debugging macros */
 #ifdef DEBUG

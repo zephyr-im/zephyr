@@ -12,90 +12,78 @@
  */
 
 #include <zephyr/mit-copyright.h>
+#include "zserver.h"
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_common_c[] =
+static const char rcsid_common_c[] =
     "$Id$";
 #endif /* SABER */
 #endif /* lint */
 
-#include <zephyr/zephyr.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <syslog.h>
-#include <string.h>
-#include "unix.h"
-
 /* common routines for the server */
 
-/* copy the string into newly allocated area */
+/* copy a string into a newly allocated area */
 
 char *
-#ifdef __STDC__
-strsave (Zconst char *sp)
-#else
 strsave (sp)
-     Zconst char *sp;
-#endif
+    const char *sp;
 {
-    register char *ret;
+    char *ret;
 
-    if((ret = (char *) xmalloc((unsigned) strlen(sp)+1)) == NULL) {
-	    syslog(LOG_ERR, "no mem strdup'ing");
-	    abort();
+    ret = (char *) malloc(strlen(sp) + 1);
+    if (!ret) {
+	syslog(LOG_CRIT, "no mem strdup'ing");
+	abort();
     }
-    (void) strcpy(ret,sp);
-    return(ret);
+    strcpy(ret, sp);
+    return ret;
 }
 
 /* The "& 0x5f" provides case-insensitivity for ASCII. */
 
 unsigned long
-#ifdef __STDC__
-hash (Zconst char *string)
-#else
-hash (string)
-     Zconst char *string;
-#endif
+hash(string)
+    const char *string;
 {
-	register unsigned long hval = 0;
-	register char cp;
+    unsigned long hval = 0;
+    char cp;
 
-	while (1) {
-	    cp = *string++;
-	    if (!cp)
-		break;
-	    hval += cp & 0x5f;
+    while (1) {
+	cp = *string++;
+	if (!cp)
+	    break;
+	hval += cp & 0x5f;
 
-	    cp = *string++;
-	    if (!cp)
-		break;
-	    hval += (cp & 0x5f) * (3 + (1 << 16));
+	cp = *string++;
+	if (!cp)
+	    break;
+	hval += (cp & 0x5f) * (3 + (1 << 16));
 
-	    cp = *string++;
-	    if (!cp)
-		break;
-	    hval += (cp & 0x5f) * (1 + (1 << 8));
+	cp = *string++;
+	if (!cp)
+	    break;
+	hval += (cp & 0x5f) * (1 + (1 << 8));
 
-	    cp = *string++;
-	    if (!cp)
-		break;
-	    hval += (cp & 0x5f) * (1 + (1 << 12));
+	cp = *string++;
+	if (!cp)
+	    break;
+	hval += (cp & 0x5f) * (1 + (1 << 12));
 
-	    cp = *string++;
-	    if (!cp)
-		break;
-	    hval += (cp & 0x5f) * (1 + (1 << 4));
+	cp = *string++;
+	if (!cp)
+	    break;
+	hval += (cp & 0x5f) * (1 + (1 << 4));
 
-	    hval += ((long) hval) >> 18;
-	}
-	hval &= 0x7fffffff;
-	return hval;
+	hval += ((long) hval) >> 18;
+    }
+
+    hval &= 0x7fffffff;
+    return hval;
 }
 
 /* Output a name, replacing newlines with \n and single quotes with \q. */
-void subscr_quote(p, fp)
+void dump_quote(p, fp)
     char *p;
     FILE *fp;
 {

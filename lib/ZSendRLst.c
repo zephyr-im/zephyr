@@ -16,9 +16,7 @@
 static char rcsid_ZSendRawList_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZSendRawList(notice, list, nitems)
     ZNotice_t *notice;
@@ -32,7 +30,7 @@ Code_t ZSrvSendRawList(notice, list, nitems, send_routine)
     ZNotice_t *notice;
     char *list[];
     int nitems;
-    int (*send_routine)();
+    Code_t (*send_routine)();
 {
     Code_t retval;
     ZNotice_t newnotice;

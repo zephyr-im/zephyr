@@ -13,16 +13,22 @@
  */
 /* $Header$ */
 
+#include <internal.h>
+
 #ifndef lint
-static char rcsid_ZSubscriptions_c[] = "$Id$";
+static const char rcsid_ZSubscriptions_c[] = "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
+static Code_t Z_Subscriptions __P((register ZSubscription_t *sublist,
+				   int nitems, unsigned int port,
+				   char *opcode, int authit));
+static Code_t subscr_sendoff __P((ZNotice_t *notice, char **lyst, int num,
+				  int authit));
 
 Code_t ZSubscribeTo(sublist, nitems, port)
     ZSubscription_t *sublist;
     int nitems;
-    u_short port;
+    unsigned int port;
 {
     return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE, 1));
 }
@@ -30,7 +36,7 @@ Code_t ZSubscribeTo(sublist, nitems, port)
 Code_t ZSubscribeToSansDefaults(sublist, nitems, port)
     ZSubscription_t *sublist;
     int nitems;
-    u_short port;
+    unsigned int port;
 {
     return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE_NODEFS,
 			    1));
@@ -39,19 +45,17 @@ Code_t ZSubscribeToSansDefaults(sublist, nitems, port)
 Code_t ZUnsubscribeTo(sublist, nitems, port)
     ZSubscription_t *sublist;
     int nitems;
-    u_short port;
+    unsigned int port;
 {
     return (Z_Subscriptions(sublist, nitems, port, CLIENT_UNSUBSCRIBE, 1));
 }
 
 Code_t ZCancelSubscriptions(port)
-    u_short port;
+    unsigned int port;
 {
     return (Z_Subscriptions((ZSubscription_t *)0, 0, port,
 			    CLIENT_CANCELSUB, 0));
 }
-
-static Code_t subscr_sendoff();
 
 /*
  * This routine must do its own fragmentation.  Subscriptions must
@@ -59,10 +63,11 @@ static Code_t subscr_sendoff();
  * mis-interpret them.
  */
 
+static Code_t
 Z_Subscriptions(sublist, nitems, port, opcode, authit)
     register ZSubscription_t *sublist;
     int nitems;
-    u_short port;
+    unsigned int port;
     char *opcode;
     int authit;
 {
@@ -71,6 +76,7 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     ZNotice_t notice;
     char header[Z_MAXHEADERLEN];
     char **list;
+    char *recip;
     int hdrlen;
     int size_avail = Z_MAXPKTLEN-Z_FRAGFUDGE; /* space avail for data,
 						 adjusted below */
@@ -98,7 +104,7 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     retval = Z_FormatHeader(&notice, header, sizeof(header), &hdrlen, ZAUTH);
     if (retval != ZERR_NONE && !authit)
 	retval = Z_FormatHeader(&notice, header, sizeof(header),
-				&hdrlen, ZAUTH);
+				&hdrlen, ZNOAUTH);
     if (retval != ZERR_NONE) {
 	free((char *)list);
 	return(retval);
@@ -112,11 +118,12 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     for (i=0;i<nitems;i++) {
 	list[i*3] = sublist[i].zsub_class;
 	list[i*3+1] = sublist[i].zsub_classinst;
-	if (sublist[i].zsub_recipient && *sublist[i].zsub_recipient &&
-	    *sublist[i].zsub_recipient != '*')
-	    list[i*3+2] = ZGetSender();
-	else
-	    list[i*3+2] = "";
+	recip = sublist[i].zsub_recipient;
+	if (recip && *recip == '*')
+	    recip++;
+	if (!recip || (*recip != 0 && *recip != '@'))
+	    recip = ZGetSender();
+	list[i*3+2] = recip;
     }
 
     start = -1;

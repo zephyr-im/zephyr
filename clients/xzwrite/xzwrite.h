@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <sysdep.h>
 #include <X11/Intrinsic.h>	/* for String and Boolean */
 
 #define ZLEN		60

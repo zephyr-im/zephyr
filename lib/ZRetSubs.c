@@ -13,18 +13,23 @@
  */
 /* $Header$ */
 
+#include <internal.h>
+
 #ifndef lint
-static char rcsid_ZRetrieveSubscriptions_c[] =
+static const char rcsid_ZRetrieveSubscriptions_c[] =
     "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
-
 static Code_t Z_RetSubs ();
 
+/* Need STDC definition when possible for unsigned short argument. */
+#ifdef __STDC__
+Code_t ZRetrieveSubscriptions(unsigned short port, int *nsubs)
+#else
 Code_t ZRetrieveSubscriptions(port,nsubs)
-	u_short port;
+	unsigned short port;
 	int *nsubs;
+#endif
 {
 	int retval;
 	ZNotice_t notice;
@@ -33,9 +38,8 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	if (!port)			/* use default port */
 	    port = __Zephyr_port;
 
-	if ((retval = ZMakeAscii(asciiport,sizeof(asciiport),
-				 (unsigned char *)&port,
-				 sizeof(u_short))) != ZERR_NONE)
+	retval = ZMakeAscii16(asciiport, sizeof(asciiport), ntohs(port));
+	if (retval != ZERR_NONE)
 		return (retval);
 
 	(void) memset((char *)&notice, 0, sizeof(notice));
@@ -63,12 +67,13 @@ Code_t ZRetrieveDefaultSubscriptions(nsubs)
 static Code_t Z_RetSubs(notice, nsubs, auth_routine)
 	register ZNotice_t *notice;
 	int *nsubs;
-	int (*auth_routine)();
+	Z_AuthProc auth_routine;
 {
 	register int i;
 	int retval,nrecv,gimmeack;
 	ZNotice_t retnotice;
 	char *ptr,*end,*ptr2;
+	ZSubscription_t *list = __subscriptions_list;
 
 	retval = ZFlushSubscriptions();
 
@@ -92,7 +97,7 @@ static Code_t Z_RetSubs(notice, nsubs, auth_routine)
 
 	nrecv = 0;
 	gimmeack = 0;
-	__subscriptions_list = (ZSubscription_t *) 0;
+	list = (ZSubscription_t *) 0;
 
 	while (!nrecv || !gimmeack) {
 		retval = Z_WaitForNotice (&retnotice, ZCompareMultiUIDPred,
@@ -135,46 +140,50 @@ static Code_t Z_RetSubs(notice, nsubs, auth_routine)
 
 		__subscriptions_num = __subscriptions_num / 3;
 
-		__subscriptions_list = (ZSubscription_t *)
-			malloc((unsigned)(__subscriptions_num*
-					  sizeof(ZSubscription_t)));
-		if (__subscriptions_num && !__subscriptions_list) {
+		list = (ZSubscription_t *)
+		    malloc(__subscriptions_num * sizeof(ZSubscription_t));
+		if (__subscriptions_num && !list) {
 			ZFreeNotice(&retnotice);
 			return (ENOMEM);
 		}
 
-		for (ptr=retnotice.z_message,i = 0; i< __subscriptions_num; i++) {
-			__subscriptions_list[i].zsub_class = (char *)
-				malloc((unsigned)strlen(ptr)+1);
-			if (!__subscriptions_list[i].zsub_class) {
+		ptr = retnotice.z_message;
+		for (i = 0; i < __subscriptions_num; i++) {
+			list[i].zsub_class = (char *)
+			    malloc(strlen(ptr) + 1);
+			if (!list[i].zsub_class) {
 				ZFreeNotice(&retnotice);
 				return (ENOMEM);
 			}
-			(void) strcpy(__subscriptions_list[i].zsub_class,ptr);
+			strcpy(list[i].zsub_class, ptr);
 			ptr += strlen(ptr)+1;
-			__subscriptions_list[i].zsub_classinst = (char *)
-				malloc((unsigned)strlen(ptr)+1);
-			if (!__subscriptions_list[i].zsub_classinst) {
+			list[i].zsub_classinst = (char *)
+			    malloc(strlen(ptr) + 1);
+			if (!list[i].zsub_classinst) {
 				ZFreeNotice(&retnotice);
 				return (ENOMEM);
 			}
-			(void) strcpy(__subscriptions_list[i].zsub_classinst,ptr);
+			strcpy(list[i].zsub_classinst, ptr);
 			ptr += strlen(ptr)+1;
 			ptr2 = ptr;
-			if (!*ptr2)
-				ptr2 = "*";
-			__subscriptions_list[i].zsub_recipient = (char *)
-				malloc((unsigned)strlen(ptr2)+1);
-			if (!__subscriptions_list[i].zsub_recipient) {
+			list[i].zsub_recipient = (char *)
+			    malloc(strlen(ptr2) + 2);
+			if (!list[i].zsub_recipient) {
 				ZFreeNotice(&retnotice);
 				return (ENOMEM);
 			}
-			(void) strcpy(__subscriptions_list[i].zsub_recipient,ptr2);
+			if (*ptr2 == '@' || *ptr2 == 0) {
+				*list[i].zsub_recipient = '*';
+				strcpy(list[i].zsub_recipient + 1, ptr2);
+			} else {
+				strcpy(list[i].zsub_recipient, ptr2);
+			}
 			ptr += strlen(ptr)+1;
 		}
 		ZFreeNotice(&retnotice);
 	}
 
+	__subscriptions_list = list;
 	__subscriptions_next = 0;
 	*nsubs = __subscriptions_num;
 

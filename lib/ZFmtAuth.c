@@ -16,10 +16,9 @@
 static char rcsid_ZFormatAuthenticNotice_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
-#ifdef Z_HaveKerberos
+#ifdef ZEPHYR_USES_KERBEROS
 Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
     ZNotice_t *notice;
     register char *buffer;

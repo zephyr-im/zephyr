@@ -12,23 +12,19 @@
  *	"mit-copyright.h". 
  */
 
-#include <zephyr/mit-copyright.h>
+#include "mit-copyright.h"
 
 #ifndef lint
-static char rcsid_ZWaitForNotice_c[] =
-  "$Zephyr$";
+static char rcsid_ZWaitForNotice_c[] = "$Zephyr$";
 #endif
 
-#include <zephyr/zephyr.h>
-#ifdef _AIX
-#include <sys/select.h>
-#endif
+#include <internal.h>
+#include <sys/socket.h>
 
-Code_t
-Z_WaitForNotice (notice, pred, uid, timeout)
+Code_t Z_WaitForNotice (notice, pred, arg, timeout)
      ZNotice_t *notice;
-     int (*pred) ();
-     ZUnique_Id_t *uid;
+     int (*pred) __P((ZNotice_t *, void *));
+     void *arg;
      int timeout;
 {
   Code_t retval;
@@ -37,7 +33,7 @@ Z_WaitForNotice (notice, pred, uid, timeout)
   int i, fd;
 
   retval = ZCheckIfNotice (notice, (struct sockaddr_in *) 0, pred,
-			   (char *) uid);
+			   (char *) arg);
   if (retval == ZERR_NONE)
     return ZERR_NONE;
   if (retval != ZERR_NONOTICE)
@@ -58,7 +54,7 @@ Z_WaitForNotice (notice, pred, uid, timeout)
       return errno;
     if (i > 0) {
       retval = ZCheckIfNotice (notice, (struct sockaddr_in *) 0, pred,
-			       (char *) uid);
+			       (char *) arg);
       if (retval != ZERR_NONOTICE) /* includes ZERR_NONE */
 	return retval;
     }

@@ -12,6 +12,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "dyn.h"
 
@@ -20,7 +21,7 @@ static char insert1[] = "This will be put at the beginning.";
 static char insert2[] = "(parenthetical remark!) ";
 static char insert3[] = "  This follows the random string.";
 
-main(argc, argv)
+int main(argc, argv)
    int	argc;
    char	**argv;
 {
@@ -94,7 +95,8 @@ main(argc, argv)
 	  exit(1);
      }
 
-     printf("This should be the random string: \"%s\"\n", DynGet(obj, 14));
+     printf("This should be the random string: \"%s\"\n",
+	    (char *) DynGet(obj, 14));
 
      if (DynInsert(obj, -1, "foo", 4) != DYN_BADINDEX ||
 	 DynInsert(obj, DynSize(obj) + 1, "foo", 4) != DYN_BADINDEX ||
@@ -119,9 +121,10 @@ main(argc, argv)
 	  exit(1);
      }	
 
-     printf("A new random string: \"%s\"\n", DynGet(obj, 14 +
-						    strlen(insert1) + 1));
-     printf("This was put at the beginning: \"%s\"\n", DynGet(obj, 0));
+     printf("A new random string: \"%s\"\n",
+	    (char *) DynGet(obj, 14 + strlen(insert1) + 1));
+     printf("This was put at the beginning: \"%s\"\n",
+	    (char *) DynGet(obj, 0));
 
      DynDestroy(obj);
 

@@ -21,7 +21,7 @@ char *bfgets(s, n, iop)
    int  n;
    FILE *iop;
 {
-     register int c;
+     register int c = 0;
      register char *cs;
 
      cs = s;

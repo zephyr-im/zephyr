@@ -16,7 +16,7 @@
 static char rcsid_ZFormatRawNotice_c[] = "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZFormatRawNotice(notice, buffer, ret_len)
     register ZNotice_t *notice;

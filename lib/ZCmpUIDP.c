@@ -16,20 +16,18 @@
 static char rcsid_ZCompareUIDPred_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 int ZCompareUIDPred(notice, uid)
     ZNotice_t *notice;
-    ZUnique_Id_t *uid;
+    void *uid;
 {
-    return (ZCompareUID(&notice->z_uid, uid));
+    return (ZCompareUID(&notice->z_uid, (ZUnique_Id_t *) uid));
 }
 
 int ZCompareMultiUIDPred(notice, uid)
     ZNotice_t *notice;
-    ZUnique_Id_t *uid;
+    void *uid;
 {
-    return (ZCompareUID(&notice->z_multiuid, uid));
+    return (ZCompareUID(&notice->z_multiuid, (ZUnique_Id_t *) uid));
 }

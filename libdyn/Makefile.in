@@ -1,0 +1,47 @@
+SHELL = /bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+datadir=@datadir@
+confdir=@confdir@
+sbindir=@sbindir@
+lsbindir=@lsbindir@
+
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
+
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+BUILDTOP=../..
+VPATH=@srcdir@
+CC=@CC@
+RANLIB=@RANLIB@
+
+DEBUG=-O
+CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @CPPFLAGS@
+
+OBJS =	dyn_append.o dyn_create.o dyn_debug.o dyn_delete.o dyn_insert.o \
+	dyn_paranoid.o dyn_put.o dyn_realloc.o dyn_size.o
+
+all: libdyn.a dyntest
+
+libdyn.a: ${OBJS}
+	ar cru $@ ${OBJS}
+	${RANLIB} $@
+
+dyntest: libdyn.a dyntest.o
+	${CC} ${LDFLAGS} -o $@ dyntest.o libdyn.a
+
+check:
+
+install:
+
+clean:
+	rm -f ${OBJS} libdyn.a dyntest.o dyntest
+
+${OBJS} dyntest.o: dynP.h ${top_srcdir}/h/dyn.h ${top_srcdir}/h/sysdep.h
+${OBJS} dyntest.o: ${BUILDTOP}/h/config.h
+
+.PHONY: all check install clean
+

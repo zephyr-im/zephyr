@@ -12,13 +12,11 @@
  */
 /* $Header$ */
 
+#include <internal.h>
+
 #ifndef lint
-static char rcsid_ZClosePort_c[] = "$Id$";
+static const char rcsid_ZClosePort_c[] = "$Id$";
 #endif
-
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
 
 Code_t ZClosePort()
 {

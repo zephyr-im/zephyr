@@ -1,0 +1,80 @@
+This file explains how to build and install Zephyr on a machine.  To
+learn how to use Zephyr once you've installed it, read the file USING.
+To learn how to set up Zephyr service at a site, read the file
+OPERATING.
+
+To build and install Zephyr for the Athena environment, run:
+
+	setenv CC "cc"	# Or whatever compiler
+	./configure --enable-athena
+	make
+	make install
+
+(If you're not sure whether your site qualifies as being in the
+"Athena environment," the exact criteria are that you have installed
+versions of Hesiod, Kerberos 4, libss, and libcom_err in /usr/athena,
+and that you want Zephyr to be installed in the Athena directory
+layout.)
+
+To build and install outside the Athena environment, you can run:
+
+	./configure
+	make
+	make install
+
+This will build Zephyr without Hesiod or Kerberos support, and install
+in /usr/local.  To install in a location other than /usr/local, add
+"--prefix=INSTPREFIX" to the configure line, where INSTPREFIX is the
+directory you want to install Zephyr in.
+
+If your site has a Hesiod service with a valid zephyr.sloc entry (or
+you can add one), you can enable Hesiod support by adding the option
+"--with-hesiod=HESPREFIX" to the configure line, where
+HESPREFIX/include and HESPREFIX/lib are the directories you have the
+Hesiod libraries installed in.
+
+If your site has a Kerberos 4 service, you can enable Kerberos support
+by adding the option "--with-krb4=KRBPREFIX" to the configure line,
+where KRBPREFIX/include and KRBPREFIX/lib are the direcetories you
+have the Kerberos libraries installed in.
+
+If you have a make which supports VPATH in a manner compatible with
+GNU make, you can build in a separate directory.  Simply invoke the
+configure script from within the build directory and configure will
+locate the source directory for you.  (If that doesn't work for some
+reason, you can also specify "--srcdir=SOURCEDIR" on the configuration
+line.)
+
+If configure can't properly find your X11 include or library
+directories, add "--x-includes=INCDIR" and "--x-libraries=LIBDIR" to
+the configure line.  To build without X11 support, add "--without-x"
+to the configure line.
+
+If you have Hesiod and/or Kerberos installed such that you can't
+specify a single prefix for both include files and libraries, set the
+environment variables CPPFLAGS and LDFLAGS to include the relevant
+directories, and just configure with "--with-krb4" and
+"--with-hesiod".  For instance (for a csh-like shell):
+
+	setenv CPPFLAGS "-I/opt/athena/include"
+	setenv LDFLAGS "-I/opt/athena/arch/sparc/lib"
+	./configure --with-hesiod --with-krb4
+	make
+	make install
+
+Although it's not necessary for Zephyr to function correctly, you
+should add the following services to /etc/services if possible:
+
+zephyr-clt      2103/udp                        # Zephyr serv-hm connection
+zephyr-hm       2104/udp                        # Zephyr hostmanager
+zephyr-hm-srv	2105/udp			# Zephyr hm-serv connection
+
+To learn how to use Zephyr, read the file USING and the man pages for
+the various Zephyr programs.  To learn how to operate a Zephyr
+service, read the file OPERATING.
+
+We have tried to make Zephyr as portable as is reasonably possible,
+but have not taken into account every possible kind of system.  If you
+have any problems building or installing Zephyr according to these
+instructions, please send mail to zephyr-bugs@mit.edu.
+

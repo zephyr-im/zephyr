@@ -11,19 +11,14 @@
  *	"mit-copyright.h". 
  */
 
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include <ss/ss.h>
 #include <com_err.h>
 #include <pwd.h>
 #include <netdb.h>
-#include <string.h>
-#include <sys/file.h>
-#include <sys/param.h>
-#ifdef POSIX
-#include <sys/utsname.h>
-#endif
 #ifndef lint
-static char *rcsid_zctl_c = "$Id$";
+static const char *rcsid_zctl_c = "$Id$";
 #endif
 
 #define SUBSATONCE 7
@@ -60,9 +55,9 @@ main(argc,argv)
 {
 	struct passwd *pwd;
 	struct hostent *hent;
-	char ssline[BUFSIZ],oldsubsname[BUFSIZ],*envptr;
+	char ssline[BUFSIZ],oldsubsname[BUFSIZ],*envptr,*tty = NULL;
 	int retval,code,i;
-#ifdef POSIX
+#ifdef HAVE_SYS_UTSNAME
 	struct utsname name;
 #endif
 
@@ -71,20 +66,28 @@ main(argc,argv)
 		exit (1);
 	}
 
-	envptr = (char *)getenv("HOME");
+	/* Set hostname and tty for locations.  If we support X, use the
+	 * DISPLAY environment variable for the tty name. */
+#ifndef X_DISPLAY_MISSING
+	tty = getenv("DISPLAY");
+#endif	
+	if ((retval = ZInitLocationInfo(NULL, tty)) != ZERR_NONE)
+	    com_err(argv[0], retval, "initializing location information");
+
+	envptr = getenv("HOME");
 	if (envptr)
-		(void) strcpy(subsname,envptr);
+		strcpy(subsname,envptr);
 	else {
 		if (!(pwd = getpwuid((int) getuid()))) {
 			fprintf(stderr,"Who are you?\n");
 			exit (1);
 		}
 
-		(void) strcpy(subsname,pwd->pw_dir);
+		strcpy(subsname,pwd->pw_dir);
 	}
-	(void) strcpy(oldsubsname,subsname);
-	(void) strcat(oldsubsname,OLD_SUBS);
-	(void) strcat(subsname,USERS_SUBS);
+	strcpy(oldsubsname,subsname);
+	strcat(oldsubsname,OLD_SUBS);
+	strcat(subsname,USERS_SUBS);
 	if (!access(oldsubsname,F_OK) && access(subsname, F_OK)) {
 		/* only if old one exists and new one does not exist */
 		printf("The .subscriptions file in your home directory is now being used as\n.zephyr.subs . I will rename it to .zephyr.subs for you.\n");
@@ -92,7 +95,7 @@ main(argc,argv)
 			com_err(argv[0], errno, "renaming .subscriptions");
 	}
 
-#ifdef POSIX
+#ifdef HAVE_SYS_UTSNAME
 	uname(&name);
 	strcpy(ourhost, name.nodename);
 #else
@@ -205,6 +208,8 @@ wgc_control(argc,argv)
 		notice.z_opcode = USER_SHUTDOWN;
 	if (!strcmp(argv[0],"wg_startup"))
 		notice.z_opcode = USER_STARTUP;
+	if (!strcmp(argv[0],"wg_exit"))
+		notice.z_opcode = USER_EXIT;
 	if (!notice.z_opcode) {
 		fprintf(stderr,
 			"unknown WindowGram client control command %s\n",
@@ -371,10 +376,15 @@ do_hide(argc,argv)
 		fprintf(stderr, "Usage: %s\n",argv[0]);
 		return;
 	}
-	if (!strcmp(argv[0],"unhide"))
-		exp_level = EXPOSE_REALMVIS;
-	else
+	if (!strcmp(argv[0],"unhide")) {
+		exp_level = ZGetVariable("exposure");
+		if (exp_level)
+		    exp_level = ZParseExposureLevel(exp_level);
+		if (!exp_level)
+		    exp_level = EXPOSE_NONE;
+	} else {
 		exp_level = EXPOSE_OPSTAFF;
+	}
 	if ((retval = ZSetLocation(exp_level)) != ZERR_NONE)
 		ss_perror(sci_idx,retval,"while changing exposure status");
 	return;
@@ -473,8 +483,7 @@ sub_file(argc,argv)
 	}
 	sub.zsub_class = argv[1];
 	sub.zsub_classinst = argv[2];
-	sub.zsub_recipient = (argc == 3)?TOKEN_ME:TOKEN_WILD;
-
+	sub.zsub_recipient = (argc == 3)?TOKEN_ME:argv[3];
 
 	if (make_exist(subsname))
 		return;

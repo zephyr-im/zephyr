@@ -16,9 +16,7 @@
 static char rcsid_ZFormatRawNoticeList_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZFormatSmallRawNoticeList(notice, list, nitems, buffer, ret_len)
     ZNotice_t *notice;

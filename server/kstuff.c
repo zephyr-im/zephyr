@@ -1,4 +1,3 @@
-#ifdef KERBEROS
 /* This file is part of the Project Athena Zephyr Notification System.
  * It contains functions for dealing with Kerberos functions in the server.
  *
@@ -13,40 +12,42 @@
  *	$Header$
  */
 
-#ifndef lint
-#ifndef SABER
-static char rcsid_kstuff_c[] = "$Id$";
-#endif
-#endif
-
 #include "zserver.h"
 
-#include <ctype.h>
-#include <netdb.h>
-#include <string.h>
-
-#include <zephyr/zephyr_internal.h>
-#ifdef KERBEROS
-#include <zephyr/krb_err.h>
+#ifndef lint
+#ifndef SABER
+static const char rcsid_kstuff_c[] = "$Id$";
+#endif
 #endif
 
-static char tkt_file[] = ZEPHYR_TKFILE;
+#ifdef ZEPHYR_USES_KERBEROS
 
+/* Keep a hash table mapping tickets to session keys, so we can do a fast
+ * check of the cryptographic checksum without doing and DES decryptions.
+ * Also remember the expiry time of the ticket, so that we can sweep the
+ * table periodically. */
 
-struct AuthEnt {
-    Zconst char *data;
-    int len;
-    ZSTRING *principal;
-#ifndef NOENCRYPTION
+#define HASHTAB_SIZE 4091
+
+typedef struct hash_entry Hash_entry;
+
+/* The ticket comes at the end, in a variable-length array. */
+struct hash_entry {
     C_Block session_key;
-#endif
-    long expire_time;
-    struct sockaddr_in from;
+    time_t expires;
+    char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
+    Hash_entry *next;
+    int ticket_len;
+    unsigned char ticket[1];
 };
 
-#define HASH_SIZE_1	513
-#define HASH_SIZE_2	3
-static struct AuthEnt auth_cache[HASH_SIZE_1][HASH_SIZE_2];
+Hash_entry *hashtab[HASHTAB_SIZE];
+
+static int hash_ticket __P((unsigned char *, int));
+static void add_session_key __P((KTEXT, C_Block, char *, time_t));
+static int find_session_key __P((KTEXT, C_Block, char *));
+static ZChecksum_t compute_checksum __P((ZNotice_t *, C_Block));
+static ZChecksum_t compute_rlm_checksum __P((ZNotice_t *, C_Block));
 
 /*
  * GetKerberosData
@@ -114,7 +115,7 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
 
 int
 SendKerberosData(fd, ticket, service, host)
-     int fd;	/* file descriptor to write onto */
+     int fd;		/* file descriptor to write onto */
      KTEXT ticket;	/* where to put ticket (return) */
      char *service;	/* service name, foreign host */
      char *host;
@@ -125,242 +126,327 @@ SendKerberosData(fd, ticket, service, host)
     int written;
     int size_to_write;
 
-    rem = krb_get_lrealm(krb_realm,1);
-    if (rem != KSUCCESS)
-	return rem + krb_err_base;
-
-    rem = krb_mk_req( ticket, service, host, krb_realm, (u_long)0 );
+    rem = krb_mk_req(ticket, service, host, ZGetRealm(), (u_long) 0);
     if (rem != KSUCCESS)
 	return rem + krb_err_base;
 
     (void) sprintf(p,"%d ",ticket->length);
     size_to_write = strlen (p);
     if ((written = write(fd, p, size_to_write)) != size_to_write)
-	    if (written < 0)
-		    return errno;
-	    else
-		    return ZSRV_PKSHORT;
-    if ((written = write(fd, (caddr_t) (ticket->dat), ticket->length)) != ticket->length)
-	    if (written < 0)
-		    return errno;
-	    else
-		    return ZSRV_PKSHORT;
+	return (written < 0) ? errno : ZSRV_PKSHORT;
+    if ((written = write(fd, (caddr_t) (ticket->dat), ticket->length))
+	!= ticket->length)
+	return (written < 0) ? errno : ZSRV_PKSHORT;
 
     return 0;
 }
 
-/* Hack to replace the kerberos library's idea of the ticket file with
-   our idea */
-char *
-tkt_string()
-{
-    return tkt_file;
-}
+#endif /* ZEPHYR_USES_KERBEROS */
 
-/* Check authentication of the notice.
-   If it looks authentic but fails the Kerberos check, return -1.
-   If it looks authentic and passes the Kerberos check, return 1.
-   If it doesn't look authentic, return 0
-  
-   When not using Kerberos, return (looks-authentic-p)
- */
+int
+ZCheckRealmAuthentication(notice, from, realm)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+    char *realm;
+{       
+#ifdef ZEPHYR_USES_KERBEROS
+    int result;
+    char rlmprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
+    char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
+    KTEXT_ST authent, ticket;
+    AUTH_DAT dat;
+    ZChecksum_t checksum;
+    CREDENTIALS cred;
+    C_Block session_key;
 
-static void
-ae_expire(ae)
-     struct AuthEnt *ae;
-{
-    if (ae->data) {
-	xfree((void *) ae->data);
-	ae->data = 0;
+    if (!notice->z_auth)
+        return ZAUTH_NO;
+
+    /* Check for bogus authentication data length. */
+    if (notice->z_authent_len <= 0)
+        return ZAUTH_FAILED;
+
+    /* Read in the authentication data. */
+    if (ZReadAscii(notice->z_ascii_authent, 
+                   strlen(notice->z_ascii_authent)+1, 
+                   (unsigned char *)authent.dat, 
+                   notice->z_authent_len) == ZERR_BADFIELD) {
+        return ZAUTH_FAILED;
     }
-    ae->len = 0;
-    ae->expire_time = 0;
-    free_zstring(ae->principal);
-    ae->principal= 0;
-}
+    authent.length = notice->z_authent_len;
 
-static int
-auth_hash (str, len)
-     Zconst char *str;
-     int len;
-{
-    unsigned long hash;
-    if (len <= 3)
-	return str[0];
-    hash = str[len - 1] * 256 + str[len-2] * 16 + str[len-3];
-    hash %= HASH_SIZE_1;
-    return hash;
-}
+    /* Copy the ticket out of the authentication data. */
+    if (krb_find_ticket(&authent, &ticket) != RD_AP_OK)
+        return ZAUTH_FAILED;
 
-static int
-check_cache (notice, from)
-     ZNotice_t *notice;
-     struct sockaddr_in *from;
- {
-    Zconst char *str = notice->z_ascii_authent;
-    int len, i;
-    unsigned int hash_val = 0;
-    unsigned long now = time(0);
-    struct AuthEnt *a;
+    (void) sprintf(rlmprincipal, "%s.%s@%s", SERVER_SERVICE,
+                   SERVER_INSTANCE, realm);
 
-    len = strlen (str);
-    hash_val = auth_hash (str, len);
-    for (i = 0; i < HASH_SIZE_2; i++) {
-	a = &auth_cache[hash_val][i];
-	if (!a->data) {
-	    continue;
-	}
-	if (now > a->expire_time) {
-	    ae_expire(a);
-	    continue;
-	}
-	if (len != a->len) {
-	    continue;
-	}
-	if (strcmp (notice->z_ascii_authent, a->data)) {
-	    continue;
-	}
-	/* Okay, we know we've got the same authenticator.  */
-	if (strcmp (notice->z_sender, a->principal->string)) {
-	    return ZAUTH_FAILED;
-	}
-	if (from->sin_addr.s_addr != a->from.sin_addr.s_addr) {
-	    return ZAUTH_FAILED;
-	}
-#ifndef NOENCRYPTION
-	(void) memcpy (__Zephyr_session, a->session_key, sizeof (C_Block));
+    /* Try to do a fast check against the cryptographic checksum. */
+    if (find_session_key(&ticket, session_key, srcprincipal) >= 0) {
+        if (strcmp(srcprincipal, rlmprincipal) != 0)
+            return ZAUTH_FAILED;
+        if (notice->z_time.tv_sec - NOW > CLOCK_SKEW)
+            return ZAUTH_FAILED;
+        checksum = compute_rlm_checksum(notice, session_key);
+
+        /* If checksum matches, packet is authentic.  Otherwise, check
+         * the authenticator as if we didn't have the session key cached
+         * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
+         * ticket isn't cached after a checksum failure), so don't worry
+         * about the extra des_quad_cksum() call. */
+        if (checksum == notice->z_checksum) {
+	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
+	    return ZAUTH_YES;
+        }
+    }
+
+    /* We don't have the session key cached; do it the long way. */
+    result = krb_rd_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
+                        from->sin_addr.s_addr, &dat, srvtab_file);
+    if (result == RD_AP_OK) {
+        sprintf(srcprincipal, "%s%s%s@%s", dat.pname, dat.pinst[0] ? "." : "",
+		dat.pinst, dat.prealm);
+        if (strcmp(rlmprincipal, srcprincipal))
+            return ZAUTH_FAILED;
+    } else {
+        return ZAUTH_FAILED;    /* didn't decode correctly */
+    }
+
+    /* Check the cryptographic checksum. */
+#ifdef NOENCRYPTION
+    our_checksum = 0;
+#else
+    checksum = compute_rlm_checksum(notice, dat.session);
 #endif
-	return ZAUTH_YES;
-    }
-    return ZAUTH_NO;
-}
+    if (checksum != notice->z_checksum)
+        return ZAUTH_CKSUM_FAILED;
 
-void 
-add_to_cache (a)
-     struct AuthEnt *a;
-{
-    int len, i, j;
-    struct AuthEnt *entries;
-    unsigned int hash_val = 0;
+    /* Record the session key, expiry time, and source principal in the
+     * hash table, so we can do a fast check next time. */
+    add_session_key(&ticket, dat.session, srcprincipal,
+                    (time_t)(dat.time_sec + dat.life * 5 * 60));
 
-    len = a->len;
-    hash_val = auth_hash (a->data, len);
-    entries = auth_cache[hash_val];
-    j = 0;
-    for (i = 0; i < HASH_SIZE_2; i++) {
-	if (entries[i].data == 0) {
-	    j = i;
-	    goto ok;
-	}
-	if (i == j)
-	    continue;
-	if (entries[i].expire_time < entries[j].expire_time)
-	    j = i;
-    }
-ok:
-    if (entries[j].data)
-	ae_expire(&entries[j]);
-    entries[j] = *a;
+    return ZAUTH_YES;
+
+#else /* !ZEPHYR_USES_KERBEROS */
+    return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
+#endif
 }
 
 int
 ZCheckAuthentication(notice, from)
-     ZNotice_t *notice;
-     struct sockaddr_in *from;
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
 {	
+#ifdef ZEPHYR_USES_KERBEROS
     int result;
     char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
-    KTEXT_ST authent;
+    KTEXT_ST authent, ticket;
     AUTH_DAT dat;
-    ZChecksum_t our_checksum;
-    CREDENTIALS cred;
-    struct AuthEnt a;
-    char *s;
-    int auth_len = 0;
+    ZChecksum_t checksum;
+    C_Block session_key;
 
+    if (!notice->z_auth)
+	return ZAUTH_NO;
 
-    if (!notice->z_auth) {
-	return (ZAUTH_NO);
+    /* Check for bogus authentication data length. */
+    if (notice->z_authent_len <= 0)
+	return ZAUTH_FAILED;
+
+    /* Read in the authentication data. */
+    if (ZReadAscii(notice->z_ascii_authent, 
+		   strlen(notice->z_ascii_authent)+1, 
+		   (unsigned char *)authent.dat, 
+		   notice->z_authent_len) == ZERR_BADFIELD) {
+	return ZAUTH_FAILED;
     }
+    authent.length = notice->z_authent_len;
 
-    if (__Zephyr_server) {
-	
-	if (notice->z_authent_len <= 0) { /* bogus length */
-#if 0
-	    syslog (LOG_DEBUG, "z_authent_len = %d -> AUTH_FAILED",
-		    notice->z_authent_len);
-#endif
-	    return(ZAUTH_FAILED);
-	}
+    /* Copy the ticket out of the authentication data. */
+    if (krb_find_ticket(&authent, &ticket) != RD_AP_OK)
+	return ZAUTH_FAILED;
 
-	auth_len = strlen (notice->z_ascii_authent);
-	if (ZReadAscii(notice->z_ascii_authent, auth_len + 1, 
-		       (unsigned char *)authent.dat, 
-		       notice->z_authent_len) == ZERR_BADFIELD) {
-	    syslog (LOG_DEBUG,
-		    "ZReadAscii failed (len:%s) -> AUTH_FAILED (from %s)",
-		    error_message (ZERR_BADFIELD), inet_ntoa (from->sin_addr));
-	    return (ZAUTH_FAILED);
-	}
-	authent.length = notice->z_authent_len;
-	result = check_cache (notice, from);
-	if (result != ZAUTH_NO)
-	    return result;
+    /* Try to do a fast check against the cryptographic checksum. */
+    if (find_session_key(&ticket, session_key, srcprincipal) >= 0) {
+	if (strcmp(srcprincipal, notice->z_sender) != 0)
+	    return ZAUTH_FAILED;
+	if (notice->z_time.tv_sec - NOW > CLOCK_SKEW)
+	    return ZAUTH_FAILED;
+	checksum = compute_checksum(notice, session_key);
 
-	/* Well, it's not in the cache... decode it.  */
-	result = krb_rd_req(&authent, SERVER_SERVICE, 
-			    SERVER_INSTANCE, (int) from->sin_addr.s_addr, 
-			    &dat, SERVER_SRVTAB);
-	if (result == RD_AP_OK) {
-	    (void) memcpy ((void *) a.session_key,(void *) dat.session, 
-			    sizeof(C_Block));
-	    (void) memcpy((char *)__Zephyr_session, (char *)dat.session, 
-			   sizeof(C_Block));
-	    (void) sprintf(srcprincipal, "%s%s%s@%s", dat.pname, 
-			   dat.pinst[0]?".":"", dat.pinst, dat.prealm);
-	    if (strcmp(srcprincipal, notice->z_sender)) {
-		syslog (LOG_DEBUG, "principal mismatch->AUTH_FAILED");
-		return (ZAUTH_FAILED);
-	    }
-	    a.principal = make_zstring(srcprincipal,0);
-	    a.expire_time = time (0) + 5 * 60; /* add 5 minutes */
-	    a.from = *from;
-	    s = (char *) xmalloc (auth_len + 1);
-	    strcpy (s, notice->z_ascii_authent);
-	    a.data = s;
-	    a.len = auth_len;
-	    add_to_cache (&a);
-	    return(ZAUTH_YES);
-	} else {
-	    syslog (LOG_DEBUG, "krb_rd_req failed (%s)->AUTH_FAILED (from %s)",
-		    krb_err_txt [result], inet_ntoa (from->sin_addr));
-	    return (ZAUTH_FAILED);	/* didn't decode correctly */
+	/* If the checksum matches, the packet is authentic.  Otherwise,
+	 * check authenticator as if we didn't have the session key cached
+	 * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
+	 * ticket isn't cached after a checksum failure), so don't worry
+	 * about the extra des_quad_cksum() call. */
+	if (checksum == notice->z_checksum) {
+	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
+	    return ZAUTH_YES;
 	}
     }
-    
-    if ((result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
-			      __Zephyr_realm, &cred)) != KSUCCESS) {
-	syslog (LOG_DEBUG, "krb_get_cred failed (%s) ->AUTH_NO (from %s)",
-		krb_err_txt [result], inet_ntoa (from->sin_addr));
-	return (ZAUTH_NO);
+
+    /* We don't have the session key cached; do it the long way. */
+    result = krb_rd_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
+			from->sin_addr.s_addr, &dat, srvtab_file);
+    if (result == RD_AP_OK) {
+	memcpy(__Zephyr_session, dat.session, sizeof(C_Block));
+	sprintf(srcprincipal, "%s%s%s@%s", dat.pname, dat.pinst[0] ? "." : "",
+		dat.pinst, dat.prealm);
+	if (strcmp(srcprincipal, notice->z_sender))
+	    return ZAUTH_FAILED;
+    } else {
+	return ZAUTH_FAILED;	/* didn't decode correctly */
     }
 
+    /* Check the cryptographic checksum. */
 #ifdef NOENCRYPTION
     our_checksum = 0;
 #else
-    our_checksum = (ZChecksum_t)des_quad_cksum(notice->z_packet, NULL, 
-					       notice->z_default_format+
-					       strlen(notice->z_default_format)+1-
-					       notice->z_packet, 0, cred.session);
+    checksum = compute_checksum(notice, dat.session);
 #endif
-    /* if mismatched checksum, then the packet was corrupted */
-    if (our_checksum == notice->z_checksum) {
-	return ZAUTH_YES;
+    if (checksum != notice->z_checksum)
+	return ZAUTH_CKSUM_FAILED;
+
+    /* Record the session key, expiry time, and source principal in the
+     * hash table, so we can do a fast check next time. */
+    add_session_key(&ticket, dat.session, srcprincipal,
+		    (time_t)(dat.time_sec + dat.life * 5 * 60));
+
+    return ZAUTH_YES;
+
+#else /* !ZEPHYR_USES_KERBEROS */
+    return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
+#endif
+}
+
+#ifdef ZEPHYR_USES_KERBEROS
+
+static int hash_ticket(p, len)
+    unsigned char *p;
+    int len;
+{
+    unsigned long hashval = 0, g;
+
+    for (; len > 0; p++, len--) {
+	hashval = (hashval << 4) + *p;
+	g = hashval & 0xf0000000;
+	if (g) {
+	    hashval ^= g >> 24;
+	    hashval ^= g;
+	}
     }
-    else {
-	syslog (LOG_DEBUG, "checksum mismatch->AUTH_FAILED (from %s)",
-		inet_ntoa (from->sin_addr));
-	return ZAUTH_FAILED;
+    return hashval % HASHTAB_SIZE;
+}
+
+static void add_session_key(ticket, session_key, srcprincipal, expires)
+    KTEXT ticket;
+    C_Block session_key;
+    char *srcprincipal;
+    time_t expires;
+{
+    Hash_entry *entry;
+    int hashval;
+
+    /* If we can't allocate memory for the hash table entry, just forget
+     * about it. */
+    entry = (Hash_entry *) malloc(sizeof(Hash_entry) - 1 + ticket->length);
+    if (!entry)
+	return;
+
+    /* Initialize the new entry. */
+    memcpy(entry->session_key, session_key, sizeof(entry->session_key));
+    strcpy(entry->srcprincipal, srcprincipal);
+    entry->expires = expires;
+    entry->ticket_len = ticket->length;
+    memcpy(entry->ticket, ticket->dat, ticket->length * sizeof(unsigned char));
+
+    /* Insert the new entry in the hash table. */
+    hashval = hash_ticket(ticket->dat, ticket->length);
+    entry->next = hashtab[hashval];
+    hashtab[hashval] = entry;
+}
+
+static int find_session_key(ticket, key, srcprincipal)
+    KTEXT ticket;
+    C_Block key;
+    char *srcprincipal;
+{
+    unsigned char *dat;
+    int hashval, len;
+    Hash_entry *entry;
+
+    dat = ticket->dat;
+    len = ticket->length;
+    hashval = hash_ticket(dat, len);
+
+    for (entry = hashtab[hashval]; entry; entry = entry->next) {
+	if (entry->ticket_len == len && memcmp(entry->ticket, dat, len) == 0) {
+	    memcpy(key, entry->session_key, sizeof(entry->session_key));
+	    strcpy(srcprincipal, entry->srcprincipal);
+	    return 0;
+	}
     }
-} 
-#endif /* KERBEROS */
+    return -1;
+}
+
+static ZChecksum_t compute_checksum(notice, session_key)
+    ZNotice_t *notice;
+    C_Block session_key;
+{
+#ifdef NOENCRYPTION
+    return 0;
+#else
+    ZChecksum_t checksum;
+    char *cstart, *cend, *hstart = notice->z_packet, *hend = notice->z_message;
+
+    cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
+    cend = cstart + strlen(cstart) + 1;
+    checksum = des_quad_cksum(hstart, NULL, cstart - hstart, 0, session_key);
+    checksum ^= des_quad_cksum(cend, NULL, hend - cend, 0, session_key);
+    checksum ^= des_quad_cksum(notice->z_message, NULL, notice->z_message_len,
+			       0, session_key);
+    return checksum;
+#endif
+}
+
+static ZChecksum_t compute_rlm_checksum(notice, session_key)
+    ZNotice_t *notice;
+    C_Block session_key;
+{
+#ifdef NOENCRYPTION
+    return 0;
+#else
+    ZChecksum_t checksum;
+    char *cstart, *cend, *hstart = notice->z_packet, *hend = notice->z_message;
+
+    cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
+    cend = cstart + strlen(cstart) + 1;
+    checksum = des_quad_cksum(hstart, NULL, cstart - hstart, 0, session_key);
+    return checksum;
+#endif
+}
+
+void sweep_ticket_hash_table(arg)
+    void *arg;
+{
+    int i;
+    Hash_entry **ptr, *entry;
+
+    for (i = 0; i < HASHTAB_SIZE; i++) {
+	ptr = &hashtab[i];
+	while (*ptr) {
+	    entry = *ptr;
+	    if (entry->expires < NOW) {
+		*ptr = entry->next;
+		free(entry);
+	    } else {
+		ptr = &(*ptr)->next;
+	    }
+	}
+    }
+    timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
+}
+
+#endif /* ZEPHYR_USES_KERBEROS */
+

@@ -13,17 +13,11 @@
 /* $Header$ */
 
 #ifndef lint
-static
-#ifdef __STDC__
-    const
-#endif
-    char rcsid_ZReadAscii_c[] =
-    "$Header$";
+static char rcsid_ZReadAscii_c[] = "$Header$";
 #endif /* lint */
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
+#include <assert.h>
 
 #if 0
 static __inline__
@@ -42,7 +36,7 @@ Z_cnvt_xtoi (char c)
 
 #define Z_cnvt_xtoi(c)  ((temp=(c)-'0'),(temp<10)?temp:((temp-='A'-'9'-1),(temp<16)?temp:-1))
 
-int ZReadAscii(ptr, len, field, num)
+Code_t ZReadAscii(ptr, len, field, num)
     char *ptr;
     int len;
     unsigned char *field;
@@ -51,9 +45,7 @@ int ZReadAscii(ptr, len, field, num)
     int i;
     unsigned int hexbyte;
     register int c1, c2;
-#ifdef Z_cnvt_xtoi
     register unsigned int temp;
-#endif
 
     for (i=0;i<num;i++) {
 	if (*ptr == ' ') {
@@ -83,3 +75,34 @@ int ZReadAscii(ptr, len, field, num)
 
     return *ptr ? ZERR_BADFIELD : ZERR_NONE;
 }
+
+Code_t ZReadAscii32(ptr, len, value_ptr)
+    char *ptr;
+    int len;
+    unsigned long *value_ptr;
+{
+    unsigned char buf[4];
+    Code_t retval;
+
+    retval = ZReadAscii(ptr, len, buf, 4);
+    if (retval != ZERR_NONE)
+	return retval;
+    *value_ptr = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+    return ZERR_NONE;
+}
+
+Code_t ZReadAscii16(ptr, len, value_ptr)
+    char *ptr;
+    int len;
+    unsigned short *value_ptr;
+{
+    unsigned char buf[2];
+    Code_t retval;
+
+    retval = ZReadAscii(ptr, len, buf, 2);
+    if (retval != ZERR_NONE)
+	return retval;
+    *value_ptr = (buf[0] << 8) | buf[1];
+    return ZERR_NONE;
+}
+

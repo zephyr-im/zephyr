@@ -11,21 +11,18 @@
  *	"mit-copyright.h". 
  */
 
-#include <zephyr/zephyr_internal.h>
-#include <signal.h>
+#include <sysdep.h>
+#include <zephyr/zephyr.h>
 #include <sys/socket.h>
 
 #if !defined(lint) && !defined(SABER)
-static char rcsid_zlocate_c[] = "$Id$";
+static const char rcsid_zlocate_c[] = "$Id$";
 #endif
 
 int numusers=0, numleft=0, parallel=0, oneline=0;
 char *whoami;
 
-#ifdef POSIX
-void
-#endif
-timeout(sig)
+RETSIGTYPE timeout(sig)
 {
   fprintf (stderr, "%s: no response from server\n", whoami);
   exit(1);
@@ -75,9 +72,9 @@ main(argc,argv)
 {
     char user[BUFSIZ],*whichuser;
     ZAsyncLocateData_t ald;
-    int retval,i,numlocs,loc,auth;
+    int retval,i,numlocs,numfound,loc,auth;
     ZNotice_t notice;
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     struct sigaction sa;
 #endif
    
@@ -122,6 +119,7 @@ main(argc,argv)
     } 
 
     numleft = numusers;
+    numfound = 0;
 
     i = 0;
     for (loc = 0; loc < argc; loc++) {
@@ -145,11 +143,12 @@ main(argc,argv)
 		exit(1);
 	    }
 	    print_locs(user,numlocs);
+	    numfound += numlocs;
 	}
     }
 
     if (parallel) {
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	sa.sa_handler = timeout;
@@ -171,9 +170,10 @@ main(argc,argv)
 	    if (numlocs >= 0) {
 		print_locs(whichuser,numlocs);
 		free(whichuser);
+		numfound += numlocs;
 	    }
 	    ZFreeNotice(&notice);
 	}
     }
-    return(0);
+    return((numfound > 0) ? 0 : 1);
 }

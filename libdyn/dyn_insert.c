@@ -13,7 +13,7 @@
 #include "dynP.h"
 
 int DynInsert(obj, idx, els, num)
-   DynObjectP obj;
+   DynObject obj;
    DynPtr els;
    int idx, num;
 {
@@ -34,7 +34,7 @@ int DynInsert(obj, idx, els, num)
      }
 
      if (obj->debug)
-	  fprintf(stderr,"dyn: insert: Moving %d bytes from %d + %d to + %d\n",
+	  fprintf(stderr,"dyn: insert: Moving %d bytes from %p + %d to + %d\n",
 		  (obj->num_el-idx)*obj->el_size, obj->array,
 		  obj->el_size*idx, obj->el_size*(idx+num));
 
@@ -45,7 +45,7 @@ int DynInsert(obj, idx, els, num)
 		    (obj->num_el-idx)*obj->el_size);
 
      if (obj->debug)
-	  fprintf(stderr, "dyn: insert: Copying %d bytes from %d to %d + %d\n",
+	  fprintf(stderr, "dyn: insert: Copying %d bytes from %p to %p + %d\n",
 		  obj->el_size*num, els, obj->array, obj->el_size*idx);
 
      (void) memmove(obj->array + obj->el_size*idx, els, obj->el_size*num);

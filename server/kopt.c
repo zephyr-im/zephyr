@@ -16,24 +16,22 @@
  * Kerberos: krb_conf.h,v 4.0 89/01/23 09:59:27 jtkohl Exp
  */
 
+#include <zephyr/mit-copyright.h>
+#include "zserver.h"
+
 #ifndef lint
 #ifndef SABER
-static char *rcsid_rd_req_c =
+static const char *rcsid_rd_req_c =
     "$Id$";
 #endif /* lint */
 #endif /* SABER */
 
-#ifdef KERBEROS
+#ifdef ZEPHYR_USES_KERBEROS
 #ifndef NOENCRYPTION
 
-#include <zephyr/mit-copyright.h>
-#include <zephyr/zephyr.h>
-#include <stdio.h>
-#include <krb.h>
-#include "zserver.h"
-
 /* Byte ordering */
-static int krbONE;
+#undef HOST_BYTE_ORDER
+static int krbONE = 1;
 #define		HOST_BYTE_ORDER	(* (char *) &krbONE)
 
 #define		KRB_PROT_VERSION 	4
@@ -63,9 +61,6 @@ static int krbONE;
 #define		KERB_ERR_PRINCIPAL_UNKNOWN		 8
 #define		KERB_ERR_PRINCIPAL_NOT_UNIQUE		 9
 #define		KERB_ERR_NULL_KEY			10
-
-#include <sys/time.h>
-#include <string.h>
 
 extern int krb_ap_req_debug;
 
@@ -97,34 +92,26 @@ typedef struct {
 } KeySchedRec;
 static KeySchedRec scheds[HASH_SIZE_1][HASH_SIZE_2];
 
-#ifdef __STDC__
-Sched* check_key_sched_cache (des_cblock key)
-#else
-Sched* check_key_sched_cache (key)
-     des_cblock key;
-#endif
+Sched *check_key_sched_cache(key)
+    des_cblock key;
 {
     unsigned int hash_value = key[0] + key[1] * 256;
     KeySchedRec *rec = scheds[hash_value % HASH_SIZE_1];
     int i;
 
-    for (i = HASH_SIZE_2 - 1; i >= 0; i--)
-	if (rec[i].last_time_used
-	    && key[0] == rec[i].key[0]
-	    && !memcmp (key, rec[i].key, sizeof (des_cblock))) {
+    for (i = HASH_SIZE_2 - 1; i >= 0; i--) {
+	if (rec[i].last_time_used && key[0] == rec[i].key[0]
+	    && !memcmp(key, rec[i].key, sizeof(des_cblock))) {
 	    rec[i].last_time_used = last_use++;
 	    return &rec[i].schedule;
 	}
+    }
     return 0;
 }
 
-#ifdef __STDC__
-void add_to_key_sched_cache (des_cblock key, Sched* sched)
-#else
-void add_to_key_sched_cache (key, sched)
-     des_cblock key;
-     Sched* sched;
-#endif
+void add_to_key_sched_cache(key, sched)
+    des_cblock key;
+    Sched *sched;
 {
     unsigned int hash_value = key[0] + key[1] * 256;
     KeySchedRec *rec = scheds[hash_value % HASH_SIZE_1];
@@ -138,7 +125,7 @@ void add_to_key_sched_cache (key, sched)
 	if (rec[i].last_time_used < rec[oldest].last_time_used)
 	    oldest = i;
     }
-    (void) memcpy (rec[oldest].key, key, sizeof (des_cblock));
+    memcpy (rec[oldest].key, key, sizeof(des_cblock));
     rec[oldest].schedule = *sched;
     rec[oldest].last_time_used = last_use++;
 }
@@ -178,7 +165,7 @@ krb_set_key(key,cvt)
     int cvt;
 {
 #ifdef NOENCRYPTION
-    (void) memset(serv_key, 0, sizeof(serv_key));
+    memset(serv_key, 0, sizeof(serv_key));
     return KSUCCESS;
 #else /* Encrypt */
     Sched *s;
@@ -187,15 +174,15 @@ krb_set_key(key,cvt)
     if (cvt)
 	string_to_key(key,serv_key);
     else
-	(void) memcpy((char *)serv_key,key,8);
+	memcpy((char *)serv_key,key,8);
 
     s = check_key_sched_cache (serv_key);
     if (s) {
 	serv_ksched = *s;
 	return 0;
     }
-    ret = des_key_sched (serv_key, serv_ksched.s);
-    add_to_key_sched_cache (serv_key, &serv_ksched);
+    ret = des_key_sched(serv_key, serv_ksched.s);
+    add_to_key_sched_cache(serv_key, &serv_ksched);
     return ret;
 #endif /* NOENCRYPTION */
 }
@@ -242,18 +229,19 @@ krb_set_key(key,cvt)
  * Mutual authentication is not implemented.
  */
 
+int
 krb_rd_req(authent,service,instance,from_addr,ad,fn)
-    register KTEXT authent;	/* The received message */
-    char *service;		/* Service name */
-    char *instance;		/* Service instance */
-    long from_addr;		/* Net address of originating host */
-    AUTH_DAT *ad;		/* Structure to be filled in */
-    char *fn;			/* Filename to get keys from */
+    KTEXT authent;			/* The received message */
+    char *service;			/* Service name */
+    char *instance;			/* Service instance */
+    unsigned KRB_INT32 from_addr;	/* Net address of originating host */
+    AUTH_DAT *ad;			/* Structure to be filled in */
+    char *fn;				/* Filename to get keys from */
 {
     KTEXT_ST ticket;     /* Temp storage for ticket */
     KTEXT tkt = &ticket;
     KTEXT_ST req_id_st;  /* Temp storage for authenticator */
-    register KTEXT req_id = &req_id_st;
+    KTEXT req_id = &req_id_st;
 
     char realm[REALM_SZ];	/* Realm of issuing kerberos */
     Sched seskey_sched, *sched;	/* Key sched for session key */
@@ -265,7 +253,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     char r_realm[REALM_SZ];	/* Client realm from authenticator */
     unsigned int r_time_ms;     /* Fine time from authenticator */
     unsigned long r_time_sec;   /* Coarse time from authenticator */
-    register char *ptr;		/* For stepping through */
+    char *ptr;			/* For stepping through */
     unsigned long delta_t;      /* Time in authenticator - local time */
     long tkt_age;		/* Age of ticket */
     int swap_bytes;		/* Need to swap bytes? */
@@ -283,7 +271,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 
     /* check version */
     if (KRB_PROT_VERSION != (unsigned int) *ptr++)
-        return(RD_AP_VERSION);
+        return RD_AP_VERSION;
 
     /* byte order */
     swap_bytes = 0;
@@ -293,12 +281,12 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     /* check msg type */
     mutual = 0;
     switch (*ptr++ & ~1) {
-    case AUTH_MSG_APPL_REQUEST:
+      case AUTH_MSG_APPL_REQUEST:
         break;
-    case AUTH_MSG_APPL_REQUEST_MUTUAL:
+      case AUTH_MSG_APPL_REQUEST_MUTUAL:
         mutual++;
         break;
-    default:
+      default:
         return(RD_AP_MSG_TYPE);
     }
 
@@ -309,7 +297,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
         mutual = 0;
 #endif /* lint */
     s_kvno = *ptr++;		/* get server key version */
-    (void) strcpy(realm,ptr);   /* And the realm of the issuing KDC */
+    strcpy(realm,ptr);		/* And the realm of the issuing KDC */
     ptr += strlen(ptr) + 1;     /* skip the realm "hint" */
 
     /*
@@ -320,85 +308,90 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
      * from the ticket file.  If "fn" is the null string, use the
      * default ticket file.
      */
-    if (fn && (strcmp(st_nam,service) || strcmp(st_inst,instance) ||
-               strcmp(st_rlm,realm) || (st_kvno != s_kvno))) {
-        if (*fn == 0) fn = KEYFILE;
+    if (fn && (strcmp(st_nam,service) != 0 || strcmp(st_inst,instance) != 0 ||
+               strcmp(st_rlm,realm) != 0 || (st_kvno != s_kvno))) {
+        if (*fn == 0)
+	    fn = KEYFILE;
         st_kvno = s_kvno;
 #ifndef NOENCRYPTION
-        if (read_service_key(service,instance,realm,(int) s_kvno,
-                            fn,(char *)skey))
+        if (read_service_key(service,instance,realm, (int) s_kvno,
+                            fn, (char *) skey))
             return(RD_AP_UNDEC);
-        if ((status = krb_set_key((char *)skey,0)) != 0)
+        status = krb_set_key((char *) skey, 0);
+	if (status != 0)
 	    return(status);
 #endif /* !NOENCRYPTION */
-        (void) strcpy(st_rlm,realm);
-        (void) strcpy(st_nam,service);
-        (void) strcpy(st_inst,instance);
+        strcpy(st_rlm,realm);
+        strcpy(st_nam,service);
+        strcpy(st_inst,instance);
     }
 
     /* Get ticket from authenticator */
     tkt->length = (int) *ptr++;
     if ((tkt->length + (ptr+1 - (char *) authent->dat)) > authent->length)
-	return(RD_AP_MODIFIED);
-    (void) memcpy((char *)(tkt->dat),ptr+1,tkt->length);
+	return RD_AP_MODIFIED;
+    memcpy(tkt->dat, ptr + 1, tkt->length);
 
     if (krb_ap_req_debug)
-        log("ticket->length: %d",tkt->length);
+        krb_log("ticket->length: %d", tkt->length);
 
 #ifndef NOENCRYPTION
     /* Decrypt and take apart ticket */
 #endif
 
-    if (decomp_ticket(tkt,&ad->k_flags,ad->pname,ad->pinst,ad->prealm,
-                      &(ad->address),ad->session, &(ad->life),
-                      &(ad->time_sec),sname,iname,serv_key,serv_ksched.s))
-        return(RD_AP_UNDEC);
+    if (decomp_ticket(tkt, &ad->k_flags, ad->pname, ad->pinst, ad->prealm,
+                      &(ad->address), ad->session, &(ad->life),
+                      &(ad->time_sec), sname, iname, serv_key, serv_ksched.s))
+        return RD_AP_UNDEC;
 
     if (krb_ap_req_debug) {
-        log("Ticket Contents.");
-        log(" Aname:   %s.%s",ad->pname,
-            ((int)*(ad->prealm) ? ad->prealm : "Athena"));
-        log(" Service: %s%s%s",sname,((int)*iname ? "." : ""),iname);
+        krb_log("Ticket Contents.");
+        krb_log(" Aname:   %s.%s",ad->pname,
+                ((int)*(ad->prealm) ? ad->prealm : "Athena"));
+        krb_log(" Service: %s%s%s", sname, ((int)*iname ? "." : ""), iname);
     }
 
     /* Extract the authenticator */
     req_id->length = (int) *(ptr++);
     if ((req_id->length + (ptr + tkt->length - (char *) authent->dat)) >
 	authent->length)
-	return(RD_AP_MODIFIED);
-    (void) memcpy((char *)(req_id->dat),ptr + tkt->length, req_id->length);
+	return RD_AP_MODIFIED;
+    memcpy(req_id->dat, ptr + tkt->length, req_id->length);
 
 #ifndef NOENCRYPTION
     /* And decrypt it with the session key from the ticket */
-    if (krb_ap_req_debug) log("About to decrypt authenticator");
-    sched = check_key_sched_cache (ad->session);
+    if (krb_ap_req_debug)
+	krb_log("About to decrypt authenticator");
+    sched = check_key_sched_cache(ad->session);
     if (!sched) {
 	sched = &seskey_sched;
-	key_sched (ad->session, seskey_sched.s);
-	add_to_key_sched_cache (ad->session, &seskey_sched);
+	key_sched(ad->session, seskey_sched.s);
+	add_to_key_sched_cache(ad->session, &seskey_sched);
     }
     /* can't do much to optimize this... */
-    pcbc_encrypt((C_Block *)req_id->dat,(C_Block *)req_id->dat,
-		 (long) req_id->length, sched->s, ad->session,DES_DECRYPT);
-    if (krb_ap_req_debug) log("Done.");
+    pcbc_encrypt((C_Block *) req_id->dat, (C_Block *) req_id->dat,
+		 (long) req_id->length, sched->s, ad->session, DES_DECRYPT);
+    if (krb_ap_req_debug)
+	krb_log("Done.");
 #endif /* NOENCRYPTION */
 
 #define check_ptr() if ((ptr - (char *) req_id->dat) > req_id->length) return(RD_AP_MODIFIED);
 
     ptr = (char *) req_id->dat;
-    (void) strcpy(r_aname,ptr);	/* Authentication name */
-    ptr += strlen(r_aname)+1;
+    strcpy(r_aname,ptr);	/* Authentication name */
+    ptr += strlen(r_aname) + 1;
     check_ptr();
-    (void) strcpy(r_inst,ptr);	/* Authentication instance */
-    ptr += strlen(r_inst)+1;
+    strcpy(r_inst,ptr);		/* Authentication instance */
+    ptr += strlen(r_inst) + 1;
     check_ptr();
-    (void) strcpy(r_realm,ptr);	/* Authentication name */
-    ptr += strlen(r_realm)+1;
+    strcpy(r_realm,ptr);	/* Authentication name */
+    ptr += strlen(r_realm) + 1;
     check_ptr();
-    (void) memcpy((char *)&ad->checksum,ptr,4);	/* Checksum */
+    memcpy(&ad->checksum, ptr, 4);	/* Checksum */
     ptr += 4;
     check_ptr();
-    if (swap_bytes) swap_u_long(ad->checksum);
+    if (swap_bytes)
+	swap_u_long(ad->checksum);
     r_time_ms = *(ptr++);	/* Time (fine) */
 #ifdef lint
     /* XXX r_time_ms is set but not used.  why??? */
@@ -408,61 +401,102 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 #endif /* lint */
     check_ptr();
     /* assume sizeof(r_time_sec) == 4 ?? */
-    (void) memcpy((char *)&r_time_sec,ptr,4); /* Time (coarse) */
-    if (swap_bytes) swap_u_long(r_time_sec);
+    memcpy(&r_time_sec,ptr,4); /* Time (coarse) */
+    if (swap_bytes)
+	swap_u_long(r_time_sec);
 
     /* Check for authenticity of the request */
     if (krb_ap_req_debug)
-        log("Pname:   %s %s",ad->pname,r_aname);
+        krb_log("Pname:   %s %s",ad->pname,r_aname);
     if (strcmp(ad->pname,r_aname) != 0)
-        return(RD_AP_INCON);
+        return RD_AP_INCON;
     if (strcmp(ad->pinst,r_inst) != 0)
-        return(RD_AP_INCON);
+        return RD_AP_INCON;
     if (krb_ap_req_debug)
-        log("Realm:   %s %s",ad->prealm,r_realm);
-    if ((strcmp(ad->prealm,r_realm) != 0))
-        return(RD_AP_INCON);
+        krb_log("Realm:   %s %s", ad->prealm, r_realm);
+    if (strcmp(ad->prealm,r_realm) != 0)
+        return RD_AP_INCON;
 
     if (krb_ap_req_debug)
-        log("Address: %d %d",ad->address,from_addr);
+        krb_log("Address: %d %d", ad->address, from_addr);
     if (from_addr && (ad->address != from_addr))
-        return(RD_AP_BADD);
+        return RD_AP_BADD;
 
     delta_t = abs((int)(t_local.tv_sec - r_time_sec));
     if (delta_t > CLOCK_SKEW) {
-	(void) gettimeofday(&t_local, (struct timezone *)0);
+	gettimeofday(&t_local, NULL);
 	delta_t = abs((int)(t_local.tv_sec - r_time_sec));
 	if (delta_t > CLOCK_SKEW) {
-	    if (krb_ap_req_debug)
-		log("Time out of range: %d - %d = %d",
-		    t_local.tv_sec,r_time_sec,delta_t);
-	    return(RD_AP_TIME);
+	    if (krb_ap_req_debug) {
+		krb_log("Time out of range: %d - %d = %d",
+			t_local.tv_sec, r_time_sec, delta_t);
+	    }
+	    return RD_AP_TIME;
 	}
     }
 
     /* Now check for expiration of ticket */
 
     tkt_age = t_local.tv_sec - ad->time_sec;
-    if (krb_ap_req_debug)
-        log("Time: %d Issue Date: %d Diff: %d Life %x",
-            t_local.tv_sec,ad->time_sec,tkt_age,ad->life);
+    if (krb_ap_req_debug) {
+        krb_log("Time: %d Issue Date: %d Diff: %d Life %x",
+                t_local.tv_sec, ad->time_sec, tkt_age, ad->life);
+    }
 
     if (t_local.tv_sec < ad->time_sec) {
-        if ((ad->time_sec - t_local.tv_sec) > CLOCK_SKEW)
-            return(RD_AP_NYV);
+        if (ad->time_sec - t_local.tv_sec > CLOCK_SKEW)
+            return RD_AP_NYV;
+    } else if (t_local.tv_sec - ad->time_sec > 5 * 60 * ad->life) {
+        return RD_AP_EXP;
     }
-    else if ((t_local.tv_sec - ad->time_sec) > 5 * 60 * ad->life)
-        return(RD_AP_EXP);
 
     /* All seems OK */
     ad->reply.length = 0;
 
-    return(RD_AP_OK);
+    return RD_AP_OK;
 }
 #endif /* NOENCRYPTION */
 
+int
+krb_find_ticket(authent, ticket)
+    KTEXT authent, ticket;
+{
+    char *ptr;		/* For stepping through */
+
+    /* Check for bogus length. */
+    if (authent->length <= 0)
+	return RD_AP_MODIFIED;
+
+    ptr = (char *) authent->dat;
+
+    /* check version */
+    if (KRB_PROT_VERSION != (unsigned int) *ptr++)
+        return RD_AP_VERSION;
+
+    /* Make sure msg type is ok. */
+    switch (*ptr++ & ~1) {
+    case AUTH_MSG_APPL_REQUEST:
+    case AUTH_MSG_APPL_REQUEST_MUTUAL:
+        break;
+    default:
+        return RD_AP_MSG_TYPE;
+    }
+
+    *ptr++;			/* skip server key version */
+    ptr += strlen(ptr) + 1;     /* skip the realm "hint" */
+
+    /* Get ticket from authenticator */
+    ticket->length = (int) *ptr++;
+    if ((ticket->length + (ptr + 1 - (char *) authent->dat)) > authent->length)
+	return RD_AP_MODIFIED;
+    memcpy((char *)(ticket->dat),ptr+1,ticket->length);
+
+    return RD_AP_OK;
+}
+
 static char local_realm_buffer[REALM_SZ+1];
 
+int
 krb_get_lrealm(r,n)
     char *r;
     int n;
@@ -470,125 +504,111 @@ krb_get_lrealm(r,n)
     FILE *cnffile, *fopen();
 
     if (n > 1)
-	return(KFAILURE);  /* Temporary restriction */
+	return KFAILURE;  /* Temporary restriction */
+
+    if (my_realm[0]) {
+	strcpy(r, my_realm);
+	return KSUCCESS;
+    }
 
     if (local_realm_buffer[0]) {
-	strcpy (r, local_realm_buffer);
+	strcpy(r, local_realm_buffer);
 	return KSUCCESS;
     }
     
-    if ((cnffile = fopen(KRB_CONF, "r")) == NULL) {
+    cnffile = fopen(KRB_CONF, "r");
+    if (cnffile == NULL) {
 	if (n == 1) {
-	    (void) strcpy(r, KRB_REALM);
-	    return(KSUCCESS);
+	    strcpy(r, KRB_REALM);
+	    return KSUCCESS;
+	} else {
+	    return KFAILURE;
 	}
-	else
-	    return(KFAILURE);
     }
 
     if (fscanf(cnffile,"%s",r) != 1) {
-        (void) fclose(cnffile);
-        return(KFAILURE);
+        fclose(cnffile);
+        return KFAILURE;
     }
-    (void) fclose(cnffile);
+    fclose(cnffile);
+    return KSUCCESS;
+}
+
+int
+decomp_ticket(tkt, flags, pname, pinstance, prealm, paddress, session,
+              life, time_sec, sname, sinstance, key, key_s)
+    KTEXT tkt;                  /* The ticket to be decoded */
+    unsigned char *flags;       /* Kerberos ticket flags */
+    char *pname;                /* Authentication name */
+    char *pinstance;            /* Principal's instance */
+    char *prealm;               /* Principal's authentication domain */
+    unsigned long *paddress; /* Net address of entity
+                                 * requesting ticket */
+    C_Block session;            /* Session key inserted in ticket */
+    int *life;                  /* Lifetime of the ticket */
+    unsigned long *time_sec; /* Issue time and date */
+    char *sname;                /* Service name */
+    char *sinstance;            /* Service instance */
+    C_Block key;                /* Service's secret key
+                                 * (to decrypt the ticket) */
+    des_key_sched key_s;	/* The precomputed key schedule */
+{
+    static int tkt_swap_bytes;
+    unsigned char *uptr;
+    char *ptr = (char *)tkt->dat;
+
+#ifndef NOENCRYPTION
+    /* Do the decryption */
+    pcbc_encrypt((C_Block *)tkt->dat,(C_Block *)tkt->dat,
+                 (long) tkt->length,key_s,(C_Block *) key,0);
+#endif /* ! NOENCRYPTION */
+
+    *flags = *ptr;              /* get flags byte */
+    ptr += sizeof(*flags);
+    tkt_swap_bytes = 0;
+    if (HOST_BYTE_ORDER != ((*flags >> K_FLAG_ORDER)& 1))
+        tkt_swap_bytes++;
+
+    if (strlen(ptr) > ANAME_SZ)
+        return(KFAILURE);
+    strcpy(pname,ptr);   /* pname */
+    ptr += strlen(pname) + 1;
+
+    if (strlen(ptr) > INST_SZ)
+        return(KFAILURE);
+    strcpy(pinstance,ptr); /* instance */
+    ptr += strlen(pinstance) + 1;
+
+    if (strlen(ptr) > REALM_SZ)
+        return(KFAILURE);
+    strcpy(prealm,ptr);  /* realm */
+    ptr += strlen(prealm) + 1;
+    /* temporary hack until realms are dealt with properly */
+    if (*prealm == 0)
+	strcpy(prealm, ZGetRealm());
+
+    memcpy((char *)paddress, ptr, 4); /* net address */
+    ptr += 4;
+
+    memcpy((char *)session, ptr, 8); /* session key */
+    ptr+= 8;
+
+    /* get lifetime, being certain we don't get negative lifetimes */
+    uptr = (unsigned char *) ptr++;
+    *life = (int) *uptr;
+
+    memcpy((char *) time_sec, ptr, 4); /* issue time */
+    ptr += 4;
+    if (tkt_swap_bytes)
+	swap_u_long(*time_sec);
+
+    strcpy(sname,ptr);   /* service name */
+    ptr += 1 + strlen(sname);
+
+    strcpy(sinstance,ptr); /* instance */
+    ptr += 1 + strlen(sinstance);
+
     return(KSUCCESS);
 }
+#endif /* ZEPHYR_USES_KERBEROS */
 
-#endif /* KERBEROS */
-
-#ifdef ibm032
-
-#if defined (__GNUC__) || defined (__HIGHC__)
-#ifdef __HIGHC__
-#define asm _ASM
-#endif
-
-/*
- * Copyright (C) 1990 by the Massachusetts Institute of Technology
- *
- * Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee is hereby granted.
- */
-
-void asm_wrapper_kopt_c () {
-    /*
-     * Multiply routine.  The C library routine tries to optimize around
-     * the multiply-step instruction, which was slower in earlier versions
-     * of the processor; this is no longer useful.  Derived from assembly
-     * code written by John Carr.
-     */
-    
-    /* data section */
-    asm(".data\n.align 2");
-    asm(".globl _ulmul$$ \n _ulmul$$:");
-    asm(".globl _lmul$$  \n _lmul$$: .long lmul$$");
-    /* text section */
-    asm(".text \n .align 1");
-    asm(".globl lmul$$    \n lmul$$:");
-    asm(".globl ulmul$$   \n ulmul$$:");
-    asm(".globl _.lmul$$  \n _.lmul$$:");
-    asm(".globl _.ulmul$$ \n _.ulmul$$:");
-    asm("   s r0,r0 \n mts r10,r2"); /* set up multiply, and go: */
-    asm("   m r0,r3 \n m r0,r3 \n m r0,r3 \n m r0,r3"); /* execute 4 steps */
-    asm("   m r0,r3 \n m r0,r3 \n m r0,r3 \n m r0,r3"); /* execute 4 steps */
-    asm("   m r0,r3 \n m r0,r3 \n m r0,r3 \n m r0,r3"); /* execute 4 steps */
-    asm("   m r0,r3 \n m r0,r3 \n m r0,r3 \n m r0,r3"); /* execute 4 steps */
-    asm("   brx r15 \n mfs r10,r2"); /* return result */
-    asm("   .long 0xdf02df00");	/* for debugging */
-    
-#ifdef USE_LIBC_STRLEN
-  }
-#else
-    /* Note- do not use this version of strlen when compiling with -g; -g */
-    /* causes extra no-ops to be inserted between instructions, which cause */
-    /* the delayed branch instructions to fail. */
-
-    /*
-     * Fast strlen, with optional trapping of null pointers.  Also from
-     * John Carr.
-     */
-    /* data */
-    asm(".data\n.align 2");
-    asm(".globl _strlen \n _strlen: .long _.strlen");
-    /* text */
-    asm(".text\n.align 1");
-    asm(".globl _.strlen \n _.strlen:");
-#if 1
-    asm("	ti	2,r2,0"); /* trap if r2 is NULL */
-#endif
-    asm("	ls      r4,0(r2)");
-    asm("	mr	r0,r2");
-    asm("	nilz	r3,r2,3");
-    asm("	beqx	0f");
-    asm("	nilo	r2,r2,0xfffc");	/* clear low bits */
-    asm("	sis	r3,2");	/* test appropriate bytes of 1st word */
-    asm("	jeq	2f");	/* s & 3 == 2 */
-    asm("	jm	1f");	/* s & 3 == 1 */
-    asm("	j	3f");	/* s & 3 == 3 */
-    asm("0:	srpi16	r4,8");	/* byte 0 */
-    asm("	jeq	4f");
-    asm("1:	niuz	r5,r4,0xff"); /* byte 1 */
-    asm("	jeq	5f");
-    asm("2:	nilz	r5,r4,0xff00");	/* byte 2 */
-    asm("	jeq	6f");
-    asm("3:	sli16	r4,8");	/* byte 3 */
-    asm("	jeq	7f");
-    asm("	ls	r4,4(r2)"); /* get next word and continue */
-    asm("	bx	0b");
-    asm("	inc	r2,4");
-    asm("4:	brx	r15");	/* byte 0 is zero */
-    asm("	s	r2,r0");
-    asm("5:	s	r2,r0"); /* byte 1 is zero */
-    asm("	brx	r15");
-    asm("	inc	r2,1");
-    asm("6:	s	r2,r0"); /* byte 2 is zero */
-    asm("	brx	r15");
-    asm("	inc	r2,2");
-    asm("7:	s	r2,r0"); /* byte 3 is zero */
-    asm("	brx	r15");
-    asm("	inc	r2,3");
-    asm("	.long	0xdf02df00"); /* trace table */
-}
-#endif /* USE_LIBC_STRLEN */
-#endif /* __GNUC__ || __HIGHC__ */
-#endif /* ibm032 */

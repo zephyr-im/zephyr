@@ -19,7 +19,7 @@
  * library.  However, nothing will break if it is.
  */
 int _DynRealloc(obj, num_incs)
-   DynObjectP obj;
+   DynObject obj;
    int num_incs;
 {
      DynPtr temp;
