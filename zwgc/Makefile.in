@@ -21,9 +21,10 @@ YACC=@YACC@
 INSTALL=@INSTALL@
 INSTANTIATE=${srcdir}/instantiate
 
-DEBUG=-O
-CFLAGS=${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
-	-I${BUILDTOP}/h -I${srcdir} -I. @X_CFLAGS@ @CPPFLAGS@
+CPPFLAGS=@CPPFLAGS@
+CFLAGS=@CFLAGS@
+ALL_CFLAGS=${CFLAGS} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
+	-I${BUILDTOP}/h -I${srcdir} -I. @X_CFLAGS@ ${CPPFLAGS}
 YFLAGS=-d
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib @X_LIBS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err @X_PRE_LIBS@ @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
@@ -68,6 +69,17 @@ string_stack.h: stack.h
 xmode_stack.h: stack.h
 	${INSTANTIATE} ${srcdir} stack xmode
 
+lexer.o: y.tab.h
+
+parser.o: y.tab.c y.tab.h
+	${CC} -c ${ALL_CFLAGS} -o $@ y.tab.c
+
+y.tab.c y.tab.h: parser.y
+	${YACC} ${YFLAGS} parser.y
+
+.c.o:
+	${CC} -c ${ALL_CFLAGS} $<
+
 check:
 
 install: zwgc
@@ -80,6 +92,7 @@ clean:
 	rm -f ${OBJS} zwgc port_dictionary.[ch] pointer_dictionary.[ch]
 	rm -f unsigned_long_dictionary.[ch] string_dictionary.[ch]
 	rm -f int_dictionary.[ch] char_stack.h string_stack.h xmode_stack.h
+	rm -f y.tab.[ch]
 
 ${OBJS}: ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
 zephyr.o: ${BUILDTOP}/h/zephyr/zephyr.h ${BUILDTOP}/h/zephyr/zephyr_err.h
@@ -105,7 +118,7 @@ exec.o: new_memory.h exec.h eval.h node.h buffer.h port.h variables.h notice.h
 file.o: new_memory.h new_string.h error.h
 formatter.o: new_memory.h char_stack.h string_dictionary.h formatter.h
 formatter.o: text_operations.h
-lexer.o: new_memory.h new_string.h int_dictionary.h lexer.h parser.h y.tab.h
+lexer.o: new_memory.h new_string.h int_dictionary.h lexer.h parser.h
 main.o: new_memory.h zwgc.h parser.h node.h exec.h zephyr.h notice.h
 main.o: subscriptions.h file.h mux.h port.h variables.h main.h
 mux.o: mux.h error.h zwgc.h pointer.h

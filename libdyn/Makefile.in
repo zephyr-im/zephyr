@@ -18,8 +18,9 @@ VPATH=@srcdir@
 CC=@CC@
 RANLIB=@RANLIB@
 
-DEBUG=-O
-CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @CPPFLAGS@
+CPPFLAGS=@CPPFLAGS@
+CFLAGS=@CFLAGS@
+ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h ${CPPFLAGS}
 
 OBJS =	dyn_append.o dyn_create.o dyn_debug.o dyn_delete.o dyn_insert.o \
 	dyn_paranoid.o dyn_put.o dyn_realloc.o dyn_size.o
@@ -32,6 +33,9 @@ libdyn.a: ${OBJS}
 
 dyntest: libdyn.a dyntest.o
 	${CC} ${LDFLAGS} -o $@ dyntest.o libdyn.a
+
+.c.o:
+	${CC} -c ${ALL_CFLAGS} $<
 
 check:
 
