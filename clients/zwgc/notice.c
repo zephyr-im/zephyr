@@ -278,7 +278,7 @@ char *decode_notice(notice)
      * Set $sender to the name of the notice sender except first strip off the
      * realm name if it is the local realm:
      */
-    if ( (temp=index(notice->z_sender,'@')) && string_Eq(temp+1, ZGetRealm()) )
+    if ( (temp=strchr(notice->z_sender,'@')) && string_Eq(temp+1, ZGetRealm()) )
       var_set_variable_then_free_value("sender",
 				string_CreateFromData(notice->z_sender,
 						      temp-notice->z_sender));

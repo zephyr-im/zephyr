@@ -272,7 +272,7 @@ static void load_subscriptions_from_file(file)
 	    /* <<<>>>
 	     * The below does NOT work is the recipient field  is "":
 	     */ 
-	    if (temp = index(line, '#'))
+	    if (temp = strchr(line, '#'))
 	      *temp = '\0';
 	    for (temp=line; *temp && *temp==' '; temp++) ;
 	    if (!*temp || *temp=='\n')
