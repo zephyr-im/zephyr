@@ -26,7 +26,7 @@ Code_t ZInitialize()
 	init_zeph_err_tbl();
 	init_krb_err_tbl();
 	
-	bzero(&__HM_addr,sizeof(__HM_addr));
+	bzero((char *)&__HM_addr,sizeof(__HM_addr));
 
 	__HM_addr.sin_family = AF_INET;
 	
@@ -42,12 +42,12 @@ Code_t ZInitialize()
 
 	__HM_addr.sin_port = hmserv->s_port;
 
-	bcopy(addr,&__HM_addr.sin_addr,4);
+	bcopy(addr,(char *)&__HM_addr.sin_addr,4);
 
 	__HM_set = 0;
 	
 	if (get_krbrlm(__Zephyr_realm,1) != KSUCCESS)
-		strcpy(__Zephyr_realm,"NOREALM");
+		(void)strcpy(__Zephyr_realm,"NOREALM");
 
 	return (ZERR_NONE);
 }

@@ -28,13 +28,13 @@ Code_t ZMakeAscii(ptr,len,field,num)
 		if (!(i%4)) {
 			if (len < 3+(i!=0))
 				return (ZERR_FIELDLEN);
-			sprintf(ptr,"%s0x",i?" ":"");
+			(void) sprintf(ptr,"%s0x",i?" ":"");
 			ptr += 2+(i!=0);
 			len -= 2+(i!=0);
 		} 
 		if (len < 3)
 			return (ZERR_FIELDLEN);
-		sprintf(ptr,"%02x",field[i]);
+		(void) sprintf(ptr,"%02x",field[i]);
 		ptr += 2;
 		len -= 2;
 	}

@@ -21,7 +21,7 @@ int ZPending()
 	if (ZGetFD() < 0)
 		return (-1);
 
-	Z_ReadEnqueue();
+	(void) Z_ReadEnqueue();
 	
 	return(ZQLength());
 }
