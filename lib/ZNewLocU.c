@@ -6,15 +6,16 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZNewLocateUser_c[] = "$Header$";
-#endif lint
+static char rcsid_ZNewLocateUser_c[] =
+    "$Zephyr: /mit/zephyr/src/lib/RCS/ZNewLocateUser.c,v 1.4 90/12/20 03:10:34 raeburn Exp $";
+#endif
 
 #include <zephyr/mit-copyright.h>
 
@@ -33,10 +34,6 @@ Code_t ZNewLocateUser(user, nlocs, auth)
     ZNotice_t notice, retnotice;
     char *ptr, *end;
     int nrecv, ack;
-    fd_set read, setup;
-    int nfds;
-    int gotone;
-    struct timeval tv;
 
     retval = ZFlushLocations();
 
@@ -63,35 +60,13 @@ Code_t ZNewLocateUser(user, nlocs, auth)
 
     nrecv = ack = 0;
 
-    FD_ZERO(&setup);
-    FD_SET(ZGetFD(), &setup);
-    nfds = ZGetFD() + 1;
-
     while (!nrecv || !ack) {
-	    tv.tv_sec = 0;
-	    tv.tv_usec = 500000;
-	    for (i=0;i<SRV_TIMEOUT*2;i++) {
-		    gotone = 0;
-		    read = setup;
-		    if (select(nfds, &read, (fd_set *) 0,
-			       (fd_set *) 0, &tv) < 0)
-			return (errno);
-		    if (FD_ISSET(ZGetFD(), &read))
-			i--;
-		    retval = ZCheckIfNotice(&retnotice,
-					    (struct sockaddr_in *)0,
-					    ZCompareMultiUIDPred,
-					    (char *)&notice.z_multiuid);
-		    if (retval == ZERR_NONE) {
-			    gotone = 1;
-			    break;
-		    }
-		    if (retval != ZERR_NONOTICE)
-			    return(retval);
-	    }
-		
-	    if (!gotone)
-		    return(ETIMEDOUT);
+	    retval = Z_WaitForNotice (&retnotice, ZCompareMultiUIDPred,
+				      &notice.z_multiuid, SRV_TIMEOUT);
+	    if (retval == ZERR_NONOTICE)
+	      return ETIMEDOUT;
+	    else if (retval != ZERR_NONE)
+	      return retval;
 
 	    if (retnotice.z_kind == SERVNAK) {
 		    ZFreeNotice(&retnotice);
