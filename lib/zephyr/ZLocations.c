@@ -22,8 +22,35 @@ static char rcsid_ZLocations_c[] =
 
 #include <pwd.h>
 
-extern char *getenv();
-extern int errno;
+static char host[MAXHOSTNAMELEN], mytty[MAXPATHLEN];
+static int location_info_set = 0;
+
+Code_t ZInitLocationInfo(hostname, tty)
+    char *hostname;
+    char *tty;
+{
+    char *ttyp, *p;
+
+    if (hostname) {
+	strcpy(host, hostname);
+    } else {
+	if (gethostname(host, MAXHOSTNAMELEN) < 0)
+	    return (errno);
+    }
+    if (tty) {
+	strcpy(mytty, tty);
+    } else {
+	ttyp = ttyname(0);
+	if (ttyp) {
+	    p = strrchr(ttyp, '/');
+	    strcpy(mytty, (p) ? p + 1 : ttyp);
+	} else {
+	    strcpy(mytty, "unknown");
+	}
+    }
+    location_info_set = 1;
+    return (ZERR_NONE);
+}
 
 Code_t ZSetLocation(exposure)
     char *exposure;
@@ -43,9 +70,6 @@ Code_t ZFlushMyLocations()
     return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_FLUSH, ZAUTH, ""));
 }
 
-static char host[MAXHOSTNAMELEN], mytty[MAXPATHLEN];
-static int reenter = 0;
-
 Code_t Z_SendLocation(class, opcode, auth, format)
     char *class;
     char *opcode;
@@ -56,14 +80,13 @@ Code_t Z_SendLocation(class, opcode, auth, format)
     time_t ourtime;
     ZNotice_t notice, retnotice;
     char *bptr[3];
-#ifndef X_DISPLAY_MISSING
-    char *display;
-#endif
-    char *ttyp;
     struct hostent *hent;
     short wg_port = ZGetWGPort();
 
-    (void) memset((char *)&notice, 0, sizeof(notice));
+    if (!location_info_set)
+	ZInitLocationInfo(NULL, NULL);
+
+    memset((char *)&notice, 0, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = (u_short) ((wg_port == -1) ? 0 : wg_port);
     notice.z_class = class;
@@ -74,51 +97,12 @@ Code_t Z_SendLocation(class, opcode, auth, format)
     notice.z_num_other_fields = 0;
     notice.z_default_format = format;
 
-    /*
-      keep track of what we said before so that we can be consistent
-      when changing location information.
-      This is done mainly for the sake of the WindowGram client.
-     */
-
-    if (!reenter) {
-	    if (gethostname(host, MAXHOSTNAMELEN) < 0)
-		    return (errno);
-
-	    hent = gethostbyname(host);
-	    if (hent)
-		    (void) strcpy(host, hent->h_name);
-	    bptr[0] = host;
-#ifndef X_DISPLAY_MISSING
-	    if ((display = getenv("DISPLAY")) && *display) {
-		    (void) strcpy(mytty, display);
-		    bptr[2] = mytty;
-	    } else {
-#endif
-		    ttyp = ttyname(0);
-		    if (ttyp) {
-			bptr[2] = strrchr(ttyp, '/');
-			if (bptr[2])
-			    bptr[2]++;
-			else
-			    bptr[2] = ttyp;
-		    }
-		    else
-			bptr[2] = "unknown";
-		    (void) strcpy(mytty, bptr[2]);
-#ifndef X_DISPLAY_MISSING
-	    }
-#endif
-	    reenter = 1;
-    } else {
-	    bptr[0] = host;
-	    bptr[2] = mytty;
-    }
-
+    bptr[0] = host;
     ourtime = time((time_t *)0);
     bptr[1] = ctime(&ourtime);
     bptr[1][strlen(bptr[1])-1] = '\0';
+    bptr[2] = mytty;
 
-	
     if ((retval = ZSendList(&notice, bptr, 3, auth)) != ZERR_NONE)
 	return (retval);
 
