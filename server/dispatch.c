@@ -426,7 +426,7 @@ sendit(notice, auth, who, external)
 	dest.recip = make_string("", 0);
     } else {
 	strncpy(recipbuf, notice->z_recipient, sizeof(recipbuf));
-	recipp = strrchr(&recipbuf, '@');
+	recipp = strrchr(recipbuf, '@');
 	if (recipp)
 	    sprintf(recipp + 1, "%s", realm_expand_realm(recipp + 1));
 	dest.recip = make_string(recipbuf, 0);
