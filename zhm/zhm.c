@@ -16,7 +16,7 @@
 static const char rcsid_hm_c[] = "$Id$";
 
 #ifdef ZEPHYR_USES_HESIOD
-int ZEPHYR_USES_hesiod = 0;
+int use_hesiod = 0;
 #endif
 
 #ifdef macII
@@ -137,7 +137,7 @@ char *argv[];
     }
 #ifdef ZEPHYR_USES_HESIOD
     else
-	ZEPHYR_USES_hesiod = 1;
+	use_hesiod = 1;
 #endif
 
     choose_server();
@@ -241,7 +241,7 @@ static void choose_server()
     int i = 0;
 
 #ifdef ZEPHYR_USES_HESIOD
-    if (ZEPHYR_USES_hesiod) {
+    if (use_hesiod) {
 
 	/* Free up any previously used resources */
 	if (prim_serv[0]) 
