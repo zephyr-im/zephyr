@@ -235,8 +235,9 @@ static int zeph_send_notice(notice, auth)
      return SEND_OK;
 }
 
+#ifdef DEBUG
 /* debugging function */
-int zeph_display_subscriptions()
+void zeph_display_subscriptions()
 {
      ZSubscription_t sub;
      int n, retval, i = 1;
@@ -254,9 +255,9 @@ int zeph_display_subscriptions()
 	  if (i != 1)
 	       Warning("Subscriptions skipped while printing.", NULL);
 	  
-	  printf("<%s,%s,%s>\n", sub.class, (*sub.classinst) ?
-		 sub.classinst : "**", (*sub.recipient) ?
-		 sub.recipient : "**");
+	  printf("<%s,%s,%s>\n", sub.class, (*sub.zsub_classinst) ?
+		 sub.zsub_classinst : "**", (*sub.zsub_recipient) ?
+		 sub.zsub_recipient : "**");
      }
 }
-
+#endif
