@@ -75,7 +75,7 @@ int zeph_locateable(user)
 
      if (strchr(user, '@') == NULL)
 	  sprintf(buf, "%s@%s", user, ZGetRhs(NULL));
-     ZLocateUser(buf, &n, ZAUTH);
+     ZLocateUser(NULL, buf, &n, ZAUTH);
      return (!! n);
 }
 
@@ -107,7 +107,7 @@ void zeph_subto_logins(users, num)
 	  c += 1;
      }
 
-     ZSubscribeToSansDefaults(sublist, c, (unsigned short) 0);
+     ZSubscribeToSansDefaults(NULL, sublist, c, (unsigned short) 0);
      for(; c; --c)
 	  free(sublist[c-1].zsub_classinst);
      free(sublist);
@@ -121,7 +121,7 @@ void zeph_subto_replies()
      sub.zsub_classinst = "*";
      sub.zsub_recipient = ZGetSender();
 
-     ZSubscribeToSansDefaults(&sub, 1, (unsigned short) 0);
+     ZSubscribeToSansDefaults(NULL, &sub, 1, (unsigned short) 0);
 }
 
 int zeph_send_message(dest, msg)

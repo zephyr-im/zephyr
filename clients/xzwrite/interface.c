@@ -225,7 +225,7 @@ static void Quit(w, e, p, n)
    Cardinal *n;
 {
      XtDestroyApplicationContext(app_con);
-     ZCancelSubscriptions(0);
+     ZCancelSubscriptions(NULL, 0);
      exit(0);
 }
 
