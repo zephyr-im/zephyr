@@ -1006,7 +1006,7 @@ subscr_dump_subs(fp, subs)
 	return;
 
     for (; subs; subs = subs->next) {
-	fputs("\t\t'", fp);
+	fputs("\t'", fp);
 	dump_quote(subs->dest.classname->string, fp);
 	fputs("' '", fp);
 	dump_quote(subs->dest.inst->string, fp);
