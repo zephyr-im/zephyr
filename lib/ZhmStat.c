@@ -14,6 +14,10 @@
 #include <internal.h>
 #include <sys/socket.h>
 
+#ifndef INADDR_LOOPBACK
+#define INADDR_LOOPBACK 0x7f000001
+#endif
+
 Code_t ZhmStat(hostaddr, notice)
     struct in_addr *hostaddr;
     ZNotice_t *notice;
