@@ -46,37 +46,6 @@ extern int zwgc_debug;
 /*
  *  Internal Routine:
  *
- *    char *parse_exposure_level(string text)
- *        Effects: Compares text to each of the standard zephyr
- *                 exposure levels ignoring case.  If it matches,
- *                 returns the corresponding magic constant for
- *                 use with ZSetLocation.  (i.e., returns EXPOSE_OPSTAFF
- *                 for "opstaff", etc.)  If it does not match, returns
- *                 NULL.
- */
-
-static char *parse_exposure_level(text)
-     string text;
-{
-    if (!strcasecmp(text, EXPOSE_NONE))
-      return (EXPOSE_NONE);
-    else if (!strcasecmp(text, EXPOSE_OPSTAFF))
-      return (EXPOSE_OPSTAFF);
-    else if (!strcasecmp(text, EXPOSE_REALMVIS))
-      return (EXPOSE_REALMVIS);
-    else if (!strcasecmp(text, EXPOSE_REALMANN))
-      return (EXPOSE_REALMANN);
-    else if (!strcasecmp(text, EXPOSE_NETVIS))
-      return (EXPOSE_NETVIS);
-    else if (!strcasecmp(text, EXPOSE_NETANN))
-      return (EXPOSE_NETANN);
-    else
-      return(NULL);
-}
-
-/*
- *  Internal Routine:
- *
  *    string get_zwgc_port_number_filename()
  *        Effects: Returns the filename that the zwgc port # is/should be
  *                 stored in, based on the user's uid & the environment
@@ -188,7 +157,7 @@ void zephyr_init(notice_handler)
      * EXPOSE_NONE.
      */
     if (temp = ZGetVariable("exposure")) {
-	if (!(exposure = parse_exposure_level(temp))) {
+	if (!(exposure = ZParseExposureLevel(temp))) {
 	    ERROR2("invalid exposure level %s, using exposure level none instead.\n", temp);
 	    exposure = EXPOSE_NONE;
 	}
