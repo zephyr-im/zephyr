@@ -765,14 +765,14 @@ kill_clt(notice, server)
 	if (extract_addr(notice, &who) != ZERR_NONE)
 		return(ZERR_NONE);	/* XXX */
 	if (!(host = hostm_find_host(&who.sin_addr))) {
-		syslog(LOG_WARNING, "kill_clt: no such host (%s, from %s)",
+		syslog(LOG_NOTICE, "kill_clt: no such host (%s, from %s)",
 		       inet_ntoa (who.sin_addr), server->addr);
 		return(ZERR_NONE);	/* XXX */
 	}
 	if (host->zh_locked)
 		return(ZSRV_REQUEUE);
 	if (!(client = client_which_client(&who, notice))) {
-		syslog(LOG_WARNING, "kill_clt: no such client (%s/%d) from %s",
+		syslog(LOG_NOTICE, "kill_clt: no such client (%s/%d) from %s",
 		       inet_ntoa (who.sin_addr), ntohs (who.sin_port),
 		       server->addr);
 		return(ZERR_NONE);	/* XXX */
@@ -806,7 +806,7 @@ recover_clt(notice, server)
 	if ((status = extract_addr(notice, &who)) != ZERR_NONE)
 		return(status);
 	if (!(host = hostm_find_host(&who.sin_addr))) {
-		syslog(LOG_INFO,
+		syslog(LOG_NOTICE,
 		       "recover_clt: host not found (%s, from %s)",
 		       inet_ntoa (who.sin_addr), server->addr);
 		return(ZERR_NONE);	/* XXX */
@@ -814,7 +814,7 @@ recover_clt(notice, server)
 	if (host->zh_locked)
 		return(ZSRV_REQUEUE);
 	if (!(client = client_which_client(&who, notice))) {
-		syslog(LOG_INFO,
+		syslog(LOG_NOTICE,
 		       "recover_clt: client not found (%s/%d, from %s)",
 		       inet_ntoa (who.sin_addr), ntohs (who.sin_port),
 		       server->addr);
