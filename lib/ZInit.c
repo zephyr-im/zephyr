@@ -94,6 +94,8 @@ Code_t ZInitialize()
 	       ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)) {
 	return (krbval);
     }
+#else
+    strcpy(__Zephyr_realm, "local-realm");
 #endif
 
     /* Get the sender so we can cache it */
