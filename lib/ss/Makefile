@@ -80,7 +80,7 @@ install: all
 	@mkdir ${DESTDIR}/usr/include/ss
 	cp ss.h ss_err.h ss_internal.h copyright.h ${DESTDIR}/usr/include/ss/
 	cp copyright.h ${DESTDIR}/usr/include/ss/mit-sipb-copyright.h
-	install -c -m 644 llib-lss.ln ${DESTDIR}/usr/athena/lib/llib-lcom_err.ln
+	install -c -m 644 llib-lss.ln ${DESTDIR}/usr/lib/lint/llib-lcom_err.ln
 
 tags:	TAGS
 

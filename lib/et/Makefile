@@ -16,6 +16,7 @@ LIBOBJS= error_message.o et_name.o init_et.o com_err.o # perror.o
 BINDIR=/usr/athena
 INCDIR=/usr/include
 LIBDIR=/usr/athena/lib
+LINTDIR=/usr/lib/lint
 DOCDIR=/usr/doc/athena
 DESTDIR=
 
@@ -91,7 +92,7 @@ install: all
 	install -c com_err.texinfo ${DESTDIR}${DOCDIR}/com_err.texinfo
 	install -c com_err.3 ${DESTDIR}/usr/man/man3/com_err.3
 	install -c compile_et.1 ${DESTDIR}/usr/man/man1/compile_et.1
-	install -c -m 644 llib-lcom_err.ln ${DESTDIR}${LIBDIR}/llib-lcom_err.ln
+	install -c -m 644 llib-lcom_err.ln ${DESTDIR}${LINTDIR}/llib-lcom_err.ln
 
 TAGS:	et_name.c error_message.c compile_et.c error_table.c \
 		lex.yy.c perror.c init_et.c
