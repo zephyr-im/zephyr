@@ -204,6 +204,7 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     Window w;
     XSizeHints sizehints;
     XWMHints wmhints;
+    extern void x_get_input();
 
     /*
      * Adjust xpos, ypos based on the alignments xalign, yalign and the sizes:
@@ -303,6 +304,11 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
    }
 
    XFlush(dpy);
+   /* Because the flushing/syncing/etc with the error trapping can cause
+      events to be read into the Xlib queue, we need to go through the queue
+      here before exiting so that any pending events get processed.
+      */
+   x_get_input(dpy);
 }
 
 void x_gram_draw(dpy, w, gram, region)
