@@ -210,13 +210,13 @@ char *argv[];
 		   DPR2("\tz_recip: %s\n", notice.z_recipient);
 		   DPR2("\tz_def_format: %s\n", notice.z_default_format);
 		   DPR2("\tz_message: %s\n", notice.z_message);
-		   if ((bcmp(loopback, (char *)&from.sin_addr, 4) != 0) &&
+		   if (memcmp(loopback, (char *)&from.sin_addr, 4) &&
 		       ((notice.z_kind == SERVACK) ||
 			(notice.z_kind == SERVNAK) ||
 			(notice.z_kind == HMCTL))) {
 		       server_manager(&notice);
 		  } else {
-		       if ((bcmp(loopback, (char *)&from.sin_addr, 4) == 0) &&
+		       if (!memcmp(loopback, (char *)&from.sin_addr, 4) &&
 			   ((notice.z_kind == UNSAFE) ||
 			    (notice.z_kind == UNACKED) ||
 			    (notice.z_kind == ACKED) ||
@@ -254,7 +254,7 @@ void choose_server()
 	if (prim_serv[0]) 
 	    i = 1;
 	while (i < numserv)
-	    (void) free(serv_list[i]);
+	    (void) free(serv_list[i++]);
 	if (serv_list)
 	    (void) free(serv_list);
 	
@@ -408,7 +408,7 @@ void init_hm()
 	  syslog(LOG_INFO, "Debugging on.");
      }
 
-     _BZERO((char *)&serv_sin, sizeof(struct sockaddr_in));
+     (void) memset((char *)&serv_sin, 0, sizeof(struct sockaddr_in));
      serv_sin.sin_port = sp->s_port;
       
      /* Set up communications with server */
@@ -423,7 +423,7 @@ void init_hm()
      } else {
 	  DPR2 ("Server = %s\n", prim_serv);
 	  (void)strcpy(cur_serv, prim_serv);
-	  _BCOPY(hp->h_addr, (char *)&serv_sin.sin_addr, hp->h_length);
+	  (void)memcpy((char *)&serv_sin.sin_addr, hp->h_addr, hp->h_length);
      }
 
      send_boot_notice(HM_BOOT);
@@ -446,24 +446,34 @@ void init_hm()
 void detach()
 {
      /* detach from terminal and fork. */
-     register int i, x = ZGetFD(), size = getdtablesize();
+     register int i, x = ZGetFD();
+     register long size;
   
      if (i = fork()) {
 	  if (i < 0)
 	       perror("fork");
 	  exit(0);
      }
-
+#ifdef POSIX
+     size = sysconf(_SC_OPEN_MAX);
+#else
+     size = getdtablesize();
+#endif
      for (i = 0; i < size; i++)
 	  if (i != x)
 	       (void) close(i);
-  
+
      if ((i = open("/dev/tty", O_RDWR, 666)) < 0)
 	  ;		/* Can't open tty, but don't flame about it. */
      else {
+#ifdef TIOCNOTTY
 	  (void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
+#endif
 	  (void) close(i);
      }
+#ifdef POSIX
+     (void) setsid();
+#endif
 }
 
 static char version[BUFSIZ];
