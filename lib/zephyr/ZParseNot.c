@@ -71,10 +71,6 @@ static char *next_field_1 (s) char *s; {
 #define next_field(ptr)	ptr=next_field_1(ptr)
 #endif
 
-static int zzz = ZERR_BADPKT;
-#undef ZERR_BADPKT
-#define ZERR_BADPKT (abort(),zzz)
-
 Code_t ZParseNotice(buffer, len, notice)
     char *buffer;
     int len;
