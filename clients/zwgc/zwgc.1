@@ -17,6 +17,14 @@
 .el \\*(]X\h@|\\n()Iu+\\n()Ru@\c
 .}f
 ..
+.de }N
+.if \\n()E .br
+.di
+.if "\\n()E"0" .}f
+.if "\\n()E"1" .}1
+.if "\\n()E"2" .}2
+.nr )E 0
+..
 '	# tagged paragraph (paragraph with hanging label, but no para spacing)
 .de TQ
 .if !"\\$1"" .nr )I \\$1n
@@ -336,7 +344,7 @@ String concatenation of
 .IB expr1 " == " expr2
 True if the two expressions are equal, false otherwise.
 .TP
-.IB expr " =~ " expr2
+.IB expr1 " =~ " expr2
 True if the regular expression pattern
 .IR expr2 " matches " expr1.
 .TP
@@ -994,7 +1002,14 @@ For an example of X resources, see
 The X selection code can highlight the wrong portions of messages
 containing formatted text placed with the @center() or @right()
 directives.
-
+.PP
+If you are using Kerberos support and get new tickets (using
+``kinit''), you must send a subscription notice to the server (using a
+command such as ``zctl load /dev/null'') or all received Zephyr
+notices will appear to be unauthentic.  (If all received Zephyr
+notices appear to be forged, your tickets have probably expired, in
+which case you must get new tickets and then run ``zctl load
+/dev/null''.)
 .SH FILES
 .TQ 15
 $HOME/.zwgc.desc
