@@ -788,6 +788,16 @@ load_subs(argc,argv)
 		}
 	}
 cleanup:
+	for (i=0;i<ind;i++) {
+	  free(subs[i].zsub_class);
+	  free(subs[i].zsub_classinst);
+	  free(subs[i].zsub_recipient);
+	} 
+	for (i=0;i<unind;i++) {
+	  free(unsubs[i].zsub_class);
+	  free(unsubs[i].zsub_classinst);
+	  free(unsubs[i].zsub_recipient);
+	} 
 	if (fp)
 		(void) fclose(fp);	/* ignore errs--file is read-only */
 	return;
