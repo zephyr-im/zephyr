@@ -15,6 +15,7 @@
 
 #include <zephyr/zephyr.h>
 #include <string.h>
+#include <netdb.h>
 
 #ifndef lint
 static char rcsid_zwrite_c[] = "$Header$";
@@ -23,6 +24,7 @@ static char rcsid_zwrite_c[] = "$Header$";
 #define DEFAULT_CLASS "MESSAGE"
 #define DEFAULT_INSTANCE "PERSONAL"
 #define URGENT_INSTANCE "URGENT"
+#define FILSRV_CLASS "FILSRV"
 
 #define MAXRECIPS 100
 
@@ -30,14 +32,15 @@ int nrecips, msgarg, verbose, quiet;
 char *whoami, *inst, *class, *recips[MAXRECIPS];
 int (*auth)();
 
-char *malloc(), *realloc();
+extern char *malloc(), *realloc();
+char *fix_filsrv_inst();
 
 main(argc, argv)
     int argc;
     char *argv[];
 {
     ZNotice_t notice;
-    int retval, arg, nocheck, nchars, msgsize;
+    int retval, arg, nocheck, nchars, msgsize, filsys;
     char bfr[BUFSIZ], *message, *signature;
     char classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ];
 	
@@ -54,7 +57,7 @@ main(argc, argv)
     bzero((char *) &notice, sizeof(notice));
 
     auth = ZAUTH;
-    verbose = quiet = msgarg = nrecips = nocheck = 0;
+    verbose = quiet = msgarg = nrecips = nocheck = filsys = 0;
 
     if (class = ZGetVariable("zwrite-class")) {
 	(void) strcpy(classbfr, class);
@@ -106,16 +109,26 @@ main(argc, argv)
 	    inst = URGENT_INSTANCE;
 	    break;
 	case 'i':
-	    if (arg == argc-1)
+	    if (arg == argc-1 || filsys)
 		usage(whoami);
 	    arg++;
 	    inst = argv[arg];
+	    filsys = -1;
 	    break;
 	case 'c':
-	    if (arg == argc-1)
+	    if (arg == argc-1 || filsys)
 		usage(whoami);
 	    arg++;
 	    class = argv[arg];
+	    filsys = -1;
+	    break;
+	case 'f':
+	    if (arg == argc-1 || filsys == -1)
+		usage(whoami);
+	    arg++;
+	    class = FILSRV_CLASS;
+	    inst = fix_filsrv_inst(argv[arg]);
+	    filsys = 1;
 	    break;
 	case 'm':
 	    if (arg == argc-1)
@@ -141,10 +154,11 @@ main(argc, argv)
     notice.z_sender = 0;
     notice.z_message_len = 0;
     notice.z_recipient = "";
-    notice.z_default_format = "";
-    notice.z_num_other_fields = 0;
+    if (filsys)
+	    notice.z_default_format = "@bold(Filesystem Operation Message for $instance:)\nFrom: @bold($sender)\n$message";
+    else notice.z_default_format = "Class $class, Instance $instance:\n@center(From: @bold($sender) To: @bold($recipient))\n$message";
 
-    if (!nocheck && !msgarg)
+    if (!nocheck && !msgarg && !filsys)
 	send_off(&notice, 0);
 	
     if (!msgarg && isatty(0))
@@ -239,7 +253,7 @@ send_off(notice, real)
 	    (void) sprintf(bfr, "while sending notice to %s", 
 		    nrecips?notice->z_recipient:inst);
 	    com_err(whoami, retval, bfr);
-	    continue;
+	    break;
 	}
 	if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
 				ZCompareUIDPred, 
@@ -311,6 +325,39 @@ send_off(notice, real)
 usage(s)
     char *s;
 {
-    printf("Usage: %s [-a] [-d] [-v] [-q] [-u] [-o] [-c class] [-i inst] [user ...]\n       [-m message]\n", s);
+    printf("Usage: %s [-a] [-d] [-v] [-q] [-u] [-o] [-c class] [-i inst] [-f fsname]\n\t[user ...] [-m message]\n", s);
+    printf("\t-f and -c are mutually exclusive\n\t-f and -i are mutually exclusive\n");
     exit(1);
 } 
+
+/*
+  if the -f option is specified, this routine is called to canonicalize
+  an instance of the form hostname[:pack].  It turns the hostname into the
+  name returned by gethostbyname(hostname)
+ */
+
+char *fix_filsrv_inst(str)
+char *str;
+{
+	static char fsinst[BUFSIZ];
+	char *ptr;
+	struct hostent *hp;
+
+	ptr = index(str,':');
+	if (ptr)
+		*ptr = '\0';
+	
+	hp = gethostbyname(str);
+	if (!hp) {
+		if (ptr)
+			*ptr = ':';
+		return(str);
+	}
+	(void) strcpy(fsinst, hp->h_name);
+	if (ptr) {
+		(void) strcat(fsinst, ":");
+		ptr++;
+		(void) strcat(fsinst, ptr);
+	}
+	return(fsinst);
+}
