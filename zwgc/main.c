@@ -131,13 +131,13 @@ void usage()
 #ifdef DEBUG
     fprintf(stderr, "\
 zwgc: usage: zwgc [-debug] [-f <filename>] [-subfile <filename>]\n\
-                  [-ttymode] [-nofork]\n\
+                  [-ttymode] [-nofork] [-reenter]\n\
                   [-default <driver>] {-disable <driver>}*\n\
                   [output driver options]\n");
 #else
     fprintf(stderr, "\
 zwgc: usage: zwgc [-f <filename>] [-subfile <filename>]\n\
-                  [-ttymode] [-nofork]\n\
+                  [-ttymode] [-nofork] [-reenter]\n\
                   [-default <driver>] {-disable <driver>}*\n\
                   [output driver options]\n");
 #endif
