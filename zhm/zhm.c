@@ -20,6 +20,7 @@ static char rcsid_hm_c[] = "$Header$";
 #endif SABER
 #endif lint
 
+#include <ctype.h>
 #include <syslog.h>
 #include <signal.h>
 #include <netdb.h>
@@ -38,17 +39,23 @@ static char rcsid_hm_c[] = "$Header$";
 #define ever (;;)
 #define Zperr(e) fprintf(stderr, "Error = %d\n", e)
 
-int serv_sock, no_server = 1, exp_serv = 0;
+#define SERV_TIMEOUT 20
+#define NOTICE_TIMEOUT 5
+#define BOOTING 1
+#define NOTICES 2
+
+int serv_sock, no_server = 1, timeout_type = 0;
 struct sockaddr_in cli_sin, serv_sin, from;
 struct hostent *hp;
-char **serv_list, **cur_serv;
+char **serv_list, **cur_serv, **clust_info;
 u_short cli_port;
-char hostname[MAXHOSTNAMELEN], loopback[4];
+char hostname[MAXHOSTNAMELEN], prim_serv[MAXHOSTNAMELEN], loopback[4];
 
 extern int errno;
-extern char *malloc();
+extern char *malloc(), *index();
 
-void init_hm();
+void init_hm(), handle_timeout();
+char *upcase();
 
 main(argc, argv)
 char *argv[];
@@ -58,16 +65,17 @@ char *argv[];
     Code_t ret;
 
     /* Override server argument? */
-    if (argc > 1) {
-	  exp_serv = 1;
-	  /* who to talk to */
-	  if ((hp = gethostbyname(argv[1])) == NULL) {
-		DPR("gethostbyname failed\n");
-		exp_serv = 0;
-	  }
-	  DPR2 ("Server = %s\n", argv[1]);
-    }
-
+    (void)gethostname(hostname, MAXHOSTNAMELEN);
+    if (argc > 1) 
+      (void)strcpy(prim_serv, argv[1]);
+    else
+      for (clust_info = hes_resolve(hostname, "CLUSTER");
+	   *clust_info; clust_info++)
+	if (!strncmp("ZEPHYR", upcase(*clust_info), 6)) {
+	      (void)strcpy(prim_serv, index(*clust_info, ' ')+1);
+	      break;
+	}
+    
     init_hm();
 
     DPR2 ("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
@@ -120,9 +128,8 @@ void init_hm()
       struct servent *sp;
       Code_t ret;
 
-      ZInitialize();
-      ZSetServerState(1);  /* Aargh!!! */
-      gethostname(hostname, MAXHOSTNAMELEN);
+      (void)ZInitialize();
+      (void)ZSetServerState(1);  /* Aargh!!! */
       init_queue();
       if ((serv_list = hes_resolve("*", "ZEPHYR-SERVER")) == (char **)NULL) {
 	    syslog(LOG_ERR, "No servers?!?");
@@ -163,12 +170,27 @@ void init_hm()
       /* target is "zephyr-clt" port on server machine */
 
       serv_sin.sin_family = AF_INET;
-      if (!exp_serv)
-	find_next_server();
-      else 
-	bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
+
+      /* who to talk to */
+      if ((hp = gethostbyname(prim_serv)) == NULL) {
+	    DPR("gethostbyname failed\n");
+      }
+      DPR2 ("Server = %s\n", prim_serv);
+      bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
 
       send_boot_notice();
+
+      signal (SIGALRM, handle_timeout);
+}
+
+char *upcase(s)
+     register char *s;
+{
+      char *r = s;
+
+      for (; *s; s++)
+	if (islower(*s)) *s = toupper(*s);
+      return(r);
 }
 
 send_boot_notice()
@@ -195,6 +217,8 @@ send_boot_notice()
 	    Zperr(ret);
 	    com_err("hm", ret, "sending startup notice");
       }
+      timeout_type = BOOTING;
+      alarm(SERV_TIMEOUT);
 }
 
 find_next_server()
@@ -217,7 +241,6 @@ server_manager(notice)
 	    /* Sent a notice back saying this hostmanager isn't theirs */
       } else {
 	    /* This is our server, handle the notice */
-	    no_server = 0;
 	    switch(notice->z_kind) {
 		case HMCTL:
 		  hm_control(notice);
@@ -253,6 +276,11 @@ hm_control(notice)
 		  Zperr(ret);
 		  com_err("hm", ret, "sending ACK");
 	    }
+	    if (no_server) {
+		  alarm(0);
+		  no_server = 0;
+		  retransmit_queue(&serv_sin);
+	    }
       } else
 	fprintf(stderr, "Bad control message.\n");
 }
@@ -287,6 +315,11 @@ send_nak(notice)
 		  free(packet);
 	    }
       }
+      if (no_server) {
+	    alarm(0);
+	    no_server = 0;
+	    retransmit_queue(&serv_sin);
+      }
 }
 
 send_ack(notice)
@@ -319,6 +352,11 @@ send_ack(notice)
 		  free(packet);
 	    }
       }
+      if (no_server) {
+	    alarm(0);
+	    no_server = 0;
+	    retransmit_queue(&serv_sin);
+      }
 }
 
 transmission_tower(notice, packet)
@@ -349,16 +387,18 @@ transmission_tower(notice, packet)
 		  com_err("hm", ret, "sending raw notice");
 	    }
       }
-      DPR2 ("Server Port = %u\n", ntohs(serv_sin.sin_port));
-      if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
-	    Zperr(ret);
-	    com_err("hm", ret, "setting destination");
+      if (!no_server) {
+	    DPR2 ("Server Port = %u\n", ntohs(serv_sin.sin_port));
+	    if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
+		  Zperr(ret);
+		  com_err("hm", ret, "setting destination");
+	    }
+	    if ((ret = ZSendRawNotice(notice)) != ZERR_NONE) {
+		  Zperr(ret);
+		  com_err("hm", ret, "while sending raw notice");
+	    }
       }
-      if ((ret = ZSendRawNotice(notice)) != ZERR_NONE) {
-	    Zperr(ret);
-	    com_err("hm", ret, "while sending raw notice");
-      }
-      add_notice_to_queue(notice, packet, &gsin);
+      (void)add_notice_to_queue(notice, packet, &gsin);
 }
 
 new_server()
@@ -386,6 +426,19 @@ new_server()
       }
       find_next_server();
       send_boot_notice();
-      retransmit_queue(&serv_sin);
 }
 
+void handle_timeout()
+{
+      switch(timeout_type) {
+	  case BOOTING:
+	    new_server();
+	    break;
+	  case NOTICES:
+/*	    resend_notices(); */
+	    break;
+	  default:
+	    DPR2 ("Unknown timeout type: %d\n", timeout_type);
+	    break;
+      }
+}
