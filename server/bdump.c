@@ -459,7 +459,6 @@ struct sockaddr_in *from;
 	ZServerDesc_t *server;
 	int packlen = sizeof(pack);
 	Code_t retval;
-	int auth;
 	struct sockaddr_in bogus_from;
 
 	bogus_from = *from;
@@ -530,7 +529,6 @@ static Code_t
 gbd_loop(server)
 ZServerDesc_t *server;
 {
-	struct sockaddr_in target;
 	Code_t retval;
 
 	/* if we have no hosts in the 'limbo' state (on the limbo server),
@@ -539,19 +537,19 @@ ZServerDesc_t *server;
 	    otherservers[limbo_server_idx()].zs_hosts) {
 		if ((retval = bdump_ask_for(ADMIN_LIMBO)) != ZERR_NONE)
 			return(retval);
-		if ((retval = bdump_recv_loop(&otherservers[limbo_server_idx()], &target)) != ZERR_NONE)
+		if ((retval = bdump_recv_loop(&otherservers[limbo_server_idx()])) != ZERR_NONE)
 			return(retval);
 	}
 
 	if (!bdump_inited) {
 		if ((retval = bdump_ask_for(ADMIN_ME)) != ZERR_NONE)
 			return(retval);
-		if ((retval = bdump_recv_loop(me_server, &target)) != ZERR_NONE)
+		if ((retval = bdump_recv_loop(me_server)) != ZERR_NONE)
 			return(retval);
 	}
 	if ((retval = bdump_ask_for(ADMIN_YOU)) != ZERR_NONE)
 		return(retval);
-	retval = bdump_recv_loop(server, &target);
+	retval = bdump_recv_loop(server);
 	return(retval);
 }
 /*
@@ -598,13 +596,12 @@ char *inst;
  */
 
 static Code_t
-bdump_recv_loop(server, target)
+bdump_recv_loop(server)
 ZServerDesc_t *server;
-struct sockaddr_in *target;
 {
 	ZNotice_t notice;
 	ZPacket_t packet;
-	int len, auth;
+	int len;
 	Code_t retval;
 	ZClient_t *client = NULLZCNT;
 	struct sockaddr_in current_who;
