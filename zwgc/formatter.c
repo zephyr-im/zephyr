@@ -26,6 +26,8 @@ static char rcsid_formatter_c[] = "$Header$";
 #include "formatter.h"
 #include "text_operations.h"
 
+static int pure_text_length(), env_length();
+
 #ifdef notdef
 static character_class atsign_set = { /* '@' = 0x40 */
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
