@@ -105,10 +105,12 @@ static int bdump_inited;
 static int live_socket = -1;
 static FILE *input, *output;
 static struct sockaddr_in bdump_sin;
+#ifdef notdef
 static int cancel_outgoing_dump;
+#endif
 
 int bdumping;
-
+extern char *bdump_version;
  
 /*
  * Functions for performing a brain dump between servers.
@@ -198,9 +200,10 @@ bdump_offer(who)
 	}
  
 	/* myname is the hostname */
-	/* the class instance is the version number, here it is "1A" */
-	(void) send_list(ACKED, sock_sin.sin_port, ZEPHYR_ADMIN_CLASS, "1A",
-		  ADMIN_BDUMP, myname, "", lyst, 2);
+	/* the class instance is the version number, here it is */
+	/* bdump_version, which is set in main */
+	(void) send_list(ACKED, sock_sin.sin_port, ZEPHYR_ADMIN_CLASS,
+			 bdump_version, ADMIN_BDUMP, myname, "", lyst, 2);
 	
 #if 1
 	zdbug((LOG_DEBUG,"bdump_offer: address is %s/%d\n",
@@ -280,6 +283,7 @@ bdump_send(void)
 	       inet_ntoa (from.sin_addr), ntohs (from.sin_port)));
 #endif
 
+#ifdef notdef
 	if (bdumping) {
 	    /* Already bdumping; punt one of the two.  If this is a
 	       new host, punt this connection.  If it's one we're
@@ -306,9 +310,11 @@ bdump_send(void)
 	    else
 		cancel_outgoing_dump = 1;
 	}
+#endif
 
 	bdumping = 1;
 	server->zs_dumping = 1;
+
 	if (bdump_socket >= 0) {
 	    /* shut down the listening socket and the timer */
 	    FD_CLR(bdump_socket, &interesting);
@@ -441,6 +447,19 @@ bdump_get_v1_guts (notice, auth, who, server)
 	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect problems */
 #endif /* _POSIX_SOURCE */
  
+	if (bdump_socket >= 0) {
+		/* We cannot go get a brain dump when someone may
+		   potentially be connecting to us (if that other
+		   server is the server to whom we are connecting,
+		   we will deadlock. so we shut down the listening
+		   socket and the timer */
+	  FD_CLR(bdump_socket, &interesting);
+	  (void) close(bdump_socket);
+	  nfildes = srv_socket+1;
+	  bdump_socket = -1;
+	  timer_reset(bdump_timer);
+	}
+
 	if ((retval = extract_sin(notice, &from)) != ZERR_NONE) {
 		syslog(LOG_ERR, "bdump_get: sin: %s", error_message(retval));
 #ifdef _POSIX_SOURCE
@@ -673,7 +692,7 @@ bdump_send_list_tcp(kind, port, class_name, inst, opcode, sender, recip,
      int num;
 {
 	ZNotice_t notice;
-	register ZNotice_t *Zconst pnotice = &notice; /* speed hack */
+	register ZNotice_t *pnotice = &notice; /* speed hack */
 	char *pack;
 	int packlen, count;
 	Code_t retval;
@@ -787,7 +806,7 @@ get_tgt()
 	/* have they expired ? */
 	if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + 15L) {
 		/* +15 for leeway */
-#if 1
+#if 0
 		zdbug((LOG_DEBUG,"get new tickets: %d %d %d",
 		       ticket_time, NOW,
 		       NOW - tkt_lifetime(TKTLIFETIME) + 15L));
@@ -1005,6 +1024,7 @@ bdump_recv_loop(server)
 	struct sockaddr_in current_who;
 	int who_valid = 0;
 	int flushing_subs = 0;
+	int debug_fd;
 #ifdef KERBEROS
 	register char *cp;
 #endif /* KERBEROS */
@@ -1018,6 +1038,11 @@ bdump_recv_loop(server)
 	zdbug((LOG_DEBUG, "bdump recv loop"));
 #endif
 	
+#if 0
+	if (zdebug)
+	  debug_fd = open("/usr/tmp/rbd.log",O_CREAT|O_WRONLY,0600);
+#endif
+
 #ifdef CONCURRENT
 	FD_ZERO(&initial);
 	FD_SET(srv_socket, &initial);
@@ -1048,11 +1073,13 @@ bdump_recv_loop(server)
 			zdbug((LOG_DEBUG, "brl fdready"));
 #endif
 			handle_packet();
+#ifdef notdef
 			if (cancel_outgoing_dump) {
 			    cancel_outgoing_dump = 0;
 			    return EWOULDBLOCK; /* maybe in a warped sort
 						   of way */
 			}
+#endif
 		} else if (fd_ready < 0)
 			syslog(LOG_ERR, "brl select: %m");
 #endif /* CONCURRENT */
@@ -1062,6 +1089,12 @@ bdump_recv_loop(server)
 			       error_message(retval));
 			return(retval);
 		}
+#if 0
+		if (zdebug) {
+		  write(debug_fd,packet,len);
+		  write(debug_fd,"\n--\n",4);
+		}
+#endif
 		if ((retval = ZParseNotice(packet, len, &notice)) != ZERR_NONE) {
 			syslog(LOG_ERR, "brl notice parse: %s",
 			       error_message(retval));
@@ -1101,7 +1134,11 @@ bdump_recv_loop(server)
 			}
 		} else if (!strcmp(notice.z_opcode, ADMIN_DONE)) {
 			/* end of brain dump */
-			return(ZERR_NONE);
+#if 0
+		  if (zdebug) 
+		    close(debug_fd);
+#endif
+		  return(ZERR_NONE);
 		} else if (!who_valid) {
 			syslog(LOG_ERR, "brl: no current host");
 			return(ZSRV_HNOTFOUND);
@@ -1225,10 +1262,12 @@ bdump_send_loop(server, vers)
 		 */
 		if (fd_ready > 0) {
 			handle_packet();
+#ifdef notdef
 			if (cancel_outgoing_dump) {
 			    cancel_outgoing_dump = 0;
 			    return EWOULDBLOCK;
 			}
+#endif
 		} else if (fd_ready < 0)
 			syslog(LOG_ERR, "bsl select: %m");
  
