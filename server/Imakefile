@@ -10,8 +10,10 @@
 
 #if defined(DO_SYSLOG) && defined(SYSLOG_COMPAT42)
 SYSLOG_LIB= ../clients/syslogd/syslog.o
+SYSLOG_DEF= -I../clients/syslogd
 #else
 SYSLOG_LIB=
+SYSLOG_DEF=
 #endif
 LIBS= ${SYSLOG_LIB} ${ZEPHYR_LIB} ${HES_LIB} ${KRB_LIB} \
 	${DES_LIB} ${COMERR_LIB}
@@ -69,7 +71,7 @@ CONFIG_FILES= default.subscriptions
 SRCDIR= ${SRCTOP}/server
 CODE= ${SRCS} ${HDRS} ${OTHERSRCS} ${CONFIG_FILES} Imakefile
 
-DEFINES=-DDEBUG -DCONCURRENT
+DEFINES= $(SYSLOG_DEF) -DCONCURRENT
 normal_obj_rule()
 
 zephyrd:: new_vers.sh
