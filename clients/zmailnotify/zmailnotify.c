@@ -307,7 +307,7 @@ mail_notify(mail)
 	notice.z_opcode = "NEW_MAIL";
 	notice.z_sender = 0;
 	notice.z_recipient = ZGetSender();
-	notice.z_default_format = "You have new mail:\n\nFrom: $1\nTo: $1\nSubject: $3";
+	notice.z_default_format = "You have new mail:\n\nFrom: $1\nTo: $2\nSubject: $3";
 
 	fields[0] = mail->from;
 	fields[1] = mail->to;
