@@ -29,6 +29,9 @@
 #include <syslog.h>
 #include <strings.h>
 #include <signal.h>
+#ifdef lint
+#include <sys/uio.h>			/* so it shuts up about struct iovec */
+#endif lint
 #include "timer.h"
 #include "zsrv_err.h"
 
@@ -103,10 +106,10 @@ typedef struct _ZNotAcked_t {
 	int na_packsz;			/* size of packet */
 	ZUnique_Id_t na_uid;		/* uid of packet */
 	union {				/* address to send to */
-		ZClient_t *na_clt;	/* client descr */
+		struct sockaddr_in na_sin; /* client address */
 		int srv_idx;		/* index of server */
 	} dest;
-#define na_client	dest.na_clt
+#define na_addr	dest.na_sin
 #define na_srv_idx	dest.srv_idx
 } ZNotAcked_t;
 
@@ -173,6 +176,8 @@ extern char *strsave();
 
 /* found in dispatch.c */
 extern void handle_packet(), dispatch(), clt_ack(), nack_release(), sendit();
+extern void xmit();
+extern Code_t control_dispatch();
 
 /* found in hostm_s.c */
 extern void hostm_flush(), hostm_shutdown(), hostm_losing();
@@ -200,9 +205,6 @@ extern void subscr_dump_subs();
 /* found in uloc_s.c */
 extern void uloc_hflush(), uloc_flush_client(), uloc_dump_locs();
 extern Code_t ulogin_dispatch(), ulocate_dispatch(), uloc_send_locations();
-
-/* found in zctl.c */
-extern Code_t control_dispatch();
 
 /* found in libc.a */
 char *malloc(), *realloc();
