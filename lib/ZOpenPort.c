@@ -44,7 +44,7 @@ Code_t ZOpenPort(port)
 	do {
 		if ((retval = bind(__Zephyr_fd,&bindin,sizeof(bindin))) < 0) {
 			if (errno == EADDRINUSE) {
-				if (port)
+				if (port && *port)
 					return (ZERR_PORTINUSE);
 				else
 					/*NOSTRICT*/
@@ -55,7 +55,7 @@ Code_t ZOpenPort(port)
 			else
 				return (errno);
 		}
-	} while (retval < 0 && port);
+	} while (retval < 0 && (!port || !*port));
 
 	__Zephyr_port = bindin.sin_port;
 	__Zephyr_open = 1;
