@@ -15,7 +15,8 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_main_c[] = "$Id$";
+static char rcsid_main_c[] =
+    "$Id$";
 #endif
 #endif
 
@@ -319,15 +320,22 @@ initialize(void)
 
 	server_init();
 
+#if 0
 	if (!(nacklist = (ZNotAcked_t *) xmalloc(sizeof(ZNotAcked_t)))) {
 		/* unrecoverable */
 		syslog(LOG_CRIT, "nacklist malloc");
 		abort();
 	}
+#else
+	{
+	    static ZNotAcked_t not_acked_head;
+	    nacklist = &not_acked_head;
+	}
+#endif
 	bzero((caddr_t) nacklist, sizeof(ZNotAcked_t));
 	nacklist->q_forw = nacklist->q_back = nacklist;
 
-	nexttimo = 1L;			/* trigger the timers when we hit
+	nexttimo = 1L;	/* trigger the timers when we hit
 					   the FOR loop */
 
 	(void) ZInitialize();		/* set up the library */
