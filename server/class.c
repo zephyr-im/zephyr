@@ -14,11 +14,12 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
-static char rcsid_cm_c[] = "$Header$";
+#ifndef SABER
+static char rcsid_class_s_c[] = "$Header$";
+#endif SABER
 #endif lint
 
-#include <zephyr/zephyr.h>
-#include "zserver.h"
+#include "zserver.h"			/* includes zephyr/zephyr.h */
 
 /*
  * Class manager subsystem.
@@ -26,13 +27,48 @@ static char rcsid_cm_c[] = "$Header$";
  *
  * external functions are:
  *
- * Code_t cm_register(client, class)
+ * Code_t class_register(client, class)
  *
- * Code_t cm_deregister(client, class)
+ * Code_t class_deregister(client, class)
  *
- * ZClientList_t *cm_lookup(class)
- *	ZClientDesc_t *client;
+ * ZClientList_t *class_lookup(class)
+ *	ZClient_t *client;
  *	char *class;
+ *
+ * ZAcl_t *class_get_acl(notice)
+ *
+ * int class_is_admin(notice)
+ *
+ * int class_is_ulogin(notice)
+ *
+ * int class_is_ulocate(notice)
+ *
+ * int class_is_control(notice)
+ *	ZNotice_t *notice;
+ *
+ * Code_t class_restrict(class, acl)
+ *	char *class;
+ *	ZAcl_t *acl;
+ *
+ * Code_t class_setup_restricted(class, acl)
+ *	char *class;
+ *	ZAcl_t *acl;
+ */
+
+/*
+ * The data structure used for the class manager is a set of hash buckets
+ * each containing a pointer to a doubly linked circular list (in the style
+ * of insque/remque).  Each element of this list contains a class name (which
+ * hashes into the bucket associated with this list) and a doubly linked list
+ * of clients which are interested in this class.
+ * The data pointed to by these clients is owned by other modules.  Care
+ * must be taken not to register or fail to register a free()'d client
+ * structure.
+ * If any hash bucket is empty, the pointer is null.
+ * The first pointer in the hash bucket is unused for storing classes, and
+ * is used for finding the end of the list
+ * If any list of interested clients is empty, the class name is garbage
+ * collected.
  */
 
 /* Private variables */ 
@@ -41,205 +77,336 @@ static char rcsid_cm_c[] = "$Header$";
 #define	HASHSIZE	511
 #define	HASHMUL		243
 
-static ZClass_t *class_bucket[511];
+static ZClass_t *class_bucket[511];	/* the hash table of pointers */
 
-/* private routines */
-static int hash(string)
-char *string;
-{
-    register int hval = 0;
-    register char *cp = string;
+static Code_t remove_client(), insert_client();
+static void free_class();
+static ZClientList_t *client_alloc();
+static ZClass_t *class_alloc();
+static int hash();
 
-    while (*cp)
-      hval = (hval + (*cp++) * HASHMUL) % HASHSIZE;
-    return(hval);
-}
-
-static ZClass_t *class_alloc(class)
-char *class;
-{
-    register ZClass_t *ptr;
-    if ((ptr = (ZClass_t *) malloc(sizeof(ZClass_t))) == NULLZCT)
-      return(NULLZCT);
-
-    if ((ptr->classname = strsave(class)) == NULL) {
-	free((char *) ptr);
-	return(NULLZCT);
-    }
-    return(ptr);
-}
-
-static void free_class(ptr)
-ZClass_t *ptr;
-{
-    free(ptr->classname);
-    free(ptr);
-}
-
-static ZClientList_t *client_alloc(client)
-ZClientDesc_t *client;
-{
-    register ZClientList_t *ptr;
-    if ((ptr = (ZClientList_t *) malloc(sizeof(ZClientList_t))) == NULLZCLT)
-      return(NULLZCLT);
-
-    ptr->client = client;
-    return(ptr);
-}
-
-static Code_t insert_client(ptr, client)
-ZClass_t *ptr;
-ZClientDesc_t *client;
-{
-    register ZClientList_t *listp;
-
-    if ((listp = client_alloc(client)) == NULLZCLT)
-      return(ZERR_UNIX);
-
-    if (ptr->clientlist == NULLZCLT) {
-	listp->q_forw = listp;
-	listp->q_back = listp;
-	ptr->clientlist = listp;
-    } else
-      insque(listp, ptr->clientlist);
-    return(ZERR_NONE);
-}
-
-static Code_t remove_client(ptr, client)
-ZClass_t *ptr;
-ZClientDesc_t *client;
-{
-    register ZClientList_t *listp = ptr->clientlist; 
-    register ZClientList_t *listp2;
-
-    if (listp->client == client) { /* found him */
-	if (listp->q_forw == listp) { /* this is the only elem on this queue */
-	    ptr->clientlist = NULLZCLT;
-	    free(listp);
-	    return(EMPTY_CLASS);
-	}
-	/* ok, remove him, being careful to reset the pointer to the queue */
-	ptr->clientlist = listp->q_forw;
-	remque(listp);
-	free(listp);
-	return(ZERR_NONE);
-    } else {
-      for (listp2 = listp->q_forw; listp2 != listp; listp2 = listp2->q_forw)
-	/* walk down list, looking for him */
-	if (listp2->client == client) {
-	    remque(listp);
-	    free(listp);
-	    return(ZERR_NONE);
-	}
-      return(ZERR_S_BADASSOC);
-  }
-}
-    
-/*  */
 /* public routines */
-Code_t cm_register(client, class)
-ZClientDesc_t *client;
+
+/* register the client as interested in class */
+Code_t
+class_register(client, class)
+ZClient_t *client;
 char *class;
 {
-    register ZClass_t *ptr, *ptr2;
-    int hashval = hash(class);
+	register ZClass_t *ptr, *ptr2;
+	int hashval = hash(class);
 
-    if ((ptr = class_bucket[hashval]) == NULLZCT) {
-	/* not registered */
+	if ((ptr = class_bucket[hashval]) == NULLZCT) {
+		/* not registered */
+		
+		if ((ptr = class_alloc(class)) == NULLZCT)
+			return(ENOMEM);
 
-	if ((ptr = class_alloc(class)) == NULLZCT)
-	  return(ZERR_UNIX);
+		/* allocate the head of the bucket */
+		if ((ptr2 = (ZClass_t *) xmalloc(sizeof(ZClass_t))) == NULLZCT)
+			return(ENOMEM);
 
-	ptr->q_forw = ptr;
-	ptr->q_back = ptr;
-	class_bucket[hashval] = ptr;
-	return(insert_client(ptr, client));
+		ptr2->q_forw = ptr;
+		ptr2->q_back = ptr;
+		ptr->q_forw = ptr2;
+		ptr->q_back = ptr2;
 
-    } else if (!strcmp(ptr->classname, class)) /* match! */
-      return(insert_client(ptr, client));
-    else {
-	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
-	  /* walk down the list, looking for a match */
-	  if (!strcmp(ptr2->classname, class))
-	    return(insert_client(ptr2, client));
+		class_bucket[hashval] = ptr2;
+		return(insert_client(ptr, client));
 
-	/* fell off the end, no match */
-	if ((ptr2 = class_alloc(class)) == NULLZCT)
-	  return(ZERR_UNIX);
-	insque(ptr2, ptr);		/* insert new class into hash bucket */
-	return(insert_client(ptr2, client));
-    }
+	} else {
+		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
+			/* walk down the list, looking for a match */
+			if (!strcmp(ptr2->zct_classname, class))
+				return(insert_client(ptr2, client));
+
+		/* fell off the end, no match */
+		if ((ptr2 = class_alloc(class)) == NULLZCT)
+			return(ENOMEM);
+		xinsque(ptr2, ptr);	/* insert new class into hash bucket */
+		return(insert_client(ptr2, client));
+	}
 }
 
-Code_t cm_deregister(client, class)
-ZClientDesc_t *client;
+/* dissociate client from the class, garbage collecting if appropriate */
+Code_t
+class_deregister(client, class)
+ZClient_t *client;
 char *class;
 {
-    register ZClass_t *ptr, *ptr2;
-    int retval = -1;
-    int hashval = hash(class);
+	register ZClass_t *ptr, *ptr2;
+	int retval = -1;
+	int hashval = hash(class);
  
-    if ((ptr = class_bucket[hashval]) == NULLZCT)
-      /* no such class to deregister */
-      return(ZERR_S_BADASSOC);
-    if (!strcmp(ptr->classname, class)) { /* match! */
-	if (remove_client(ptr, client) == EMPTY_CLASS) {
-	    /* careful here, we need to remove it and adjust the pointer to
-	       the next element unless this is the only one */
-	    if (ptr = ptr->q_forw) {
-		/* garbage collect this bucket */
-		free_class(ptr);
-		class_bucket[hashval] = NULLZCT;
-	    } else {
-		/* adjust pointer and garbage collect */
-		class_bucket[hashval] = ptr->q_forw;
-		remque(ptr);
-		free_class(ptr);
-	    }
-	}
-	return(ZERR_NONE);
-    }
-    else {
+	zdbug1("class_dereg");
+	if ((ptr = class_bucket[hashval]) == NULLZCT)
+		/* no such class to deregister */
+		return(ZSRV_BADASSOC);
+	
 	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
-	    /* walk down the list, looking for a match */
-	    if (!strcmp(ptr2->classname, class)) {
-		if ((retval = remove_client(ptr2, client)) == EMPTY_CLASS) {
-		    /* here ptr2 is never pointing to class_bucket[hashval],
-		       so we don't worry about freeing the bucket */
-		    remque(ptr2);
-		    free_class(ptr2);
-		    return(ZERR_NONE);
+		/* walk down the list, looking for a match */
+		if (!strcmp(ptr2->zct_classname, class)) {
+			if ((retval = remove_client(ptr2, client)) == EMPTY_CLASS) {
+				zdbug1("empty class");
+				/* Don't free up restricted classes. */
+				if (ptr2->zct_acl != NULLZACLT)
+					return(ZERR_NONE);
+				else {
+					xremque(ptr2);
+					free_class(ptr2);
+					return(ZERR_NONE);
+				}
+			}
+			/* if not EMPTY_CLASS, it's either ZSRV_BADASSOC
+			   (not found) or ZERR_NONE (found and removed),
+			   so break */
+			break;
 		}
-		/* if not EMPTY_CLASS, it's either ZERR_S_BADASSOC (not found)
-		   or ZERR_NONE (found and removed), so break */
-		break;
-	    }
 	}
 
 	/* fell off: either client not found or client found
 	   and removed, retval contains the result */
-
 	return(retval);
-    }
 }
 
-ZClientList_t *cm_lookup(class)
+/* return a linked list of what clients are interested in this class */
+ZClientList_t *
+class_lookup(class)
 char *class;
 {
-    register ZClass_t *ptr, *ptr2;
-    int hashval = hash(class);
+	register ZClass_t *ptr, *ptr2;
+	int hashval = hash(class);
 
-    if ((ptr = class_bucket[hashval]) == NULLZCT)
-      return(NULLZCLT);			/* no such class */
-    else if (!strcmp(ptr->classname, class))
-      return(ptr->clientlist);
-    else { /* go search the list for the class */
-	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
-	    /* walk down the list, looking for a match */
-	    if (!strcmp(ptr2->classname, class))
-	      return(ptr2->clientlist);
+	if ((ptr = class_bucket[hashval]) == NULLZCT)
+		return(NULLZCLT);			/* no such class */
+	else { /* go search the list for the class */
+		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
+			/* walk down the list, looking for a match */
+			if (!strcmp(ptr2->zct_classname, class))
+				return(ptr2->zct_clientlist);
+		}
+		/* fell off the end */
+		return(NULLZCLT);
 	}
-	/* fell off the end */
-	return(NULLZCLT);
-    }
+}
+
+int
+class_is_control(notice)
+ZNotice_t *notice;
+{
+	return(!strcmp(notice->z_class, ZEPHYR_CTL_CLASS));
+}
+
+int
+class_is_admin(notice)
+ZNotice_t *notice;
+{
+	return(!strcmp(notice->z_class, ZEPHYR_ADMIN_CLASS));
+}
+
+int
+class_is_hm(notice)
+ZNotice_t *notice;
+{
+	return(!strcmp(notice->z_class, HM_CTL_CLASS));
+}
+
+int
+class_is_ulogin(notice)
+ZNotice_t *notice;
+{
+	return(!strcmp(notice->z_class, LOGIN_CLASS));
+}
+
+int
+class_is_ulocate(notice)
+ZNotice_t *notice;
+{
+	return(!strcmp(notice->z_class, LOCATE_CLASS));
+}
+
+ZAcl_t *
+class_get_acl(class)
+char *class;
+{
+	register ZClass_t *ptr, *ptr2;
+	int hashval = hash(class);
+
+	if ((ptr = class_bucket[hashval]) == NULLZCT)
+		return(NULLZACLT);
+
+	/* walk down the list, looking for a match */
+	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
+		if (!strcmp(ptr2->zct_classname, class))
+			return(ptr2->zct_acl);
+
+	/* fell off the end, no match ==> not restricted */
+	return(NULLZACLT);
+}
+
+Code_t
+class_restrict(class, acl)
+char *class;
+ZAcl_t *acl;
+{
+	register ZClass_t *ptr, *ptr2;
+	int hashval = hash(class);
+
+	if ((ptr = class_bucket[hashval]) == NULLZCT)
+		return(ZSRV_NOCLASS);
+	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
+		/* walk down the list, looking for a match */
+		if (!strcmp(ptr2->zct_classname, class)) {
+			ptr2->zct_acl = acl;
+			return(ZERR_NONE);
+		}
+
+	/* fell off the end, no match */
+	return(ZSRV_NOCLASS);
+}
+
+Code_t
+class_setup_restricted(class, acl)
+char *class;
+ZAcl_t *acl;
+{
+	register ZClass_t *ptr, *ptr2;
+	int hashval = hash(class);
+
+	if ((ptr = class_bucket[hashval]) == NULLZCT) {
+		/* not registered */
+		
+		if ((ptr = class_alloc(class)) == NULLZCT)
+			return(ENOMEM);
+
+		ptr->zct_acl = acl;
+
+		/* allocate the head of the bucket */
+		if ((ptr2 = (ZClass_t *) xmalloc(sizeof(ZClass_t))) == NULLZCT)
+			return(ENOMEM);
+
+		ptr2->q_forw = ptr;
+		ptr2->q_back = ptr;
+		ptr->q_forw = ptr2;
+		ptr->q_back = ptr2;
+
+		class_bucket[hashval] = ptr2;
+		return(ZERR_NONE);
+	} else
+		return(ZSRV_CLASSXISTS);
+}
+
+
+/* private routines */
+
+/* the hash function */
+static int
+hash(string)
+char *string;
+{
+	register int hval = 0;
+	register char *cp = string;
+
+	while (*cp)
+		hval = (hval + (*cp++) * HASHMUL) % HASHSIZE;
+	return(hval);
+}
+
+/* allocate space for a class structure */
+static ZClass_t *
+class_alloc(class)
+char *class;
+{
+	register ZClass_t *ptr;
+	ZClientList_t *clist;
+
+	if ((ptr = (ZClass_t *) xmalloc(sizeof(ZClass_t))) == NULLZCT)
+		return(NULLZCT);
+
+	ptr->q_forw = ptr->q_back = ptr;
+
+	if ((ptr->zct_classname = strsave(class)) == NULL) {
+		xfree((char *) ptr);
+		return(NULLZCT);
+	}
+	if ((clist = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))) == NULLZCLT) {
+		xfree(ptr);
+		return(NULLZCT);
+	}
+	clist->q_forw = clist->q_back = clist;
+	ptr->zct_clientlist = clist;
+	ptr->zct_acl = NULLZACLT;
+
+	return(ptr);
+}
+
+/* free up the space used by this class structure */
+static void
+free_class(ptr)
+ZClass_t *ptr;
+{
+	xfree(ptr->zct_classname);
+	xfree(ptr->zct_clientlist);
+	xfree(ptr);
+}
+
+/* allocate space for a client entry */
+static ZClientList_t *
+client_alloc(client)
+ZClient_t *client;
+{
+	register ZClientList_t *ptr;
+	if ((ptr = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))) == NULLZCLT)
+		return(NULLZCLT);
+
+	ptr->zclt_client = client;
+	return(ptr);
+}
+
+/* insert a client into the list associated with the class *ptr */
+static Code_t
+insert_client(ptr, client)
+ZClass_t *ptr;
+ZClient_t *client;
+{
+	register ZClientList_t *listp, *clist;
+
+	for (clist = ptr->zct_clientlist->q_forw;
+	     clist != ptr->zct_clientlist;
+	     clist = clist->q_forw)
+		/* don't duplicate */
+		if (clist->zclt_client == client)
+			return(ZERR_NONE);
+
+	if ((listp = client_alloc(client)) == NULLZCLT)
+		return(ENOMEM);
+
+	xinsque(listp, ptr->zct_clientlist);
+	return(ZERR_NONE);
+}
+
+/* remove the client from the list associated with class *ptr, garbage
+   collecting if appropriate */
+static Code_t remove_client(ptr, client)
+ZClass_t *ptr;
+ZClient_t *client;
+{
+	register ZClientList_t *listp = ptr->zct_clientlist; 
+	register ZClientList_t *listp2;
+
+	if (listp == NULLZCLT)
+		return(ZSRV_BADASSOC);
+	for (listp2 = listp->q_forw;
+	     listp2 != listp;
+	     listp2 = listp2->q_forw)
+		/* walk down list, looking for him */
+		if (listp2->zclt_client == client) {
+			xremque(listp2);
+			xfree(listp2);
+			if (listp->q_forw == listp)
+				return(EMPTY_CLASS);
+			else
+				return(ZERR_NONE);
+		}
+	return(ZSRV_BADASSOC);
 }
