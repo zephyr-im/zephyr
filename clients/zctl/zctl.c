@@ -14,7 +14,8 @@
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr.h>
-#include "ss.h"
+#include <ctype.h>
+#include <ss.h>
 #include <pwd.h>
 #include <netdb.h>
 
@@ -27,11 +28,15 @@ static char rcsid_zctl_c[] = "$Header$";
 #define UNSUB 1
 #define LIST 2
 
-#define DEFAULT_SUBS "/etc/athena/windowgram.subs"
+#define DEFAULT_SUBS "/etc/athena/zephyr.subs"
+#define USERS_SUBS "/.zephyr.subs"
+#define OLD_SUBS "/.subscriptions"
 
 #define TOKEN_HOSTNAME "%host%"
 #define TOKEN_CANONNAME "%canon%"
 #define TOKEN_ME "%me%"
+
+#define _toupper(c) (islower(c)?toupper(c):c)
 
 char *index(),*malloc();
 
@@ -48,7 +53,7 @@ main(argc,argv)
 	struct passwd *pwd;
 	struct hostent *hent;
 	FILE *fp;
-	char ssline[BUFSIZ],buf[BUFSIZ],*envptr;
+	char ssline[BUFSIZ],buf[BUFSIZ],oldsubsname[BUFSIZ],*envptr;
 	int retval,code,i;
 
 	if ((retval = ZInitialize()) != ZERR_NONE) {
@@ -56,18 +61,6 @@ main(argc,argv)
 		exit (1);
 	}
 
-	envptr = (char *)getenv("WGFILE");
-	if (!envptr) {
-		sprintf(buf,"/tmp/wg.%d",getuid());
-		envptr = buf;
-	} 
-	if (!(fp = fopen(envptr,"r"))) {
-		fprintf(stderr,"Can't find WindowGram subscription port\n");
-		exit (1);
-	}
-	fscanf(fp,"%d",&wgport);
-	fclose(fp);
-       
 	envptr = (char *)getenv("HOME");
 	if (envptr)
 		strcpy(subsname,envptr);
@@ -78,9 +71,16 @@ main(argc,argv)
 		}
 
 		strcpy(subsname,pwd->pw_dir);
-	} 
-	strcat(subsname,"/.subscriptions");
-
+	}
+	strcpy(oldsubsname,subsname);
+	strcat(oldsubsname,OLD_SUBS);
+	strcat(subsname,USERS_SUBS);
+	if (!access(oldsubsname,0)) {
+		printf("The .subscriptions file in your home directory is no longer\n");
+		printf("being used.  I will rename it to .zephyr.subs for you.\n");
+		rename(oldsubsname,subsname);
+	}
+	
 	if (gethostname(ourhost,BUFSIZ) == -1) {
 		com_err(argv[0],errno,"while getting host name");
 		exit (1);
@@ -121,23 +121,239 @@ set_file(argc,argv)
 		fprintf(stderr,"Usage: %s filename\n",argv[0]);
 		return;
 	}
+
 	if (argc == 1)
 		printf("Current file: %s\n",subsname);
 	else
 		strcpy(subsname,argv[1]);
 }
 
-cancel_subs(argc,argv)
+flush_locations(argc,argv)
 	int argc;
 	char *argv[];
 {
 	int retval;
+	
+	if (argc > 1) {
+		fprintf(stderr,"Usage: %s\n",argv[0]);
+		return;
+	}
+
+	if ((retval = ZFlushMyLocations()) != ZERR_NONE)
+		ss_perror(sci_idx,retval,"while flushing locations");
+}
+
+wgc_control(argc,argv)
+	int argc;
+	char *argv[];
+{
+	int retval,newport;
+	struct sockaddr_in newsin,oldsin;
+	ZNotice_t notice;
+
+	newsin = ZGetDestAddr();
+
+	if (argc > 1) {
+		fprintf(stderr,"Usage: %s\n",argv[0]);
+		return;
+	}
+	
+	if ((newport = ZGetWGPort()) == -1) {
+		ss_perror(sci_idx,errno,"while getting WindowGram port");
+		return;
+	}
+
+	newsin.sin_port = newport;
+	if ((retval = ZSetDestAddr(&newsin)) != ZERR_NONE) {
+		ss_perror(sci_idx,retval,"while setting destination address");
+		return;
+	}
+
+	notice.z_kind = UNSAFE;
+	notice.z_port = 0;
+	notice.z_class = WG_CTL_CLASS;
+	notice.z_class_inst = WG_CTL_USER;
+
+	if (!strcmp(argv[0],"wg_read"))
+		notice.z_opcode = USER_REREAD;
+	if (!strcmp(argv[0],"wg_shutdown"))
+		notice.z_opcode = USER_SHUTDOWN;
+	if (!strcmp(argv[0],"wg_startup"))
+		notice.z_opcode = USER_STARTUP;
+	
+	notice.z_sender = 0;
+	notice.z_recipient = "";
+	notice.z_default_format = "";
+	notice.z_message_len = 0;
+
+	if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE)
+		ss_perror(sci_idx,retval,"while sending notice");
+
+	if ((retval = ZInitialize()) != ZERR_NONE)
+		ss_perror(sci_idx,retval,
+			  "while reinitializing");
+} 
+
+hm_control(argc,argv)
+	int argc;
+	char *argv[];
+{
+	int retval;
+	ZNotice_t notice;
+
+	if (argc > 1) {
+		fprintf(stderr,"Usage: %s\n",argv[0]);
+		return;
+	}
+	
+	notice.z_kind = HMCTL;
+	notice.z_port = 0;
+	notice.z_class = HM_CTL_CLASS;
+	notice.z_class_inst = HM_CTL_CLIENT;
+
+	if (!strcmp(argv[0],"hm_flush"))
+		notice.z_opcode = CLIENT_FLUSH;
+	if (!strcmp(argv[0],"new_server"))
+		notice.z_opcode = CLIENT_NEW_SERVER;
+
+	notice.z_sender = 0;
+	notice.z_recipient = "";
+	notice.z_default_format = "";
+	notice.z_message_len = 0;
+
+	if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE)
+		ss_perror(sci_idx,retval,"while sending notice");
+} 
+
+show_var(argc,argv)
+	int argc;
+	char *argv[];
+{
+	int i;
+	char *value;
+	
+	if (argc < 2) {
+		fprintf(stderr,"Usage: %s <varname> <varname> ...\n",argv[0]);
+		return;
+	}
+
+	for (i=1;i<argc;i++) {
+		value = ZGetVariable(argv[i]);
+		if (value)
+			printf("%s: %s\n",argv[i],value);
+		else
+			printf("%s: not defined\n",argv[i]);
+	}
+}
+
+set_var(argc,argv)
+	int argc;
+	char *argv[];
+{
+	int retval,setting_exp;
+	char *exp_level,*newargv[1];
+	
+	if (argc != 2 && argc != 3) {
+		fprintf(stderr,"Usage: %s <varname> [value]\n",
+			argv[0]);
+		return;
+	}
+
+	setting_exp = 0;
+
+	if (!cistrcmp(argv[1],"exposure")) {
+		setting_exp = 1;
+		if (argc != 3) {
+			fprintf(stderr,"An exposure setting must be specified.\n");
+			return;
+		}
+		exp_level = (char *)0;
+		if (!cistrcmp(argv[2],"none"))
+			exp_level = EXPOSE_NONE;
+		if (!cistrcmp(argv[2],"operations"))
+			exp_level = EXPOSE_OPSTAFF;
+		if (!cistrcmp(argv[2],"realm-visible"))
+			exp_level = EXPOSE_REALMVIS;
+		if (!cistrcmp(argv[2],"realm-announced"))
+			exp_level = EXPOSE_REALMANN;
+		if (!cistrcmp(argv[2],"net-visible"))
+			exp_level = EXPOSE_NETVIS;
+		if (!cistrcmp(argv[2],"net-announced"))
+			exp_level = EXPOSE_NETANN;
+		if (!exp_level) {
+			fprintf(stderr,"The exposure setting must be one of:\n");
+			fprintf(stderr,"none, operations, realm-visible, realm-announced, net-visible, net-announced.\n");
+			return;
+		}
+	} 
+	if (argc == 2)
+		retval = ZSetVariable(argv[1],"");
+	else
+		retval = ZSetVariable(argv[1],argv[2]);
+
+	if (retval != ZERR_NONE) {
+		ss_perror(sci_idx,retval,"while setting variable value");
+		return;
+	}
+
+	/* Side-effects?  Naw, us? */
+	
+	if (setting_exp) {
+		if ((retval = ZSetLocation(exp_level)) != ZERR_NONE)
+			ss_perror(sci_idx,retval,"while changing exposure status");
+		if (!strcmp(exp_level,EXPOSE_NONE)) {
+			newargv[0] = "wg_shutdown";
+			wgc_control(1,newargv);
+		} 
+		return;
+	} 
+}
+
+cistrcmp(s1,s2)
+	char *s1,*s2;
+{
+	while (*s1 && *s2) {
+		if (_toupper(*s1) != _toupper(*s2))
+			return 1;
+		s1++;
+		s2++;
+	}
+	return (*s1 || *s2);
+} 
+
+unset_var(argc,argv)
+	int argc;
+	char *argv[];
+{
+	int retval,i;
+	
+	if (argc < 2) {
+		fprintf(stderr,"Usage: %s <varname> <varname> ...\n",
+			argv[0]);
+		return;
+	}
+
+	for (i=1;i<argc;i++)
+		if ((retval = ZUnsetVariable(argv[i])) != ZERR_NONE)
+			ss_perror(sci_idx,retval,
+				  "while unsetting variable value");
+}
+	
+cancel_subs(argc,argv)
+	int argc;
+	char *argv[];
+{
+	int retval,wgport;
 
 	if (argc != 1) {
 		fprintf(stderr,"Usage: %s\n",argv[0]);
 		return;
 	} 
 
+ 	if ((wgport = ZGetWGPort()) == -1) {
+		ss_perror(sci_idx,errno,"while finding WindowGram port");
+		return;
+	} 
 	if ((retval = ZCancelSubscriptions((u_short)wgport)) != ZERR_NONE)
 		ss_perror(sci_idx,retval,"while cancelling subscriptions");
 }
@@ -146,7 +362,7 @@ subscribe(argc,argv)
 	int argc;
 	char *argv[];
 {
-	int retval;
+	int retval,wgport;
 	ZSubscription_t sub,sub2;
 	
 	if (argc > 4 || argc < 3) {
@@ -160,6 +376,11 @@ subscribe(argc,argv)
 
 	fix_macros(&sub,&sub2,1);
 	
+ 	if ((wgport = ZGetWGPort()) == -1) {
+		ss_perror(sci_idx,errno,"while finding WindowGram port");
+		return;
+	} 
+
 	retval = (*argv[0] == 's') ? ZSubscribeTo(&sub2,1,(u_short)wgport) :
 		ZUnsubscribeTo(&sub2,1,(u_short)wgport);
 	
@@ -175,7 +396,7 @@ sub_file(argc,argv)
 	FILE *fp,*fpout;
 	char errbuf[BUFSIZ],subline[BUFSIZ],ourline[BUFSIZ];
 	char backup[BUFSIZ];
-	int delflag,retval;
+	int delflag,retval,wgport;
 	
 	if (argc > 4 || argc < 3) {
 		fprintf(stderr,"Usage: %s class instance [*]\n",argv[0]);
@@ -185,6 +406,11 @@ sub_file(argc,argv)
 	sub.class = argv[1];
 	sub.classinst = argv[2];
 	sub.recipient = (argc == 3)?ZGetSender():argv[3];
+
+ 	if ((wgport = ZGetWGPort()) == -1) {
+		ss_perror(sci_idx,errno,"while finding WindowGram port");
+		return;
+	} 
 
 	if (!strcmp(argv[0],"add")) {
 		if (make_exist(subsname))
@@ -252,13 +478,18 @@ load_subs(argc,argv)
 {
 	ZSubscription_t subs[SUBSATONCE],subs2[SUBSATONCE];
 	FILE *fp;
-	int ind,lineno,i,retval,type;
+	int ind,lineno,i,retval,type,wgport;
 	char *comma,*comma2,*file,subline[BUFSIZ],errbuf[BUFSIZ];
 
 	if (argc > 2) {
 		fprintf(stderr,"Usage: %s [file]\n",argv[0]);
 		return;
 	}
+
+ 	if ((wgport = ZGetWGPort()) == -1) {
+		ss_perror(sci_idx,errno,"while finding WindowGram port");
+		return;
+	} 
 
 	file = (argc == 1) ? subsname : argv[1];
 	
@@ -320,7 +551,7 @@ load_subs(argc,argv)
 					ss_perror(sci_idx,retval,(type == SUB)?
 						"while subscribing":
 						"while unsubscribing");
-					exit(1);
+					return;
 				}
 			}
 		} 
@@ -341,7 +572,7 @@ load_subs(argc,argv)
 			ss_perror(sci_idx,retval,(type == SUB)?
 				"while subscribing":
 				"while unsubscribing");
-			exit(1);
+			return;
 		}
 	} 
 
@@ -355,7 +586,7 @@ current(argc,argv)
 	FILE *fp;
 	char errbuf[BUFSIZ];
 	ZSubscription_t subs;
-	int i,nsubs,retval,save,one;
+	int i,nsubs,retval,save,one,wgport;
 	char *file,backup[BUFSIZ];
 	
 	save = 0;
@@ -367,6 +598,11 @@ current(argc,argv)
 		fprintf(stderr,"Usage: %s%s\n",argv[0],save?" [filename]":"");
 		return;
 	}
+
+ 	if ((wgport = ZGetWGPort()) == -1) {
+		ss_perror(sci_idx,errno,"while finding WindowGram port");
+		return;
+	} 
 
 	retval = ZRetrieveSubscriptions((u_short)wgport,&nsubs);
 
