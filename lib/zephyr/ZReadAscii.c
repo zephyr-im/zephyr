@@ -19,10 +19,11 @@
 int ZReadAscii(ptr,len,field,num)
 	char *ptr;
 	int len;
-	char *field;
+	unsigned char *field;
 	int num;
 {
 	int i;
+	unsigned int hexbyte;
 	char bfr[3];
 
 	for (i=0;i<num;i++) {
@@ -42,7 +43,8 @@ int ZReadAscii(ptr,len,field,num)
 		bfr[2] = '\0';
 		if (!bfr[0] || !bfr[1])
 			return (ZERR_BADFIELD);
-		(void) sscanf(bfr,"%x",field+i);
+		(void) sscanf(bfr,"%x",&hexbyte);
+		field[i] = hexbyte;
 		ptr += 2;
 		len -= 2;
 		if (len < 1)
