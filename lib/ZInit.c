@@ -24,14 +24,22 @@ static char rcsid_ZInitialize_c[] =
 #include <krb_err.h>
 #endif
 
+#ifndef INADDR_NONE
+#define INADDR_NONE 0xffffffff
+#endif
+
 Code_t ZInitialize()
 {
     struct servent *hmserv;
-    char addr[4];
+    struct hostent *hostent;
+    char addr[4], hostname[MAXHOSTNAMELEN];
+    struct in_addr servaddr;
+    struct sockaddr_in sin;
+    int s, sinsize = sizeof(sin);
 #ifdef HAVE_KRB4
     Code_t code;
     ZNotice_t notice;
-    char *krealm;
+    char *krealm = NULL;
     int krbval;
     char d1[ANAME_SZ], d2[INST_SZ];
 
@@ -61,12 +69,11 @@ Code_t ZInitialize()
     __Q_Tail = NULL;
     __Q_Head = NULL;
     
-#ifdef HAVE_KRB4
-
     /* if the application is a server, there might not be a zhm.  The
        code will fall back to something which might not be "right",
        but this is is ok, since none of the servers call krb_rd_req. */
 
+    servaddr.s_addr = INADDR_NONE;
     if (! __Zephyr_server) {
        if ((code = ZOpenPort(NULL)) != ZERR_NONE)
 	  return(code);
@@ -80,13 +87,17 @@ Code_t ZInitialize()
 	  If this code ever support a multiplexing zhm, this will have to
 	  be made smarter, and probably per-message */
 
+#ifdef HAVE_KRB4
        krealm = krb_realmofhost(notice.z_message);
+#endif
+       hostent = gethostbyname(notice.z_message);
+       if (hostent && hostent->h_addrtype == AF_INET)
+	   memcpy(&servaddr, hostent->h_addr, sizeof(servaddr));
 
        ZFreeNotice(&notice);
-    } else {
-       krealm = NULL;
     }
 
+#ifdef HAVE_KRB4
     if (krealm) {
 	strcpy(__Zephyr_realm, krealm);
     } else if ((krb_get_tf_fullname(TKT_FILE, d1, d2, __Zephyr_realm)
@@ -97,6 +108,41 @@ Code_t ZInitialize()
 #else
     strcpy(__Zephyr_realm, "local-realm");
 #endif
+
+    __My_addr.s_addr = INADDR_NONE;
+    if (servaddr.s_addr != INADDR_NONE) {
+	/* Try to get the local interface address by connecting a UDP
+	 * socket to the server address and getting the local address.
+	 * Some broken operating systems (e.g. Solaris 2.0-2.5) yield
+	 * INADDR_ANY (zero), so we have to check for that. */
+	s = socket(AF_INET, SOCK_DGRAM, 0);
+	if (s != -1) {
+	    memset(&sin, 0, sizeof(sin));
+	    sin.sin_family = AF_INET;
+	    memcpy(&sin.sin_addr, &servaddr, sizeof(servaddr));
+	    sin.sin_port = HM_SRV_SVC_FALLBACK;
+	    if (connect(s, (struct sockaddr *) &sin, sizeof(sin)) == 0
+		&& getsockname(s, (struct sockaddr *) &sin, &sinsize) == 0
+		&& sin.sin_addr.s_addr != 0)
+		memcpy(&__My_addr, &sin.sin_addr, sizeof(__My_addr));
+	    close(s);
+	}
+    }
+    if (__My_addr.s_addr == INADDR_NONE) {
+	/* We couldn't figure out the local interface address by the
+	 * above method.  Try by resolving the local hostname.  (This
+	 * is a pretty broken thing to do, and unfortunately what we
+	 * always do on server machines.) */
+	if (gethostname(hostname, sizeof(hostname)) == 0) {
+	    hostent = gethostbyname(hostname);
+	    if (hostent && hostent->h_addrtype == AF_INET)
+		memcpy(&__My_addr, hostent->h_addr, sizeof(__My_addr));
+	}
+    }
+    /* If the above methods failed, zero out __My_addr so things will
+     * sort of kind of work. */
+    if (__My_addr.s_addr == INADDR_NONE)
+	__My_addr.s_addr = 0;
 
     /* Get the sender so we can cache it */
     (void) ZGetSender();
