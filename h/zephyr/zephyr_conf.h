@@ -46,6 +46,7 @@ typedef int gid_t;
 #define	REALM_SZ	MAXHOSTNAMELEN
 #define	INST_SZ		0		/* no instances w/o Kerberos */
 #define	ANAME_SZ	9		/* size of a username + null */
+#define	KRB_REALM	"ATHENA.MIT.EDU" /* your local "realm" */
 #endif /* !KERBEROS */
 
 #endif /* __ZEPHYR_CONF_H__ */
