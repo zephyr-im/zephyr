@@ -91,7 +91,7 @@ binary-arch: build install
 	dh_testdir
 	dh_testroot
 	set -e; \
-	for file  in  files init templates config postinst; do \
+	for file  in  files templates config postinst; do \
 		cp debian/zephyr-server.$$file debian/zephyr-server-krb.$$file; \
 		done
 	cp debian/libzephyr3.files debian/libzephyr3-krb.files
