@@ -89,7 +89,7 @@ static long lose_timo = LOSE_TIMO;
 static losinghost *losing_hosts = NULLLH; /* queue of pings for hosts we
 					     doubt are really there */
 
-static void host_detach(), flush(), deathgram(), insert_host(), remove_host();
+static void host_detach(), flush(), insert_host(), remove_host();
 static void host_not_losing(), host_lost(), ping();
 static Code_t host_attach();
 static int cmp_hostlist();
@@ -115,13 +115,10 @@ ZServerDesc_t *server;
 	if (notice->z_kind == HMACK) {
 		host_not_losing(who);
 		return;
-#ifdef notdef
-	/* not yet--wait til next release */
 	} else if (notice->z_kind != HMCTL) {
 		zdbug((LOG_DEBUG, "bogus HM packet"));
 		clt_ack(notice, who, AUTH_FAILED);
 		return;
-#endif notdef
 	}
 	owner = hostm_find_server(&who->sin_addr);
 	if (!strcmp(opcode, HM_ATTACH)) {
@@ -260,17 +257,38 @@ hostm_shutdown()
 {
 	register ZHostList_t *hosts = otherservers[me_server_idx].zs_hosts;
 	register ZHostList_t *host;
+	int newserver, i;
 
 	zdbug((LOG_DEBUG,"hostm_shutdown"));
 	if (!hosts)
 		return;
 
+	for (i = 0; i < nservers; i++){
+		if (i == me_server_idx) continue;
+		if (otherservers[i].zs_state == SERV_UP)
+			break;
+	}
+	if (i == nservers)		/* no other servers are up */
+		newserver = 0;
+	else
+		newserver = 1;
+
 	/* kill them all */
 	for (host = hosts->q_forw;
 	     host != hosts;
-	     host = host->q_forw)
-		deathgram(&host->zh_addr);
-	
+	     host = host->q_forw) {
+		/* recommend a random, known up server */
+		if (newserver) {
+			do
+				newserver = (int) (random() % (nservers - 1)) + 1;
+			while (newserver == limbo_server_idx() ||
+			       (otherservers[newserver].zs_state != SERV_UP &&
+				otherservers[newserver].zs_state != SERV_TARDY) ||
+			       newserver == me_server_idx);
+			hostm_deathgram(&host->zh_addr, &otherservers[newserver]);
+		} else
+			hostm_deathgram(&host->zh_addr, NULLZSDT);
+	}
 	return;
 }
 
@@ -508,12 +526,14 @@ ZServerDesc_t *server;
 }
 
 /*
- * Send a shutdown message to the HostManager at sin
+ * Send a shutdown message to the HostManager at sin, recommending him to
+ * use server
  */
 
-static void
-deathgram(sin)
+void
+hostm_deathgram(sin, server)
 struct sockaddr_in *sin;
+ZServerDesc_t *server;
 {
 	Code_t retval;
 	int shutlen;
@@ -531,9 +551,15 @@ struct sockaddr_in *sin;
 	shutnotice.z_opcode = SERVER_SHUTDOWN;
 	shutnotice.z_sender = HM_CTL_SERVER;
 	shutnotice.z_recipient = "hm@ATHENA.MIT.EDU";
-	shutnotice.z_message = NULL;
-	shutnotice.z_message_len = 0;
-	
+	if (server) {
+		shutnotice.z_message = inet_ntoa(server->zs_addr.sin_addr);
+		shutnotice.z_message_len = strlen(shutnotice.z_message);
+		zdbug((LOG_DEBUG, "suggesting %s",shutnotice.z_message));
+	} else {
+		shutnotice.z_message = NULL;
+		shutnotice.z_message_len = 0;
+	}
+
 	shutlen = sizeof(shutpack);
 	if ((retval = ZFormatNotice(&shutnotice,
 				    shutpack,
@@ -732,7 +758,7 @@ ZServerDesc_t *server;
                 register int i = 0;
                 char buf[512];
                 for (i = 0; i < num_hosts; i++) {
-                        strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr));
+                        (void) strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr));
                         syslog(LOG_DEBUG, "%d: %s %s",i,buf,
                                inet_ntoa(otherservers[all_hosts[i].server_index].zs_addr.sin_addr));
                 }
