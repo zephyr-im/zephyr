@@ -45,7 +45,7 @@ Code_t ZLocateUser(user,nlocs)
 		return (retval);
 
 	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,&auth,
-				ZCompareUID,(char *)&notice.z_uid)) !=
+				ZCompareUIDPred,(char *)&notice.z_uid)) !=
 	    ZERR_NONE)
 		return (retval);
 

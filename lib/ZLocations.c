@@ -46,7 +46,7 @@ Code_t ZSetLocation()
 		return (retval);
 
 	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,0,
-			        ZCompareUID,(char *)&notice.z_uid)) !=
+			        ZCompareUIDPred,(char *)&notice.z_uid)) !=
 	    ZERR_NONE)
 		return (retval);
 
