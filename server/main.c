@@ -14,9 +14,9 @@
 #include <zephyr/mit-copyright.h>
 
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 3.2";
+char version[] = "Zephyr Server (DEBUG) 3.3";
 #else
-char version[] = "Zephyr Server 3.2";
+char version[] = "Zephyr Server 3.3";
 #endif DEBUG
 #ifndef lint
 #ifndef SABER
@@ -451,6 +451,7 @@ do_reset()
 	/* reset various things in the server's state */
 	subscr_reset();
 	server_reset();
+	access_reinit();
 	doreset = 0;
 }
 
