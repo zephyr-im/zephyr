@@ -334,9 +334,6 @@ struct sockaddr_in *who;
 		return;
 	}
 	xfree(pkt);			/* free packet */
-	/* the following list of freed items is derived from Zinternal.c
-	 and Z_FormatHeader() */
-	xfree(sense_notice.z_version);
 
 	client = client_which_client(who, &sense_notice);
 	/* transmit the message to the owning port of the location. */
