@@ -365,6 +365,7 @@ struct sockaddr_in *who;
 			       inet_ntoa(lhp->lh_client->zct_sin.sin_addr),
 			       ntohs(lhp->lh_client->zct_sin.sin_port)));
 			client_deregister(lhp->lh_client, lhp->lh_host);
+			server_kill_clt(lhp->lh_client);
 			xremque(lhp);
 			xfree(lhp);
 			/* now that the remque adjusted the linked list,
@@ -682,47 +683,60 @@ ZHostList_t *host;
 ZServerDesc_t *server;
 {
 	struct hostlist *oldlist;
+	register int i = 0;
 
-	zdbug((LOG_DEBUG,"insert_host %s",inet_ntoa(host->zh_addr.sin_addr)));
-
+#ifdef DEBUG
+	char buf[512];
+	if (zdebug) {
+		(void) strcpy(buf, inet_ntoa(host->zh_addr.sin_addr));
+		syslog(LOG_DEBUG,"insert_host %s %s",
+		       buf,
+		       inet_ntoa(server->zs_addr.sin_addr));
+	}
+#endif DEBUG
 	if (hostm_find_host(&host->zh_addr.sin_addr))
 		return;
 
 	num_hosts++;
 	oldlist = all_hosts;
 
+	if (!(all_hosts = (struct hostlist *) xmalloc(num_hosts * sizeof(struct hostlist)))) {
+		syslog(LOG_CRIT, "insert_host: nomem");
+		abort();
+	}
+
 	if (!oldlist) {			/* this is the first */
-		if (!(all_hosts = (struct hostlist *) xmalloc(num_hosts * sizeof(struct hostlist)))) {
-			syslog(LOG_CRIT, "insert_host: nomem");
-			abort();
-		}
 		all_hosts[0].host = host;
 		all_hosts[0].server_index = server - otherservers;
 		return;
 	}
 
-	if (!(all_hosts = (struct hostlist *) realloc((caddr_t) oldlist, (unsigned) num_hosts * sizeof(struct hostlist)))) {
-		syslog(LOG_CRIT, "insert_host: nomem");
-		abort();
+	/* copy old pointers */
+	while ((i < (num_hosts - 1)) &&
+	       ((oldlist[i].host)->zh_addr.sin_addr.s_addr < host->zh_addr.sin_addr.s_addr)) {
+		all_hosts[i] = oldlist[i];
+		i++;
 	}
+	/* add this one */
+	all_hosts[i].host = host;
+	all_hosts[i++].server_index = server - otherservers;
 
-	all_hosts[num_hosts - 1].host = host;
-	all_hosts[num_hosts - 1].server_index = server - otherservers;
-
-	/* sort it */
-
-	qsort((caddr_t) all_hosts, num_hosts, sizeof(struct hostlist), cmp_hostlist);
-
+	/* copy the rest */
+	while (i < num_hosts) {
+		all_hosts[i] = oldlist[i - 1];
+		i++;
+	}
+	xfree(oldlist);
 #ifdef DEBUG
-	if (zdebug) {
-		register int i = 0;
-		char buf[512];
-		for (i = 0; i < num_hosts; i++) {
-			strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr));
-			syslog(LOG_DEBUG, "%d: %s %s",i,buf,
-			       inet_ntoa(otherservers[all_hosts[i].server_index].zs_addr.sin_addr));
-		}
-	}
+        if (zdebug) {
+                register int i = 0;
+                char buf[512];
+                for (i = 0; i < num_hosts; i++) {
+                        strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr));
+                        syslog(LOG_DEBUG, "%d: %s %s",i,buf,
+                               inet_ntoa(otherservers[all_hosts[i].server_index].zs_addr.sin_addr));
+                }
+        }
 #endif DEBUG
 	return;
 }
@@ -738,7 +752,7 @@ ZHostList_t *host;
 	struct hostlist *oldlist;
 	register int i = 0;
 
-	zdbug((LOG_DEBUG,"remove_host"));
+	zdbug((LOG_DEBUG,"remove_host %s", inet_ntoa(host->zh_addr.sin_addr)));
 	if (!hostm_find_host(&host->zh_addr.sin_addr))
 		return;
 
@@ -770,33 +784,5 @@ ZHostList_t *host;
 		i++;
 	}
 	xfree(oldlist);
-#ifdef DEBUG
-	if (zdebug) {
-		char buf[512];
-		for (i = 0; i < num_hosts; i++) {
-			strcpy(buf,inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr));
-			syslog(LOG_DEBUG, "%d: %s %s",i,buf,
-			       inet_ntoa(otherservers[all_hosts[i].server_index].zs_addr.sin_addr));
-		}
-	}
-#endif DEBUG
 	return;
-}
-
-/*
- * routine for qsort().
- *
- * return -1, 0, 1 if the IP address of the host el1 is <, = or > the IP
- * address of the host el2
- */
-
-static int
-cmp_hostlist(el1, el2)
-struct hostlist *el1, *el2;
-{
-	if (el1->host->zh_addr.sin_addr.s_addr <
-	    el2->host->zh_addr.sin_addr.s_addr) return (-1);
-	else if (el1->host->zh_addr.sin_addr.s_addr ==
-		 el2->host->zh_addr.sin_addr.s_addr) return (0);
-	else return(1);
 }
