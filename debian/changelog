@@ -1,8 +1,9 @@
 zephyr (2.1.20010518.SNAPSHOT-1) unstable; urgency=low
 
   * new upstream version
+  * update config.{guess,sub}
 
- -- Karl Ramm <kcr@debian.org>  Wed, 20 Jun 2001 03:14:41 -0400
+ -- Karl Ramm <kcr@debian.org>  Wed, 20 Jun 2001 03:27:44 -0400
 
 zephyr (2.1.20000421.SNAPSHOT-16) unstable; urgency=low
 
