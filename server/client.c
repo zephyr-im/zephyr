@@ -151,17 +151,13 @@ ZNotice_t *notice;
 	register ZHostList_t *hlt;
 	register ZClientList_t *clients;
 
-	zdbug((LOG_DEBUG,"which_client entry"));
-
 	if (!(hlt = hostm_find_host(&who->sin_addr))) {
-		zdbug((LOG_DEBUG,"host not found"));
+		zdbug((LOG_DEBUG,"cl_wh_clt: host not found"));
 		return(NULLZCNT);
 	}
 
-	zdbug((LOG_DEBUG,"host %s",inet_ntoa(hlt->zh_addr.sin_addr)));
-	
 	if (!hlt->zh_clients) {
-		zdbug((LOG_DEBUG,"no clients"));
+		zdbug((LOG_DEBUG,"cl_wh_clt: no clients"));
 		return(NULLZCNT);
 	}
 
@@ -169,11 +165,10 @@ ZNotice_t *notice;
 	     clients != hlt->zh_clients;
 	     clients = clients->q_forw)
 		if (clients->zclt_client->zct_sin.sin_port == notice->z_port) {
-			zdbug((LOG_DEBUG,"match port %d", ntohs(notice->z_port)));
 			return(clients->zclt_client);
 		}
-	zdbug((LOG_DEBUG,"no port"));
 
+	zdbug((LOG_DEBUG, "cl_wh_clt: no port"));
 	return(NULLZCNT);
 }
 
