@@ -18,6 +18,7 @@ void Warning(first, va_alist)
      while ((s = va_arg(vp, char *)) != NULL)
 	  fputs(s, stderr);
      va_end(vp);
+     putc('\n', stderr);
 }
 
 /*VARARGS*/
@@ -34,6 +35,7 @@ void Error(first, va_alist)
      while ((s = va_arg(vp, char *)) != NULL)
 	  fputs(s, stderr);
      va_end(vp);
+     putc('\n', stderr);
 
      exit(1);
 }
@@ -56,6 +58,7 @@ char *Malloc(n, va_alist)
      while ((s = va_arg(vp, char *)) != NULL)
 	  fputs(s, stderr);
      va_end(vp);
+     putc('\n', stderr);
 
      exit(1);
 }
@@ -70,7 +73,8 @@ char *get_username()
      if (u = (char *) getenv("USER")) return u;
 
      pwuid = getpwuid(getuid());
-     u = pwuid->pw_name;
-     
-     return (u);
+     if (pwuid)
+       return u = pwuid->pw_name;
+     else
+       return NULL;
 }
