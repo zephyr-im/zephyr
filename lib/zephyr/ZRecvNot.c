@@ -42,7 +42,7 @@ Code_t ZReceiveNotice(notice, from)
     if (from)
 	*from = nextq->from;
     
-    bcopy(nextq->packet, buffer, len);
+    _BCOPY(nextq->packet, buffer, len);
 
     Z_RemQueue(nextq);
     

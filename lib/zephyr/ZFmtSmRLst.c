@@ -48,7 +48,7 @@ Code_t ZFormatSmallRawNoticeList(notice, list, nitems, buffer, ret_len)
 
     for (;nitems;nitems--, list++) {
 	i = strlen(*list)+1;
-	bcopy(*list, ptr, i);
+	_BCOPY(*list, ptr, i);
 	ptr += i;
     }
 

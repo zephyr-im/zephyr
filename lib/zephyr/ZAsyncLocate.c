@@ -31,7 +31,7 @@ Code_t ZRequestLocations(user, zald, kind, auth)
 	if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
 	    return (retval);
 
-    (void) bzero((char *)&notice, sizeof(notice));
+    (void) _BZERO((char *)&notice, sizeof(notice));
     notice.z_kind = kind;
     notice.z_port = __Zephyr_port;
     notice.z_class = LOCATE_CLASS;
@@ -166,5 +166,5 @@ void ZFreeALD(zald)
 
    if (zald->user) free(zald->user);
    if (zald->version) free(zald->version);
-   bzero(zald, sizeof(*zald));
+   _BZERO(zald, sizeof(*zald));
 }

@@ -40,7 +40,7 @@ Code_t ZInitialize()
     initialize_krb_error_table();
 #endif
     
-    bzero((char *)&__HM_addr, sizeof(__HM_addr));
+    _BZERO((char *)&__HM_addr, sizeof(__HM_addr));
 
     __HM_addr.sin_family = AF_INET;
 
@@ -56,7 +56,7 @@ Code_t ZInitialize()
 
     __HM_addr.sin_port = hmserv->s_port;
 
-    bcopy(addr, (char *)&__HM_addr.sin_addr, 4);
+    _BCOPY(addr, (char *)&__HM_addr.sin_addr, 4);
 
     __HM_set = 0;
 
