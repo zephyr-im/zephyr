@@ -29,7 +29,7 @@ Code_t ZParseNotice(buffer, len, notice)
     int maj, numfields, i;
     unsigned int temp[3];
 
-    bzero(notice, sizeof(ZNotice_t));
+    bzero((char *)notice, sizeof(ZNotice_t));
 	
     ptr = buffer;
     end = buffer+len;
@@ -48,7 +48,7 @@ Code_t ZParseNotice(buffer, len, notice)
     if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp,
 		   sizeof(int)) == ZERR_BADFIELD)
 	return (ZERR_BADPKT);
-    numfields = ntohl(*temp);
+    numfields = ntohl((u_long) *temp);
     ptr += strlen(ptr)+1;
 
     /*XXX 3 */
@@ -60,7 +60,7 @@ Code_t ZParseNotice(buffer, len, notice)
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
 		       sizeof(int)) == ZERR_BADFIELD)
 	    return (ZERR_BADPKT);
-	notice->z_kind = (ZNotice_Kind_t)ntohl(*temp);
+	notice->z_kind = (ZNotice_Kind_t)ntohl((u_long) *temp);
 	numfields--;
 	ptr += strlen(ptr)+1;
     }
@@ -72,8 +72,8 @@ Code_t ZParseNotice(buffer, len, notice)
 		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
 	    return (ZERR_BADPKT);
 	bcopy((char *)temp, (char *)&notice->z_uid, sizeof(ZUnique_Id_t));
-	notice->z_time.tv_sec = ntohl(notice->z_uid.tv.tv_sec);
-	notice->z_time.tv_usec = ntohl(notice->z_uid.tv.tv_usec);
+	notice->z_time.tv_sec = ntohl((u_long) notice->z_uid.tv.tv_sec);
+	notice->z_time.tv_usec = ntohl((u_long) notice->z_uid.tv.tv_usec);
 	numfields--;
 	ptr += strlen(ptr)+1;
     }
@@ -107,7 +107,7 @@ Code_t ZParseNotice(buffer, len, notice)
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
 		       sizeof(int)) == ZERR_BADFIELD)
 	    return (ZERR_BADPKT);
-	notice->z_authent_len = ntohl(*temp);
+	notice->z_authent_len = ntohl((u_long) *temp);
 	numfields--;
 	ptr += strlen(ptr)+1;
     }
@@ -175,7 +175,7 @@ Code_t ZParseNotice(buffer, len, notice)
 		   sizeof(ZChecksum_t))
 	== ZERR_BADFIELD)
 	return (ZERR_BADPKT);
-    notice->z_checksum = ntohl(*temp);
+    notice->z_checksum = ntohl((u_long) *temp);
     numfields--;
     ptr += strlen(ptr)+1;
 
@@ -192,8 +192,8 @@ Code_t ZParseNotice(buffer, len, notice)
 		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
 	    return (ZERR_BADPKT);
 	bcopy((char *)temp, (char *)&notice->z_multiuid, sizeof(ZUnique_Id_t));
-	notice->z_time.tv_sec = ntohl(notice->z_multiuid.tv.tv_sec);
-	notice->z_time.tv_usec = ntohl(notice->z_multiuid.tv.tv_usec);
+	notice->z_time.tv_sec = ntohl((u_long) notice->z_multiuid.tv.tv_sec);
+	notice->z_time.tv_usec = ntohl((u_long) notice->z_multiuid.tv.tv_usec);
 	numfields--;
 	ptr += strlen(ptr)+1;
     }

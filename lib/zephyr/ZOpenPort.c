@@ -43,7 +43,7 @@ Code_t ZOpenPort(port)
 
     bindin.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(__Zephyr_fd, &bindin, sizeof(bindin)) < 0) {
+    if (bind(__Zephyr_fd, (struct sockaddr *)&bindin, sizeof(bindin)) < 0) {
 	if (errno == EADDRINUSE && port && *port)
 	    return (ZERR_PORTINUSE);
 	else
@@ -52,7 +52,7 @@ Code_t ZOpenPort(port)
 
     if (!bindin.sin_port) {
 	len = sizeof(bindin);
-	if (getsockname(__Zephyr_fd, &bindin, &len))
+	if (getsockname(__Zephyr_fd, (struct sockaddr *)&bindin, &len))
 	    return (errno);
     }
     

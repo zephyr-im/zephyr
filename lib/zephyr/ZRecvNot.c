@@ -32,11 +32,11 @@ Code_t ZReceiveNotice(notice, from)
     if ((retval = Z_WaitForComplete()) != ZERR_NONE)
 	return (retval);
 
-    nextq = (struct _Z_InputQ *) Z_GetFirstComplete();
+    nextq = Z_GetFirstComplete();
 
     len = nextq->packet_len;
     
-    if (!(buffer = malloc(len)))
+    if (!(buffer = malloc((unsigned) len)))
 	return (ENOMEM);
 
     if (from)

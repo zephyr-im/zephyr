@@ -66,9 +66,9 @@ Code_t ZInitialize()
     if (gethostname(hostname, MAXHOSTNAMELEN))
 	return (errno);
     if (hent = gethostbyname(hostname))
-	strcpy(__Zephyr_realm, hent->h_name);
+	(void) strcpy(__Zephyr_realm, hent->h_name);
     else
-	strcpy(__Zephyr_realm, hostname);
+	(void) strcpy(__Zephyr_realm, hostname);
 #endif
 
     /* Get the sender so we can cache it */
