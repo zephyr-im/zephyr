@@ -37,7 +37,7 @@ Code_t ZReceivePacket(buffer, ret_len, from)
     if (*ret_len > Z_MAXPKTLEN)
 	return (ZERR_PKTLEN);
     
-    _BCOPY(nextq->packet, buffer, *ret_len);
+    (void) memcpy(buffer, nextq->packet, *ret_len);
 
     if (from)
 	*from = nextq->from;

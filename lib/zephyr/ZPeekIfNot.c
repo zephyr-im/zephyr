@@ -43,7 +43,7 @@ Code_t ZPeekIfNotice(notice, from, predicate, args)
 	    if ((*predicate)(&tmpnotice, args)) {
 		if (!(buffer = (char *) malloc((unsigned) qptr->packet_len)))
 		    return (ENOMEM);
-		_BCOPY(qptr->packet, buffer, qptr->packet_len);
+		(void) memcpy(buffer, qptr->packet, qptr->packet_len);
 		if (from)
 		    *from = qptr->from;
 		if ((retval = ZParseNotice(buffer, qptr->packet_len, 

@@ -37,8 +37,8 @@ Code_t ZFormatRawNotice(notice, buffer, ret_len)
     if (!(*buffer = (char *) malloc((unsigned) *ret_len)))
 	return (ENOMEM);
 
-    _BCOPY(header, *buffer, hdrlen);
-    _BCOPY(notice->z_message, *buffer+hdrlen, notice->z_message_len);
+    (void) memcpy(*buffer, header, hdrlen);
+    (void) memcpy(*buffer+hdrlen, notice->z_message, notice->z_message_len);
 
     return (ZERR_NONE);
 }
