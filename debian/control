@@ -8,7 +8,18 @@ Standards-Version: 3.1.1
 Package: libzephyr3
 Architecture: any
 Depends: ${shlibs:Depends}
-Description: The original "Instant Message" system libraries
+Description: The original "Instant Message" system libraries without Kerberos
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: libzephyr3-krb
+Architecture: any
+Depends: ${shlibs:Depends}
+Conflicts: libzephyr3
+Provides: libzephyr3
+Description: The original "Instant Message" system libraries with Kerberos 
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
  Zephyr allows users to send messages to other users or to groups of
  users.  Users can view incoming Zephyr messages as windowgrams
@@ -29,7 +40,17 @@ Description: The original "Instant Message" system client
 Package: zephyr-server
 Architecture: any
 Depends: ${shlibs:Depends}
-Description: The original "Instant Message" system-server
+Description: The original "Instant Message" system-server without Kerberos
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: zephyr-server-krb
+Architecture: any
+Depends: ${shlibs:Depends}, libzephyr3-krb
+Conflicts: zephyr-server
+Description: The original "Instant Message" system-server with Kerberos
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
  Zephyr allows users to send messages to other users or to groups of
  users.  Users can view incoming Zephyr messages as windowgrams

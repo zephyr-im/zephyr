@@ -5,8 +5,9 @@ zephyr (2.1.20000421.SNAPSHOT-8) unstable; urgency=low
   * Produce libzephyr3 package and used shared libs
   * Clean up debian/rules to only call movefiles once
   * Depend on libxaw-dev for sid/woody
+  * Support both Kerberos and non-Kerberos
 
- --
+ -- Sam Hartman <hartmans@mit.edu>  Wed, 28 Mar 2001 17:57:21 -0500
 
 zephyr (2.1.20000421.SNAPSHOT-7) unstable; urgency=low
 

@@ -10,17 +10,22 @@
 #export DH_VERBOSE=1
 
 # This is the debhelper compatability version to use.
-export DH_COMPAT=2
+export DH_COMPAT=3
 
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
 SONAME=3
+CONFIGURE_ROOT=--prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --sysconfdir=/etc --datadir=/etc  --with-ares=/usr
+
+
 configure: configure-stamp
 configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
-	./configure --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --sysconfdir=/etc --datadir=/etc --with-krb4=/usr --with-ares=/usr
-
+	-mkdir krb
+	cd krb&&../configure --with-krb4=/usr $(CONFIGURE_ROOT)
+	-mkdir no-krb
+	cd no-krb&&../configure $(CONFIGURE_ROOT)
 	touch configure-stamp
 
 build: configure-stamp build-stamp
@@ -28,32 +33,30 @@ build-stamp:
 	dh_testdir
 
 	# Add here commands to compile the package.
-	-rm -f lib/zephyr/*.o
-	$(MAKE) -C lib			\
-	 FPIC= 					\
-	 LIBEXT=a
-	rm -f lib/zephyr/*.o
-	$(MAKE) LIBEXT=so \
-		FPIC=-fpic SONAME=$(SONAME)
+	set -e; \
+	for dir in krb no-krb ; do  \
+		cd $$dir; \
+	rm -f lib/zephyr/*.o || true; \
+		$(MAKE) -C lib			\
+		 FPIC= 					\
+		 LIBEXT=a; \
+		rm -f lib/zephyr/*.o; \
+		$(MAKE) LIBEXT=so \
+			FPIC=-fpic SONAME=$(SONAME); \
+		cd ..; \
+		done
 
 	touch build-stamp
 
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp configure-stamp
+	-rm -f build-stamp configure-stamp
 
 	# Add here commands to clean up after the build process.
-	-$(MAKE) clean
-	rm -f config.cache config.log config.status h/config.h \
-	Makefile clients/Makefile clients/xzwrite/Makefile \
-	clients/zaway/Makefile clients/zctl/Makefile \
-	clients/zleave/Makefile clients/zlocate/Makefile \
-	clients/zmailnotify/Makefile clients/znol/Makefile \
-	clients/zpopnotify/Makefile clients/zshutdown_notify/Makefile \
-	clients/zstat/Makefile clients/zwrite/Makefile lib/Makefile \
-	libdyn/Makefile server/Makefile zhm/Makefile zwgc/Makefile \
-	server/version.h
+	-rm -rf krb no-krb debian/tmp-krb
+	-rm debian/zephyr-server-krb.*
+	-rm debian/libzephyr3-krb.files
 
 	dh_clean
 
@@ -62,15 +65,20 @@ install: build
 	dh_testdir
 	dh_testroot
 	dh_clean -k
+	-rm -rf debian/tmp-krb
 	dh_installdirs
 
 	# Add here commands to install the package into debian/tmp.
-	$(MAKE) install DESTDIR=`pwd`/debian/tmp
+	cd no-krb&&$(MAKE) install DESTDIR=`pwd`/../debian/tmp
+	cd krb&&$(MAKE)  DESTDIR=`pwd`/../debian/tmp-krb install
 	mv debian/tmp/usr/lib/libzephyr.so debian/tmp/usr/lib/libzephyr.so.$(SONAME)
 	ln -s libzephyr.so.$(SONAME) debian/tmp/usr/lib/libzephyr.so
+		mv debian/tmp-krb/usr/lib/libzephyr.so debian/tmp-krb/usr/lib/libzephyr.so.$(SONAME)
+	ln -s libzephyr.so.$(SONAME) debian/tmp-krb/usr/lib/libzephyr.so
 	mkdir -p debian/tmp/etc/zephyr/acl
 	set -x; for i in debian/acl/*; do install -c -m 544 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
 	install -c -m 544 debian/zephyr.vars debian/tmp/etc/zephyr
+	cp -pr debian/tmp/etc/zephyr/acl debian/tmp-krb/etc/zephyr
 
 # Build architecture-independent files here.
 # Pass -i to all debhelper commands in this target to reduce clutter.
@@ -81,7 +89,13 @@ binary-indep: build install
 binary-arch: build install
 	dh_testdir
 	dh_testroot
-	dh_movefiles 
+	set -e; \
+	for file  in  files init templates config postinst; do \
+		cp debian/zephyr-server.$$file debian/zephyr-server-krb.$$file; \
+		done
+	cp debian/libzephyr3.files debian/libzephyr3-krb.files
+	dh_movefiles  -plibzephyr3 -pzephyr-clients -pzephyr-server -pzephyr-de
+	dh_movefiles --sourcedir=debian/tmp-krb -plibzephyr3-krb -pzephyr-server-krb
 	dh_installdebconf 
 	dh_installdocs
 #	dh_installexamples
@@ -99,11 +113,10 @@ binary-arch: build install
 	dh_compress
 	dh_fixperms
 	# You may want to make some executables suid here.
-	dh_suidregister
-	dh_installdeb
-#	dh_makeshlibs
-#	dh_perl
+	dh_makeshlibs
 	dh_shlibdeps
+	dh_installdeb
+#	dh_perl
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
