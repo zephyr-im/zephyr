@@ -23,11 +23,11 @@ static char rcsid_ZGetWGPort_c[] = "$Header$";
 extern char *getenv();
 extern uid_t getuid();
 
-short ZGetWGPort()
+int ZGetWGPort()
 {
     char *envptr, name[128];
     FILE *fp;
-    short wgport;
+    int wgport;
 	
     envptr = getenv("WGFILE");
     if (!envptr) {
@@ -38,7 +38,7 @@ short ZGetWGPort()
 	return (-1);
 
     /* if fscanf fails, return -1 via wgport */
-    if (fscanf(fp, "%hd", &wgport) != 1)
+    if (fscanf(fp, "%d", &wgport) != 1)
 	    wgport = -1;
 
     (void) fclose(fp);
