@@ -27,101 +27,101 @@ FILE	*sfo;
 char	Errmsg[128];
 FILE	*logf;
 
-static	int	debug = 0;
-static	int	Shutdown = 0;
-
 struct	mailsav {
     struct iovec m_iov[3];
     int m_iovcnt;
     int m_seen;
 } *Mailsav[64];
     
-int	MailIndex;
-int	MailSize;
+int MailIndex;
+int MailSize;
+int Debug = 0;
+int Interval = 0;
+int List = 0;
+int Shutdown = 0;
 
-main()
+main(argc,argv)
+    int argc;
+    char *argv[];
 {
-  char *host;
-  char *user;
-  char *display;
-  register int xs;
-  register int xsmask;
-  int readfds;
-  struct timeval timeout;
-  register int curtime;
-  register int i;
-  char *getenv();
-  int cleanup();
+    char *host;
+    char *user;
+    char *str_index;
+    int readfds;
+    struct timeval timeout;
+    register int curtime;
+    register int i;
+    char *getenv();
+    int cleanup();
 
-  user = getenv("USER");
-  host = getenv("MAILHOST");
-  display = getenv("DISPLAY");
-  if (user == NULL)
-      fatal("no USER defined");
-  if (host == NULL)
-      fatal("no MAILHOST defined");
-  if (display == NULL)
-      fatal("no DISPLAY defined");
+    user = getenv("USER");
+    host = getenv("MAILHOST");
+    if (user == NULL)
+	fatal("No USER envariable defined");
+    if (host == NULL)
+	fatal("No MAILHOST envariable defined");
 
-  if (!debug) background();
-
-  logf = fopen("/usr/adm/mailwatch.log", "a");
-  setlinebuf(logf);
-  log("startup");
-  xs = XNotifyInit(display);
-  xsmask = (1 << xs);
-  timeout.tv_usec = 0;
-
-  signal(SIGHUP, cleanup);
-  signal(SIGTERM, cleanup);
-
-  check_mail(host, user);
-  XDisplayNewWindows();
-  i = 59 - (time(0) % 60);
-  timeout.tv_sec = i;
-  while (1)
-    {
-      readfds = xsmask;
-      if (select(xs+1, &readfds, 0, 0, &timeout) > 0)
-	{
-	  if (readfds & xsmask) 
-	    {
-	      XProcessEvent();
-	      display_unseen();
-	      XDisplayNewWindows();
-	    }
+    for (i = 1; i < argc; i++) {
+	str_index = (char *)index(argv[i], '-');
+	if (str_index == (char *)NULL) syntax(argv[0]);
+	if (strncmp(argv[i], "-d", 2) == 0) {
+	    Debug = 1;
+	    continue;
 	}
-      else
-	{
-	  check_mail(host, user);
-	  XDisplayNewWindows();
+	if (strncmp(argv[i], "-i", 2) == 0) {
+	    if (++i >= argc) syntax(argv[0]);
+	    Interval = atoi(argv[i]);
+	    continue;
 	}
-      if (Shutdown)
-	{
-	  log("shutdown");
-	  fclose(logf);
-	  XNotifyClose();
-	  exit(0);
+	if (strncmp(argv[i], "-l", 2) == 0) {
+	    List = 1;
+	    continue;
 	}
-      i = 60 - (time(0) % 60);
-      timeout.tv_sec = i;
+	if (strncmp(argv[i], "-help", 5) == 0) {
+	    syntax(argv[0]);
+	}
+	syntax(argv[0]);
+    }
+    
+    if (!Debug || !Interval || !List) background();
+
+    logf = fopen("/usr/adm/zmailwatch.log", "a");
+    setlinebuf(logf);
+    log("startup");
+    /* Initialize Notify */
+    timeout.tv_usec = 0;
+
+    signal(SIGHUP, cleanup);
+    signal(SIGTERM, cleanup);
+
+    check_mail(host, user);
+    i = 59 - (time(0) % 60);
+    while (1) {
+	check_mail(host, user);
+	if (Shutdown) {
+	    log("shutdown");
+	    fclose(logf);
+	    /* Shutdown Notify */
+	    exit(0);
+	}
+	i = 60 - (time(0) % 60);
+	sleep(i);
     }
 }
 
 background()
 {
-  register int i;
+    register int i;
 
-  if (fork()) exit(0);
-  for (i = 0; i < 10; i++) close(i);
-  open("/", 0);
-  dup2(0, 1);
-  dup2(0, 2);
-  i = open("/dev/tty", 2);
-  if (i >= 0)
-    {
-      ioctl(i, TIOCNOTTY, 0);
-      close(i);
+    if (fork()) exit(0);
+    for (i = 0; i < 10; i++) close(i);
+    open("/", 0);
+    dup2(0, 1);
+    dup2(0, 2);
+    i = open("/dev/tty", 2);
+    if (i >= 0) {
+	ioctl(i, TIOCNOTTY, 0);
+	close(i);
     }
 }
 
@@ -129,104 +129,93 @@ check_mail(host, user)
     char *host;
     char *user;
 {
-  static int LastNmsgs = -1;
-  static int LastNbytes = -1;
-  int nmsgs;
-  int nbytes;
-  static char tempname[40];
-  static FILE *mbf = NULL;
-  register int mbfi;
-  register int i;
-  register int next_msg;
-  struct mailsav *ms;
-  struct mailsav *build_mailsav();
+    static int LastNmsgs = -1;
+    static int LastNbytes = -1;
+    int nmsgs;
+    int nbytes;
+    static char tempname[40];
+    static FILE *mbf = NULL;
+    register int mbfi;
+    register int i;
+    register int next_msg;
+    struct mailsav *ms;
+    struct mailsav *build_mailsav();
 
-  if (pop_init(host) == NOTOK)
-    {
-      log("pop_init: %s", Errmsg);
-      error(Errmsg);
-      return(1);
+    if (pop_init(host) == NOTOK) {
+	log("pop_init: %s", Errmsg);
+	error(Errmsg);
+	return(1);
     }
 
-  if (pop_command("USER %s", user) == NOTOK || 
-      pop_command("RPOP %s", user) == NOTOK)
-    {
-      error(Errmsg);
-      log("USER|RPOP: %s", Errmsg);
-      pop_command("QUIT");
-      pop_close();
-      return(1);
+    if (pop_command("USER %s", user) == NOTOK || 
+            pop_command("RPOP %s", user) == NOTOK) {
+	error(Errmsg);
+	log("USER|RPOP: %s", Errmsg);
+	pop_command("QUIT");
+	pop_close();
+	return(1);
     }
 
-  if (pop_stat(&nmsgs, &nbytes) == NOTOK)
-    {
-      error(Errmsg);
-      log("pop_stat: %s", Errmsg);
-      pop_command("QUIT");
-      pop_close();
-      return(1);
+    if (pop_stat(&nmsgs, &nbytes) == NOTOK) {
+	error(Errmsg);
+	log("pop_stat: %s", Errmsg);
+	pop_command("QUIT");
+	pop_close();
+	return(1);
     }
 
-  if (nmsgs == 0)
-    {
-      pop_command("QUIT");
-      pop_close();
-      return(0);
+    if (nmsgs == 0) {
+	pop_command("QUIT");
+	pop_close();
+	return(0);
     }
 
-  if (mbf == NULL)
-    {
-      strcpy(tempname, "/tmp/pmXXXXXX");
-      mbfi = mkstemp(tempname);
-      if (mbfi < 0)
-	{
-	  log("mkstemp");
-	  pop_command("QUIT");
-	  pop_close();
-	  return(1);
+    if (mbf == NULL) {
+	strcpy(tempname, "/tmp/pmXXXXXX");
+	mbfi = mkstemp(tempname);
+	if (mbfi < 0) {
+	    log("mkstemp");
+	    pop_command("QUIT");
+	    pop_close();
+	    return(1);
+        }
+	mbf = fdopen(mbfi, "w+");
+    }
+
+    next_msg = 1;
+    if (nmsgs == LastNmsgs && nbytes == LastNbytes) {
+	if (get_message(1, mbf) != 0) return(1);
+	ms = build_mailsav(mbf);
+	if (mail_compare(ms, Mailsav[0]) == 0) {
+	    pop_command("QUIT");
+	    pop_close();
+	    return(0);
 	}
-      mbf = fdopen(mbfi, "w+");
-    }
-
-  next_msg = 1;
-  if (nmsgs == LastNmsgs && nbytes == LastNbytes)
-    {
-      if (get_message(1, mbf) != 0) return(1);
-      ms = build_mailsav(mbf);
-      if (mail_compare(ms, Mailsav[0]) == 0)
-	{
-	  pop_command("QUIT");
-	  pop_close();
-	  return(0);
-	}
-      else
-	{
-	  display_mail_header(ms, 0);
-	  rewind(mbf);
-	  next_msg = 2;
+	else {
+	    display_mail_header(ms, 0);
+	    rewind(mbf);
+	    next_msg = 2;
 	}
     }
 
-  for (i = next_msg; i <= nmsgs; i++)
-    {
-      if (get_message(i, mbf) != 0) return(1);
-      ms = build_mailsav(mbf);
-      display_mail_header(ms, i-1);
-      rewind(mbf);
+    for (i = next_msg; i <= nmsgs; i++) {
+	if (get_message(i, mbf) != 0) return(1);
+	ms = build_mailsav(mbf);
+	display_mail_header(ms, i-1);
+	rewind(mbf);
     }
 
-  LastNmsgs = nmsgs;
-  LastNbytes = nbytes;
+    LastNmsgs = nmsgs;
+    LastNbytes = nbytes;
 
-  pop_command("QUIT");
-  pop_close();
-  if (Shutdown)
-    {
-      fclose(mbf);
-      unlink(tempname);
+    pop_command("QUIT");
+    pop_close();
+    if (Shutdown) {
+	fclose(mbf);
+	unlink(tempname);
     }
 
-  return(0);
+    return(0);
 }
 
 cleanup()
@@ -238,18 +227,17 @@ get_message(i, mbf)
     int i;
     FILE *mbf;
 {
-  int mbx_write();
+    int mbx_write();
 
-  if (pop_retr(i, mbx_write, mbf) != OK)
-    {
-      error(Errmsg);
-      log("pop_retr: %s", Errmsg);
-      pop_command("QUIT");
-      pop_close();
-      return(1);
+    if (pop_retr(i, mbx_write, mbf) != OK) {
+	error(Errmsg);
+	log("pop_retr: %s", Errmsg);
+	pop_command("QUIT");
+	pop_close();
+	return(1);
     }
-  ftruncate(fileno(mbf), ftell(mbf));
-  return(0);
+    ftruncate(fileno(mbf), ftell(mbf));
+    return(0);
 }
 
 free_all_mailsav()
@@ -272,7 +260,7 @@ free_all_mailsav()
 }
 
 free_mailsav(ms)
-register struct mailsav *ms;
+    register struct mailsav *ms;
 {
     register struct iovec *iov;
     register int iovcnt;
@@ -287,7 +275,7 @@ register struct mailsav *ms;
 }
 
 pop_init(host)
-char *host;
+    char *host;
 {
     static struct hostent *hp = NULL;
     static struct servent *sp = NULL;
@@ -298,7 +286,6 @@ char *host;
     char *get_errmsg();
 
     if (!initialized) {
-
 	hp = gethostbyname(host);
 	if (hp == NULL) {
 	    sprintf(Errmsg, "MAILHOST unknown: %s", host);
@@ -354,13 +341,13 @@ pop_close()
 }
 
 pop_command(fmt, a, b, c, d)
-char *fmt;
+    char *fmt;
 {
     char buf[128];
 
     sprintf(buf, fmt, a, b, c, d);
 
-    if (debug) fprintf(stderr, "---> %s\n", buf);
+    if (Debug) fprintf(stderr, "---> %s\n", buf);
     if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
 
     if (getline(buf, sizeof buf, sfi) != OK) {
@@ -368,22 +355,23 @@ char *fmt;
 	return(NOTOK);
     }
 
-    if (debug) fprintf(stderr, "<--- %s\n", buf);
+    if (Debug) fprintf(stderr, "<--- %s\n", buf);
     if (*buf != '+') {
 	strcpy(Errmsg, buf);
 	return(NOTOK);
-    } else {
+    }
+    else {
 	return(OK);
     }
 }
 
     
 pop_stat(nmsgs, nbytes)
-int *nmsgs, *nbytes;
+    int *nmsgs, *nbytes;
 {
     char buf[128];
 
-    if (debug) fprintf(stderr, "---> STAT\n");
+    if (Debug) fprintf(stderr, "---> STAT\n");
     if (putline("STAT", Errmsg, sfo) == NOTOK) return(NOTOK);
 
     if (getline(buf, sizeof buf, sfi) != OK) {
@@ -391,24 +379,25 @@ int *nmsgs, *nbytes;
 	return(NOTOK);
     }
 
-    if (debug) fprintf(stderr, "<--- %s\n", buf);
+    if (Debug) fprintf(stderr, "<--- %s\n", buf);
     if (*buf != '+') {
 	strcpy(Errmsg, buf);
 	return(NOTOK);
-    } else {
+    }
+    else {
 	sscanf(buf, "+OK %d %d", nmsgs, nbytes);
 	return(OK);
     }
 }
 
 pop_retr(msgno, action, arg)
-int (*action)();
+    int (*action)();
 {
     char buf[128];
     int end_of_header;
 
     sprintf(buf, "RETR %d", msgno);
-    if (debug) fprintf(stderr, "%s\n", buf);
+    if (Debug) fprintf(stderr, "%s\n", buf);
     if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
 
     if (getline(buf, sizeof buf, sfi) != OK) {
@@ -420,11 +409,10 @@ int (*action)();
     while (1) {
 	switch (multiline(buf, sizeof buf, sfi)) {
 	case OK:
-	    if (!end_of_header) 
-	      {
+	    if (!end_of_header) {
 		(*action)(buf, arg);
 		if (*buf == 0) end_of_header = 1;
-	      }
+	    }
 	    break;
 	case DONE:
 	    return (OK);
@@ -436,16 +424,16 @@ int (*action)();
 }
 
 getline(buf, n, f)
-char *buf;
-register int n;
-FILE *f;
+    char *buf;
+    register int n;
+    FILE *f;
 {
     register char *p;
     register int c;
 
     p = buf;
     while (--n > 0 && (c = fgetc(f)) != EOF)
-      if ((*p++ = c) == '\n') break;
+        if ((*p++ = c) == '\n') break;
 
     if (ferror(f)) {
 	strcpy(buf, "error on connection");
@@ -464,15 +452,16 @@ FILE *f;
 }
 
 multiline(buf, n, f)
-register char *buf;
-register int n;
-FILE *f;
+    register char *buf;
+    register int n;
+    FILE *f;
 {
     if (getline(buf, n, f) != OK) return (NOTOK);
     if (*buf == '.') {
 	if (*(buf+1) == NULL) {
 	    return (DONE);
-	} else {
+	}
+	else {
 	    strcpy(buf, buf+1);
 	}
     }
@@ -480,9 +469,9 @@ FILE *f;
 }
 
 putline(buf, err, f)
-char *buf;
-char *err;
-FILE *f;
+    char *buf;
+    char *err;
+    FILE *f;
 {
     fprintf(f, "%s\r\n", buf);
     fflush(f);
@@ -494,141 +483,131 @@ FILE *f;
 }
 
 mbx_write(line, mbf)
-char *line;
-FILE *mbf;
+    char *line;
+    FILE *mbf;
 {
-  fputs(line, mbf);
-  fputc(0x0a, mbf);
+    fputs(line, mbf);
+    fputc(0x0a, mbf);
 }
 
 struct mailsav *
 build_mailsav(mbf)
     register FILE *mbf;
 {
-  char line[128];
-  char from[80];
-  char to[80];
-  char subj[80];
-  register struct mailsav *ms;
-  register int i;
-  register char *c;
-  register struct iovec *iov;
+    char line[128];
+    char from[80];
+    char to[80];
+    char subj[80];
+    register struct mailsav *ms;
+    register int i;
+    register char *c;
+    register struct iovec *iov;
 
-  ms = (struct mailsav *)malloc(sizeof (struct mailsav));
-  ms->m_seen = 0;
+    ms = (struct mailsav *)malloc(sizeof (struct mailsav));
+    ms->m_seen = 0;
 
-  from[0] = 0;
-  to[0] = 0;
-  subj[0] = 0;
+    from[0] = 0;
+    to[0] = 0;
+    subj[0] = 0;
 
-  rewind(mbf);
-  while (fgets(line, 128, mbf) != NULL)
-    {
-      if (*line == '\n') break;
-      if (!strncmp(line, "From:", 5))
-	  strcpy(from, line);
-      else if (!strncmp(line, "To:", 3))
-	  strcpy(to, line);
-      else if (!strncmp(line, "Subject:", 8))
-	  strcpy(subj, line);
+    rewind(mbf);
+    while (fgets(line, 128, mbf) != NULL) {
+	if (*line == '\n') break;
+	if (!strncmp(line, "From:", 5))
+	    strcpy(from, line);
+	else if (!strncmp(line, "To:", 3))
+	    strcpy(to, line);
+	else if (!strncmp(line, "Subject:", 8))
+	    strcpy(subj, line);
     }
 
-  /* add elipsis at end of "To:" field if it continues onto */
-  /* more than one line */
-  i = strlen(to) - 2;
-  c = &to[i];
-  if (*c++ == ',')
-    {
-      *c++ = ' ';
-      *c++ = '.';
-      *c++ = '.';
-      *c++ = '.';
-      *c++ = '\n';
-      *c = 0;
+    /* add elipsis at end of "To:" field if it continues onto */
+    /* more than one line */
+    i = strlen(to) - 2;
+    c = &to[i];
+    if (*c++ == ',') {
+	*c++ = ' ';
+	*c++ = '.';
+	*c++ = '.';
+	*c++ = '.';
+	*c++ = '\n';
+	*c = 0;
     }
 
-  i = 0;
-  if (from[0] != 0)
-    {
-      iov = &ms->m_iov[i];
-      iov->iov_len = strlen(from);
-      iov->iov_base = (char *)malloc(iov->iov_len);
-      bcopy(from, iov->iov_base, iov->iov_len);
-      iov->iov_base[--iov->iov_len] = 0; /* remove LF */
-      i++;
+    i = 0;
+    if (from[0] != 0) {
+	iov = &ms->m_iov[i];
+	iov->iov_len = strlen(from);
+	iov->iov_base = (char *)malloc(iov->iov_len);
+	bcopy(from, iov->iov_base, iov->iov_len);
+	iov->iov_base[--iov->iov_len] = 0; /* remove LF */
+	i++;
     }
 
-  if (to[0] != 0)
-    {
-      iov = &ms->m_iov[i];
-      iov->iov_len = strlen(to);
-      iov->iov_base = (char *)malloc(iov->iov_len);
-      bcopy(to, iov->iov_base, iov->iov_len);
-      iov->iov_base[--iov->iov_len] = 0; /* remove LF */
-      i++;
+    if (to[0] != 0) {
+	iov = &ms->m_iov[i];
+	iov->iov_len = strlen(to);
+	iov->iov_base = (char *)malloc(iov->iov_len);
+	bcopy(to, iov->iov_base, iov->iov_len);
+	iov->iov_base[--iov->iov_len] = 0; /* remove LF */
+	i++;
     }
 
-  if (subj[0] != 0)
-    {
-      iov = &ms->m_iov[i];
-      iov->iov_len = strlen(subj);
-      iov->iov_base = (char *)malloc(iov->iov_len);
-      bcopy(subj, iov->iov_base, iov->iov_len);
-      iov->iov_base[--iov->iov_len] = 0; /* remove LF */
-      i++;
+    if (subj[0] != 0) {
+	iov = &ms->m_iov[i];
+	iov->iov_len = strlen(subj);
+	iov->iov_base = (char *)malloc(iov->iov_len);
+	bcopy(subj, iov->iov_base, iov->iov_len);
+	iov->iov_base[--iov->iov_len] = 0; /* remove LF */
+	i++;
     }
 
-  ms->m_iovcnt = i;
-  return(ms);
+    ms->m_iovcnt = i;
+    return(ms);
 }
 
 display_mail_header(ms, mi)
     register struct mailsav *ms;
     register int mi;
 {
-  /* This is a little tricky.  If the current mail number (mi) is greater */
-  /* than the last saved mail index (MailIndex), then this is new mail and */
-  /* mi = MailIndex + 1.  (MailIndex is incremented each time new mail is */
-  /* saved.)  Similarly, if mi is less than or equal to MailIndex and the */
-  /* mail is different, then it is new mail, and MailIndex is set back to */
-  /* mi. */
+    /* This is a little tricky.  If the current mail number (mi) is greater */
+    /* than the last saved mail index (MailIndex), then this is new mail and */
+    /* mi = MailIndex + 1.  (MailIndex is incremented each time new mail is */
+    /* saved.)  Similarly, if mi is less than or equal to MailIndex and the */
+    /* mail is different, then it is new mail, and MailIndex is set back to */
+    /* mi. */
 
-  if (mi > MailIndex || mail_compare(ms, Mailsav[mi]))
-    {
-      if (Mailsav[mi] != NULL) free_mailsav(Mailsav[mi]);
-      MailIndex = mi;
-      Mailsav[mi] = ms;
-      log("new mail");
+    if (mi > MailIndex || mail_compare(ms, Mailsav[mi])) {
+	if (Mailsav[mi] != NULL) free_mailsav(Mailsav[mi]);
+	MailIndex = mi;
+	Mailsav[mi] = ms;
+	log("new mail");
     }
-  else
-    {
-      free_mailsav(ms);
-      ms = Mailsav[mi];
+    else {
+	free_mailsav(ms);
+	ms = Mailsav[mi];
     }
-  if (!ms->m_seen)
-    {
-      if (notify_user(ms->m_iov, ms->m_iovcnt) == 0) ms->m_seen = 1;
+    if (!ms->m_seen) {
+	if (notify_user(ms->m_iov, ms->m_iovcnt) == 0) ms->m_seen = 1;
     }
 }
 
 display_unseen()
 {
-  register int i;
-  register struct mailsav *ms;
+    register int i;
+    register struct mailsav *ms;
 
-  for (i = 0; i <= MailIndex; i++)
-    {
-      ms = Mailsav[i];
-      if (ms->m_seen == 0)
-	{
-	  if (notify_user(ms->m_iov, ms->m_iovcnt) != 0) return;
-	  ms->m_seen = 1;
+    for (i = 0; i <= MailIndex; i++) {
+	ms = Mailsav[i];
+	if (ms->m_seen == 0) {
+	    if (notify_user(ms->m_iov, ms->m_iovcnt) != 0) return;
+	    ms->m_seen = 1;
 	}
     }
 }
 
 mail_compare(m1, m2)
-register struct mailsav *m1, *m2;
+    register struct mailsav *m1, *m2;
 {
     register struct iovec *iov1, *iov2;
     register int iovcnt;
@@ -657,16 +636,16 @@ fatal(msg)
 }
 
 char *
-get_errmsg()
+    get_errmsg()
 {
     extern int errno, sys_nerr;
     extern char *sys_errlist[];
     char *s;
 
     if (errno < sys_nerr)
-      s = sys_errlist[errno];
+        s = sys_errlist[errno];
     else
-      s = "unknown error";
+        s = "unknown error";
     return(s);
 }
 
@@ -687,4 +666,14 @@ char *message;
 	    Months[tm->tm_mon], tm->tm_mday, 
 	    tm->tm_hour, tm->tm_min, tm->tm_sec,
 	    buf);
+}
+
+/*
+ * Report the syntax for calling zmailwatch.
+ */
+syntax(call)
+    char *call;
+{
+    printf ("Usage: %s [-dl] [-i <interval>] [-help]\n", call);
+    exit(0);
 }
