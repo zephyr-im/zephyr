@@ -29,9 +29,6 @@ Code_t ZInitialize()
     char addr[4];
 #ifdef KERBEROS
     int krbval;
-#else
-    char hostname[MAXHOSTNAMELEN+1];
-    struct hostent *hent;
 #endif
     
     init_zeph_err_tbl();
@@ -49,7 +46,7 @@ Code_t ZInitialize()
     addr[2] = 0;
     addr[3] = 1;
 
-    hmserv = (struct servent *)getservbyname("zephyr-hm", "udp");
+    hmserv = (struct servent *)getservbyname(HM_SVCNAME, "udp");
     if (!hmserv)
 	return (ZERR_HMPORT);
 
@@ -63,12 +60,7 @@ Code_t ZInitialize()
     if ((krbval = get_krbrlm(__Zephyr_realm, 1)) != KSUCCESS)
 	return (krbval);
 #else
-    if (gethostname(hostname, MAXHOSTNAMELEN))
-	return (errno);
-    if (hent = gethostbyname(hostname))
-	(void) strcpy(__Zephyr_realm, hent->h_name);
-    else
-	(void) strcpy(__Zephyr_realm, hostname);
+    (void) strcpy(__Zephyr_realm, KRB_REALM);
 #endif
 
     /* Get the sender so we can cache it */
