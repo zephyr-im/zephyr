@@ -108,8 +108,7 @@ static int ulogin_setup P((ZNotice_t *notice, ZLocation_t *locs,
 static exposure_type ulogin_remove_user P((ZNotice_t *notice, int auth,
 					struct sockaddr_in *who,
 					int *err_return));
-static void login_sendit P((ZNotice_t *notice, int auth, struct sockaddr_in *who)),
-    sense_logout P((ZNotice_t *notice, struct sockaddr_in *who));
+static void login_sendit P((ZNotice_t *notice, int auth, struct sockaddr_in *who));
 static char **ulogin_marshal_locs P((ZNotice_t *notice, int *found, int auth));
 
 static int ul_equiv P((ZLocation_t *l1, ZLocation_t *l2));
@@ -158,10 +157,8 @@ ulogin_dispatch(notice, auth, who, server)
 				       inet_ntoa(who->sin_addr),
 				       ntohs(notice->z_port)));
 #endif
-				if (server == me_server) {
+				if (server == me_server)
 					clt_ack(notice, who, AUTH_FAILED);
-					sense_logout(notice, who);
-				}
 				return(ZERR_NONE);
 			} else if (err_ret == NOLOC) {
 				if (server == me_server)
@@ -204,7 +201,6 @@ ulogin_dispatch(notice, auth, who, server)
 		zdbug((LOG_DEBUG,"unauthentic ulogin: %d %s %s", auth,
 		       notice->z_sender, notice->z_class_inst));
 #endif
-		sense_logout(notice, who);
 		if (server == me_server)
 			clt_ack(notice, who, AUTH_FAILED);
 		return(ZERR_NONE);
@@ -322,65 +318,6 @@ login_sendit(notice, auth, who)
 }
 
 
-/*ARGSUSED*/
-static void
-sense_logout(notice, who)
-     ZNotice_t *notice;
-     struct sockaddr_in *who;
-{
-	ZNotice_t sense_notice;
-	ZLocation_t *loc;
-	struct sockaddr_in owner;
-	char message[BUFSIZ];
-	int retval, len;
-	char *pkt;
-	ZClient_t *client;
-
-	/* XXX todo: have the messsage print the IP addr */
-	/*
-	  someone tried an unauthentic logout.  Try to send a message
-	  to the person named in the message, warning them of this.
-	  If there is nobody listening on that port, the retransmission
-	  will eventually result in a flush of the location.
-	 */
-
-	if (!(loc = ulogin_find (notice, 1)))
-	    return;
-
-	/* fabricate an addr descriptor for him */
-	owner = *who;
-	owner.sin_addr.s_addr = loc->zlt_addr.s_addr;
-	owner.sin_port = loc->zlt_port;
-
-	sense_notice = *notice;		/* copy all fields */
-	/* and change the ones we need to */
-	sense_notice.z_kind = ACKED;
-	sense_notice.z_port = loc->zlt_port;
-	sense_notice.z_class = "MESSAGE";
-	sense_notice.z_class_inst = "URGENT";
-	sense_notice.z_opcode = "";
-	sense_notice.z_sender = "Zephyr Server";
-	sense_notice.z_recipient = (char *) loc->zlt_user->string;
-	sense_notice.z_default_format = "Urgent Message from $sender at $time:\n\n$1";
-	(void) sprintf(message,
-		       "Someone at host %s tried an unauthorized \nchange to your login information",
-		       inet_ntoa(notice->z_sender_addr));
-	sense_notice.z_message = message;
-	sense_notice.z_message_len = strlen(message) + 1;
-
-	/* we format the notice to generate a UID and other stuff */
-	if ((retval = ZFormatNotice(&sense_notice, &pkt, &len, ZNOAUTH))
-	    != ZERR_NONE) {
-		syslog(LOG_ERR, "sense_logout: %s", error_message(retval));
-		return;
-	}
-	xfree(pkt);			/* free packet */
-
-	client = client_which_client(who, &sense_notice);
-	/* transmit the message to the owning port of the location. */
-	xmit(&sense_notice, &owner, 1, client);
-	return;	
-}
 /*
  * Dispatch a LOCATE notice.
  */
