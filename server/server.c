@@ -1122,12 +1122,13 @@ free_server_list(list)
 register char **list;
 {
 	register int i;
+	char **orig_list = list;
 
 	if (!nhosts)			/* nothing allocated */
 		return;
 	for (; *list; list++)
 	    xfree(*list);
-	xfree(list);
+	xfree(orig_list);
 	return;
 }
 #endif !HESIOD
