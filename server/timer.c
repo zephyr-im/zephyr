@@ -235,6 +235,10 @@ timer_process()
 
 	right_now = NOW;
 	t=ALARM_NEXT(timers);
+	/* note that in the case that there are no timers, the ALARM_TIME
+	   is set to 0L, which is what the main loop expects as the
+	   nexttimo when we have no timout work to do */
+	nexttimo = ALARM_TIME(t);
 	if (t != timers && right_now >= ALARM_TIME(t)) {
 		/*
 		 * This one goes off NOW..
@@ -250,10 +254,6 @@ timer_process()
 		ALARM_ARG(t)  = (caddr_t) NULL;
 		xfree(t);	
 	}
-	/* note that in the case that there are no timers, the ALARM_TIME
-	   is set to 0L, which is what the main loop expects as the
-	   nexttimo when we have no timout work to do */
-	nexttimo = ALARM_TIME(t);
 	
 	if (valid) {
 		(queue)(queue_arg);
