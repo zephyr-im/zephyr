@@ -38,17 +38,14 @@ static char rcsid_server_s_c[] = "$Header$";
  * 	int auth;
  *	struct sockaddr_in *who;
  *
- * Code_t server_register(notice, who)
- *	ZNotice_t *notice;
- *	struct sockaddr_in *who;
- *
  * void server_recover(client)
  *	ZClient_t *client;
  *
- * void server_adispatch(notice, auth, who)
+ * void server_adispatch(notice, auth, who, server)
  *	ZNotice_t *notice;
  * 	int auth;
  *	struct sockaddr_in *who;
+ *	ZServerDesc_t *server;
  *
  * void server_forward(notice, auth, who)
  *	ZNotice_t *notice;
@@ -61,8 +58,9 @@ static char rcsid_server_s_c[] = "$Header$";
  */
 
 static void server_hello(), server_flush(), admin_dispatch(), setup_server();
-static void hello_respond(), srv_responded(), send_msg(), srv_alive();
-static void srv_nack_cancel(), srv_rexmit(), srv_nack_release();
+static void hello_respond(), srv_responded(), send_msg(), send_msg_list();
+static void srv_alive(), srv_nack_cancel(), srv_rexmit(), srv_nack_release();
+static void recover_clt();
 
 static Code_t server_register();
 static struct in_addr *get_server_addrs();
@@ -344,16 +342,67 @@ void
 server_recover(client)
 ZClient_t *client;
 {
-	ZHostList_t *host;
+	ZServerDesc_t *server;
+	char *lyst[2];
+	char buf[512];
 
 	zdbug((LOG_DEBUG,"server recover"));
-	/* XXX */
-	if ((host = hostm_find_host(&client->zct_sin.sin_addr)))
-		/* send a ping, set up a timeout, and return */
-		hostm_losing(client, host);
-	else
+	if ((server = hostm_find_server(&client->zct_sin.sin_addr))) {
+		if (server == limbo_server) {
+			zdbug((LOG_DEBUG, "no server to recover"));
+			return;
+		} else if (server == me_server) {
+			/* send a ping, set up a timeout, and return */
+			hostm_losing(client, hostm_find_host(&client->zct_sin.sin_addr));
+			return;
+		} else {
+			/* some other server */
+			lyst[0] = inet_ntoa(client->zct_sin.sin_addr);
+			(void) sprintf(buf, "%d", ntohs(client->zct_sin.sin_port));
+			lyst[1] = buf;
+			send_msg_list(&server->zs_addr, ADMIN_LOST_CLT,
+				      lyst, 2, 0);
+			return;
+		}
+	} else
 		syslog(LOG_ERR, "srv_recover: no host for client");
 	return;
+}
+
+/*
+ * Another server asked us to initiate recovery protocol with the hostmanager
+ */
+static void
+recover_clt(notice)
+register ZNotice_t *notice;
+{
+	struct sockaddr_in who;
+	register char *cp = notice->z_message;
+	ZClient_t *client;
+	ZHostList_t *host;
+
+	if (!notice->z_message_len) {
+		syslog(LOG_WARNING, "bad recover_clt pkt");
+		return;
+	}
+	who.sin_addr.s_addr = inet_addr(notice->z_message);
+	cp += strlen(cp);
+	if (cp >= notice->z_message + notice->z_message_len) {
+		syslog(LOG_WARNING, "short recover_clt pkt");
+		return;
+	}
+	who.sin_port = notice->z_port = htons((u_short) atoi(cp));
+	who.sin_family = AF_INET;
+
+	if (!(host = hostm_find_host(&who.sin_addr))) {
+		syslog(LOG_WARNING, "recover_clt h not found");
+		return;
+	}
+	if (!(client = client_which_client(&who, notice))) {
+		syslog(LOG_WARNING, "recover_clt not found");
+		return;
+	}
+	hostm_losing(client, host);
 }
 
 /*
@@ -435,7 +484,9 @@ ZServerDesc_t *server;
 			       srv_states[(int) server->zs_state]));
 		}
 	} else if (!strcmp(opcode, ADMIN_BDUMP)) {
-		get_brain_dump(notice, auth, who, server);
+		bdump_get(notice, auth, who, server);
+	} else if (!strcmp(opcode, ADMIN_LOST_CLT)) {
+		recover_clt(notice);
 	} else
 		syslog(LOG_WARNING, "ADMIN unknown opcode %s",opcode);
 	return; 
@@ -630,7 +681,7 @@ struct sockaddr_in *who;
 		/* here we negotiate and set up a braindump */
 		if (!bdump_socket) {
 			/* XXX offer it to the other server */
-			offer_brain_dump(who);
+			bdump_offer(who);
 		}			
 		break;
 	case SERV_TARDY:
@@ -666,7 +717,7 @@ server_shutdown()
 }
 
 /*
- * send a message to who with admin class and opcode as specified.
+ * send a message to who with admin class and opcode and clinst as specified.
  * auth is set if we want to send authenticated
  */
 
@@ -701,6 +752,60 @@ int auth;
 	auth = 0;
 
 	if ((retval = ZFormatNotice(pnotice, pack, packlen, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "snd_msg format: %s", error_message(retval));
+		return;
+	}
+	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "snd_msg set addr: %s",
+		       error_message(retval));
+		return;
+	}
+	if ((retval = ZSendPacket(pack, packlen)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "snd_msg xmit: %s", error_message(retval));
+		return;
+	}
+	return;
+}
+
+/*
+ * send a notice with a message to who with admin class and opcode and
+ * message body as specified.
+ * auth is set if we want to send authenticated
+ */
+
+static void
+send_msg_list(who, opcode, lyst, num, auth)
+struct sockaddr_in *who;
+char *opcode;
+char *lyst[];
+int num;
+int auth;
+{
+	ZNotice_t notice;
+	register ZNotice_t *pnotice; /* speed hack */
+	ZPacket_t pack;
+	int packlen;
+	Code_t retval;
+
+	pnotice = &notice;
+
+	pnotice->z_kind = ACKED;
+
+	pnotice->z_port = sock_sin.sin_port;
+	pnotice->z_class = ZEPHYR_ADMIN_CLASS;
+	pnotice->z_class_inst = "";
+	pnotice->z_opcode = opcode;
+	pnotice->z_sender = myname;	/* myname is the hostname */
+	pnotice->z_recipient = "";
+	pnotice->z_message = (caddr_t) NULL;
+	pnotice->z_message_len = 0;
+
+	packlen = sizeof(pack);
+	
+	/* XXX for now, we don't do authentication */
+	auth = 0;
+
+	if ((retval = ZFormatNoticeList(pnotice, lyst, num, pack, packlen, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "snd_msg format: %s", error_message(retval));
 		return;
 	}
