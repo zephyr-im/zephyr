@@ -5,11 +5,9 @@ Maintainer: Karl Ramm <kcr@debian.org>
 Build-Depends: debhelper, libares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev, libreadline4-dev, xlibs-dev | xlib6g-dev, libxaw-dev | xlib6g-dev, libncurses5-dev, bison, libzephyr-dev, libhesiod-dev
 Standards-Version: 3.1.1
 
-Package: libzephyr3
-Section: libs
-Architecture: any
+Package: libzephyr4itecture: any
 Depends: ${shlibs:Depends}
-Conflicts: libzephyr3-krb
+Conflicts: libzephyr4-krb
 Description: The original "Instant Message" system libraries without Kerberos
  This version of the library uses Kerberos for message authentication.
  .
@@ -18,12 +16,10 @@ Description: The original "Instant Message" system libraries without Kerberos
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
 
-Package: libzephyr3-krb
-Section: libs
-Architecture: any
+Package: libzephyr4itecture: any
 Depends: ${shlibs:Depends}, krb4-config
-Conflicts: libzephyr3
-Provides: libzephyr3
+Conflicts: libzephyr4
+Provides: libzephyr4
 Description: The original "Instant Message" system libraries with Kerberos 
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
  Zephyr allows users to send messages to other users or to groups of
@@ -64,7 +60,7 @@ Description: The original "Instant Message" system-server without Kerberos
 Package: zephyr-server-krb
 Section: net
 Architecture: any
-Depends: ${shlibs:Depends}, debconf, libzephyr3-krb
+Depends: ${shlibs:Depends}, debconf, libzephyr4-krb
 Conflicts: zephyr-server
 Description: The original "Instant Message" system-server with Kerberos
  You probably only need one server for a group of clients.
@@ -84,7 +80,7 @@ Description: The original "Instant Message" system-server with Kerberos
 Package: libzephyr-dev
 Section: devel
 Architecture: any
-Depends: libzephyr3 (= ${Source-Version}) | libzephyr3-krb (= ${Source-Version}), libc6-dev
+Depends: libzephyr4 (= ${Source-Version}) | libzephyr4-krb (= ${Source-Version}), libc6-dev
 Description: The original "Instant Message" system development libraries
  This package is needed to compile certain other zephyr clients. There are
  various other clients available, including a totally gratuitous Motif client,
