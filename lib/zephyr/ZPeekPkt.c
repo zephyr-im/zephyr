@@ -14,7 +14,7 @@
 
 #ifndef lint
 static char rcsid_ZPeekPacket_c[] = "$Header$";
-#endif lint
+#endif
 
 #include <zephyr/mit-copyright.h>
 
@@ -35,7 +35,7 @@ Code_t ZPeekPacket(buffer, ret_len, from)
 
     *ret_len = nextq->packet_len;
     
-    if (!(*buffer = malloc((unsigned) *ret_len)))
+    if (!(*buffer = (char *) malloc((unsigned) *ret_len)))
 	return (ENOMEM);
 
     bcopy(nextq->packet, *buffer, *ret_len);

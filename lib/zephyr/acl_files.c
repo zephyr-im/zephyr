@@ -378,7 +378,7 @@ static int acl_cache_next = 0;
 int acl_load(name)
 char *name;
 {
-    int i,fd;
+    int i;
     FILE *f;
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];

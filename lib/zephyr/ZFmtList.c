@@ -45,7 +45,7 @@ Code_t ZFormatNoticeList(notice, list, nitems, buffer, ret_len,
     *ret_len = hdrlen+size;
 
     /* *ret_len can never be zero here, no need to worry about malloc(0). */
-    if (!(*buffer = malloc((unsigned)*ret_len)))
+    if (!(*buffer = (char *) malloc((unsigned)*ret_len)))
 	return (ENOMEM);
 
     bcopy(header, *buffer, hdrlen);

@@ -14,7 +14,7 @@
 
 #ifndef lint
 static char rcsid_ZReceiveNotice_c[] = "$Header$";
-#endif lint
+#endif
 
 #include <zephyr/mit-copyright.h>
 
@@ -36,7 +36,7 @@ Code_t ZReceiveNotice(notice, from)
 
     len = nextq->packet_len;
     
-    if (!(buffer = malloc((unsigned) len)))
+    if (!(buffer = (char *) malloc((unsigned) len)))
 	return (ENOMEM);
 
     if (from)
