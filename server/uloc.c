@@ -1134,49 +1134,37 @@ uloc_dump_locs(fp)
     FILE *fp;
 {
     int i;
-    char buf[BUFSIZ*3];
-    static char *bufp;
-    static const char *cp;
 
-    /* delay using stdio so that we can run FAST! */
     for (i = 0; i < num_locs; i++) {
-	bufp = buf;
-#define cpy(str) cp=(str);while(*cp){*bufp++ = *cp++;}
-	cpy (locations[i].user->string);
-	*bufp++ = '/';
-	cpy (locations[i].machine->string);
-	*bufp++ = '/';
-	cpy (locations[i].time);
-	*bufp++ = '/';
-	cpy (locations[i].tty->string);
+	fputs("'", fp);
+	dump_quote(locations[i].user->string, fp);
+	fputs("' '", fp);
+	dump_quote(locations[i].machine->string, fp);
+	fputs("' '", fp);
+	dump_quote(locations[i].time, fp);
+	fputs("' ", fp);
 	switch (locations[i].exposure) {
 	  case OPSTAFF_VIS:
-	    cpy ("/OPSTAFF/");
+	    fputs("OPSTAFF", fp);
 	    break;
 	  case REALM_VIS:
-	    cpy ("/RLM_VIS/");
+	    fputs("RLM_VIS", fp);
 	    break;
 	  case REALM_ANN:
-	    cpy ("/RLM_ANN/");
+	    fputs("RLM_ANN", fp);
 	    break;
 	  case NET_VIS:
-	    cpy ("/NET_VIS/");
+	    fputs("NET_VIS", fp);
 	    break;
 	  case NET_ANN:
-	    cpy ("/NET_ANN/");
+	    fputs("NET_ANN", fp);
 	    break;
 	  default:
-	    sprintf (bufp, "/? %d ?/", locations[i].exposure);
-	    while (*bufp)
-		bufp++;
+	    fprintf(fp, "? %d ?", locations[i].exposure);
 	    break;
 	}
-	cpy (inet_ntoa (locations[i].addr.sin_addr));
-	*bufp++ = '/';
-	sprintf(bufp, "%d", ntohs(locations[i].addr.sin_port));
-	fputs(buf, fp);
-	putc('\n', fp);
-#undef cpy
+	fprintf(fp, " %s/%d\n", inet_ntoa(locations[i].addr.sin_addr),
+		ntohs(locations[i].addr.sin_port));
     }
 }
 
