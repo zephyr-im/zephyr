@@ -140,7 +140,6 @@ ZServerDesc_t *server;
 			   did a hostm_find_server successfully */
 			hostm_transfer(hostm_find_host(&who->sin_addr), server);
 		} else {
-			syslog(LOG_WARNING,"attach new host?");
 			/* no owner.  attach him to server. */
 			if ((retval = host_attach(who, server))
 			    != ZERR_NONE) {
@@ -154,45 +153,15 @@ ZServerDesc_t *server;
 			server_forward(notice, auth, who);
 			ack(notice, who);
 		}
-	} else if (!strcmp(opcode, HM_DETACH)) {
-#ifdef notdef
-		zdbug((LOG_DEBUG, "hm_disp detach %s",inet_ntoa(who->sin_addr)));
-		if (!owner)
-			return;
-		/* put him in limbo */
-		hostm_transfer(hostm_find_host(&who->sin_addr), limbo_server);
-		if (server == me_server)
-			server_forward(notice, auth, who);
-#else
-		zdbug((LOG_DEBUG, "hm_detach ignoring %s",inet_ntoa(who->sin_addr)));
-#endif notdef
-		return;
 	} else if (!strcmp(opcode, HM_BOOT)) {
 		zdbug((LOG_DEBUG, "boot %s",inet_ntoa(who->sin_addr)));
-		if (owner == server) {
-			zdbug((LOG_DEBUG, "flush"));
-			/* same server--just cancel
-			   any subscriptions */
-			flush(who, server);
-		} else if (owner) {
-			/* he has switched servers after booting */
-			zdbug((LOG_DEBUG, "hostm_flush"));
+		/* Booting is just like flushing and attaching */
+		if (owner)		/* if owned, flush */
 			hostm_flush(hostm_find_host(&who->sin_addr), owner);
-			if ((retval = host_attach(who, server))
-			    != ZERR_NONE) {
-				syslog(LOG_WARNING, "hattach failed: %s",
-				       error_message(retval));
-				return;
-			}
-		} else {
-			zdbug((LOG_DEBUG,"new host"));
-			/* no owner.  attach him to server. */
-			if ((retval = host_attach(who, server))
-			    != ZERR_NONE) {
-				syslog(LOG_WARNING, "hattach failed: %s",
-				       error_message(retval));
-				return;
-			}
+		if ((retval = host_attach(who, server)) != ZERR_NONE) {
+			syslog(LOG_WARNING, "hattach failed: %s",
+			       error_message(retval));
+			return;
 		}
 		if (server == me_server) {
 			server_forward(notice, auth, who);
@@ -206,6 +175,9 @@ ZServerDesc_t *server;
 		hostm_flush(hostm_find_host(&who->sin_addr), owner);
 		if (server == me_server)
 			server_forward(notice, auth, who);
+	} else if (!strcmp(opcode, HM_DETACH)) {
+		zdbug((LOG_DEBUG, "hm_detach %s",inet_ntoa(who->sin_addr)));
+		/* ignore it */
 	} else {
 		syslog(LOG_WARNING, "hm_disp: unknown opcode %s",opcode);
 		return;
