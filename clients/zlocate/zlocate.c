@@ -23,11 +23,14 @@ main(argc,argv)
 	int argc;
 	char *argv[];
 {
-	int retval,numlocs,i,one;
+	int retval,numlocs,i,one,ourargc;
 	char *whoami,bfr[BUFSIZ],user[BUFSIZ];
 	ZLocations_t locations[1];
 	
-	ZInitialize();
+	if ((retval = ZInitialize()) != ZERR_NONE) {
+		com_err(whoami,retval,"while initializing");
+		exit(1);
+	} 
 
 	whoami = argv[0];
 
@@ -41,6 +44,8 @@ main(argc,argv)
 
 	one = 1;
 	
+	ourargc = argc;
+	
 	for (;argc--;argv++) {
 		strcpy(user,*argv);
 		if (!index(user,'@')) {
@@ -52,8 +57,12 @@ main(argc,argv)
 			com_err(whoami,retval,bfr);
 			continue;
 		}
+		if (ourargc > 1)
+			printf("\t%s:\n",user);
 		if (!numlocs) {
-			printf("%s: Not logged-in\n",user);
+			printf("Not logged-in\n");
+			if (argc)
+				printf("\n");
 			continue;
 		}
 		for (i=0;i<numlocs;i++) {
@@ -67,8 +76,8 @@ main(argc,argv)
 				printf("%s: internal failure while getting location\n",whoami);
 				exit(1);
 			} 
-			printf("%s\t   %s\t   %s\n",locations[0].host,
-			       locations[0].tty,locations[0].time);
+			printf("%s\t  %s\n",locations[0].host,
+			       locations[0].time);
 		}
 		if (argc)
 			printf("\n");

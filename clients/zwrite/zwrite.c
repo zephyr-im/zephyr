@@ -33,9 +33,12 @@ main(argc,argv)
 	int retval,auth,verbose,urgent;
 	char *whoami,bfr[BUFSIZ],message[Z_MAXPKTLEN],*ptr;
 
-	ZInitialize();
-	
 	whoami = argv[0];
+
+	if ((retval = ZInitialize()) != ZERR_NONE) {
+		com_err(whoami,retval,"while initializing");
+		exit(1);
+	} 
 	
 	auth = verbose = urgent = 0;
 	
