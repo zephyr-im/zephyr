@@ -12,6 +12,7 @@
 #include "copyright.h"
 #include "ss_internal.h"
 #include <stdio.h>
+#include <strings.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <sys/param.h>
@@ -29,8 +30,6 @@ static char const rcs_id[] =
 #else
 #define sigtype int
 #endif
-
-extern char *index();
 
 static ss_data *current_info;
 static jmp_buf listen_jmpb;
