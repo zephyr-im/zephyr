@@ -3718,8 +3718,95 @@ fi
 
 fi
 
+echo $ac_n "checking whether getpgrp takes no argument""... $ac_c" 1>&6
+echo "configure:3723: checking whether getpgrp takes no argument" >&5
+if eval "test \"`echo '$''{'ac_cv_func_getpgrp_void'+set}'`\" = set"; then
+  echo $ac_n "(cached) $ac_c" 1>&6
+else
+  if test "$cross_compiling" = yes; then
+  { echo "configure: error: cannot check getpgrp if cross compiling" 1>&2; exit 1; }
+else
+  cat > conftest.$ac_ext <<EOF
+#line 3731 "configure"
+#include "confdefs.h"
+
+/*
+ * If this system has a BSD-style getpgrp(),
+ * which takes a pid argument, exit unsuccessfully.
+ *
+ * Snarfed from Chet Ramey's bash pgrp.c test program
+ */
+#include <stdio.h>
+#include <sys/types.h>
+
+int     pid;
+int     pg1, pg2, pg3, pg4;
+int     ng, np, s, child;
+
+main()
+{
+        pid = getpid();
+        pg1 = getpgrp(0);
+        pg2 = getpgrp();
+        pg3 = getpgrp(pid);
+        pg4 = getpgrp(1);
+
+        /*
+         * If all of these values are the same, it's pretty sure that
+         * we're on a system that ignores getpgrp's first argument.
+         */
+        if (pg2 == pg4 && pg1 == pg3 && pg2 == pg3)
+                exit(0);
+
+        child = fork();
+        if (child < 0)
+                exit(1);
+        else if (child == 0) {
+                np = getpid();
+                /*
+                 * If this is Sys V, this will not work; pgrp will be
+                 * set to np because setpgrp just changes a pgrp to be
+                 * the same as the pid.
+                 */
+                setpgrp(np, pg1);
+                ng = getpgrp(0);        /* Same result for Sys V and BSD */
+                if (ng == pg1) {
+                        exit(1);
+                } else {
+                        exit(0);
+                }
+        } else {
+                wait(&s);
+                exit(s>>8);
+        }
+}
+
+EOF
+if { (eval echo configure:3786: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
+then
+  ac_cv_func_getpgrp_void=yes
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+  rm -fr conftest*
+  ac_cv_func_getpgrp_void=no
+fi
+rm -fr conftest*
+fi
+
+
+fi
+
+echo "$ac_t""$ac_cv_func_getpgrp_void" 1>&6
+if test $ac_cv_func_getpgrp_void = yes; then
+  cat >> confdefs.h <<\EOF
+#define GETPGRP_VOID 1
+EOF
+
+fi
+
 echo $ac_n "checking whether setpgrp takes no argument""... $ac_c" 1>&6
-echo "configure:3723: checking whether setpgrp takes no argument" >&5
+echo "configure:3810: checking whether setpgrp takes no argument" >&5
 if eval "test \"`echo '$''{'ac_cv_func_setpgrp_void'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -3727,7 +3814,7 @@ else
   { echo "configure: error: cannot check setpgrp if cross compiling" 1>&2; exit 1; }
 else
   cat > conftest.$ac_ext <<EOF
-#line 3731 "configure"
+#line 3818 "configure"
 #include "confdefs.h"
 
 /*
@@ -3743,7 +3830,7 @@ main()
 }
 
 EOF
-if { (eval echo configure:3747: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
+if { (eval echo configure:3834: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
 then
   ac_cv_func_setpgrp_void=no
 else
@@ -3769,12 +3856,12 @@ fi
 for ac_func in putenv strchr memcpy memmove waitpid getlogin strerror random
 do
 echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
-echo "configure:3773: checking for $ac_func" >&5
+echo "configure:3860: checking for $ac_func" >&5
 if eval "test \"`echo '$''{'ac_cv_func_$ac_func'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 3778 "configure"
+#line 3865 "configure"
 #include "confdefs.h"
 /* System header to define __stub macros and hopefully few prototypes,
     which can conflict with char $ac_func(); below.  */
@@ -3797,7 +3884,7 @@ $ac_func();
 
 ; return 0; }
 EOF
-if { (eval echo configure:3801: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+if { (eval echo configure:3888: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
   rm -rf conftest*
   eval "ac_cv_func_$ac_func=yes"
 else
@@ -3824,12 +3911,12 @@ done
 for ac_func in lrand48 gethostid getsid getpgid krb_get_err_text krb_log
 do
 echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
-echo "configure:3828: checking for $ac_func" >&5
+echo "configure:3915: checking for $ac_func" >&5
 if eval "test \"`echo '$''{'ac_cv_func_$ac_func'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 3833 "configure"
+#line 3920 "configure"
 #include "confdefs.h"
 /* System header to define __stub macros and hopefully few prototypes,
     which can conflict with char $ac_func(); below.  */
@@ -3852,7 +3939,7 @@ $ac_func();
 
 ; return 0; }
 EOF
-if { (eval echo configure:3856: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+if { (eval echo configure:3943: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
   rm -rf conftest*
   eval "ac_cv_func_$ac_func=yes"
 else

@@ -98,6 +98,7 @@ LIBS="$KRB4_LIBS $HESIOD_LIBS $LIBS"
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_VPRINTF
+AC_FUNC_GETPGRP
 AC_FUNC_SETPGRP
 AC_CHECK_FUNCS(putenv strchr memcpy memmove waitpid getlogin strerror random)
 AC_CHECK_FUNCS(lrand48 gethostid getsid getpgid krb_get_err_text krb_log)
