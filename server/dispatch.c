@@ -21,17 +21,15 @@ static char rcsid_dispatch_c[] = "$Header$";
 
 #include "zserver.h"
 #include <sys/socket.h>
-#ifdef lint
-#include <sys/uio.h>			/* so it shuts up */
-#endif lint
 
 /*
  *
  * External Routines:
  *
- * void dispatch(notice, auth)
+ * void dispatch(notice, auth, who)
  *	ZNotice_t *notice;
  *	int auth;
+ *	struct sockaddr_in *who;
  *
  * void clt_ack(notice, who, sent)
  *	ZNotice_t *notice;
@@ -45,9 +43,15 @@ static char rcsid_dispatch_c[] = "$Header$";
  *	ZNotice_t *notice;
  *	int auth;
  *	struct sockaddr_in *who;
+ *
+ * void xmit(notice, dest, auth, client)
+ *	ZNotice_t *notice;
+ *	struct sockaddr_in *dest;
+ *	int auth;
+ *	ZClient_t *client;
  */
 
-static void xmit(), rexmit(), nack_cancel();
+static void rexmit(), nack_cancel();
 
 /* patchable magic numbers controlling the retransmission rate and count */
 int num_rexmits = NUM_REXMITS;
@@ -184,6 +188,8 @@ struct sockaddr_in *who;
 	Code_t status;
 	int dispatched = 0;
 
+	/* assumes enums are allocated contiguous, increasing values */
+
 	if ((int) notice->z_kind < (int) UNSAFE ||
 	    (int) notice->z_kind > (int) CLIENTACK) {
 		syslog(LOG_INFO, "bad notice kind 0x%x from %s",
@@ -274,7 +280,8 @@ struct sockaddr_in *who;
 		     ptr = ptr->q_forw) {
 			/* for each client who gets this notice,
 			   send it along */
-			xmit(notice, ptr->zclt_client, auth);
+			xmit(notice, &(ptr->zclt_client->zct_sin), auth,
+			     ptr->zclt_client);
 			if (!acked) {
 				acked = 1;
 				ack(notice, who);
@@ -302,7 +309,8 @@ ZClient_t *client;
 	   flush it. */
 	for (nacked = nacklist->q_forw;
 	     nacked != nacklist;)
-		if (nacked->na_client == client) {
+		if ((nacked->na_addr.sin_addr.s_addr == client->zct_sin.sin_addr.s_addr) &&
+		     (nacked->na_addr.sin_port == client->zct_sin.sin_port)) {
 			/* go back, since remque will change things */
 			nack2 = nacked->q_back;
 			timer_reset(nacked->na_timer);
@@ -322,11 +330,12 @@ ZClient_t *client;
  * not ack'ed list.
  */
 
-static void
-xmit(notice, client, auth)
+void
+xmit(notice, dest, auth, client)
 register ZNotice_t *notice;
-ZClient_t *client;
+struct sockaddr_in *dest;
 int auth;
+ZClient_t *client;
 {
 	caddr_t noticepack;
 	register ZNotAcked_t *nacked;
@@ -368,9 +377,9 @@ int auth;
 			return;			/* DON'T put on nack list */
 		}
 	}
-	zdbug((LOG_DEBUG," to %s/%d",inet_ntoa(client->zct_sin.sin_addr),
-	       ntohs(client->zct_sin.sin_port)));
-	if ((retval = ZSetDestAddr(&client->zct_sin)) != ZERR_NONE) {
+	zdbug((LOG_DEBUG," to %s/%d",inet_ntoa(dest->sin_addr),
+	       ntohs(dest->sin_port)));
+	if ((retval = ZSetDestAddr(dest)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "xmit set addr: %s",
 		       error_message(retval));
 		xfree(noticepack);
@@ -393,7 +402,7 @@ int auth;
 
 	nacked->na_rexmits = 0;
 	nacked->na_packet = noticepack;
-	nacked->na_client = client;
+	nacked->na_addr = *dest;
 	nacked->na_packsz = packlen;
 	nacked->na_uid = notice->z_uid;
 	nacked->q_forw = nacked->q_back = nacked;
@@ -419,15 +428,19 @@ rexmit(nackpacket)
 register ZNotAcked_t *nackpacket;
 {
 	int retval;
-
+	ZNotice_t dummy_notice;
 	register ZClient_t *client;
+
 	zdbug((LOG_DEBUG,"rexmit"));
 
 	if (++(nackpacket->na_rexmits) > num_rexmits ||
 	    NOW > nackpacket->na_abstimo) {
 		/* possibly dead client */
 
-		client = nackpacket->na_client;
+		dummy_notice.z_port = nackpacket->na_addr.sin_port;
+		
+		client = client_which_client(&nackpacket->na_addr,
+					     &dummy_notice);
 
 		/* unlink & free packet */
 		xremque(nackpacket);
@@ -435,16 +448,17 @@ register ZNotAcked_t *nackpacket;
 		xfree(nackpacket);
 
 		/* initiate recovery */
-		server_recover(client);
+		if (client)
+			server_recover(client);
 		return;
 	}
 
 	/* retransmit the packet */
 	
 	zdbug((LOG_DEBUG," to %s/%d",
-	       inet_ntoa(nackpacket->na_client->zct_sin.sin_addr),
-	       ntohs(nackpacket->na_client->zct_sin.sin_port)));
-	if ((retval = ZSetDestAddr(&nackpacket->na_client->zct_sin))
+	       inet_ntoa(nackpacket->na_addr.sin_addr),
+	       ntohs(nackpacket->na_addr.sin_port)));
+	if ((retval = ZSetDestAddr(&nackpacket->na_addr))
 	    != ZERR_NONE) {
 		syslog(LOG_WARNING, "rexmit set addr: %s",
 		       error_message(retval));
@@ -554,23 +568,14 @@ register ZNotice_t *notice;
 struct sockaddr_in *who;
 {
 	register ZNotAcked_t *nacked;
-	ZClient_t *client;
-
-	/* set the origin of the ack to the client who is responding,
-	 since client_which_client matches on the z_port field */
-
-	notice->z_port = who->sin_port;
-	if (!(client = client_which_client(who, notice))) {
-		zdbug((LOG_DEBUG,"nack clt not found"));
-		return;
-	}
 
 	/* search the not-yet-acked list for this packet, and
 	   flush it. */
 	for (nacked = nacklist->q_forw;
 	     nacked != nacklist;
 	     nacked = nacked->q_forw)
-		if ((nacked->na_client == client))
+		if ((nacked->na_addr.sin_addr.s_addr == who->sin_addr.s_addr) &&
+		     (nacked->na_addr.sin_port == who->sin_port))
 			if (ZCompareUID(&nacked->na_uid, &notice->z_uid)) {
 				timer_reset(nacked->na_timer);
 				xfree(nacked->na_packet);
@@ -581,3 +586,155 @@ struct sockaddr_in *who;
 	zdbug((LOG_DEBUG,"nack not found"));
 	return;
 }
+
+/* for compatibility when sending subscription information to old clients */
+#ifdef OLD_COMPAT
+#define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
+#endif /* OLD_COMPAT */
+
+/*
+ * Dispatch a ZEPHYR_CTL notice.
+ */
+
+Code_t
+control_dispatch(notice, auth, who, server)
+ZNotice_t *notice;
+int auth;
+struct sockaddr_in *who;
+ZServerDesc_t *server;
+{
+	register char *opcode = notice->z_opcode;
+	ZClient_t *client;
+	ZHostList_t *host;
+	Code_t retval;
+
+	/*
+	 * ZEPHYR_CTL Opcodes expected are:
+	 *	BOOT (inst HM): host has booted; flush data.
+	 *	CLIENT_SUBSCRIBE: process with the subscription mananger.
+	 *	CLIENT_UNSUBSCRIBE: ""
+	 *	CLIENT_CANCELSUB:   ""
+	 */
+
+	if (!strcmp(notice->z_class_inst, ZEPHYR_CTL_HM))
+		return(hostm_dispatch(notice, auth, who, server));
+	else if (!strcmp(opcode, CLIENT_GIMMESUBS)) {
+		/* this special case is before the auth check so that
+		   someone who has no subscriptions does NOT get a SERVNAK
+		   but rather an empty list.  Note we must therefore
+		   check authentication inside subscr_sendlist */
+#ifdef OLD_COMPAT
+		/* only acknowledge if *not* old version; the old version
+		   acknowledges the packet with the reply */
+		if (strcmp(notice->z_version, OLD_ZEPHYR_VERSION))
+			ack(notice, who);
+#else /* !OLD_COMPAT */
+		ack(notice, who);
+#endif /* OLD_COMPAT */
+		subscr_sendlist(notice, auth, who);
+		return(ZERR_NONE);
+	} else if (!auth) {
+		zdbug((LOG_DEBUG,"unauth ctrl_disp"));
+		if (server == me_server)
+			clt_ack(notice, who, AUTH_FAILED);
+		return(ZERR_NONE);
+	}
+
+	/* the rest of the expected opcodes modify state; check for
+	   unlocked host first */
+	host = hostm_find_host(&who->sin_addr);
+	if (host && host->zh_locked)
+		return(ZSRV_REQUEUE);
+
+	if (!strcmp(opcode, CLIENT_SUBSCRIBE)) {
+		/* subscription notice */
+		if (!(client = client_which_client(who, notice))) {
+			if ((retval = client_register(notice,
+						      who,
+						      &client,
+						      server)) != ZERR_NONE)
+			{
+				syslog(LOG_WARNING,
+				       "subscr. register failed: %s",
+				       error_message(retval));
+				if (server == me_server)
+					hostm_deathgram(who, me_server);
+				return(ZERR_NONE);
+			}
+			if (!(client = client_which_client(who, notice))) {
+				syslog(LOG_CRIT, "subscr reg. failure");
+				abort();
+			}
+		}
+		if (strcmp(client->zct_principal, notice->z_sender)) {
+			/* you may only subscribe for your own clients */
+			if (server == me_server)
+				clt_ack(notice, who, AUTH_FAILED);
+			return(ZERR_NONE);
+		}
+#ifdef KERBEROS
+		bcopy((caddr_t) ZGetSession(), /* in case it's changed */
+		      (caddr_t) client->zct_cblock,
+		      sizeof(C_Block));
+#endif KERBEROS
+		if ((retval = subscr_subscribe(client,notice)) != ZERR_NONE) {
+			syslog(LOG_WARNING, "subscr failed: %s",
+			       error_message(retval));
+			if (server == me_server)
+				nack(notice, who);
+			return(ZERR_NONE);
+		}
+	} else if (!strcmp(opcode, CLIENT_UNSUBSCRIBE)) {
+		if ((client = client_which_client(who,notice))) {
+			if (strcmp(client->zct_principal, notice->z_sender)) {
+				/* you may only cancel for your own clients */
+				if (server == me_server)
+					clt_ack(notice, who, AUTH_FAILED);
+				return(ZERR_NONE);
+			}
+			(void) subscr_cancel(who, notice);
+		} else {
+			nack(notice, who);
+			return(ZERR_NONE);
+		}
+	} else if (!strcmp(opcode, CLIENT_CANCELSUB)) {
+		/* canceling subscriptions implies I can punt info about
+		 this client */
+		if ((client = client_which_client(who,notice))) {
+			if (strcmp(client->zct_principal, notice->z_sender)) {
+				/* you may only cancel for your own clients */
+				if (server == me_server)
+					clt_ack(notice, who, AUTH_FAILED);
+				return(ZERR_NONE);
+			}
+			if (host) {
+				/* don't flush locations here, let him
+				   do it explicitly */
+				if (zdebug)
+					syslog(LOG_DEBUG,
+					       "cancelsub clt_dereg");
+				(void) client_deregister(client, host, 0);
+			}
+
+		} 
+		if (!client || !host) {
+			zdbug((LOG_DEBUG,"can_sub not found client"));
+			if (server == me_server)
+				nack(notice, who);
+			return(ZERR_NONE);
+		}
+	} else {
+		syslog(LOG_WARNING, "unknown ctl opcode %s", opcode);
+		if (server == me_server)
+			nack(notice, who);
+		return(ZERR_NONE);
+	}
+
+	if (server == me_server) {
+		ack(notice, who);
+		server_forward(notice, auth, who);
+	}
+	return(ZERR_NONE);
+}
+
+ 
