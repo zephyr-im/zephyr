@@ -13,7 +13,7 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZIfNotice_c[] = "$Header$";
+static char rcsid_ZIfNotice_c[] = "$Id$";
 #endif lint
 
 #include <zephyr/mit-copyright.h>
@@ -59,5 +59,8 @@ Code_t ZIfNotice(notice, from, predicate, args)
 	}
 	if ((retval = Z_ReadWait()) != ZERR_NONE)
 	    return (retval);
+	qptr = Z_GetFirstComplete();	/* need to look over all of
+					   the queued messages, in case
+					   a fragment has been reassembled */
     }
 }
