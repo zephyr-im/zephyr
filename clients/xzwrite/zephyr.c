@@ -1,7 +1,7 @@
 #include <zephyr/zephyr.h>
 
 #include "xzwrite.h"
-#include <strings.h>
+#include <string.h>
 
 static int zeph_send_notice();
 extern Defaults defs;

@@ -43,7 +43,7 @@ static char rcsid_new_string_c[] = "$Id$";
 #include <ctype.h>
 #include "new_memory.h"
 
-#include <strings.h>
+#include <string.h>
 
 #define string_Length(s) strlen(s)
 typedef char *string;
