@@ -6,7 +6,14 @@
 #include <zephyr/zephyr.h>
 #include <netdb.h>
 
-#ifdef ZEPHYR_USES_HESIOD
+#ifdef HAVE_KRB4
+#define ZEPHYR_USES_KERBEROS
+#include <krb.h>
+#include <krb_err.h>
+#endif
+
+#ifdef HAVE_HESIOD
+#define ZEPHYR_USES_HESIOD
 #include <hesiod.h>
 #endif
 
