@@ -82,7 +82,7 @@ extern "C" {
     /* Packet type */
     typedef enum { UNSAFE, UNACKED, ACKED, HMACK, HMCTL, SERVACK, SERVNAK,
 		       CLIENTACK, STAT } ZNotice_Kind_t;
-    Zconst char *Zconst ZNoticeKinds[((int) STAT) + 1];
+    extern Zconst char *Zconst ZNoticeKinds[((int) STAT) + 1];
 
     /* Unique ID format */
     typedef struct _ZUnique_Id_t {
@@ -222,6 +222,8 @@ extern "C" {
     extern Code_t ZFormatRawNotice Zproto ((ZNotice_t *, char**, int *));
 #ifndef Z_varargs
     extern void Z_debug Zproto ((const char *, ...));
+#else
+    extern void Z_debug ();
 #endif
 
 #ifdef Z_HaveKerberos
@@ -278,7 +280,7 @@ extern "C" {
 
     inline const char* ZGetRealm () { return __Zephyr_realm; }
 
-    inline void ZSetDebug (register void (*proc)(char *,va_list,void *),
+    inline void ZSetDebug (register void (*proc)(Zconst char *,va_list,void *),
 			   void *closure) {
       __Z_debug_print = proc;
       __Z_debug_print_closure = closure;
