@@ -25,24 +25,25 @@ static char rcsid_subscr_s_c[] = "$Header$";
  * External functions:
  *
  * Code_t subscr_subscribe(sin, notice)
- * struct sockaddr_in *sin;
- * ZNotice_t *notice;
+ *	struct sockaddr_in *sin;
+ *	ZNotice_t *notice;
  *
  * Code_t subscr_cancel(sin, notice)
- * struct sockaddr_in *sin;
- * ZNotice_t *notice;
+ *	struct sockaddr_in *sin;
+ *	ZNotice_t *notice;
  *
  * Code_t subscr_cancel_client(client)
- * ZClient_t *client;
+ *	ZClient_t *client;
  *
  * Code_t subscr_cancel_host(addr)
- * struct in_addr *addr;
+ *	struct in_addr *addr;
  *
- * ZClientList_t *subscr_match_list(notice)
- * ZNotice_t *notice;
+ * ZClientList_t *subscr_match_list(notice, acl)
+ *	ZNotice_t *notice;
+ *	ZAcl_t *acl;
  *
  * void subscr_list_free(list)
- * ZClientList_t *list;
+ *	ZClientList_t *list;
  *
  */
 
@@ -66,15 +67,15 @@ ZNotice_t *notice;
 	ZAcl_t *acl;
 	Code_t retval;
 
-	if (who->zct_subs == NULLZST) {
+	if (!who->zct_subs) {
 		/* allocate a subscription head */
-		if ((subs = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t))) == NULLZST)
+		if (!(subs = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t))))
 			return(ENOMEM);
 		subs->q_forw = subs->q_back = subs;
 		who->zct_subs = subs;
 	}
 
-	if ((newsubs = extract_subscriptions(notice)) == NULLZST)
+	if (!(newsubs = extract_subscriptions(notice)))
 		return(ZERR_NONE);	/* no subscr -> no error */
 
 	for (subs = newsubs->q_forw;
@@ -82,7 +83,7 @@ ZNotice_t *notice;
 	     subs = subs->q_forw) {
 		/* for each new subscription */
 
-		if ((acl = class_get_acl(subs->zst_class)) != NULLZACLT &&
+		if ((acl = class_get_acl(subs->zst_class)) &&
 		    !access_check(notice, acl, SUBSCRIBE)) {
 			syslog(LOG_WARNING, "subscr unauth %s %s",
 			       notice->z_sender, subs->zst_class);
@@ -92,13 +93,13 @@ ZNotice_t *notice;
 		     subs2 != who->zct_subs;
 		     subs2 = subs2->q_forw) {
 			/* for each existing subscription */
-			if (subscr_equiv(subs, subs2)) /* duplicate? */
+			if (subscr_equiv(subs, subs2, notice)) /* duplicate? */
 				goto duplicate;
 		}
 
 		/* ok, we are a new subscription. register and chain on. */
 
-		if ((subs3 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t))) == NULLZST) {
+		if (!(subs3 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
 			free_subscriptions(newsubs);
 			return(ENOMEM);
 		}
@@ -110,7 +111,11 @@ ZNotice_t *notice;
 
 		subs3->zst_class = strsave(subs->zst_class);
 		subs3->zst_classinst = strsave(subs->zst_classinst);
-		subs3->zst_recipient = strsave(subs->zst_recipient);
+
+		/* since we are authenticated when we get here,
+		   we can trust the sender field */
+		subs3->zst_recipient = strsave(notice->z_sender);
+
 		subs3->q_forw = subs3->q_back = subs3;
 
 		xinsque(subs3, who->zct_subs);
@@ -122,95 +127,13 @@ duplicate:	;			/* just go on to the next */
 	return(ZERR_NONE);
 }
 
-/* are the subscriptions the same? 1=yes, 0=no */
 
-static int
-subscr_equiv(s1, s2)
-register ZSubscr_t *s1, *s2;
-{
-	if (strcmp(s1->zst_class,s2->zst_class))
-		return(0);
-	if (strcmp(s1->zst_classinst,s2->zst_classinst))
-		return(0);
-	if (strcmp(s1->zst_recipient,s2->zst_recipient))
-		return(0);
-	return(1);
-}
-
-#define	ADVANCE(xx)	{ cp += (strlen(cp) + 1); \
-		  if (cp >= notice->z_message + notice->z_message_len) { \
-			  syslog(LOG_WARNING, "malformed subscription %d", xx); \
-			  return(subs); \
-		  }}
-
-static ZSubscr_t *
-extract_subscriptions(notice)
-register ZNotice_t *notice;
-{
-	register ZSubscr_t *subs = NULLZST, *subs2;
-	register char *recip, *class, *classinst;
-	register char *cp = notice->z_message;
-	char *buf;
-
-	/* parse the data area for the subscriptions */
-	while (cp < notice->z_message + notice->z_message_len) {
-		class = buf = cp;
-		if (*buf == '\0')
-			/* we've exhausted the subscriptions */
-			return(subs);
-		zdbug2("class %s",cp);
-		ADVANCE(1);
-		classinst = buf = cp;
-		zdbug2("clinst %s",cp);
-		ADVANCE(2);
-		recip = cp;
-		zdbug2("recip %s",cp);
-		cp += (strlen(cp) + 1);
-		if (cp > notice->z_message + notice->z_message_len) {
-			syslog(LOG_WARNING, "malformed sub 3");
-			return(subs);
-		}
-		if (subs == NULLZST) {
-			if ((subs = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t))) == NULLZST) {
-				syslog(LOG_WARNING, "ex_subs: no mem");
-				return(NULLZST);
-			}
-			subs->q_forw = subs->q_back = subs;
-			subs->zst_class = subs->zst_classinst = subs->zst_recipient = NULL;
-		}
-		if ((subs2 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t))) == NULLZST) {
-			syslog(LOG_WARNING, "ex_subs: no mem 2");
-			return(subs);
-		}
-		subs2->zst_class = strsave(class);
-		subs2->zst_classinst = strsave(classinst);
-		subs2->zst_recipient = strsave(recip);
-		subs2->q_forw = subs2->q_back = subs2;
-
-		xinsque(subs2, subs);
-	}
-	return(subs);
-}
-
-static void
-free_subscriptions(subs)
-register ZSubscr_t *subs;
-{
-	register ZSubscr_t *sub;
-
-	for (sub = subs->q_forw; sub != subs; sub = subs->q_forw) {
-		xfree(sub->zst_class);
-		xfree(sub->zst_classinst);
-		xfree(sub->zst_recipient);
-		xremque(sub);
-		xfree(sub);
-	}
-	xfree(subs);
-	return;
-}
+/*
+ * Cancel one subscription.
+ */
 
 Code_t
-subscr_cancel(sin,notice)
+subscr_cancel(sin, notice)
 struct sockaddr_in *sin;
 ZNotice_t *notice;
 {
@@ -218,22 +141,23 @@ ZNotice_t *notice;
 	register ZSubscr_t *subs, *subs2;
 	Code_t retval;
 
-	zdbug1("subscr_cancel");
-	if ((who = client_which_client(sin, notice)) == NULLZCNT)
+	zdbug((LOG_DEBUG,"subscr_cancel"));
+	if (!(who = client_which_client(sin, notice)))
 		return(ZSRV_NOCLT);
 
-	if (who->zct_subs == NULLZST)
+	if (!who->zct_subs)
 		return(ZSRV_NOSUB);
 
-	if ((subs = extract_subscriptions(notice)) == NULLZST)
+	if (!(subs = extract_subscriptions(notice)))
 		return(ZERR_NONE);	/* no subscr -> no error */
 
+	
 	for (subs2 = who->zct_subs->q_forw;
 	     subs2 != who->zct_subs;
 	     subs2 = subs2->q_forw) {
 		/* for each existing subscription */
 		/* is this what we are canceling? */
-		if (subscr_equiv(subs, subs2)) { 
+		if (subscr_equiv(subs->q_forw, subs2, notice)) { 
 			xremque(subs2);
 			if (class_deregister(who, subs2->zst_class) != ZERR_NONE) {
 				syslog(LOG_ERR, "subscr_cancel: not registered!");
@@ -248,22 +172,17 @@ ZNotice_t *notice;
 			     subs2 = subs2->q_forw)
 				if ((retval = class_register(who, subs2->zst_class)) != ZERR_NONE)
 					return(retval);
+			free_subscriptions(subs);
 			return(ZERR_NONE);
 		}
 	}
+	free_subscriptions(subs);
 	return(ZSRV_NOSUB);
 }
 
-static void
-free_sub(sub)
-ZSubscr_t *sub;
-{
-	xfree(sub->zst_class);
-	xfree(sub->zst_classinst);
-	xfree(sub->zst_recipient);
-	xfree(sub);
-	return;
-}
+/*
+ * Cancel all the subscriptions for this client.
+ */
 
 void
 subscr_cancel_client(client)
@@ -271,16 +190,16 @@ register ZClient_t *client;
 {
 	register ZSubscr_t *subs;
 
-	zdbug1("subscr_cancel_client");
-	if (client->zct_subs == NULLZST)
+	zdbug((LOG_DEBUG,"subscr_cancel_client"));
+	if (!client->zct_subs)
 		return;
 	
 	for (subs = client->zct_subs->q_forw;
 	     subs != client->zct_subs;
 	     subs = client->zct_subs->q_forw) {
-		zdbug2("sub_can %s",subs->zst_class);
+		zdbug((LOG_DEBUG,"sub_can %s",subs->zst_class));
 		if (class_deregister(client, subs->zst_class) != ZERR_NONE) {
-			zdbug1("sub_can_clt: not registered!");
+			zdbug((LOG_DEBUG,"sub_can_clt: not registered!"));
 		}
 
 		xremque(subs);
@@ -295,6 +214,10 @@ register ZClient_t *client;
 	return;
 }
 
+/*
+ * Cancel all the subscriptions for clients at this addr.
+ */
+
 Code_t
 subscr_cancel_host(addr)
 struct in_addr *addr;
@@ -302,7 +225,8 @@ struct in_addr *addr;
 	register ZHostList_t *hosts;
 	register ZClientList_t *clist = NULLZCLT, *clt;
 
-	if ((hosts = hostm_find_host(addr)) == NULLZHLT)
+	/* find the host */
+	if (!(hosts = hostm_find_host(addr)))
 		return(ZSRV_HNOTFOUND);
 	clist = hosts->zh_clients;
 
@@ -320,33 +244,34 @@ struct in_addr *addr;
  */
 
 ZClientList_t *
-subscr_match_list(notice)
+subscr_match_list(notice, acl)
 ZNotice_t *notice;
+ZAcl_t *acl;
 {
 	register ZClientList_t *hits, *clients, *majik, *clients2, *hit2;
 
-	if ((hits = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))) == NULLZCLT)
+	if (!(hits = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))))
 		return(NULLZCLT);
 	hits->q_forw = hits->q_back = hits;
 
-	if ((clients = class_lookup(notice->z_class)) == NULLZCLT) {
-		if  ((majik = class_lookup(MATCHALL_CLASS)) == NULLZCLT)
+	if (!(clients = class_lookup(notice->z_class))) {
+		if  (!(majik = class_lookup(MATCHALL_CLASS)))
 			return(NULLZCLT);
 	} else
 		majik = class_lookup(MATCHALL_CLASS);
 
-	if (clients != NULLZCLT)
+	if (clients)
 		for (clients2 = clients->q_forw;
 		     clients2 != clients;
 		     clients2 = clients2->q_forw)
-			if (cl_match(notice, clients2->zclt_client)) {
+			if (cl_match(notice, clients2->zclt_client, acl)) {
 				if (!clt_unique(clients2->zclt_client, hits)) {
-					zdbug2("dup 0x%x", clients2->zclt_client);
+					zdbug((LOG_DEBUG,"dup 0x%x", clients2->zclt_client));
 					continue;
 				}
-				zdbug2("matched 0x%x", clients2->zclt_client);
+				zdbug((LOG_DEBUG,"matched 0x%x", clients2->zclt_client));
 				/* we hit */
-				if ((hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))) == NULLZCLT) {
+				if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
 					syslog(LOG_WARNING,
 					       "subscr_match: punting/no mem");
 					return(hits);
@@ -355,20 +280,20 @@ ZNotice_t *notice;
 				hit2->q_forw = hit2->q_back = hit2;
 
 				xinsque(hit2, hits);
-			} else zdbug2("didn't match 0x%x",
-				      clients2->zclt_client);
+			} else zdbug((LOG_DEBUG,"didn't match 0x%x",
+				      clients2->zclt_client));
 	
-	if (majik != NULLZCLT)
+	if (majik)
 		for (clients2 = majik->q_forw;
 		     clients2 != majik;
 		     clients2 = clients2->q_forw) {
 			if (!clt_unique(clients2->zclt_client, hits)) {
-				zdbug2("dup 0x%x", clients2->zclt_client);
+				zdbug((LOG_DEBUG,"dup 0x%x", clients2->zclt_client));
 				continue;
 			}
-			zdbug2("matched 0x%x", clients2->zclt_client);
+			zdbug((LOG_DEBUG,"matched 0x%x", clients2->zclt_client));
 			/* we hit */
-			if ((hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))) == NULLZCLT) {
+			if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
 				syslog(LOG_WARNING,
 				       "subscr_match(majik): punting/no mem");
 				return(hits);
@@ -378,10 +303,16 @@ ZNotice_t *notice;
 
 			xinsque(hit2, hits);
 		}
-	if (hits->q_forw == hits)
+	if (hits->q_forw == hits) {
+		xfree(hits);
 		return(NULLZCLT);
+	}
 	return(hits);
 }
+
+/*
+ * Free memory used by a list we allocated.
+ */
 
 void
 subscr_list_free(list)
@@ -400,6 +331,7 @@ ZClientList_t *list;
 /*
  * is this client unique to this list?  0 = no, 1 = yes
  */
+
 static int
 clt_unique(clt, clist)
 ZClient_t *clt;
@@ -418,10 +350,12 @@ ZClientList_t *clist;
 /*
  * is this client listening to this notice? 1=yes, 0=no
  */
+
 static int
-cl_match(notice, client)
+cl_match(notice, client, acl)
 register ZNotice_t *notice;
 register ZClient_t *client;
+ZAcl_t *acl;
 {
 	register ZSubscr_t *subs;
 	char *reresult;
@@ -439,23 +373,139 @@ register ZClient_t *client;
 		   matching on the class is disallowed. */
 		if (strcmp(notice->z_class, subs->zst_class))
 			continue;	/* no match */
-		if ((reresult = re_comp(subs->zst_classinst)) != NULL) {
-			syslog(LOG_WARNING, "re_comp error %s on '%s'",
-			       reresult, subs->zst_classinst);
-			continue;
+		/* an ACL on this class means we don't do any wildcarding. */
+		if (acl) {
+			if (strcmp(notice->z_class_inst, subs->zst_classinst))
+				continue;
+		} else {
+			if ((reresult = re_comp(subs->zst_classinst))) {
+				syslog(LOG_WARNING, "re_comp error %s on '%s'",
+				       reresult, subs->zst_classinst);
+				continue;
+			}
+			if (!re_exec(notice->z_class_inst))
+				continue;
 		}
-		if (!re_exec(notice->z_class_inst))
-			continue;
-		if ((reresult = re_comp(subs->zst_recipient)) != NULL) {
-			syslog(LOG_WARNING, "re_comp error %s on '%s'",
-			       reresult, subs->zst_recipient);
-			continue;
-		}
-		if (!re_exec(notice->z_recipient))
-			continue;
-		/* OK, we matched */
+		if (*notice->z_recipient) /* Non-blank recipient */
+			if (strcmp(notice->z_recipient, subs->zst_recipient))
+				continue;
+		
+		/* either blank recip. field (wildcard) or exact match */
 		return(1);
 	}
 	/* fall through */
 	return(0);
 }	
+
+/*
+ * Free up a subscription
+ */
+
+static void
+free_sub(sub)
+ZSubscr_t *sub;
+{
+	xfree(sub->zst_class);
+	xfree(sub->zst_classinst);
+	xfree(sub->zst_recipient);
+	xfree(sub);
+	return;
+}
+
+/*
+ * free the memory allocated for the list of subscriptions.
+ */
+
+static void
+free_subscriptions(subs)
+register ZSubscr_t *subs;
+{
+	register ZSubscr_t *sub;
+
+	for (sub = subs->q_forw; sub != subs; sub = subs->q_forw) {
+		xremque(sub);
+		xfree(sub);
+	}
+	xfree(subs);
+	return;
+}
+
+/*
+ * are the subscriptions the same? 1=yes, 0=no
+ * The notice's z_sender field is used as the recipient field for the first
+ * subscription
+ */
+
+static int
+subscr_equiv(s1, s2, notice)
+register ZSubscr_t *s1, *s2;
+register ZNotice_t *notice;
+{
+	if (strcmp(s1->zst_class,s2->zst_class))
+		return(0);
+	if (strcmp(s1->zst_classinst,s2->zst_classinst))
+		return(0);
+	if (strcmp(notice->z_sender,s2->zst_recipient))
+		return(0);
+	return(1);
+}
+
+#define	ADVANCE(xx)	{ cp += (strlen(cp) + 1); \
+		  if (cp >= notice->z_message + notice->z_message_len) { \
+			  syslog(LOG_WARNING, "malformed subscription %d", xx); \
+			  return(subs); \
+		  }}
+
+/*
+ * Parse the message body, returning a linked list of subscriptions, or
+ * NULLZST if there are no subscriptions there.
+ */
+
+static ZSubscr_t *
+extract_subscriptions(notice)
+register ZNotice_t *notice;
+{
+	register ZSubscr_t *subs = NULLZST, *subs2;
+	register char *recip, *class, *classinst;
+	register char *cp = notice->z_message;
+	char *buf;
+
+	/* parse the data area for the subscriptions */
+	while (cp < notice->z_message + notice->z_message_len) {
+		class = buf = cp;
+		if (*buf == '\0')
+			/* we've exhausted the subscriptions */
+			return(subs);
+		zdbug((LOG_DEBUG,"class %s",cp));
+		ADVANCE(1);
+		classinst = buf = cp;
+		zdbug((LOG_DEBUG,"clinst %s",cp));
+		ADVANCE(2);
+		recip = cp;
+		zdbug((LOG_DEBUG,"recip %s",cp));
+		cp += (strlen(cp) + 1);
+		if (cp > notice->z_message + notice->z_message_len) {
+			syslog(LOG_WARNING, "malformed sub 3");
+			return(subs);
+		}
+		if (!subs) {
+			if (!(subs = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
+				syslog(LOG_WARNING, "ex_subs: no mem");
+				return(NULLZST);
+			}
+			subs->q_forw = subs->q_back = subs;
+			subs->zst_class = subs->zst_classinst = subs->zst_recipient = NULL;
+		}
+		if (!(subs2 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
+			syslog(LOG_WARNING, "ex_subs: no mem 2");
+			return(subs);
+		}
+		subs2->zst_class = class;
+		subs2->zst_classinst = classinst;
+		subs2->zst_recipient = recip;
+		subs2->q_forw = subs2->q_back = subs2;
+
+		xinsque(subs2, subs);
+	}
+	return(subs);
+}
