@@ -17,6 +17,7 @@
 
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr_err.h>
+#include <zephyr/zephyr_conf.h>
 
 #include <errno.h>
 #include <sys/types.h>
