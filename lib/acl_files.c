@@ -115,7 +115,7 @@ char *canon;
 	*canon++ = '\0';
     } 
 #ifdef KERBEROS
-else if(get_krbrlm(canon, 1) != KSUCCESS) {
+else if(krb_get_lrealm(canon, 1) != KSUCCESS) {
 	strcpy(canon, KRB_REALM);
     }
 #endif
