@@ -101,7 +101,6 @@ static losinghost *losing_hosts = NULLLH; /* queue of pings for hosts we
 static void host_detach(), insert_host(), remove_host();
 static void host_not_losing(), host_lost(), ping();
 static Code_t host_attach();
-static int cmp_hostlist();
 
 /*
  * We received a HostManager packet.  process accordingly.
@@ -210,6 +209,11 @@ ZServerDesc_t *server;
 	losinghost *lhp, *lhp2;
 	int omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 
+	if (!host) {
+	    syslog(LOG_WARNING, "null host flush");
+	    return;
+	}
+
 	zdbug((LOG_DEBUG,"hostm_flush"));
 
 	if (losing_hosts)
@@ -234,7 +238,7 @@ ZServerDesc_t *server;
 		}
 
 	uloc_hflush(&host->zh_addr.sin_addr);
-	host_detach(&host->zh_addr.sin_addr, server);
+	host_detach(host, server);
 	(void) sigsetmask(omask);
 	return;
 }
@@ -429,6 +433,41 @@ struct sockaddr_in *who;
 	return;
 }
 
+/*
+ * A client is being de-registered, so remove it from the losing_host list,
+ * if it is there.
+ */
+
+void
+hostm_lose_ignore(client)
+ZClient_t *client; 
+{
+	losinghost *lhp, *lhp2;
+	int omask;
+	if (!losing_hosts)
+		return;
+
+	omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
+	for (lhp = losing_hosts->q_forw;
+	     lhp != losing_hosts;)
+		/* if client matches, remove it */
+		if (lhp->lh_client == client) {
+			/* go back, since remque will change things */
+			lhp2 = lhp->q_back;
+			timer_reset(lhp->lh_timer);
+			zdbug((LOG_DEBUG,"hm_l_ign client %s/%d",
+			       inet_ntoa(client->zct_sin.sin_addr),
+			       ntohs(client->zct_sin.sin_port)));
+			xremque(lhp);
+			xfree(lhp);
+			/* now that the remque adjusted the linked list,
+			   we go forward again */
+			lhp = lhp2->q_forw;
+		} else
+			lhp = lhp->q_forw;
+	(void) sigsetmask(omask);
+	return;
+}
 
 /*
  * transfer this host to server's ownership.  The caller must update the
@@ -513,32 +552,30 @@ ZServerDesc_t *server;
  */
 
 static void
-host_detach(addr, server)
-struct in_addr *addr;
+host_detach(host, server)
+register ZHostList_t *host;
 ZServerDesc_t *server;
 {
 	/* undo what we did in host_attach */
-	register ZHostList_t *hlist;
 	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
-	if (hostm_find_server(addr) != server) {
+	if (hostm_find_server(&host->zh_addr.sin_addr) != server) {
 		syslog(LOG_WARNING, "host_detach: wrong server");
 		(void) sigsetmask(omask);
 		return;
 	}
 
-	hlist = hostm_find_host(addr);
 
 	/* all the clients have already been freed */
-	xfree(hlist->zh_clients);
+	xfree(host->zh_clients);
 
 	/* unchain */
-	xremque(hlist);
+	xremque(host);
 
 	/* remove from table */
-	remove_host(hlist);
+	remove_host(host);
 
-	xfree(hlist);
+	xfree(host);
 	(void) sigsetmask(omask);
 	return;
 }
