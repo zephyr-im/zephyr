@@ -43,10 +43,10 @@
 
 /* server-server defines */
 #define	TIMO_UP		((long) 60)	/* timeout between up and tardy */
-#define	TIMO_TARDY	((long) 60)	/* timeout btw tardy hellos */
+#define	TIMO_TARDY	((long) 120)	/* timeout btw tardy hellos */
 #define	TIMO_DEAD	((long)(15*60))	/* timeout between hello's for dead */
 
-#define	H_NUM_TARDY	3		/* num hello's before going dead
+#define	H_NUM_TARDY	5		/* num hello's before going dead
 					   when tardy */
 #define	H_NUM_STARTING	2		/* num hello's before going dead
 					   when starting */
