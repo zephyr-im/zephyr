@@ -49,6 +49,10 @@ static char rcsid_hostm_s_c[] = "$Header$";
  * void hostm_losing(client, host)
  *	ZClient_t *client;
  *	ZHostList_t *host;
+ *
+ * void hostm_deathgram(sin, server)
+ *	struct sockaddr_in *sin;
+ * 	ZServerDesc_t *server;
  */
 
 /*
