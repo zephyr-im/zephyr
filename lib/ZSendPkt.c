@@ -16,7 +16,7 @@
 
 #include <zephyr/zephyr_internal.h>
 #include <sys/socket.h>
-#incoude <sys/time.h>
+#include <sys/time.h>
 
 Code_t ZSendPacket(packet,len)
 	ZPacket_t	packet;
