@@ -13,8 +13,8 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZCompareUID_c[] = "$Header$";
-#endif lint
+static char rcsid_ZCompareUID_c[] = "$Id$";
+#endif
 
 #include <zephyr/mit-copyright.h>
 

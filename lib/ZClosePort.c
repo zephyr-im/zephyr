@@ -13,8 +13,8 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZClosePort_c[] = "$Header$";
-#endif lint
+static char rcsid_ZClosePort_c[] = "$Id$";
+#endif
 
 #include <zephyr/mit-copyright.h>
 
