@@ -13,8 +13,8 @@ SYSLOG_LIB= ../clients/syslogd/syslog.o
 #else
 SYSLOG_LIB=
 #endif
-LIBS= ${SYSLOG_LIB} ${ZEPHYR_LIB} ${COMERR_LIB} ${HES_LIB} ${KRB_LIB} \
-	${DES_LIB}
+LIBS= ${SYSLOG_LIB} ${ZEPHYR_LIB} ${HES_LIB} ${KRB_LIB} \
+	${DES_LIB} ${COMERR_LIB}
 LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${HES_LINTLIB} \
 	${KRB_LINTLIB} ${DES_LINTLIB}
 
@@ -22,22 +22,28 @@ HDRS=	zserver.h \
 	zsrv_conf.h \
 	timer.h
 
-SRCS=	access.c \
-	bdump.c \
-	class.c \
-	client.c \
-	common.c \
-	dispatch.c \
-	hostm.c \
-	main.c \
-	server.c \
-	subscr.c \
-	timer.c \
-	uloc.c \
-	kstuff.c \
-	version.c
+SRCS=	main.C \
+	access.C \
+	bdump.C \
+	class.C \
+	client.C \
+	common.C \
+	dispatch.C \
+	hostm.C \
+	server.C \
+	subscr.C \
+	timer.C \
+	uloc.C \
+	kstuff.C \
+	version.C \
+	ZString.C ZStringTable.C \
+	kopt.c \
+	acl_files.c \
+	xxx.c \
+	zalloc.C
 
-OBJS= 	zsrv_err.o \
+OBJS=	main.o \
+	zsrv_err.o \
 	access.o \
 	bdump.o \
 	class.o \
@@ -45,23 +51,27 @@ OBJS= 	zsrv_err.o \
 	common.o \
 	dispatch.o \
 	hostm.o \
-	main.o \
 	server.o \
 	subscr.o \
 	timer.o \
 	uloc.o \
 	kstuff.o \
-	version.o
+	version.o \
+	ZString.o ZStringTable.o \
+	kopt.o \
+	acl_files.o \
+	xxx.o \
+	zalloc.o
 
 OTHERSRCS= zsrv_err.et
 CONFIG_FILES= default.subscriptions
 SRCDIR= ${SRCTOP}/server
 CODE= ${SRCS} ${HDRS} ${OTHERSRCS} ${CONFIG_FILES} Imakefile
 
-DEFINES=-DOLD_COMPAT -DNEW_COMPAT
+DEFINES=-DNDEBUG -DCONCURRENT
 normal_obj_rule()
 
-program(zephyrd,${OBJS},,${LIBS},${USRETCDIR})
+cplusplus_program(zephyrd,${OBJS},,${LIBS},${USRETCDIR})
 
 error_table_noprof(zsrv_err)
 
@@ -74,4 +84,3 @@ install::
 	-rm -f ${DESTDIR}${ACLDIR}/?*.acl
 	cp acldir/?* ${DESTDIR}${ACLDIR}
 	${INSTALLFILE} default.subscriptions ${DESTDIR}${ACLDIR}/default.subscriptions
-
