@@ -30,6 +30,7 @@ static char *rcsid_rd_req_c =
 #ifndef NOENCRYPTION
 
 /* Byte ordering */
+#undef HOST_BYTE_ORDER
 static int krbONE = 1;
 #define		HOST_BYTE_ORDER	(* (char *) &krbONE)
 
@@ -332,7 +333,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     memcpy(tkt->dat, ptr + 1, tkt->length);
 
     if (krb_ap_req_debug)
-        log("ticket->length: %d", tkt->length);
+        krb_log("ticket->length: %d", tkt->length);
 
 #ifndef NOENCRYPTION
     /* Decrypt and take apart ticket */
@@ -344,10 +345,10 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
         return RD_AP_UNDEC;
 
     if (krb_ap_req_debug) {
-        log("Ticket Contents.");
-        log(" Aname:   %s.%s",ad->pname,
-            ((int)*(ad->prealm) ? ad->prealm : "Athena"));
-        log(" Service: %s%s%s", sname, ((int)*iname ? "." : ""), iname);
+        krb_log("Ticket Contents.");
+        krb_log(" Aname:   %s.%s",ad->pname,
+                ((int)*(ad->prealm) ? ad->prealm : "Athena"));
+        krb_log(" Service: %s%s%s", sname, ((int)*iname ? "." : ""), iname);
     }
 
     /* Extract the authenticator */
@@ -360,7 +361,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 #ifndef NOENCRYPTION
     /* And decrypt it with the session key from the ticket */
     if (krb_ap_req_debug)
-	log("About to decrypt authenticator");
+	krb_log("About to decrypt authenticator");
     sched = check_key_sched_cache(ad->session);
     if (!sched) {
 	sched = &seskey_sched;
@@ -371,7 +372,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     pcbc_encrypt((C_Block *) req_id->dat, (C_Block *) req_id->dat,
 		 (long) req_id->length, sched->s, ad->session, DES_DECRYPT);
     if (krb_ap_req_debug)
-	log("Done.");
+	krb_log("Done.");
 #endif /* NOENCRYPTION */
 
 #define check_ptr() if ((ptr - (char *) req_id->dat) > req_id->length) return(RD_AP_MODIFIED);
@@ -406,18 +407,18 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 
     /* Check for authenticity of the request */
     if (krb_ap_req_debug)
-        log("Pname:   %s %s",ad->pname,r_aname);
+        krb_log("Pname:   %s %s",ad->pname,r_aname);
     if (strcmp(ad->pname,r_aname) != 0)
         return RD_AP_INCON;
     if (strcmp(ad->pinst,r_inst) != 0)
         return RD_AP_INCON;
     if (krb_ap_req_debug)
-        log("Realm:   %s %s", ad->prealm, r_realm);
+        krb_log("Realm:   %s %s", ad->prealm, r_realm);
     if (strcmp(ad->prealm,r_realm) != 0)
         return RD_AP_INCON;
 
     if (krb_ap_req_debug)
-        log("Address: %d %d", ad->address, from_addr);
+        krb_log("Address: %d %d", ad->address, from_addr);
     if (from_addr && (ad->address != from_addr))
         return RD_AP_BADD;
 
@@ -427,8 +428,8 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 	delta_t = abs((int)(t_local.tv_sec - r_time_sec));
 	if (delta_t > CLOCK_SKEW) {
 	    if (krb_ap_req_debug) {
-		log("Time out of range: %d - %d = %d",
-		    t_local.tv_sec, r_time_sec, delta_t);
+		krb_log("Time out of range: %d - %d = %d",
+			t_local.tv_sec, r_time_sec, delta_t);
 	    }
 	    return RD_AP_TIME;
 	}
@@ -438,8 +439,8 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 
     tkt_age = t_local.tv_sec - ad->time_sec;
     if (krb_ap_req_debug) {
-        log("Time: %d Issue Date: %d Diff: %d Life %x",
-            t_local.tv_sec, ad->time_sec, tkt_age, ad->life);
+        krb_log("Time: %d Issue Date: %d Diff: %d Life %x",
+                t_local.tv_sec, ad->time_sec, tkt_age, ad->life);
     }
 
     if (t_local.tv_sec < ad->time_sec) {

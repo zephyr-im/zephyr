@@ -98,7 +98,7 @@ char list_file[128];
 #endif
 #ifdef ZEPHYR_USES_KERBEROS
 char srvtab_file[128];
-char tkt_file[128];
+static char tkt_file[128];
 #endif
 char acl_dir[128];
 char subs_file[128];
@@ -260,7 +260,6 @@ main(argc, argv)
 
     action.sa_handler = sig_dump_db;
     sigaction(SIGFPE, &action, NULL);
-    sigaction(SIGXCPU, &action, NULL);
 
 #ifdef SIGEMT
     action.sa_handler = sig_dump_strings;
@@ -276,7 +275,6 @@ main(argc, argv)
     signal(SIGUSR2, dbug_off);
     signal(SIGCHLD, reap);
     signal(SIGFPE, sig_dump_db);
-    signal(SIGXCPU, sig_dump_db);
 #ifdef SIGEMT
     signal(SIGEMT, sig_dump_strings);
 #endif
@@ -385,6 +383,10 @@ initialize()
     server_init();
 
     nexttimo = 1L;	/* trigger the timerss when we hit the FOR loop */
+
+#ifdef ZEPHYR_USES_KERBEROS
+    krb_set_tkt_string(tkt_file);
+#endif
 
     ZInitialize();		/* set up the library */
     init_zsrv_err_tbl();	/* set up err table */

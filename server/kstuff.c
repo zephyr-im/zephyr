@@ -144,14 +144,6 @@ SendKerberosData(fd, ticket, service, host)
     return 0;
 }
 
-/* Hack to replace the kerberos library's idea of the ticket file with
-   our idea */
-char *
-tkt_string()
-{
-    return tkt_file;
-}
-
 int
 ZCheckAuthentication(notice, from)
     ZNotice_t *notice;
