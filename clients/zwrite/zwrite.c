@@ -43,22 +43,21 @@ main(argc, argv)
     int argc;
     char *argv[];
 {
-    ZNotice_t notice;
     int retval, arg, nocheck, nchars, msgsize, filsys, tabexpand;
-    char bfr[BUFSIZ], *message, *signature = NULL;
-    char classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ], opbfr[BUFSIZ];
-    
+    char *message, *signature = NULL;
+    static char bfr[BUFSIZ], classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ];
+    static char opbfr[BUFSIZ];
+    static ZNotice_t notice;
+
     whoami = argv[0];
 
     if ((retval = ZInitialize()) != ZERR_NONE) {
 	com_err(whoami, retval, "while initializing");
 	exit(1);
-    } 
+    }
 
     if (argc < 2)
 	usage(whoami);
-
-    bzero((char *) &notice, sizeof(notice));
 
     auth = ZAUTH;
     verbose = quiet = msgarg = nrecips = nocheck = filsys = nodot = 0;
@@ -214,12 +213,12 @@ main(argc, argv)
 	    notice.z_default_format = "@bold(Filesystem Operation Message for $instance:)\nFrom: @bold($sender) at $time $date\n$message";
     else if (auth == ZAUTH) {
 	if (signature)
-	    notice.z_default_format = "Class $class, Instance $instance:\nTo: @bold($recipient) at $time $date\n@bold($1) <$sender>\n\n$2";
+	    notice.z_default_format = "Class $class, Instance $instance:\nTo: @bold($recipient) at $time $date\nFrom: @bold($1) <$sender>\n\n$2";
 	else
 	    notice.z_default_format = "Class $class, Instance $instance:\nTo: @bold($recipient) at $time $date\n$message";
     } else {
 	if (signature)
-	    notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance at $time $date:\n@bold($1) <$sender>\n\n$2";
+	    notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance at $time $date:\nFrom: @bold($1) <$sender>\n\n$2";
 	else
 	    notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance at $time $date:\n$message";
     }
