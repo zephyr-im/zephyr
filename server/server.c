@@ -1419,6 +1419,7 @@ server_forw_reliable(server, pack, packlen, notice)
 	return;
     }
 
+    nacked->client = NULL;
     nacked->rexmits = 0;
     nacked->packet = pack;
     nacked->dest.srv_idx = server - otherservers;

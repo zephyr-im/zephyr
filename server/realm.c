@@ -451,6 +451,7 @@ realm_init()
     sprintf(rlmprinc, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE, rlm->name);
     client->principal = make_string(rlmprinc, 0);
     client->last_send = 0;
+    client->last_ack = NOW;
     client->subs = NULL;
     client->realm = rlm;
     client->addr.sin_family = 0;
@@ -627,6 +628,7 @@ realm_sendit(notice, who, auth, realm, ack_to_sender)
     return;
   }
 
+  nacked->client = NULL;
   nacked->rexmits = 0;
   nacked->packet = pack;
   nacked->dest.rlm.rlm_idx = realm - otherrealms;
