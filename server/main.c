@@ -14,9 +14,9 @@
 #include <zephyr/mit-copyright.h>
 
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 3.6";
+char version[] = "Zephyr Server (DEBUG) 3.7";
 #else
-char version[] = "Zephyr Server 3.6";
+char version[] = "Zephyr Server 3.7";
 #endif DEBUG
 #ifndef lint
 #ifndef SABER
