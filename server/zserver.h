@@ -46,6 +46,7 @@ typedef struct _ZClient_t {
 	struct sockaddr_in zct_sin;	/* ipaddr/port of client */
 	struct _ZSubscr_t *zct_subs;	/* subscriptions */
 	C_Block zct_cblock;		/* session key for this client */
+	char	*zct_principal;		/* krb principal of user */
 } ZClient_t;
 
 typedef struct _ZClientList_t {
