@@ -26,44 +26,37 @@ uid_t getuid();
 
 char *ZGetSender()
 {
-	char *tktfile;
-	static char sender[128] = "";
-	char pname[ANAME_SZ],pinst[INST_SZ];
-	FILE *fp;
-	struct passwd *pw;
-	
-	if (*sender)
-		return (sender);
 
-	tktfile = (char *)TKT_FILE;
-	if (!(fp = fopen(tktfile,"r"))) {
-		/* XXX a uid_t is a u_short (now), but getpwuid
-		   wants an int. AARGH! */
-		pw = getpwuid((int) getuid());
-		if (!pw)
-			return ("unknown");
-		(void) sprintf(sender,"%s@%s",pw->pw_name,__Zephyr_realm);
-		return (sender);
-	} 
-        readstr(fp,pname,ANAME_SZ);
-	readstr(fp,pinst,INST_SZ);
-	(void) sprintf(sender,"%s%s%s@%s",pname,(pinst[0]?".":""),pinst,
-		__Zephyr_realm);
-	
+    struct passwd *pw;
+#ifdef KERBEROS
+    char pname[ANAME_SZ], pinst[INST_SZ];
+    static char sender[ANAME_SZ+INST_SZ+REALM_SZ+3] = "";
+#else
+    static char sender[128] = "";
+#endif
+
+    /* Return it if already cached */
+    if (*sender)
 	return (sender);
-}
 
-static readstr(fp,s,n)
-	FILE *fp;
-	char *s;
-	int n;
-{
-	int count;
+#ifdef KERBEROS
+    if (tf_init((char *)TKT_FILE, R_TKT_FIL) == KSUCCESS) {
+	if ((tf_get_pname(pname) == KSUCCESS) &&
+	    (tf_get_pinst(pinst) == KSUCCESS)) {
+	    (void) sprintf(sender, "%s%s%s@%s", pname, (pinst[0]?".":""),
+			   pinst, __Zephyr_realm);
+	    tf_close();
+	    return (sender);
+	}
+	tf_close();
+    }
+#endif KERBEROS
 
-	count = n;
-	while (fread(s,1,1,fp) && --count)
-		if (!*(s++))
-			return;
-	*(s++) = '\0';
-	return;
+    /* XXX a uid_t is a u_short (now),  but getpwuid
+     * wants an int. AARGH! */
+    pw = getpwuid((int) getuid());
+    if (!pw)
+	return ("unknown");
+    (void) sprintf(sender, "%s@%s", pw->pw_name, __Zephyr_realm);
+    return (sender);
 }
