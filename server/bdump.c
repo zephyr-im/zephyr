@@ -78,6 +78,7 @@ struct sockaddr_in *who;
 	Code_t retval;
 	char buf[512], *addr, *lyst[2];
 
+	zdbug((LOG_DEBUG, "bd_offer"));
 #ifdef KERBEROS
 	/* 
 	 * when using Kerberos server-server authentication, we can
@@ -89,11 +90,11 @@ struct sockaddr_in *who;
 		return;
 	}
 	bzero((caddr_t) &bdump_sin, sizeof(bdump_sin));
-	/* a port field of 0 and an address of INADDR_ANY makes the UNIX
+	/* a port field of 0 makes the UNIX
 	   kernel choose an appropriate port/address pair */
 
 	bdump_sin.sin_port = 0;
-	bdump_sin.sin_addr.s_addr = INADDR_ANY;
+	bdump_sin.sin_addr = my_addr;
 	bdump_sin.sin_family = AF_INET;
 	if ((retval = bind(bdump_socket, (struct sockaddr *) &bdump_sin, sizeof(bdump_sin))) < 0) {
 		syslog(LOG_ERR, "bdump bind: %m");
@@ -151,6 +152,8 @@ struct sockaddr_in *who;
 	(void) send_list(ACKED, sock_sin.sin_port, ZEPHYR_ADMIN_CLASS, "1",
 		  ADMIN_BDUMP, myname, "", lyst, 2);
 	
+	zdbug((LOG_DEBUG,"bd_offer: %s/%d\n",inet_ntoa(bdump_sin.sin_addr),
+	       ntohs(bdump_sin.sin_port)));
 	return;
 }
 
