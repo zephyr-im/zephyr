@@ -14,7 +14,9 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
+#ifndef SABER
 static char rcsid_brain_dump_c[] = "$Header$";
+#endif SABER
 #endif lint
 
 #include "zserver.h"
