@@ -155,10 +155,15 @@ handle_packet()
 		input_sin.sin_family = AF_INET;
 		authentic = ZCheckAuthentication(&new_notice,
 						 &input_sin);
+		if (authentic == -1)
+			authentic = 0;	/* -1 means Kerberos check failed */
 	}
-	else
+	else {
 		authentic = ZCheckAuthentication(&new_notice,
 						 &whoisit);
+		if (authentic == -1)
+			authentic = 0;
+	}
 	if (whoisit.sin_port != hm_port &&
 	    strcmp(new_notice.z_class,ZEPHYR_ADMIN_CLASS) &&
 	    whoisit.sin_port != sock_sin.sin_port &&
