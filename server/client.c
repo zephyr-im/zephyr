@@ -28,8 +28,9 @@ static char rcsid_client_s_c[] = "$Header$";
  *	ZClient_t **client; (RETURN)
  *	ZServerDesc_t *server;
  *
- * Code_t client_deregister(client)
+ * Code_t client_deregister(client, host)
  *	ZClient_t *client;
+ *	ZHostList_t *host;
  *
  * ZClient_t *client_which_client(who, notice)
  *	struct sockaddr_in *who;
