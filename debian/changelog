@@ -1,6 +1,6 @@
 zephyr (2.1.20000421.SNAPSHOT-13) unstable; urgency=low
 
-  * The unlucky version.  No warranty express or implied.  YMMV.
+  * The lucky version.  No warranty express or implied.  YMMV.
   * zephyr-server should have a default.subscriptions file now, closes: #94125
   * libzephyr3-krb and zephyr-server-krb now depend on krb4-config, should
     improve out-of-box functionality
