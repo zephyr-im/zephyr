@@ -12,6 +12,9 @@ LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB}
 SRCS = zstat.c
 OBJS = zstat.o
 
+SRCDIR= ${SRCTOP}/clients/zstat
+CODE= ${SRCS} Imakefile
+
 normal_obj_rule()
 
 program(zstat,${OBJS},,${LIBS},${CLIENTDIR})
