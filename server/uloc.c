@@ -87,14 +87,15 @@ typedef struct _Location {
 static void ulogin_locate __P((ZNotice_t *notice, struct sockaddr_in *who,
 			       int auth)),
 ulogin_flush_user __P((ZNotice_t *notice));
-static Location *ulogin_find __P((ZNotice_t *notice, int strict));
+static Location *ulogin_find __P((char *user, struct in_addr *host,
+				  unsigned int port));
+static Location *ulogin_find_user __P((char *user));
 static int ulogin_setup __P((ZNotice_t *notice, Location *locs,
 			     Exposure_type exposure, struct sockaddr_in *who)),
 ulogin_add_user __P((ZNotice_t *notice, Exposure_type exposure,
 		     struct sockaddr_in *who)),
-ulogin_parse __P((ZNotice_t *notice, Location *locs)),
-ulogin_expose_user __P((ZNotice_t *notice, Exposure_type exposure));
-static Exposure_type ulogin_remove_user __P((ZNotice_t *notice, int auth,
+ulogin_parse __P((ZNotice_t *notice, Location *locs));
+static Exposure_type ulogin_remove_user __P((ZNotice_t *notice,
 					     struct sockaddr_in *who,
 					     int *err_return));
 static void login_sendit __P((ZNotice_t *notice, int auth,
@@ -126,7 +127,7 @@ ulogin_dispatch(notice, auth, who, server)
     int err_ret;
 
     if (strcmp(notice->z_opcode, LOGIN_USER_LOGOUT) == 0) {
-	retval = ulogin_remove_user(notice, auth, who, &err_ret);
+	retval = ulogin_remove_user(notice, who, &err_ret);
 	switch (retval) {
 	  case NONE:
 	    if (err_ret == UNAUTH) {
@@ -184,7 +185,7 @@ ulogin_dispatch(notice, auth, who, server)
 	if (server == me_server)
 	    ack(notice, who);
     } else if (strcmp(notice->z_opcode, EXPOSE_NONE) == 0) {
-	ulogin_remove_user(notice, auth, who, &err_ret);
+	ulogin_remove_user(notice, who, &err_ret);
 	if (err_ret == UNAUTH) {
 	    if (server == me_server)
 		clt_ack(notice, who, AUTH_FAILED);
@@ -464,11 +465,20 @@ ulogin_add_user(notice, exposure, who)
     Exposure_type exposure;
     struct sockaddr_in *who;
 {
-    Location *oldlocs, newloc;
+    Location *loc, *oldlocs, newloc;
     int i;
 
-    if ((oldlocs = ulogin_find(notice,1)) != NULL) {
-	ulogin_expose_user(notice, exposure);
+    loc = ulogin_find(notice->z_class_inst, &who->sin_addr, notice->z_port);
+    if (loc) {
+	/* Update the time, tty, and exposure on the existing location. */
+	loc->exposure = exposure;
+	if (ulogin_parse(notice, &newloc) == 0) {
+	    free_string(loc->tty);
+	    loc->tty = dup_string(newloc.tty);
+	    free(loc->time);
+	    loc->time = strsave(newloc.time);
+	    free_loc(&newloc);
+	}
 	return 0;
     }
 
@@ -587,69 +597,76 @@ ulogin_parse(notice, locs)
     return 0;
 }	
 
+
+static Location *
+ulogin_find(user, host, port)
+    char *user;
+    struct in_addr *host;
+    unsigned int port;
+{
+    Location *loc;
+    String *str;
+
+    /* Find the first location for this user. */
+    loc = ulogin_find_user(user);
+    if (!loc)
+	return NULL;
+
+    /* Look for a location which matches the host and port. */
+    str = make_string(user, 0);
+    while (loc < locations + num_locs && loc->user == str) {
+	if (loc->addr.sin_addr.s_addr == host->s_addr
+	    && loc->addr.sin_port == port) {
+	    free_string(str);
+	    return loc;
+	}
+    }
+
+    free_string(str);
+    return NULL;
+}
+
 /*
- * Find the username specified in notice->z_class_inst.
- * If strict, make sure the locations in notice and the table match.
- * Otherwise return a pointer to the first instance of this user@realm
- * in the table.
+ * Return a pointer to the first instance of this user@realm in the
+ * table.
  */
 
 static Location *
-ulogin_find(notice, strict)
-    ZNotice_t *notice;
-    int strict;
+ulogin_find_user(user)
+    char *user;
 {
     int i, rlo, rhi;
-    Location tmploc;
     int compar;
-    String *inst;
+    String *str;
 
     if (!locations)
 	return(NULL);
 
-    inst = make_string(notice->z_class_inst, 0);
+    str = make_string(user, 0);
 
-    /* i is the current loc we are checking */
-    /* rlo is the lowest we will still check, rhi is the highest we will
-       still check */
+    /* i is the current midpoint location, rlo is the lowest we will
+     * still check, and rhi is the highest we will still check. */
 
-    i = num_locs >> 1;		/* start in the middle */
+    i = num_locs / 2;
     rlo = 0;
-    rhi = num_locs - 1;		/* first index is 0 */
+    rhi = num_locs - 1;
 
-    while ((compar = comp_string(locations[i].user, inst)) != 0) {
+    while ((compar = comp_string(locations[i].user, str)) != 0) {
 	if (compar < 0)
 	    rlo = i + 1;
 	else
 	    rhi = i - 1;
 	if (rhi - rlo < 0) {
-	    free_string(inst);
-	    return 0;
+	    free_string(str);
+	    return NULL;
 	}
-	i = (rhi + rlo) >> 1;	/* split the diff */
+	i = (rhi + rlo) / 2;
     }
-    if (strict && ulogin_parse(notice, &tmploc)) {
-	zdbug((LOG_DEBUG,"ul_find bad fmt"));
-	free_string(inst);
-	return 0;
-    }
-    /* back up to the first of this guy */
-    while (i > 0 && (locations[i-1].user == inst)) {
+
+    /* Back up to the first location for this user. */
+    while (i > 0 && locations[i - 1].user == str)
 	i--;
-    }
-    if (strict) {
-	while (i < num_locs && !ul_equiv(&tmploc, &locations[i])
-	       && (locations[i].user == inst))
-	    i++;
-    }
-    if (strict)
-	free_loc(&tmploc);
-    if (i == num_locs || locations[i].user != inst) {
-	zdbug((LOG_DEBUG,"ul_find final match loss"));
-	free_string(inst);
-	return 0;
-    }
-    free_string(inst);
+    free_string(str);
     return &locations[i];
 }
 
@@ -669,9 +686,8 @@ ul_equiv(l1, l2)
  */
 
 static Exposure_type
-ulogin_remove_user(notice, auth, who, err_return)
+ulogin_remove_user(notice, who, err_return)
     ZNotice_t *notice;
-    int auth;
     struct sockaddr_in *who;
     int *err_return;
 {
@@ -680,15 +696,9 @@ ulogin_remove_user(notice, auth, who, err_return)
     Exposure_type quiet;
 
     *err_return = 0;
-    loc = ulogin_find(notice, 1);
+    loc = ulogin_find(notice->z_class_inst, &who->sin_addr, notice->z_port);
     if (!loc) {
 	*err_return = NOLOC;
-	return NONE;
-    }
-
-    /* if unauthentic, the sender MUST be the same IP addr that registered */
-    if (!auth && loc->addr.sin_addr.s_addr != who->sin_addr.s_addr) {
-	*err_return = UNAUTH;
 	return NONE;
     }
 
@@ -744,7 +754,7 @@ ulogin_flush_user(notice)
 
     i = num_match = num_left = 0;
 
-    if (!(loc2 = ulogin_find(notice, 0)))
+    if (!(loc2 = ulogin_find_user(notice->z_class_inst)))
 	return;
 
     /* compute # locations left in the list, after loc2 (inclusive) */
@@ -806,47 +816,6 @@ ulogin_flush_user(notice)
 #endif
 }
 
-/*
- * Set the user's exposure flag to exposure
- */
-
-static int
-ulogin_expose_user(notice, exposure)
-    ZNotice_t *notice;
-    Exposure_type exposure;
-{
-    Location *loc, loc2;
-    int idx, notfound = 1;
-
-    loc = ulogin_find(notice, 0);
-    if (!loc)
-	return 1;
-
-    if (ulogin_parse(notice, &loc2))
-	return 1;
-
-    idx = loc -locations;
-
-    while (idx < num_locs && locations[idx].user == loc2.user) {
-
-	/* change exposure and owner for each loc on that host */
-	if (locations[idx].machine == loc2.machine) {
-	    notfound = 0;
-	    locations[idx].exposure = exposure;
-	    locations[idx].addr.sin_port = notice->z_port;
-	    /* change time for the specific loc */
-	    if (locations[idx].tty == loc2.tty) {
-		free(locations[idx].time);
-		locations[idx].time = strsave(loc2.time);
-	    }
-	}
-	idx++;
-    }
-
-    free_loc(&loc2);
-    return notfound;
-}
-
 
 static void
 ulogin_locate(notice, who, auth)
@@ -904,7 +873,7 @@ ulogin_marshal_locs(notice, found, auth)
 
     *found = 0;			/* # of matches */
 
-    loc = ulogin_find(notice, 0);
+    loc = ulogin_find_user(notice->z_class_inst);
     if (!loc)
 	return(NULL);
 
