@@ -35,9 +35,9 @@ static const char rcsid_client_c[] =
  *	Host *host;
  *	int flush;
  *
- * Client *client_which_client(who, notice)
- *	struct sockaddr_in *who;
- *	ZNotice_t *notice;
+ * Client *client_find(who, unsigned int port)
+ *	struct in_addr *host;
+ *	unsigned int port;
  *
  * void client_dump_clients(fp, clist)
  *	FILE *fp;
@@ -50,7 +50,7 @@ static const char rcsid_client_c[] =
  *	the host's list of clients.
  *
  * This routine assumes that the client has not been registered yet.
- * The caller should check by calling client_which_client
+ * The caller should check by calling client_find.
  */
 
 #define HASHSIZE 1024
@@ -58,8 +58,6 @@ static Client *client_bucket[HASHSIZE];
 
 #define INET_HASH(host, port) ((htonl((host)->s_addr) + \
 				htons((unsigned short) (port))) % HASHSIZE)
-
-static Client *client_find __P((struct in_addr *host, unsigned int port));
 
 Code_t
 client_register(notice, host, client_p, wantdefaults)
@@ -90,7 +88,6 @@ client_register(notice, host, client_p, wantdefaults)
 #ifdef KERBEROS
 	memset(&client->session_key, 0, sizeof(client->session_key));
 #endif
-	client->last_msg = 0;
 	client->last_send = 0;
 	client->addr.sin_family = AF_INET;
 	client->addr.sin_addr.s_addr = host->s_addr;
@@ -147,18 +144,6 @@ client_flush_host(host)
     uloc_hflush(host);
 }
 
-/*
- * find the client which sent the notice
- */
-
-Client *
-client_which_client(host, notice)
-    struct in_addr *host;
-    ZNotice_t *notice;
-{
-    return client_find(host, notice->z_port);
-}
-
 Code_t
 client_send_clients()
 {
@@ -208,7 +193,11 @@ client_dump_clients(fp)
     }
 }
 
-static Client *
+/*
+ * find a client by host and port
+ */
+
+Client *
 client_find(host, port)
     struct in_addr *host;
     unsigned int port;

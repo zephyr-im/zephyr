@@ -327,7 +327,7 @@ subscr_cancel(sin, notice)
 #if 0
     zdbug((LOG_DEBUG,"subscr_cancel"));
 #endif
-    who = client_which_client(&sin->sin_addr, notice);
+    who = client_find(&sin->sin_addr, notice->z_port);
     if (!who)
 	return ZSRV_NOCLT;
 
@@ -538,7 +538,6 @@ subscr_marshal_subs(notice, auth, who, found)
     struct sockaddr_in *who;
     int *found;
 {
-    ZNotice_t reply;
     char **answer = NULL;
     unsigned short temp;
     Code_t retval;
@@ -574,10 +573,7 @@ subscr_marshal_subs(notice, auth, who, found)
 	    return(NULL);
 	}
 
-	reply = *notice;
-	reply.z_port = htons(temp);
-
-	client = client_which_client(&who->sin_addr, &reply);
+	client = client_find(&who->sin_addr, htons(temp));
 
 	if (client)
 	    subs = client->subs;
@@ -735,7 +731,7 @@ old_compat_subscr_sendlist(notice, auth, who)
     int auth;
     struct sockaddr_in *who;
 {
-    Client *client = client_which_client(&who->sin_addr, notice);
+    Client *client = client_find(&who->sin_addr, notice->z_port);
     Destlist *subs;
     Code_t retval;
     ZNotice_t reply;
@@ -1508,7 +1504,7 @@ Code_t subscr_foreign_user(notice, who, realm)
   if (!strcmp(snotice.z_opcode, REALM_ADD_SUBSCRIBE)) {
     /* this was approved by the other realm, add subscriptions */
     
-    client = client_which_client(&newwho.sin_addr, &snotice);
+    client = client_find(&newwho.sin_addr, snotice.z_port);
     if (client == (Client *)0) {
       syslog(LOG_WARNING, "no client at %s/%d",
              inet_ntoa(newwho.sin_addr), ntohs(snotice.z_port));
