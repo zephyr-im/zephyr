@@ -67,6 +67,7 @@ static char rcsid_server_c[] = "$Header$";
 static void server_hello(), server_flush(), setup_server();
 static void hello_respond(), srv_responded(), send_msg(), send_msg_list();
 static void srv_alive(), srv_nack_cancel(), srv_rexmit(), srv_nack_release();
+static void srv_nack_move();
 static void server_lost();
 static void send_stats(), server_queue(), server_forw_reliable();
 static Code_t admin_dispatch(), recover_clt(), kill_clt();
@@ -178,7 +179,7 @@ server_init()
 		/* cancel and reschedule all the timers--pointers need
 		   adjusting */
 		/* don't reschedule limbo's timer, so start i=1 */
-		for (i = 1; i < nservers - 2; i++) {
+		for (i = 1; i < nservers - 1; i++) {
 			timer_reset(otherservers[i].zs_timer);
 			/* all the HELLO's are due now */
 			otherservers[i].zs_timer = timer_set_rel(0L, server_timo, (caddr_t) &otherservers[i]);
@@ -217,8 +218,9 @@ server_reset()
 	register ZServerDesc_t *servers;
 	register int i, j;
 	int *ok_list_new, *ok_list_old;
-	int num_ok, new_num, set_timers = 0;
+	int num_ok, new_num;
 
+	zdbug((LOG_DEBUG, "server_reset"));
 #ifdef DEBUG
 	if (zalone) {
 		syslog(LOG_INFO, "server_reset while alone, punt");
@@ -246,19 +248,29 @@ server_reset()
 	(void) bzero((char *)ok_list_old, nservers * sizeof(int));
 	(void) bzero((char *)ok_list_new, num_servers * sizeof(int));
 
+	/* reset timers--pointers will move */
+	for (j = 1; j < nservers; j++) {	/* skip limbo */
+		if (j == me_server_idx)
+			continue;
+		timer_reset(otherservers[j].zs_timer);
+		otherservers[j].zs_timer = (timer) 0;
+	}
+
 	/* check off entries on new list which are on old list.
 	   check off entries on old list which are on new list.
 	 */
 
 	/* count limbo as "OK" */
 	num_ok = 1;
+	ok_list_old[0] = 1;	/* limbo is OK */
 
 	for (serv_addr = server_addrs, i = 0;
 	     i < num_servers;
-	     serv_addr++, i++)
+	     serv_addr++, i++)		/* for each new server */
 		for (j = 1; j < nservers; j++) /* j = 1 since we skip limbo */
 			if (otherservers[j].zs_addr.sin_addr.s_addr ==
 			    serv_addr->s_addr) {
+				/* if server is on both lists, mark */
 				ok_list_new[i] = 1;
 				ok_list_old[j] = 1;
 				num_ok++;
@@ -270,26 +282,36 @@ server_reset()
 		new_num = 1;		/* limbo */
 		/* count number of servers to keep */
 		for (j = 1; j < nservers; j++)
+			/* since we are never SERV_DEAD, the following
+			   test prevents removing ourself from the list */
 			if (ok_list_old[j] ||
-			    (otherservers[j].zs_state != SERV_DEAD))
+			    (otherservers[j].zs_state != SERV_DEAD)) {
+				syslog(LOG_INFO, "keeping server %s",
+				       inet_ntoa(otherservers[j].zs_addr.sin_addr));
 				new_num++;
-
+			}
 		if (new_num < nservers) {
 			servers = (ZServerDesc_t *) xmalloc(new_num * sizeof(ZServerDesc_t));
-			set_timers = 1; /* set flag so we set later */
-			i = 0;
-			/* do the garbage collection */
-
+			if (!servers) {
+				syslog(LOG_CRIT, "server_reset server malloc");
+				abort();
+			}
+			i = 1;
 			servers[0] = otherservers[0]; /* copy limbo */
-			for (j = 0; j < nservers; j++) {
+
+			/* copy the kept servers */
+			for (j = 1; j < nservers; j++) { /* skip limbo */
 				if (ok_list_old[j] ||
 				    otherservers[j].zs_state != SERV_DEAD) {
 					servers[i] = otherservers[j];
-					/* reset timers--pointers moved */
-					timer_reset(otherservers[j].zs_timer);
-					servers[i].zs_timer = (timer) NULL;
+					srv_nack_move(j,i);
 					i++;
+				} else {
+					syslog(LOG_INFO, "flushing server %s",
+					       inet_ntoa(otherservers[j].zs_addr.sin_addr));
+					server_flush(&otherservers[j]);
 				}
+
 			}
 			xfree(otherservers);
 			otherservers = servers;
@@ -309,25 +331,43 @@ server_reset()
 		abort();
 	}
 
+	me_server_idx = 0;
+	for (j = 1; j < nservers - new_num; j++)
+		if (otherservers[j].zs_addr.sin_addr.s_addr ==
+		    my_addr.s_addr) {
+			me_server_idx = j;
+			break;
+		}
+	if (!me_server_idx) {
+		syslog(LOG_CRIT, "can't find myself");
+		abort();
+	}
+			
+	/* fill in otherservers with the new servers */
 	for (i = 0; i < num_servers; i++)
-		if (!ok_list_new[i])
+		if (!ok_list_new[i]) {
 			setup_server(&otherservers[nservers - (new_num--)],
 				     &server_addrs[i]);
+			syslog(LOG_INFO, "adding server %s",
+			       inet_ntoa(server_addrs[i]));
+		}
 	xfree(server_addrs);
-	if (set_timers)
-		/* reset timers, to go off now.
-		   We can't get a time-left indication (bleagh!)
-		   so we expire them all now.  This will generally
-		   be non-destructive.  We assume that when this code is
-		   entered via a SIGHUP trigger that a system wizard
-		   is watching the goings-on to make sure things straighten
-		   themselves out.
-		 */
-		for (i = 0; i < nservers; i++)
+	/* reset timers, to go off now.
+	   We can't get a time-left indication (bleagh!)
+	   so we expire them all now.  This will generally
+	   be non-destructive.  We assume that when this code is
+	   entered via a SIGHUP trigger that a system wizard
+	   is watching the goings-on to make sure things straighten
+	   themselves out.
+	   */
+	for (i = 1; i < nservers; i++)	/* skip limbo */
+		if (i != me_server_idx && !otherservers[i].zs_timer) {
 			otherservers[i].zs_timer =
 				timer_set_rel(0L, server_timo,
 					      (caddr_t) &otherservers[i]);
-			
+			zdbug((LOG_DEBUG, "reset timer for %s",
+			       inet_ntoa(otherservers[i].zs_addr.sin_addr)));
+		}
 	zdbug((LOG_DEBUG, "server_reset: %d servers now", nservers));
 	return;
 }
@@ -1324,7 +1364,11 @@ struct sockaddr_in *who;
 			   queue it, even if he's dead */
 			continue;
 
-		if ((retval = ZFormatRawNotice(notice, &pack, &packlen)) != ZERR_NONE) {
+		if (!(pack = xmalloc(sizeof(ZPacket_t)))) {
+			syslog(LOG_CRIT, "srv_fwd malloc");
+			abort();
+		}
+		if ((retval = ZFormatSmallRawNotice(notice, pack, &packlen)) != ZERR_NONE) {
 			syslog(LOG_WARNING, "srv_fwd format: %s",
 			       error_message(retval));
 			continue;
@@ -1521,6 +1565,28 @@ ZServerDesc_t *server;
 			nacked = nack2->q_forw;
 		} else
 			nacked = nacked->q_forw;
+	return;
+}
+
+/*
+ * Clean up the not-yet-acked queue and release anything destined
+ * to the server.
+ */
+
+static void
+srv_nack_move(from, to)
+register int from, to;
+{
+	/* XXX release any private queue for this server */
+
+	register ZNotAcked_t *nacked, *nack2;
+
+	/* search the not-yet-acked list for anything destined to 'from', and
+	   change the index to 'to'. */
+	for (nacked = nacklist->q_forw;
+	     nacked != nacklist;)
+		if (nacked->na_srv_idx == from)
+			nacked->na_srv_idx = to;
 	return;
 }
 
