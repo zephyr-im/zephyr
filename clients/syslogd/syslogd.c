@@ -56,6 +56,10 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #define TIMERINTVL	30		/* interval for checking flush, mark */
 
 #include <stdio.h>
+#ifdef macII
+#include <sys/types.h>
+#include <time.h>
+#endif
 #include <utmp.h>
 #include <ctype.h>
 #include <strings.h>
