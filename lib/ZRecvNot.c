@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -44,7 +44,7 @@ Code_t ZReceiveNotice(notice, from)
     
     bcopy(nextq->packet, buffer, len);
 
-    (void) Z_RemQueue(nextq);
+    Z_RemQueue(nextq);
     
     return (ZParseNotice(buffer, len, notice));
 }

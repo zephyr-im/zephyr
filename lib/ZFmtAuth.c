@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -34,7 +34,7 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
     newnotice = *notice;
     newnotice.z_auth = 1;
     newnotice.z_authent_len = 0;
-    newnotice.z_ascii_authent = (char *)"";
+    newnotice.z_ascii_authent = "";
 	
     if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len,
 				    &hdrlen, &ptr)) != ZERR_NONE)

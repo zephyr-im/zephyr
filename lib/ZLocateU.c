@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -37,6 +37,7 @@ Code_t ZLocateUser(user, nlocs)
 	    if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
 		    return (retval);
 
+    (void) bzero((char *)&notice, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = __Zephyr_port;
     notice.z_class = LOCATE_CLASS;
@@ -46,7 +47,6 @@ Code_t ZLocateUser(user, nlocs)
     notice.z_recipient = "";
     notice.z_default_format = "";
     notice.z_message_len = 0;
-    notice.z_num_other_fields = 0;
 
     if ((retval = ZSendNotice(&notice, ZAUTH)) != ZERR_NONE)
 	return (retval);
@@ -91,20 +91,17 @@ Code_t ZLocateUser(user, nlocs)
 		    return (ENOMEM);
 	
 	    for (ptr=retnotice.z_message, i=0;i<__locate_num;i++) {
-		    __locate_list[i].host = (char *)
-			    malloc((unsigned)strlen(ptr)+1);
+		    __locate_list[i].host = malloc((unsigned)strlen(ptr)+1);
 		    if (!__locate_list[i].host)
 			    return (ENOMEM);
 		    (void) strcpy(__locate_list[i].host, ptr);
 		    ptr += strlen(ptr)+1;
-		    __locate_list[i].time = (char *)
-			    malloc((unsigned)strlen(ptr)+1);
+		    __locate_list[i].time = malloc((unsigned)strlen(ptr)+1);
 		    if (!__locate_list[i].time)
 			    return (ENOMEM);
 		    (void) strcpy(__locate_list[i].time, ptr);
 		    ptr += strlen(ptr)+1;
-		    __locate_list[i].tty = (char *)
-			    malloc((unsigned)strlen(ptr)+1);
+		    __locate_list[i].tty = malloc((unsigned)strlen(ptr)+1);
 		    if (!__locate_list[i].tty)
 			    return (ENOMEM);
 		    (void) strcpy(__locate_list[i].tty, ptr);
