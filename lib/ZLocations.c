@@ -136,14 +136,14 @@ Z_SendLocation(class, opcode, auth, format)
     if ((retval = ZSendList(&notice, bptr, 3, auth)) != ZERR_NONE)
 	return (retval);
 
-    tv.tv_sec = HM_TIMEOUT;
+    tv.tv_sec = SRV_TIMEOUT;
     tv.tv_usec = 0;
     FD_ZERO (&fdmask);
     zfd = ZGetFD();
-    FD_SET (zfd, &fdmask);
     gettimeofday (&t0, 0);
-    t0.tv_sec += HM_TIMEOUT;
+    t0.tv_sec += SRV_TIMEOUT;
     while (1) {
+	FD_SET (zfd, &fdmask);
 	i = select (zfd + 1, &fdmask, (fd_set *) 0, (fd_set *) 0, &tv);
 	if (i > 0) {
 	    retval = ZCheckIfNotice (&retnotice, (struct sockaddr_in*) 0,
