@@ -143,6 +143,13 @@ ZNotice_t *notice;
 	     subs = subs->q_forw) {
 		/* for each new subscription */
 
+		if (*(subs->zst_recipient) && strcmp(subs->zst_recipient,
+						     notice->z_sender)) {
+		    syslog(LOG_WARNING, "subscr unauth to rcpt %s by %s",
+			   subs->zst_recipient,
+			   notice->z_sender);
+		    continue;
+		}
 		acl = class_get_acl(subs->zst_class);
 		if (acl) {
 			if (!access_check(notice, acl, SUBSCRIBE)) {
@@ -156,15 +163,6 @@ ZNotice_t *notice;
 					       "subscr unauth wild %s %s.*",
 					       notice->z_sender,
 					       subs->zst_class);
-					continue;
-				}
-			} else if (!strcmp(notice->z_sender, subs->zst_classinst)) {
-				if (!access_check(notice, acl, INSTUID)) {
-					syslog(LOG_WARNING,
-					       "subscr unauth uid %s %s.%s",
-					       notice->z_sender,
-					       subs->zst_class,
-					       subs->zst_classinst);
 					continue;
 				}
 			}
@@ -969,7 +967,10 @@ char *vers;
 {
 	register int i = 0;
 	register ZSubscr_t *sub;
-	char buf[512], buf2[512], *lyst[7 * NUM_FIELDS];
+#ifdef KERBEROS	
+	char buf[512];
+#endif /* KERBEROS */
+	char buf2[512], *lyst[7 * NUM_FIELDS];
 	int num = 0;
 	Code_t retval;
 
