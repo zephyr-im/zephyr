@@ -5,7 +5,7 @@
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Zephyr: Imakefile,v 1.3 89/05/30 17:26:29 jtkohl Exp $
+/**/#	$Zephyr: /mit/zephyr/src/include/zephyr/RCS/Imakefile,v 1.4 91/03/21 12:16:56 raeburn Exp $
 /**/#
 SRCDIR= ${SRCTOP}/include/zephyr
 HDRS= acl.h mit-copyright.h zephyr.h zephyr_conf.h zephyr_internal.h zsyslog.h
@@ -32,4 +32,4 @@ zephyr_paths.h: $(BUILDTOP)/config/config.Imakefile
 	export_var(CLIENTDIR) ; \
 	export_var(HaveKerberos) ; \
 	export_var(HaveHesiod) ; \
-	$(SRCTOP)/tools/makepaths > zephyr_paths.h
+	$(BUILDTOP)/tools/makepaths > zephyr_paths.h
