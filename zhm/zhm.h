@@ -34,7 +34,7 @@
 #define ever (;;)
 
 #define SERV_TIMEOUT 20
-#define NOTICE_TIMEOUT 10
+#define NOTICE_TIMEOUT 25
 #define BOOTING 1
 #define NOTICES 2
 
