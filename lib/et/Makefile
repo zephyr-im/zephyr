@@ -32,7 +32,7 @@ CFILES=	compile_et.c error_table.c error_message.c et_name.c \
 #
 # what to build...
 #
-all:	compile_et libcom_err.a libcom_err_p.a
+all:	compile_et libcom_err.a libcom_err_p.a llib-lcom_err.ln
 
 lint:	llib-lcom_err.ln
 
@@ -91,6 +91,7 @@ install: all
 	install -c com_err.texinfo ${DESTDIR}${DOCDIR}/com_err.texinfo
 	install -c com_err.3 ${DESTDIR}/usr/man/man3/com_err.3
 	install -c compile_et.1 ${DESTDIR}/usr/man/man1/compile_et.1
+	install -c -m 644 llib-lcom_err.ln ${DESTDIR}${LIBDIR}/llib-lcom_err.ln
 
 TAGS:	et_name.c error_message.c compile_et.c error_table.c \
 		lex.yy.c perror.c init_et.c
@@ -133,69 +134,5 @@ test2.o : test2.c
 test2.c : test2.et
 # 'make depend' code
 depend: ${CFILES} et_lex.lex.c
-	rm -f eddep makedep
-	/bin/cc -M ${CFLAGS} ${CFILES} | \
-	sed 's; ./; ;' | \
-	sed -e ':loop' \
-	    -e 's/\.\.\/[^ /]*\/\.\./../' \
-	    -e 't loop' > makedep
-	echo '/^# DO NOT DELETE THIS LINE/+1,$$d' >eddep
-	echo '$$r makedep' >>eddep
-	echo 'w' >>eddep
-	cp Makefile Makefile.bak
-	ed - Makefile < eddep
-	rm eddep makedep
-#
-# the last line in the makefile should be...
-# DO NOT DELETE THIS LINE -- make depend depends on it.
-compile_et.o: compile_et.c
-compile_et.o: /usr/include/stdio.h
-compile_et.o: /usr/include/sys/file.h
-compile_et.o: /usr/include/strings.h
-compile_et.o: /usr/include/sys/param.h
-compile_et.o: /usr/include/machine/machparam.h
-compile_et.o: /usr/include/signal.h
-compile_et.o: /usr/include/sys/types.h
-compile_et.o: mit-sipb-copyright.h
-error_table.o: error_table.c
-error_table.o: /usr/include/stdio.h
-error_table.o: /usr/include/strings.h
-error_table.o: /usr/include/ctype.h
-error_table.o: /usr/include/sys/types.h
-error_table.o: /usr/include/sys/time.h
-error_table.o: /usr/include/time.h
-error_table.o: internal.h
-error_table.o: mit-sipb-copyright.h
-error_table.o: error_table.h
-error_table.o: mit-sipb-copyright.h
-error_table.o: et_lex.lex.c
-error_table.o: /usr/include/stdio.h
-error_message.o: error_message.c
-error_message.o: /usr/include/stdio.h
-error_message.o: error_table.h
-error_message.o: mit-sipb-copyright.h
-error_message.o: internal.h
-error_message.o: mit-sipb-copyright.h
-et_name.o: et_name.c
-et_name.o: error_table.h
-et_name.o: mit-sipb-copyright.h
-et_name.o: internal.h
-et_name.o: mit-sipb-copyright.h
-perror.o: perror.c
-perror.o: /usr/include/stdio.h
-perror.o: internal.h
-perror.o: mit-sipb-copyright.h
-perror.o: com_err.h
-perror.o: mit-sipb-copyright.h
-perror.o: mit-sipb-copyright.h
-init_et.o: init_et.c
-init_et.o: /usr/include/stdio.h
-init_et.o: error_table.h
-init_et.o: mit-sipb-copyright.h
-com_err.o: com_err.c
-com_err.o: /usr/include/stdio.h
-com_err.o: /usr/include/varargs.h
-com_err.o: error_table.h
-com_err.o: mit-sipb-copyright.h
-com_err.o: internal.h
-com_err.o: mit-sipb-copyright.h
+	makedepend ${CFLAGS} ${CFILES}
+
