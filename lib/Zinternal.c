@@ -681,14 +681,17 @@ Z_AddField(ptr, field, end)
 {
     register int len;
 
-    len = strlen(field)+1;
+    len = field ? strlen (field) + 1 : 1;
 
     if (*ptr+len > end)
-	return (1);
-    (void) strcpy(*ptr, field);
+	return 1;
+    if (field)
+	(void) strcpy(*ptr, field);
+    else
+	**ptr = '\0';
     *ptr += len;
 
-    return (0);
+    return 0;
 }
 
 struct _Z_InputQ *Z_GetFirstComplete()
