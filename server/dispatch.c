@@ -44,7 +44,6 @@ static char rcsid_dispatch_c[] = "$Header$";
  */
 
 static void xmit(), rexmit(), nack_cancel();
-static int is_server();
 
 /* patchable magic numbers controlling the retransmission rate and count */
 int num_rexmits = NUM_REXMITS;
@@ -96,7 +95,7 @@ struct sockaddr_in *who;
 		nack_cancel(notice, who);
 		return;
 	}
-	if (is_server(who)) {
+	if (server_which_server(who)) {
 		server_dispatch(notice, auth, who);
 		return;
 	} else if (class_is_hm(notice)) {
@@ -178,34 +177,15 @@ ZClient_t *client;
 			/* go back, since remque will change things */
 			nack2 = nacked->q_back;
 			timer_reset(nacked->na_timer);
-			xfree(nacked->na_packet);
 			xremque(nacked);
+			xfree(nacked->na_packet);
+			xfree(nacked);
 			/* now that the remque adjusted the linked list,
 			   we go forward again */
 			nacked = nack2->q_forw;
 		} else
 			nacked = nacked->q_forw;
 	return;
-}
-
-/*
- * Is this from a server?
- */
-static int
-is_server(who)
-struct sockaddr_in *who;
-{
-	register ZServerDesc_t *servs;
-	register int num;
-
-	if (who->sin_port != sock_sin.sin_port)
-		return(0);
-		
-	/* just look over the server list */
-	for (servs = otherservers, num = 0; num < nservers; num++, servs++)
-		if (servs->zs_addr.sin_addr.s_addr == who->sin_addr.s_addr)
-			return(1);
-	return(0);
 }
 
 /*
@@ -264,10 +244,12 @@ int auth;
 	if ((retval = ZSetDestAddr(&client->zct_sin)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "xmit set addr: %s",
 		       error_message(retval));
+		xfree(noticepack);
 		return;
 	}
 	if ((retval = ZSendPacket(noticepack, packlen)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "xmit xmit: %s", error_message(retval));
+		xfree(noticepack);
 		return;
 	}
 
@@ -276,6 +258,7 @@ int auth;
 	if (!(nacked = (ZNotAcked_t *)xmalloc(sizeof(ZNotAcked_t)))) {
 		/* no space: just punt */
 		syslog(LOG_WARNING, "xmit nack malloc");
+		xfree(noticepack);
 		return;
 	}
 
@@ -379,7 +362,8 @@ ZSentType sent;
 	       inet_ntoa(who->sin_addr),
 	       ntohs(who->sin_port)));
 
-	if (hostm_find_server(&who->sin_addr) != me_server) {
+	if (!server_which_server(who) &&
+	    (hostm_find_server(&who->sin_addr) != me_server)) {
 		zdbug((LOG_DEBUG,"not me"));
 		return;
 	}
@@ -459,6 +443,7 @@ struct sockaddr_in *who;
 				timer_reset(nacked->na_timer);
 				xfree(nacked->na_packet);
 				xremque(nacked);
+				xfree(nacked);
 				return;
 			}
 	zdbug((LOG_DEBUG,"nack not found"));
