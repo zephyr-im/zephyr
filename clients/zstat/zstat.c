@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifndef lint
 #ifndef SABER
@@ -24,6 +25,8 @@ static char rcsid_zstat_c[] = "$Header$";
 #endif SABER
 #endif lint
 		     
+extern long atol();
+
 char *head[20] = { "Current server =",
 		     "Items in queue:",
 		     "Client packets received:",
@@ -50,15 +53,10 @@ main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	ZNotice_t notice;
 	Code_t ret;
-	caddr_t packet, mp;
 	char hostname[MAXHOSTNAMELEN];
-	char *host = NULL;
-	char *srv_name;
 	int optchar;
 	struct servent *sp;
-	int ml, i, nitems;
 	extern char *optarg;
 	extern int optind;
 
@@ -67,7 +65,7 @@ main(argc, argv)
 		exit(-1);
 	}
 
-	if ((ret = ZOpenPort(0)) != ZERR_NONE) {
+	if ((ret = ZOpenPort((u_short *)0)) != ZERR_NONE) {
 		com_err("zstat", ret, "opening port");
 		exit(-1);
 	}
@@ -127,7 +125,7 @@ do_stat(host)
 	char srv_host[MAXHOSTNAMELEN];
 	
 	if (serveronly) {
-		srv_stat(host);
+		(void) srv_stat(host);
 		return;
 	}
 
@@ -135,7 +133,7 @@ do_stat(host)
 		return;
 
 	if (!hmonly)
-		srv_stat(srv_host);
+		(void) srv_stat(srv_host);
 }
 
 hm_stat(host,server)
@@ -148,10 +146,9 @@ hm_stat(host,server)
 	long runtime;
 	struct tm *tim;
 	ZNotice_t notice;
-	ZPacket_t packet;
 	extern int timeout();
 	
-	bzero(&sin,sizeof(struct sockaddr_in));
+	bzero((char *)&sin,sizeof(struct sockaddr_in));
 
 	sin.sin_port = hm_port;
 
@@ -166,7 +163,7 @@ hm_stat(host,server)
 		fprintf(stderr,"Unknown host: %s\n",host);
 		exit(-1);
 	}
-	bcopy(hp->h_addr, &sin.sin_addr, hp->h_length);
+	bcopy(hp->h_addr, (char *) &sin.sin_addr, hp->h_length);
 
 	printf("Hostmanager stats: %s\n",hp->h_name);
 	
@@ -189,16 +186,16 @@ hm_stat(host,server)
 		exit(-1);
 	}
 
-	signal(SIGALRM,timeout);
+	(void) signal(SIGALRM,timeout);
 	outoftime = 0;
-	alarm(10);
-	if (((ret = ZReceiveNotice(packet, sizeof packet, &notice,
-				   NULL)) != ZERR_NONE) &&
+	(void) alarm(10);
+	if (((ret = ZReceiveNotice(&notice, (struct sockaddr_in *) 0))
+	     != ZERR_NONE) &&
 	    ret != EINTR) {
 		com_err("zstat", ret, "receiving notice");
 		return (1);
 	}
-	alarm(0);
+	(void) alarm(0);
 	if (outoftime) {
 		fprintf(stderr,"No response after 10 seconds.\n");
 		return (1);
@@ -210,7 +207,7 @@ hm_stat(host,server)
 		mp += strlen(mp)+1;
 	}
 
-	strcpy(server,line[0]);
+	(void) strcpy(server,line[0]);
 
 	printf("HostManager protocol version = %s\n",notice.z_version);
 
@@ -230,7 +227,9 @@ hm_stat(host,server)
 
 	printf("\n");
 	
-	close(sock);
+	(void) close(sock);
+	ZFreeNotice(&notice);
+	return(0);
 }
 
 srv_stat(host)
@@ -241,12 +240,11 @@ srv_stat(host)
 	struct hostent *hp;
 	struct sockaddr_in sin;
 	ZNotice_t notice;
-	ZPacket_t packet;
 	long runtime;
 	struct tm *tim;
 	extern int timeout();
 	
-	bzero(&sin,sizeof(struct sockaddr_in));
+	bzero((char *) &sin,sizeof(struct sockaddr_in));
 
 	sin.sin_port = srv_port;
 
@@ -261,7 +259,7 @@ srv_stat(host)
 		fprintf(stderr,"Unknown host: %s\n",host);
 		exit(-1);
 	}
-	bcopy(hp->h_addr, &sin.sin_addr, hp->h_length);
+	bcopy(hp->h_addr, (char *) &sin.sin_addr, hp->h_length);
 
 	printf("Server stats: %s\n",hp->h_name);
 	
@@ -284,16 +282,16 @@ srv_stat(host)
 		exit(-1);
 	}
 
-	signal(SIGALRM,timeout);
+	(void) signal(SIGALRM,timeout);
 	outoftime = 0;
-	alarm(10);
-	if (((ret = ZReceiveNotice(packet, sizeof packet, &notice,
-				   NULL)) != ZERR_NONE) &&
+	(void) alarm(10);
+	if (((ret = ZReceiveNotice(&notice, (struct sockaddr_in *) 0))
+	    != ZERR_NONE) &&
 	    ret != EINTR) {
 		com_err("zstat", ret, "receiving notice");
 		return (1);
 	}
-	alarm(0);
+	(void) alarm(0);
 	if (outoftime) {
 		fprintf(stderr,"No response after 10 seconds.\n");
 		return (1);
@@ -326,7 +324,8 @@ srv_stat(host)
 	}
 	printf("\n");
 	
-	close(sock);
+	(void) close(sock);
+	return(0);
 }
 
 usage(s)
