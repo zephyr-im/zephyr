@@ -34,7 +34,8 @@ SRCS=	access.c \
 	subscr.c \
 	timer.c \
 	uloc.c \
-	kstuff.c
+	kstuff.c \
+	version.c
 
 OBJS= 	zsrv_err.o \
 	access.o \
@@ -49,7 +50,8 @@ OBJS= 	zsrv_err.o \
 	subscr.o \
 	timer.o \
 	uloc.o \
-	kstuff.o
+	kstuff.o \
+	version.c
 
 OTHERSRCS= zsrv_err.et
 CONFIG_FILES= default.subscriptions
