@@ -89,7 +89,8 @@ handle_packet()
 				
 	if (otherservers[me_server_idx].zs_update_queue) {
 		/* something here for me; take care of it */
-		zdbug((LOG_DEBUG, "internal queue process"));
+		if (zdebug)
+			syslog(LOG_DEBUG, "internal queue process");
 
 		pending = otherservers[me_server_idx].zs_update_queue->q_forw;
 		host = hostm_find_host(&(pending->pend_who.sin_addr));
@@ -232,8 +233,14 @@ struct sockaddr_in *who;
 	}
 
 	if (dispatched) {
-		if (status == ZSRV_REQUEUE)
+		if (status == ZSRV_REQUEUE) {
+#ifdef CONCURRENT
 			server_self_queue(notice, auth, who);
+#else
+			syslog(LOG_ERR, "requeue while not concurr");
+			abort();
+#endif CONCURRENT
+		}
 		return;
 	}
 	/* oh well, do the dirty work */
