@@ -1,0 +1,96 @@
+#
+# Makefile for xzwrite, X11R4
+# Written by Barr3y Jaspan, bjaspan@athena.mit.edu
+# MIT Student Information Processing Board and MIT-Project Athena
+#
+
+SRCS	= interface.c resource.c destlist.c util.c bfgets.c \
+	gethomedir.c dest_window.c xzwrite.c edit_window.c zephyr.c\
+	GetString.c Popup.c yank.c menu_window.c logins.c
+
+OBJS	= interface.o resource.o destlist.o util.o bfgets.o \
+	gethomedir.o dest_window.o xzwrite.o edit_window.o zephyr.o\
+	GetString.o Popup.o yank.o menu_window.o logins.o
+
+HDRS	= xzwrite.h GetString.h
+
+DYNLIBDIR	= /mit/sipb/$(MACHINE)lib
+X11LIBDIR	= /mit/x11/$(MACHINE)lib
+
+TARGET	= xzwrite
+INCLUDES= -I/mit/sipb/include -I/mit/x11/include
+DEBUG	= -O
+CFLAGS	= $(DEBUG) $(INCLUDES)
+LDFLAGS	= -L$(DYNLIBDIR) -L$(X11LIBDIR)
+LIBS	= -lzephyr -lkrb -ldes -lcom_err -lXaw -lXmu -lXt -lXext -lX11 -ldyn
+CC	= gcc
+
+DESTDIR	= /afs/.athena.mit.edu/contrib/sipb
+BINDEST	= $(DESTDIR)/$(MACHINE)bin
+MANDEST	= $(DESTDIR)/man
+RESDEST = $(DESTDIR)/lib/app-defaults
+MANSECT	= 1
+
+$(TARGET): $(OBJS)
+	$(CC) $(LDFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+
+install: bin_install man_install resource_install
+
+clean:
+	-rm -f $(OBJS) $(TARGET) *~ core
+
+proto:
+	mkproto $(SRCS) $(HDRS) > xzwrite-proto.h
+
+saber:
+	#setopt program_name xzwrite
+	#load ${CFLAGS} ${LDFLAGS} ${SRCS} -G ${LIBS}
+
+osaber:
+	#setopt program_name xzwrite
+	#load $(CFLAGS) $(LDFLAGS) -G $(OBJS) $(LIBS)
+
+bin_install: $(TARGET)
+	-if [ -f $(BINDEST)/$(TARGET) ]; then \
+		mv $(BINDEST)/$(TARGET) $(BINDEST)/.#$(TARGET).old; \
+		exit 0; \
+	fi
+	install -c -s $(TARGET) $(BINDEST)/$(TARGET)
+
+man_install:
+	nroff -man $(TARGET).man > \
+		$(MANDEST)/cat$(MANSECT)/$(TARGET).$(MANSECT)
+	cp $(TARGET).man $(MANDEST)/man$(MANSECT)/$(TARGET).$(MANSECT)
+
+resource_install:
+	 cp XZwrite $(RESDEST)/XZwrite
+
+depend:
+	makedepend -- $(CFLAGS) -- $(SRCS) $(HDRS)
+
+interface.o resource.o destlist.o util.o dest_window.o: xzwrite.h
+xzwrite.o edit_window.o zephyr.o yank.o: xzwrite.h
+dest_window.o: GetString.h
+
+# DO NOT DELETE THIS LINE -- make depend depends on it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
