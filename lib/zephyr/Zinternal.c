@@ -526,9 +526,20 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
     char *ptr, *end;
     int i;
 
-    if (!notice->z_class || !notice->z_class_inst || !notice->z_opcode ||
-	!notice->z_recipient || !notice->z_default_format)
-	return (ZERR_ILLVAL);
+    if (!notice->z_class)
+	    notice->z_class = "";
+
+    if (!notice->z_class_inst)
+	    notice->z_class_inst = "";
+
+    if (!notice->z_opcode)
+	    notice->z_opcode = "";
+
+    if (!notice->z_recipient)
+	    notice->z_recipient = "";
+
+    if (!notice->z_default_format)
+	    notice->z_default_format = "";
 
     ptr = buffer;
     end = buffer+buffer_len;
