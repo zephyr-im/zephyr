@@ -58,11 +58,11 @@ main(argc,argv)
 	auth = ZAUTH;
 	verbose = quiet = msgarg = nrecips = nocheck = 0;
 
-	if (!(class = getenv("ZEPHYR_CLASS")))
+	if (!(class = ZGetVariable("zwrite-class")))
 		class = DEFAULT_CLASS;
-	if (!(inst = getenv("ZEPHYR_INST")))
+	if (!(inst = ZGetVariable("zwrite-inst")))
 		inst = DEFAULT_INSTANCE;
-	signature = getenv("ZEPHYR_SIGNATURE");
+	signature = ZGetVariable("zwrite-signature");
 	if (signature)
 		maxlen -= strlen(signature)+1;
 	
