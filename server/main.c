@@ -16,19 +16,19 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_main_c[] = "$Header$";
-char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nPortions Copyright (c) 1986 Student Information Processing Board, Massachusetts Institute of Technology\n";
-#endif SABER
-#endif lint
-#ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 2.6;
-#else
-char version[] = "Zephyr Server 2.6";
-#endif DEBUG
+char copyright[] = "Copyright (c) 1987,1988 Massachusetts Institute of Technology.\n";
 #ifdef CONCURRENT
 char concurrent[] = "Brain-dump concurrency enabled";
 #else
 char concurrent[] = "no brain-dump concurrency";
 #endif CONCURRENT
+#endif SABER
+#endif lint
+#ifdef DEBUG
+char version[] = "Zephyr Server (DEBUG) 2.7";
+#else
+char version[] = "Zephyr Server 2.7";
+#endif DEBUG
 /*
  * Server loop for Zephyr.
  */
@@ -81,8 +81,7 @@ char concurrent[] = "no brain-dump concurrency";
 
 static int do_net_setup(), initialize();
 static void usage();
-static int bye();
-static void dbug_on(), dbug_off(), dump_db();
+static int bye(), dbug_on(), dbug_off(), dump_db();
 #ifndef DEBUG
 static void detach();
 #endif DEBUG
@@ -394,21 +393,23 @@ int sig;
 	/*NOTREACHED*/
 }
 
-static void
+static int
 dbug_on()
 {
 	syslog(LOG_DEBUG, "debugging turned on");
 	zdebug = 1;
+	return(0);
 }
 
-static void
+static int
 dbug_off()
 {
 	syslog(LOG_DEBUG, "debugging turned off");
 	zdebug = 0;
+	return(0);
 }
 
-static void
+static int
 dump_db()
 {
 	/* dump the in-core database to human-readable form on disk */
@@ -416,7 +417,7 @@ dump_db()
 
 	if ((fp = fopen("/usr/tmp/zephyr.db", "w")) == (FILE *)0) {
 		syslog(LOG_ERR, "can't open dump database");
-		return;
+		return(0);
 	}
 	syslog(LOG_INFO, "dumping to disk");
 	server_dump_servers(fp);
@@ -426,7 +427,7 @@ dump_db()
 	if (fclose(fp) == EOF) {
 		syslog(LOG_ERR, "can't close dump db");
 	}
-	return;
+	return(0);
 }
 
 #ifndef DEBUG
