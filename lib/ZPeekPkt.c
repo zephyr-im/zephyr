@@ -27,7 +27,7 @@ Code_t ZPeekPacket(buffer,buffer_len,ret_len,from)
 	if (ZGetFD() < 0)
 		return (ZERR_NOPORT);
 
-	if (!Z_QLength())
+	if (!ZQLength())
 		if ((retval = Z_ReadWait()) != ZERR_NONE)
 			return (retval);
 

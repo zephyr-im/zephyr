@@ -23,5 +23,5 @@ int ZPending()
 
 	Z_ReadEnqueue();
 	
-	return(Z_QLength());
+	return(ZQLength());
 }
