@@ -106,7 +106,7 @@ ZDestination::ZDestination (const ZDestination&d) : classname (d.classname), ins
     hash_value = d.hash_value;
 }
 
-int ZDestination::compare_strings (const ZDestination& z1, const ZDestination& z2) {
+int ZDestination::order_strings (const ZDestination& z1, const ZDestination& z2) {
     return (z1.classname != z2.classname
 	    ? z1.classname < z2.classname
 	    : (z1.inst != z2.inst
