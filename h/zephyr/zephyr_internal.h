@@ -86,7 +86,7 @@ extern char *malloc();
 extern time_t time();
 extern long random();
 
-extern struct _Z_InputQ *Z_GetFirstCompelte();
+extern struct _Z_InputQ *Z_GetFirstComplete();
 extern struct _Z_InputQ *Z_GetNextComplete();
 extern Code_t Z_XmitFragment();
 
