@@ -16,8 +16,8 @@
 #ifndef lint
 #ifndef SABER
 static const char rcsid_dispatch_c[] = "$Id$";
-#endif SABER
-#endif lint
+#endif
+#endif
 
 #include "zserver.h"
 #include <sys/socket.h>
@@ -71,13 +71,16 @@ extern const char *pktypes[] = {
 	"SERVNAK",
 	"CLIENTACK"
 };
-#endif DEBUG
+#endif
 
 extern const ZString class_control (ZEPHYR_CTL_CLASS, 1);
 extern const ZString class_admin (ZEPHYR_ADMIN_CLASS, 1);
 extern const ZString class_hm (HM_CTL_CLASS, 1);
 extern const ZString class_ulogin (LOGIN_CLASS, 1);
 extern const ZString class_ulocate (LOCATE_CLASS, 1);
+
+static void dispatch(register ZNotice_t *notice, int auth,
+		     struct sockaddr_in *who, int from_server);
 
 /*
  * Handle an input packet.
@@ -96,6 +99,7 @@ handle_packet(void)
 	int authentic;			/* authentic flag */
 	ZSrvPending_t *pending;		/* pending packet */
 	ZHostList_t *host;		/* host ptr */
+	int from_server;		/* packet is from another server */
 
 	/* handle traffic */
 				
@@ -130,7 +134,7 @@ handle_packet(void)
 			       error_message(status));
 		} else
 			dispatch(&new_notice, pending->pend_auth,
-				 &pending->pend_who);
+				 &pending->pend_who, 1);
 		server_pending_free(pending);
 		return;
 	}
@@ -167,11 +171,12 @@ handle_packet(void)
 		input_sin.sin_family = AF_INET;
 		authentic = ZCheckAuthentication(&new_notice,
 						 &input_sin);
-
-			
-	} else
+		from_server = 1;
+	} else {
+		from_server = 0;
 		authentic = ZCheckAuthentication(&new_notice,
 						 &whoisit);
+	}
 	switch (authentic) {
 	case ZAUTH_YES:
 		authentic = 1;
@@ -192,15 +197,15 @@ handle_packet(void)
 		       ntohs(whoisit.sin_port));
 		return;
 	}
-	dispatch(&new_notice, authentic, &whoisit);
+	dispatch(&new_notice, authentic, &whoisit, from_server);
 	return;
 }
 /*
  * Dispatch a notice.
  */
 
-void
-dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who) {
+static void
+dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who, int from_server) {
 	Code_t status;
 	int dispatched = 0;
 	Notice notice = n;
@@ -220,7 +225,7 @@ dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who) {
 	if (zdebug) {
 	    char buf[BUFSIZ];
 	    (void) sprintf (buf,
-			    "disp:%s '%s' '%s' '%s' notice to '%s' from '%s' %s/%d/%d",
+		    "disp:%s '%s' '%s' '%s' notice to '%s' from '%s' %s/%d/%d",
 			pktypes[(int) notice.notice->z_kind],
 			notice.dest.classname.value (),
 			notice.dest.inst.value (),
@@ -248,7 +253,7 @@ dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who) {
 		nack_cancel(notice.notice, who);
 		return;
 	}
-	if (server_which_server(who)) {
+	if (from_server) {
 		status = server_dispatch(notice.notice, auth, who);
 		dispatched = 1;
 	} else if (class_is_hm(notice)) {
