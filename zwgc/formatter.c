@@ -20,6 +20,7 @@ static char rcsid_formatter_c[] = "$Id$";
 
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 #include "new_memory.h"
 #include "char_stack.h"
 #include "string_dictionary.h"
@@ -286,7 +287,7 @@ string verbatim(str)
 
    temp=lbreak(&str,allmaskable_set);
    while(*str) {
-      bracketnum=(int) (index(brackets,str[0])-brackets);
+      bracketnum=(int) (strchr(brackets,str[0])-brackets);
       temp=string_Concat2(temp,openbracket[bracketnum]);
       temp=string_Concat2(temp,temp2=lany(&str," "));
       free(temp2);
