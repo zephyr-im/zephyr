@@ -20,6 +20,7 @@ static char rcsid_hostm_s_c[] = "$Header$";
 #endif lint
 
 #include "zserver.h"
+#include <sys/socket.h>			/* for AF_INET */
 
 /*
  *
