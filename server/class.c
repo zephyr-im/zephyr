@@ -177,7 +177,7 @@ class_deregister(ZClient_t *client, ZSubscr_t *subs)
 	subs->zst_dest.set_hash ();
 	unsigned long hashval = subs->zst_dest.hash() % HASHSIZE;
 
-#if 1
+#if 0
 	if (zdebug) {
 	    char buf[BUFSIZ];
 	    subs->zst_dest.print (buf);
