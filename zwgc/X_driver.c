@@ -54,7 +54,7 @@ Display *dpy = NULL;
  */
 
 #ifndef  APPDEFDATABASE
-#define  APPDEFDATABASE "/afs/athena.mit.edu/astaff/project/zephyr/src/zwgc/zwgc.dev/zwgc_resources"
+#define  APPDEFDATABASE "/afs/athena.mit.edu/astaff/project/zephyr/src/zwgc/zwgc.dev/misc/zwgc_resources"
 #endif
 
 /*
