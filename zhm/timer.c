@@ -9,7 +9,8 @@
  *
  */
 
-#include "zserver.h"
+#include "internal.h"
+#include "timer.h"
 
 #ifndef SABER
 #ifndef lint
