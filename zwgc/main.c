@@ -291,23 +291,23 @@ void notice_handler(notice)
 				     notice->z_message_len, 1);
 	    string instance = get_field(notice->z_message,
 					notice->z_message_len, 2);
-	    string sender = get_field(notice->z_message,
-				      notice->z_message_len, 3);
-	    punt(class, instance, sender);
+	    string recipient = get_field(notice->z_message,
+					 notice->z_message_len, 3);
+	    punt(class, instance, recipient);
 	    free(class);
 	    free(instance);
-	    free(sender);
+	    free(recipient);
 	} else if (!strcasecmp(control_opcode, USER_UNSUPPRESS)) {
 	    string class = get_field(notice->z_message,
 				     notice->z_message_len, 1);
 	    string instance = get_field(notice->z_message,
 					notice->z_message_len, 2);
-	    string sender = get_field(notice->z_message,
-				      notice->z_message_len, 3);
-	    unpunt(class, instance, sender);
+	    string recipient = get_field(notice->z_message,
+					 notice->z_message_len, 3);
+	    unpunt(class, instance, recipient);
 	    free(class);
 	    free(instance);
-	    free(sender);
+	    free(recipient);
 	} else
 	  printf("zwgc: unknown control opcode %s.\n", control_opcode);
 
@@ -324,7 +324,7 @@ void notice_handler(notice)
     
     if (puntable_address_p(notice->z_class,
 			   notice->z_class_inst,
-			   notice->z_sender)) {
+			   notice->z_recipient)) {
 #ifdef DEBUG
 	if (zwgc_debug)
 	  printf("PUNTED <%s>!!!!\n", notice->z_class_inst);
