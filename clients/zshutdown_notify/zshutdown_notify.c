@@ -4,17 +4,16 @@
  *
  *	Created by:	C. Anthony Della Fera
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987, 1993 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
 
 #include <zephyr/mit-copyright.h>
-
 #include <zephyr/zephyr.h>
+
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -22,10 +21,9 @@
 #include <string.h>
 
 #ifndef lint
-#ifndef SABER
-static char *rcsid_zshutdown_notify_c = "$Header$";
-#endif /* SABER */
-#endif /* lint */
+static char *rcsid_zshutdown_notify_c =
+    "$Id$";
+#endif
 
 #define N_KIND		UNSAFE
 #define N_CLASS		"FILSRV"
@@ -33,7 +31,7 @@ static char *rcsid_zshutdown_notify_c = "$Header$";
 #define N_DEF_FORMAT	"From $sender:\n@bold(Shutdown message from $1 at $time)\n@center(System going down, message is:)\n\n$2\n\n@center(@bold($3))"
 #define N_FIELD_CNT	3
 
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
 #define SVC_NAME	"rcmd"
 #endif
 
@@ -55,7 +53,7 @@ main(argc,argv)
     char hostname[MAXHOSTNAMELEN];
     char msgbuff[BUFSIZ], message[Z_MAXPKTLEN], *ptr;
     char *msg[N_FIELD_CNT];
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
     char tkt_filename[MAXPATHLEN];
     char rlm[REALM_SZ];
     char hn2[MAXHOSTNAMELEN];
@@ -75,7 +73,7 @@ main(argc,argv)
     if ((hp = gethostbyname(hostname)) != NULL)
 	    (void) strcpy(hostname, hp->h_name);
 
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
     (void) sprintf(tkt_filename, "/tmp/tkt_zshut_%d", getpid());
     krb_set_tkt_string(tkt_filename);
 
@@ -129,14 +127,14 @@ main(argc,argv)
     notice.z_recipient = "";
     notice.z_default_format = N_DEF_FORMAT;
 
-    if ((retval = ZSendList(&notice, msg, N_FIELD_CNT, ZAUTH)) != ZERR_NONE) {
-	    com_err(argv[0], retval, "while sending notice");
-#ifdef KERBEROS
-	    (void) dest_tkt();
-#endif
-	    exit(1);
-    } 
-#ifdef KERBEROS
+    retval = ZSendList(&notice, msg, N_FIELD_CNT, ZAUTH);
+#ifdef Z_HaveKerberos
     (void) dest_tkt();
 #endif
+
+    if (retval != ZERR_NONE) {
+	com_err(argv[0], retval, "while sending notice");
+	exit(1);
+    } 
+    return 0;
 }
