@@ -51,7 +51,7 @@ normal_obj_rule()
 
 program(zephyrd,${OBJS},,${LIBS},${USRETCDIR})
 
-error_table(zsrv_err)
+error_table_noprof(zsrv_err)
 
 
 install::
