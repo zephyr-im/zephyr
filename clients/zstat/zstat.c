@@ -19,15 +19,16 @@
 #include <string.h>
 #include "zserver.h"
 
-#ifndef lint
-#ifndef SABER
-static char rcsid_zstat_c[] = "$Header$";
-#endif SABER
-#endif lint
+#if !defined(lint) && !defined(SABER)
+static char rcsid_zstat_c[] = "$Id$";
+#endif
 		     
 extern long atol();
 
-char *hm_head[] = { "Current server =",
+#ifdef __STDC__
+const
+#endif
+  char *hm_head[] = { "Current server =",
 		     "Items in queue:",
 		     "Client packets received:",
 		     "Server packets received:",
@@ -39,7 +40,10 @@ char *hm_head[] = { "Current server =",
 		     "Machine type:"
 };
 #define	HM_SIZE	(sizeof(hm_head) / sizeof (char *))
-char *srv_head[] = { 
+#ifdef __STDC__
+const
+#endif
+  char *srv_head[] = { 
 	"Current server version =",
 	"Packets handled:",
 	"Uptime:",
@@ -47,8 +51,17 @@ char *srv_head[] = {
 };
 #define	SRV_SIZE	(sizeof(srv_head) / sizeof (char *))
 
-int serveronly = 0,hmonly = 0;
 int outoftime = 0;
+
+#if defined(ultrix) || defined(_POSIX_SOURCE)
+void
+#endif
+timeout()
+{
+	outoftime = 1;
+}
+
+int serveronly = 0,hmonly = 0;
 u_short hm_port,srv_port;
 
 main(argc, argv)
@@ -148,7 +161,6 @@ hm_stat(host,server)
 	long runtime;
 	struct tm *tim;
 	ZNotice_t notice;
-	extern int timeout();
 	
 	bzero((char *)&sin,sizeof(struct sockaddr_in));
 
@@ -245,7 +257,6 @@ srv_stat(host)
 	ZNotice_t notice;
 	long runtime;
 	struct tm *tim;
-	extern int timeout();
 	
 	bzero((char *) &sin,sizeof(struct sockaddr_in));
 
@@ -337,9 +348,4 @@ usage(s)
 {
 	fprintf(stderr,"usage: %s [-s] [-h] [host ...]\n",s);
 	exit(1);
-}
-
-timeout()
-{
-	outoftime = 1;
 }
