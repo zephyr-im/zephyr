@@ -428,7 +428,14 @@ realm_init()
       /* free the hostname */
       free(rlmnames[ii].servers[jj]);
     }
-    rlm->count = found;
+    /* If we found no servers, die here so we don't divide by zero later */
+    if (found != 0)
+      rlm->count = found;
+    else {
+      syslog(LOG_CRIT, "Found no servers for realm %s", rlm->name);
+      abort();
+    }
+
     rlm->addrs = (struct sockaddr_in *)malloc(found * sizeof (struct sockaddr_in));
     if (!rlm->addrs) {
       syslog(LOG_CRIT, "malloc failed in get_realm_addrs");
