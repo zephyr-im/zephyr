@@ -30,7 +30,7 @@ SUBDIRS = zaway zctl zinit zleave zlocate \
 #ifdef OLD_ATHENA_COMPAT
 SHELLSCRIPTS= zlogout zhide zwgc
 
-install_shell_scripts(SHELLSCRIPTS, $(CLIENTDIR))
+install_shell_scripts(SHELLSCRIPTS,$(CLIENTDIR))
 
 install::
 	rm -f ${DESTDIR}${CLIENTDIR}/zlogin
