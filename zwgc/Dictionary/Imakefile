@@ -1,0 +1,53 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+
+LIBS= $(ZEPHYR_LIB) $(COMERR_LIB) $(KRB_LIB) $(DES_LIB)
+LINTLIBS=$(ZEPHYR_LINTLIB) $(COMERR_LIB) $(KRB_LIB) $(DES_LIB)
+
+OBJS = string_dictionary_aux.o int_dictionary.o string_dictionary.o
+
+REALSRCS = dictionary.c string_dictionary_aux.c
+REALHDRS = dictionary.h string_dictionary_aux.h
+SRCS = string_dictionary_aux.c int_dictionary.c string_dictionary.c
+HDRS = string_dictionary_aux.h int_dictionary.h string_dictionary.h
+
+LINCLUDES = -I../Memory -I../String
+
+GENERATORS= generate_dictionary_instance
+
+SRCDIR= ${SRCTOP}/zwgc/zwgc.dev/Dictionary
+CODE= ${GENERATORS} ${REALSRCS} ${REALHDRS} Imakefile
+
+normal_obj_rule()
+
+all:: dictionary_spec $(OBJS)
+
+depend:: ${GENERATORS} ${SRCS}
+
+#
+# /* Automatically generate a spec file from the template include file: */
+#
+dictionary_spec: dictionary.h
+	cat dictionary.h | grep "^.\*" | grep -v "^ \*/" | sed 's/.\*//' > dictionary_spec
+
+#
+# Generate a int dictionary instance:
+#
+int_dictionary.c int_dictionary.h: dictionary.c dictionary.h
+	./generate_dictionary_instance int
+#
+# Generate a string dictionary instance:
+#
+string_dictionary.c string_dictionary.h: dictionary.c dictionary.h
+	./generate_dictionary_instance string new_string.h
+
+clean::
+	$(RM) $(OBJS) dictionary_spec int_dictionary.c string_dictionary.c \
+		int_dictionary.h string_dictionary.h
