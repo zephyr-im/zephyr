@@ -8,8 +8,8 @@
 /**/#	$Id$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB} ${DES_LIB} ${HES_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB}
+LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} ${COMERR_LIB} ${HES_LIB}
+LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${COMERR_LINTLIB} ${DES_LINTLIB}
 DEFINES= -DKPOP
 
 SRCS = zmailnotify.c
@@ -21,3 +21,9 @@ CODE= ${SRCS} Imakefile
 normal_obj_rule()
 
 program(zmailnotify,${OBJS},,${LIBS},${CLIENTDIR})
+
+#ifdef ATHENA_COMPAT
+all::
+	$(RM) $(DESTDIR)/usr/athena/zmailnotify
+	ln -s $(CLIENTDIR)/zmailnotify $(DESTDIR)/usr/athena/zmailnofity
+#endif
