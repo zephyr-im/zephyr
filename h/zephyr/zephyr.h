@@ -171,7 +171,6 @@ extern int ZMakeAuthentication();
 #define CLIENT_UNSUBSCRIBE	"UNSUBSCRIBE"	/* Opcode: Unsubsubscribe */
 #define CLIENT_CANCELSUB	"CLEARSUB"	/* Opcode: Clear all subs */
 #define CLIENT_GIMMESUBS	"GIMME"		/* Opcode: Give me subs */
-#define CLIENT_INCOMPSUBS	"INCOMP"	/* Opcode: ret - didn't fit */
 
 #define ZEPHYR_CTL_HM		"HM"		/* Inst: From HM */
 #define HM_BOOT			"BOOT"		/* Opcode: Boot msg */
