@@ -53,6 +53,17 @@ description file, this will happen automatically.
 To check for mail already waiting when you log in, use the standard MH
 program
 .I msgchk(1).
+.SH BUGS
+.I zmailnotify
+only sends notification of mail which appears to be unique.
+Uniqueness is determined by comparing the To:, From:, and Subject:
+fields of the message with the last checked mail message; if the
+three fields match exactly, the new message is
+not considered unique.  The To:, From:, and Subject: fields of the last
+message are stored in the file 
+.IR $HOME/.maillock .
+.SH FILES
+$HOME/.maillock
 .SH SEE ALSO
 msgchk(1), zctl(1), zephyr(1), zwgc(1), zhm(8), zephyrd(8),
 zpopnotify(8), popd(8)
