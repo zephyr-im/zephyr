@@ -1215,7 +1215,7 @@ struct sockaddr_in *who;
 		found--;
 
 	if (retval != ZERR_NONE) {
-		syslog(LOG_ERR, "ulog_locate format: %s",
+		syslog(LOG_ERR, "old_ulog_locate format: %s",
 		       error_message(retval));
 		xfree(answer);
 		return;
@@ -1227,7 +1227,7 @@ struct sockaddr_in *who;
 		return;
 	}
 	if ((retval = ZSendPacket(reppacket, packlen, 0)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "ulog_locate xmit: %s",
+		syslog(LOG_WARNING, "old_ulog_locate xmit: %s",
 		       error_message(retval));
 		xfree(answer);
 		return;
