@@ -181,7 +181,7 @@ hostm_dispatch(notice, auth, who, server)
 			ack(notice, who);
 		}
 	} else if (!strcmp(opcode, HM_BOOT)) {
-#if 1
+#if 0
 		zdbug((LOG_DEBUG, "boot %s (server %s)",
 		       inet_ntoa(who->sin_addr),
 		       server->addr));
@@ -199,7 +199,7 @@ hostm_dispatch(notice, auth, who, server)
 			ack(notice, who);
 		}
 	} else if (!strcmp(opcode, HM_FLUSH)) {
-#if 1
+#if 0
 	        zdbug((LOG_DEBUG, "hm_flush %s (server %s)",
 		       inet_ntoa(who->sin_addr),
 		       server->addr));
@@ -244,8 +244,8 @@ hostm_flush(host, server)
 	    return;
 	}
 
-#if 1
-	zdbug ((LOG_DEBUG,"hostm_flush %s", inet_ntoa (host->zh_addr)));
+#if 0
+	zdbug ((LOG_DEBUG,"hostm_flush %s", inet_ntoa (host->zh_addr.sin_addr)));
 #endif
 
 	if (losing_hosts)
@@ -264,7 +264,7 @@ hostm_flush(host, server)
 	  for (clt = clist->q_forw; clt != clist; clt = clist->q_forw) {
 	    /* client_deregister frees this client & subscriptions
 	       & locations and remque()s the client */
-#if 1
+#if 0
 	    if (zdebug)
 	      syslog (LOG_DEBUG, "hostm_flush clt_dereg %s/%d",
 		      inet_ntoa(host->zh_addr.sin_addr),
@@ -394,7 +394,7 @@ host_lost(arg)
 	server = hostm_find_server(&which->lh_host->zh_addr.sin_addr);
 #if 1
 	zdbug ((LOG_DEBUG,"lost host %s (server %s)",
-		inet_ntoa(which->lh_host->zh_addr),
+		inet_ntoa(which->lh_host->zh_addr.sin_addr),
 		server ? server->addr : "<NONE>"));
 #endif
 
@@ -579,7 +579,7 @@ host_attach(who, server)
 	register ZClientList_t *clist;
 	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
-#if 1
+#if 0
 	if (zdebug)
 	    syslog (LOG_DEBUG, "host_attach %s to %s",
 		    inet_ntoa (who->sin_addr), server->addr);
@@ -878,7 +878,7 @@ insert_host(host, server)
 
 #if 0
 	zdbug ((LOG_DEBUG,"insert_host %s %s",
-		inet_ntoa(host->zh_addr), server->addr));
+		inet_ntoa(host->zh_addr.sin_addr), server->addr));
 #endif
 	if (hostm_find_host(&host->zh_addr.sin_addr))
 		return;
@@ -922,7 +922,7 @@ insert_host(host, server)
                 register int i = 0;
 		for (i = 0; i < num_hosts; i++)
 		    syslog(LOG_DEBUG, "%d: %s %s",i,
-			   inet_ntoa ((all_hosts[i].host)->zh_addr),
+			   inet_ntoa ((all_hosts[i].host)->zh_addr.sin_addr),
 			   otherservers[all_hosts[i].server_index]->addr);
         }
 #endif
@@ -942,7 +942,7 @@ remove_host(host)
 	int omask;
 
 #if 0
-	zdbug((LOG_DEBUG,"remove_host %s", inet_ntoa(host->zh_addr)));
+	zdbug((LOG_DEBUG,"remove_host %s", inet_ntoa(host->zh_addr.sin_addr)));
 #endif
 	if (!hostm_find_host(&host->zh_addr.sin_addr))
 		return;
@@ -995,7 +995,7 @@ hostm_dump_hosts(fp)
 	register int i;
 	for (i = 0; i < num_hosts; i++) {
 		(void) fprintf(fp, "%s/%d:\n", 
-			       inet_ntoa((all_hosts[i].host)->zh_addr),
+			       inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr),
 			       all_hosts[i].server_index);
 		client_dump_clients(fp,(all_hosts[i].host)->zh_clients);
 	}
