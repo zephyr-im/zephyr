@@ -46,6 +46,8 @@ static void setup_signals(), detach();
 int zwgc_debug = 0;
 #endif
 
+static char *zwgc_version_string = "0.4.1";
+
 /*
  * description_filename_override - <<<>>>
  */
@@ -78,8 +80,10 @@ static struct _Node *program = NULL;
 static void fake_startup_packet()
 {
     ZNotice_t notice;
+    struct timezone tz;
+    char msgbuf[BUFSIZ];
 
-    var_set_variable("version", "0.3.13");
+    var_set_variable("version", zwgc_version_string);
 
     bzero(&notice, sizeof(notice));
 
@@ -90,10 +94,13 @@ static void fake_startup_packet()
     notice.z_default_format = "Zwgc mark II version $version now running...\n";
     notice.z_recipient = "";
     notice.z_sender = "ZWGC";
+    gettimeofday(&notice.z_time,&tz);
     notice.z_port = 0;
     notice.z_kind = ACKED;
     notice.z_auth = ZAUTH_YES;
-    notice.z_message = "Zwgc mark II version 0.3.13 now running...";
+    sprintf(msgbuf,"Zwgc mark II version %s now running...",
+	    zwgc_version_string);
+    notice.z_message = msgbuf;
     notice.z_message_len = strlen(notice.z_message)+1;
     
     notice_handler(&notice);
@@ -227,7 +234,7 @@ int main(argc, argv)
     if (argc>1)
       usage();
     dprintf("Initializing zephyr...\n");
-    setup_signals();
+    setup_signals(dofork);
     zephyr_init(notice_handler);
 
     if (dofork)
@@ -284,23 +291,23 @@ void notice_handler(notice)
 				     notice->z_message_len, 1);
 	    string instance = get_field(notice->z_message,
 					notice->z_message_len, 2);
-	    string recipient = get_field(notice->z_message,
-					 notice->z_message_len, 3);
-	    punt(class, instance, recipient);
+	    string sender = get_field(notice->z_message,
+				      notice->z_message_len, 3);
+	    punt(class, instance, sender);
 	    free(class);
 	    free(instance);
-	    free(recipient);
+	    free(sender);
 	} else if (!strcasecmp(control_opcode, USER_UNSUPPRESS)) {
 	    string class = get_field(notice->z_message,
 				     notice->z_message_len, 1);
 	    string instance = get_field(notice->z_message,
 					notice->z_message_len, 2);
-	    string recipient = get_field(notice->z_message,
-					 notice->z_message_len, 3);
-	    unpunt(class, instance, recipient);
+	    string sender = get_field(notice->z_message,
+				      notice->z_message_len, 3);
+	    unpunt(class, instance, sender);
 	    free(class);
 	    free(instance);
-	    free(recipient);
+	    free(sender);
 	} else
 	  printf("zwgc: unknown control opcode %s.\n", control_opcode);
 
@@ -317,7 +324,7 @@ void notice_handler(notice)
     
     if (puntable_address_p(notice->z_class,
 			   notice->z_class_inst,
-			   notice->z_recipient)) {
+			   notice->z_sender)) {
 #ifdef DEBUG
 	if (zwgc_debug)
 	  printf("PUNTED <%s>!!!!\n", notice->z_class_inst);
@@ -355,13 +362,24 @@ static signal_child()
   } while (pid != 0 && pid != -1);
 }
 
-static void setup_signals()
+static void setup_signals(dofork)
+     int dofork;
 {
-    signal(SIGTERM, signal_exit);
-    signal(SIGHUP, signal_exit);
-    signal(SIGINT, signal_exit);
-    signal(SIGCHLD, signal_child);
-    signal(SIGPIPE, SIG_IGN);		/* so that Xlib gets an error */
+   if (dofork) {
+      /* Ignore keyboard signals if forking.  Bad things will happen. */
+      signal(SIGINT, SIG_IGN);
+      signal(SIGTSTP, SIG_IGN);
+      signal(SIGQUIT, SIG_IGN);
+   } else {
+      /* clean up on SIGINT.  exiting on logout is the user's problem, now. */
+      signal(SIGINT, signal_exit);
+   }
+
+   /* behavior never changes */
+   signal(SIGTERM, signal_exit);
+   signal(SIGHUP, signal_exit);
+   signal(SIGCHLD, signal_child);
+   signal(SIGPIPE, SIG_IGN);		/* so that Xlib gets an error */
 }
 
 /* detach() taken from old zwgc, with lots of stuff ripped out */
