@@ -463,7 +463,8 @@ subscribe(argc,argv)
 		return;
 	} 
 
-	retval = (*argv[0] == 's') ? ZSubscribeTo(&sub2,1,(u_short)wgport) :
+	retval = (*argv[0] == 's') ?
+		ZSubscribeToSansDefaults(&sub2,1,(u_short)wgport) :
 		ZUnsubscribeTo(&sub2,1,(u_short)wgport);
 	
 	if (retval != ZERR_NONE)
@@ -548,7 +549,7 @@ int unsub;
 	}
 	fix_macros(subs,&sub2,1);
 	if (retval = (unsub ? ZUnsubscribeTo(&sub2,1,(u_short)wgport) :
-		       ZSubscribeTo(&sub2,1,(u_short)wgport)))
+		       ZSubscribeToSansDefaults(&sub2,1,(u_short)wgport)))
 		ss_perror(sci_idx,retval,
 			  unsub ? "while unsubscribing" :
 			  "while subscribing");
