@@ -24,8 +24,8 @@ static char rcsid_subscr_s_c[] = "$Header$";
  *
  * External functions:
  *
- * Code_t subscr_subscribe(sin, notice)
- *	struct sockaddr_in *sin;
+ * Code_t subscr_subscribe(who, notice)
+ *	ZClient_t *who;
  *	ZNotice_t *notice;
  *
  * Code_t subscr_cancel(sin, notice)
@@ -52,10 +52,16 @@ static char rcsid_subscr_s_c[] = "$Header$";
  * Code_t subscr_send_subs(client, vers)
  *	ZClient_t *client;
  *	char *vers;
+ *
+ * Code_t subscr_def_subs(who)
+ *	ZClient_t *who;
+ *
+ * void subscr_reset();
  */
 
 #include "zserver.h"
 #include <ctype.h>
+#include <sys/stat.h>
 
 /* for compatibility when sending subscription information to old clients */
 #ifdef OLD_COMPAT
@@ -73,6 +79,11 @@ static ZSubscr_t *extract_subscriptions();
 static int subscr_equiv(), clt_unique();
 static void free_subscriptions(), free_sub();
 static char **subscr_marshal_subs();
+static Code_t subscr_subscribe_real();
+
+static int defaults_read = 0;		/* set to 1 if the default subs
+					   are in memory */
+static ZNotice_t default_notice;	/* contains default subscriptions */
 
 static ZSubscr_t matchall_sub = {
 	(ZSubscr_t *) 0,
@@ -95,11 +106,8 @@ subscr_subscribe(who, notice)
 ZClient_t *who;
 ZNotice_t *notice;
 {
-	register ZSubscr_t *subs, *subs2, *newsubs, *subs3;
-	ZAcl_t *acl;
-	Code_t retval;
-	int relation;
-	int omask;
+	ZSubscr_t *subs;
+	
 
 	if (!who->zct_subs) {
 		/* allocate a subscription head */
@@ -109,8 +117,22 @@ ZNotice_t *notice;
 		who->zct_subs = subs;
 	}
 
-	if (!(newsubs = extract_subscriptions(notice)))
+	if (!(subs = extract_subscriptions(notice)))
 		return(ZERR_NONE);	/* no subscr -> no error */
+
+	return(subscr_subscribe_real(who, subs));
+}
+
+static Code_t
+subscr_subscribe_real(who, newsubs)
+ZClient_t *who;
+register ZSubscr_t *newsubs;
+{
+	int relation;
+	int omask;
+	Code_t retval;
+	ZAcl_t *acl;
+	register ZSubscr_t *subs2, *subs3;
 
 	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 	for (subs = newsubs->q_forw;
@@ -195,6 +217,116 @@ duplicate:	;			/* just go on to the next */
 	return(ZERR_NONE);
 }
 
+/*
+ * add default subscriptions to the client's subscription chain.
+ */
+
+Code_t
+subscr_def_subs(who)
+ZClient_t *who;
+{
+	ZSubscr_t *subs;
+
+	if (!who->zct_subs) {
+		/* allocate a subscription head */
+		if (!(subs = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
+			syslog(LOG_ERR, "no mem subscr_def_subs");
+			return(ENOMEM);
+		}
+		subs->q_forw = subs->q_back = subs;
+		who->zct_subs = subs;
+	}
+
+	subs = subscr_copy_def_subs(who->zct_principal);
+	return(subscr_subscribe_real(who, subs));
+}
+
+void
+subscr_reset()
+{
+	xfree(default_notice.z_message);
+	defaults_read = 0;
+}
+
+static ZSubscr_t *
+subscr_copy_def_subs(person)
+char *person;
+{
+	int retval;
+	int fd;
+	struct stat statbuf;
+	char *def_sub_area;
+	register char *cp, *cp1;
+	ZSubscr_t *subs;
+	register ZSubscr_t *subs2;
+
+	if (!defaults_read) {
+		fd = open(DEFAULT_SUBS_FILE, O_RDONLY, 0666);
+		if (fd < 0) {
+			syslog(LOG_ERR, "can't open %s:%m", DEFAULT_SUBS_FILE);
+			return(errno);
+		}
+		retval = fstat(fd, &statbuf);
+		if (retval < 0) {
+			syslog(LOG_ERR, "fstat failure on %s:%m",
+			       DEFAULT_SUBS_FILE);
+			(void) close(fd);
+			return(errno);
+		}
+		if (!(def_sub_area = xmalloc(statbuf.st_size + 1))) {
+			syslog(LOG_ERR, "no mem copy_def_subs");
+			(void) close(fd);
+			return(ENOMEM);
+		}
+		retval = read(fd, def_sub_area, statbuf.st_size);
+		/*
+		  "Upon successful completion, read and readv return the number
+		  of bytes actually read and placed in the buffer.  The system
+		  guarantees to read the number of bytes requested if the
+		  descriptor references a normal file that has that many bytes
+		  left before the end-of-file, but in no other case."
+								-- read(2)
+		  Therefore, the following test is valid.
+		 */
+		if (retval != statbuf.st_size) {
+			syslog(LOG_ERR, "short read in copy_def_subs");
+			(void) close(fd);
+			return(ZSRV_LEN);
+		}
+
+		(void) close(fd);
+		def_sub_area[statbuf.st_size] = '\0'; /* null-terminate it */
+
+		/*
+		  def_subs_area now points to a buffer full of subscription
+		  info.
+		  each line of the stuff is of the form:
+		  class,inst,recipient
+
+		  Commas and newlines may not appear as part of the class,
+		  instance, or recipient. XXX!
+		 */
+
+		/* split up the subscription info */
+		for (cp = def_sub_area;
+		     cp < def_sub_area + statbuf.st_size;
+		     cp++)
+			if ((*cp == '\n') || (*cp == ','))
+				*cp = '\0';
+		def_notice.z_message = def_sub_area;
+		def_notice.z_message_len = statbuf.st_size + 1;
+	}
+	subs = extract_subscriptions(&def_notice);
+	/* replace any non-* recipients with "person" */
+
+	for (subs2 = subs->q_forw; subs2 != subs; subs2 = subs2->q_forw)
+		/* if not a wildcard, replace it */
+		if (strcmp(subs2->zst_recipient, WILDCARD_INSTANCE)) {
+			xfree(subs2->zst_recipient);
+			subs2->zst_recipient = strsave(person);
+		}
+	return(subs);
+}
 
 /*
  * Cancel one subscription.
@@ -540,8 +672,9 @@ register int *found;
 	int temp;
 	Code_t retval;
 	ZClient_t *client;
-	register ZSubscr_t *subs;
+	register ZSubscr_t *subs = NULLZST, *subs2;
 	register int i;
+	int defsubs = 0;
 
 	*found = 0;
 
@@ -555,38 +688,56 @@ register int *found;
 	/* RSF 11/07/87 */
 	
 
-	/* the message field of the notice contains the port number
-	   of the client for which the sender desires the subscription
-	   list.  The port field is the port of the sender. */
+	if (!strcmp(notice->z_opcode, CLIENT_GIMMESUBS)) {
+		/* If the client has requested his current subscriptions,
+		   the message field of the notice contains the port number
+		   of the client for which the sender desires the subscription
+		   list.  The port field is the port of the sender. */
 
-	if ((retval = ZReadAscii(notice->z_message,notice->z_message_len,
-				 (unsigned char *)&temp,sizeof(u_short)))
-	    != ZERR_NONE) {
-		syslog(LOG_WARNING, "subscr_marshal read port num: %s",
-		       error_message(retval));
-		return;
+		if ((retval = ZReadAscii(notice->z_message,
+					 notice->z_message_len,
+					 (unsigned char *)&temp,
+					 sizeof(u_short))) != ZERR_NONE) {
+			syslog(LOG_WARNING, "subscr_marshal read port num: %s",
+			       error_message(retval));
+			return((char **)0);
+		}
+
+		/* Blech blech blech */
+		reply = *notice;
+		reply.z_port = *((u_short *)&temp);
+	
+		client = client_which_client(who, &reply);
+	
+		if (client)
+			subs2 = client->zct_subs;
+	} else if (!strcmp(notice->z_opcode, CLIENT_GIMMEDEFS)) {
+		/* subscr_copy_def_subs allocates new pointer rings, so
+		   it must be freed when finished.
+		   the string areas pointed to are static, however.*/
+		subs2 = subscr_copy_def_subs(notice->z_sender);
+		defsubs = 1;
+	} else {
+		syslog(LOG_ERR, "subscr_marshal bogus opcode %s",
+		       notice->z_opcode);
+		return((char **) 0);
 	}
 
-	/* Blech blech blech */
-	reply = *notice;
-	reply.z_port = *((u_short *)&temp);
-	
-	client = client_which_client(who, &reply);
-	
-	if (client && client->zct_subs) {
+	if (subs) {
 
 		/* check authenticity here.  The user must be authentic to get
 		   a list of subscriptions. If he is not subscribed to
-		   anything, the above if-clause fails, and he gets a response
-		   indicating no subscriptions */
+		   anything, this if-clause fails, and he gets a response
+		   indicating no subscriptions.
+		   if retrieving default subscriptions, don't care about
+		   authentication. */
 
-		if (!auth) {
-			clt_ack(notice, who, AUTH_FAILED);
-			return;
+		if (!auth && !defsubs) {
+			return((char **) 0);
 		}
 
-		for (subs = client->zct_subs->q_forw;
-		     subs != client->zct_subs;
+		for (subs = subs2->q_forw;
+		     subs != subs2;
 		     subs = subs->q_forw, (*found)++);
 		
 		/* found is now the number of subscriptions */
@@ -597,7 +748,7 @@ register int *found;
 			syslog(LOG_ERR, "subscr no mem(answer)");
 			*found = 0;
 		} else
-			for (i = 0, subs = client->zct_subs->q_forw;
+			for (i = 0, subs = subs2->q_forw;
 			     i < *found ;
 			     i++, subs = subs->q_forw) {
 				answer[i*NUM_FIELDS] = subs->zst_class;
@@ -605,6 +756,8 @@ register int *found;
 				answer[i*NUM_FIELDS + 2] = subs->zst_recipient;
 			}
 	}
+	if (defsubs)
+		free_subscriptions(subs2);
 	return(answer);
 }
 
