@@ -613,6 +613,7 @@ struct sockaddr_in *sin;
 	shutnotice.z_recipient = "hm@ATHENA.MIT.EDU";
 	shutnotice.z_message = NULL;
 	shutnotice.z_message_len = 0;
+	shutnotice.z_default_format = "";
 	
 	shutlen = sizeof(shutpack);
 	if ((retval = ZFormatNotice(&shutnotice,
