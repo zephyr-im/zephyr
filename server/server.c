@@ -40,9 +40,15 @@ static char rcsid_server_s_c[] = "$Header$";
  * void server_recover(client)
  *	ZClient_t *client;
  *
+ * void server_adispatch(notice, auth, who)
+ *	ZNotice_t *notice;
+ * 	int auth;
+ *	struct sockaddr_in *who;
+ *
  */
 
 static void server_hello(), server_flush(), admin_handle();
+static Code_t server_register();
 
 /* 
  * A server timout has expired.  If enough hello's have been unanswered,
@@ -100,6 +106,7 @@ ZServerDesc_t *which;
  * Deal with incoming data on the socket
  */
 
+/*ARGSUSED*/
 void
 server_dispatch(notice, auth, who)
 ZNotice_t *notice;
@@ -108,7 +115,7 @@ struct sockaddr_in *who;
 {
 	struct sockaddr_in newwho;
 	if (class_is_admin(notice))
-		admin_handle(notice, auth);
+		admin_handle(notice, auth, who);
 	else if (class_is_control(notice)) {
 		/* XXX set up a who for the real origin */
 		newwho.sin_family = AF_INET;
@@ -123,7 +130,8 @@ struct sockaddr_in *who;
 	return;
 }
 
-Code_t
+/*ARGSUSED*/
+static Code_t
 server_register(notice, who)
 ZNotice_t *notice;
 struct sockaddr_in *who;
@@ -211,11 +219,32 @@ ZServerDesc_t *which;
 	return;
 }
 
+/*ARGSUSED*/
 static void
-admin_handle(notice, auth)
+admin_handle(notice, auth, who)
 ZNotice_t *notice;
 int auth;
+struct sockaddr_in *who;
 {
 	syslog(LOG_INFO, "ADMIN received\n");
+	return;
+}
+
+/*ARGSUSED*/
+void
+server_adispatch(notice, auth, who)
+ZNotice_t *notice;
+int auth;
+struct sockaddr_in *who;
+{
+	/* this had better be a HELLO message--start of acquisition
+	   protocol */
+	syslog(LOG_INFO, "disp: new server?");
+	if (server_register(notice, who) != ZERR_NONE)
+		syslog(LOG_INFO, "new server failed");
+	else
+		syslog(LOG_INFO, "new server %s, %d",
+		       inet_ntoa(who->sin_addr),
+		       ntohs(who->sin_port));
 	return;
 }
