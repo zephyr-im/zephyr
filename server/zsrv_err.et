@@ -19,6 +19,10 @@ ec ZSRV_HNOTFOUND,
 	"Host manager unknown"
 ec ZSRV_WRONGSRV,
 	"Host not on this server"
+ec ZSRV_PKSHORT,
+	"Pkt length too short"
+ec ZSRV_BUFSHORT,
+	"Buffer too short"	
 ec ZSRV_RCSID,
 	"$Header$"
 	end
