@@ -350,6 +350,26 @@ set_var(argc,argv)
 	} 
 }
 
+do_hide(argc,argv)
+	int argc;
+	char *argv[];
+{
+	char *exp_level = NULL;
+	Code_t retval;
+
+	if (argc != 1) {
+		fprintf(stderr, "Usage: %s\n",argv[0]);
+		return;
+	}
+	if (!strcmp(argv[0],"unhide"))
+		exp_level = EXPOSE_REALMVIS;
+	else
+		exp_level = EXPOSE_OPSTAFF;
+	if ((retval = ZSetLocation(exp_level)) != ZERR_NONE)
+		ss_perror(sci_idx,retval,"while changing exposure status");
+	return;
+}
+
 unset_var(argc,argv)
 	int argc;
 	char *argv[];
