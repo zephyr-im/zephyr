@@ -262,7 +262,7 @@ int ZCheckAuthentication(ZNotice_t *notice, sockaddr_in *from) {
     if (__Zephyr_server) {
 	
 	if (notice->z_authent_len <= 0) { /* bogus length */
-#if 1
+#if 0
 	    syslog (LOG_DEBUG, "z_authent_len = %d -> AUTH_FAILED",
 		    notice->z_authent_len);
 #endif
