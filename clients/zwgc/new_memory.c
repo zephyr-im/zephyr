@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_new_memory_c[] = "$Id$";
+static const char rcsid_new_memory_c[] = "$Id$";
 #endif
 
 #if !defined(SABER) && (defined(DEBUG) || defined(MEMORY_DEBUG))
@@ -29,8 +31,6 @@ static char rcsid_new_memory_c[] = "$Id$";
 
 #define  memory__PROVIDER
 #include "new_memory.h"
-
-#include <sysdep.h>
 
 /*
  *

@@ -20,7 +20,7 @@ INSTALL=@INSTALL@
 
 DEBUG=-O
 CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h -DKPOP @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	zmailnotify.o
@@ -33,8 +33,8 @@ zmailnotify: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a @ETDEP@
 check:
 
 install: zmailnotify
-	$(INSTALL) -m 755 -c -s zmailnotify $(sbindir)
-	$(INSTALL) -m 644 -c $(srcdir)/zmailnotify.1 $(mandir)/man1
+	$(INSTALL) -m 755 -s zmailnotify $(sbindir)
+	$(INSTALL) -m 644 $(srcdir)/zmailnotify.1 $(mandir)/man1
 
 clean:
 	rm -f $(OBJS) zmailnotify

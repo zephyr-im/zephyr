@@ -15,7 +15,7 @@
 #include <zephyr/zephyr.h>
 
 #ifndef lint
-static char rcsid_zmailnotify_c[] =
+static const char rcsid_zmailnotify_c[] =
     "$Id$";
 #endif
 

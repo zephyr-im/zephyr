@@ -18,7 +18,7 @@
 #include <com_err.h>
 
 #ifndef lint
-static char rcsid_zaway_c[] = "$Id$";
+static const char rcsid_zaway_c[] = "$Id$";
 #endif
 
 #define MESSAGE_CLASS "MESSAGE"

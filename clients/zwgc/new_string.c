@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_new_string_c[] = "$Id$";
+static const char rcsid_new_string_c[] = "$Id$";
 #endif
 
 /*
@@ -40,7 +42,6 @@ static char rcsid_new_string_c[] = "$Id$";
 #define  assert(x)          
 #endif
 
-#include <sysdep.h>
 #include "new_memory.h"
 
 #define string_Length(s) strlen(s)

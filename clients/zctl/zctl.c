@@ -18,7 +18,7 @@
 #include <pwd.h>
 #include <netdb.h>
 #ifndef lint
-static char *rcsid_zctl_c = "$Id$";
+static const char *rcsid_zctl_c = "$Id$";
 #endif
 
 #define SUBSATONCE 7

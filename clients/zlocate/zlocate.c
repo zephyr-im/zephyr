@@ -16,7 +16,7 @@
 #include <sys/socket.h>
 
 #if !defined(lint) && !defined(SABER)
-static char rcsid_zlocate_c[] = "$Id$";
+static const char rcsid_zlocate_c[] = "$Id$";
 #endif
 
 int numusers=0, numleft=0, parallel=0, oneline=0;

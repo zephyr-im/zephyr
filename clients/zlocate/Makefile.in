@@ -20,7 +20,7 @@ INSTALL=@INSTALL@
 
 DEBUG=-g
 CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	zlocate.o
@@ -33,8 +33,8 @@ zlocate: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a @ETDEP@
 check:
 
 install: zlocate
-	$(INSTALL) -m 755 -c -s zlocate $(bindir)
-	$(INSTALL) -m 644 -c $(srcdir)/zlocate.1 $(mandir)/man1
+	$(INSTALL) -m 755 -s zlocate $(bindir)
+	$(INSTALL) -m 644 $(srcdir)/zlocate.1 $(mandir)/man1
 
 clean:
 	rm -f $(OBJS) zlocate

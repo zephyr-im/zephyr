@@ -20,7 +20,7 @@ INSTALL=@INSTALL@
 
 DEBUG=-O
 CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	zstat.o
@@ -33,8 +33,8 @@ zstat: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a @ETDEP@
 check:
 
 install: zstat
-	$(INSTALL) -m 755 -c -s zstat $(bindir)
-	$(INSTALL) -m 644 -c $(srcdir)/zstat.8 $(mandir)/man8
+	$(INSTALL) -m 755 -s zstat $(bindir)
+	$(INSTALL) -m 644 $(srcdir)/zstat.8 $(mandir)/man8
 
 clean:
 	rm -f $(OBJS) zstat

@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_tty_filter_c[] = "$Id$";
+static const char rcsid_tty_filter_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -24,7 +26,6 @@ static char rcsid_tty_filter_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <sysdep.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "string_dictionary_aux.h"

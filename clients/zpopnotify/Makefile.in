@@ -20,7 +20,7 @@ INSTALL=@INSTALL@
 
 DEBUG=-O
 CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	zpopnotify.o
@@ -33,8 +33,8 @@ zpopnotify: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a @ETDEP@
 check:
 
 install: zpopnotify
-	$(INSTALL) -m 755 -c -s zpopnotify $(sbindir)
-	$(INSTALL) -m 644 -c $(srcdir)/zpopnotify.8 $(mandir)/man8
+	$(INSTALL) -m 755 -s zpopnotify $(sbindir)
+	$(INSTALL) -m 644 $(srcdir)/zpopnotify.8 $(mandir)/man8
 
 clean:
 	rm -f $(OBJS) zpopnotify

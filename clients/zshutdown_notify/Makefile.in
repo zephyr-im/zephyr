@@ -21,7 +21,7 @@ INSTALL=@INSTALL@
 
 DEBUG=-O
 CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	zshutdown_notify.o
@@ -34,8 +34,8 @@ zshutdown_notify: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a @ETDEP@
 check:
 
 install: zshutdown_notify
-	$(INSTALL) -m 755 -c -s zshutdown_notify $(lsbindir)
-	$(INSTALL) -m 644 -c $(srcdir)/zshutdown_notify.8 $(mandir)/man8
+	$(INSTALL) -m 755 -s zshutdown_notify $(lsbindir)
+	$(INSTALL) -m 644 $(srcdir)/zshutdown_notify.8 $(mandir)/man8
 
 clean:
 	rm -f $(OBJS) zshutdown_notify

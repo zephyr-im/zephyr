@@ -21,7 +21,7 @@ MK_CMDS=@MK_CMDS@
 
 DEBUG=-O
 CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @SS_LDFLAGS@ @LDFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @SS_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr -lss @LIBS@ -lcom_err
 
 OBJS=	zctl.o zctl_cmds.o
@@ -47,8 +47,8 @@ zctl_cmds.c: zctl_cmds.ct
 check:
 
 install: zctl
-	$(INSTALL) -m 755 -c -s zctl $(bindir)
-	$(INSTALL) -m 644 -c $(srcdir)/zctl.1 $(mandir)/man1
+	$(INSTALL) -m 755 -s zctl $(bindir)
+	$(INSTALL) -m 644 $(srcdir)/zctl.1 $(mandir)/man1
 
 clean:
 	rm -f $(OBJS) zctl_cmds.c zctl

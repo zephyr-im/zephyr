@@ -20,7 +20,7 @@ INSTALL=@INSTALL@
 
 DEBUG=-O
 CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	znol.o
@@ -33,8 +33,8 @@ znol: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a @ETDEP@
 check:
 
 install: znol
-	$(INSTALL) -m 755 -c -s znol $(bindir)
-	$(INSTALL) -m 644 -c $(srcdir)/znol.1 $(mandir)/man1
+	$(INSTALL) -m 755 -s znol $(bindir)
+	$(INSTALL) -m 644 $(srcdir)/znol.1 $(mandir)/man1
 
 clean:
 	rm -f $(OBJS) znol

@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_mux_c[] = "$Id$";
+static const char rcsid_mux_c[] = "$Id$";
 #endif
 
 /****************************************************************************/
@@ -22,7 +24,6 @@ static char rcsid_mux_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-#include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include "mux.h"
 #include "error.h"

@@ -19,7 +19,7 @@
 #include <netdb.h>
 
 #ifndef lint
-static char *rcsid_zshutdown_notify_c =
+static const char *rcsid_zshutdown_notify_c =
     "$Id$";
 #endif
 

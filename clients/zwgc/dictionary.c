@@ -12,8 +12,10 @@
  *      "mit-copyright.h".
  */
 
+#include <sysdep.h>
+
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_dictionary_c[] = "$Id$";
+static const char rcsid_dictionary_c[] = "$Id$";
 #endif
 
 /*
@@ -45,7 +47,6 @@ static char rcsid_dictionary_c[] = "$Id$";
  *    different size dictionaries as needed.
  */
 
-#include <sysdep.h>
 #include "TYPE_T_dictionary.h"
 #include "new_string.h"
 #include "new_memory.h"

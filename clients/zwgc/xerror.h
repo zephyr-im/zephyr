@@ -16,7 +16,7 @@
 #define _XERROR_H_
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xerror_h[] = "$Id$";
+static const char rcsid_xerror_h[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
