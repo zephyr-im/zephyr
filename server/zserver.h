@@ -368,6 +368,9 @@ extern struct in_addr my_addr;	/* my inet address */
 #define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
 #define	ADMIN_ME	"MY_STATE"	/* Class inst: please send my info */
 
+#define ZSRV_SERVICE	"zephyr"
+#define ZSRV_INSTANCE	"zephyr"
+
 #define	NULLZCT		((ZClass_t *) 0)
 #define	NULLZCNT	((ZClient_t *) 0)
 #define	NULLZCLT	((ZClientList_t *) 0)
