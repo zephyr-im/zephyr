@@ -31,6 +31,7 @@ static char rcsid_zwrite_c[] = "$Header$";
 int nrecips, msgarg, verbose, quiet;
 char *whoami, *inst, *class, *recips[MAXRECIPS];
 int (*auth)();
+void un_tabify();
 
 extern char *malloc(), *realloc();
 char *fix_filsrv_inst();
@@ -229,6 +230,7 @@ main(argc, argv)
     }
 
     notice.z_opcode = "";
+    un_tabify(&message, &msgsize);
     notice.z_message = message;
     notice.z_message_len = msgsize;
 
@@ -364,4 +366,69 @@ char *str;
 		(void) strcat(fsinst, ptr);
 	}
 	return(fsinst);
+}
+
+/* convert tabs in the buffer into appropriate # of spaces.
+   slightly tricky since the buffer can have NUL's in it. */
+
+#ifndef TABSTOP
+#define	TABSTOP	8			/* #chars between tabstops */
+#endif /* ! TABSTOP */
+
+void
+un_tabify(bufp, sizep)
+char **bufp;
+register int *sizep;
+{
+    register char *cp, *cp2;
+    char *cp3;
+    register int i;
+    register int column;		/* column of next character */
+    register int size = *sizep;
+
+    for (cp = *bufp, i = 0; size; size--, cp++)
+	if (*cp == '\t')
+	    i++;			/* count tabs in buffer */
+
+    if (!i)
+	return;				/* no tabs == no work */
+
+    /* To avoid allocation churning, allocate enough extra space to convert
+       every tab into TABSTOP spaces */
+    /* only add (TABSTOP-1)x because we re-use the cell holding the
+       tab itself */
+    cp = malloc((unsigned)(*sizep + (i * (TABSTOP-1))));
+    if (!cp)				/* XXX */
+	return;				/* punt expanding if memory fails */
+    cp3 = cp;
+    /* Copy buffer, converting tabs to spaces as we go */
+    for (cp2 = *bufp, column = 1, size = *sizep; size; cp2++, size--) {
+	switch (*cp2) {
+	case '\n':
+	case '\0':
+	    /* newline or null: reset column */
+	    column = 1;
+	    *cp++ = *cp2;		/* copy the newline */
+	    break;
+	default:
+	    /* copy the character */
+	    *cp = *cp2;
+	    cp++;
+	    column++;
+	    break;
+	case '\t':
+	    /* it's a tab, compute how many spaces to expand into. */
+	    i = TABSTOP - ((column - 1) % TABSTOP);
+	    for (; i > 0; i--) {
+		*cp++ = ' ';		/* fill in the spaces */
+		column++;
+		(*sizep)++;		/* increment the size */
+	    }
+	    (*sizep)--;			/* remove one (we replaced the tab) */
+	    break;
+	}
+    }
+    free(*bufp);			/* free the old buf */
+    *bufp = cp3;
+    return;
 }
