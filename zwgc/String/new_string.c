@@ -69,7 +69,7 @@ string string__CreateFromData(data, length)
     result = (string)malloc(length+1);
     assert(result);
 
-    bcopy(data, result, length);
+    (void) memcpy(result, data, length);
     result[length] = 0;
 
     return(result);
@@ -93,7 +93,7 @@ string string__Copy(s)
     result = (string)malloc(length);
     assert(result);
 
-    bcopy(s, result, length);
+    (void) memcpy(result, s, length);
     return(result);
 }
 
@@ -117,8 +117,8 @@ string string__Concat(a, b)
     result = (string)malloc(result_size);
     assert(result);
 
-    bcopy(a, result, a_length);
-    bcopy(b, result+a_length, b_size);
+    (void) memcpy(result, a, a_length);
+    (void) memcpy(result+a_length, b, b_size);
 
     return(result);
 }
@@ -132,7 +132,7 @@ string string__Concat(a, b)
  *                     temp = string_Concat(a,b);
  *                     free(a);
  *                     return(temp);
- *                 only faster.  I.e., uses realloc instead of malloc+bcopy.
+ *                 only faster.  I.e., uses realloc instead of malloc+memcpy.
  */
 
 string string__Concat2(a, b)
@@ -147,7 +147,7 @@ string string__Concat2(a, b)
 
     a = (string)realloc(a, a_length+b_size);
     assert(a);
-    bcopy(b, a+a_length, b_size);
+    (void) memcpy(a+a_length, b, b_size);
 
     return(a);
 }
