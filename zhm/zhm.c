@@ -23,7 +23,7 @@ static char rcsid_hm_c[] = "$Header$";
 
 int hmdebug = 0; /* kerberos stole variable called 'debug' */
 int no_server = 1, nservchang = 0, nserv = 0, nclt = 0;
-int booting = 1, timeout_type = 0;
+int booting = 1, timeout_type = 0, deactivated = 1;
 long starttime;
 u_short cli_port;
 struct sockaddr_in cli_sin, serv_sin, from;
@@ -98,6 +98,7 @@ char *argv[];
 		sig_type = 0;
 		syslog(LOG_INFO, "Flushing this client...");
 		send_flush_notice(HM_FLUSH);
+		deactivated = 1;
 		break;
 	      case SIGTERM:
 		sig_type = 0;
@@ -145,6 +146,10 @@ char *argv[];
 				 (notice.z_kind == ACKED) ||
 				 (notice.z_kind == HMCTL))) {
 				  /* Client program... */
+				  if (deactivated) {
+					send_boot_notice(HM_BOOT);
+					deactivated = 0;
+				  }
 				  transmission_tower(&notice, packet, pak_len);
 				  DPR2 ("Pending = %d\n", ZPending());
 			    } else {
@@ -255,6 +260,7 @@ void init_hm()
       }
 
       send_boot_notice(HM_BOOT);
+      deactivated = 0;
 
       (void)signal (SIGHUP,  set_sig_type);
       (void)signal (SIGALRM, set_sig_type);
@@ -298,19 +304,6 @@ void set_sig_type(sig)
      int sig;
 {
       sig_type = sig;
-}
-
-new_server(sugg_serv)
-     char *sugg_serv;
-{
-      no_server = 1;
-      syslog (LOG_INFO, "Server went down, finding new server.");
-      send_flush_notice(HM_DETACH);
-      find_next_server(sugg_serv);
-      if (booting)
-	      send_boot_notice(HM_BOOT);
-      else
-	      send_boot_notice(HM_ATTACH);
 }
 
 send_stats(notice, sin)
