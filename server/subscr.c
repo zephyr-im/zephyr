@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -94,6 +94,7 @@ ZNotice_t *notice;
 	ZAcl_t *acl;
 	Code_t retval;
 	int relation;
+	int omask;
 
 	if (!who->zct_subs) {
 		/* allocate a subscription head */
@@ -106,6 +107,7 @@ ZNotice_t *notice;
 	if (!(newsubs = extract_subscriptions(notice)))
 		return(ZERR_NONE);	/* no subscr -> no error */
 
+	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 	for (subs = newsubs->q_forw;
 	     subs != newsubs;
 	     subs = subs->q_forw) {
@@ -160,12 +162,14 @@ ZNotice_t *notice;
 
 		if (!(subs3 = (ZSubscr_t *) xmalloc(sizeof(ZSubscr_t)))) {
 			free_subscriptions(newsubs);
+			(void) sigsetmask(omask);
 			return(ENOMEM);
 		}
 
 		if ((retval = class_register(who, subs)) != ZERR_NONE) {
 			xfree(subs3);
 			free_subscriptions(newsubs);
+			(void) sigsetmask(omask);
 			return(retval);
 		}
 
@@ -180,6 +184,7 @@ ZNotice_t *notice;
 
 duplicate:	;			/* just go on to the next */
 	}
+	(void) sigsetmask(omask);
 
 	free_subscriptions(newsubs);
 	return(ZERR_NONE);
@@ -199,6 +204,7 @@ ZNotice_t *notice;
 	register ZSubscr_t *subs, *subs2, *subs3, *subs4;
 	Code_t retval;
 	int found = 0, relation;
+	int omask;
 
 	zdbug((LOG_DEBUG,"subscr_cancel"));
 	if (!(who = client_which_client(sin, notice)))
@@ -211,6 +217,7 @@ ZNotice_t *notice;
 		return(ZERR_NONE);	/* no subscr -> no error */
 
 	
+	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 	for (subs4 = subs->q_forw;
 	     subs4 != subs;
 	     subs4 = subs4->q_forw)
@@ -247,8 +254,10 @@ ZNotice_t *notice;
 		     subs2 = subs2->q_forw)
 			if ((retval = class_register(who, subs2)) != ZERR_NONE) {
 				free_subscriptions(subs);
+				(void) sigsetmask(omask);
 				return(retval);
 			}
+	(void) sigsetmask(omask);
 	free_subscriptions(subs);
 	if (found)
 		return(ZERR_NONE);
@@ -265,11 +274,13 @@ subscr_cancel_client(client)
 register ZClient_t *client;
 {
 	register ZSubscr_t *subs;
+	int omask;
 
 	zdbug((LOG_DEBUG,"subscr_cancel_client"));
 	if (!client->zct_subs)
 		return;
 	
+	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 	for (subs = client->zct_subs->q_forw;
 	     subs != client->zct_subs;
 	     subs = client->zct_subs->q_forw) {
@@ -287,6 +298,7 @@ register ZClient_t *client;
 	xfree(subs);
 	client->zct_subs = NULLZST;
 
+	(void) sigsetmask(omask);
 	return;
 }
 
@@ -302,15 +314,18 @@ struct in_addr *addr;
 {
 	register ZHostList_t *hosts;
 	register ZClientList_t *clist = NULLZCLT, *clt;
+	int omask;
 
 	/* find the host */
 	if (!(hosts = hostm_find_host(addr)))
 		return(ZSRV_HNOTFOUND);
 	clist = hosts->zh_clients;
 
+	omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 	/* flush each one */
 	for (clt = clist->q_forw; clt != clist; clt = clt->q_forw)
 		(void) subscr_cancel_client(clt->zclt_client);
+	(void) sigsetmask(omask);
 	return(ZERR_NONE);
 }
 #endif notdef
@@ -943,4 +958,29 @@ register ZNotice_t *notice;
 		xinsque(subs2, subs);
 	}
 	return(subs);
+}
+
+/*
+ * print subscriptions in subs onto fp.
+ * assumed to be called with SIGFPE blocked
+ * (true if called from signal handler)
+ */
+
+void
+subscr_dump_subs(fp, subs)
+FILE *fp;
+ZSubscr_t *subs;
+{
+	register ZSubscr_t *ptr;
+
+	for (ptr = subs->q_forw; ptr != subs; ptr = ptr->q_forw) {
+		fputs("\t\t'", fp);
+		fputs(ptr->zst_class, fp);
+		fputs("' '", fp);
+		fputs(ptr->zst_classinst, fp);
+		fputs("' '", fp);
+		fputs(ptr->zst_recipient, fp);
+		fputs("'\n", fp);
+	}
+	return;
 }
