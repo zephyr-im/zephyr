@@ -26,7 +26,7 @@ LDFLAGS=-L${BUILDTOP}/lib @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
 OBJS=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \
-	dispatch.o kopt.o kstuff.o main.o server.o subscr.o timer.o uloc.o \
+	dispatch.o kstuff.o main.o server.o subscr.o timer.o uloc.o \
 	zstring.o realm.o version.o
 
 all: zephyrd

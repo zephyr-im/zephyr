@@ -44,6 +44,60 @@ int __subscriptions_num;
 int __subscriptions_next;
 int Z_discarded_packets = 0;
 
+#ifdef HAVE_KRB5
+/* This context is used throughout */
+krb5_context Z_krb5_ctx;
+
+static struct cksum_map_s {
+  krb5_enctype e;
+  krb5_cksumtype c;
+} cksum_map[] = {
+  /* per RFC1510 and draft-ietf-krb-wg-crypto-02.txt */
+  { ENCTYPE_NULL,                     CKSUMTYPE_RSA_MD5 },
+  { ENCTYPE_DES_CBC_CRC,              CKSUMTYPE_RSA_MD5_DES },
+  { ENCTYPE_DES_CBC_MD4,              CKSUMTYPE_RSA_MD4_DES },
+  { ENCTYPE_DES_CBC_MD5,              CKSUMTYPE_RSA_MD5_DES },
+
+  /* 
+   * The implementors hate us, and are inconsistent with names for
+   * most things defined after RFC1510.  Note that des3-cbc-sha1
+   * and des3-cbc-sha1-kd are listed by number to avoid confusion 
+   * caused by inconsistency between the names used in the specs
+   * and those used by implementations.
+   * -- jhutz, 30-Nov-2002
+   */
+
+  /* source lost in history (an expired internet-draft) */
+  { 5 /* des3-cbc-md5 */,             9  /* rsa-md5-des3 */ },
+  { 7 /* des3-cbc-sha1 */,            12 /* hmac-sha1-des3 */ },
+
+  /* per draft-ietf-krb-wg-crypto-02.txt */
+  { 16 /* des3-cbc-sha1-kd */,        12 /* hmac-sha1-des3-kd */ },
+
+  /* per draft-raeburn-krb-rijndael-krb-02.txt */
+  { 17 /* aes128-cts-hmac-sha1-96 */, 10 /* hmac-sha1-96-aes128 */ },
+  { 18 /* aes256-cts-hmac-sha1-96 */, 11 /* hmac-sha1-96-aes256 */ },
+
+  /* per draft-brezak-win2k-krb-rc4-hmac-04.txt */
+  { 23 /* rc4-hmac */,                -138 /* hmac-md5 */ },
+  { 24 /* rc4-hmac-exp */,            -138 /* hmac-md5 */ },
+};
+#define N_CKSUM_MAP (sizeof(cksum_map) / sizeof(struct cksum_map_s))
+
+Code_t Z_krb5_lookup_cksumtype(krb5_enctype e, krb5_cksumtype *c)
+{
+  int i;
+
+  for (i = 0; i < N_CKSUM_MAP; i++) {
+    if (cksum_map[i].e == e) {
+      *c = cksum_map[i].c;
+      return ZERR_NONE;
+    }
+  }
+  return KRB5_PROG_ETYPE_NOSUPP;
+}
+#endif /* HAVE_KRB5 */
+
 #ifdef HAVE_KRB4
 C_Block __Zephyr_session;
 #endif
@@ -633,6 +687,51 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     return Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine);
 }
 
+Code_t Z_NewFormatHeader(notice, buffer, buffer_len, len, cert_routine)
+    ZNotice_t *notice;
+    char *buffer;
+    int buffer_len;
+    int *len;
+    Z_AuthProc cert_routine;
+{
+    Code_t retval;
+    static char version[BUFSIZ]; /* default init should be all \0 */
+    struct sockaddr_in name;
+    int namelen = sizeof(name);
+
+    if (!notice->z_sender)
+	notice->z_sender = ZGetSender();
+
+    if (notice->z_port == 0) {
+	if (ZGetFD() < 0) {
+	    retval = ZOpenPort((u_short *)0);
+	    if (retval != ZERR_NONE)
+		return (retval);
+	}
+	retval = getsockname(ZGetFD(), (struct sockaddr *) &name, &namelen);
+	if (retval != 0)
+	    return (retval);
+	notice->z_port = name.sin_port;
+    }
+
+    notice->z_multinotice = "";
+    
+    (void) gettimeofday(&notice->z_uid.tv, (struct timezone *)0);
+    notice->z_uid.tv.tv_sec = htonl((u_long) notice->z_uid.tv.tv_sec);
+    notice->z_uid.tv.tv_usec = htonl((u_long) notice->z_uid.tv.tv_usec);
+    
+    (void) memcpy(&notice->z_uid.zuid_addr, &__My_addr, sizeof(__My_addr));
+
+    notice->z_multiuid = notice->z_uid;
+
+    if (!version[0])
+	    (void) sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR,
+			   ZVERSIONMINOR);
+    notice->z_version = version;
+
+    return Z_NewFormatAuthHeader(notice, buffer, buffer_len, len, cert_routine);
+}
+
 Code_t Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
     ZNotice_t *notice;
     char *buffer;
@@ -652,6 +751,210 @@ Code_t Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
     return ((*cert_routine)(notice, buffer, buffer_len, len));
 } 
 	
+Code_t Z_NewFormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
+    ZNotice_t *notice;
+    char *buffer;
+    int buffer_len;
+    int *len;
+    Z_AuthProc cert_routine;
+{
+    if (!cert_routine) {
+	notice->z_auth = 0;
+	notice->z_authent_len = 0;
+	notice->z_ascii_authent = "";
+	notice->z_checksum = 0;
+	return (Z_FormatRawHeader(notice, buffer, buffer_len,
+				     len, NULL, NULL));
+    }
+    
+    return ((*cert_routine)(notice, buffer, buffer_len, len));
+} 
+	
+Code_t Z_NewFormatRawHeader(notice, buffer, buffer_len, hdr_len,
+                         cksum_start, cksum_len, cstart, cend)
+    ZNotice_t *notice;
+    char *buffer;
+    int buffer_len;
+    int *hdr_len;
+    char **cksum_start;
+    int *cksum_len;
+    char **cstart, **cend;
+{
+   return(Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len,
+				 cksum_start, cksum_len, cstart, cend, 0));
+}
+
+Code_t Z_AsciiFormatRawHeader(notice, buffer, buffer_len, hdr_len,
+			      cksum_start, cksum_len, cstart, cend)
+    ZNotice_t *notice;
+    char *buffer;
+    int buffer_len;
+    int *hdr_len;
+    char **cksum_start;
+    int *cksum_len;
+    char **cstart, **cend;
+{
+   return(Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len,
+				 cksum_start, cksum_len, cstart, cend, 1));
+}
+
+Code_t Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_start,
+			      cksum_len, cstart, cend, cksumstyle)
+    ZNotice_t *notice;
+    char *buffer;
+    int buffer_len;
+    int *hdr_len;
+    char **cksum_start;
+    int *cksum_len;
+    char **cstart, **cend;
+    int cksumstyle;
+{
+    static char version_nogalaxy[BUFSIZ]; /* default init should be all \0 */
+    char newrecip[BUFSIZ];
+    char *ptr, *end;
+    int i;
+
+    if (!notice->z_class)
+            notice->z_class = "";
+
+    if (!notice->z_class_inst)
+            notice->z_class_inst = "";
+
+    if (!notice->z_opcode)
+            notice->z_opcode = "";
+
+    if (!notice->z_recipient)
+            notice->z_recipient = "";
+
+    if (!notice->z_default_format)
+            notice->z_default_format = "";
+
+    ptr = buffer;
+    end = buffer+buffer_len;
+
+    if (cksum_start)
+        *cksum_start = ptr;
+
+    (void) sprintf(version_nogalaxy, "%s%d.%d", ZVERSIONHDR,
+		   ZVERSIONMAJOR, ZVERSIONMINOR);
+
+    notice->z_version = version_nogalaxy;
+
+    if (Z_AddField(&ptr, version_nogalaxy, end))
+        return (ZERR_HEADERLEN);
+
+    if (ZMakeAscii32(ptr, end-ptr,
+                     Z_NUMFIELDS + notice->z_num_other_fields)
+        == ZERR_FIELDLEN)
+        return (ZERR_HEADERLEN);
+    ptr += strlen(ptr)+1;
+
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_kind) == ZERR_FIELDLEN)
+        return (ZERR_HEADERLEN);
+    ptr += strlen(ptr)+1;
+
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid, 
+                   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
+        return (ZERR_HEADERLEN);
+    ptr += strlen(ptr)+1;
+
+    if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_port)) == ZERR_FIELDLEN)
+        return (ZERR_HEADERLEN);
+    ptr += strlen(ptr)+1;
+
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_auth) == ZERR_FIELDLEN)
+        return (ZERR_HEADERLEN);
+    ptr += strlen(ptr)+1;
+
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_authent_len) == ZERR_FIELDLEN)
+        return (ZERR_HEADERLEN);
+    ptr += strlen(ptr)+1;
+
+    if (Z_AddField(&ptr, notice->z_ascii_authent, end))
+        return (ZERR_HEADERLEN);
+    if (Z_AddField(&ptr, notice->z_class, end))
+        return (ZERR_HEADERLEN);
+    if (Z_AddField(&ptr, notice->z_class_inst, end))
+        return (ZERR_HEADERLEN);
+    if (Z_AddField(&ptr, notice->z_opcode, end))
+        return (ZERR_HEADERLEN);
+    if (Z_AddField(&ptr, notice->z_sender, end))
+        return (ZERR_HEADERLEN);
+    if (strchr(notice->z_recipient, '@') || !*notice->z_recipient) {
+        if (Z_AddField(&ptr, notice->z_recipient, end))
+            return (ZERR_HEADERLEN);
+    }
+    else {
+	if (strlen(notice->z_recipient) + strlen(__Zephyr_realm) + 2 >
+            sizeof(newrecip))
+            return (ZERR_HEADERLEN);
+        (void) sprintf(newrecip, "%s@%s", notice->z_recipient, __Zephyr_realm);
+        if (Z_AddField(&ptr, newrecip, end))
+            return (ZERR_HEADERLEN);
+    }           
+    if (Z_AddField(&ptr, notice->z_default_format, end))
+        return (ZERR_HEADERLEN);
+
+    /* copy back the end pointer location for crypto checksum */
+    if (cstart)
+        *cstart = ptr;
+    if (cksumstyle == 1) {
+      if (Z_AddField(&ptr, notice->z_ascii_checksum, end))
+	 return (ZERR_HEADERLEN);
+    } else {
+#ifdef xZCODE_K4SUM
+    if (ZMakeZcode32(ptr, end-ptr, notice->z_checksum) == ZERR_FIELDLEN)
+        return ZERR_HEADERLEN;
+#else
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_checksum) == ZERR_FIELDLEN)
+        return (ZERR_HEADERLEN);
+#endif
+    ptr += strlen(ptr)+1;
+    }
+    if (cend)
+        *cend = ptr;
+
+    if (Z_AddField(&ptr, notice->z_multinotice, end))
+        return (ZERR_HEADERLEN);
+
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid, 
+                   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
+        return (ZERR_HEADERLEN);
+    ptr += strlen(ptr)+1;
+        
+    for (i=0;i<notice->z_num_other_fields;i++)
+        if (Z_AddField(&ptr, notice->z_other_fields[i], end))
+            return (ZERR_HEADERLEN);
+    
+    if (cksum_len)
+        *cksum_len = ptr-*cksum_start;
+
+    *hdr_len = ptr-buffer;
+
+#if 0
+    {
+        printf("Z_FormatRawHeader output:\n");
+        for (i = 0; i < *hdr_len; i += 16) {
+            int i2;
+            printf("%03d:", i);
+            for (i2 = i; i2 < i+16 && i2 < *hdr_len; i2++)
+                printf(" %02x", buffer[i2] & 0xff);
+            for (; i2 < i+16; i2++)
+                printf("   ");
+            printf("  ");
+            for (i2 = i; i2 < i+16 && i2 < *hdr_len; i2++)
+                printf("%c",
+                       ((buffer[i2] > 0 && buffer[i2] < 127 && isprint(buffer[i2]))
+                        ? buffer[i2]
+                        : '.'));
+            printf("\n");
+        }
+    }
+#endif
+
+    return (ZERR_NONE);
+}
+
 Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     ZNotice_t *notice;
     char *buffer;

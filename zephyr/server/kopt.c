@@ -159,6 +159,7 @@ void add_to_key_sched_cache(key, sched)
  * krb_rd_req().
  */
 
+#if 0
 int
 krb_set_key(key,cvt)
     char *key;
@@ -186,7 +187,7 @@ krb_set_key(key,cvt)
     return ret;
 #endif /* NOENCRYPTION */
 }
-
+#endif
 
 /*
  * krb_rd_req() takes an AUTH_MSG_APPL_REQUEST or
@@ -243,7 +244,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     KTEXT_ST req_id_st;  /* Temp storage for authenticator */
     KTEXT req_id = &req_id_st;
 
-    char realm[REALM_SZ];	/* Realm of issuing kerberos */
+    char realm[REALM_SZ];	/* ZRealm of issuing kerberos */
     Sched seskey_sched, *sched;	/* Key sched for session key */
     unsigned char skey[KKEY_SZ]; /* Session key from ticket */
     char sname[SNAME_SZ];	/* Service name from ticket */
@@ -417,7 +418,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     if (strcmp(ad->pinst,r_inst) != 0)
         return RD_AP_INCON;
     if (krb_ap_req_debug)
-        krb_log("Realm:   %s %s", ad->prealm, r_realm);
+        krb_log("ZRealm:   %s %s", ad->prealm, r_realm);
     if (strcmp(ad->prealm,r_realm) != 0)
         return RD_AP_INCON;
 

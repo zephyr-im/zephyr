@@ -17,6 +17,10 @@ static char rcsid_ZCheckAuthentication_c[] =
 
 #include <internal.h>
 
+#if defined(HAVE_KRB5) && !HAVE_KRB5_FREE_DATA
+#define krb5_free_data(ctx, dat) free((dat)->data)
+#endif
+
 /* Check authentication of the notice.
    If it looks authentic but fails the Kerberos check, return -1.
    If it looks authentic and passes the Kerberos check, return 1.

@@ -34,7 +34,8 @@ OBJS =	zephyr_err.o ZAsyncLocate.o ZCkAuth.o ZCkIfNot.o ZClosePort.o \
 	ZOpenPort.o ZParseNot.o ZPeekIfNot.o ZPeekNot.o ZPeekPkt.o ZPending.o \
 	ZReadAscii.o ZRecvNot.o ZRecvPkt.o ZRetSubs.o ZSendList.o ZSendNot.o \
 	ZSendPkt.o ZSendRaw.o ZSendRLst.o ZSetDest.o ZSetFD.o ZSetSrv.o \
-	ZSubs.o ZVariables.o ZWait4Not.o Zinternal.o
+	ZSubs.o ZVariables.o ZWait4Not.o Zinternal.o ZMakeZcode.o \
+	ZReadZcode.o ZCkZAut.o
 
 LIBEXT=a
 all: libzephyr.$(LIBEXT)

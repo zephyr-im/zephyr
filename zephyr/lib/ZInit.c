@@ -21,6 +21,9 @@ static char rcsid_ZInitialize_c[] =
 #ifdef HAVE_KRB4
 #include <krb_err.h>
 #endif
+#ifdef HAVE_KRB5_ERR_H
+#include <krb5_err.h>
+#endif
 
 #ifndef INADDR_NONE
 #define INADDR_NONE 0xffffffff
@@ -42,6 +45,9 @@ Code_t ZInitialize()
     char d1[ANAME_SZ], d2[INST_SZ];
 
     initialize_krb_error_table();
+#endif
+#ifdef HAVE_KRB5
+    initialize_krb5_error_table();
 #endif
 
     initialize_zeph_error_table();
@@ -67,6 +73,11 @@ Code_t ZInitialize()
     __Q_Tail = NULL;
     __Q_Head = NULL;
     
+#ifdef HAVE_KRB5
+    if ((code = krb5_init_context(&Z_krb5_ctx)))
+        return(code);
+#endif
+
     /* if the application is a server, there might not be a zhm.  The
        code will fall back to something which might not be "right",
        but this is is ok, since none of the servers call krb_rd_req. */

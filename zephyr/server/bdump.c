@@ -66,6 +66,12 @@ static int setup_file_pointers __P((void));
 static void shutdown_file_pointers __P((void));
 static void cleanup __P((Server *server));
 
+#ifdef HAVE_KRB5
+static long ticket5_time;
+#define TKT5LIFETIME 8*60*60
+#define tkt5_lifetime(val) (val)
+#endif
+
 #ifdef HAVE_KRB4
 static long ticket_time;
 
@@ -725,6 +731,7 @@ get_tgt()
 		   krb_get_err_text(retval));
 	    return 1;
 	}
+#if 0
 	s = (Sched *) check_key_sched_cache(serv_key);
 	if (s) {
 	    serv_ksched = *s;
@@ -732,8 +739,59 @@ get_tgt()
 	    des_key_sched(serv_key, serv_ksched.s);
 	    add_to_key_sched_cache(serv_key, &serv_ksched);
 	}
+#else
+	des_key_sched(serv_key, serv_ksched.s);
+#endif
 #endif /* !NOENCRYPTION */
     }
+#ifdef HAVE_KRB5	
+    /* XXX */
+    if (ticket5_time < NOW - tkt5_lifetime(TKT5LIFETIME) + (15L * 60L)) {
+	krb5_keytab kt;
+	krb5_get_init_creds_opt opt;
+	krb5_creds cred;
+	krb5_principal principal;
+
+	memset(&cred, 0, sizeof(cred));
+
+	retval = krb5_build_principal(Z_krb5_ctx, &principal, 
+				      strlen(ZGetRealm()),
+				      ZGetRealm(),
+				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
+				      0); 
+	if (retval) {
+	  krb5_free_principal(Z_krb5_ctx, principal);
+	  return(1);
+	}
+
+	krb5_get_init_creds_opt_init (&opt);
+	krb5_get_init_creds_opt_set_tkt_life (&opt, TKT5LIFETIME);
+
+	retval = krb5_kt_resolve(Z_krb5_ctx, keytab_file, &kt);
+	if (retval) return(1);
+	
+	retval = krb5_get_init_creds_keytab (Z_krb5_ctx,
+					     &cred,
+					     principal,
+					     kt,
+					     0,
+					     NULL,
+					     &opt);
+	krb5_free_principal(Z_krb5_ctx, principal);
+	krb5_kt_close(Z_krb5_ctx, kt);
+	if (retval) return(1);
+
+	retval = krb5_cc_initialize (Z_krb5_ctx, Z_krb5_ccache, cred.client);
+	if (retval) return(1);
+    
+	retval = krb5_cc_store_cred (Z_krb5_ctx, Z_krb5_ccache, &cred);
+	if (retval) return(1);
+
+	ticket5_time = NOW;
+
+	krb5_free_cred_contents (Z_krb5_ctx, &cred);
+    }
+#endif
     return(0);
 }
 #endif /* HAVE_KRB4 */
@@ -781,7 +839,7 @@ bdump_recv_loop(server)
     char *cp;
     C_Block cblock;
 #endif /* HAVE_KRB4 */
-    Realm *realm = NULL;
+    ZRealm *realm = NULL;
  
 #if 1
     zdbug((LOG_DEBUG, "bdump recv loop"));
@@ -1144,7 +1202,13 @@ net_read(f, buf, len)
 	errno = 0;
 	cc = fread(buf, 1, len, f);
 	if (cc == 0)
+	  {
+	    if (feof(f))
+	      return len2;
+	    if (errno == 0)
+	      errno = EIO;
 	    return -1;
+	  }
 	buf += cc;
 	len2 += cc;
 	len -= cc;

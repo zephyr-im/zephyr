@@ -134,7 +134,7 @@ handle_packet()
     int authentic;		/* authentic flag */
     Pending *pending;		/* pending packet */
     int from_server;		/* packet is from another server */
-    Realm *realm;		/* foreign realm ptr */
+    ZRealm *realm;		/* foreign realm ptr */
 #ifdef DEBUG
     static int first_time = 1;
 #endif
@@ -201,8 +201,8 @@ handle_packet()
         } else {
           if (realm = realm_which_realm(&input_sin)) {
             authentic = ZCheckRealmAuthentication(&new_notice,
-                                                  &input_sin,
-                                                  realm->name);
+						       &input_sin,
+						       realm->name);
           } else 
 	    authentic = ZCheckAuthentication(&new_notice, &input_sin);
 	}
@@ -223,6 +223,7 @@ handle_packet()
 	}
     }
 
+#if 0
     if (whoisit.sin_port != hm_port && whoisit.sin_port != hm_srv_port &&
 	strcasecmp(new_notice.z_class, ZEPHYR_ADMIN_CLASS) != 0 &&
 	whoisit.sin_port != srv_addr.sin_port &&
@@ -231,6 +232,7 @@ handle_packet()
 	       ntohs(whoisit.sin_port));
 	return;
     }
+#endif
 
     message_notices.val++;
     dispatch(&new_notice, authentic, &whoisit, from_server);
@@ -251,7 +253,7 @@ dispatch(notice, auth, who, from_server)
     String *notice_class;
     struct sockaddr_in who2;
     int authflag;
-    Realm *realm;
+    ZRealm *realm;
     char *cp;
 #ifdef DEBUG
     char dbg_buf[BUFSIZ];
@@ -353,7 +355,7 @@ sendit(notice, auth, who, external)
 
     class = make_string(notice->z_class, 1);
     if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient)) {
-      Realm *rlm;
+      ZRealm *rlm;
 
       acl = class_get_acl(class);
       if (acl != NULL) {
@@ -1095,7 +1097,7 @@ control_dispatch(notice, auth, who, server)
     Client *client;
     Code_t retval;
     int wantdefs;
-    Realm *realm;
+    ZRealm *realm;
     struct sockaddr_in newwho;
 
     /*
