@@ -7,15 +7,17 @@
 #include "xzwrite.h"
 #include "GetString.h"
 
-extern Widget getString, closeOnSend, pings, verbose, authentic, yankDest,
-     addGlobals, classInst;
+extern Widget getString, clearOnSend, closeOnSend, pings, verbose,
+     authentic, yankDest, addGlobals, classInst;
 extern Defaults defs;
 
 #define toggle(v)	(v = !v)
 void menu_toggle(w)
    Widget w;
 {
-     if (w == closeOnSend)
+     if (w == clearOnSend)
+	  toggle(defs.clear_on_send);
+     else if (w == closeOnSend)
 	  toggle(defs.close_on_send);
      else if (w == pings)
 	  toggle(defs.ping);
@@ -37,6 +39,7 @@ void menu_toggle(w)
 #define set(w, i) XtVaSetValues(w, XtNstate, i ? True : False, NULL)
 void menu_match_defs()
 {
+     set(clearOnSend, defs.clear_on_send);
      set(closeOnSend, defs.close_on_send);
      set(pings, defs.ping);
      set(verbose, defs.verbose);
@@ -63,4 +66,7 @@ void menu_signature()
      defs.signature = (char *) Malloc(strlen(buf) + 1,
 				      "while setting signature", NULL);
      strcpy(defs.signature, buf);
+
+     /* Set the zephyr variable. */
+     ZSetVariable("zwrite-signature", buf);
 }
