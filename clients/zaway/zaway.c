@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987, 1993 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -50,6 +50,9 @@ main(argc,argv)
 	register char *ptr;
 	char awayfile[BUFSIZ],*msg[2],*envptr;
 	char *find_message();
+#ifdef POSIX
+	struct sigaction sa;
+#endif
 	
 	if ((retval = ZInitialize()) != ZERR_NONE) {
 		com_err(argv[0],retval,"while initializing");
@@ -86,11 +89,18 @@ main(argc,argv)
 		fprintf(stderr,"File %s not found!\n",awayfile);
 		exit(1);
 	} 
-	
+#ifdef POSIX
+	(void) sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sa.sa_handler = cleanup;
+	(void) sigaction(SIGINT, &sa, (struct sigaction *)0);
+	(void) sigaction(SIGTERM, &sa, (struct sigaction *)0);
+	(void) sigaction(SIGHUP, &sa, (struct sigaction *)0);
+#else
 	(void) signal(SIGINT, cleanup);
 	(void) signal(SIGTERM, cleanup);
 	(void) signal(SIGHUP, cleanup);
-
+#endif
 	if ((retval = ZSubscribeTo(&sub,1,port)) != ZERR_NONE) {
 		com_err(argv[0],retval,"while subscribing");
 		exit(1);
@@ -150,7 +160,7 @@ char *find_message(notice,fp)
 	rewind(fp);
 
 	(void) strcpy(sender,notice->z_sender);
-	ptr2 = index(sender,'@');
+	ptr2 = strchr(sender,'@');
 	if (ptr2)
 		*ptr2 = '\0';
 	
@@ -163,7 +173,7 @@ char *find_message(notice,fp)
 			if (lastwasnt)
 				gotone = 0;
 			bfr[strlen(bfr)-1] = '\0';
-			ptr2 = index(bfr,'@');
+			ptr2 = strchr(bfr,'@');
 			if (ptr2)
 				*ptr2 = '\0';
 			if (!strcmp(bfr+1,sender) ||
