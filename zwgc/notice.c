@@ -269,7 +269,7 @@ char *decode_notice(notice)
     var_set_variable("opcode", notice->z_opcode);
     var_set_variable("default", notice->z_default_format);
     var_set_variable("recipient",
-		     (notice->z_recipient[0]?"*":notice->z_recipient);
+		     (notice->z_recipient[0]?"*":notice->z_recipient));
     var_set_variable("fullsender", notice->z_sender);
     var_set_variable_to_number("port", (int)notice->z_port);
     var_set_variable_then_free_value("kind", z_kind_to_ascii(notice->z_kind));
