@@ -114,7 +114,7 @@ match "message"
 	if ($signature == "") then
 		set ftext = "From: @bold("+protect($sender)+")"
 	else
-		set ftext = "From: @bold("+protect($signature)+" <"+
+		set ftext = "From: @bold(@{"+protect($signature)+"} <"+
 			protect($sender)+">)"
 	endif
 
