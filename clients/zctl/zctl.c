@@ -703,8 +703,9 @@ load_subs(argc,argv)
 			if (type == UNSUB)
 				continue;
 			unsubs[unind].class =
-				malloc((unsigned)(strlen(subline)+1));
-			(void) strcpy(unsubs[unind].class,subline);
+				malloc((unsigned)(strlen(subline)));
+			/* skip the leading '!' */
+			(void) strcpy(unsubs[unind].class,subline+1);
 			unsubs[unind].classinst =
 				malloc((unsigned)(strlen(comma+1)+1));
 			(void) strcpy(unsubs[unind].classinst,comma+1);
