@@ -46,7 +46,7 @@ extern char *sys_errlist[];
 #define memmove(a,b,c) bcopy(b,a,c)
 #endif
 
-#ifndef memmove
+#ifndef strerror
 #define strerror(e) (sys_errlist[e])
 #endif
 #endif
