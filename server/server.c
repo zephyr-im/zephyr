@@ -665,7 +665,8 @@ server_recover(client)
 #if 0
 	zdbug((LOG_DEBUG,"server recover"));
 #endif
-	if ((server = hostm_find_server(&client->zct_sin.sin_addr))) {
+	if ((server = hostm_find_server(&client->zct_sin.sin_addr)) !=
+	    NULLZSDT) {
 		if (server == limbo_server) {
 #if 0
 			zdbug((LOG_DEBUG, "no server to recover"));
@@ -1651,9 +1652,9 @@ server_send_queue(server)
 
 	while(server->zs_update_queue) {
 		pending = server_dequeue(server);
-		if (status = ZParseNotice(pending->pend_packet,
+		if ((status = ZParseNotice(pending->pend_packet,
 					  pending->pend_len,
-					  &notice)) {
+					  &notice)) != ZERR_NONE) {
 			syslog(LOG_ERR,
 			       "ssq bad notice parse (%s): %s",
 			       inet_ntoa(pending->pend_who.sin_addr),

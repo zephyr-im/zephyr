@@ -198,9 +198,9 @@ access_setup (int first)
 		return;
 	}
 	while (fgets(class_name, 512, registry) != NULL) {
-		if (colon_idx = index(class_name, ':'))
+		if ((colon_idx = (char *) index(class_name, ':')) != NULL)
 		    *colon_idx = '\0';
-		else if (len = strlen(class_name))
+		else if ((len = strlen(class_name)) != 0)
 		    class_name[len - 1] = '\0';
 		acl = 0;
 		if (!first) {
