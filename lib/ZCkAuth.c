@@ -46,11 +46,6 @@ int ZCheckAuthentication(notice, from)
     if (__Zephyr_server) {
 	/* XXX: This routine needs to know where the server ticket
 	   file is! */
-	static char srvtab[MAXPATHLEN];
-	if (srvtab[0] == 0) {
-	    strcpy (srvtab, Z_LIBDIR);
-	    strcat (srvtab, "/srvtab");
-	}
 	if (notice->z_authent_len <= 0)	/* bogus length */
 	    return(ZAUTH_FAILED);
 	if (ZReadAscii(notice->z_ascii_authent, 
@@ -62,7 +57,7 @@ int ZCheckAuthentication(notice, from)
 	authent.length = notice->z_authent_len;
 	result = krb_rd_req(&authent, SERVER_SERVICE, 
 			    SERVER_INSTANCE, from->sin_addr.s_addr, 
-			    &dat, srvtab);
+			    &dat, SERVER_SRVTAB);
 	if (result == RD_AP_OK) {
 		(void) memcpy((char *)__Zephyr_session, (char *)dat.session, 
 			       sizeof(C_Block));
