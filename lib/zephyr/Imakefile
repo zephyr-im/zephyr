@@ -203,10 +203,10 @@ make_error_table(krb_err)
 all::
 	$(RM) ../libs/libzephyr.a ../libs/libzephyr_p.a
 	$(CP) libzephyr.a ../libs/libzephyr.a
-	$(RANLIB) -t ../libs/libzephyr.a
+	$(RANLIB) ../libs/libzephyr.a
 #ifdef PROFILED_LIBS
 	$(CP) libzephyr_p.a ../libs/libzephyr_p.a
-	$(RANLIB) -t ../libs/libzephyr_p.a
+	$(RANLIB) ../libs/libzephyr_p.a
 #endif
 	
 
