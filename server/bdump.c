@@ -1024,7 +1024,6 @@ bdump_recv_loop(server)
 	struct sockaddr_in current_who;
 	int who_valid = 0;
 	int flushing_subs = 0;
-	int debug_fd;
 #ifdef KERBEROS
 	register char *cp;
 #endif /* KERBEROS */
@@ -1038,11 +1037,6 @@ bdump_recv_loop(server)
 	zdbug((LOG_DEBUG, "bdump recv loop"));
 #endif
 	
-#if 0
-	if (zdebug)
-	  debug_fd = open("/usr/tmp/rbd.log",O_CREAT|O_WRONLY,0600);
-#endif
-
 #ifdef CONCURRENT
 	FD_ZERO(&initial);
 	FD_SET(srv_socket, &initial);
@@ -1089,12 +1083,7 @@ bdump_recv_loop(server)
 			       error_message(retval));
 			return(retval);
 		}
-#if 0
-		if (zdebug) {
-		  write(debug_fd,packet,len);
-		  write(debug_fd,"\n--\n",4);
-		}
-#endif
+
 		if ((retval = ZParseNotice(packet, len, &notice)) != ZERR_NONE) {
 			syslog(LOG_ERR, "brl notice parse: %s",
 			       error_message(retval));
@@ -1134,10 +1123,6 @@ bdump_recv_loop(server)
 			}
 		} else if (!strcmp(notice.z_opcode, ADMIN_DONE)) {
 			/* end of brain dump */
-#if 0
-		  if (zdebug) 
-		    close(debug_fd);
-#endif
 		  return(ZERR_NONE);
 		} else if (!who_valid) {
 			syslog(LOG_ERR, "brl: no current host");
