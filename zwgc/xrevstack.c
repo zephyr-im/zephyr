@@ -42,10 +42,12 @@ void add_to_bottom(gram)
    }
 }
 
+/*ARGSUSED*/
 void pull_to_top(gram)
      x_gram *gram;
 {}
 
+/*ARGSUSED*/
 void push_to_bottom(gram)
      x_gram *gram;
 {}

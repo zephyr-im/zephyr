@@ -349,9 +349,6 @@ static int exec_exec(node)
     return(NOBREAK);
 }
 
-/* <<<>>> */
-extern int exec_fields();
-
 static struct _Opstuff {
     int (*exec)();
 } opstuff[] = {

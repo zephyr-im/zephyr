@@ -43,6 +43,7 @@ extern x_gram *markgram;
 #define STARTPIXEL (markpixel[XMARK_START_BOUND])
 #define ENDPIXEL   (markpixel[XMARK_END_BOUND])
 
+extern void xmarkSetBound();
 extern int xmarkSecond();
 extern void xmarkRedraw();
 extern void xmarkClear();
