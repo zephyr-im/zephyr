@@ -126,7 +126,12 @@ errf set_com_err_hook (new_proc)
     errf new_proc;
 {
     errf x = com_err_hook;
-    com_err_hook = new_proc ? new_proc : default_com_err_proc;
+
+    if (new_proc)
+	com_err_hook = new_proc;
+    else
+	com_err_hook = default_com_err_proc;
+
     return x;
 }
 
