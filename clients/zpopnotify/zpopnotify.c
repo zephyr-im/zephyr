@@ -15,6 +15,7 @@
 
 #include <zephyr/zephyr.h>
 #include <netdb.h>
+#include <string.h>
 
 #ifndef lint
 static char rcsid_zpopnotify_c[] = "$Header$";
@@ -32,7 +33,7 @@ main(argc,argv)
 	ZNotice_t notice;
 	struct hostent *hent;
 	int retval;
-	char *whoami,*ptr,bfr[BUFSIZ],myhost[BUFSIZ],mysender[BUFSIZ];
+	char *whoami,*ptr,myhost[BUFSIZ],mysender[BUFSIZ];
 	char *lines[2];
 	
 	whoami = argv[0];
@@ -63,12 +64,12 @@ main(argc,argv)
 		exit(1);
 	}
 
-	strcpy(myhost,hent->h_name);
+	(void) strcpy(myhost,hent->h_name);
 	lines[0] = myhost;
 	lines[1] = "You have new mail.";
 	
-	strcpy(mysender,"pop@");
-	strcat(mysender,ZGetRealm());
+	(void) strcpy(mysender,"pop@");
+	(void) strcat(mysender,ZGetRealm());
 
 	notice.z_kind = UNSAFE;
 	notice.z_class = MAIL_CLASS;
