@@ -168,6 +168,7 @@ ZCheckAuthentication(notice, from)
     if (ZReadAscii(notice->z_ascii_authent, 
 		   strlen(notice->z_ascii_authent)+1, 
 		   (unsigned char *)authent.dat, 
+		   notice->z_authent_len,
 		   notice->z_authent_len) == ZERR_BADFIELD) {
 	return ZAUTH_FAILED;
     }

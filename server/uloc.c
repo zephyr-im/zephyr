@@ -623,29 +623,6 @@ ulogin_setup(notice, locs, exposure, who)
     if (ulogin_parse(notice, locs))
 	return 1;
 
-    if (!locs->user) {
-	syslog(LOG_ERR, "zloc bad format: no user");
-	return 1;
-    }
-    if (!locs->machine) {
-	syslog(LOG_ERR, "zloc bad format: no machine");
-	free_string(locs->user);
-	return 1;
-		
-    }
-    if (!locs->tty) {
-	syslog(LOG_ERR, "zloc bad format: no tty");
-	free_string(locs->user);
-	free_string(locs->machine);
-	return 1;
-    }
-    if (!locs->time) {
-	syslog(LOG_ERR, "zloc bad format: no time");
-	free_string(locs->user);
-	free_string(locs->machine);
-	free_string(locs->tty);
-	return 1;
-    }
     locs->exposure = exposure;
     locs->addr.sin_family = AF_INET;
     locs->addr.sin_addr.s_addr = who->sin_addr.s_addr;
@@ -697,17 +674,8 @@ ulogin_parse(notice, locs)
 
     /* This field might not be null-terminated */
     cp += (strlen(cp) + 1);
+    locs->tty = make_string(cp, 0);
 #if 0
-    if (nulls == 2) {
-	s = (char *) malloc(base + notice->z_message_len - cp + 1);
-	strncpy(s, cp);
-	locs->tty = make_string(s, 0);
-	free(s);
-    } else {
-#endif
-	locs->tty = make_string(cp, 0);
-#if 0
-    }
     zdbug((LOG_DEBUG, "ul_parse: tty %s", locs->tty->string));
 #endif
 
@@ -788,6 +756,8 @@ ulogin_find(notice, strict)
 	       && (locations[i].user == inst))
 	    i++;
     }
+    if (strict)
+	free_loc(&tmploc);
     if (i == num_locs || locations[i].user != inst) {
 #if 1
 	zdbug((LOG_DEBUG,"ul_find final match loss"));
@@ -795,8 +765,6 @@ ulogin_find(notice, strict)
 	free_string(inst);
 	return 0;
     }
-    if (strict)
-	free_loc(&tmploc);
     free_string(inst);
     return &locations[i];
 }
@@ -994,9 +962,6 @@ ulogin_expose_user(notice, exposure)
 	   (int) exposure));
 #endif
 
-    if (ulogin_parse(notice, &loc2))
-	return 1;
-
     loc = ulogin_find(notice, 0);
     if (!loc) {
 #if 0
@@ -1004,6 +969,9 @@ ulogin_expose_user(notice, exposure)
 #endif
 		return 1;
     }
+
+    if (ulogin_parse(notice, &loc2))
+	return 1;
 
     idx = loc -locations;
 
@@ -1022,6 +990,8 @@ ulogin_expose_user(notice, exposure)
 	}
 	idx++;
     }
+
+    free_loc(&loc2);
     return notfound;
 }
 

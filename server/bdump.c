@@ -847,7 +847,8 @@ bdump_recv_loop(server)
 	    if (*notice.z_class_inst) {
 		/* a C_Block is there */
 		cp = notice.z_message + strlen(notice.z_message) + 1;
-		retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(C_Block));
+		retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(C_Block),
+				    sizeof(C_Block));
 		if (retval != ZERR_NONE) {
 		    syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
 			   error_message(retval), cp);

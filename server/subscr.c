@@ -479,7 +479,7 @@ subscr_marshal_subs(notice, auth, who, found)
 	   list.  The port field is the port of the sender. */
 
 	retval = ZReadAscii(notice->z_message, notice->z_message_len,
-			    (unsigned char *) &temp, sizeof(u_short));
+			    (unsigned char *) &temp, sizeof(u_short), 2);
 	if (retval != ZERR_NONE) {
 	    syslog(LOG_WARNING, "subscr_marshal read port num: %s",
 		   error_message(retval));
@@ -776,7 +776,8 @@ subscr_send_subs(client)
     des_ecb_encrypt(client->session_key, cblock, serv_ksched.s, DES_ENCRYPT);
 #endif
 
-    retval = ZMakeAscii(buf, sizeof(buf), cblock, sizeof(C_Block));
+    retval = ZMakeAscii(buf, sizeof(buf), cblock, sizeof(C_Block),
+			sizeof(C_Block));
     if (retval != ZERR_NONE) {
 #if 0
 	zdbug((LOG_DEBUG,"zmakeascii failed: %s", error_message(retval)));

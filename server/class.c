@@ -310,7 +310,7 @@ insert_client(triplet, client)
 		return ZSRV_CLASSXISTS;
 	}
 
-	if (clientp - triplet->clients > triplet->clients_size) {
+	if (clientp + 1 - triplet->clients >= triplet->clients_size) {
 	    new_size = triplet->clients_size * 2 + ALLOC_OFFSET;
 	    newclients = (Client **) realloc(triplet->clients,
 					     new_size * sizeof(Client *));
