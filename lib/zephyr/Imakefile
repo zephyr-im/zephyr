@@ -68,7 +68,8 @@ SRCS=	\
 	ZSubscriptions.c \
 	ZVariables.c \
 	Zinternal.c \
-	acl_files.c
+	acl_files.c \
+	strcasecmp.c
 
 #ifdef KERBEROS
 OLIST=	\
