@@ -18,28 +18,28 @@
  * Checkers!  Get away from that "hard disk erase" button!
  *    (Stupid dog.  He almost did it to me again ...)
  */                                 
-int DynDelete(obj, index)
+int DynDelete(obj, idx)
    DynObjectP obj;
-   int index;
+   int idx;
 {
-     if (index < 0) {
+     if (idx < 0) {
 	  if (obj->debug)
-	       fprintf(stderr, "dyn: delete: bad index %d\n", index);
+	       fprintf(stderr, "dyn: delete: bad index %d\n", idx);
 	  return DYN_BADINDEX;
      }
      
-     if (index >= obj->num_el) {
+     if (idx >= obj->num_el) {
 	  if (obj->debug)
 	       fprintf(stderr, "dyn: delete: Highest index is %d.\n",
 		       obj->num_el);
 	  return DYN_BADINDEX;
      }
 
-     if (index == obj->num_el-1) {
+     if (idx == obj->num_el-1) {
 	  if (obj->paranoid) {
 	       if (obj->debug)
 		    fprintf(stderr, "dyn: delete: last element, zeroing.\n");
-	       bzero(obj->array + index*obj->el_size, obj->el_size);
+	       (void) memset(obj->array + idx*obj->el_size, 0, obj->el_size);
 	  }
 	  else {
 	       if (obj->debug)
@@ -50,12 +50,12 @@ int DynDelete(obj, index)
 	  if (obj->debug)
 	       fprintf(stderr,
 		       "dyn: delete: copying %d bytes from %d + %d to + %d.\n",
-		       obj->el_size*(obj->num_el - index), obj->array,
-		       (index+1)*obj->el_size, index*obj->el_size);
+		       obj->el_size*(obj->num_el - idx), obj->array,
+		       (idx+1)*obj->el_size, idx*obj->el_size);
 	  
-	  bcopy(obj->array + (index+1)*obj->el_size,
-		obj->array + index*obj->el_size,
-		obj->el_size*(obj->num_el - index));
+	  (void) memmove(obj->array + idx*obj->el_size,
+			 obj->array + (idx+1)*obj->el_size,
+			 obj->el_size*(obj->num_el - idx));
 
 	  if (obj->paranoid) {
 	       if (obj->debug)
@@ -63,8 +63,8 @@ int DynDelete(obj, index)
 			    "dyn: delete: zeroing %d bytes from %d + %d\n",
 			    obj->el_size, obj->array,
 			    obj->el_size*(obj->num_el - 1));
-	       bzero(obj->array + obj->el_size*(obj->num_el - 1),
-		     obj->el_size);
+	       (void) memset(obj->array + obj->el_size*(obj->num_el - 1),
+			     0, obj->el_size);
 	  }
      }
      
