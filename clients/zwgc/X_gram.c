@@ -141,6 +141,27 @@ void x_gram_init(dpy)
     if (!cursor)
       cursor = XCreateFontCursor(dpy, XC_sailboat);
 
+    temp = get_string_resource("pointerColor", "Foreground");
+    if (temp) {
+	char *temp2;
+	XColor cursor_fore, cursor_back;
+	/* XXX need to do our own parsing here, since the RecolorCursor
+	   routine requires an XColor, not an unsigned long (pixel) */
+	if (!(temp2 = get_string_resource("background","Background"))) {
+	    if (default_bgcolor == WhitePixelOfScreen(DefaultScreenOfDisplay(dpy)))
+		temp2 = "white";
+	    else
+		temp2 = "black";
+	}
+	if (XParseColor(dpy,
+			DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
+			temp, &cursor_fore) &&
+	    XParseColor(dpy,
+			DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
+			temp2, &cursor_back)) {
+	      XRecolorCursor(dpy, cursor, &cursor_fore, &cursor_back);
+	  }
+    }
     if (!(title_name=get_string_resource("title","Title")))
       if (!(title_name=get_string_resource("name","Name")))
 	title_name=app_instance;
