@@ -42,44 +42,50 @@ extern int timeout_type;
 
 Code_t init_queue()
 {
-      if (hm_queue.q_forw != &hm_queue)
-	do {
-	      free(hm_queue.q_forw->q_data->z_packet);
-	      free(hm_queue.q_forw->q_data);
-	      remque(hm_queue.q_forw);
-	      free(hm_queue.q_forw);
-	} while (hm_queue.q_forw != &hm_queue);
+      while (hm_queue.q_forw != &hm_queue) {
+	    free(hm_queue.q_forw->q_data->z_packet);
+	    free(hm_queue.q_forw->q_data);
+	    remque(hm_queue.q_forw);
+	    free(hm_queue.q_forw);
+      }
 
       hm_queue.q_forw = hm_queue.q_back = &hm_queue;
       hm_queue.q_data = NULL;
       DPR ("Queue initialized and flushed.\n");
 }
 
-Code_t add_notice_to_queue(notice, packet, repl)
+Code_t add_notice_to_queue(notice, packet, repl, len)
      ZNotice_t *notice;
      caddr_t packet;
      struct sockaddr_in *repl;
+     int len;
 {
       Qelem *elem;
       Queue *entry;
+      Code_t ret;
 
       DPR ("Adding notice to queue...\n");
-      if (!is_in_queue(*notice)) {
+      if (!is_in_queue(notice)) {
 	    elem = (Qelem *)malloc(sizeof(Qelem));
 	    entry = (Queue *)malloc(sizeof(Queue));
 	    entry->timeout = time(NULL) + NOTICE_TIMEOUT;
 	    entry->retries = 0;
-	    entry->z_notice = *notice;
 	    entry->z_packet = (char *)malloc(Z_MAXPKTLEN);
 	    bcopy(packet, entry->z_packet, Z_MAXPKTLEN);
-	    entry->reply = *repl;
-	    elem->q_data = entry;
-	    elem->q_forw = elem;
-	    elem->q_back = elem;
-	    insque(elem, hm_queue.q_back);
+	    if ((ret = ZParseNotice(entry->z_packet, len, &entry->z_notice))
+		!= ZERR_NONE) {
+		  syslog(LOG_ERR, "ZParseNotice failed, but succeeded before");
+		  free(entry->z_packet);
+	    } else {
+		  entry->reply = *repl;
+		  elem->q_data = entry;
+		  elem->q_forw = elem;
+		  elem->q_back = elem;
+		  insque(elem, hm_queue.q_back);
+	    }
       }
 #ifdef DEBUG
-      if (!is_in_queue(*notice))
+      if (!is_in_queue(notice))
 	return(ZERR_NONOTICE);
       else
 #endif DEBUG
@@ -94,7 +100,7 @@ Code_t remove_notice_from_queue(notice, kind, repl)
       Qelem *elem;
 
       DPR ("Removing notice from queue...\n");
-      if ((elem = is_in_queue(*notice)) == NULL)
+      if ((elem = is_in_queue(notice)) == NULL)
 	return(ZERR_NONOTICE);
       else {
 	    *kind = elem->q_data->z_notice.z_kind;
@@ -194,7 +200,7 @@ int queue_len()
 }
 
 Qelem *is_in_queue(notice)
-     ZNotice_t notice;
+     ZNotice_t *notice;
 {
       Qelem *srch;
 
@@ -202,7 +208,7 @@ Qelem *is_in_queue(notice)
       if (srch == &hm_queue)
 	return(NULL);
       do {
-	    if (ZCompareUID(&(srch->q_data->z_notice.z_uid), &(notice.z_uid)))
+	    if (ZCompareUID(&(srch->q_data->z_notice.z_uid), &(notice->z_uid)))
 	      return(srch);
 	    srch = srch->q_forw;
       } while (srch != &hm_queue);
