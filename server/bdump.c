@@ -365,6 +365,7 @@ int num;
 	pnotice->z_opcode = opcode;
 	pnotice->z_sender = sender;
 	pnotice->z_recipient = recip;
+	pnotice->z_default_format = 0;
 
 	packlen = sizeof(pack);
 	
@@ -461,7 +462,7 @@ struct sockaddr_in *from;
 			       error_message(retval));
 			return(retval);
 		}
-		if ((retval = ZParseNotice(pack, packlen, &bd_notice, &auth, from)) != ZERR_NONE) {
+		if ((retval = ZParseNotice(pack, packlen, &bd_notice)) != ZERR_NONE) {
 			syslog(LOG_ERR, "sbd notice parse: %s",
 			       error_message(retval));
 			return(retval);
@@ -610,7 +611,7 @@ struct sockaddr_in *target;
 			       error_message(retval));
 			return(retval);
 		}
-		if ((retval = ZParseNotice(packet, len, &notice, &auth, target)) != ZERR_NONE) {
+		if ((retval = ZParseNotice(packet, len, &notice)) != ZERR_NONE) {
 			syslog(LOG_ERR, "brl notice parse: %s",
 			       error_message(retval));
 			return(retval);
@@ -799,7 +800,8 @@ int num;
 	pnotice->z_opcode = opcode;
 	pnotice->z_sender = sender;
 	pnotice->z_recipient = recip;
-
+	pnotice->z_default_format = 0;
+	
 	packlen = sizeof(pack);
 	
 	if ((retval = ZFormatNoticeList(pnotice, lyst, num, pack, packlen, &packlen, ZNOAUTH)) != ZERR_NONE) {
@@ -843,6 +845,7 @@ int len;
 	pnotice->z_opcode = opcode;
 	pnotice->z_sender = sender;
 	pnotice->z_recipient = recip;
+	pnotice->z_default_format = 0;
 	pnotice->z_message = message;
 	pnotice->z_message_len = len;
 
