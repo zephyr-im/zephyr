@@ -17,11 +17,7 @@ static char rcsid_ZGetWGPort_c[] = "$Header$";
 #endif
 
 #include <zephyr/mit-copyright.h>
-
 #include <zephyr/zephyr_internal.h>
-
-extern char *getenv();
-extern uid_t getuid();
 
 int ZGetWGPort()
 {
