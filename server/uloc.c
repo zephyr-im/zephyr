@@ -384,7 +384,6 @@ sense_logout(notice, who)
 /*
  * Dispatch a LOCATE notice.
  */
-
 Code_t
 ulocate_dispatch(notice, auth, who, server)
      ZNotice_t *notice;
@@ -410,9 +409,8 @@ ulocate_dispatch(notice, auth, who, server)
 #if 0
 		zdbug((LOG_DEBUG,"locate"));
 #endif
-		/* we are talking to a current-rev client; send an
-		   acknowledgement-message */
-			ack(notice, who);
+		/* we are talking to a current-rev client; send an ack */
+		ack(notice, who);
 		ulogin_locate(notice, who, auth);
 		return(ZERR_NONE);
 	} else {
