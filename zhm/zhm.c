@@ -126,9 +126,10 @@ void init_hm()
       init_queue();
       if ((serv_list = hes_resolve("zephyr", "sloc")) == (char **)NULL) {
 	    syslog(LOG_ERR, "No servers or no hesiod");
-	    serv_list = (char **)malloc(sizeof(char *));
+	    serv_list = (char **)malloc(2 * sizeof(char *));
 	    serv_list[0] = (char *)malloc(MAXHOSTNAMELEN);
 	    strcpy(serv_list[0], prim_serv);
+	    serv_list[1] = "";
       }
       cur_serv = serv_list;
       if (!strcmp(prim_serv, ""))
