@@ -1,0 +1,92 @@
+.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
+.\" specifies the terms and conditions for redistribution.
+.\"
+.\"	@(#)zwrite.1	6.1 (MIT) 7/9/87
+.\"
+.TH ZWRITE 1 "July 14, 1987"
+.SH NAME
+zwrite \- write to another user
+.SH SYNOPSIS
+.B zwrite
+[
+.BI -a
+] [
+.BI -i
+instance ] [
+.BI -q
+] [
+.BI -u
+] [
+.BI -v
+] [
+.BI user \ ...
+] [
+.BI -m
+.BI message
+]
+.SH DESCRIPTION
+.I Zwrite
+sends a message from you to another user through the
+.I zephyr(1)
+notification service.  The user must have subscribed to messages of
+class ``MESSAGE'', instance ``PERSONAL'' and/or ``URGENT'', using the
+.I zctl(1)
+program.
+.PP
+.I Zwrite
+understands the following options.
+.TP 12
+.B \-a
+Causes
+.I zwrite
+to send an authenticated message, using
+.I kerberos.
+.TP
+.B \-i
+Allows a user to specify a different instance than the default
+``PERSONAL'' or ``URGENT'' ones.  When this option is used, the message
+is sent to recipient "*".  This allows a message to be sent to a large
+group of people (e.g. a development group) just by having the members
+group to messages of class "MESSAGE", the specified instance, and recipient
+"*".
+.TP
+.B \-q
+Forces
+.I zwrite
+to suppress information about whether or not the message was sent.
+.TP
+.B \-u
+Sends an urgent message.  This is to allow one to unsubscribe to
+instance ``PERSONAL'' messages, but remain able to receive instance
+``URGENT'' ones.
+.TP
+.B \-v
+Causes
+.I zwrite
+to print what type of message it is sending, and whether or not it was
+successful.
+.TP
+.B \-m
+.I Zwrite
+sends the remaining arguments on the command line as the message.
+.PP
+If the
+.I \-m
+option is not specified, the user is prompted for the message to be
+sent.  The message may be terminated by typing ^D or ``.'' on a line
+by itself.
+.SH SEE ALSO
+kerberosintro(1), zctl(1), zephyr(1), zwgc(1), hm(8), zephyrd(8)
+.br
+`Zephyr Notification Service'
+.SH AUTHOR
+.PP
+.br
+Robert S. French (MIT-Project Athena)
+.sp
+Copyright (c) 1987 by the Massachusetts Institute of Technology
+.br
+See
+.I zephyr(1)
+for a full copyright notice.
