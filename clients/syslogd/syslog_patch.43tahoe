@@ -1,0 +1,17 @@
+***************
+*** 76,82 ****
+  
+  	/* see if we should just throw out this message */
+  	if ((unsigned) LOG_FAC(pri) >= LOG_NFACILITIES ||
+! 	    (LOG_MASK(LOG_PRI(pri)) & LogMask) == 0 ||
+  	    (pri &~ (LOG_PRIMASK|LOG_FACMASK)) != 0)
+  		return;
+  	if (LogFile < 0 || !connected)
+--- 76,82 ----
+  
+  	/* see if we should just throw out this message */
+  	if ((unsigned) LOG_FAC(pri) >= LOG_NFACILITIES ||
+! 	    LOG_MASK(LOG_PRI(pri)) == 0 ||
+  	    (pri &~ (LOG_PRIMASK|LOG_FACMASK)) != 0)
+  		return;
+  	if (LogFile < 0 || !connected)
