@@ -37,10 +37,11 @@ ss_list_requests(argc, argv, sci_idx, info_ptr)
     int mask;
 #ifdef POSIX
     void (*func)();
+    int waitb;
 #else
     int (*func)();
-#endif
     union wait waitb;
+#endif
 
     DONT_USE(argc);
     DONT_USE(argv);
