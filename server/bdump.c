@@ -78,6 +78,11 @@ struct sockaddr_in *who;
 	Code_t retval;
 	char buf[512], *addr, *lyst[2];
 
+#ifdef KERBEROS
+	/* 
+	 * when using Kerberos server-server authentication, we can
+	 * use any random local address 
+	 */
 	if ((bdump_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
 		syslog(LOG_ERR,"bdump socket: %m");
 		bdump_socket = 0;
@@ -99,7 +104,23 @@ struct sockaddr_in *who;
 			}
 		}
 	} while (retval < 0);
+#else
+	int bdump_port = IPPORT_RESERVED - 1;
+	/*
+	 * when not using Kerberos, we can't use any old port, we use
+	 * Internet reserved ports instead (rresvport)
+	 */
+	if ((bdump_socket = rresvport(&bdump_port)) < 0) {
+		syslog(LOG_ERR,"bdump socket: %m");
+		bdump_socket = 0;
+		return;
+	}
+	bzero((caddr_t) &bdump_sin, sizeof(bdump_sin));
+	bdump_sin.sin_port = htons((unsigned short)bdump_port);
+	bdump_sin.sin_addr = my_addr;
+	bdump_sin.sin_family = AF_INET;
 
+#endif KERBEROS
 	(void) listen(bdump_socket, 1);
 
 	bdump_timer = timer_set_rel(20L, close_bdump, (caddr_t) 0);
@@ -138,8 +159,12 @@ bdump_send()
 	ZServerDesc_t *server;
 	Code_t retval;
 	int fromlen = sizeof(from);
+#ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
+#else
+	unsigned short fromport;
+#endif KERBEROS
 
 	zdbug((LOG_DEBUG, "bdump_send"));
 	/* accept the connection, and send the brain dump */
@@ -148,6 +173,10 @@ bdump_send()
 		syslog(LOG_ERR,"accept: %m");
 		return;
 	}
+
+#ifndef KERBEROS
+	fromport = ntohs(from.sin_port);
+#endif KERBEROS
 
 	(void) signal(SIGPIPE, SIG_IGN); /* so we can detect failures */
 
@@ -177,6 +206,8 @@ bdump_send()
 	   are ignored */
 	(void) ZSetFD(sock);
 	/* receive the authenticator */
+#ifdef KERBEROS
+
 	if ((retval = GetKerberosData(sock, from.sin_addr, &kdata, "zephyr",
 				      ZEPHYR_SRVTAB)) != KSUCCESS) {
 		syslog(LOG_ERR, "sbd getkdata: %s",krb_err_txt[retval]);
@@ -200,6 +231,14 @@ bdump_send()
 		cleanup(server, sock);
 		return;
 	}
+#else
+	if ((fromport > IPPORT_RESERVED) ||
+	    (fromport < (IPPORT_RESERVED / 2))) {
+		syslog(LOG_ERR,"bad port from peer: %d",fromport);
+		cleanup(server, sock);
+		return;
+	}
+#endif KERBEROS
 
 	if ((retval = sbd_loop(&from)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "sbd_loop failed: %s",
@@ -241,10 +280,14 @@ struct sockaddr_in *who;
 ZServerDesc_t *server;
 {
 	struct sockaddr_in from;
-	int sock;
+	int sock = -1;
 	Code_t retval;
+#ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
+#else
+	int reserved_port = IPPORT_RESERVED - 1;
+#endif KERBEROS
 
 	zdbug((LOG_DEBUG, "bdump avail"));
 
@@ -279,7 +322,18 @@ ZServerDesc_t *server;
 		bdumping = 0;
 		return;
 	}
+#ifndef KERBEROS
+	if (ntohs(from.sin_port) > IPPORT_RESERVED ||
+	    ntohs(from.sin_port) < IPPORT_RESERVED / 2) {
+		syslog(LOG_ERR, "gbd port not reserved: %d",
+		       ntohs(from.sin_port));
+		cleanup(server, sock);
+		return;
+	}
+	if ((sock = rresvport(&reserved_port)) < 0) {
+#else
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+#endif KERBEROS
 		syslog(LOG_ERR, "gbd socket: %m");
 		cleanup(server, sock);
 		return;
@@ -295,6 +349,7 @@ ZServerDesc_t *server;
 	   TCP connection. */
 	(void) ZSetFD(sock);
 
+#ifdef KERBEROS
 	/* send an authenticator */
 	if (get_tgt()) {
 		cleanup(server, sock);
@@ -321,6 +376,7 @@ ZServerDesc_t *server;
 		cleanup(server, sock);
 		return;
 	}
+#endif KERBEROS
 	if ((retval = gbd_loop(server)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "gbd_loop failed: %s",
 		       error_message(retval));
@@ -426,6 +482,7 @@ int sock;
 	return;
 }
 
+#ifdef KERBEROS
 static int
 get_tgt()
 {
@@ -454,6 +511,7 @@ get_tgt()
 	}
 	return(0);
 }
+#endif KERBEROS
 
 static Code_t
 sbd_loop(from)
@@ -957,7 +1015,7 @@ struct sockaddr_in *target;
 		zdbug((LOG_DEBUG, "no port"));
 		return(ZSRV_PKSHORT);
 	}
-	target->sin_port = ntohs((u_short) atoi(cp));
+	target->sin_port = htons((u_short) atoi(cp));
 	target->sin_family = AF_INET;
 	return(ZERR_NONE);
 }
