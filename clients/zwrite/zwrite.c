@@ -341,7 +341,7 @@ send_off(notice, real)
     int real;
 {
     int i, success, retval;
-    char bfr[BUFSIZ], realm_recip[BUFSIZ], *cp;
+    char bfr[BUFSIZ], realm_recip[BUFSIZ], dest[3 * BUFSIZ], *cp;
     ZNotice_t retnotice;
 
     success = 0;
@@ -353,16 +353,30 @@ send_off(notice, real)
 	} else {
 	    notice->z_recipient = (nrecips) ? recips[i] : "";
 	}
+	if (nrecips)
+	    strcpy(dest, recips[i]);
+	else if (!strcmp(class, DEFAULT_CLASS))
+	    sprintf(dest, "instance \"%s\"", inst);
+	else if (!strcmp(inst, DEFAULT_INSTANCE))
+	    sprintf(dest, "class \"%s\"", class);
+	else
+	    sprintf(dest, "class \"%s\", instance \"%s\"", class, inst);
 	if (verbose && real)
 	    printf("Sending %smessage, class %s, instance %s, to %s\n", 
 		   auth?"authenticated ":"", 
 		   class, inst, 
 		   nrecips?notice->z_recipient:"everyone");
 	if ((retval = ZSendNotice(notice, auth)) != ZERR_NONE) {
-	    (void) sprintf(bfr, "while sending notice to %s", 
-		    nrecips?notice->z_recipient:inst);
+	    (void) sprintf(bfr, "while sending notice to %s", dest);
 	    com_err(whoami, retval, bfr);
 	    break;
+	}
+	if (real && !quiet) {
+	    if (verbose)
+		printf("Queued... ");
+	    else
+		printf("Message queued for %s... ", dest);
+	    fflush(stdout);
 	}
 	if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
 				ZCompareUIDPred, 
@@ -370,14 +384,14 @@ send_off(notice, real)
 	    ZERR_NONE) {
 	    ZFreeNotice(&retnotice);
 	    (void) sprintf(bfr, "while waiting for acknowledgement for %s", 
-		    nrecips?notice->z_recipient:inst);
+		    dest);
 	    com_err(whoami, retval, bfr);
 	    continue;
 	}
 	if (retnotice.z_kind == SERVNAK) {
 	    if (!quiet) {
 		printf("Received authorization failure while sending to %s\n", 
-		       nrecips?notice->z_recipient:inst);
+		       dest);
 	    }
 	    ZFreeNotice(&retnotice);
 	    break;			/* if auth fails, punt */
@@ -385,20 +399,15 @@ send_off(notice, real)
 	if (retnotice.z_kind != SERVACK || !retnotice.z_message_len) {
 	    if (!quiet) {
 		printf("Detected server failure while receiving acknowledgement for %s\n", 
-		       nrecips?notice->z_recipient:inst);
+		       dest);
 	    }
 	    ZFreeNotice(&retnotice);
 	    continue;
 	}
 	if (!strcmp(retnotice.z_message, ZSRVACK_SENT)) {
 	    success = 1;
-	    if (real && !quiet) {
-		if (verbose)
-		    printf("Successful\n");
-		else
-		    printf("%s: Message sent\n", 
-			   nrecips?notice->z_recipient:inst);
-	    }
+	    if (real && !quiet)
+		printf("sent\n");
 	} else if (!strcmp(retnotice.z_message, ZSRVACK_NOTSENT)) {
 	    if (verbose && real && !quiet) {
 		if (strcmp(class, DEFAULT_CLASS)) {
