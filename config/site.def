@@ -131,7 +131,7 @@ clean::
 #define NOLINT
 #define CcFlags  -DSOLARIS -DPOSIX \
         -Dsrandom=srand48 -Drandom=lrand48 NoBsdArgs \
-        -I/usr/gcc/include -I/usr/openwin/include \
+        -I/usr/gcc/include -I/usr/openwin/include
 #define ProfCcFlags -pg
 #define CDebugFlags -O2
 #define LdPath -L/usr/gcc/lib -L/usr/ccs/lib -L/usr/openwin/lib -L$(ATHLIBDIR)
