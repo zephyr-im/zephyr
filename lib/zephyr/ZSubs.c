@@ -89,8 +89,10 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     if (retval != ZERR_NONE && !authit)
 	retval = Z_FormatHeader(&notice, header, sizeof(header),
 				&hdrlen, ZAUTH);
-    if (retval != ZERR_NONE)
+    if (retval != ZERR_NONE) {
+	free((char *)list);
 	return(retval);
+    }
 
     /* compute amount of room left */
     size_avail -= hdrlen;
@@ -131,10 +133,11 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
 	    i++;
 	    continue;
 	}
-	if (!numok)			/* a single subscription won't
+	if (!numok) {			/* a single subscription won't
 					   fit into one packet */
+	    free((char *)list);
 	    return(ZERR_FIELDLEN);
-
+	}
 	retval = subscr_sendoff(&notice, &list[start*3], numok, authit);
 	if (retval) {
 	    free((char *)list);
