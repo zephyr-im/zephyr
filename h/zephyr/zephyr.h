@@ -17,6 +17,7 @@
 
 #ifdef POSIX
 #include <unistd.h>
+#include <stdlib.h>
 #endif
 
 #include <zephyr/zephyr_err.h>
@@ -24,9 +25,7 @@
 
 #include <errno.h>
 #include <sys/types.h>
-#if (defined(_AIX) && defined(_IBMR2)) || defined (macII)
 #include <time.h>
-#endif
 #include <sys/time.h>
 #include <stdio.h>
 
