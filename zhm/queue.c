@@ -259,10 +259,10 @@ struct sockaddr_in *sin;
 		    }
 		    srch->q_data->timeout = time((time_t *)0) +
 			rexmit_times[srch->q_data->retries];
-		    srch = srch->q_forw;
 	       }
+	       srch = srch->q_forw;
 	  }
      } while (srch != &hm_queue);
-     timeout_type = NOTICES;
-     (void)alarm(rexmit_times[0]);
+     if (timeout_type == NOTICES)
+	  (void)alarm(rexmit_times[0]);
 }
