@@ -11,7 +11,13 @@
  *	"mit-copyright.h". 
  */
 
-#include <zephyr/mit-copyright.h>
+/* Define this if you really want the ACL-writing code included.  */
+/* #define WRITE_ACL */
+
+/*
+ * Stolen from lib/acl_files.c because acl_load needs to be externally
+ * declared and not statically declared.
+ */
 
 #ifndef lint
 static char rcsid_acl_files_c[] = "$Id$";
@@ -26,10 +32,6 @@ static char rcsid_acl_files_c[] = "$Id$";
 #include <ctype.h>
 #include <sys/param.h>			/* for MAXHOSTNAMELEN */
 
-#ifndef KRB_REALM
-#define KRB_REALM	"ATHENA.MIT.EDU"
-#endif
-
 /* "aname.inst@realm" */
 #define MAX_PRINCIPAL_SIZE  (ANAME_SZ + INST_SZ + REALM_SZ + 3)
 #define INST_SEP '.'
@@ -40,9 +42,8 @@ static char rcsid_acl_files_c[] = "$Id$";
 #define NEW_FILE "%s.~NEWACL~"	/* Format for name of altered acl file */
 #define WAIT_TIME 300		/* Maximum time allowed write acl file */
 
-#define CACHED_ACLS 8		/* How many acls to cache */
-				/* Each acl costs 1 open file descriptor */
-#define ACL_LEN 16		/* Twice a reasonable acl length */
+#define CACHED_ACLS 12		/* How many acls to cache */
+#define ACL_LEN 64		/* Twice a reasonable acl length */
 
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -117,7 +118,7 @@ char *canon;
 	*canon++ = '\0';
     } 
 #ifdef KERBEROS
-else if(krb_get_lrealm(canon, 1) != KSUCCESS) {
+    else if(krb_get_lrealm(canon, 1) != KSUCCESS) {
 	strcpy(canon, KRB_REALM);
     }
 #endif
@@ -179,6 +180,7 @@ static int acl_commit(acl_file, f)
 char *acl_file;
 FILE *f;     
 {
+#ifdef WRITE_ACL
     char new[LINESIZE];
     int ret;
     struct stat s;
@@ -194,6 +196,9 @@ FILE *f;
     ret = rename(new, acl_file);
     fclose(f);
     return(ret);
+#else
+    abort ();
+#endif
 }
 
 /* Abort changes to acl_file written onto FILE *f */
@@ -203,6 +208,7 @@ static int acl_abort(acl_file, f)
 char *acl_file;
 FILE *f;     
 {
+#ifdef WRITE_ACL
     char new[LINESIZE];
     int ret;
     struct stat s;
@@ -218,6 +224,9 @@ FILE *f;
 	   fclose(f);
 	   return(ret);
        }
+#else
+    abort ();
+#endif
 }
 
 /* Initialize an acl_file */
@@ -280,8 +289,9 @@ int size;
 }
 
 /* Destroy a hash table */
-static destroy_hash(h)
-struct hashtbl *h;
+static void
+destroy_hash(h)
+    struct hashtbl *h;
 {
     int i;
 
@@ -344,18 +354,16 @@ char *el;
 {
     unsigned hv;
 
-    for(hv = hashval(el) % h->size;
-	h->tbl[hv] != NULL;
-	hv = (hv + 1) % h->size) {
-	    if(!strcmp(h->tbl[hv], el)) return(1);
+    for(hv = hashval(el) % h->size; h->tbl[hv]; hv = (hv + 1) % h->size) {
+	if (!strcmp(h->tbl[hv], el)) {
+	    return 1;
 	}
-    return(0);
+    }
+    return 0;
 }
 
 struct acl {
     char filename[LINESIZE];	/* Name of acl file */
-    int fd;			/* File descriptor for acl file */
-    struct stat status;		/* File status at last read */
     struct hashtbl *acl;	/* Acl entries */
 };
 
@@ -367,19 +375,18 @@ static int acl_cache_next = 0;
 /* Returns < 0 if unsuccessful in loading acl */
 /* Returns index into acl_cache otherwise */
 /* Note that if acl is already loaded, this is just a lookup */
-static int acl_load(name)
+int acl_load(name)
 char *name;
 {
-    int i;
+    int i,fd;
     FILE *f;
-    struct stat s;
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];
 
     /* See if it's there already */
     for(i = 0; i < acl_cache_count; i++) {
-	if(!strcmp(acl_cache[i].filename, name)
-	   && acl_cache[i].fd >= 0) goto got_it;
+	    if (!strcmp(acl_cache[i].filename, name))
+		    goto got_it;
     }
 
     /* It isn't, load it in */
@@ -390,7 +397,6 @@ char *name;
 	/* No room, clean one out */
 	i = acl_cache_next;
 	acl_cache_next = (acl_cache_next + 1) % CACHED_ACLS;
-	close(acl_cache[i].fd);
 	if(acl_cache[i].acl) {
 	    destroy_hash(acl_cache[i].acl);
 	    acl_cache[i].acl = (struct hashtbl *) 0;
@@ -399,28 +405,19 @@ char *name;
 
     /* Set up the acl */
     strcpy(acl_cache[i].filename, name);
-    if((acl_cache[i].fd = open(name, O_RDONLY, 0)) < 0) return(-1);
     /* Force reload */
     acl_cache[i].acl = (struct hashtbl *) 0;
 
  got_it:
     /*
-     * See if the stat matches
-     *
-     * Use stat(), not fstat(), as the file may have been re-created by
-     * acl_add or acl_delete.  If this happens, the old inode will have
-     * no changes in the mod-time and the following test will fail.
+     * See if we need to reload the ACL
      */
-    if(stat(acl_cache[i].filename, &s) < 0) return(-1);
-    if(acl_cache[i].acl == (struct hashtbl *) 0
-       || s.st_nlink != acl_cache[i].status.st_nlink
-       || s.st_mtime != acl_cache[i].status.st_mtime
-       || s.st_ctime != acl_cache[i].status.st_ctime) {
-	   /* Gotta reload */
-	   if(acl_cache[i].fd >= 0) close(acl_cache[i].fd);
-	   if((acl_cache[i].fd = open(name, O_RDONLY, 0)) < 0) return(-1);
-	   if((f = fdopen(acl_cache[i].fd, "r")) == NULL) return(-1);
-	   if(acl_cache[i].acl) destroy_hash(acl_cache[i].acl);
+    if (acl_cache[i].acl == (struct hashtbl *) 0) {
+	    /* Gotta reload */
+	   if ((f = fopen(name, "r")) == NULL) {
+	       return -1;
+	   }
+	   if (acl_cache[i].acl) destroy_hash(acl_cache[i].acl);
 	   acl_cache[i].acl = make_hash(ACL_LEN);
 	   while(fgets(buf, sizeof(buf), f) != NULL) {
 	       nuke_whitespace(buf);
@@ -428,10 +425,28 @@ char *name;
 	       add_hash(acl_cache[i].acl, canon);
 	   }
 	   fclose(f);
-	   acl_cache[i].status = s;
        }
     return(i);
 }
+
+/*
+ * This destroys all cached ACL's so that new ones will be loaded in
+ * the next time they are requested.
+ */
+acl_cache_reset()
+{
+	int	i;
+	
+	/* See if it's there already */
+	for(i = 0; i < acl_cache_count; i++)
+	    if (acl_cache[i].acl) {
+		destroy_hash(acl_cache[i].acl);
+		acl_cache[i].acl = (struct hashtbl *) 0;
+	    }
+	acl_cache_count = 0;
+	acl_cache_next = 0;
+}
+
 
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Principal is not canonicalized, and no wildcarding is done */
@@ -459,14 +474,15 @@ char *principal;
     acl_canonicalize_principal(principal, canon);
 
     /* Is it there? */
-    if(acl_exact_match(acl, canon)) return(1);
+    if (acl_exact_match(acl, canon))
+	return 1;
 
     /* Try the wildcards */
     realm = index(canon, REALM_SEP);
     *index(canon, INST_SEP) = '\0';	/* Chuck the instance */
 
     sprintf(buf, "%s.*%s", canon, realm);
-    if(acl_exact_match(acl, buf)) return(1);
+    if(acl_exact_match(acl, buf)) return 1;
 
     sprintf(buf, "*.*%s", realm);
     if(acl_exact_match(acl, buf) || acl_exact_match(acl, "*.*@*")) return(1);
@@ -537,4 +553,3 @@ char *principal;
     }
     return(acl_commit(acl, new));
 }
-
