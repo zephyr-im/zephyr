@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -336,8 +336,10 @@ send_off(notice, real)
 usage(s)
     char *s;
 {
-    printf("Usage: %s [-a] [-d] [-v] [-q] [-u] [-o] [-c class] [-i inst] [-f fsname]\n\t[user ...] [-m message]\n", s);
-    printf("\t-f and -c are mutually exclusive\n\t-f and -i are mutually exclusive\n");
+    printf("Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u]\n\
+\t[-c class] [-i inst] [-f fsname] [user ...] [-m message]\n", s);
+    printf("\t-f and -c are mutually exclusive\n\
+\t-f and -i are mutually exclusive\n");
     exit(1);
 } 
 
