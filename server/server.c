@@ -1064,17 +1064,17 @@ send_stats(struct sockaddr_in *who)
 	LOCAL_FREE (responses);
 	return;
 }
+
+/*
+ * Get a list of server addresses.
 #ifdef HESIOD
-/*
- * get a list of server addresses, from Hesiod.  Return a pointer to an
- * array of allocated storage.  This storage is freed by the caller.
- */
+ * This list is retrieved from Hesiod.
 #else
-/*
- * get a list of server addresses, from a file.  Return a pointer to an
- * array of allocated storage.  This storage is freed by the caller.
+ * This list is read from a file.
+#endif
+ * Return a pointer to an array of allocated storage.  This storage is
+ * freed by the caller.
  */
-#endif HESIOD
 
 static struct in_addr *
 get_server_addrs(int *number)
@@ -1086,17 +1086,15 @@ get_server_addrs(int *number)
 	struct in_addr *addrs;
 	register struct in_addr *addr;
 	register struct hostent *hp;
-#ifdef HESIOD
-	char **hes_resolve();
 
+#ifdef HESIOD
 	/* get the names from Hesiod */
 	if (!(server_hosts = hes_resolve("zephyr","sloc")))
 		return((struct in_addr *)NULL);
 #else
 	if (!(server_hosts = get_server_list(SERVER_LIST_FILE)))
 		return((struct in_addr *)NULL);
-
-#endif HESIOD
+#endif
 	/* count up */
 	for (cpp = server_hosts, i = 0; *cpp; cpp++, i++);
 	
@@ -1116,7 +1114,7 @@ get_server_addrs(int *number)
 	*number = i;
 #ifndef HESIOD
 	free_server_list(server_hosts);
-#endif HESIOD
+#endif
 	return(addrs);
 }
 
@@ -1181,7 +1179,7 @@ free_server_list(register char **list)
 	xfree(orig_list);
 	return;
 }
-#endif !HESIOD
+#endif
 
 /*
  * initialize the server structure for address addr, and set a timer
