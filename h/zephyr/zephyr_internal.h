@@ -31,11 +31,12 @@ extern int __Q_Length;
 extern int __Zephyr_open;
 extern int __HM_set;
 extern int __Zephyr_server;
-extern char __Zephyr_realm[];
 
 extern char **__locate_list;
 extern int __locate_num;
 extern int __locate_next;
+
+extern int Z_UIDpred();
 
 #define Z_QLength() (__Q_Length)
 
