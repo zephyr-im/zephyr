@@ -41,7 +41,8 @@ main(argc,argv)
 	int retval, len, arg, nocheck, nchars, maxlen;
 	long ourtime;
 	char bfr[BUFSIZ], message[Z_MAXPKTLEN], *ptr, *signature;
-
+	char classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ];
+	
 	whoami = argv[0];
 
 	if ((retval = ZInitialize()) != ZERR_NONE) {
@@ -58,13 +59,24 @@ main(argc,argv)
 	auth = ZAUTH;
 	verbose = quiet = msgarg = nrecips = nocheck = 0;
 
-	if (!(class = ZGetVariable("zwrite-class")))
+	if (class = ZGetVariable("zwrite-class")) {
+		strcpy(classbfr, class);
+		class = classbfr;
+	}
+	else
 		class = DEFAULT_CLASS;
-	if (!(inst = ZGetVariable("zwrite-inst")))
+	if (inst = ZGetVariable("zwrite-inst")) {
+		strcpy(instbfr, inst);
+		inst = instbfr;
+	}
+	else
 		inst = DEFAULT_INSTANCE;
 	signature = ZGetVariable("zwrite-signature");
-	if (signature)
+	if (signature) {
+		strcpy(sigbfr, signature);
+		signature = sigbfr;
 		maxlen -= strlen(signature)+1;
+	} 
 	
 	arg = 1;
 	
