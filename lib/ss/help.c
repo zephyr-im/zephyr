@@ -7,6 +7,10 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/file.h>
+#ifdef POSIX
+#include <fcntl.h>
+#include <dirent.h>
+#endif
 #include <sys/wait.h>
 #include "ss_internal.h"
 #include "copyright.h"
