@@ -11,8 +11,7 @@
  *      "mit-copyright.h". 
  */
 
-#include <zephyr/mit-copyright.h>
-#include <zephyr/zephyr.h>
+#include "hm.h"
 
 #ifndef lint
 #ifndef SABER
@@ -21,30 +20,13 @@ static char rcsid_hm_c[] = "$Header$";
 #endif lint
 
 #include <ctype.h>
-#include <syslog.h>
 #include <signal.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <hesiod.h>
 
-#ifdef DEBUG
-#define DPR(a) fprintf(stderr, a); fflush(stderr)
-#define DPR2(a,b) fprintf(stderr, a, b); fflush(stderr)
-#else
-#define DPR(a)
-#define DPR2(a,b)
-#endif
-
-#define ever (;;)
-#define Zperr(e) fprintf(stderr, "Error = %d\n", e)
-
-#define SERV_TIMEOUT 20
-#define NOTICE_TIMEOUT 5
-#define BOOTING 1
-#define NOTICES 2
-
-int serv_sock, no_server = 1, timeout_type = 0;
+int serv_sock, no_server = 1, timeout_type = 0, serv_loop = 0;
 struct sockaddr_in cli_sin, serv_sin, from;
 struct hostent *hp;
 char **serv_list, **cur_serv, **clust_info;
@@ -52,9 +34,9 @@ u_short cli_port;
 char hostname[MAXHOSTNAMELEN], prim_serv[MAXHOSTNAMELEN], loopback[4];
 
 extern int errno;
-extern char *malloc(), *index();
+extern char *index();
 
-void init_hm(), handle_timeout();
+void init_hm(), handle_timeout(), resend_notices();
 char *upcase();
 
 main(argc, argv)
@@ -66,6 +48,7 @@ char *argv[];
 
     /* Override server argument? */
     (void)gethostname(hostname, MAXHOSTNAMELEN);
+    (void)strcpy(prim_serv, "");
     if (argc > 1) 
       (void)strcpy(prim_serv, argv[1]);
     else
@@ -81,18 +64,21 @@ char *argv[];
     DPR2 ("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
     DPR2 ("zephyr client port: %u\n", ntohs(cli_port));
     
-    /* Put in a fork here... */
+#ifndef DEBUG
+    if (fork())
+      exit(0);
+#endif DEBUG
 
-    /* Sleep with wakeup call set */
+    /* Main loop */
     for ever {
 	  DPR ("Waiting for a packet...");
 	  packet = (char *) malloc(Z_MAXPKTLEN);
-	  if ((ret = ZReceiveNotice(packet, Z_MAXPKTLEN, &notice,
-				    NULL, &from)) != ZERR_NONE) {
+	  ret = ZReceiveNotice(packet, Z_MAXPKTLEN, &notice, NULL, &from);
+	  if ((ret != ZERR_NONE) && (ret != EINTR)){
 		Zperr(ret);
 		com_err("hm", ret, "receiving notice");
 		free(packet);
-	  } else {
+	  } else if (ret != EINTR) {
 		/* Where did it come from? */
 		DPR ("Got a packet.\n");
 		DPR ("notice:\n");
@@ -114,8 +100,8 @@ char *argv[];
 			    transmission_tower(&notice, packet);
 			    DPR2 ("Pending = %d\n", ZPending());
 		      } else {
-			    fprintf(stderr, "Unknown notice type: %d\n",
-				    notice.z_kind);
+			    syslog(LOG_INFO, "Unknown notice type: %d",
+				   notice.z_kind);
 			    free(packet);
 		      }
 		}
@@ -128,15 +114,17 @@ void init_hm()
       struct servent *sp;
       Code_t ret;
 
+      openlog("hm", LOG_PID, LOG_LOCAL6);
       (void)ZInitialize();
       (void)ZSetServerState(1);  /* Aargh!!! */
       init_queue();
-      if ((serv_list = hes_resolve("*", "ZEPHYR-SERVER")) == (char **)NULL) {
+      if ((serv_list = hes_resolve("zephyr", "sloc")) == (char **)NULL) {
 	    syslog(LOG_ERR, "No servers?!?");
 	    exit(1);
       }
       cur_serv = serv_list;
-      --cur_serv;
+      if (!strcmp(prim_serv, ""))
+	(void)strcpy(prim_serv, *cur_serv);
       
       loopback[0] = 127;
       loopback[1] = 0;
@@ -162,7 +150,7 @@ void init_hm()
       serv_sin.sin_port = sp->s_port;
       
       if ((serv_sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
-	    printf("server socket failed\n");
+	    syslog(LOG_ERR, "Server socket failed.");
 	    exit(1);
       }
 
@@ -174,13 +162,15 @@ void init_hm()
       /* who to talk to */
       if ((hp = gethostbyname(prim_serv)) == NULL) {
 	    DPR("gethostbyname failed\n");
+	    find_next_server();
+      } else {
+	    DPR2 ("Server = %s\n", prim_serv);
+	    bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
       }
-      DPR2 ("Server = %s\n", prim_serv);
-      bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
 
       send_boot_notice();
 
-      signal (SIGALRM, handle_timeout);
+      (void)signal (SIGALRM, handle_timeout);
 }
 
 char *upcase(s)
@@ -218,17 +208,23 @@ send_boot_notice()
 	    com_err("hm", ret, "sending startup notice");
       }
       timeout_type = BOOTING;
-      alarm(SERV_TIMEOUT);
+      (void)alarm(SERV_TIMEOUT);
 }
 
 find_next_server()
 {
       struct hostent *hp;
 
-      if (*++cur_serv == NULL)
-	cur_serv = serv_list;
-      DPR2 ("Server = %s\n", *cur_serv);
-      hp = gethostbyname(*cur_serv);
+      if (++serv_loop > 3) {
+	    serv_loop = 0;
+	    hp = gethostbyname(prim_serv);
+	    DPR2 ("Server = %s\n", prim_serv);
+      } else {
+	    if (*++cur_serv == NULL)
+	      cur_serv = serv_list;
+	    hp = gethostbyname(*cur_serv);
+	    DPR2 ("Server = %s\n", *cur_serv);
+      }
       bcopy(hp->h_addr, &serv_sin.sin_addr, hp->h_length);
 }
 
@@ -237,7 +233,7 @@ server_manager(notice)
 {
       DPR ("A notice came in from the server.\n");
       if (bcmp(&serv_sin.sin_addr, &from.sin_addr, 4) != 0) {
-	    DPR2 ("Bad notice from port %u\n", notice->z_port);
+	    syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
 	    /* Sent a notice back saying this hostmanager isn't theirs */
       } else {
 	    /* This is our server, handle the notice */
@@ -246,13 +242,11 @@ server_manager(notice)
 		  hm_control(notice);
 		  break;
 		case SERVNAK:
-		  send_nak(notice);
-		  break;
 		case SERVACK:
-		  send_ack(notice);
+		  send_back(notice);
 		  break;
 		default:
-		  DPR ("Bad notice kind!?\n");
+		  syslog (LOG_INFO, "Bad notice kind!?");
 		  break;
 	    }
       }
@@ -267,6 +261,8 @@ hm_control(notice)
       if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN))
 	    new_server();
       else if (!strcmp(notice->z_opcode, SERVER_PING)) {
+	    if (no_server)
+	      (void)alarm(0);
 	    notice->z_kind = HMACK;
 	    if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
 		  Zperr(ret);
@@ -277,31 +273,31 @@ hm_control(notice)
 		  com_err("hm", ret, "sending ACK");
 	    }
 	    if (no_server) {
-		  alarm(0);
 		  no_server = 0;
 		  retransmit_queue(&serv_sin);
 	    }
       } else
-	fprintf(stderr, "Bad control message.\n");
+	syslog (LOG_INFO, "Bad control message.");
 }
 
-send_nak(notice)
+send_back(notice)
      ZNotice_t *notice;
 {
-      caddr_t packet;
+      ZNotice_Kind_t kind;
       struct sockaddr_in repl;
       Code_t ret;
 
+      if (no_server)
+	(void)alarm(0);
       if (!strcmp(notice->z_opcode, HM_BOOT)) {
 	    /* ignore message, just a nak from boot */
       } else {
-	    if (remove_notice_from_queue(notice, &packet,
+	    if (remove_notice_from_queue(notice, &kind,
 					 &repl) != ZERR_NONE) {
-		  DPR ("Hey! This packet isn't in my queue!\n");
+		  syslog (LOG_INFO, "Hey! This packet isn't in my queue!");
 	    } else {
 		  /* check if client wants an ACK, and send it */
-		  if (notice->z_kind == ACKED) {
-			notice->z_kind = SERVNAK;
+		  if (kind == ACKED) {
 			DPR2 ("Client ACK port: %u\n", ntohs(repl.sin_port));
 			if ((ret = ZSetDestAddr(&repl)) != ZERR_NONE) {
 			      Zperr(ret);
@@ -312,48 +308,9 @@ send_nak(notice)
 			      com_err("hm", ret, "sending NAK");
 			}
 		  }
-		  free(packet);
 	    }
       }
       if (no_server) {
-	    alarm(0);
-	    no_server = 0;
-	    retransmit_queue(&serv_sin);
-      }
-}
-
-send_ack(notice)
-     ZNotice_t *notice;
-{
-      caddr_t packet;
-      struct sockaddr_in repl;
-      Code_t ret;
-
-      if (!strcmp(notice->z_opcode, HM_BOOT)) {
-	    /* ignore message, just an ack from boot */
-      } else {
-	    if (remove_notice_from_queue(notice, &packet,
-					 &repl) != ZERR_NONE) {
-		  DPR ("Hey! This packet isn't in my queue!\n");
-	    } else {
-		  /* check if client wants an ACK, and send it */
-		  if (notice->z_kind == ACKED) {
-			notice->z_kind = SERVACK;
-			DPR2 ("Client ACK port: %u\n", ntohs(repl.sin_port));
-			if ((ret = ZSetDestAddr(&repl)) != ZERR_NONE) {
-			      Zperr(ret);
-			      com_err("hm", ret, "setting destination");
-			}
-			if ((ret = ZSendRawNotice(notice)) != ZERR_NONE) {
-			      Zperr(ret);
-			      com_err("hm", ret, "sending ACK");
-			}
-		  }
-		  free(packet);
-	    }
-      }
-      if (no_server) {
-	    alarm(0);
 	    no_server = 0;
 	    retransmit_queue(&serv_sin);
       }
@@ -366,6 +323,7 @@ transmission_tower(notice, packet)
       ZNotice_t gack;
       Code_t ret;
       struct sockaddr_in gsin;
+      int tleft;
 
       if (notice->z_kind != UNSAFE) {
 	    gack = *notice;
@@ -397,6 +355,12 @@ transmission_tower(notice, packet)
 		  Zperr(ret);
 		  com_err("hm", ret, "while sending raw notice");
 	    }
+	    if ((tleft = alarm(0)) > 0)
+	      (void)alarm(tleft);
+	    else {
+		  timeout_type = NOTICES;
+		  (void)alarm(NOTICE_TIMEOUT);
+	    }
       }
       (void)add_notice_to_queue(notice, packet, &gsin);
 }
@@ -407,7 +371,7 @@ new_server()
       Code_t ret;
 
       no_server = 1;
-      DPR ("Finding new server.\n");
+      syslog (LOG_INFO, "Server went down, finding new server.");
       notice.z_kind = ACKED;
       notice.z_port = cli_port;
       notice.z_class = ZEPHYR_CTL_CLASS;
@@ -435,10 +399,11 @@ void handle_timeout()
 	    new_server();
 	    break;
 	  case NOTICES:
-/*	    resend_notices(); */
+	    DPR ("Notice timeout\n");
+	    resend_notices(&serv_sin);
 	    break;
 	  default:
-	    DPR2 ("Unknown timeout type: %d\n", timeout_type);
+	    syslog (LOG_ERR, "Unknown timeout type: %d\n", timeout_type);
 	    break;
       }
 }
