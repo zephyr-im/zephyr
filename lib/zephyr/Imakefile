@@ -1,206 +1,133 @@
-/**/#	Copyright 1988, 1991 Massachusetts Institute of Technology.
+/**/#	Copyright 1988, 1993 Massachusetts Institute of Technology.
 /**/#
 /**/#	For copying and distribution information, see the file
 /**/#	"mit-copyright.h". 
 /**/#
-/**/#	$Source$
-/**/#	$Author$
-/**/#	$Zephyr: /mit/zephyr/src/lib/RCS/Imakefile,v 1.13 91/03/29 03:37:38 raeburn Exp $
-/**/#
-#define no_curdir_lint
-
-LINTLIBS= ${KRB_LINTLIB} ${DES_LINTLIB} ${COMERR_LINTLIB}
-
-/**/#dummy target so that 'make' does a make all.
-all:: libzephyr.a
+/**/#	$Id$
 
 #ifdef KERBEROS
-K_O= krb_err.o	ZFormatAuthenticNotice.o
-K_ET=krb_err.et
-K_C=		ZFormatAuthenticNotice.c
-make_error_table(krb_err)
+K_O = krb_err.o ZFmtAuth.o
+K_C = krb_err.c ZFmtAuth.c
 #endif
 
-#ifdef STRCASE
-STRCASE_O=strcasecmp.o
-STRCASE_C=strcasecmp.c
-#endif
-
-#if defined (HaveGcc) && defined (sparc)
-INET_NTOA_O=inet_ntoa.o
-INET_NTOA_C=inet_ntoa.c
-#endif
-
-RSRCS= ${SRCS} ${HDRS} ${KERR_ET} zephyr_err.et
-
-HDRS= \
-	../include/zephyr/zephyr.h \
-	../include/zephyr/zephyr_conf.h \
-	../include/zephyr/zephyr_paths.h \
-	../include/zephyr/zephyr_internal.h
-
-SRCS=	$(K_C) $(STRCASE_C) $(INET_NTOA_C) \
-	ZAsyncLocate.c \
-	ZCheckAuthentication.c \
-	ZCheckIfNotice.c \
-	ZClosePort.c \
-	ZCompareUID.c \
-	ZCompareUIDPred.c \
-	ZFlushLocations.c \
-	ZFlushSubscriptions.c \
-	ZFormatNotice.c \
-	ZFormatNoticeList.c \
-	ZFormatRawNotice.c \
-	ZFormatRawNoticeList.c \
-	ZFormatSmallRawNotice.c \
-	ZFormatSmallRawNoticeList.c \
-	ZFreeNotice.c \
-	ZGetLocations.c \
-	ZGetSender.c \
-	ZGetSubscriptions.c \
-	ZGetWGPort.c \
-	ZIfNotice.c \
-	ZInitialize.c \
-	ZLocations.c \
-	ZMakeAscii.c \
-	ZMakeAuthentication.c \
-	ZNewLocateUser.c \
-	ZOpenPort.c \
-	ZParseNotice.c \
-	ZPeekIfNotice.c \
-	ZPeekNotice.c \
-	ZPeekPacket.c \
-	ZPending.c \
-	ZReadAscii.c \
-	ZReceiveNotice.c \
-	ZReceivePacket.c \
-	ZRetrieveSubscriptions.c \
-	ZSendList.c \
-	ZSendNotice.c \
-	ZSendPacket.c \
-	ZSendRawNotice.c \
-	ZSendRawList.c \
-	ZSetDestAddr.c \
-	ZSetFD.c \
-	ZSetServerState.c \
-	ZSubscriptions.c \
-	ZVariables.c \
-	ZWaitForNotice.c \
-	Zinternal.c \
-	acl_files.c
-
-OLIST=	${K_O} ${STRCASE_O} ${INET_NTOA_O} \
+OBJS =	${K_O} \
 	zephyr_err.o \
 	ZAsyncLocate.o \
-	ZCheckAuthentication.o \
-	ZCheckIfNotice.o \
+	ZCkAuth.o \
+	ZCkIfNot.o \
 	ZClosePort.o \
-	ZCompareUID.o \
-	ZCompareUIDPred.o \
-	ZFlushLocations.o \
-	ZFlushSubscriptions.o \
-	ZFormatNotice.o \
-	ZFormatNoticeList.o \
-	ZFormatRawNotice.o \
-	ZFormatRawNoticeList.o \
-	ZFormatSmallRawNotice.o \
-	ZFormatSmallRawNoticeList.o \
-	ZFreeNotice.o \
-	ZGetLocations.o \
+	ZCmpUID.o \
+	ZCmpUIDP.o \
+	ZFlsLocs.o \
+	ZFlsSubs.o \
+	ZFmtList.o \
+	ZFmtNotice.o \
+	ZFmtRaw.o \
+	ZFmtRawLst.o \
+	ZFmtSmRLst.o \
+	ZFmtSmRaw.o \
+	ZFreeNot.o \
+	ZGetLocs.o \
 	ZGetSender.o \
-	ZGetSubscriptions.o \
+	ZGetSubs.o \
 	ZGetWGPort.o \
 	ZIfNotice.o \
-	ZInitialize.o \
+	ZInit.o \
 	ZLocations.o \
 	ZMakeAscii.o \
-	ZMakeAuthentication.o \
-	ZNewLocateUser.o \
+	ZMkAuth.o \
+	ZNewLocU.o \
 	ZOpenPort.o \
-	ZParseNotice.o \
-	ZPeekIfNotice.o \
-	ZPeekNotice.o \
-	ZPeekPacket.o \
+	ZParseNot.o \
+	ZPeekIfNot.o \
+	ZPeekNot.o \
+	ZPeekPkt.o \
 	ZPending.o \
 	ZReadAscii.o \
-	ZReceiveNotice.o \
-	ZReceivePacket.o \
-	ZRetrieveSubscriptions.o \
+	ZRecvNot.o \
+	ZRecvPkt.o \
+	ZRetSubs.o \
 	ZSendList.o \
-	ZSendNotice.o \
-	ZSendPacket.o \
-	ZSendRawNotice.o \
-	ZSendRawList.o \
-	ZSetDestAddr.o \
+	ZSendNot.o \
+	ZSendPkt.o \
+	ZSendRaw.o \
+	ZSendRLst.o \
+	ZSetDest.o \
 	ZSetFD.o \
-	ZSetServerState.o \
-	ZSubscriptions.o \
+	ZSetSrv.o \
+	ZSubs.o \
 	ZVariables.o \
-	ZWaitForNotice.o \
+	ZWait4Not.o \
 	Zinternal.o \
 	acl_files.o
 
-OTHERSRCS= zephyr_err.et ${K_ET}
-SRCDIR= ${SRCTOP}/lib
-CODE= ${SRCS} ${OTHERSRCS} Imakefile
+SRCS =	${K_C} \
+	zephyr_err.c \
+	ZAsyncLocate.c \
+	ZCkAuth.c \
+	ZCkIfNot.c \
+	ZClosePort.c \
+	ZCmpUID.c \
+	ZCmpUIDP.c \
+	ZFlsLocs.c \
+	ZFlsSubs.c \
+	ZFmtList.c \
+	ZFmtNotice.c \
+	ZFmtRaw.c \
+	ZFmtRawLst.c \
+	ZFmtSmRLst.c \
+	ZFmtSmRaw.c \
+	ZFreeNot.c \
+	ZGetLocs.c \
+	ZGetSender.c \
+	ZGetSubs.c \
+	ZGetWGPort.c \
+	ZIfNotice.c \
+	ZInit.c \
+	ZLocations.c \
+	ZMakeAscii.c \
+	ZMkAuth.c \
+	ZNewLocU.c \
+	ZOpenPort.c \
+	ZParseNot.c \
+	ZPeekIfNot.c \
+	ZPeekNot.c \
+	ZPeekPkt.c \
+	ZPending.c \
+	ZReadAscii.c \
+	ZRecvNot.c \
+	ZRecvPkt.c \
+	ZRetSubs.c \
+	ZSendList.c \
+	ZSendNot.c \
+	ZSendPkt.c \
+	ZSendRaw.c \
+	ZSendRLst.c \
+	ZSetDest.c \
+	ZSetFD.c \
+	ZSetSrv.c \
+	ZSubs.c \
+	ZVariables.c \
+	ZWait4Not.c \
+	Zinternal.c \
+	acl_files.c
 
-llib-lzephyr.ln:: ${HDRS}
-	@echo "Don't worry about the complaints about"
-	@echo "possible pointer alignment problems, these are a result"
-	@echo "of casting the return value of malloc()"
-	@echo
+SimpleLibrary(zephyr,$(OBJS),$(ATHLIBDIR))
+create_depend($(SRCS))
 
-library_obj_rule()
+install_man(zephyr.1,zephyr.1)
 
-install_library_target(zephyr,${OLIST},${SRCS},${LINTLIBS})
+make_err(zephyr_err)
 
-make_error_table(zephyr_err)
-
-all::
-	$(RM) ../libs/libzephyr.a ../libs/libzephyr_p.a
-	$(CP) libzephyr.a ../libs/libzephyr.a
-	$(RANLIB) ../libs/libzephyr.a
-#ifdef PROFILED_LIBS
-	$(CP) libzephyr_p.a ../libs/libzephyr_p.a
-	$(RANLIB) ../libs/libzephyr_p.a
+#ifdef KERBEROS
+make_err(krb_err)
+install_file($(BINC)/zephyr/krb_err.h,$(ZINCDIR)/krb_err.h)
 #endif
-	
 
-#ifdef KERBEROS
-depend:: krb_err.h
-	-if cmp krb_err.h ../include/zephyr/krb_err.h >/dev/null 2>&1; then \
-		echo ; \
-	else \
-		$(RM) ../include/zephyr/krb_err.h ; \
-		$(CP) krb_err.h ../include/zephyr/krb_err.h; \
-	fi
-#endif /* KERBEROS */
-
-depend:: zephyr_err.h
-	-if cmp zephyr_err.h ../include/zephyr/zephyr_err.h >/dev/null 2>&1; then \
-		echo ; \
-	else \
-		$(RM) ../include/zephyr/zephyr_err.h ; \
-		$(CP) zephyr_err.h ../include/zephyr/zephyr_err.h; \
-	fi
-
-IDIR=${DESTDIR}${ATHINCDIR}
-SDIR=../include/zephyr
-install::
-	-mkdir ${IDIR}
-	-mkdir ${IDIR}/zephyr
-	install -c -m 0644 ${SDIR}/zephyr.h ${IDIR}/zephyr/zephyr.h
-	install -c -m 0644 ${SDIR}/zephyr_conf.h ${IDIR}/zephyr/zephyr_conf.h
-	install -c -m 0644 ${SDIR}/zephyr_paths.h ${IDIR}/zephyr/zephyr_paths.h
-	install -c -m 0644 ${SDIR}/zephyr_internal.h ${IDIR}/zephyr/zephyr_internal.h
-	install -c -m 0644 zephyr_err.h ${IDIR}/zephyr/zephyr_err.h
-#ifdef KERBEROS
-	install -c -m 0644 krb_err.h ${IDIR}/zephyr/krb_err.h
-#endif /* KERBEROS */
-	install -c -m 0644 ${SDIR}/mit-copyright.h ${IDIR}/zephyr/mit-copyright.h
-
-/* this is to install the lint lib  This must end */
-/* up in the resulting Makefile AFTER the other lint lib stuff. */
-#define last_licks()							@@\
-llib-lzephyr.ln::							@@\
-	cp llib-lzephyr.ln ../libs/llib-lzephyr.ln
+create_dir($(ZINCDIR))
+install_file($(BINC)/zephyr/zephyr.h,$(ZINCDIR)/zephyr.h)
+install_file($(BINC)/zephyr/zephyr_conf.h,$(ZINCDIR)/zephyr_conf.h)
+install_file($(BINC)/zephyr/zephyr_paths.h,$(ZINCDIR)/zephyr_paths.h)
+install_file($(BINC)/zephyr/zephyr_internal.h,$(ZINCDIR)/zephyr_internal.h)
+install_file($(BINC)/zephyr/zephyr_err.h,$(ZINCDIR)/zephyr_err.h)
+install_file($(BINC)/zephyr/mit-copyright.h,$(ZINCDIR)/mit-copyright.h)
