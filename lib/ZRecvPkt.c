@@ -41,9 +41,12 @@ Code_t ZReceivePacket(buffer,buffer_len,ret_len,from)
 		*ret_len = __Q_Head->packet_len;
 		retval = ZERR_NONE;
 	}
-	
-	bcopy(__Q_Head->packet,buffer,*ret_len);
-	bcopy((char *)&__Q_Head->from,(char *)from,sizeof(struct sockaddr_in));
+
+	if (ret_len)
+		bcopy(__Q_Head->packet,buffer,*ret_len);
+	if (from)
+		bcopy((char *)&__Q_Head->from,(char *)from,
+		      sizeof(struct sockaddr_in));
 	
 	(void) Z_RemQueue(__Q_Head);
 
