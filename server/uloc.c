@@ -162,21 +162,18 @@ ZServerDesc_t *server;
 {
 	zdbug((LOG_DEBUG,"ulocate_disp"));
 
-	/* we allow unauthenticated locates */
-	if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
-		zdbug((LOG_DEBUG,"locate"));
-		ulogin_locate(notice, who);
-		/* does xmit and ack itself, so return */
-		return;
-	} 
-	/* ... but not unauthentic changes of location status */
 	if (!auth) {
 		zdbug((LOG_DEBUG,"unauthentic ulocate"));
 		if (server == me_server)
 			clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}
-	if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
+	if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
+		zdbug((LOG_DEBUG,"locate"));
+		ulogin_locate(notice, who);
+		/* does xmit and ack itself, so return */
+		return;
+	} else if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
 		zdbug((LOG_DEBUG,"user hide"));
 		if (ulogin_hide_user(notice, INVISIBLE)) {
 			if (server == me_server)
