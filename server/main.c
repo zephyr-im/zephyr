@@ -69,8 +69,11 @@ static char rcsid_main_c[] =
 #include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#ifdef POSIX
+#include <termios.h>
+#endif
 
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 #define SIGNAL_RETURN_TYPE void
 #define SIG_RETURN return
 #else
@@ -137,7 +140,7 @@ u_long npackets;			/* number of packets processed */
 long uptime;				/* when we started operations */
 static int nofork;
 struct in_addr my_addr;
-char *bdump_version = "1";
+char *bdump_version = "1.1";
 
 int
 main(argc, argv)
@@ -149,13 +152,9 @@ main(argc, argv)
 	struct timeval *tvp;
 	int init_from_dump = 0;
 	char *dumpfile;
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	struct sigaction action;
-    /* Set up sigaction structure */
-    /* This is all done because the RS/6000 emulation of signal sets the */
-    /* signal action back to the default action when the signal handler is */
-    /* called, instead of leaving well enough alone.. */
-#endif /* _POSIX_SOURCE */
+#endif
 
 
 	int optchar;			/* option processing */
@@ -163,7 +162,7 @@ main(argc, argv)
 	extern int optind;
 
 	/* set name */
-	if ((programname = rindex(argv[0],'/')) != NULL)
+	if (programname = strrchr(argv[0],'/'))
 		programname++;
 	else programname = argv[0];
 
@@ -259,43 +258,43 @@ main(argc, argv)
 	nfildes = srv_socket + 1;
 
 
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
-#endif /* _POSIX_SOURCE */
+#endif /* POSIX */
 #ifdef DEBUG
 	/* DBX catches sigterm and does the wrong thing with sigint,
 	   so we provide another hook */
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_handler = bye;
 	sigaction(SIGALRM, &action, NULL);
 	sigaction(SIGTERM, &action, NULL);
-#else /* posix */
+#else /* POSIX */
 	(void) signal(SIGALRM, bye);
 	(void) signal(SIGTERM, bye);
-#endif /* _POSIX_SOURCE */
+#endif /* POSIX */
 #ifdef SignalIgnore
 #undef SIG_IGN
 #define SIG_IGN SignalIgnore
 #endif /* SignalIgnore */
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_handler = SIG_IGN;
 	sigaction(SIGINT, &action, NULL);
 #else /* posix */
 	(void) signal(SIGINT, SIG_IGN);
-#endif /* _POSIX_SOURCE */
+#endif /* POSIX */
 #else /* ! debug */
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_handler = bye;
 	sigaction(SIGINT, &action, NULL);
 	sigaction(SIGTERM, &action, NULL);
 #else /* posix */
 	(void) signal(SIGINT, bye);
 	(void) signal(SIGTERM, bye);
-#endif /* _POSIX_SOURCE */
+#endif /* POSIX */
 #endif /* DEBUG */
 	syslog(LOG_NOTICE, "Ready for action");
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_handler = dbug_on;
 	sigaction(SIGUSR1, &action, NULL);
 
@@ -320,7 +319,7 @@ main(argc, argv)
 	(void) signal(SIGFPE, dump_db);
 	(void) signal(SIGEMT, dump_strings);
 	(void) signal(SIGHUP, reset);
-#endif /* _POSIX_SOURCE */
+#endif /* POSIX */
 
 	/* GO! */
 	uptime = NOW;
@@ -418,7 +417,7 @@ initialize()
 	    nacklist = &not_acked_head;
 	}
 #endif
-	bzero((caddr_t) nacklist, sizeof(ZNotAcked_t));
+	_BZERO((caddr_t) nacklist, sizeof(ZNotAcked_t));
 	nacklist->q_forw = nacklist->q_back = nacklist;
 
 	nexttimo = 1L;	/* trigger the timers when we hit
@@ -464,7 +463,7 @@ do_net_setup()
 	struct servent *sp;
 	struct hostent *hp;
 	char hostname[MAXHOSTNAMELEN+1];
-	int on = 1;
+	int flags;
 
 	if (gethostname(hostname, MAXHOSTNAMELEN+1)) {
 		syslog(LOG_ERR, "no hostname: %m");
@@ -476,7 +475,7 @@ do_net_setup()
 		return(1);
 	}
 	(void) strncpy(myname, hp->h_name, MAXHOSTNAMELEN);
-	bcopy((caddr_t) hp->h_addr, (caddr_t) &my_addr, sizeof(hp->h_addr));
+	_BCOPY((caddr_t) hp->h_addr, (caddr_t) &my_addr, sizeof(hp->h_addr));
 	
 	(void) setservent(1);		/* keep file/connection open */
 	
@@ -484,7 +483,7 @@ do_net_setup()
 		syslog(LOG_ERR, "%s/udp unknown",SERVER_SVCNAME);
 		return(1);
 	}
-	bzero((caddr_t) &sock_sin, sizeof(sock_sin));
+	_BZERO((caddr_t) &sock_sin, sizeof(sock_sin));
 	sock_sin.sin_port = sp->s_port;
 	
 	if (!(sp = getservbyname(HM_SVCNAME, "udp"))) {
@@ -506,7 +505,14 @@ do_net_setup()
 	}
 
 	/* set not-blocking */
-	(void) ioctl(srv_socket, FIONBIO, (caddr_t) &on);
+#ifdef POSIX
+	flags = fcntl(srv_socket, F_GETFL);
+	flags |= O_NONBLOCK;
+	(void) fcntl(srv_socket, F_SETFL, flags);
+#else
+	flags = 1;
+	(void) ioctl(srv_socket, FIONBIO, (caddr_t) &flags);
+#endif
 
 	return(0);
 }    
@@ -681,29 +687,39 @@ reap(sig)
      int sig;
 #endif
 {
-#ifdef _POSIX_SOURCE
-  int waitb;
-#else
-	union wait waitb;
-#endif
-	int oerrno;
+    int oerrno = errno;
 
-  oerrno = errno;
-  while (wait3 (&waitb, WNOHANG, (struct rusage*) 0) == 0)
-    ;
-  errno = oerrno;
-  SIG_RETURN;
+#ifdef POSIX
+    int waitb;
+    while (waitpid(-1, &waitb, WNOHANG) == 0) ;
+#else
+    union wait waitb;
+    while (wait3 (&waitb, WNOHANG, (struct rusage*) 0) == 0) ;
+#endif
+
+    errno = oerrno;
+    SIG_RETURN;
 }
 
 static void
 do_reset()
 {
 	int oerrno = errno;
-	int old_mask;
+#ifdef POSIX
+	sigset_t mask, omask;
+#else
+	int omask;
+#endif
 #if 0
 	zdbug((LOG_DEBUG,"do_reset()"));
 #endif
-	old_mask = sigblock(sigmask(SIGHUP));
+#ifdef POSIX
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGHUP);
+	sigprocmask(SIG_BLOCK, &mask, &omask);
+#else
+	omask = sigblock(sigmask(SIGHUP));
+#endif
 
 	/* reset various things in the server's state */
 	subscr_reset();
@@ -712,7 +728,11 @@ do_reset()
 	syslog (LOG_INFO, "restart completed");
 	doreset = 0;
 	errno = oerrno;
-	sigsetmask(old_mask);
+#ifdef POSIX
+	sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+#else
+	sigsetmask(omask);
+#endif
 }
 
 #ifndef DEBUG
@@ -742,6 +762,9 @@ detach()
 	i = open("/dev/tty", O_RDWR, 666);
 	(void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
 	(void) close(i);
+#ifdef POSIX
+	(void) setsid();
+#endif
 }
 #endif
 
