@@ -16,8 +16,6 @@
 static char rcsid_mux_c[] = "$Id$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
 /****************************************************************************/
 /*                                                                          */
 /*        Module containing code to wait on multiple file descriptors:      */
@@ -28,6 +26,7 @@ static char rcsid_mux_c[] = "$Id$";
 #include <sys/time.h>
 #include <errno.h>
 #include <stdio.h>
+#include <zephyr/zephyr.h>
 #include "mux.h"
 #include "error.h"
 #include "zwgc.h"
