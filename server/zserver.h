@@ -130,8 +130,8 @@ struct qelem {
 extern int access_check();
 
 /* found in brain_dump.c */
-extern void get_brain_dump(), send_brain_dump(), offer_brain_dump();
-extern void bdump_send_list_tcp();
+extern void bdump_get(), bdump_send(), bdump_offer();
+extern Code_t bdump_send_list_tcp();
 
 /* found in class_s.c */
 extern Code_t class_register(), class_deregister(), class_restrict();
@@ -237,6 +237,7 @@ extern char *pktypes[];			/* names of the packet types */
 #define	ADMIN_DONE	"DUMP_DONE"	/* Opcode: brain dump for this server
 					   is complete */
 #define	ADMIN_NEWCLT	"NEXT_CLIENT"	/* Opcode: this is a new client */
+#define	ADMIN_LOST_CLT	"LOST_CLIENT"	/* Opcode: client not ack'ing */
 
 #define	ADMIN_LIMBO	"LIMBO"		/* Class inst: please send limbo info*/
 #define	ADMIN_YOU	"YOUR_STATE"	/* Class inst: please send your state*/
@@ -274,10 +275,11 @@ extern char *pktypes[];			/* names of the packet types */
 #define	MATCHALL_CLASS	"zmatch_all"
 
 /* ACL's for pre-registered classes */
-#define	ZEPHYR_CTL_ACL	"/site/zephyr/zctl.acl"
-#define	LOGIN_ACL	"/site/zephyr/login.acl"
-#define	LOCATE_ACL	"/site/zephyr/locate.acl"
-#define	MATCH_ALL_ACL	"/site/zephyr/matchall.acl"
+#define	ZEPHYR_ACL_DIR	"/site/zephyr/"
+#define	ZEPHYR_CTL_ACL	"zctl.acl"
+#define	LOGIN_ACL	"login.acl"
+#define	LOCATE_ACL	"locate.acl"
+#define	MATCH_ALL_ACL	"matchall.acl"
 
 /* debugging macros */
 #ifdef DEBUG
