@@ -111,22 +111,12 @@ static const char rcsid[] =
 #define TIME(i) (heap[i]->abstime)
 #define HEAP_ASSIGN(pos, tmr) ((heap[pos] = (tmr))->heap_pos = (pos))
 
-time_t nexttimo = 0L;		/* the Unix time of the next alarm */
-
 static Timer **heap;
 static int num_timers = 0;
 static int heap_size = 0;
 
 static void timer_botch __P((void*));
 static Timer *add_timer __P((Timer *));
-
-/*
- * timer_set_rel(time_rel, proc)
- *   time_rel: alarm time relative to now, in seconds
- *   proc: subroutine to be called (no args, returns void)
- *
- * creates a "timer" and adds it to the current list, returns "timer"
- */
 
 Timer *timer_set_rel(time_rel, proc, arg)
     long time_rel;
@@ -143,16 +133,6 @@ Timer *timer_set_rel(time_rel, proc, arg)
     new_t->arg = arg;
     return add_timer(new_t);
 }
-
-/*
- * timer_reset
- *
- * args:
- *   tmr: timer to be removed from the list
- *
- * removes any timers matching tmr and reallocates list
- *
- */
 
 void
 timer_reset(tmr)
@@ -191,24 +171,11 @@ timer_reset(tmr)
 	}
     }
     num_timers--;
-
-    /* Fix up the next timeout. */
-    nexttimo = (num_timers == 0) ? 0 : heap[0]->abstime;
 }
 
 
 #define set_timeval(t,s) ((t).tv_sec=(s),(t).tv_usec=0,(t))
 
-/* add_timer(t:timer)
- *
- * args:
- *   t: new "timer" to be added
- *
- * returns:
- *   0 if successful
- *   -1 if error (errno set) -- old time table may have been destroyed
- *
- */
 static Timer *
 add_timer(new)
     Timer *new;
@@ -236,17 +203,7 @@ add_timer(new)
     }
     HEAP_ASSIGN(pos, new);
     num_timers++;
-
-    /* Fix up the next timeout. */
-    nexttimo = heap[0]->abstime;
-    return new;
 }
-
-/*
- * timer_process -- checks for next timer execution time
- * and execute 
- *
- */
 
 void
 timer_process()
@@ -259,8 +216,8 @@ timer_process()
     if (num_timers == 0 || heap[0]->abstime > NOW)
 	return;
 
-    /* Remove the first timer from the heap, remembering it's 
-     * function and argument.  timer_reset() updates nexttimo. */
+    /* Remove the first timer from the heap, remembering its
+     * function and argument. */
     t = heap[0];
     func = t->func;
     arg = t->arg;
@@ -270,6 +227,19 @@ timer_process()
 	
     /* Run the function. */
     func(arg);
+}
+
+struct timeval *
+timer_timeout(tvbuf)
+    struct timeval *tvbuf;
+{
+    if (num_timers == 0) {
+	tvbuf->tv_sec = heap[0]->abstime - NOW;
+	tvbuf->tv_usec = 0;
+	return tvbuf;
+    } else {
+	return NULL;
+    }
 }
 
 static void
