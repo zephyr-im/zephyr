@@ -324,7 +324,7 @@ class_get_acl(ZString class_name)
 
 	/* walk down the list, looking for a match */
 	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
-	    if (ptr2->zct_dest.classname == class_name)
+	    if (ptr2->zct_dest == d)
 		return(ptr2->zct_acl);
 
 	/* fell off the end, no match ==> not restricted */
