@@ -364,7 +364,6 @@ losinghost *which;
 	notice.z_default_format = "";
 	notice.z_num_other_fields = 0;
 	notice.z_message_len = 0;
-	notice.z_num_other_fields = 0;
 
 	/* forge a from address */
 	bzero((char *) &who, sizeof(who));
@@ -564,7 +563,7 @@ ZServerDesc_t *server;
 
 	if (server) {
 		shutnotice.z_message = inet_ntoa(server->zs_addr.sin_addr);
-		shutnotice.z_message_len = strlen(shutnotice.z_message);
+		shutnotice.z_message_len = strlen(shutnotice.z_message) + 1;
 		zdbug((LOG_DEBUG, "suggesting %s",shutnotice.z_message));
 	} else {
 		shutnotice.z_message = NULL;
