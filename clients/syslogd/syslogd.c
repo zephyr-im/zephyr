@@ -19,9 +19,7 @@
 char copyright[] =
 "@(#) Copyright (c) 1983, 1988 Regents of the University of California.\n\
  All rights reserved.\n";
-#endif /* not lint */
 
-#ifndef lint
 static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #endif /* not lint */
 
@@ -85,6 +83,12 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 
 #include <zephyr/zephyr.h>
 #include <krb.h>
+
+#ifdef ultrix
+#define SIGTYPE void
+#else
+#define SIGTYPE int
+#endif
 
 #define	CTTY	"/dev/console"
 char	*LogName = "/dev/log";
@@ -264,11 +268,7 @@ main(argc, argv)
 #else
 	char line[MSG_BSIZE + 1];
 #endif /* COMPAT42 */
-#ifdef ultrix
-	extern void die(), domark(), reapchild();
-#else
-	extern int die(), domark(), reapchild();
-#endif /* ultrix */
+	extern SIGTYPE die(), domark(), reapchild();
 
 	while (--argc > 0) {
 		p = *++argv;
@@ -936,9 +936,7 @@ wallmsg(f, iov)
 	reenter = 0;
 }
 
-#ifdef ultrix
-void
-#endif
+SIGTYPE
 reapchild()
 {
 	union wait status;
@@ -975,9 +973,7 @@ cvthname(f)
 	return (hp->h_name);
 }
 
-#ifdef ultrix
-void
-#endif
+SIGTYPE
 domark()
 {
 	register struct filed *f;
@@ -1021,9 +1017,7 @@ logerror(type)
 	logmsg(LOG_SYSLOG|LOG_ERR, buf, LocalHostName, ADDDATE);
 }
 
-#ifdef ultrix
-void
-#endif
+SIGTYPE
 die(sig)
 {
 	register struct filed *f;
