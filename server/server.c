@@ -235,7 +235,7 @@ server_init()
 		syslog(LOG_CRIT, "srv_nacklist malloc");
 		abort();
 	}
-	_BZERO((caddr_t) srv_nacklist, sizeof(ZNotAcked_t));
+	(void) memset((caddr_t) srv_nacklist, 0, sizeof(ZNotAcked_t));
 	srv_nacklist->q_forw = srv_nacklist->q_back = srv_nacklist;
 
 	return;
@@ -291,9 +291,9 @@ server_reset()
 		return;
 	}
 
-	(void) _BZERO((char *)ok_list_old, nservers * sizeof(int));
-	(void) _BZERO((char *)ok_list_new, num_servers * sizeof(int));
-
+	(void) memset((char *)ok_list_old, 0, nservers * sizeof(int));
+	(void) memset((char *)ok_list_new, 0, num_servers * sizeof(int));
+	
 	/* reset timers--pointers will move */
 	for (j = 1; j < nservers; j++) {	/* skip limbo */
 		if (j == me_server_idx)
@@ -347,8 +347,8 @@ server_reset()
 			servers[0] = otherservers[0]; /* copy limbo */
 
 			srv = (int*) xmalloc (nservers * sizeof (int));
-			_BZERO (srv, nservers * sizeof (int));
-
+			(void) memset (srv, 0, nservers * sizeof (int));
+			
 			/* copy the kept servers */
 			for (j = 1; j < nservers; j++) { /* skip limbo */
 				if (ok_list_old[j] ||
@@ -534,7 +534,7 @@ server_dispatch(notice, auth, who)
 		return(ZERR_NONE);
 	}
 	/* set up a who for the real origin */
-	_BZERO((caddr_t) &newwho, sizeof(newwho));
+	(void) memset((caddr_t) &newwho, 0, sizeof(newwho));
 	newwho.sin_family = AF_INET;
 	newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
 	newwho.sin_port = notice->z_port;
@@ -643,7 +643,8 @@ server_register(notice, auth, who)
 #endif
 		return 1;
 	}
-	_BCOPY((caddr_t) otherservers, (caddr_t) temp, nservers * sizeof(ZServerDesc_t));
+	(void) memcpy((caddr_t) temp, (caddr_t) otherservers,
+		       nservers * sizeof(ZServerDesc_t));
 	xfree(otherservers);
 	otherservers = temp;
 	/* don't reschedule limbo's timer, so start i=1 */
@@ -1181,9 +1182,8 @@ get_server_addrs(number)
 	for (cpp = server_hosts, addr = addrs, i = 0; *cpp; cpp++) {
 		hp = gethostbyname(*cpp);
 		if (hp) {
-			_BCOPY((caddr_t)hp->h_addr,
-			      (caddr_t) addr,
-			      sizeof(struct in_addr));
+			(void) memcpy((caddr_t) addr, (caddr_t)hp->h_addr,
+				       sizeof(struct in_addr));
 			addr++, i++;
 		} else
 			syslog(LOG_WARNING, "hostname failed, %s",*cpp);
