@@ -448,15 +448,18 @@ int fork_for_dump = 0;
 static SIGNAL_RETURN_TYPE
 dump_strings (int sig) {
     FILE *fp;
+    int oerrno = errno;
     fp = fopen ("/usr/tmp/zephyr.strings", "w");
     if (!fp) {
 	syslog (LOG_ERR, "can't open strings dump file: %m");
+	errno = oerrno;
 	SIG_RETURN;
     }
     syslog (LOG_INFO, "dumping strings to disk");
     ZString::print (fp);
     if (fclose (fp) == EOF)
 	syslog (LOG_ERR, "error writing strings dump file");
+    oerrno = errno;
     SIG_RETURN;
 }
 
@@ -465,6 +468,7 @@ dump_db(int sig)
 {
 	/* dump the in-core database to human-readable form on disk */
 	FILE *fp;
+	int oerrno = errno;
 	int pid;
 
 #ifdef __SABER__
@@ -482,6 +486,7 @@ dump_db(int sig)
 	    SIG_RETURN;
 	if ((fp = fopen("/usr/tmp/zephyr.db", "w")) == (FILE *)0) {
 		syslog(LOG_ERR, "can't open dump database");
+		errno = oerrno;
 		SIG_RETURN;
 	}
 	syslog(LOG_INFO, "dumping to disk");
@@ -494,6 +499,7 @@ dump_db(int sig)
 	}
 	if (pid == 0)
 	    exit (0);
+	errno = oerrno;
 	SIG_RETURN;
 }
 
@@ -515,24 +521,29 @@ static SIGNAL_RETURN_TYPE
 reap(int sig)
 {
 	wait waitb;
-	(void) wait3 (&waitb, WNOHANG, (struct rusage*) 0);
+	int oerrno = errno;
+	while (wait3 (&waitb, WNOHANG, (struct rusage*) 0) == 0)
+	    ;
+	errno = oerrno;
 	SIG_RETURN;
 }
 
 static void
 do_reset(void)
 {
+	int oerrno = errno;
 #if 0
 	zdbug((LOG_DEBUG,"do_reset()"));
 #endif
-	/* reset various things in the server's state */
 	SignalBlock no_hups (sigmask (SIGHUP));
 
+	/* reset various things in the server's state */
 	subscr_reset();
 	server_reset();
 	access_reinit();
 	syslog (LOG_INFO, "restart completed");
 	doreset = 0;
+	errno = oerrno;
 }
 
 #ifndef DEBUG
@@ -568,7 +579,7 @@ detach(void)
 	(void) close(i);
 
 }
-#endif !DEBUG
+#endif
 
 static /*const*/ ZString popular_ZStrings[] = {
     "filsrv",
@@ -612,6 +623,5 @@ static /*const*/ ZString popular_ZStrings[] = {
     "help",
     "consult",
     "athena.mit.edu:contrib.watchmaker",
-    "%me%",
     "testers.athena.mit.edu:x11r4",
 };
