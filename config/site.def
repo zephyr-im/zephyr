@@ -103,7 +103,7 @@ clean::
 #define LintFlags  -DSUNOS
 #define ProfCcFlags -pg
 #define CDebugFlags -g -O
-#define CcFlags LintFlags -I/mit/x11/include
+#define CcFlags LintFlags -I/usr/openwin/include
 #define LdPath -L/usr/openwin/lib -L$(ATHLIBDIR)
 #define CcCmd gcc
 #define LdCmd gcc
