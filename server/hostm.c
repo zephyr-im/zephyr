@@ -31,8 +31,9 @@ static char rcsid_hostm_s_c[] = "$Header$";
  *	struct sockaddr_in *who;
  *	ZServerDesc_t *server;
  *
- * void hostm_flush(host)
+ * void hostm_flush(host, server)
  *	ZHostList_t *host;
+ *	ZServerDesc_t *server;
  *
  * void hostm_transfer(host, server)
  *	ZHostList_t *host;
