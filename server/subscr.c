@@ -708,6 +708,7 @@ char *vers;
 
 	lyst[num++] = buf2;
 
+#ifdef KERBEROS
 	if ((retval = ZMakeAscii(buf, sizeof(buf), client->zct_cblock,
 				 sizeof(C_Block))) != ZERR_NONE) {
 		zdbug((LOG_DEBUG,"zmakeascii failed: %s",
@@ -716,6 +717,7 @@ char *vers;
 		lyst[num++] = buf;
 		zdbug((LOG_DEBUG,"cblock %s",buf));
 	}		
+#endif KERBEROS
 	if ((retval = bdump_send_list_tcp(SERVACK, bdump_sin.sin_port,
 					  ZEPHYR_ADMIN_CLASS,
 					  num > 1 ? "CBLOCK" : "",
