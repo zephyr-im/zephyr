@@ -21,6 +21,10 @@ static char rcsid_bdump_s_c[] = "$Header$";
 
 #include "zserver.h"
 #include <sys/socket.h>
+#ifdef lint
+/* so it shuts up about struct iovec */
+#include <sys/uio.h>
+#endif lint
 #include <signal.h>
 
 /*
@@ -139,7 +143,8 @@ bdump_send()
 
 	zdbug((LOG_DEBUG, "bdump_send"));
 	/* accept the connection, and send the brain dump */
-	if ((sock = accept(bdump_socket, &from, &fromlen)) < 0) {
+	if ((sock = accept(bdump_socket, (struct sockaddr *)&from,
+			   &fromlen)) < 0) {
 		syslog(LOG_ERR,"accept: %m");
 		return;
 	}
@@ -279,7 +284,7 @@ ZServerDesc_t *server;
 		cleanup(server, sock);
 		return;
 	}
-	if (connect(sock, &from, sizeof(from))) {
+	if (connect(sock, (struct sockaddr *) &from, sizeof(from))) {
 		syslog(LOG_ERR, "gbd connect: %m");
 		cleanup(server, sock);
 		return;
@@ -713,9 +718,9 @@ ZServerDesc_t *server;
  */
 
 static Code_t
-bdump_send_loop(server, version)
+bdump_send_loop(server, vers)
 register ZServerDesc_t *server;
-char *version;
+char *vers;
 {
 	register ZHostList_t *host;
 	register ZClientList_t *clist;
@@ -729,7 +734,7 @@ char *version;
 		/* for each host */
 		if ((retval = send_host_register(host)) != ZERR_NONE)
 			return(retval);
-		if ((retval = uloc_send_locations(host, version)) != ZERR_NONE)
+		if ((retval = uloc_send_locations(host, vers)) != ZERR_NONE)
 			return(retval);
 		if (!host->zh_clients)
 			continue;
@@ -740,7 +745,7 @@ char *version;
 			if (!clist->zclt_client->zct_subs)
 				continue;
 			if ((retval = subscr_send_subs(clist->zclt_client,
-						       version)) != ZERR_NONE)
+						       vers)) != ZERR_NONE)
 				return(retval);
 		}
 	}
