@@ -13,13 +13,14 @@
 
 #include "zhm.h"
 
-static char rcsid_hm_c[] =
-    "$Zephyr: zhm.c,v 1.47 90/12/21 17:50:03 raeburn Exp $";
+static char rcsid_hm_c[] = "$Id$";
 
 #include <ctype.h>
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
+#include <string.h>
+#include <errno.h>
 /* 
  * warning: sys/param.h may include sys/types.h which may not be protected from
  * multiple inclusions on your system
@@ -49,12 +50,20 @@ char **clust_info;
 char hostname[MAXHOSTNAMELEN], loopback[4];
 char *PidFile = PIDFILE;
 
-extern int errno;
-extern char *index(), *strcpy(), *sbrk();
+extern char *index(), *sbrk();
 extern long time();
 
 void init_hm(), detach(), handle_timeout(), resend_notices(), die_gracefully();
-int set_sig_type();
+
+#if defined(ultrix) || defined(_POSIX_SOURCE)
+void
+#endif
+  set_sig_type(sig)
+     int sig;
+{
+     sig_type = sig;
+}
+
 char *strsave();
 
 main(argc, argv)
@@ -407,13 +416,6 @@ void detach()
 	  (void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
 	  (void) close(i);
      }
-}
-
-int set_sig_type(sig)
-     int sig;
-{
-     sig_type = sig;
-     return(0);
 }
 
 static char version[BUFSIZ];
