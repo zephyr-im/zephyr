@@ -33,7 +33,7 @@ Code_t ZOpenPort(port)
 	bindin.sin_family = AF_INET;
 
 	if (port && *port)
-		bindin.sin_port = htons(*port);
+		bindin.sin_port = *port;
 	else
 		bindin.sin_port = htons(((getpid()*8)&0xfff)+
 					((random()>>4)&0xf)+1024);
@@ -55,11 +55,11 @@ Code_t ZOpenPort(port)
 		}
 	} while (retval < 0 && port);
 
-	__Zephyr_port = ntohs(bindin.sin_port);
+	__Zephyr_port = bindin.sin_port;
 	__Zephyr_open = 1;
 
 	if (port)
-		*port = ntohs(bindin.sin_port);
+		*port = bindin.sin_port;
 
 	return (ZERR_NONE);
 }
