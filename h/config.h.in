@@ -30,14 +30,8 @@
 /* Define to compile with Kerberos support. */
 #undef ZEPHYR_USES_KERBEROS
 
-/* Define to the directory containing Zephyr configuration files. */
-#define CONFDIR "/usr/local/etc/zephyr"
-
-/* Define to the directory containing Zephyr data files. */
-#define DATADIR "/usr/local/share/zephyr"
-
 /* Define to a signed 32-bit integral type. */
-#define INT_32_TYPE long
+#define ZEPHYR_INT32 long
 
 /* Define if you have the System Resource Controller library. */
 #undef HAVE_SRC
@@ -47,6 +41,9 @@
 
 /* Define to a temporary directory on your system. */
 #define FOUND_TMP "/var/tmp"
+
+/* Define to the type of the host system. */
+#define MACHINE_TYPE "unknown"
 
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
@@ -62,6 +59,12 @@
 
 /* Define if you have the getlogin function.  */
 #undef HAVE_GETLOGIN
+
+/* Define if you have the krb_get_err_text function.  */
+#undef HAVE_KRB_GET_ERR_TEXT
+
+/* Define if you have the krb_log function.  */
+#undef HAVE_KRB_LOG
 
 /* Define if you have the lrand48 function.  */
 #undef HAVE_LRAND48
