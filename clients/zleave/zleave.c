@@ -83,15 +83,16 @@ char **argv;
 				"Can't find WindowGram subscription port.\n");
 			fprintf(stderr,"Will write directly to terminal.\n");
 			use_zephyr = 0;
+		} else {
+			sub.class = MESSAGE_CLASS;
+			sub.classinst = INSTANCE;
+			sub.recipient = ZGetSender();
+			if (ZSubscribeTo(&sub,1,(u_short)port) != ZERR_NONE) {
+				fprintf(stderr,
+					"Subscription error!  Writing to your terminal...\n");
+				use_zephyr = 0;
+			} 
 		}
-		sub.class = MESSAGE_CLASS;
-		sub.classinst = INSTANCE;
-		sub.recipient = ZGetSender();
-		if (ZSubscribeTo(&sub,1,(u_short)port) != ZERR_NONE) {
-			fprintf(stderr,
-				"Subscription error!  Writing to your terminal...\n");
-			use_zephyr = 0;
-		} 
 	}	
 
 	if (argc < 2) {
