@@ -165,7 +165,7 @@ void zephyr_init(notice_handler)
 	    exposure = EXPOSE_NONE;
 	}
     } else
-      exposure = EXPOSE_NONE;
+      exposure = EXPOSE_OPSTAFF;
     error_code = ZSetLocation(exposure); /* <<<>>> */
     if (error_code != ZERR_LOGINFAIL)
       TRAP( error_code, "while setting location" );
