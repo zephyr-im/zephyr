@@ -183,6 +183,10 @@ extern int ZMakeAuthentication();
 #define SERVER_SHUTDOWN		"SHUTDOWN"	/* Opcode: Server shutdown */
 #define SERVER_PING		"PING"		/* Opcode: PING */
 
+#define HM_CTL_CLIENT           "CLIENT"        /* Inst: From client */
+#define CLIENT_FLUSH            "FLUSH"         /* Opcode: Send flush to srv */
+#define CLIENT_NEW_SERVER       "NEWSERV"       /* Opcode: Find new server */
+
 	/* HM Statistics */
 #define HM_STAT_CLASS		"HM_STAT"	/* Class */
 
