@@ -88,17 +88,17 @@ inline int operator != (const ZDestination& z1, const ZDestination& z2) {
     return !(z1 == z2);
 }
 
-inline operator< (const ZDestination& z1, const ZDestination& z2) {
+inline int operator< (const ZDestination& z1, const ZDestination& z2) {
     return (z1.hash_value != z2.hash_value
 	    ? z1.hash_value < z2.hash_value
 	    : ZDestination::order_strings (z1, z2) < 0);
 }
 
-inline operator> (const ZDestination& z1, const ZDestination& z2) {
+inline int operator> (const ZDestination& z1, const ZDestination& z2) {
     return (z1 == z2) ? 0 : !(z1 < z2);
 }
 
-inline operator >= (const ZDestination& z1, const ZDestination& z2) {
+inline int operator >= (const ZDestination& z1, const ZDestination& z2) {
     return !(z1 < z2);
 }
 
@@ -466,11 +466,6 @@ extern int bdumping;			/* are we dumping right now? */
 extern ZServerDesc_t *otherservers;	/* array of servers */
 extern int me_server_idx;		/* me (in the array of servers) */
 extern int nservers;			/* number of other servers*/
-
-#ifdef DEBUG
-/* found in dispatch.c */
-extern const char *pktypes[];		/* names of the packet types */
-#endif /* DEBUG */
 
 extern "C" struct in_addr my_addr;	/* my inet address */
 
