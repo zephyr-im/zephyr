@@ -455,7 +455,10 @@ void exec_process_packet(program, notice)
 
     var_set_number_variables_to_fields(notice_fields, notice_fields_length);
 
-    number_of_fields = count_nulls(notice_fields, notice_fields_length);
+    number_of_fields = count_nulls(notice_fields, notice_fields_length)+1;
+    /* workaround for bug in old zwrite */
+    if (notice_fields[notice_fields_length-1] == '\0')
+	number_of_fields--;
     var_set_variable_to_number("number_of_fields", number_of_fields);
 
     clear_buffer();
