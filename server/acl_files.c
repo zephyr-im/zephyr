@@ -229,9 +229,63 @@ check_hash(struct hashtbl *h,
     return 0;
 }
 
+struct host_ace {
+    struct host_ace *next;
+    unsigned long addr, mask;
+};
+
+static void
+add_host(struct host_ace **list,
+	 char *buf)
+{
+    struct host_ace *e;
+    struct in_addr addr;
+    unsigned long mask = 0, i;
+    char *m, *x;
+
+    m = strchr(buf, '/');
+    if (m) {
+	*(m++) = 0;
+	if (!*m)
+            return;
+	i = strtol(m, &x, 10);
+	if (*x || i < 0 || i > 32)
+            return;
+	while (i--)
+	    mask = (mask >> 1) | 0x80000000;
+    } else {
+	mask = 0xffffffff;
+    }
+
+    if (!inet_aton(buf, &addr))
+	return;
+
+    e = (struct host_ace *)malloc(sizeof(struct host_ace));
+    memset(e, 0, sizeof(struct host_ace));
+    e->addr = addr.s_addr;
+    e->mask = htonl(mask);
+    e->next = *list;
+    *list = e;
+}
+
+
+static void
+destroy_hosts(struct host_ace **list)
+{
+    struct host_ace *e;
+
+    while ((e = *list)) {
+	*list = e->next;
+	free(e);
+    }
+}
+
 struct acl {
     char filename[LINESIZE];	/* Name of acl file */
-    struct hashtbl *acl;	/* Acl entries */
+    struct hashtbl *acl;	/* Positive acl entries */
+    struct hashtbl *negacl;	/* Negative acl entries */
+    struct host_ace *hosts;	/* Positive host entries */
+    struct host_ace *neghosts;	/* Negative host entries */
 };
 
 static struct acl acl_cache[CACHED_ACLS];
@@ -273,23 +327,39 @@ int acl_load(char *name)
     strcpy(acl_cache[i].filename, name);
     /* Force reload */
     acl_cache[i].acl = (struct hashtbl *) 0;
+    acl_cache[i].negacl = (struct hashtbl *)0;
+    acl_cache[i].hosts = (struct host_ace *)0;
+    acl_cache[i].neghosts = (struct host_ace *)0;
 
   got_it:
     /*
      * See if we need to reload the ACL
      */
-    if (acl_cache[i].acl == (struct hashtbl *) 0) {
+    if (acl_cache[i].acl == (struct hashtbl *)0
+        || acl_cache[i].negacl == (struct hashtbl *)0) {
 	/* Gotta reload */
 	if ((f = fopen(name, "r")) == NULL) {
 	    syslog(LOG_ERR, "Error loading acl file %s: %m", name);
 	    return -1;
 	}
 	if (acl_cache[i].acl) destroy_hash(acl_cache[i].acl);
+	if (acl_cache[i].negacl)
+            destroy_hash(acl_cache[i].negacl);
 	acl_cache[i].acl = make_hash(ACL_LEN);
+	acl_cache[i].negacl = make_hash(ACL_LEN);
 	while(fgets(buf, sizeof(buf), f) != NULL) {
 	    nuke_whitespace(buf);
-	    acl_canonicalize_principal(buf, canon);
-	    add_hash(acl_cache[i].acl, canon);
+	    if (buf[0] == '!' && buf[1] == '@') {
+		add_host(&acl_cache[i].neghosts, buf + 2);
+	    } else if (buf[0] == '@') {
+		add_host(&acl_cache[i].hosts, buf + 1);
+	    } else if (buf[0] == '!') {
+		acl_canonicalize_principal(buf + 1, canon);
+		add_hash(acl_cache[i].negacl, canon);
+	    } else {
+		acl_canonicalize_principal(buf, canon);
+		add_hash(acl_cache[i].acl, canon);
+	    }
 	}
 	fclose(f);
     }
@@ -309,7 +379,13 @@ acl_cache_reset(void)
 	for (i = 0; i < acl_cache_count; i++)
 	    if (acl_cache[i].acl) {
 		destroy_hash(acl_cache[i].acl);
+		destroy_hash(acl_cache[i].negacl);
+		destroy_hosts(&acl_cache[i].hosts);
+		destroy_hosts(&acl_cache[i].neghosts);
 		acl_cache[i].acl = (struct hashtbl *) 0;
+		acl_cache[i].negacl = (struct hashtbl *) 0;
+		acl_cache[i].hosts = (struct host_ace *) 0;
+		acl_cache[i].neghosts = (struct host_ace *) 0;
 	    }
 	acl_cache_count = 0;
 	acl_cache_next = 0;
@@ -318,44 +394,85 @@ acl_cache_reset(void)
 
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Principal is not canonicalized, and no wildcarding is done */
+/* If neg is nonzero, we look for negative entries */
 int
 acl_exact_match(char *acl,
-		char *principal)
+		char *principal,
+		int neg)
 {
     int idx;
 
-    return((idx = acl_load(acl)) >= 0
-	   && check_hash(acl_cache[idx].acl, principal));
+    if ((idx = acl_load(acl)) < 0)
+        return 0;
+    if (neg)
+        return check_hash(acl_cache[idx].negacl, principal);
+    else
+        return check_hash(acl_cache[idx].acl, principal);
+}
+
+/* Returns nonzero if it can be determined that acl contains who */
+/* If neg is nonzero, we look for negative entries */
+int
+acl_host_match(char *acl,
+               unsigned long who,
+               int neg)
+{
+    int idx;
+    struct host_ace *e;
+
+    if ((idx = acl_load(acl)) < 0)
+        return 0;
+    e = neg ? acl_cache[idx].neghosts : acl_cache[idx].hosts;
+    while (e) {
+	if ((e->addr & e->mask) == (who & e->mask))
+            return 1;
+	e = e->next;
+    }
+    return 0;
 }
 
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Recognizes wildcards in acl. */
+/* Also checks for IP address entries and applies negative ACL's */
 int
 acl_check(char *acl,
-	  char *principal)
+	  char *principal,
+	  struct sockaddr_in *who)
 {
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];
     char *instance, *realm;
-    int p, i, r;
+    unsigned long mask;
+    int p, i, r, result = 0;
 
-    /* Parse into principal, instance, and realm. */
-    acl_canonicalize_principal(principal, canon);
-    instance = (char *) strchr(canon, INST_SEP);
-    *instance++ = 0;
-    realm = (char *) strchr(instance, REALM_SEP);
-    *realm++ = 0;
+    if (principal) {
+        /* Parse into principal, instance, and realm. */
+        acl_canonicalize_principal(principal, canon);
+        instance = (char *)strchr(canon, INST_SEP);
+        *instance++ = 0;
+        realm = (char *)strchr(instance, REALM_SEP);
+        *realm++ = 0;
 
-    for (p = 0; p <= 1; p++) {
-	for (i = 0; i <= 1; i++) {
-	    for (r = 0; r <= 1; r++) {
-		sprintf(buf, "%s%c%s%c%s", (p) ? canon : "*", INST_SEP,
-			(i) ? instance : "*", REALM_SEP, (r) ? realm : "*");
-		if (acl_exact_match(acl, buf))
-		    return 1;
-	    }
-	}
+        for (p = 0; p <= 1; p++) {
+            for (i = 0; i <= 1; i++) {
+                for (r = 0; r <= 1; r++) {
+                    sprintf(buf, "%s%c%s%c%s", (p) ? canon : "*", INST_SEP,
+                            (i) ? instance : "*", REALM_SEP, (r) ? realm : "*");
+                    if (acl_exact_match(acl, buf, 1))
+                        return 0;
+                    if (acl_exact_match(acl, buf, 0))
+                        result = 1;
+                }
+            }
+        }
     }
-       
-    return(0);
+
+    if (who) {
+	if (acl_host_match(acl, who->sin_addr.s_addr, 1))
+            return 0;
+	if (acl_host_match(acl, who->sin_addr.s_addr, 0))
+            result = 1;
+    }
+
+    return result;
 }

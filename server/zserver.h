@@ -378,7 +378,7 @@ void realm_dump_realms(FILE *);
 char *get_version(void);
 
 /* found in access.c */
-int access_check(char *, Acl *, Access);
+int access_check(char *, struct sockaddr_in *, Acl *, Access);
 
 /* global identifiers */
 

@@ -142,14 +142,14 @@ add_subscriptions(Client *who,
 	    }
 	    acl = class_get_acl(subs->dest.classname);
 	    if (acl && !realm) {
-		if (!access_check(sender->string, acl, SUBSCRIBE)) {
+		if (!access_check(sender->string, &who->addr, acl, SUBSCRIBE)) {
 		    syslog(LOG_WARNING, "subscr unauth %s class %s",
 			   sender->string, subs->dest.classname->string);
 		    free_subscription(subs); /* free this one - denied */
 		    continue; /* the for loop */
 		}
 		if (wildcard_instance == subs->dest.inst) {
-		    if (!access_check(sender->string, acl, INSTWILD)) {
+		    if (!access_check(sender->string, &who->addr, acl, INSTWILD)) {
 			syslog(LOG_WARNING,
 			       "subscr unauth %s class %s wild inst",
 			       sender->string, subs->dest.classname->string);
@@ -1156,13 +1156,13 @@ subscr_check_foreign_subs(ZNotice_t *notice,
 		    return ZSRV_CLASSRESTRICTED;
 		}
 	    }
-	    if (!access_check(sender->string, acl, SUBSCRIBE)) {
+	    if (!access_check(sender->string, who, acl, SUBSCRIBE)) {
 		syslog(LOG_WARNING, "subscr unauth %s class %s",
 		       sender->string, subs->dest.classname->string);
 		continue; /* the for loop */
 	    }
 	    if (wildcard_instance == subs->dest.inst) {
-		if (!access_check(sender->string, acl, INSTWILD)) {
+		if (!access_check(sender->string, who, acl, INSTWILD)) {
 		    syslog(LOG_WARNING,
 			   "subscr unauth %s class %s wild inst",
 			   sender->string, subs->dest.classname->string);

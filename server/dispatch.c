@@ -311,7 +311,7 @@ sendit(ZNotice_t *notice,
        int external)
 {
     static int send_counter = 0;
-    char recipbuf[MAX_PRINCIPAL_SIZE], *recipp;
+    char recipbuf[MAX_PRINCIPAL_SIZE], *recipp, *acl_sender;
     int any = 0;
     Acl *acl;
     Destination dest;
@@ -323,14 +323,7 @@ sendit(ZNotice_t *notice,
 
       acl = class_get_acl(class);
       if (acl != NULL) {
-	/* if controlled and not auth, fail */
-        if (!auth) {
-            syslog(LOG_WARNING, "sendit unauthentic %s from %s",
-                   notice->z_class, notice->z_sender);
-	    clt_ack(notice, who, AUTH_FAILED);
-            free_string(class);
-            return;
-        }
+	acl_sender = auth ? notice->z_sender : 0;
 	/* if from foreign realm server, disallow if not realm of sender */
 	rlm = realm_which_realm(who);
 	if (rlm) {
@@ -343,17 +336,18 @@ sendit(ZNotice_t *notice,
 	  }
 	}
 	/* if not auth to transmit, fail */
-	if (!access_check(notice->z_sender, acl, TRANSMIT)) {
-	    syslog(LOG_WARNING, "sendit unauthorized %s from %s",
-		   notice->z_class, notice->z_sender);
+	if (!access_check(acl_sender, who, acl, TRANSMIT)) {
+	    syslog(LOG_WARNING, "sendit unauthorized %s from %s%s",
+		   notice->z_class, notice->z_sender, auth ? "" : " (unauth)");
 	    clt_ack(notice, who, AUTH_FAILED);
 	    free_string(class);
 	    return;
 	}
 	/* sender != inst and not auth to send to others --> fail */
 	if (strcmp(notice->z_sender, notice->z_class_inst) != 0 &&
-	    !access_check(notice->z_sender, acl, INSTUID)) {
-	    syslog(LOG_WARNING, "sendit unauth uid %s %s.%s", notice->z_sender,
+	    !access_check(acl_sender, who, acl, INSTUID)) {
+	    syslog(LOG_WARNING, "sendit unauth uid %s%s %s.%s",
+		   notice->z_sender, auth ? "" : " (unauth)",
 		   notice->z_class, notice->z_class_inst);
 	    clt_ack(notice, who, AUTH_FAILED);
 	    free_string(class);

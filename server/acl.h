@@ -16,7 +16,7 @@
 #define	__ACL__
 
 int acl_add(char *, char *);
-int acl_check(char *, char *);
+int acl_check(char *, char *, struct sockaddr_in *);
 int acl_delete(char *, char *);
 int acl_initialize(char *, int);
 void acl_cache_reset(void);

@@ -22,8 +22,9 @@ static const char rcsid_access_c[] =
  *
  * External routines:
  *
- * int access_check(notice, acl, accesstype)
+ * int access_check(notice, who, acl, accesstype)
  *    ZNotice_t *notice;
+ *    struct sockaddr_in *who;
  *    Acl *acl;
  *    Access accesstype;
  *
@@ -58,6 +59,7 @@ static void access_setup(int first);
 
 int
 access_check(char *sender,
+	     struct sockaddr_in *who,
 	     Acl *acl,
 	     Access accesstype)
 {
@@ -96,10 +98,11 @@ access_check(char *sender,
      */
     retval = acl_load(buf);
     if (retval < 0) {
-	syslog(LOG_DEBUG, "Error in acl_load of %s for %s", buf, sender);
+	syslog(LOG_DEBUG, "Error in acl_load of %s for %s",
+		buf, sender ? sender : "unauth client");
 	return 0;
     }
-    return acl_check(buf, sender);
+    return acl_check(buf, sender, who);
 }
 
 static void
