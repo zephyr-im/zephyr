@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for ZReceiveNotice function.
+ * It contains source for the ZFlushLocations function.
  *
  *	Created by:	Robert French
  *
@@ -16,19 +16,19 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZReceiveNotice(buffer,buffer_len,notice,auth,from)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	ZNotice_t	*notice;
-	int		*auth;
-	struct		sockaddr_in *from;
+Code_t ZFlushLocations()
 {
-	int len;
-	Code_t retval;
+	int i;
 	
-	if ((retval = ZReceivePacket(buffer,buffer_len,&len,from)) !=
-	    ZERR_NONE)
-		return (retval);
+	if (!__locate_list)
+		return (ZERR_NONE);
 
-	return (ZParseNotice(buffer,len,notice,auth));
+	for (i=0;i<__locate_num;i++)
+		free(__locate_list[i]);
+	free(__locate_list);
+
+	__locate_list = 0;
+	__locate_num = 0;
+
+	return (ZERR_NONE);
 }

@@ -16,10 +16,11 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZPeekPacket(buffer,buffer_len,ret_len)
+Code_t ZPeekPacket(buffer,buffer_len,ret_len,from)
 	ZPacket_t	buffer;
 	int		buffer_len;
 	int		*ret_len;
+	struct		sockaddr_in *from;
 {
 	int retval;
 	
@@ -40,6 +41,7 @@ Code_t ZPeekPacket(buffer,buffer_len,ret_len)
 	}
 	
 	bcopy(__Q_Head->packet,buffer,*ret_len);
-
+	bcopy(&__Q_Head->from,from,sizeof(struct sockaddr_in));
+	
 	return (retval);
 }

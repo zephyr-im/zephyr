@@ -1,5 +1,5 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for ZPeekNotice function.
+ * It contains source for the ZSetLocation.c function.
  *
  *	Created by:	Robert French
  *
@@ -16,19 +16,18 @@
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZPeekNotice(buffer,buffer_len,notice,auth,from)
-	ZPacket_t	buffer;
-	int		buffer_len;
-	ZNotice_t	*notice;
-	int		*auth;
-	struct		sockaddr_in *from;
+Code_t ZSetLocation()
 {
-	int len;
-	Code_t retval;
+	ZNotice_t notice;
 
-	if ((retval = ZPeekPacket(buffer,buffer_len,&len,from)) !=
-	    ZERR_NONE)
-		return (retval);
+	notice.z_kind = UNACKED;
+	notice.z_port = 0;
+	notice.z_class = LOGIN_CLASS;
+	notice.z_class_inst = (char *)Z_GetSender();
+	notice.z_opcode = LOGIN_USER_LOGIN;
+	notice.z_sender = 0;
+	notice.z_recipient = "";
+	notice.z_message_len = 0;
 
-	return (ZParseNotice(buffer,len,notice,auth));
+	return (ZSendNotice(&notice));
 }

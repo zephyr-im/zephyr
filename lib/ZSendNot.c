@@ -25,7 +25,7 @@ Code_t ZSendNotice(notice)
 
 	buffer = (char *)malloc(Z_MAXPKTLEN);
 	if (!buffer)
-		return (ZERR_NOMEM);
+		return (ENOMEM);
 
 	if ((retval = ZFormatNotice(notice,buffer,Z_MAXPKTLEN,&len)) !=
 	    ZERR_NONE) {
