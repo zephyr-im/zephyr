@@ -63,6 +63,9 @@
 	request		wgc_control, "Tell the WindowGram to react to incoming notices.",
 			wg_startup;
 
+	request		wgc_control, "Tell the WindowGram to exit completely.",
+			wg_exit;
+
 	request		hm_control, "Tell the server to flush information about this host.",
 			hm_flush;
 

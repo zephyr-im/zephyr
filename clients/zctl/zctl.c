@@ -55,7 +55,7 @@ main(argc,argv)
 {
 	struct passwd *pwd;
 	struct hostent *hent;
-	char ssline[BUFSIZ],oldsubsname[BUFSIZ],*envptr;
+	char ssline[BUFSIZ],oldsubsname[BUFSIZ],*envptr,*tty = NULL;
 	int retval,code,i;
 #ifdef HAVE_SYS_UTSNAME
 	struct utsname name;
@@ -66,20 +66,28 @@ main(argc,argv)
 		exit (1);
 	}
 
-	envptr = (char *)getenv("HOME");
+	/* Set hostname and tty for locations.  If we support X, use the
+	 * DISPLAY environment variable for the tty name. */
+#ifndef X_DISPLAY_MISSING
+	tty = getenv("DISPLAY");
+#endif	
+	if ((retval = ZInitLocationInfo(NULL, tty)) != ZERR_NONE)
+	    com_err(argv[0], retval, "initializing location information");
+
+	envptr = getenv("HOME");
 	if (envptr)
-		(void) strcpy(subsname,envptr);
+		strcpy(subsname,envptr);
 	else {
 		if (!(pwd = getpwuid((int) getuid()))) {
 			fprintf(stderr,"Who are you?\n");
 			exit (1);
 		}
 
-		(void) strcpy(subsname,pwd->pw_dir);
+		strcpy(subsname,pwd->pw_dir);
 	}
-	(void) strcpy(oldsubsname,subsname);
-	(void) strcat(oldsubsname,OLD_SUBS);
-	(void) strcat(subsname,USERS_SUBS);
+	strcpy(oldsubsname,subsname);
+	strcat(oldsubsname,OLD_SUBS);
+	strcat(subsname,USERS_SUBS);
 	if (!access(oldsubsname,F_OK) && access(subsname, F_OK)) {
 		/* only if old one exists and new one does not exist */
 		printf("The .subscriptions file in your home directory is now being used as\n.zephyr.subs . I will rename it to .zephyr.subs for you.\n");
@@ -200,6 +208,8 @@ wgc_control(argc,argv)
 		notice.z_opcode = USER_SHUTDOWN;
 	if (!strcmp(argv[0],"wg_startup"))
 		notice.z_opcode = USER_STARTUP;
+	if (!strcmp(argv[0],"wg_exit"))
+		notice.z_opcode = USER_EXIT;
 	if (!notice.z_opcode) {
 		fprintf(stderr,
 			"unknown WindowGram client control command %s\n",
