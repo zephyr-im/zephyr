@@ -3,7 +3,7 @@ SHELL = /bin/sh
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 datadir=@datadir@
-confdir=@confdir@
+sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
 
@@ -18,32 +18,21 @@ BUILDTOP=../..
 VPATH=@srcdir@
 CC=@CC@
 INSTALL=@INSTALL@
-MK_CMDS=@MK_CMDS@
 
 DEBUG=-O
 CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ @CPPFLAGS@
-LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @SS_LDFLAGS@ @LDFLAGS@
+LDFLAGS=${DEBUG} -L${BUILDTOP}/lib @LDFLAGS@
 LIBS=-lzephyr -lss @LIBS@ -lcom_err
 
 OBJS=	zctl.o zctl_cmds.o
 
 all: zctl
 
-zctl: ${OBJS} ${BUILDTOP}/lib/zephyr/libzephyr.a @ETDEP@ @SSDEP@
+zctl: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
 	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
-# The Athena mk_cmds insists on writing output to source directory.  Bleah.
-# After the patch to fix it goes into an Athena release, replace it with:
-#	${MK_CMDS} ${srcdir}/zctl_cmds.ct
 zctl_cmds.c: zctl_cmds.ct
-	cp ${srcdir}/zctl_cmds.ct /tmp/zctl_cmds.$$$$.ct; \
-	${MK_CMDS} /tmp/zctl_cmds.$$$$.ct; \
-	if [ -f /tmp/zctl_cmds.$$$$.c ]; then \
-		mv /tmp/zctl_cmds.$$$$.c zctl_cmds.c; \
-	else \
-		mv zctl_cmds.$$$$.c zctl_cmds.c; \
-	fi; \
-	rm -f /tmp/zctl_cmds.$$$$.ct
+	mk_cmds ${srcdir}/zctl_cmds.ct
 
 check:
 
