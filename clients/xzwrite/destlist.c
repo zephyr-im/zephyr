@@ -116,7 +116,7 @@ static void get_dest_from_file(dests, f)
      DestRec	dest;
 
      if ((file = fopen(f, "r")) == NULL) {
-	  Warning("Cannot find destinations file", f, NULL);
+	  Warning("Cannot find destinations file ", f, NULL);
 	  return;
      }
      
