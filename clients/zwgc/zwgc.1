@@ -27,7 +27,7 @@
 .it 1 }N
 .di ]B
 ..
-.TH ZWGC 1 "November 27, 1989" "MIT Project Athena"
+.TH ZWGC 1 "November 30, 1989" "MIT Project Athena"
 .SH NAME
 zwgc \- Zephyr Windowgram Client program
 .SH SYNOPSIS
@@ -77,7 +77,7 @@ man page for details.
 .I Zwgc
 formats its output messages according to the commands in its
 description file.  The user's description file 
-.RB ( $HOME/.zwgc.desc
+.RI ( $HOME/.zwgc.desc
 by default, or whatever is specified by -f) is read, or the system file
 is read if the user's does not exist.
 .PP
@@ -131,7 +131,15 @@ of expressions separated by whitespace (e.g. $var1 "lit1" $var2).
 .PP
 The following variables are always available:
 .TP 5
-auth
+.B 1, ...
+Numeric variables are assigned values corresponding to that field in the
+notice (the body of each notice is conceptually an array of fields, each
+terminated with a null character).  If the number is greater than the
+number of fields actually in the notice, the value is "".  For example,
+the standard zwrite messages have two fields: $1 is the signature, and
+$2 is the text of the message.
+.TP 5
+.B auth
 An indication of the authenticity of the notice.  ``yes'' means the
 notice is authentic, ``no'' means it is not, and ``forged'' means that
 the message claimed to be authentic but the verification of the claim
@@ -141,74 +149,74 @@ changed his Kerberos tickets with
 but has not run ``zctl sub'' to
 register this change with the Zephyr servers.
 .TP
-class
+.B class
 The class of the current notice.
 .TP
-date
+.B date
 The date on which the notice was sent.
 .TP
-default
+.B default
 The default output format for the current notice
 .TP
-error
+.B error
 An error message from the port read/write commands.
 .TP
-fromhost
+.B fromhost
 The full name of the host from which the notice appears to have been
 sent.  
 .I This is not fully reliable,
 as the information used to determine this hostname is not guaranteed to
 be correct (even for authentic messages).
 .TP
-fullsender
+.B fullsender
 The notice sender's name, including the zephyr realm name.
 .TP
-instance
+.B instance
 The instance of the current notice.
 .TP
-kind
+.B kind
 The kind of notice.
 .TP
-message
+.B message
 The full text of the message, with nulls converted to newlines.
 .TP
-number_of_fields
+.B number_of_fields
 The number of fields in the message (a string representation of a
 decimal number).
 .TP
-opcode
+.B opcode
 The opcode of the current notice.
 .TP
-output_driver
+.B output_driver
 The name of the output driver in use.
 .TP
-port
+.B port
 The port from which the notice was sent.
 .TP
-realm
+.B realm
 The local zephyr realm.
 .TP
-recipient
+.B recipient
 The recipient for the current notice.  If the notice is a multicast
 (sent to several people), the recipient is set to ``*''.
 .TP
-sender
+.B sender
 Usually a shortened version of fullsender.  If the realm of the sender
 is equal to the realm of the recipient,
 .I sender
 omits the realm name.
 .TP
-time
+.B time
 The time of day at which the notice was sent.
 .TP
-user
-The full zephyr name of the user (e.g. pegray@ATHENA.MIT.EDU).
+.B user
+The full zephyr name of the user (e.g. marc@ATHENA.MIT.EDU).
 .TP
-version
+.B version
 The current version of 
 .IR zwgc .
 .TP
-zephyr_version
+.B zephyr_version
 The protocol version of the notice.
 .PP
 All of these variables (except for error, output_driver, and version)
@@ -221,6 +229,9 @@ file.
 .TP 5
 .BI buffer ()
 The contents of the current output buffer.
+.TP
+.BI downcase (expr)
+Returns the value of \fIexpr\fR, converted to lower case.
 .TP
 .BI get (expr)
 Returns a line from the port named \fIexpr\fR.  If there is no text
@@ -241,7 +252,8 @@ from the beginning
 or end 
 .RB ( rany )
 of
-.I expr1.
+.I expr1
+(e.g. lany("1234567890","foo") would return "123").
 If
 .I expr1
 is a variable reference, the variable
@@ -276,9 +288,6 @@ in
 is returned (and 
 .I expr1
 is set to "", if a variable).
-.TP
-.BI lowercase (expr)
-Returns the value of \fIexpr\fR, converted to lower case.
 .TP
 .BI lspan "(expr1, expr2), " lspan "(expr1, expr2)"
 These functions are the negation of the 
@@ -353,15 +362,15 @@ The logical negation of
 Following is a list of the commands usable in the description
 language:
 .TP 5
-appendport expr1 expr2
+.BI appendport " expr1 expr2"
 Creates a port called \fIexpr1\fR.  All output to the port will be
 appended to the file \fIexpr2\fR.  There is no input.  If the file is
 created, its mode is set to read-write, owner only (no access for others).
 .TP
-break
+.B break
 Exits the innermost if, case, or while block.
 .TP
-case expr1 [ ((match expr [,expr ...]) | default) commands ] ... endcase
+\fBcase \fIexpr1\fR [ ((\fBmatch \fIexpr\fR [,\fIexpr ...\fR]) | \fBdefault\fR)\fI commands \fR] ... \fBendcase\fR
 Evaluates \fIexpr1\fR.  Then, each of the match expressions is
 evaluated in order.  The first time an expression matches \fIexpr1\fR,
 then the body of commands under it is executed, and the rest of the case
@@ -369,67 +378,67 @@ statement is skipped.  default always
 matches, so it should always appear as the last set of commands.  See
 the default description file for an example of use.
 .TP
-clearbuf
+.B clearbuf
 Clears the output buffer (see below for details on buffering).
 .TP
-closeinput expr
+.BI closeinput " expr"
 Closes the file associated with \fIexpr\fR.
 .TP
-closeoutput expr
+.BI closeoutput " expr"
 Sends an EOF (end-of-file) to the process if \fIexpr\fR was a port created by
 execport, or closes the file if it was created by outputport or
 appendport.
 .TP
-closeport expr
+.BI closeport " expr"
 Closes both input and output of \fIexpr\fR as defined above.
 .TP
-fields variable1 ...
+.BI fields " variable1 ..."
 sets the list of variables to be equal to the fields in the
 notice.  If there are more variables than fields, the extra
 variables are left empty.
 .TP
-exec exprlist
+.BI exec " exprlist"
 Executes a program without any input or output.  A command named by
 \fIexprlist\fR is executed.  Each expression is used as an argument to
 the program; the first expression names the program (it may be either an
 absolute pathname, or a program name; the user's PATH is searched to
 find simple program names).
 .TP
-execport expr1 exprlist
+.BI execport " expr1 exprlist"
 Creates a port called \fIexpr1\fR.  A command named by \fIexprlist\fR
 is executed, as described above for \fBexec\fR.
 All output to the port is sent to the standard input
 of the process.  Reading from the port will return the standard output
 of the process.
 .TP
-exit
+.B exit
 Completes processing of the current notice.  The remainder of the
 description file is ignored after execution of this command.
 .\" hack because the following line otherwise breaks because it is too long.
 .if n .ll +2in
 .TP
-if expr1 then commands\fB1\fR [elseif expr2 then commands\fB2\fR] ... [else commands\fBn\fR] endif
-If expr1 evaluates to true, execute commands1, etc. [A conditional
+\fBif \fIexpr1 \fBthen \fIcommands1\fR [\fBelseif \fIexpr2 \fBthen \fIcommands2\fR] ... [\fBelse \fIcommandsn\fR] \fBendif\fR
+If \fIexpr1\fR evaluates to true, execute \fIcommands1\fI, etc. [A conditional
 construct, similar to the constructs in the C shell (csh).]
 .TP
-inputport expr1 expr2 
+.BI inputport " expr1 expr2"
 Creates a port called \fIexpr1\fR.  All input from the port comes from
 the file \fIexpr2\fR.  There is no output.
 .TP
-noop
+.B noop
 does nothing
 .TP
-outputport expr1 expr2
+.BI outputport " expr1 expr2"
 Creates a port called \fIexpr1\fR.  The file \fIexpr2\fR will be
 truncated, or created if it does not exist.  All output to the port
 will be appended to the file \fIexpr2\fR.  There is no input.  If the file is
 created, its mode is set to read-write, owner only (no access for others).
 .TP
-print expr1 ...
+.BI print " expr1 ..."
 adds the values of the expressions to the current output buffer.  The
 values of the expressions are separated by spaces in the output.
 .TP
-put [expr [exprlist]]
+.B put \fR[\fIexpr \fR[\fIexprlist\fR]]
 Sends data to a port.  If \fIexpr\fR is provided, then it is used as the
 port, otherwise the port used is the
 port corresponding to the default output device.
@@ -437,7 +446,7 @@ If \fIexprlist\fR is provided, the expressions in the list are sent to
 the port, separated by spaces.  If it is omitted, then the contents
 of the output buffer are sent as the data.
 .TP
-set variable = expr
+.BI set " variable " = " expr"
 sets
 .I variable
 equal to
@@ -446,7 +455,7 @@ Variable can later be
 referenced by 
 .IR $variable .
 .TP
-show text endshow
+.BI show " text " endshow
 Appends text to the output buffer.  This command is special, because
 the string does not need to be quoted.  Whitespace at the beginning or
 end of the lines of text is ignored.  The \fIendshow\fR must appear as
@@ -460,7 +469,7 @@ show
 endshow
 .fi
 .TP
-while expr do statements endwhile
+.BI while " expr " do " statements " endwhile
 Executes \fIstatements\fR until \fIexpr\fR is false.
 
 .SH PORTS
@@ -920,7 +929,7 @@ Project Athena Technical Plan Section E.4.1, `Zephyr Notification Service'
 .nf
 John Carr (MIT/Project Athena) <jfc@athena.mit.edu>
 Marc Horowitz (MIT/Project Athena) <marc@athena.mit.edu>
-Mark Lillibridge (MIT/Project Athena)
+Mark Lillibridge (MIT/Project Athena) <mdl@CS.CMU.EDU>
 .fi
 .SH RESTRICTIONS
 Copyright (c) 1989 by the Massachusetts Institute of Technology.
