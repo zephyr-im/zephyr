@@ -69,6 +69,8 @@ extern int krbONE;
 
 extern int krb_ap_req_debug;
 
+extern struct timeval t_local;
+
 /*
  * Keep the following information around for subsequent calls
  * to this routine by the same server using the same key.
@@ -109,7 +111,7 @@ Sched* check_key_sched_cache (key)
     for (i = HASH_SIZE_2 - 1; i >= 0; i--)
 	if (rec[i].last_time_used
 	    && key[0] == rec[i].key[0]
-	    && !bcmp (key, rec[i].key, sizeof (des_cblock))) {
+	    && !memcmp (key, rec[i].key, sizeof (des_cblock))) {
 	    rec[i].last_time_used = last_use++;
 	    return &rec[i].schedule;
 	}
@@ -136,7 +138,7 @@ void add_to_key_sched_cache (key, sched)
 	if (rec[i].last_time_used < rec[oldest].last_time_used)
 	    oldest = i;
     }
-    _BCOPY (key, rec[oldest].key, sizeof (des_cblock));
+    (void) memcpy (rec[oldest].key, key, sizeof (des_cblock));
     rec[oldest].schedule = *sched;
     rec[oldest].last_time_used = last_use++;
 }
@@ -176,7 +178,7 @@ krb_set_key(key,cvt)
     int cvt;
 {
 #ifdef NOENCRYPTION
-    _BZERO(serv_key, sizeof(serv_key));
+    (void) memset(serv_key, 0, sizeof(serv_key));
     return KSUCCESS;
 #else /* Encrypt */
     Sched *s;
@@ -185,7 +187,7 @@ krb_set_key(key,cvt)
     if (cvt)
 	string_to_key(key,serv_key);
     else
-	_BCOPY(key,(char *)serv_key,8);
+	(void) memcpy((char *)serv_key,key,8);
 
     s = check_key_sched_cache (serv_key);
     if (s) {
@@ -252,8 +254,6 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     KTEXT tkt = &ticket;
     KTEXT_ST req_id_st;  /* Temp storage for authenticator */
     register KTEXT req_id = &req_id_st;
-
-    struct timeval t_local;
 
     char realm[REALM_SZ];	/* Realm of issuing kerberos */
     Sched seskey_sched, *sched;	/* Key sched for session key */
@@ -340,7 +340,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     tkt->length = (int) *ptr++;
     if ((tkt->length + (ptr+1 - (char *) authent->dat)) > authent->length)
 	return(RD_AP_MODIFIED);
-    _BCOPY(ptr+1,(char *)(tkt->dat),tkt->length);
+    (void) memcpy((char *)(tkt->dat),ptr+1,tkt->length);
 
     if (krb_ap_req_debug)
         log("ticket->length: %d",tkt->length);
@@ -366,7 +366,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     if ((req_id->length + (ptr + tkt->length - (char *) authent->dat)) >
 	authent->length)
 	return(RD_AP_MODIFIED);
-    _BCOPY(ptr + tkt->length, (char *)(req_id->dat),req_id->length);
+    (void) memcpy((char *)(req_id->dat),ptr + tkt->length, req_id->length);
 
 #ifndef NOENCRYPTION
     /* And decrypt it with the session key from the ticket */
@@ -395,7 +395,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     (void) strcpy(r_realm,ptr);	/* Authentication name */
     ptr += strlen(r_realm)+1;
     check_ptr();
-    _BCOPY(ptr,(char *)&ad->checksum,4);	/* Checksum */
+    (void) memcpy((char *)&ad->checksum,ptr,4);	/* Checksum */
     ptr += 4;
     check_ptr();
     if (swap_bytes) swap_u_long(ad->checksum);
@@ -408,7 +408,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 #endif /* lint */
     check_ptr();
     /* assume sizeof(r_time_sec) == 4 ?? */
-    _BCOPY(ptr,(char *)&r_time_sec,4); /* Time (coarse) */
+    (void) memcpy((char *)&r_time_sec,ptr,4); /* Time (coarse) */
     if (swap_bytes) swap_u_long(r_time_sec);
 
     /* Check for authenticity of the request */
@@ -428,13 +428,16 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
     if (from_addr && (ad->address != from_addr))
         return(RD_AP_BADD);
 
-    (void) gettimeofday(&t_local,(struct timezone *) 0);
     delta_t = abs((int)(t_local.tv_sec - r_time_sec));
     if (delta_t > CLOCK_SKEW) {
-        if (krb_ap_req_debug)
-            log("Time out of range: %d - %d = %d",
-                t_local.tv_sec,r_time_sec,delta_t);
-        return(RD_AP_TIME);
+	(void) gettimeofday(&t_local, (struct timezone *)0);
+	delta_t = abs((int)(t_local.tv_sec - r_time_sec));
+	if (delta_t > CLOCK_SKEW) {
+	    if (krb_ap_req_debug)
+		log("Time out of range: %d - %d = %d",
+		    t_local.tv_sec,r_time_sec,delta_t);
+	    return(RD_AP_TIME);
+	}
     }
 
     /* Now check for expiration of ticket */
