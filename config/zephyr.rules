@@ -28,10 +28,12 @@ Makefile Makefiles:: $(IMAKE)
 
 #ifdef KERBEROS
 CDEFS_KRB = -DKERBEROS
+ZLIB_KRB = $(LIB_KRB)
 #endif
 
 #ifdef HESIOD
 CDEFS_HES = -DHESIOD
+ZLIB_HES = $(LIB_HES)
 #endif
 
 #ifdef NO_ET
@@ -48,17 +50,19 @@ CDEFS_SS = -I$(D_UTIL)
 #endif
 
 ZPIDDIR = /etc/athena
+ZETCDIR = $(ATHCONFDIR)/zephyr
 ZLIBDIR = $(ATHLIBDIR)/zephyr
 ZINCDIR = $(ATHINCDIR)/zephyr
-ZACLDIR = $(ZLIBDIR)/acl
+ZACLDIR = $(ZETCDIR)/acl
 
 BINC = $(PTOP)/h
 
 ZLIB = $(PTOP)/lib/libzephyr.a
-ZLIBS = $(LIB_KRB) $(LIB_ET)
+ZLIBDES = $(PTOP)/libdes/libdes.a
+ZLIBS = $(ZLIB_KRB) $(LIB_ET) $(ZLIB_HES)
 DYN_LIB = $(PTOP)/libdyn/libdyn.a
 
-DEFINES = $(XDEFS) -DX11 -I$(BINC) \
+DEFINES = $(XDEFS) -I$(BINC) \
 	$(CDEFS_KRB) $(CDEFS_HES) $(CDEFS_ET) $(CDEFS_SS) \
 	$(MACHDEFS)
 
@@ -69,7 +73,7 @@ AnsiCC()
  */
 #define make_err(name) \
 error_table(name)							@@\
-all depend:: concat3($(BINC)/zephyr/,name,.h)				@@\
+all:: concat3($(BINC)/zephyr/,name,.h)					@@\
 $(OBJS): concat3($(BINC)/zephyr/,name,.h)				@@\
 concat3($(BINC)/zephyr/,name,.h): concat2(name,.h)			@@\
 	$(RM) $@; $(CP) concat2(name,.h) $@				@@\
