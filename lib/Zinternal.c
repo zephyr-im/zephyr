@@ -322,10 +322,11 @@ Code_t Z_ReadWait()
 	}
 	if (find_or_insert_uid(&notice.z_uid, notice.z_kind))
 	    return(ZERR_NONE);
+
+	/* Check authentication on the notice. */
+	notice.z_checked_auth = ZCheckAuthentication(&notice, &from);
     }
 
-    /* Check authentication on the notice. */
-    notice.z_checked_auth = ZCheckAuthentication(&notice, &from);
 
     /*
      * Parse apart the z_multinotice field - if the field is blank for
