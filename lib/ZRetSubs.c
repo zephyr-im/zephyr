@@ -25,7 +25,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	int i,retval;
 	ZNotice_t notice,retnotice;
 	ZPacket_t buffer;
-	char *ptr,*end;
+	char *ptr,*end,*ptr2;
 	
 	retval = ZFlushSubscriptions();
 
@@ -83,11 +83,14 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 			return (ENOMEM);
 		(void) strcpy(__subscriptions_list[i].classinst,ptr);
 		ptr += strlen(ptr)+1;
+		ptr2 = ptr;
+		if (!*ptr2)
+			ptr2 = "*";
 		__subscriptions_list[i].recipient = (char *)
-			malloc((unsigned)strlen(ptr)+1);
+			malloc((unsigned)strlen(ptr2)+1);
 		if (!__subscriptions_list[i].recipient)
 			return (ENOMEM);
-		(void) strcpy(__subscriptions_list[i].recipient,ptr);
+		(void) strcpy(__subscriptions_list[i].recipient,ptr2);
 		ptr += strlen(ptr)+1;
 	}
 
