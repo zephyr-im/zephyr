@@ -1,3 +1,13 @@
+zephyr (2.1.sourceforge1-1) experimental; urgency=low
+
+  * 
+ -- Sam Hartman <hartmans@mit.edu>  Thu, 11 Jul 2002 20:13:25 -0400
+
+Merge in Marc's intergalactic patches from sourceforge.  The debconf is
+    certainly all  broken and useless right now, but perhaps the code
+    works.  Highly experimental.
+ --
+
 zephyr (2.1.20010518.SNAPSHOT-8) unstable; urgency=low
 
   * Missing build-depends on libhesiod-dev.  I cannot begin to describe

@@ -1,0 +1,4 @@
+Look at zwgc/tty_filter.c; I have adopted keeping the change
+introduced in 1.2 although the change introduced on the upstream
+branch may be more appropriate.
+
