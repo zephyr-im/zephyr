@@ -151,7 +151,7 @@ extern int errno;
 
 	/* Random declarations */
 extern char *ZGetSender(), *ZGetVariable();
-extern u_short ZGetWGPort();
+extern short ZGetWGPort();
 
 	/* Successful function return */
 #define ZERR_NONE		0
