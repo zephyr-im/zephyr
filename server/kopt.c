@@ -551,7 +551,7 @@ decomp_ticket(tkt, flags, pname, pinstance, prealm, paddress, session,
     char *sinstance;            /* Service instance */
     C_Block key;                /* Service's secret key
                                  * (to decrypt the ticket) */
-    des_key_sched key_s;	/* The precomputed key schedule */
+    des_key_schedule key_s;	/* The precomputed key schedule */
 {
     static int tkt_swap_bytes;
     unsigned char *uptr;
