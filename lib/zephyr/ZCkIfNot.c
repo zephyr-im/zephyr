@@ -13,23 +13,21 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZCheckIfNotice_c[] = "$Header$";
-#endif lint
-
-#include <zephyr/mit-copyright.h>
+static char rcsid_ZCheckIfNotice_c[] = "$Id$";
+#endif
 
 #include <zephyr/zephyr_internal.h>
 
 Code_t ZCheckIfNotice(notice, from, predicate, args)
     ZNotice_t *notice;
     struct sockaddr_in *from;
-    int (*predicate)();
+    register int (*predicate)();
     char *args;
 {
     ZNotice_t tmpnotice;
     Code_t retval;
-    char *buffer;
-    struct _Z_InputQ *qptr;
+    register char *buffer;
+    register struct _Z_InputQ *qptr;
 
     if ((retval = Z_ReadEnqueue()) != ZERR_NONE)
 	return (retval);
