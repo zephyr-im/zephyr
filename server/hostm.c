@@ -41,6 +41,9 @@ static char rcsid_hostm_s_c[] = "$Header$";
  *
  * void hostm_shutdown()
  *
+ * void hostm_losing(client, host)
+ *	ZClient_t *client;
+ *	ZHostList_t *host;
  */
 
 struct hostlist {
@@ -63,7 +66,7 @@ static struct hostlist *all_hosts;
 
 static int num_hosts;			/* number of hosts in all_hosts */
 #define	LOSE_TIMO	(10)		/* timeout for a losing host to respond by  */
-static int lose_timo = LOSE_TIMO;
+static long lose_timo = LOSE_TIMO;
 
 static losinghost *losing_hosts = NULLLH; /* queue of pings for hosts we
 					     doubt are really there */
@@ -76,6 +79,7 @@ static int cmp_hostlist();
 /*
  * We received a HostManager packet.  process accordingly.
  */
+/*ARGSUSED*/
 void
 hostm_dispatch(notice, auth, who)
 ZNotice_t *notice;
@@ -90,7 +94,7 @@ struct sockaddr_in *who;
 
 	zdbug1("hm_disp");
 	if (notice->z_kind == HMACK) {
-		host_not_losing(notice, auth, who);
+		host_not_losing(who);
 		return;
 	}
 	owner = hostm_find_server(&who->sin_addr);
@@ -162,7 +166,7 @@ ZServerDesc_t *server;
 			/* and remque()s the client */
 			client_deregister(clt->zclt_client, host);
 
-	uloc_hflush(&host->zh_addr);
+	uloc_hflush(&host->zh_addr.sin_addr);
 	host_detach(&host->zh_addr.sin_addr, server);
 	/* XXX tell other servers */
 	return;
@@ -243,9 +247,7 @@ losinghost *which;
 }
 
 static void
-host_not_losing(notice, auth, who)
-ZNotice_t *notice;
-int auth;
+host_not_losing(who)
 struct sockaddr_in *who;
 {
 	losinghost *lhp, *lhp2;
@@ -336,7 +338,6 @@ ZHostList_t *host;
 ZServerDesc_t *server;
 {
 	struct hostlist *oldlist;
-	register int i = 0;
 
 	zdbug2("insert_host %s",inet_ntoa(host->zh_addr.sin_addr));
 
@@ -370,6 +371,7 @@ ZServerDesc_t *server;
 
 #ifdef DEBUG
 	if (zdebug) {
+		register int i = 0;
 		char buf[512];
 		for (i = 0; i < num_hosts; i++)
 			syslog(LOG_DEBUG, "%d: %s %s",i,
