@@ -806,7 +806,9 @@ admin_dispatch(notice, auth, who, server)
 #endif
 		}
     } else if (strcmp(opcode, ADMIN_BDUMP) == 0) {
-	if (bdumping)
+	/* Ignore a brain dump request if this is a packet being processed
+	 * concurrently during a brain dump. */
+	if (bdump_concurrent)
 	    return ZERR_NONE;
 	bdump_get(notice, auth, who, server);
     } else if (strcmp(opcode, ADMIN_KILL_CLT) == 0) {
