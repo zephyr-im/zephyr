@@ -7,6 +7,10 @@ Description-es: ©CuАles son sus servidores zephyr?
  Por favor, introduzca los nombres completos de sus servidores zephyr
  separados por espacios. (tenga en cuenta que se puede tratar de sСlo una
  parte de lo que usted considera los servidores)
+Description-ru: Как называются ваши сервера zephyr?
+ Введите  полные  имена  ваших  серверов zephyr, разделенные пробелами.
+ (Заметьте, что это может  быть  подмножеством  того,  что  вы говорите
+ клиентам).
 
 Template: zephyr-clients/read_conf
 Type: boolean
@@ -28,6 +32,14 @@ Description-es: No deberМa poder leer esto
  editado. Si no es Иste el caso, nos saltamos la lectura de los ficheros
  de configuraciСn hasta que se ejecute el script posterior a la
  instalaciСn.
+Description-ru: Вы никогда не должны видеть это
+ Мы  хотим  попробовать  и захватить  пользовательские изменения, когда
+ пользователи  редактируют файл настроек вручную. Чтобы это сделать, мы
+ смотрим  в  файл в сценарии настройки. Однако в случае пред-настройки,
+ сценарий  настройки  запускается дважды до запуска postinst. Потому мы
+ можем  прочитать  неверное  значение  до  того,  как отредактированное 
+ значение  будет  записано  из  postinst.  Если  это  не удалось, то мы 
+ пропускаем чтение файла настроек, пока не будет запущен postinst.
 
 Template: zephyr-clients/need-servers
 Type: note
@@ -36,3 +48,8 @@ Description: You have no zephyr servers specified for the client
  have any zephyr servers configured.  Please edit the file
  /etc/default/zephyr-clients and add the names of your zephyr
  servers, separated by spaces to the zhm_args variable.
+Description-ru: Вы не указали сервера zephyr для клиентов
+ Пакет zephyr-clients по какой-то причине не настроен ни на один из
+ серверов zephyr.  Пожалуйста, отредактируйте файл
+ /etc/default/zephyr-clients и добавьте имена ваших серверов zephyr, 
+ разделенные пробелами в переменную zhm_args.

@@ -7,6 +7,8 @@ zephyr (2.1.20010518.SNAPSHOT-7) unstable; urgency=low
     pointing at libzephyr3 instead.  closes: #148175
   * Add dependency on the shared library to the -dev package.
     <slaps self on forehead>  closes: #110486
+  * Add Russian translation for zephyr-server.  closes: #136936
+  * Add Russian translation for zephyr-clients.  closes: #138326
 
  -- 
 
