@@ -64,8 +64,8 @@ int ZCheckAuthentication(notice, from)
 			    SERVER_INSTANCE, from->sin_addr.s_addr, 
 			    &dat, srvtab);
 	if (result == RD_AP_OK) {
-		_BCOPY((char *)dat.session, (char *)__Zephyr_session, 
-		      sizeof(C_Block));
+		(void) memcpy((char *)__Zephyr_session, (char *)dat.session, 
+			       sizeof(C_Block));
 		(void) sprintf(srcprincipal, "%s%s%s@%s", dat.pname, 
 			       dat.pinst[0]?".":"", dat.pinst, dat.prealm);
 		if (strcmp(srcprincipal, notice->z_sender))
