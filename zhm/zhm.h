@@ -45,6 +45,7 @@
 
 extern char *malloc();
 extern Code_t send_outgoing();
+extern void init_queue(), retransmit_queue();
 
 #ifdef vax
 #define MACHINE "vax"
