@@ -24,7 +24,7 @@ static const char rcsid_ZGetSender_c[] =
 char *ZGetSender()
 {
     struct passwd *pw;
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     char pname[ANAME_SZ], pinst[INST_SZ], prealm[REALM_SZ];
     static char sender[ANAME_SZ+INST_SZ+REALM_SZ+3] = "";
 #else
@@ -35,7 +35,7 @@ char *ZGetSender()
     if (*sender)
 	return (sender);
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     if (krb_get_tf_fullname((char *)TKT_FILE, pname, pinst, prealm) == KSUCCESS)
     {
 	(void) sprintf(sender, "%s%s%s@%s", pname, (pinst[0]?".":""),

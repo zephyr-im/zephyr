@@ -26,7 +26,7 @@ static const char *rcsid_rd_req_c =
 #endif /* lint */
 #endif /* SABER */
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 #ifndef NOENCRYPTION
 
 /* Byte ordering */
@@ -610,5 +610,5 @@ decomp_ticket(tkt, flags, pname, pinstance, prealm, paddress, session,
 
     return(KSUCCESS);
 }
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 

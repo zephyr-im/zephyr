@@ -599,7 +599,7 @@ xmit(notice, dest, auth, client)
 				   we are distributing authentic and
 				   we have a pointer to auth info
 				   */
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 	retval = ZFormatAuthenticNotice(notice, noticepack, packlen, &packlen,
 					client->session_key);
 	if (retval != ZERR_NONE) {
@@ -607,7 +607,7 @@ xmit(notice, dest, auth, client)
 	    free(noticepack);
 	    return;
 	}
-#else /* !ZEPHYR_USES_KERBEROS */
+#else /* !HAVE_KRB4 */
 	notice->z_auth = 1;
 	retval = ZFormatSmallRawNotice(notice, noticepack, &packlen);
 	if (retval != ZERR_NONE) {
@@ -615,7 +615,7 @@ xmit(notice, dest, auth, client)
 	    free(noticepack);
 	    return;
 	}
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
     } else {
 	notice->z_auth = 0;
 	notice->z_authent_len = 0;
@@ -1023,7 +1023,7 @@ control_dispatch(notice, auth, who, server)
 		clt_ack(notice, who, AUTH_FAILED);
 	    return ZERR_NONE;
 	}
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 	/* in case it's changed */
 	memcpy(client->session_key, ZGetSession(), sizeof(C_Block));
 #endif

@@ -18,7 +18,7 @@ static void rlm_nack_cancel __P((ZNotice_t *notice, struct sockaddr_in *who));
 static void rlm_new_ticket __P(());
 static void rlm_rexmit __P((void *arg));
 static Code_t realm_ulocate_dispatch __P((ZNotice_t *notice,int auth,struct sockaddr_in *who,Server *server,Realm *realm));
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 static Code_t ticket_retrieve __P((Realm *realm));
 #endif
 
@@ -448,7 +448,7 @@ realm_init()
       abort();
     }
     memset(&client->addr, 0, sizeof(struct sockaddr_in));
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     memset(&client->session_key, 0, sizeof(client->session_key));
 #endif
     sprintf(rlmprinc, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE, rlm->name);
@@ -566,7 +566,7 @@ realm_handoff(notice, auth, who, realm, ack_to_sender)
     Realm *realm;
     int ack_to_sender;
 {
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
   Code_t retval;
 
   if (!auth) {
@@ -583,9 +583,9 @@ realm_handoff(notice, auth, who, realm, ack_to_sender)
   zdbug((LOG_DEBUG, "realm_sendit to realm %s auth %d", realm->name, auth)); 
   /* valid ticket available now, send the message */
   realm_sendit_auth(notice, who, auth, realm, ack_to_sender);
-#else /* ZEPHYR_USES_KERBEROS */
+#else /* HAVE_KRB4 */
   realm_sendit(notice, who, auth, realm, ack_to_sender);
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 }
 
 static void
@@ -731,7 +731,7 @@ realm_dump_realms(fp)
 }
 
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 static void
 realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
     ZNotice_t *notice;
@@ -1082,5 +1082,5 @@ ticket_retrieve(realm)
     return (1);
   }
 }
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 

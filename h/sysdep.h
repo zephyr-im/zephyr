@@ -161,7 +161,7 @@ ZEPHYR_INT32 gethostid();
 #endif
 
 /* Kerberos compatibility. */
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 # include <krb.h>
 # include <krb_err.h>
 # include <des.h>

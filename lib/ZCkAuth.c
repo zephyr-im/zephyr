@@ -31,7 +31,7 @@ Code_t ZCheckAuthentication(notice, from)
     ZNotice_t *notice;
     struct sockaddr_in *from;
 {	
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     int result;
     ZChecksum_t our_checksum;
     CREDENTIALS cred;

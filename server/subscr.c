@@ -61,7 +61,7 @@ static const char rcsid_subscr_c[] = "$Id$";
  *
  */
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 #ifndef NOENCRYPTION
 C_Block	serv_key;
 Sched	serv_ksched;
@@ -839,10 +839,10 @@ subscr_send_subs(client)
 {
     int i = 0;
     Destlist *subs;
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     char buf[512];
     C_Block cblock;
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
     char buf2[512];
     char *list[7 * NUM_FIELDS];
     int num = 0;
@@ -855,7 +855,7 @@ subscr_send_subs(client)
 
     list[num++] = buf2;
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 #ifdef NOENCRYPTION
     memcpy(cblock, client->session_key, sizeof(C_Block));
 #else
@@ -873,7 +873,7 @@ subscr_send_subs(client)
 	zdbug((LOG_DEBUG, "cblock %s", buf));
 #endif
     }		
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
     retval = bdump_send_list_tcp(SERVACK, &client->addr, ZEPHYR_ADMIN_CLASS,
 				 num > 1 ? "CBLOCK" : "", ADMIN_NEWCLT,
 				 client->principal->string, "", list, num);

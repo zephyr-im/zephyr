@@ -66,7 +66,7 @@ static int setup_file_pointers __P((void));
 static void shutdown_file_pointers __P((void));
 static void cleanup __P((Server *server));
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 static long ticket_time;
 static char my_realm[REALM_SZ];
 
@@ -77,7 +77,7 @@ static char my_realm[REALM_SZ];
 extern C_Block	serv_key;
 extern Sched	serv_ksched;
 #endif
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 
 static Timer *bdump_timer;
 static int live_socket = -1;
@@ -105,15 +105,15 @@ bdump_offer(who)
 {
     Code_t retval;
     char buf[512], *addr, *lyst[2];
-#ifndef ZEPHYR_USES_KERBEROS
+#ifndef HAVE_KRB4
     int bdump_port = IPPORT_RESERVED - 1;
-#endif /* !ZEPHYR_USES_KERBEROS */
+#endif /* !HAVE_KRB4 */
 #if 1
     zdbug((LOG_DEBUG, "bdump_offer"));
 #endif
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     /* 
-     * when using ZEPHYR_USES_KERBEROS server-server authentication, we can
+     * when using HAVE_KRB4 server-server authentication, we can
      * use any random local address 
      */
     bdump_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -148,9 +148,9 @@ bdump_offer(who)
 	    return;
 	}
     }
-#else  /* !ZEPHYR_USES_KERBEROS */
+#else  /* !HAVE_KRB4 */
     /*
-     * when not using ZEPHYR_USES_KERBEROS, we can't use any old port, we use
+     * when not using HAVE_KRB4, we can't use any old port, we use
      * Internet reserved ports instead (rresvport)
      */
     bdump_socket = rresvport(&bdump_port);
@@ -163,7 +163,7 @@ bdump_offer(who)
     bdump_sin.sin_port = htons((unsigned short) bdump_port);
     bdump_sin.sin_addr = my_addr;
     bdump_sin.sin_family = AF_INET;
-#endif				/* ZEPHYR_USES_KERBEROS */
+#endif				/* HAVE_KRB4 */
 
     listen(bdump_socket, 1);
  
@@ -213,12 +213,12 @@ bdump_send()
     struct sigaction action;
 #endif
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     KTEXT_ST ticket;
     AUTH_DAT kdata;
 #else
     unsigned short fromport;
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
  
 #if 1
     zdbug((LOG_DEBUG, "bdump_send"));
@@ -233,7 +233,7 @@ bdump_send()
 		   sizeof(on)) < 0)
 	syslog(LOG_WARNING, "bdump_send: setsockopt (SO_KEEPALIVE): %m");
  
-#ifndef ZEPHYR_USES_KERBEROS
+#ifndef HAVE_KRB4
     fromport = ntohs(from.sin_port);
 #endif
  
@@ -274,7 +274,7 @@ bdump_send()
  
     /* Now begin the brain dump. */
  
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     /* receive the authenticator */
     retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
 			     SERVER_SERVICE, srvtab_file);
@@ -305,13 +305,13 @@ bdump_send()
 	cleanup(server);
 	return;
     }
-#else  /* !ZEPHYR_USES_KERBEROS */
+#else  /* !HAVE_KRB4 */
     if (fromport > IPPORT_RESERVED || fromport < IPPORT_RESERVED / 2) {
 	syslog(LOG_ERR, "bdump_send: bad port from peer: %d", fromport);
 	cleanup(server);
 	return;
     }
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 
     retval = setup_file_pointers();
     if (retval != 0) {
@@ -375,12 +375,12 @@ bdump_get_v12 (notice, auth, who, server)
 #ifdef _POSIX_VERSION
     struct sigaction action;
 #endif
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     KTEXT_ST ticket;
     AUTH_DAT kdata;
-#else  /* !ZEPHYR_USES_KERBEROS */
+#else  /* !HAVE_KRB4 */
     int reserved_port = IPPORT_RESERVED - 1;
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
     
     bdumping = 1;
     server->dumping = 1;
@@ -420,7 +420,7 @@ bdump_get_v12 (notice, auth, who, server)
 	server->dumping = 0;
 	return;
     }
-#ifndef ZEPHYR_USES_KERBEROS
+#ifndef HAVE_KRB4
     if (ntohs(from.sin_port) > IPPORT_RESERVED ||
 	ntohs(from.sin_port) < IPPORT_RESERVED / 2) {
 	syslog(LOG_ERR, "bdump_get: port not reserved: %d",
@@ -429,9 +429,9 @@ bdump_get_v12 (notice, auth, who, server)
 	return;
     }
     live_socket = rresvport(&reserved_port);
-#else  /* !ZEPHYR_USES_KERBEROS */
+#else  /* !HAVE_KRB4 */
     live_socket = socket(AF_INET, SOCK_STREAM, 0);
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
     if (live_socket < 0) {
 	syslog(LOG_ERR, "bdump_get: socket: %m");
 	cleanup(server);
@@ -451,7 +451,7 @@ bdump_get_v12 (notice, auth, who, server)
  
     /* Now begin the brain dump. */
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     /* send an authenticator */
     if (get_tgt()) {
 	cleanup(server);
@@ -485,7 +485,7 @@ bdump_get_v12 (notice, auth, who, server)
 	cleanup(server);
 	return;
     }
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
     retval = setup_file_pointers();
     if (retval != 0) {
 	syslog(LOG_WARNING, "bdump_get: can't set up file pointers: %s",
@@ -681,7 +681,7 @@ cleanup(server)
     server->dumping = 0;
 }
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 int
 get_tgt()
 {
@@ -743,7 +743,7 @@ get_tgt()
     }
     return(0);
 }
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 
 /*
  * The braindump offer wasn't taken, so we retract it.
@@ -784,10 +784,10 @@ bdump_recv_loop(server)
     Code_t retval;
     Client *client = NULL;
     struct sockaddr_in who;
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     char *cp;
     C_Block cblock;
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
     Realm *realm = NULL;
  
 #if 1
@@ -867,7 +867,7 @@ bdump_recv_loop(server)
 		syslog(LOG_ERR,"brl failed: %s", error_message(retval));
 		return retval;
 	    }
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 	    memset(client->session_key, 0, sizeof(C_Block));
 	    if (*notice.z_class_inst) {
 		/* a C_Block is there */
@@ -885,7 +885,7 @@ bdump_recv_loop(server)
 #endif
 		}
 	    }
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
 	} else if (strcmp(notice.z_opcode, CLIENT_SUBSCRIBE) == 0) { 
 	    /* a subscription packet */
 	    if (!client) {
