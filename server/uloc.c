@@ -39,6 +39,9 @@ static char rcsid_uloc_s_c[] = "$Header$";
  * void uloc_hflush(addr)
  *	struct in_addr *addr;
  *
+ * void uloc_flush_client(sin)
+ *	struct sockaddr_in *sin;
+ *
  * Code_t uloc_send_locations(host)
  *	ZHostList_t *host;
  */
@@ -55,18 +58,24 @@ static char rcsid_uloc_s_c[] = "$Header$";
 #define	NUM_FIELDS	3
 
 
-typedef enum _login_type {
-	INVISIBLE,
-	VISIBLE
-} login_type;
+typedef enum _exposure_type {
+	NONE,
+	OPSTAFF_VIS,
+	REALM_VIS,
+	REALM_ANN,
+	NET_VIS,
+	NET_ANN
+} exposure_type;
 
 typedef struct _ZLocation_t {
 	char *zlt_user;
 	char *zlt_machine;
 	char *zlt_time;			/* in ctime format */
 	char *zlt_tty;
-	login_type zlt_visible;
+	exposure_type zlt_exposure;
 	struct in_addr zlt_addr;	/* IP addr of this loc */
+	unsigned short zlt_port;	/* port of registering client--
+					 for removing old entries */
 } ZLocation_t;
 
 #define	NULLZLT		((ZLocation_t *) 0)
@@ -76,8 +85,8 @@ typedef struct _ZLocation_t {
 
 static void ulogin_locate(), ulogin_add_user(), ulogin_flush_user();
 static ZLocation_t *ulogin_find();
-static int ulogin_setup(), ulogin_parse(), ul_equiv();
-static int ulogin_remove_user(), ulogin_hide_user();
+static int ulogin_setup(), ulogin_parse(), ul_equiv(), ulogin_expose_user();
+static exposure_type ulogin_remove_user();
 
 static ZLocation_t *locations = NULLZLT; /* ptr to first in array */
 static int num_locs = 0;		/* number in array */
@@ -93,32 +102,55 @@ int auth;
 struct sockaddr_in *who;
 ZServerDesc_t *server;
 {
-	Code_t retval;
+	exposure_type retval;
+	int err_ret;
+
 	zdbug((LOG_DEBUG,"ulogin_disp"));
 
 	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGOUT)) {
 		zdbug((LOG_DEBUG,"logout"));
-		if ((retval = ulogin_remove_user(notice, auth, who)) == QUIET) {
+		retval = ulogin_remove_user(notice, auth, who, &err_ret);
+		switch (retval) {
+		case NONE:
+			if (err_ret == UNAUTH) {
+				zdbug((LOG_DEBUG, "unauth logout: %s %d",
+				       inet_ntoa(who->sin_addr),
+				       ntohs(notice->z_port)));
+				if (server == me_server)
+					clt_ack(notice, who, AUTH_FAILED);
+				return;
+			} else if (err_ret == NOLOC) {
+				if (server == me_server)
+					clt_ack(notice, who, NOT_FOUND);
+				return;
+			} 
+			syslog(LOG_ERR,"bogus location exposure NONE, %s",
+			       notice->z_sender);
+			break;
+		case OPSTAFF_VIS:
+		case REALM_VIS:
+			/* he is not announced to people.  Silently ack */
 			if (server == me_server)
 				ack(notice, who);
-		}
-		else if (retval == UNAUTH) {
-			zdbug((LOG_DEBUG, "unauth logout: %d %d",auth,
-			       ntohs(notice->z_port)));
-			if (server == me_server)
-				clt_ack(notice, who, AUTH_FAILED);
-			return;
-		} else if (retval == NOLOC) {
-			if (server == me_server)
-				clt_ack(notice, who, NOT_FOUND);
-			return;
-		} else
+			break;
+		case REALM_ANN:
+		case NET_VIS:
+		case NET_ANN:
+			/* currently no distinction between these.
+			 just announce */
 			/* XXX we assume that if this user is at a certain
 			   IP address, we can trust the logout to be
-			   authentic */
+			   authentic.  ulogin_remove_user checks the
+			   ip addrs */
 			if (server == me_server)
 				sendit(notice, 1, who);
-		if (server == me_server)
+			break;
+		default:
+			syslog(LOG_ERR,"bogus location exposure %d/%s",
+			       (int) retval, notice->z_sender);
+			break;
+		}
+		if (server == me_server) /* tell the other servers */
 			server_forward(notice, auth, who);
 		return;
 	}
@@ -130,19 +162,55 @@ ZServerDesc_t *server;
 	}
 	if (!strcmp(notice->z_opcode, LOGIN_USER_FLUSH)) {
 		zdbug((LOG_DEBUG, "user flush"));
-		ulogin_flush_user(notice, who);
+		ulogin_flush_user(notice);
 		if (server == me_server)
 			ack(notice, who);
-	} else if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
-		zdbug((LOG_DEBUG,"user login"));
-		ulogin_add_user(notice, VISIBLE, who);
+#ifdef notdef
+	} else if (!strcmp(notice->z_opcode, EXPOSE_NONE)) {
+		zdbug((LOG_DEBUG,"no expose"));
+		(void) ulogin_remove_user(notice, auth, who, &err_ret);
+		if (err_ret == UNAUTH) {
+			zdbug((LOG_DEBUG, "unauth noexpose: %s/%d",
+			       inet_ntoa(who->sin_addr),
+			       ntohs(notice->z_port)));
+			if (server == me_server)
+				clt_ack(notice, who, AUTH_FAILED);
+			return;
+		} else if (err_ret == NOLOC) {
+			if (server == me_server)
+				clt_ack(notice, who, NOT_FOUND);
+			return;
+		}
+		if (server == me_server)
+			server_forward(notice, auth, who);
+		return;
+#endif notdef
+	} else if (!strcmp(notice->z_opcode, EXPOSE_OPSTAFF)) {
+		zdbug((LOG_DEBUG,"opstaff"));
+		ulogin_add_user(notice, OPSTAFF_VIS, who);
 		if (server == me_server)
 			sendit(notice, auth, who);
-	} else if (!strcmp(notice->z_opcode, LOGIN_QUIET_LOGIN)) {
-		zdbug((LOG_DEBUG,"quiet login"));
-		ulogin_add_user(notice, INVISIBLE, who);
-		if (server == me_server)
+	} else if (!strcmp(notice->z_opcode, EXPOSE_REALMVIS)) {
+		zdbug((LOG_DEBUG,"realmvis"));
+		ulogin_add_user(notice, REALM_VIS, who);
+		if (server == me_server) /* realm vis is not broadcast,
+					    so we ack it here */
 			ack(notice, who);
+	} else if (!strcmp(notice->z_opcode, EXPOSE_REALMANN)) {
+		zdbug((LOG_DEBUG,"realmann"));
+		ulogin_add_user(notice, REALM_ANN, who);
+		if (server == me_server) /* announce to the realm */
+			sendit(notice, auth, who);
+	} else if (!strcmp(notice->z_opcode, EXPOSE_NETVIS)) {
+		zdbug((LOG_DEBUG,"netvis"));
+		ulogin_add_user(notice, NET_VIS, who);
+		if (server == me_server) /* announce to the realm */
+			sendit(notice, auth, who);
+	} else if (!strcmp(notice->z_opcode, EXPOSE_NETANN)) {
+		zdbug((LOG_DEBUG,"netann"));
+		ulogin_add_user(notice, NET_ANN, who);
+		if (server == me_server) /* tell the world */
+			sendit(notice, auth, who);
 	} else {
 		syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
 		if (server == me_server)
@@ -178,20 +246,22 @@ ZServerDesc_t *server;
 		ulogin_locate(notice, who);
 		/* does xmit and ack itself, so return */
 		return;
+#ifdef notdef
 	} else if (!strcmp(notice->z_opcode, LOCATE_HIDE)) {
 		zdbug((LOG_DEBUG,"user hide"));
-		if (ulogin_hide_user(notice, INVISIBLE)) {
+		if (ulogin_expose_user(notice, INVISIBLE)) {
 			if (server == me_server)
 				clt_ack(notice, who, NOT_FOUND);
 			return;
 		}
 	} else if (!strcmp(notice->z_opcode, LOCATE_UNHIDE)) {
 		zdbug((LOG_DEBUG,"user unhide"));
-		if (ulogin_hide_user(notice, VISIBLE)) {
+		if (ulogin_expose_user(notice, VISIBLE)) {
 			if (server == me_server)
 				clt_ack(notice, who, NOT_FOUND);
 			return;
 		}
+#endif notdef
 	} else {
 		syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
 		if (server == me_server)
@@ -248,7 +318,55 @@ struct in_addr *addr;
 		for (i = 0; i < num_locs; i++)
 			syslog(LOG_DEBUG, "%s/%d",
 			       locations[i].zlt_user,
-			       (int) locations[i].zlt_visible);
+			       (int) locations[i].zlt_exposure);
+	}
+#endif DEBUG
+	/* all done */
+	return;
+}
+
+void
+uloc_flush_client(sin)
+struct sockaddr_in *sin;
+{
+	ZLocation_t *loc;
+	register int i = 0, new_num = 0;
+
+	/* slightly inefficient, assume the worst, and allocate enough space */
+	if (!(loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t)))) {
+		syslog(LOG_CRIT, "uloc_flush_clt malloc");
+		abort();
+		/*NOTREACHED*/
+	}
+
+	/* copy entries which don't match */
+	while (i < num_locs) {
+		if ((locations[i].zlt_addr.s_addr != sin->sin_addr.s_addr)
+		     && (locations[i].zlt_port != sin->sin_port))
+			loc[new_num++] = locations[i];
+		i++;
+	}
+
+	xfree(locations);
+
+	if (!new_num) {
+		zdbug((LOG_DEBUG,"no more locs"));
+		xfree(loc);
+		locations = NULLZLT;
+		num_locs = new_num;
+		return;
+	}
+	locations = loc;
+	num_locs = new_num;
+
+#ifdef DEBUG
+	if (zdebug) {
+		register int i;
+
+		for (i = 0; i < num_locs; i++)
+			syslog(LOG_DEBUG, "%s/%d",
+			       locations[i].zlt_user,
+			       (int) locations[i].zlt_exposure);
 	}
 #endif DEBUG
 	/* all done */
@@ -267,6 +385,7 @@ ZHostList_t *host;
 	register int i;
 	register struct in_addr *haddr = &host->zh_addr.sin_addr;
 	char *lyst[NUM_FIELDS];
+	char *exposure_level;
 	Code_t retval;
 
 	for (i = 0, loc = locations; i < num_locs; i++, loc++) {
@@ -276,11 +395,31 @@ ZHostList_t *host;
 		lyst[1] = loc->zlt_time;
 		lyst[2] = loc->zlt_tty;
 
-		if ((retval = bdump_send_list_tcp(ACKED, bdump_sin.sin_port,
+
+		switch (loc->zlt_exposure) {
+		case OPSTAFF_VIS:
+			exposure_level = EXPOSE_OPSTAFF;
+			break;
+		case REALM_VIS:
+			exposure_level = EXPOSE_REALMVIS;
+			break;
+		case REALM_ANN:
+			exposure_level = EXPOSE_REALMANN;
+			break;
+		case NET_VIS:
+			exposure_level = EXPOSE_NETVIS;
+			break;
+		case NET_ANN:
+			exposure_level = EXPOSE_NETANN;
+			break;
+		default:
+			syslog(LOG_ERR,"broken location state %s/%d",
+			       loc->zlt_user, (int) loc->zlt_exposure);
+			break;
+		}
+		if ((retval = bdump_send_list_tcp(ACKED, loc->zlt_port,
 						  LOGIN_CLASS, loc->zlt_user,
-						  (loc->zlt_visible == VISIBLE)
-						  ? LOGIN_USER_LOGIN
-						  : LOGIN_QUIET_LOGIN,
+						  exposure_level,
 						  myname, "", lyst,
 						  NUM_FIELDS)) != ZERR_NONE) {
 			syslog(LOG_ERR, "uloc_send_locs: %s",
@@ -296,9 +435,9 @@ ZHostList_t *host;
  */
 
 static void
-ulogin_add_user(notice, visible, who)
+ulogin_add_user(notice, exposure, who)
 ZNotice_t *notice;
-login_type visible;
+exposure_type exposure;
 struct sockaddr_in *who;
 {
 	ZLocation_t *oldlocs, newloc;
@@ -306,7 +445,7 @@ struct sockaddr_in *who;
 
 	if ((oldlocs = ulogin_find(notice, 1))) {
 		zdbug((LOG_DEBUG,"ul_add: already here"));
-		(void) ulogin_hide_user(notice, visible);
+		(void) ulogin_expose_user(notice, exposure);
 		return;
 	}
 
@@ -319,7 +458,7 @@ struct sockaddr_in *who;
 	}
 
 	if (num_locs == 0) {		/* first one */
-		if (ulogin_setup(notice, locations, visible, who)) {
+		if (ulogin_setup(notice, locations, exposure, who)) {
 			xfree(locations);
 			locations = NULLZLT;
 			return;
@@ -330,12 +469,12 @@ struct sockaddr_in *who;
 
 	/* not the first one, insert him */
 
-	if (ulogin_setup(notice, &newloc, visible, who))
+	if (ulogin_setup(notice, &newloc, exposure, who))
 		return;
 	num_locs++;
 
 	/* copy old locs */
-	while (i < (num_locs - 1) && strcmp(oldlocs[i].zlt_user, newloc.zlt_user) < 0) {
+	while ((i < (num_locs - 1)) && strcmp(oldlocs[i].zlt_user, newloc.zlt_user) < 0) {
 		locations[i] = oldlocs[i];
 		i++;
 	}
@@ -357,7 +496,7 @@ struct sockaddr_in *who;
 		for (i = 0; i < num_locs; i++)
 			syslog(LOG_DEBUG, "%s/%d",
 			       locations[i].zlt_user,
-			       (int) locations[i].zlt_visible);
+			       (int) locations[i].zlt_exposure);
 	}
 #endif DEBUG
 	return;
@@ -368,10 +507,10 @@ struct sockaddr_in *who;
  */ 
 
 static int
-ulogin_setup(notice, locs, visible, who)
+ulogin_setup(notice, locs, exposure, who)
 ZNotice_t *notice;
 register ZLocation_t *locs;
-login_type visible;
+exposure_type exposure;
 struct sockaddr_in *who;
 {
 	if (ulogin_parse(notice, locs))
@@ -402,8 +541,9 @@ struct sockaddr_in *who;
 		xfree(locs->zlt_tty);
 		return(1);
 	}
-	locs->zlt_visible = visible;
+	locs->zlt_exposure = exposure;
 	locs->zlt_addr = who->sin_addr;
+	locs->zlt_port = notice->z_port;
 	return(0);
 }
 
@@ -545,29 +685,33 @@ register ZLocation_t *l1, *l2;
  * remove the user specified in notice from the internal table
  */
 
-static int
-ulogin_remove_user(notice, auth, who)
+static exposure_type
+ulogin_remove_user(notice, auth, who, err_return)
 ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
+int *err_return;
 {
 	ZLocation_t *loc, *loc2;
 	register int i = 0;
-	int quiet = 0;
+	exposure_type quiet = NONE;
 
+	*err_return = 0;
 	if (!(loc2 = ulogin_find(notice, 1))) {
 		zdbug((LOG_DEBUG,"ul_rem: not here"));
-		return(NOLOC);
+		*err_return = NOLOC;
+		return(NONE);
 	}
 
 	/* if unauthentic, the sender MUST be the same IP addr
 	   that registered */
 
-	if (!auth && loc2->zlt_addr.s_addr != who->sin_addr.s_addr)
-		return(UNAUTH);
+	if (!auth && loc2->zlt_addr.s_addr != who->sin_addr.s_addr) {
+		*err_return = UNAUTH;
+		return(NONE);
+	}
 
-	if (loc2->zlt_visible == INVISIBLE)
-		quiet = QUIET;
+	quiet = loc2->zlt_exposure;
 
 	if (--num_locs == 0) {		/* last one */
 		zdbug((LOG_DEBUG,"last loc"));
@@ -607,7 +751,7 @@ struct sockaddr_in *who;
 		for (i = 0; i < num_locs; i++)
 			syslog(LOG_DEBUG, "%s/%d",
 			       locations[i].zlt_user,
-			       (int) locations[i].zlt_visible);
+			       (int) locations[i].zlt_exposure);
 	}
 #endif DEBUG
 	/* all done */
@@ -619,9 +763,8 @@ struct sockaddr_in *who;
  */
 
 static void
-ulogin_flush_user(notice, who)
+ulogin_flush_user(notice)
 ZNotice_t *notice;
-struct sockaddr_in *who;
 {
 	ZLocation_t *loc, *loc2;
 	register int i, j, num_match, num_left;
@@ -680,7 +823,7 @@ struct sockaddr_in *who;
 		for (i = 0; i < num_locs; i++)
 			syslog(LOG_DEBUG, "%s/%d",
 			       locations[i].zlt_user,
-			       (int) locations[i].zlt_visible);
+			       (int) locations[i].zlt_exposure);
 	}
 #endif DEBUG
 	/* all done */
@@ -688,13 +831,13 @@ struct sockaddr_in *who;
 }
 
 /*
- * Set the user's visible flag to visible
+ * Set the user's exposure flag to exposure
  */
 
 static int
-ulogin_hide_user(notice, visible)
+ulogin_expose_user(notice, exposure)
 ZNotice_t *notice;
-login_type visible;
+exposure_type exposure;
 {
 	ZLocation_t *loc, loc2;
 	int index, notfound = 1;
@@ -708,12 +851,13 @@ login_type visible;
 	}
 	index = loc - locations;
 
-	while (!strcmp(locations[index].zlt_user, loc2.zlt_user) &&
-	       index < num_locs) { 
-		/* change visible for each loc on that host */
+	while ((index < num_locs) &&
+	       !strcmp(locations[index].zlt_user, loc2.zlt_user)) {
+
+		/* change exposure for each loc on that host */
 		if (!strcmp(locations[index].zlt_machine, loc2.zlt_machine)) {
 			notfound = 0;
-			locations[index].zlt_visible = visible;
+			locations[index].zlt_exposure = exposure;
 		}
 		index++;
 	}
@@ -749,9 +893,16 @@ struct sockaddr_in *who;
 	while (i < num_locs && !strcmp(notice->z_class_inst, locations[i].zlt_user)) {
 		/* these locations match */
 		zdbug((LOG_DEBUG,"match %s", locations[i].zlt_user));
-		if (locations[i].zlt_visible != VISIBLE) {
+		switch (locations[i].zlt_exposure) {
+		case OPSTAFF_VIS:
 			i++;
 			continue;
+		case REALM_VIS:
+		case REALM_ANN:
+		case NET_VIS:
+		case NET_ANN:
+		default:
+			break;
 		}
 		if (!found) {
 			if ((matches = (ZLocation_t **) xmalloc(sizeof(ZLocation_t *))) == (ZLocation_t **) 0) {
