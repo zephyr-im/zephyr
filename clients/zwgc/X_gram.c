@@ -48,13 +48,15 @@ long ttl = 0;
 static int reset_saver;
 static int border_width = 1;
 static int cursor_code = XC_sailboat;
-static int set_transient = 0;
+static int set_transient;
 static char *title_name,*icon_name;
 static Cursor cursor;
 static Window group_leader; /* In order to have transient windows,
 			     * I need a top-level window to always exist
 			     */
 static XClassHint classhint;
+static XSetWindowAttributes xattributes;
+static unsigned long xattributes_mask;
 
 /* ICCCM note:
  *
@@ -199,6 +201,40 @@ void x_gram_init(dpy)
        x_set_icccm_hints(dpy,group_leader,"ZwgcGroup","ZwgcGroup",&sizehints,
 			 &wmhints,0);
     }
+    xattributes.border_pixel = default_bordercolor;
+    xattributes.cursor = cursor;
+    xattributes.event_mask = (ExposureMask|ButtonReleaseMask|ButtonPressMask
+			      |LeaveWindowMask|Button1MotionMask
+			      |Button3MotionMask|StructureNotifyMask);
+    xattributes_mask = (CWBackPixel|CWBorderPixel|CWEventMask|CWCursor);
+    temp = get_string_resource ("backingStore", "BackingStore");
+    if (!temp)
+	return;
+    xattributes_mask |= CWBackingStore;
+    if (!strcasecmp (temp, "notuseful"))
+	xattributes.backing_store = NotUseful;
+    else if (!strcasecmp (temp, "whenmapped"))
+	xattributes.backing_store = WhenMapped;
+    else if (!strcasecmp (temp, "always"))
+	xattributes.backing_store = Always;
+    else if (!strcasecmp (temp, "default"))
+	xattributes_mask &= ~CWBackingStore;
+    else {
+	switch (get_bool_resource ("backingStore", "BackingStore", -1)) {
+	case 0:
+	    xattributes.backing_store = NotUseful;
+	    break;
+	case 1:
+	    xattributes.backing_store = WhenMapped;
+	    break;
+	case -1:
+	    fprintf (stderr,
+		 "zwgc: Cannot interpret backing-store resource value `%s'.\n",
+		     temp);
+	    xattributes_mask &= ~CWBackingStore;
+	    break;
+	}
+    }
 }
 
 void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
@@ -213,6 +249,7 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     Window w;
     XSizeHints sizehints;
     XWMHints wmhints;
+    XSetWindowAttributes attributes;
     extern void x_get_input();
 
     /*
@@ -235,12 +272,13 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     /*
      * Create the window:
      */
-    w = XCreateSimpleWindow(dpy,DefaultRootWindow(dpy),xpos,ypos,xsize,
-			    ysize,border_width,default_bordercolor,
-			    gram->bgcolor);
-    gram->w=w;
-
-    XDefineCursor(dpy, w, cursor);
+    attributes = xattributes;
+    attributes.background_pixel = gram->bgcolor;
+    
+    gram->w = w = XCreateWindow (dpy, DefaultRootWindow (dpy), xpos, ypos,
+				 xsize, ysize, border_width, 0,
+				 CopyFromParent, CopyFromParent,
+				 xattributes_mask, &attributes);
     
     sizehints.x = xpos;
     sizehints.y = ypos;
@@ -264,9 +302,6 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
        
 
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
-    XSelectInput(dpy, w, ExposureMask|ButtonReleaseMask|ButtonPressMask
-		 |LeaveWindowMask|Button1MotionMask|
-		 Button3MotionMask|StructureNotifyMask);
 
     gram->can_die.tv_sec = 0;
 
@@ -275,41 +310,19 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     if (beepcount)
 	XBell(dpy, 0);
 
-   if (reset_saver)
-       XResetScreenSaver(dpy);
-
     xerror_happened = 0;
     if (reverse_stack && bottom_gram) {
        XWindowChanges winchanges;
        
        winchanges.sibling=bottom_gram->w;
        winchanges.stack_mode=Below;
-       begin_xerror_trap(dpy);
-       XConfigureWindow(dpy,w,CWSibling|CWStackMode,&winchanges);
-       end_xerror_trap(dpy);
-       
-       /* ICCCM compliance code:  This will happen under reparenting
-	  window managers.  This is the compliant code: */
+       begin_xerror_trap (dpy);
+       XReconfigureWMWindow (dpy, w, DefaultScreen (dpy),
+			     CWSibling|CWStackMode, &winchanges);
+       end_xerror_trap (dpy);
        if (xerror_happened) {
-	  XEvent ev;
-	    
-	  ev.type=ConfigureRequest;
-	  ev.xconfigurerequest.parent=DefaultRootWindow(dpy);
-	  ev.xconfigurerequest.window=w;
-	  ev.xconfigurerequest.above=bottom_gram->w;
-	  ev.xconfigurerequest.detail=Below;
-	  ev.xconfigurerequest.value_mask=CWSibling|CWStackMode;
-	  begin_xerror_trap(dpy);
-	  XSendEvent(dpy,RootWindow(dpy,DefaultScreen(dpy)),
-		     False,SubstructureRedirectMask|
-		     SubstructureNotifyMask,&ev);
-	  end_xerror_trap(dpy);
-	  if (xerror_happened) {
-	     /* the event didn't go.  Print error, continue */
-	     ERROR("error configuring window to the bottom of the stack\n");
-	  }
-       } else {
-	  xerror_happened = 0;
+	   /* The event didn't go.  Print an error message, and continue.  */
+	   ERROR ("Error configuring window to the bottom of the stack.\n");
        }
     }
     /* we always need to keep a linked list of windows */
@@ -317,12 +330,15 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     if (xerror_happened)
        pull_to_top(gram);
 
-   XFlush(dpy);
-   /* Because the flushing/syncing/etc with the error trapping can cause
-      events to be read into the Xlib queue, we need to go through the queue
-      here before exiting so that any pending events get processed.
-      */
-   x_get_input(dpy);
+    if (reset_saver)
+	XResetScreenSaver(dpy);
+
+    XFlush(dpy);
+    /* Because the flushing/syncing/etc with the error trapping can cause
+       events to be read into the Xlib queue, we need to go through the queue
+       here before exiting so that any pending events get processed.
+       */
+    x_get_input(dpy);
 }
 
 void x_gram_draw(dpy, w, gram, region)
@@ -415,7 +431,7 @@ void x_gram_draw(dpy, w, gram, region)
 	 text.delta=0;
 	 text.font=xb->fid;
 	 XDrawText(dpy,w,gc,xb->x,xb->y,&text,1);
-      }
+     }
    }
 
    XFreeGC(dpy,gc);
@@ -428,7 +444,7 @@ void x_gram_expose(dpy,w,gram,event)
      XExposeEvent *event;
 {
    static Region region;
-   static int partregion=0;
+   static int partregion;
    XRectangle rect;
 
    rect.x = (short) event->x;
