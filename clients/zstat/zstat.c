@@ -44,13 +44,15 @@ const char *srv_head[] = {
 
 int outoftime = 0;
 
+int serveronly = 0,hmonly = 0;
+u_short srv_port;
+
+void usage(), do_stat();
+
 RETSIGTYPE timeout()
 {
 	outoftime = 1;
 }
-
-int serveronly = 0,hmonly = 0;
-u_short srv_port;
 
 main(argc, argv)
 	int argc;
@@ -111,6 +113,7 @@ main(argc, argv)
 	exit(0);
 }
 
+void
 do_stat(host)
 	char *host;
 {
@@ -128,6 +131,7 @@ do_stat(host)
 		(void) srv_stat(srv_host);
 }
 
+int
 hm_stat(host,server)
 	char *host,*server;
 {
@@ -135,7 +139,7 @@ hm_stat(host,server)
 	Code_t code;
 
 	char *line[20],*mp;
-	int sock,i,nf,ret;
+	int i,nf;
 	struct hostent *hp;
 	time_t runtime;
 	struct tm *tim;
@@ -157,7 +161,7 @@ hm_stat(host,server)
 	}
 	
 	if ((code = ZhmStat(&inaddr, &notice)) != ZERR_NONE) {
-	    com_err("zstat", ret, "getting hostmanager status");
+	    com_err("zstat", code, "getting hostmanager status");
 	    exit(-1);
 	}
 	
@@ -187,11 +191,11 @@ hm_stat(host,server)
 
 	printf("\n");
 	
-	(void) close(sock);
 	ZFreeNotice(&notice);
 	return(0);
 }
 
+int
 srv_stat(host)
 	char *host;
 {
@@ -303,6 +307,7 @@ srv_stat(host)
 	return(0);
 }
 
+void
 usage(s)
 	char *s;
 {
