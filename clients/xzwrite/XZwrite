@@ -15,7 +15,7 @@
 *readAnyone:		on
 *readXzwrite:		on
 
-*icon.bitmap:		/usr/sipb/bitmaps.x11/z
+*icon.bitmap:		ACLDIR/xzwrite.bitmap
 *icon.translations:	#override\
 	<BtnDown>:	set() \n\
 	<Btn1Up>:	OpenSend() unset() \n\
