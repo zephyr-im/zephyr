@@ -226,9 +226,9 @@ ZCheckRealmAuthentication(notice, from, realm)
 
     if (result) {
       if (result == KRB5KRB_AP_ERR_REPEAT)
-	syslog(LOG_DEBUG, "k5 auth failed: %s", error_message(result));
+	syslog(LOG_DEBUG, "ZCheckRealmAuthentication: k5 auth failed: %s", error_message(result));
       else
-        syslog(LOG_WARNING,"k5 auth failed: %s", error_message(result));
+        syslog(LOG_WARNING,"ZCheckRealmAuthentication: k5 auth failed: %s", error_message(result));
         free(authbuf);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         return ZAUTH_FAILED;
@@ -510,9 +510,9 @@ ZCheckAuthentication(notice, from)
 
     if (result) {
       if (result == KRB5KRB_AP_ERR_REPEAT)
-	syslog(LOG_DEBUG, "k5 auth failed: %s", error_message(result));
+	syslog(LOG_DEBUG, "ZCheckAuthentication: k5 auth failed: %s", error_message(result));
       else
-        syslog(LOG_WARNING,"k5 auth failed: %s", error_message(result));
+        syslog(LOG_WARNING,"ZCheckAuthentication: k5 auth failed: %s", error_message(result));
         free(authbuf);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         return ZAUTH_FAILED;
