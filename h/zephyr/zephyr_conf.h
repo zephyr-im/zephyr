@@ -24,5 +24,8 @@
 /* General filenames */
 #define DEFAULT_VARS_FILE	"/etc/athena/zephyr.vars"
 
+#ifndef KERBEROS
+#define	REALM_SZ	MAXHOSTNAMELEN
+#endif /* !KERBEROS */
 
 #endif /* __ZEPHYR_CONF_H__ */
