@@ -14,8 +14,11 @@
 #include <zephyr/mit-copyright.h>
 
 #ifndef lint
+#ifndef SABER
 static char rcsid_main_c[] = "$Header$";
-static char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.  Portions Copyright (c) 1986 Student Information Processing Board, Massachusetts Institute of Technology\n";
+static char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nPortions Copyright (c) 1986 Student Information Processing Board, Massachusetts Institute of Technology\n";
+static char version[] = "Zephyr Server (Prerelease) 0.1";
+#endif SABER
 #endif lint
 
 /*
@@ -37,15 +40,20 @@ static char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technol
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>
+#include <signal.h>
+#include <sys/file.h>
 
 #define	EVER		(;;)		/* don't stop looping */
 #define	max(a,b)	((a) > (b) ? (a) : (b))
 
 static int do_net_setup(), initialize();
 static struct in_addr *get_server_addrs();
-static void usage();
-struct in_addr *get_server_addrs();
-char *rindex();
+static void usage(), setup_server();
+static int bye();
+#ifndef DEBUG
+static void detach();
+#endif DEBUG
+char *rindex(), *strncpy();
 
 int srv_socket;				/* dgram socket for clients
 					   and other servers */
@@ -55,15 +63,23 @@ struct timeval nexthost_tv = {0, 0};	/* time till next host keepalive
 					   initialize to zero so select doesn't
 					   timeout */
 
-int nservers;			/* number of other servers */
+int nservers;				/* number of other servers */
 ZServerDesc_t *otherservers;		/* points to an array of the known
 					   servers */
-ZServerDesc_t *me_server;		/* pointer to my entry in the array */
+int me_server_idx;			/* # of my entry in the array */
 ZNotAcked_t *nacklist;			/* list of packets waiting for ack's */
 
 char *programname;			/* set to the last element of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 
+ZAcl_t zctlacl = { ZEPHYR_CTL_ACL };
+#ifdef notdef
+/* These  are commented out until the ACL package does wildcarding. */
+ZAcl_t hmacl = { HM_ACL };
+ZAcl_t loginacl = { LOGIN_ACL };
+ZAcl_t locateacl = { LOCATE_ACL };
+#endif notdef
+ZAcl_t matchallacl = { MATCH_ALL_ACL };
 int zdebug = 0;
 
 main(argc,argv)
@@ -72,7 +88,6 @@ char **argv;
 {
 	int nfound;			/* #fildes ready on select */
 	int nfildes;			/* number to look at in select() */
-	int packetsize;			/* size of packet received */
 	int authentic;			/* authentic flag for ZParseNotice */
 	Code_t status;
 	ZPacket_t new_packet;		/* from the network */
@@ -85,19 +100,28 @@ char **argv;
 	extern char *optarg;
 	extern int optind;
 
+	puts(version);
+	puts(copyright);
 	/* set name */
 	if (programname = rindex(argv[0],'/'))
 		programname++;
 	else programname = argv[0];
 
+#ifdef DEBUG
+	/* open log */
+	/* XXX eventually make this LOG_DAEMON */
+	openlog(programname, LOG_PID, LOG_LOCAL6);
+#endif DEBUG
 	/* process arguments */
 	
-	argv++, argc--;
-
 	while ((optchar = getopt(argc, argv, "d")) != EOF) {
 		switch(optchar) {
+#ifdef DEBUG
 		case 'd':
+			syslog(LOG_DEBUG, "debugging on");
 			zdebug = 1;
+			break;
+#endif DEBUG
 		case '?':
 		default:
 			usage();
@@ -105,10 +129,12 @@ char **argv;
 		}
 	}
 
+#ifndef DEBUG
+	detach();
 	/* open log */
 	/* XXX eventually make this LOG_DAEMON */
 	openlog(programname, LOG_PID, LOG_LOCAL6);
-
+#endif !DEBUG
 	/* set up sockets & my_addr and myname, 
 	   find other servers and set up server table, initialize queues
 	   for retransmits, initialize error tables,
@@ -122,6 +148,14 @@ char **argv;
 	nfildes = srv_socket + 1;
 
 
+#ifdef DEBUG
+	(void) signal(SIGALRM, bye);
+	(void) signal(SIGTERM, bye);
+	(void) signal(SIGINT, SIG_IGN);
+#else
+	(void) signal(SIGINT, bye);
+	(void) signal(SIGTERM, bye);
+#endif DEBUG
 	/* GO! */
 	syslog(LOG_INFO, "Ready for action");
 
@@ -180,6 +214,7 @@ char **argv;
    structure, initialize them all to SERV_DEAD with expired timeouts.
    Initialize the packet ack queues to be empty.
    Initialize the error tables.
+   Restrict certain classes.
    */
 
 static int
@@ -187,6 +222,7 @@ initialize()
 {
 	register int i;
 	struct in_addr *serv_addr, *hes_addrs;
+	/* XXX temporary hack */
 
 	if (do_net_setup())
 		return(1);
@@ -198,52 +234,77 @@ initialize()
 		    exit(1);
 	    }
 
-	otherservers = (ZServerDesc_t *) malloc(nservers *
+	otherservers = (ZServerDesc_t *) xmalloc(nservers *
 						sizeof(ZServerDesc_t));
-	for (serv_addr = hes_addrs, i = 0; serv_addr; serv_addr++, i++) {
-		if (!bcmp(serv_addr, &my_addr, sizeof(struct sockaddr_in)))
-			me_server = &otherservers[i];
-		otherservers[i].zs_state = SERV_DEAD;
-		otherservers[i].zs_timeout = 0;	/* he's due NOW */
-		otherservers[i].zs_numsent = 0;
-		otherservers[i].zs_addr.sin_family = AF_INET;
-		/* he listens to the same port we do */
-		otherservers[i].zs_addr.sin_port = sock_sin.sin_port;
-		otherservers[i].zs_addr.sin_addr = *serv_addr;
+	me_server_idx = -1;
 
-		/* set up a timer for this server */
-		otherservers[i].zs_timer =
-			timer_set_rel(0L,
-				      server_timo,
-				      (caddr_t) &otherservers[i]);
-		if ((otherservers[i].zs_hosts =
-		     (ZHostList_t *) malloc(sizeof(ZHostList_t))) == NULLZHLT)
-		{
-			/* unrecoverable */
-			syslog(LOG_CRIT, "zs_host malloc");
-			abort();
+	for (serv_addr = hes_addrs, i = 0; i < nservers; serv_addr++, i++) {
+		setup_server(&otherservers[i], serv_addr);
+		if (serv_addr->s_addr == my_addr.s_addr) {
+			me_server_idx = i;
+			otherservers[i].zs_state = SERV_UP;
+			timer_reset(otherservers[i].zs_timer);
+			otherservers[i].zs_timer = (timer) NULL;
+			zdbug1("found myself");
 		}
 	}
-	free(hes_addrs);
-	if ((nacklist = (ZNotAcked_t *) malloc(sizeof(ZNotAcked_t))) ==
+	xfree(hes_addrs);
+	if (me_server_idx == -1) {
+		ZServerDesc_t *temp;
+		syslog(LOG_WARNING, "I'm a renegade server!");
+		temp = (ZServerDesc_t *)realloc((caddr_t) otherservers,(unsigned) (++nservers * sizeof(ZServerDesc_t)));
+		if (temp == NULLZSDT) {
+			syslog(LOG_CRIT, "renegade realloc");
+			abort();
+		}
+		otherservers = temp;
+		setup_server(&otherservers[nservers - 1], &my_addr);
+		/* we are up. */
+		otherservers[nservers - 1].zs_state = SERV_UP;
+
+		/* cancel and reschedule all the timers--pointers need
+		   adjusting */
+		for (i = 0; i < nservers - 1; i++) {
+			timer_reset(otherservers[i].zs_timer);
+			otherservers[i].zs_timer = timer_set_rel(0L, server_timo, (caddr_t) &otherservers[i]);
+		}
+		/* I don't send hello's to myself--cancel the timer */
+		timer_reset(otherservers[nservers - 1].zs_timer);
+		otherservers[nservers - 1].zs_timer = (timer) NULL;
+
+		me_server_idx = nservers - 1;
+	}
+	if ((nacklist = (ZNotAcked_t *) xmalloc(sizeof(ZNotAcked_t))) ==
 		(ZNotAcked_t *) NULL)
 	{
 		/* unrecoverable */
 		syslog(LOG_CRIT, "nacklist malloc");
 		abort();
 	}
-	nacklist->q_forw = nacklist->q_back = NULL;
+	bzero((caddr_t) nacklist, sizeof(ZNotAcked_t));
+	nacklist->q_forw = nacklist->q_back = nacklist;
 
 	nexttimo = 1L;			/* trigger the timers when we hit
 					   the FOR loop */
 
-	ZInitialize();			/* set up the library */
-	init_zsrv_err_tbl();		/* set up err table */
+	(void) ZInitialize();		/* set up the library */
+	(void) init_zsrv_err_tbl();	/* set up err table */
 
-	ZSetFD(srv_socket);		/* set up the socket as the
+	(void) ZSetServerState(1);
+	(void) ZSetFD(srv_socket);	/* set up the socket as the
 					   input fildes */
 
-	return;
+	/* restrict certain classes */
+	(void) class_setup_restricted(ZEPHYR_CTL_CLASS, &zctlacl);
+#ifdef notdef
+	/* These  are commented out until the ACL package does wildcarding. */
+	(void) class_setup_restricted(HM_CLASS, &hmacl);
+	(void) class_setup_restricted(LOGIN_CLASS, &loginacl);
+	(void) class_setup_restricted(LOCATE_CLASS, &locateacl);
+#endif notdef
+	(void) class_setup_restricted(MATCHALL_CLASS, &matchallacl);
+	
+	return(0);
 }
 
 /* 
@@ -264,11 +325,11 @@ do_net_setup()
 	}
 	if ((hp = gethostbyname(hostname)) == (struct hostent *) NULL) {
 		syslog(LOG_ERR, "no gethostbyname repsonse");
-		strncpy(myname, hostname, MAXHOSTNAMELEN);
+		(void) strncpy(myname, hostname, MAXHOSTNAMELEN);
 		return(1);
 	}
-	strncpy(myname, hp->h_name, MAXHOSTNAMELEN);
-	bcopy(hp->h_addr, &my_addr, sizeof(hp->h_addr));
+	(void) strncpy(myname, hp->h_name, MAXHOSTNAMELEN);
+	bcopy((caddr_t) hp->h_addr, (caddr_t) &my_addr, sizeof(hp->h_addr));
 	
 	/* note that getservbyname may actually ask hesiod and not
 	   /etc/services */
@@ -279,8 +340,8 @@ do_net_setup()
 		syslog(LOG_ERR, "zephyr-clt/udp unknown");
 		return(1);
 	}
-	bzero(sock_sin, sizeof(sock_sin));
-	bcopy(&sock_sin.sin_port, sp->s_port, sizeof(sp->s_port));
+	bzero((caddr_t) &sock_sin, sizeof(sock_sin));
+	sock_sin.sin_port = sp->s_port;
 	
 	(void) endservent();
 	
@@ -295,7 +356,7 @@ do_net_setup()
 	}
 
 	/* set not-blocking */
-	(void) ioctl(srv_socket, FIONBIO, &on);
+	(void) ioctl(srv_socket, FIONBIO, (caddr_t) &on);
 
 	return(0);
 }    
@@ -317,19 +378,19 @@ int *number;				/* RETURN */
 	register struct hostent *hp;
 
 	/* get the names from Hesiod */
-	if ((server_hosts = hes_resolve("*","ZEPHYR-SERVER")) == (char **)NULL)
+	if ((server_hosts = hes_resolve("zephyr","sloc")) == (char **)NULL)
 		return((struct in_addr *)NULL);
 
 	/* count up */
 	for (cpp = server_hosts, i = 0; *cpp; cpp++, i++);
 	
-	addrs = (struct in_addr *) malloc(i * sizeof(struct in_addr));
+	addrs = (struct in_addr *) xmalloc(i * sizeof(struct in_addr));
 
 	/* Convert to in_addr's */
 	for (cpp = server_hosts, addr = addrs, i = 0; *cpp; cpp++) {
 		hp = gethostbyname(*cpp);
 		if (hp) {
-			bcopy(hp->h_addr, addr, sizeof(struct in_addr));
+			bcopy((caddr_t)hp->h_addr, (caddr_t) addr, sizeof(struct in_addr));
 			addr++, i++;
 		} else
 			syslog(LOG_WARNING, "hostname failed, %s",*cpp);
@@ -339,8 +400,68 @@ int *number;				/* RETURN */
 }
 
 static void
+setup_server(server, addr)
+register ZServerDesc_t *server;
+struct in_addr *addr;
+{
+	register ZHostList_t *host;
+	extern int timo_dead;
+
+	server->zs_state = SERV_DEAD;
+	server->zs_timeout = timo_dead;
+	server->zs_numsent = 0;
+	server->zs_addr.sin_family = AF_INET;
+	/* he listens to the same port we do */
+	server->zs_addr.sin_port = sock_sin.sin_port;
+	server->zs_addr.sin_addr = *addr;
+
+	/* set up a timer for this server */
+	server->zs_timer = timer_set_rel(0L, server_timo, (caddr_t) server);
+	if ((host = (ZHostList_t *) xmalloc(sizeof(ZHostList_t))) == NULLZHLT)
+	{
+		/* unrecoverable */
+		syslog(LOG_CRIT, "zs_host malloc");
+		abort();
+	}
+	host->q_forw = host->q_back = host;
+	server->zs_hosts = host;
+	return;
+}
+
+static void
 usage()
 {
 	fprintf(stderr,"Usage: %s [-d]\n",programname);
 	exit(2);
 }
+
+static int
+bye()
+{
+	hostm_shutdown();
+	syslog(LOG_INFO, "goodbye");
+	exit(0);
+	/*NOTREACHED*/
+}
+#ifndef DEBUG
+static void
+detach()
+{
+	/* detach from terminal and fork. */
+	register int i, size = getdtablesize();
+
+	if (i = fork()) {
+		if (i < 0)
+			perror("fork");
+		exit(0);
+	}
+
+	for (i = 0; i < size; i++) {
+		(void) close(i);
+	}
+	i = open("/dev/tty", O_RDWR, 666);
+	(void) ioctl(i, TIOCNOTTY, 0);
+	(void) close(i);
+
+}
+#endif DEBUG
