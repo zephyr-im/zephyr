@@ -73,25 +73,30 @@ main(argc,argv)
 	if ((retval = ZInitLocationInfo(NULL, tty)) != ZERR_NONE)
 	    com_err(argv[0], retval, "initializing location information");
 
-	envptr = getenv("HOME");
+	envptr = getenv("ZEPHYR_SUBS");
 	if (envptr)
 		strcpy(subsname,envptr);
 	else {
-		if (!(pwd = getpwuid((int) getuid()))) {
-			fprintf(stderr,"Who are you?\n");
-			exit (1);
-		}
+		envptr = getenv("HOME");
+		if (envptr)
+			strcpy(subsname,envptr);
+		else {
+			if (!(pwd = getpwuid((int) getuid()))) {
+				fprintf(stderr,"Who are you?\n");
+				exit (1);
+			}
 
-		strcpy(subsname,pwd->pw_dir);
-	}
-	strcpy(oldsubsname,subsname);
-	strcat(oldsubsname,OLD_SUBS);
-	strcat(subsname,USERS_SUBS);
-	if (!access(oldsubsname,F_OK) && access(subsname, F_OK)) {
-		/* only if old one exists and new one does not exist */
-		printf("The .subscriptions file in your home directory is now being used as\n.zephyr.subs . I will rename it to .zephyr.subs for you.\n");
-		if (rename(oldsubsname,subsname))
-			com_err(argv[0], errno, "renaming .subscriptions");
+			strcpy(subsname,pwd->pw_dir);
+		}
+		strcpy(oldsubsname,subsname);
+		strcat(oldsubsname,OLD_SUBS);
+		strcat(subsname,USERS_SUBS);
+		if (!access(oldsubsname,F_OK) && access(subsname, F_OK)) {
+			/* only if old one exists and new one does not exist */
+			printf("The .subscriptions file in your home directory is now being used as\n.zephyr.subs . I will rename it to .zephyr.subs for you.\n");
+			if (rename(oldsubsname,subsname))
+				com_err(argv[0], errno, "renaming .subscriptions");
+		}
 	}
 
 #ifdef HAVE_SYS_UTSNAME
