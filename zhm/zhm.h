@@ -37,14 +37,12 @@
 #define ever (;;)
 
 #define SERV_TIMEOUT 20
-#define NOTICE_TIMEOUT 25
 #define BOOTING 1
 #define NOTICES 2
 
-#define MAXRETRIES 2
-
 extern Code_t send_outgoing();
 extern void init_queue(), retransmit_queue();
+extern int rexmit_times[];
 
 #ifdef vax
 #define MACHINE "vax"
