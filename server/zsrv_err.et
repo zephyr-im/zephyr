@@ -35,5 +35,7 @@ ec ZSRV_UNKNOWNOPCODE,
 ec ZSRV_REQUEUE,
 	"Requeue for later processing"
 ec ZSRV_RCSID,
-	"$Header$"
+	"$Id$"
+ec ZSRV_BADSUBPORT,
+	"Illegal port specified in subscription"
 	end
