@@ -8,8 +8,7 @@
  *	"mit-copyright.h". 
  */
 /*
- *	$Source$
- *	$Header$
+ *	$Id$
  */
 
 #include "zserver.h"
@@ -122,6 +121,7 @@ SendKerberosData(fd, ticket, service, host)
 {
     int rem;
     char p[32];
+    char krb_realm[REALM_SZ];
     int written;
     int size_to_write;
 
@@ -189,19 +189,11 @@ ZCheckRealmAuthentication(notice, from, realm)
             return ZAUTH_FAILED;
         checksum = compute_rlm_checksum(notice, session_key);
 
-        /* If checksum matches, packet is authentic.  If not, we might
-         * have an outdated session key, so keep going the slow way.
-         */
-        if (checksum == notice->z_checksum) {
-          (void) memcpy((char *)__Zephyr_session, (char *)session_key, 
-                        sizeof(C_Block)); /* For control_dispatch() */
-          return ZAUTH_YES;
-        }
-
-        /* Try again. This way we can switch to the same checksums
-         * that the rest of Zephyr uses at a future date, but for now 
-         * we need to be compatible */
-        checksum = compute_checksum(notice, session_key);
+        /* If checksum matches, packet is authentic.  Otherwise, check
+         * the authenticator as if we didn't have the session key cached
+         * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
+         * ticket isn't cached after a checksum failure), so don't worry
+         * about the extra des_quad_cksum() call. */
         if (checksum == notice->z_checksum) {
 	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
 	    return ZAUTH_YES;
@@ -222,17 +214,12 @@ ZCheckRealmAuthentication(notice, from, realm)
 
     /* Check the cryptographic checksum. */
 #ifdef NOENCRYPTION
-    checksum = 0;
+    our_checksum = 0;
 #else
     checksum = compute_rlm_checksum(notice, dat.session);
 #endif
-    if (checksum != notice->z_checksum) {
-#ifndef NOENCRYPTION
-      checksum = compute_checksum(notice, dat.session);
-      if (checksum != notice->z_checksum)
-#endif
-        return ZAUTH_FAILED;
-    }
+    if (checksum != notice->z_checksum)
+        return ZAUTH_CKSUM_FAILED;
 
     /* Record the session key, expiry time, and source principal in the
      * hash table, so we can do a fast check next time. */
@@ -287,9 +274,11 @@ ZCheckAuthentication(notice, from)
 	    return ZAUTH_FAILED;
 	checksum = compute_checksum(notice, session_key);
 
-        /* If checksum matches, packet is authentic.  If not, we might
-	 * have an outdated session key, so keep going the slow way.
-	 */
+	/* If the checksum matches, the packet is authentic.  Otherwise,
+	 * check authenticator as if we didn't have the session key cached
+	 * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
+	 * ticket isn't cached after a checksum failure), so don't worry
+	 * about the extra des_quad_cksum() call. */
 	if (checksum == notice->z_checksum) {
 	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
 	    return ZAUTH_YES;
@@ -311,12 +300,12 @@ ZCheckAuthentication(notice, from)
 
     /* Check the cryptographic checksum. */
 #ifdef NOENCRYPTION
-    checksum = 0;
+    our_checksum = 0;
 #else
     checksum = compute_checksum(notice, dat.session);
 #endif
     if (checksum != notice->z_checksum)
-	return ZAUTH_FAILED;
+	return ZAUTH_CKSUM_FAILED;
 
     /* Record the session key, expiry time, and source principal in the
      * hash table, so we can do a fast check next time. */
