@@ -17,6 +17,9 @@
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
 #include <syslog.h>
+#include <sys/socket.h>
+#include <sys/param.h>
+#include <netdb.h>
 
 #ifdef DEBUG
 #define DPR(a) fprintf(stderr, a); fflush(stderr)
@@ -38,5 +41,17 @@
 #define MAXRETRIES 2
 
 extern char *malloc();
+
+#ifdef vax
+#define MACHINE "vax"
+#define ok
+#endif vax
+#ifdef ibm032
+#define MACHINE "rt"
+#define ok
+#endif ibm032
+#ifndef ok
+#define MACHINE "unknown"
+#endif ok
 
 #endif !__HM_H__
