@@ -56,6 +56,7 @@ Code_t ZOpenPort(port)
 	} while (retval < 0 && port);
 
 	__Zephyr_port = ntohs(bindin.sin_port);
+	__Zephyr_open = 1;
 
 	if (port)
 		*port = ntohs(bindin.sin_port);
