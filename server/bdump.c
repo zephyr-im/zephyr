@@ -67,7 +67,6 @@ static void shutdown_file_pointers __P((void));
 static void cleanup __P((Server *server));
 
 #ifdef ZEPHYR_USES_KERBEROS
-static int get_tgt __P((void));
 static long ticket_time;
 static char my_realm[REALM_SZ];
 
@@ -290,7 +289,7 @@ bdump_send()
     }
     if (strcmp(kdata.pname, SERVER_SERVICE) ||
 	strcmp(kdata.pinst, SERVER_INSTANCE) ||
-	strcmp(kdata.prealm, my_realm)) {
+	strcmp(kdata.prealm, ZGetRealm())) {
 	syslog(LOG_ERR, "bdump_send: peer not zephyr: %s.%s@%s",
 	       kdata.pname, kdata.pinst, kdata.prealm);
 	cleanup(server);
@@ -682,10 +681,14 @@ cleanup(server)
 }
 
 #ifdef ZEPHYR_USES_KERBEROS
-static int
+int
 get_tgt()
 {
-    int retval;
+    /* MIT Kerberos 4 get_svc_in_tkt() requires instance to be writable and
+     * at least INST_SZ bytes long. */
+    static char buf[INST_SZ + 1] = SERVER_INSTANCE;
+    int retval = 0;
+    CREDENTIALS cred;
 #ifndef NOENCRYPTION
     Sched *s;
 #endif
@@ -707,22 +710,13 @@ get_tgt()
 #endif
 	dest_tkt();
 
-	{
-	    /*
-	     * XXX One version of krb_get_svc_in_tkt wants
-	     * this argument writable and at least INST_SZ
-	     * bytes long.
-	     */
-	    static char buf[INST_SZ + 1] = SERVER_INSTANCE;
-
-	    retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, my_realm,
-					SERVER_SERVICE,SERVER_INSTANCE,
-					TKTLIFETIME, srvtab_file);
-	}
+	retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, ZGetRealm(),
+				    "krbtgt", ZGetRealm(),
+				    TKTLIFETIME, srvtab_file);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR,"get_tgt: krb_get_svc_in_tkt: %s",
 		   krb_get_err_text(retval));
-	    ticket_time = 0L;
+	    ticket_time = 0;
 	    return(1);
 	} else {
 	    ticket_time = NOW;
@@ -730,7 +724,7 @@ get_tgt()
 
 #ifndef NOENCRYPTION
 	retval = read_service_key(SERVER_SERVICE, SERVER_INSTANCE,
-				  my_realm, 0 /*kvno*/,
+				  ZGetRealm(), 0 /*kvno*/,
 				  srvtab_file, serv_key);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
@@ -793,6 +787,7 @@ bdump_recv_loop(server)
     char *cp;
     C_Block cblock;
 #endif /* ZEPHYR_USES_KERBEROS */
+    Realm *realm = NULL;
  
 #if 1
     zdbug((LOG_DEBUG, "bdump recv loop"));
@@ -844,6 +839,11 @@ bdump_recv_loop(server)
 	if (strcmp(notice.z_opcode, ADMIN_DONE) == 0) {
 	    /* end of brain dump */
 	    return ZERR_NONE;
+	} else if (strcmp(notice.z_opcode, ADMIN_NEWREALM) == 0) {
+	    /* get a realm from the message */
+	    realm = realm_get_realm_by_name(notice.z_message);
+	    if (!realm)
+		return(ZERR_NONE);
 	} else if (strcmp(notice.z_class, LOGIN_CLASS) == 0) {
 	    /* 1 = tell it we are authentic */
 	    retval = ulogin_dispatch(&notice, 1, &who, server);
@@ -891,6 +891,18 @@ bdump_recv_loop(server)
 		       error_message(retval));
 		return retval;
 	    }
+	} else if (strcmp(notice.z_opcode, REALM_SUBSCRIBE) == 0) {
+	    /* add a subscription for a realm */
+	    if (!realm) {
+		syslog(LOG_ERR, "brl no realm");
+		return(ZSRV_NORLM);
+	    }
+	    retval = subscr_realm(realm, &notice);
+	    if (retval != ZERR_NONE) {
+		syslog(LOG_WARNING, "brl subscr failed: %s",
+		       error_message(retval));
+		return retval;
+	    }
 	} else {
 	    syslog(LOG_ERR, "brl bad opcode %s",notice.z_opcode);
 	    return ZSRV_UNKNOWNOPCODE;
@@ -916,6 +928,9 @@ bdump_send_loop(server)
     if (retval != ZERR_NONE)
 	return retval;
     retval = client_send_clients();
+    if (retval != ZERR_NONE)
+	return retval;
+    retval = realm_send_realms();
     if (retval != ZERR_NONE)
 	return retval;
     return send_done();

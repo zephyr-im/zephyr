@@ -38,4 +38,8 @@ ec ZSRV_RCSID,
 	"$Id$"
 ec ZSRV_BADSUBPORT,
 	"Illegal port specified in subscription"
+ec ZSRV_NORLM,
+	"No such realm"
+ec ZSRV_EMPTYCLASS,
+	"Class is now empty"
 	end

@@ -97,12 +97,16 @@ ulogin_expose_user __P((ZNotice_t *notice, Exposure_type exposure));
 static Exposure_type ulogin_remove_user __P((ZNotice_t *notice, int auth,
 					     struct sockaddr_in *who,
 					     int *err_return));
-static void login_sendit __P((ZNotice_t *notice, int auth, struct sockaddr_in *who));
-static char **ulogin_marshal_locs __P((ZNotice_t *notice, int *found, int auth));
+static void login_sendit __P((ZNotice_t *notice, int auth,
+			      struct sockaddr_in *who, int external));
+static char **ulogin_marshal_locs __P((ZNotice_t *notice, int *found,
+				       int auth));
 
 static int ul_equiv __P((Location *l1, Location *l2));
 
 static void free_loc __P((Location *loc));
+static void ulogin_locate_forward __P((ZNotice_t *notice,
+				       struct sockaddr_in *who, Realm *realm));
 
 static Location *locations = NULL; /* ptr to first in array */
 static int num_locs = 0;	/* number in array */
@@ -160,6 +164,9 @@ ulogin_dispatch(notice, auth, who, server)
 	    break;
 	  case REALM_ANN:
 	  case NET_VIS:
+	    if (server == me_server)
+		sendit(notice, 1, who, 0);
+	    break;
 	  case NET_ANN:
 	    /* currently no distinction between these.
 	       just announce */
@@ -168,7 +175,7 @@ ulogin_dispatch(notice, auth, who, server)
 	       authentic.  ulogin_remove_user checks the
 	       ip addrs */
 	    if (server == me_server)
-		sendit(notice, 1, who);
+		sendit(notice, 1, who, 1);
 	    break;
 	  default:
 	    syslog(LOG_ERR,"bogus location exposure %d/%s",
@@ -251,7 +258,7 @@ ulogin_dispatch(notice, auth, who, server)
 	    if (err_ret)
 		nack(notice, who);
 	    else
-		login_sendit(notice, auth, who);
+		login_sendit(notice, auth, who, 0);
 	}
     } else if (!strcmp(notice->z_opcode, EXPOSE_NETVIS)) {
 #if 0
@@ -262,7 +269,7 @@ ulogin_dispatch(notice, auth, who, server)
 	    if (err_ret)
 		nack(notice, who);
 	    else
-		login_sendit(notice, auth, who);
+		login_sendit(notice, auth, who, 0);
 	}
     } else if (!strcmp(notice->z_opcode, EXPOSE_NETANN)) {
 #if 0
@@ -273,7 +280,7 @@ ulogin_dispatch(notice, auth, who, server)
 	    if (err_ret)
 		nack(notice, who);
 	    else
-		login_sendit(notice, auth, who);
+		login_sendit(notice, auth, who, 1);
 	}
     } else {
 	syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
@@ -287,10 +294,11 @@ ulogin_dispatch(notice, auth, who, server)
 }
 
 static void
-login_sendit(notice, auth, who)
+login_sendit(notice, auth, who, external)
     ZNotice_t *notice;
     int auth;
     struct sockaddr_in *who;
+    int external;
 {
     ZNotice_t log_notice;
 
@@ -301,7 +309,7 @@ login_sendit(notice, auth, who)
     log_notice = *notice;
 
     log_notice.z_opcode = LOGIN_USER_LOGIN;
-    sendit(&log_notice, auth, who);
+    sendit(&log_notice, auth, who, external);
 }
 
 
@@ -315,6 +323,9 @@ ulocate_dispatch(notice, auth, who, server)
     struct sockaddr_in *who;
     Server *server;
 {
+    char *cp;
+    Realm *realm;
+
 #if 0
     zdbug((LOG_DEBUG,"ulocate_disp"));
 #endif
@@ -335,7 +346,11 @@ ulocate_dispatch(notice, auth, who, server)
 #endif
 	/* we are talking to a current-rev client; send an ack */
 	ack(notice, who);
-	ulogin_locate(notice, who, auth);
+	cp = strchr(notice->z_class_inst, '@');
+	if (cp && (realm = realm_get_realm_by_name(cp + 1)))
+	    ulogin_locate_forward(notice, who, realm);
+	else
+	    ulogin_locate(notice, who, auth);
 	return ZERR_NONE;
     } else {
 	syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
@@ -1048,6 +1063,7 @@ ulogin_marshal_locs(notice, found, auth)
     char **answer;
     int i = 0;
     String *inst;
+    int local = sender_in_realm(notice);
 
     *found = 0;			/* # of matches */
 
@@ -1069,7 +1085,7 @@ ulogin_marshal_locs(notice, found, auth)
 	    continue;
 	  case REALM_VIS:
 	  case REALM_ANN:
-	    if (!auth) {
+	    if (!local) {
 		i++;
 		continue;
 	    }
@@ -1178,3 +1194,103 @@ free_loc(loc)
     free(loc->time);
     return;
 }
+
+static void
+ulogin_locate_forward(notice, who, realm)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
+    Realm *realm;
+{
+    ZNotice_t lnotice;
+
+    lnotice = *notice;
+    lnotice.z_opcode = REALM_REQ_LOCATE;
+  
+    realm_handoff(&lnotice, 1, who, realm, 0);
+}
+
+void
+ulogin_realm_locate(notice, who, realm)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
+    Realm *realm;
+{
+  char **answer;
+  int found;
+  Code_t retval;
+  ZNotice_t lnotice;
+  char *pack;
+  int packlen;
+  
+#ifdef DEBUG
+  if (zdebug)
+    zdbug((LOG_DEBUG, "ulogin_realm_locate"));
+#endif
+  
+  answer = ulogin_marshal_locs(notice, &found, 0/*AUTH*/);
+  
+  lnotice = *notice;
+  lnotice.z_opcode = REALM_ANS_LOCATE;
+  
+  if ((retval = ZFormatRawNoticeList(&lnotice, answer, found * NUM_FIELDS, &pack, &packlen)) != ZERR_NONE) {
+    syslog(LOG_WARNING, "ulog_rlm_loc format: %s",
+           error_message(retval));
+    
+    if (answer)
+      free(answer);
+    return;
+  }
+  if (answer)
+    free(answer);
+  
+  if ((retval = ZParseNotice(pack, packlen, &lnotice)) != ZERR_NONE) {
+    syslog(LOG_WARNING, "subscr_rlm_sendit parse: %s",
+           error_message(retval));
+    free(pack);
+    return;
+  }
+  
+  realm_handoff(&lnotice, 1, who, realm, 0);
+  free(pack);
+  
+  return;
+}
+
+void
+ulogin_relay_locate(notice, who)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
+{
+  ZNotice_t lnotice;
+  Code_t retval;
+  struct sockaddr_in newwho;
+  char *pack;
+  int packlen;
+  
+  newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
+  newwho.sin_port = notice->z_port;
+  newwho.sin_family = AF_INET;
+  
+  if ((retval = ZSetDestAddr(&newwho)) != ZERR_NONE) {
+    syslog(LOG_WARNING, "uloc_relay_loc set addr: %s",
+           error_message(retval));
+    return;
+  }
+  
+  lnotice = *notice;
+  lnotice.z_opcode = LOCATE_LOCATE;
+  lnotice.z_kind = ACKED;
+  
+  if ((retval = ZFormatRawNotice(&lnotice, &pack, &packlen)) != ZERR_NONE) {
+    syslog(LOG_WARNING, "ulog_relay_loc format: %s",
+           error_message(retval));
+    return;
+  }
+  
+  if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
+    syslog(LOG_WARNING, "ulog_relay_loc xmit: %s",
+           error_message(retval));
+  }
+  free(pack);
+}
+

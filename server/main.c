@@ -154,7 +154,7 @@ main(argc, argv)
     programname = (programname) ? programname + 1 : argv[0];
 
     /* process arguments */
-    while ((optchar = getopt(argc, argv, "dsnv:f:r:")) != EOF) {
+    while ((optchar = getopt(argc, argv, "dsnv:f:k:")) != EOF) {
 	switch(optchar) {
 	  case 'd':
 	    zdebug = 1;
@@ -378,6 +378,7 @@ initialize()
 #ifdef ZEPHYR_USES_KERBEROS
     krb_set_tkt_string(tkt_file);
 #endif
+    realm_init();
 
     ZInitialize();		/* set up the library */
     init_zsrv_err_tbl();	/* set up err table */
@@ -470,10 +471,10 @@ static void
 usage()
 {
 #ifdef DEBUG
-	fprintf(stderr, "Usage: %s [-d] [-s] [-n] [-r realm] [-f dumpfile]\n",
+	fprintf(stderr, "Usage: %s [-d] [-s] [-n] [-k realm] [-f dumpfile]\n",
 		programname);
 #else
-	fprintf(stderr, "Usage: %s [-d] [-n] [-r realm] [-f dumpfile]\n",
+	fprintf(stderr, "Usage: %s [-d] [-n] [-k realm] [-f dumpfile]\n",
 		programname);
 #endif /* DEBUG */
 	exit(2);
@@ -597,6 +598,7 @@ static void dump_db()
     uloc_dump_locs(fp);
     client_dump_clients(fp);
     triplet_dump_subs(fp);
+    realm_dump_realms(fp);
     syslog(LOG_INFO, "dump done");
     if (fclose(fp) == EOF)
 	syslog(LOG_ERR, "can't close dump db");

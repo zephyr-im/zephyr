@@ -520,7 +520,9 @@ server_dispatch(notice, auth, who)
 
     notice_class = make_string(notice->z_class, 1);
 
-    if (class_is_admin(notice_class)) {
+    if (realm_which_realm(&newwho))
+	status = realm_dispatch(notice, auth, &newwho, server);
+    else if (class_is_admin(notice_class)) {
 	/* admins don't get acked, else we get a packet loop */
 	/* will return  requeue if bdump request and dumping */
 	i_s_admins.val++;

@@ -96,6 +96,7 @@ client_register(notice, host, client_p, wantdefaults)
 	client->addr.sin_addr.s_addr = host->s_addr;
 	client->addr.sin_port = notice->z_port;
 	client->subs = NULL;
+	client->realm = NULL;
 	client->principal = make_string(notice->z_sender, 0);
 	LIST_INSERT(&client_bucket[INET_HASH(&client->addr.sin_addr,
 					     notice->z_port)], client);

@@ -47,6 +47,7 @@ static int hash_ticket __P((unsigned char *, int));
 static void add_session_key __P((KTEXT, C_Block, char *, time_t));
 static int find_session_key __P((KTEXT, C_Block, char *));
 static ZChecksum_t compute_checksum __P((ZNotice_t *, C_Block));
+static ZChecksum_t compute_rlm_checksum __P((ZNotice_t *, C_Block));
 
 /*
  * GetKerberosData
@@ -121,10 +122,11 @@ SendKerberosData(fd, ticket, service, host)
 {
     int rem;
     char p[32];
+    char krb_realm[REALM_SZ];
     int written;
     int size_to_write;
 
-    rem = krb_mk_req(ticket, service, host, my_realm, (u_long) 0);
+    rem = krb_mk_req(ticket, service, host, ZGetRealm(), (u_long) 0);
     if (rem != KSUCCESS)
 	return rem + krb_err_base;
 
@@ -137,6 +139,99 @@ SendKerberosData(fd, ticket, service, host)
 	return (written < 0) ? errno : ZSRV_PKSHORT;
 
     return 0;
+}
+
+#endif /* ZEPHYR_USES_KERBEROS */
+
+int
+ZCheckRealmAuthentication(notice, from, realm)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+    char *realm;
+{       
+#ifdef ZEPHYR_USES_KERBEROS
+    int result;
+    char rlmprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
+    char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
+    KTEXT_ST authent, ticket;
+    AUTH_DAT dat;
+    ZChecksum_t checksum;
+    CREDENTIALS cred;
+    C_Block session_key;
+
+    if (!notice->z_auth)
+        return ZAUTH_NO;
+
+    /* Check for bogus authentication data length. */
+    if (notice->z_authent_len <= 0)
+        return ZAUTH_FAILED;
+
+    /* Read in the authentication data. */
+    if (ZReadAscii(notice->z_ascii_authent, 
+                   strlen(notice->z_ascii_authent)+1, 
+                   (unsigned char *)authent.dat, 
+                   notice->z_authent_len) == ZERR_BADFIELD) {
+        return ZAUTH_FAILED;
+    }
+    authent.length = notice->z_authent_len;
+
+    /* Copy the ticket out of the authentication data. */
+    if (krb_find_ticket(&authent, &ticket) != RD_AP_OK)
+        return ZAUTH_FAILED;
+
+    (void) sprintf(rlmprincipal, "%s.%s@%s", SERVER_SERVICE,
+                   SERVER_INSTANCE, realm);
+
+    /* Try to do a fast check against the cryptographic checksum. */
+    if (find_session_key(&ticket, session_key, srcprincipal) >= 0) {
+        if (strcmp(srcprincipal, rlmprincipal) != 0)
+            return ZAUTH_FAILED;
+        if (notice->z_time.tv_sec - NOW > CLOCK_SKEW)
+            return ZAUTH_FAILED;
+        checksum = compute_rlm_checksum(notice, session_key);
+
+        /* If checksum matches, packet is authentic.  Otherwise, check
+         * the authenticator as if we didn't have the session key cached
+         * and return ZAUTH_CKSUM_FAILED.  This is a rare case (since the
+         * ticket isn't cached after a checksum failure), so don't worry
+         * about the extra des_quad_cksum() call. */
+        if (checksum == notice->z_checksum) {
+	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
+	    return ZAUTH_YES;
+        }
+    }
+
+    /* We don't have the session key cached; do it the long way. */
+    result = krb_rd_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
+                        from->sin_addr.s_addr, &dat, srvtab_file);
+    if (result == RD_AP_OK) {
+        sprintf(srcprincipal, "%s%s%s@%s", dat.pname, dat.pinst[0] ? "." : "",
+		dat.pinst, dat.prealm);
+        if (strcmp(rlmprincipal, srcprincipal))
+            return ZAUTH_FAILED;
+    } else {
+        return ZAUTH_FAILED;    /* didn't decode correctly */
+    }
+
+    /* Check the cryptographic checksum. */
+#ifdef NOENCRYPTION
+    our_checksum = 0;
+#else
+    checksum = compute_rlm_checksum(notice, dat.session);
+#endif
+    if (checksum != notice->z_checksum)
+        return ZAUTH_CKSUM_FAILED;
+
+    /* Record the session key, expiry time, and source principal in the
+     * hash table, so we can do a fast check next time. */
+    add_session_key(&ticket, dat.session, srcprincipal,
+                    (time_t)(dat.time_sec + dat.life * 5 * 60));
+
+    return ZAUTH_YES;
+
+#else /* !ZEPHYR_USES_KERBEROS */
+    return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
+#endif
 }
 
 int
@@ -224,6 +319,8 @@ ZCheckAuthentication(notice, from)
     return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
 #endif
 }
+
+#ifdef ZEPHYR_USES_KERBEROS
 
 static int hash_ticket(p, len)
     unsigned char *p;
@@ -313,6 +410,23 @@ static ZChecksum_t compute_checksum(notice, session_key)
 #endif
 }
 
+static ZChecksum_t compute_rlm_checksum(notice, session_key)
+    ZNotice_t *notice;
+    C_Block session_key;
+{
+#ifdef NOENCRYPTION
+    return 0;
+#else
+    ZChecksum_t checksum;
+    char *cstart, *cend, *hstart = notice->z_packet, *hend = notice->z_message;
+
+    cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
+    cend = cstart + strlen(cstart) + 1;
+    checksum = des_quad_cksum(hstart, NULL, cstart - hstart, 0, session_key);
+    return checksum;
+#endif
+}
+
 void sweep_ticket_hash_table(arg)
     void *arg;
 {
@@ -334,5 +448,5 @@ void sweep_ticket_hash_table(arg)
     timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
 }
 
-#endif /* KERBEROS */
+#endif /* ZEPHYR_USES_KERBEROS */
 

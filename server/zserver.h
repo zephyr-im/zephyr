@@ -58,68 +58,105 @@ typedef struct {
 #endif
 #endif
 
-typedef struct _Destination {
+typedef struct _Destination Destination;
+typedef struct _Destlist Destlist;
+typedef struct _Realm Realm;
+typedef struct _Realmname Realmname;
+typedef struct _Client Client;
+typedef struct _Triplet Triplet;
+typedef enum _Server_state Server_state;
+typedef struct _Unacked Unacked;
+typedef struct _Pending Pending;
+typedef struct _Server Server;
+typedef enum _Sent_type Sent_type;
+typedef struct _Statistic Statistic;
+
+struct _Destination {
     String		*classname;
     String		*inst;
     String		*recip;
-} Destination;
+};
 
-typedef struct _Destlist {
+struct _Destlist {
     Destination	dest;
     struct _Destlist	*next, **prev_p;
-} Destlist;
+};
 
-typedef struct _Client {
+struct _Realm {
+    char name[REALM_SZ];
+    int count;
+    struct sockaddr_in *addrs;
+    int idx;				/* which server we are connected to */
+    Destlist *subs;
+    Client *client;
+};
+
+struct _Realmname {
+    char name[REALM_SZ];
+    char **servers;
+    int nused;
+    int nservers;
+};
+
+struct _Client {
     struct sockaddr_in	addr;		/* ipaddr/port of client */
     Destlist		*subs	;	/* subscriptions */
 #ifdef ZEPHYR_USES_KERBEROS
     C_Block		session_key;	/* session key for this client */
 #endif /* ZEPHYR_USES_KERBEROS */
     String		*principal;	/* krb principal of user */
-    long		last_msg;	/* last message sent to this client */ 
+    time_t		last_check;	/* last time the other server was
+					   asked to check */
+    long		last_msg;	/* last message sent to this client */
     int			last_send;	/* Counter for last sent packet. */
+    Realm		*realm;
     struct _Client	*next, **prev_p;
-} Client;
+};
 
-typedef struct _Triplet {
+struct _Triplet {
     Destination		dest;
     Acl			*acl;
     Client		**clients;
     int			clients_size;
     struct _Triplet	*next, **prev_p;
-} Triplet;
+};
 
-typedef enum _Server_state {
+enum _Server_state {
     SERV_UP,				/* Server is up */
     SERV_TARDY,				/* Server due for a hello */
     SERV_DEAD,				/* Server is considered dead */
     SERV_STARTING			/* Server is between dead and up */
-} Server_state;
+};
 
-typedef struct _Unacked {
+struct _Unacked {
     Timer		*timer;		/* timer for retransmit */
     short		rexmits;	/* number of retransmits */
     short		packsz;		/* size of packet */
     char		*packet;	/* ptr to packet */
     ZUnique_Id_t	uid;		/* uid of packet */
+    struct sockaddr_in	ack_addr;
     union {				/* address to send to */
-	struct sockaddr_in addr;	 /* client address */
+	struct sockaddr_in addr;	/* client address */
 	int	srv_idx;		/* index of server */
+	struct {
+	    int rlm_idx;		/* index of realm */
+	    int rlm_srv_idx;		/* index of server in realm */
+	} rlm;
     } dest;
     struct _Unacked *next, **prev_p;
-} Unacked;
+};
 
-typedef struct _Pending {
+struct _Pending {
     char		*packet;	/* the notice (in pkt form) */
     short		len;		/* len of pkt */
     unsigned int	auth;		/* whether it is authentic */
     struct sockaddr_in who;		/* the addr of the sender */
     struct _Pending *next;
-} Pending;
+};
 
-typedef struct _Server {
-    Server_state	state;			/* server's state */
-    struct sockaddr_in addr;	/* server's address */
+struct _Server {
+    Server_state	state;		/* server's state */
+    struct sockaddr_in	addr;		/* server's address */
     long		timeout;	/* Length of timeout in sec */
     Timer		*timer;		/* timer for this server */
     Pending		*queue;		/* queue of packets to send
@@ -128,20 +165,20 @@ typedef struct _Server {
     short		num_hello_sent;	/* number of hello's sent */
     unsigned int	dumping;	/* 1 if dumping, so we should queue */
     char		addr_str[16];	/* text version of address */
-} Server;
+};
 
-typedef enum _Sent_type {
+enum _Sent_type {
     NOT_SENT,				/* message was not xmitted */
     SENT,				/* message was xmitted */
     AUTH_FAILED,			/* authentication failed */
     NOT_FOUND				/* user not found for uloc */
-} Sent_type;
+};
 
 /* statistics gathering */
-typedef struct _Statistic {
+struct _Statistic {
     int			val;
     char		*str;
-} Statistic;
+};
 
 /* Function declarations */
 	
@@ -154,13 +191,15 @@ Code_t bdump_send_list_tcp __P((ZNotice_Kind_t kind, struct sockaddr_in *addr,
 				char *class_name, char *inst, char *opcode,
 				char *sender, char *recip, char **lyst,
 				int num));
+int get_tgt __P((void));
 
 /* found in class.c */
 extern String *class_control, *class_admin, *class_hm;
 extern String *class_ulogin, *class_ulocate;
 int ZDest_eq __P((Destination *d1, Destination *d2));
-Code_t triplet_register __P((Client *client, Destination *dest));
-Code_t triplet_deregister __P((Client *client, Destination *dest));
+Code_t triplet_register __P((Client *client, Destination *dest, Realm *realm));
+Code_t triplet_deregister __P((Client *client, Destination *dest,
+			       Realm *realm));
 Code_t class_restrict __P((char *class, Acl *acl));
 Code_t class_setup_restricted __P((char *class, Acl *acl));
 Client **triplet_lookup __P((Destination *dest));
@@ -187,7 +226,8 @@ void dump_quote __P((char *p, FILE *fp));
 void handle_packet __P((void));
 void clt_ack __P((ZNotice_t *notice, struct sockaddr_in *who, Sent_type sent));
 void nack_release __P((Client *client));
-void sendit __P((ZNotice_t *notice, int auth, struct sockaddr_in *who));
+void sendit __P((ZNotice_t *notice, int auth, struct sockaddr_in *who,
+		 int external));
 void rexmit __P((void *));
 void xmit __P((ZNotice_t *notice, struct sockaddr_in *dest, int auth,
 	       Client *client));
@@ -259,6 +299,14 @@ Code_t ulocate_dispatch __P((ZNotice_t *notice, int auth,
 			     struct sockaddr_in *who, Server *server));
 Code_t uloc_send_locations __P((void));
 
+/* found in realm.c */
+Realm *realm_which_realm __P((struct sockaddr_in *who));
+Realm *realm_get_realm_by_name __P((char *name));
+void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, Realm *, int);
+void realm_init __P((void));
+Code_t ZCheckRealmAuthentication __P((ZNotice_t *, struct sockaddr_in *,
+				      char *));
+
 /* found in version.c */
 char *get_version __P((void));
 
@@ -284,7 +332,7 @@ extern char list_file[];
 #endif
 #ifdef ZEPHYR_USES_KERBEROS
 extern char srvtab_file[];
-extern char my_realm[REALM_SZ];
+extern char my_realm[];
 #endif
 extern char acl_dir[];
 extern char subs_file[];
@@ -327,6 +375,10 @@ extern struct in_addr my_addr;	/* my inet address */
 #define	ADMIN_NEWCLT	"NEXT_CLIENT"	/* Opcode: this is a new client */
 #define	ADMIN_KILL_CLT	"KILL_CLIENT"	/* Opcode: client is dead, remove */
 #define	ADMIN_STATUS	"STATUS"	/* Opcode: please send status */
+
+#define ADMIN_NEWREALM	"NEXT_REALM"	/* Opcode: this is a new realm */
+#define REALM_REQ_LOCATE "REQ_LOCATE"	/* Opcode: request a location */
+#define REALM_ANS_LOCATE "ANS_LOCATE"	/* Opcode: answer to location */
 
 /* me_server_idx is the index into otherservers of this server descriptor. */
 /* the 'limbo' server is always the first server */

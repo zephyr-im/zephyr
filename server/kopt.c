@@ -506,6 +506,11 @@ krb_get_lrealm(r,n)
     if (n > 1)
 	return KFAILURE;  /* Temporary restriction */
 
+    if (my_realm[0]) {
+	strcpy(r, my_realm);
+	return KSUCCESS;
+    }
+
     if (local_realm_buffer[0]) {
 	strcpy(r, local_realm_buffer);
 	return KSUCCESS;
@@ -529,5 +534,81 @@ krb_get_lrealm(r,n)
     return KSUCCESS;
 }
 
+int
+decomp_ticket(tkt, flags, pname, pinstance, prealm, paddress, session,
+              life, time_sec, sname, sinstance, key, key_s)
+    KTEXT tkt;                  /* The ticket to be decoded */
+    unsigned char *flags;       /* Kerberos ticket flags */
+    char *pname;                /* Authentication name */
+    char *pinstance;            /* Principal's instance */
+    char *prealm;               /* Principal's authentication domain */
+    unsigned long *paddress; /* Net address of entity
+                                 * requesting ticket */
+    C_Block session;            /* Session key inserted in ticket */
+    int *life;                  /* Lifetime of the ticket */
+    unsigned long *time_sec; /* Issue time and date */
+    char *sname;                /* Service name */
+    char *sinstance;            /* Service instance */
+    C_Block key;                /* Service's secret key
+                                 * (to decrypt the ticket) */
+    Sched key_s;                /* The precomputed key schedule */
+{
+    static int tkt_swap_bytes;
+    unsigned char *uptr;
+    char *ptr = (char *)tkt->dat;
+
+#ifndef NOENCRYPTION
+    /* Do the decryption */
+    pcbc_encrypt((C_Block *)tkt->dat,(C_Block *)tkt->dat,
+                 (long) tkt->length,key_s,(C_Block *) key,0);
+#endif /* ! NOENCRYPTION */
+
+    *flags = *ptr;              /* get flags byte */
+    ptr += sizeof(*flags);
+    tkt_swap_bytes = 0;
+    if (HOST_BYTE_ORDER != ((*flags >> K_FLAG_ORDER)& 1))
+        tkt_swap_bytes++;
+
+    if (strlen(ptr) > ANAME_SZ)
+        return(KFAILURE);
+    strcpy(pname,ptr);   /* pname */
+    ptr += strlen(pname) + 1;
+
+    if (strlen(ptr) > INST_SZ)
+        return(KFAILURE);
+    strcpy(pinstance,ptr); /* instance */
+    ptr += strlen(pinstance) + 1;
+
+    if (strlen(ptr) > REALM_SZ)
+        return(KFAILURE);
+    strcpy(prealm,ptr);  /* realm */
+    ptr += strlen(prealm) + 1;
+    /* temporary hack until realms are dealt with properly */
+    if (*prealm == 0)
+	strcpy(prealm, ZGetRealm());
+
+    memcpy((char *)paddress, ptr, 4); /* net address */
+    ptr += 4;
+
+    memcpy((char *)session, ptr, 8); /* session key */
+    ptr+= 8;
+
+    /* get lifetime, being certain we don't get negative lifetimes */
+    uptr = (unsigned char *) ptr++;
+    *life = (int) *uptr;
+
+    memcpy((char *) time_sec, ptr, 4); /* issue time */
+    ptr += 4;
+    if (tkt_swap_bytes)
+	swap_u_long(*time_sec);
+
+    strcpy(sname,ptr);   /* service name */
+    ptr += 1 + strlen(sname);
+
+    strcpy(sinstance,ptr); /* instance */
+    ptr += 1 + strlen(sinstance);
+
+    return(KSUCCESS);
+}
 #endif /* ZEPHYR_USES_KERBEROS */
 

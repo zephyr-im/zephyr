@@ -26,9 +26,9 @@ static const char rcsid_class_c[] =
  *
  * External functions are:
  *
- * Code_t triplet_register(client, subs)
+ * Code_t triplet_register(client, subs, realm)
  *
- * Code_t triplet_deregister(client, subs)
+ * Code_t triplet_deregister(client, subs, realm)
  *
  * Client *triplet_lookup(subs)
  *	Client *client;
@@ -80,8 +80,10 @@ static const char rcsid_class_c[] =
 
 static Triplet *triplet_bucket[HASHSIZE]; /* the hash table of pointers */
 
-static Code_t remove_client __P((Triplet *triplet, Client *client));
-static Code_t insert_client __P((Triplet *triplet, Client *client));
+static Code_t remove_client __P((Triplet *triplet, Client *client,
+				 Realm *realm));
+static Code_t insert_client __P((Triplet *triplet, Client *client,
+				 Realm *realm));
 static Triplet *triplet_alloc __P((String *classname, String *inst,
 				   String *recipient));
 static void free_triplet __P((Triplet *));
@@ -112,9 +114,10 @@ int ZDest_eq(d1, d2)
 /* the client as interested in a triplet */
 
 Code_t
-triplet_register(client, dest)
+triplet_register(client, dest, realm)
     Client *client;
     Destination *dest;
+    Realm *realm;
 {
     Triplet *triplet;
     unsigned long hashval;
@@ -122,21 +125,22 @@ triplet_register(client, dest)
     hashval = DEST_HASHVAL(*dest);
     for (triplet = triplet_bucket[hashval]; triplet; triplet = triplet->next) {
 	if (ZDest_eq(&triplet->dest, dest))
-	    return insert_client(triplet, client);
+	    return insert_client(triplet, client, realm);
     }
 
     /* Triplet not present in hash table, insert it. */
     triplet = triplet_alloc(dest->classname, dest->inst, dest->recip);
     LIST_INSERT(&triplet_bucket[hashval], triplet);
-    return insert_client(triplet, client);
+    return insert_client(triplet, client, realm);
 }
 
 /* dissociate client from the class, garbage collecting if appropriate */
 
 Code_t
-triplet_deregister(client, dest)
+triplet_deregister(client, dest, realm)
     Client *client;
     Destination *dest;
+    Realm *realm;
 {
     Triplet *triplet;
     int retval;
@@ -149,7 +153,7 @@ triplet_deregister(client, dest)
     hashval = DEST_HASHVAL(*dest);
     for (triplet = triplet_bucket[hashval]; triplet; triplet = triplet->next) {
 	if (ZDest_eq(&triplet->dest, dest)) {
-	    retval = remove_client(triplet, client);
+	    retval = remove_client(triplet, client, realm);
 	    if (retval != ZERR_NONE)
 		return retval;
 	    if (*triplet->clients == NULL && !triplet->acl) {
@@ -296,9 +300,10 @@ triplet_alloc(classname,inst,recipient)
 /* insert a client into the list associated with the class *ptr */
 
 static Code_t
-insert_client(triplet, client)
+insert_client(triplet, client, realm)
     Triplet *triplet;
     Client *client;
+    Realm *realm;
 {
     Client **clientp, **newclients;
     int new_size;
@@ -306,7 +311,7 @@ insert_client(triplet, client)
     if (triplet->clients) {
 	/* Avoid duplication. */
 	for (clientp = triplet->clients; *clientp; clientp++) {
-	    if (*clientp == client)
+	    if (*clientp == client || (realm && (*clientp)->realm == realm))
 		return ZSRV_CLASSXISTS;
 	}
 
@@ -339,14 +344,15 @@ insert_client(triplet, client)
  * collecting if appropriate
  */
 
-static Code_t remove_client(triplet, client)
+static Code_t remove_client(triplet, client, realm)
     Triplet *triplet;
     Client *client;
+    Realm *realm;
 {
     Client **clientp;
 
     for (clientp = triplet->clients; *clientp; clientp++) {
-	if (*clientp == client) {
+	if (*clientp == client || (realm && (*clientp)->realm == realm)) {
 	    for (; *clientp; clientp++)
 		*clientp = clientp[1];
 	    return ZERR_NONE;

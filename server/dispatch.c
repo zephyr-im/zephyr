@@ -31,7 +31,7 @@ static const char rcsid_dispatch_c[] =
 #define HOSTS_SIZE_INIT			256
 
 #ifdef DEBUG
-Zconst char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
+ZCONST char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
 				    "HMCTL", "SERVACK", "SERVNAK", "CLIENTACK",
 				    "STAT"};
 #endif
@@ -71,10 +71,11 @@ int rexmit_times[] = REXMIT_TIMES;
 
 static void nack_cancel __P((ZNotice_t *, struct sockaddr_in *));
 static void dispatch __P((ZNotice_t *, int, struct sockaddr_in *, int));
-static int send_to_dest __P((ZNotice_t *, int, Destination *dest, int));
-static void hostm_deathgram __P((struct sockaddr_in *, ZServerDest_t *));
-static void hm_recipient __P((void);
+static int send_to_dest __P((ZNotice_t *, int, Destination *dest, int, int));
+static void hostm_deathgram __P((struct sockaddr_in *, Server *));
+static char *hm_recipient __P((void));
 
+Statistic realm_notices = {0, "inter-realm notices"};
 Statistic interserver_notices = {0, "inter-server notices"};
 Statistic hm_packets = {0, "hostmanager packets"};
 Statistic control_notices = {0, "client control notices"};
@@ -103,6 +104,7 @@ dump_stats (arg)
     syslog(LOG_INFO, "stats: %s: %d", login_notices.str, login_notices.val);
     syslog(LOG_INFO, "stats: %s: %d", locate_notices.str, locate_notices.val);
     syslog(LOG_INFO, "stats: %s: %d", admin_notices.str, admin_notices.val);
+    syslog(LOG_INFO, "stats: %s: %d", realm_notices.str, realm_notices.val);
     syslog(LOG_INFO, "stats: %s: %d", interserver_notices.str,
 	   interserver_notices.val);
     syslog(LOG_INFO, "stats: %s: %d", i_s_ctls.str, i_s_ctls.val);
@@ -131,6 +133,7 @@ handle_packet()
     int authentic;		/* authentic flag */
     Pending *pending;		/* pending packet */
     int from_server;		/* packet is from another server */
+    Realm *realm;		/* foreign realm ptr */
 #ifdef DEBUG
     static int first_time = 1;
 #endif
@@ -188,11 +191,23 @@ handle_packet()
 	input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
 	input_sin.sin_port = new_notice.z_port;
 	input_sin.sin_family = AF_INET;
-	authentic = ZCheckAuthentication(&new_notice, &input_sin);
+	realm = realm_which_realm(&input_sin);
+	if (realm) {
+	    authentic = ZCheckRealmAuthentication(&new_notice, &input_sin,
+						  realm->name);
+	} else {
+	    authentic = ZCheckAuthentication(&new_notice, &input_sin);
+	}
 	from_server = 1;
     } else {
 	from_server = 0;
-	authentic = ZCheckAuthentication(&new_notice, &whoisit);
+	realm = realm_which_realm(&whoisit);
+	if (realm) {
+	    authentic = ZCheckRealmAuthentication(&new_notice, &whoisit,
+						  realm->name);
+	} else {
+	    authentic = ZCheckAuthentication(&new_notice, &whoisit);
+	}
     }
 
     if (whoisit.sin_port != hm_port && whoisit.sin_port != hm_srv_port &&
@@ -223,6 +238,8 @@ dispatch(notice, auth, who, from_server)
     String *notice_class;
     struct sockaddr_in who2;
     int authflag;
+    Realm *realm;
+    char *cp;
 #ifdef DEBUG
     char dbg_buf[BUFSIZ];
 #endif
@@ -279,6 +296,9 @@ dispatch(notice, auth, who, from_server)
     } else if (class_is_hm(notice_class)) {
 	hm_packets.val++;
 	status = hostm_dispatch(notice, authflag, who, me_server);
+    } else if (realm_which_realm(who) && !(class_is_admin(notice_class))) {
+	realm_notices.val++;
+	status = realm_dispatch(notice, authflag, who, me_server);
     } else if (class_is_control(notice_class)) {
 	control_notices.val++;
 	status = control_dispatch(notice, authflag, who, me_server);
@@ -294,7 +314,17 @@ dispatch(notice, auth, who, from_server)
     } else {
 	if (auth == ZAUTH_CKSUM_FAILED)
 	    authflag = 0;
-	sendit(notice, authflag, who);
+	if (!bound_for_local_realm(notice)) {
+	    cp = strchr(notice->z_recipient, '@');
+	    if (!cp || !(realm = realm_get_realm_by_name(cp + 1)))
+		sendit(notice, authflag, who, 0);
+	    else
+		realm_handoff(notice, authflag, who, realm, 1);
+	} else {
+	    if (notice->z_recipient[0] == '@')
+		notice->z_recipient = "";
+	    sendit(notice, authflag, who, 1);
+	}
 	free_string(notice_class);
 	return;
     }
@@ -309,10 +339,11 @@ dispatch(notice, auth, who, from_server)
  */
 
 void
-sendit(notice, auth, who)
+sendit(notice, auth, who, external)
     ZNotice_t *notice;
     int auth;
     struct sockaddr_in *who;
+    int external;
 {
     static int send_counter = 0;
     int any = 0;
@@ -349,30 +380,33 @@ sendit(notice, auth, who)
 	    return;
 	}
     }
-    if (memcmp(&notice->z_sender_addr.s_addr, &who->sin_addr.s_addr,
-	       sizeof(notice->z_sender_addr.s_addr))) {
-	/* someone is playing games... */
-	/* inet_ntoa returns pointer to static area */
-	/* max size is 255.255.255.255 */
-	char buffer[16];
-	strcpy(buffer, inet_ntoa(who->sin_addr));
-	if (!auth) {
-	    syslog(LOG_WARNING,
-		   "sendit unauthentic fake packet: claimed %s, real %s",
+    if (!realm_which_realm(who)) {
+	if (memcmp(&notice->z_sender_addr.s_addr, &who->sin_addr.s_addr,
+		   sizeof(notice->z_sender_addr.s_addr))) {
+	    /* someone is playing games... */
+	    /* inet_ntoa returns pointer to static area */
+	    /* max size is 255.255.255.255 */
+	    char buffer[16];
+	    strcpy(buffer, inet_ntoa(who->sin_addr));
+	    if (!auth) {
+		syslog(LOG_WARNING,
+		       "sendit unauthentic fake packet: claimed %s, real %s",
+		       inet_ntoa(notice->z_sender_addr), buffer);
+		clt_ack(notice, who, AUTH_FAILED);
+		free_string(class);
+		return;
+	    }
+	    if (ntohl(notice->z_sender_addr.s_addr) != 0) {
+		syslog(LOG_WARNING,
+		       "sendit invalid address: claimed %s, real %s",
+		       inet_ntoa(notice->z_sender_addr), buffer);
+		clt_ack(notice, who, AUTH_FAILED);
+		free_string(class);
+		return;
+	    }
+	    syslog(LOG_WARNING, "sendit addr mismatch: claimed %s, real %s",
 		   inet_ntoa(notice->z_sender_addr), buffer);
-	    clt_ack(notice, who, AUTH_FAILED);
-	    free_string(class);
-	    return;
 	}
-	if (ntohl(notice->z_sender_addr.s_addr) != 0) {
-	    syslog(LOG_WARNING, "sendit invalid address: claimed %s, real %s",
-		   inet_ntoa(notice->z_sender_addr), buffer);
-	    clt_ack(notice, who, AUTH_FAILED);
-	    free_string(class);
-	    return;
-	}
-	syslog(LOG_WARNING, "sendit addr mismatch: claimed %s, real %s",
-	       inet_ntoa(notice->z_sender_addr), buffer);
     }
 
     /* Increment the send counter, used to prevent duplicate sends to
@@ -386,15 +420,18 @@ sendit(notice, auth, who)
     /* Send to clients subscribed to the triplet itself. */
     dest.classname = class;
     dest.inst = make_string(notice->z_class_inst, 1);
-    dest.recip = make_string(notice->z_recipient, 0);
-    if (send_to_dest(notice, auth, &dest, send_counter))
+    if (bound_for_local_realm(notice) && *notice->z_recipient == '@')
+	dest.recip = make_string("", 0);
+    else
+	dest.recip = make_string(notice->z_recipient, 0);
+    if (send_to_dest(notice, auth, &dest, send_counter, external))
 	any = 1;
 
     /* Send to clients subscribed to the triplet with the instance
      * substituted with the wildcard instance. */
     free_string(dest.inst);
     dest.inst = wildcard_instance;
-    if (send_to_dest(notice, auth, &dest, send_counter))
+    if (send_to_dest(notice, auth, &dest, send_counter, external))
 	any = 1;
 
     free_string(class);
@@ -412,11 +449,12 @@ sendit(notice, auth, who)
  */
 
 static int
-send_to_dest(notice, auth, dest, send_counter)
+send_to_dest(notice, auth, dest, send_counter, external)
     ZNotice_t *notice;
     int auth;
     Destination *dest;
     int send_counter;
+    int external;
 {
     Client **clientp;
     int any = 0;
@@ -429,7 +467,11 @@ send_to_dest(notice, auth, dest, send_counter)
 	if ((*clientp)->last_send == send_counter)
 	    continue;
 	(*clientp)->last_send = send_counter;
-	xmit(notice, &((*clientp)->addr), auth, *clientp);
+	if ((*clientp)->realm && external)
+	    realm_handoff(notice, auth, &clientp[0]->addr, clientp[0]->realm,
+			  1);
+	else
+	    xmit(notice, &((*clientp)->addr), auth, *clientp);
 	any = 1;
     }
 
@@ -551,7 +593,6 @@ xmit(notice, dest, auth, client)
 				   we have a pointer to auth info
 				   */
 #ifdef ZEPHYR_USES_KERBEROS
-
 	retval = ZFormatAuthenticNotice(notice, noticepack, packlen, &packlen,
 					client->session_key);
 	if (retval != ZERR_NONE) {
@@ -901,6 +942,8 @@ control_dispatch(notice, auth, who, server)
     Client *client;
     Code_t retval;
     int wantdefs;
+    Realm *realm;
+    struct sockaddr_in newwho;
 
     /*
      * ZEPHYR_CTL Opcodes expected are:
@@ -911,6 +954,12 @@ control_dispatch(notice, auth, who, server)
      */
 
     zdbug((LOG_DEBUG, "ctl_disp: opc=%s", opcode));
+
+    newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
+    newwho.sin_port = notice->z_port;
+    realm = realm_which_realm(&newwho);
+    if (realm)
+	return(realm_control_dispatch(notice, auth, who, server, realm));
 
     if (strcasecmp(notice->z_class_inst, ZEPHYR_CTL_HM) == 0) {
 	return hostm_dispatch(notice, auth, who, server);
@@ -944,7 +993,7 @@ control_dispatch(notice, auth, who, server)
 	/* subscription notice */
 	retval = client_register(notice, &who->sin_addr, &client, wantdefs);
 	if (retval != ZERR_NONE) {
-	    syslog(LOG_NOTICE, "subscr. %s/%s/%d failed: %s",
+	    syslog(LOG_NOTICE, "subscr %s/%s/%d failed: %s",
 		   notice->z_sender, inet_ntoa(who->sin_addr),
 		   ntohs(notice->z_port), error_message(retval));
 	    if (server == me_server) {
@@ -989,8 +1038,8 @@ control_dispatch(notice, auth, who, server)
 		} else {
 		    syslog(LOG_DEBUG,
 			   "subscription cancel for %s/%d from %s\n",
-			   inet_ntoa(who->sin_addr), ntohs (who->sin_port),
-			   server->dest.addr);
+			   inet_ntoa(who->sin_addr), ntohs(who->sin_port),
+			   server->add_str);
 		}
 	    }
 #endif
@@ -1066,7 +1115,7 @@ hostm_shutdown()
 static void
 hostm_deathgram(sin, server)
     struct sockaddr_in *sin;
-    ZServerDesc_t *server;
+    Server *server;
 {
     Code_t retval;
     int shutlen;
@@ -1074,7 +1123,7 @@ hostm_deathgram(sin, server)
     char *shutpack;
 
     shutnotice.z_kind = HMCTL;
-    shutnotice.z_port = sock_sin.sin_port; /* we are sending it */
+    shutnotice.z_port = sin->sin_port; /* we are sending it */
     shutnotice.z_class = HM_CTL_CLASS;
     shutnotice.z_class_inst = HM_CTL_SERVER;
     shutnotice.z_opcode = SERVER_SHUTDOWN;
@@ -1082,8 +1131,8 @@ hostm_deathgram(sin, server)
     shutnotice.z_recipient = hm_recipient();
     shutnotice.z_default_format = "";
     shutnotice.z_num_other_fields = 0;
-    shutnotice.z_message = (server) ? server->addr : NULL;
-    shutnotice.z_message_len = (server) ? strlen(server->addr) + 1 : 0;
+    shutnotice.z_message = (server) ? server->addr_str : NULL;
+    shutnotice.z_message_len = (server) ? strlen(server->addr_str) + 1 : 0;
 
     retval = ZFormatNotice(&shutnotice, &shutpack, &shutlen, ZNOAUTH);
     if (retval != ZERR_NONE) {
@@ -1114,7 +1163,7 @@ hm_recipient()
     realm = ZGetRealm();
     if (!realm)
 	realm = "???";
-    recipient = (char *) xmalloc (strlen (realm) + 4);
+    recipient = (char *) malloc(strlen(realm) + 4);
     strcpy (recipient, "hm@");
     strcat (recipient, realm);
     return recipient;
