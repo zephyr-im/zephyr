@@ -78,7 +78,7 @@ typedef struct _ZLocation_t {
 
 static void ulogin_locate(), ulogin_add_user();
 static ZLocation_t *ulogin_find();
-static int uloc_compare(), ulogin_setup(), ulogin_parse(), ul_equiv();
+static int ulogin_setup(), ulogin_parse(), ul_equiv();
 static int ulogin_remove_user(), ulogin_hide_user();
 
 static ZLocation_t *locations = NULLZLT; /* ptr to first in array */
@@ -458,17 +458,6 @@ register ZLocation_t *locs;
 	}
 	return(0);
 }	
-
-/*
- * Compare two locations for ordering via qsort
- */
-
-static int
-uloc_compare(l1, l2)
-ZLocation_t *l1, *l2;
-{
-	return(strcmp(l1->zlt_user, l2->zlt_user));
-}
 
 /*
  * Find the username specified in notice->z_class_inst.
