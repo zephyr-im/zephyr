@@ -42,7 +42,8 @@ xzwrite: ${OBJS} ${BUILDTOP}/lib/libzephyr.a ${BUILDTOP}/libdyn/libdyn.a
 
 XZwrite: XZwrite.in
 	rm -f XZwrite
-	sed -e 's,$(at)datadir$(at),$(datadir),' < XZwrite.in > XZwrite
+	sed -e 's,$(at)datadir$(at),$(datadir),' < ${srcdir}/XZwrite.in \
+		> XZwrite
 
 check:
 
