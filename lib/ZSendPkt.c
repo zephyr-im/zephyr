@@ -21,8 +21,6 @@ Code_t ZSendPacket(packet,len)
 	ZPacket_t	packet;
 	int		len;
 {
-	int findack();
-	
 	Code_t retval;
 	struct sockaddr_in dest;
 	struct timeval tv;
@@ -55,18 +53,12 @@ Code_t ZSendPacket(packet,len)
 	for (i=0;i<HM_TIMEOUT*2;i++) {
 		select(0,&t1,&t2,&t3,&tv);
 		retval = ZCheckIfNotice(ackpack,sizeof ackpack,&notice,
-					&auth,findack,(char *)&notice.z_uid);
+					&auth,ZCompareUIDPred,
+					(char *)&notice.z_uid);
 		if (retval == ZERR_NONE)
 			return (ZERR_NONE);
 		if (retval != ZERR_NONOTICE)
 			return (retval);
 	}
 	return (ZERR_HMDEAD);
-}
-
-static int findack(notice,uid)
-	ZNotice_t *notice;
-	ZUnique_Id_t *uid;
-{
-	return (ZCompareUID(uid,&notice->z_uid));
 }
