@@ -28,7 +28,7 @@
 #include "access.h"
 #include "acl.h"
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 /* Kerberos-specific library interfaces used only by the server. */
 extern C_Block __Zephyr_session;
 #define ZGetSession() (__Zephyr_session)
@@ -56,7 +56,7 @@ Code_t ZFormatAuthenticNotice __P((ZNotice_t*, char*, int, int*, C_Block));
 /* Current time as cached by main(); use instead of time(). */
 #define NOW t_local.tv_sec
 
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 #ifndef NOENCRYPTION
 /* Kerberos shouldn't stick us with array types... */
 typedef struct {
@@ -109,9 +109,9 @@ struct _Realmname {
 struct _Client {
     struct sockaddr_in	addr;		/* ipaddr/port of client */
     Destlist		*subs	;	/* subscriptions */
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
     C_Block		session_key;	/* session key for this client */
-#endif /* ZEPHYR_USES_KERBEROS */
+#endif /* HAVE_KRB4 */
     String		*principal;	/* krb principal of user */
     time_t		last_check;	/* last time the other server was
 					   asked to check */
@@ -247,14 +247,14 @@ Code_t xmit_frag __P((ZNotice_t *notice, char *buf, int len, int waitforack));
 void hostm_shutdown __P((void));
 
 /* found in kstuff.c */
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 int GetKerberosData  __P((int, struct in_addr, AUTH_DAT *, char *, char *));
 Code_t SendKerberosData  __P((int, KTEXT, char *, char *));
 void sweep_ticket_hash_table __P((void *));
 #endif
 
 /* found in kopt.c */
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 #ifndef NOENCRYPTION
 Sched *check_key_sched_cache __P((des_cblock key));
 void add_to_key_sched_cache __P((des_cblock key, Sched *sched));
@@ -315,6 +315,8 @@ char *realm_expand_realm(char *);
 void realm_init __P((void));
 Code_t ZCheckRealmAuthentication __P((ZNotice_t *, struct sockaddr_in *,
 				      char *));
+Code_t realm_control_dispatch __P((ZNotice_t *, int, struct sockaddr_in *,
+				   Server *, Realm *));
 
 /* found in version.c */
 char *get_version __P((void));
@@ -336,10 +338,10 @@ extern fd_set interesting;		/* the file descrips we are listening
 extern int nfds;			/* number to look at in select() */
 extern int zdebug;
 extern char myname[];			/* domain name of this host */
-#ifndef ZEPHYR_USES_HESIOD
+#ifndef HAVE_HESIOD
 extern char list_file[];
 #endif
-#ifdef ZEPHYR_USES_KERBEROS
+#ifdef HAVE_KRB4
 extern char srvtab_file[];
 extern char my_realm[];
 #endif
