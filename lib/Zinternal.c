@@ -280,13 +280,16 @@ Z_FormatRawHeader(notice,buffer,buffer_len,len)
 	}		
 	if (Z_AddField(&ptr,notice->z_default_format,end))
 		return (ZERR_PKTLEN);
-	
+
 	temp = htonl(notice->z_checksum);
 	if (ZMakeAscii(ptr,end-ptr,(unsigned char *)&temp,
 		       sizeof(ZChecksum_t)) == ZERR_FIELDLEN)
 		return (ZERR_PKTLEN);
 	ptr += strlen(ptr)+1;
 
+	if (Z_AddField(&ptr,notice->z_multinotice,end))
+		return (ZERR_PKTLEN);
+	
 	*len = ptr-buffer;
 	
 	return (ZERR_NONE);
@@ -375,7 +378,9 @@ Code_t Z_InternalParseNotice(buffer,len,notice)
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
-
+	else
+		return (ZERR_BADPKT);
+	
 	if (numfields) {
 		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
 			       sizeof(ZUnique_Id_t)) ==
@@ -387,7 +392,9 @@ Code_t Z_InternalParseNotice(buffer,len,notice)
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
-
+	else
+		return (ZERR_BADPKT);
+	
 	if (numfields) {
 		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
 			       sizeof(u_short)) ==
@@ -396,7 +403,9 @@ Code_t Z_InternalParseNotice(buffer,len,notice)
 		notice->z_port = *((u_short *)temp);
 		numfields--;
 		ptr += strlen(ptr)+1;
-	} 
+	}
+	else
+		return (ZERR_BADPKT);
 
 	if (numfields) {
 		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
@@ -406,7 +415,9 @@ Code_t Z_InternalParseNotice(buffer,len,notice)
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
-
+	else
+		return (ZERR_BADPKT);
+	
 	if (numfields) {
 		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
 			       sizeof(int)) == ZERR_BADFIELD)
@@ -415,48 +426,64 @@ Code_t Z_InternalParseNotice(buffer,len,notice)
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
+	else
+		return (ZERR_BADPKT);
 
 	if (numfields) {
 		notice->z_ascii_authent = ptr;
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
+	else
+		return (ZERR_BADPKT);
 
 	if (numfields) {
 		notice->z_class = ptr;
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
+	else
+		notice->z_class = "";
 	
 	if (numfields) {
 		notice->z_class_inst = ptr;
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
+	else
+		notice->z_class_inst = "";
 
 	if (numfields) {
 		notice->z_opcode = ptr;
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
+	else
+		notice->z_opcode = "";
 
 	if (numfields) {
 		notice->z_sender = ptr;
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
+	else
+		notice->z_sender = "";
 
 	if (numfields) {
 		notice->z_recipient = ptr;
 		numfields--;
 		ptr += strlen(ptr)+1;
-	} 
+	}
+	else
+		notice->z_recipient = "";
 
 	if (numfields) {
 		notice->z_default_format = ptr;
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
+	else
+		notice->z_default_format = "";
 	
 	if (numfields) {
 		if (ZReadAscii(ptr,end-ptr,(unsigned char *)temp,
@@ -467,6 +494,16 @@ Code_t Z_InternalParseNotice(buffer,len,notice)
 		numfields--;
 		ptr += strlen(ptr)+1;
 	}
+	else
+		notice->z_checksum = 0;
+
+	if (numfields) {
+		notice->z_multinotice = ptr;
+		numfields--;
+		ptr += strlen(ptr)+1;
+	}
+	else
+		notice->z_multinotice = "";
 
 	for (i=0;i<numfields;i++)
 		ptr += strlen(ptr)+1;
