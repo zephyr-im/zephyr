@@ -19,7 +19,6 @@
 typedef struct _zstring
 {
   char *string;			/* the string itself */
-  int len;			/* string length, for speed */
   int ref_count;		/* for gc */
   unsigned long hash_val;	/* hash value for this string */
   struct _zstring *next;	/* for linking in hash table */
