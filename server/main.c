@@ -431,7 +431,11 @@ struct in_addr *addr;
 static void
 usage()
 {
+#ifdef DEBUG
 	fprintf(stderr,"Usage: %s [-d]\n",programname);
+#else
+	fprintf(stderr,"Usage: %s\n",programname);
+#endif DEBUG
 	exit(2);
 }
 
