@@ -160,7 +160,7 @@ void init_standard_ports(pargc, argv)
 
     /*
      * Process argument list handling "-disable <port>" and
-     * "-default <output port>" arguments:
+     * "-default <output port>" arguments, as well as "-ttymode"
      */
     for (new=current=argv+1; *current; current++) {
         if (string_Eq((string) *current, "-disable")) {
@@ -174,7 +174,10 @@ void init_standard_ports(pargc, argv)
             if (!*current)
               usage();
             default_port = (string) *current;
-        } else
+        } else if (string_Eq((string) *current, "-ttymode")) {
+	    default_port = (string) "tty";
+	    (*pargc)--;
+	} else
           *(new++) = *current;
     }
     *new = *current;
