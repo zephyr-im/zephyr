@@ -90,7 +90,6 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     checksum ^= des_quad_cksum(notice->z_message, NULL, notice->z_message_len,
 			       0, cred.session);
     notice->z_checksum = checksum;
-    checksum = htonl(checksum);
     ZMakeAscii32(cstart, buffer + buffer_len - cstart, checksum);
 
     return (ZERR_NONE);
