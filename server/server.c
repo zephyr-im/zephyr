@@ -60,6 +60,8 @@ static char rcsid_server_s_c[] = "$Header$";
  *
  * void server_dump_servers(fp);
  *	FILE *fp;
+ *
+ * void server_reset();
  */
 
 static void server_hello(), server_flush(), setup_server();
@@ -191,6 +193,142 @@ server_init()
 	bzero((caddr_t) srv_nacklist, sizeof(ZNotAcked_t));
 	srv_nacklist->q_forw = srv_nacklist->q_back = srv_nacklist;
 
+	return;
+}
+
+/*
+ * server_reset: re-initializes otherservers array by refreshing from Hesiod
+ * or disk file.
+ *
+ * If any server is no longer named in the new list, and that server is in
+ * state SERV_DEAD, it is dropped from the server list.
+ * All other currently-known servers are retained.
+ * Any additional servers not previously known are added to the table.
+ *
+ * WARNING: Don't call this routine if any of the ancestor procedures have a
+ * handle on a particular server other than by indexing on otherservers[].
+ */
+void
+server_reset()
+{
+	int num_servers;
+	struct in_addr *server_addrs;
+	register struct in_addr *serv_addr;
+	register ZServerDesc_t *servers;
+	register int i, j;
+	int *ok_list_new, *ok_list_old;
+	int num_ok, new_num, set_timers = 0;
+
+#ifdef DEBUG
+	if (zalone) {
+		syslog(LOG_INFO, "server_reset while alone, punt");
+		return;
+	}
+#endif DEBUG
+
+	/* Find out what servers are supposed to be known. */
+	if (!(server_addrs = get_server_addrs(&num_servers))) {
+		syslog(LOG_ERR, "server_reset no servers. nothing done.");
+		return;
+	}
+	if ((ok_list_new = (int *)xmalloc(num_servers * sizeof(int))) ==
+	    (int *) 0) {
+		syslog(LOG_ERR, "server_reset no mem new");
+		return;
+	}
+	if ((ok_list_old = (int *)xmalloc(nservers * sizeof(int))) ==
+	    (int *) 0) {
+		syslog(LOG_ERR, "server_reset no mem old");
+		xfree(ok_list_new);
+		return;
+	}
+
+	(void) bzero((char *)ok_list_old, nservers * sizeof(int));
+	(void) bzero((char *)ok_list_new, num_servers * sizeof(int));
+
+	/* check off entries on new list which are on old list.
+	   check off entries on old list which are on new list.
+	 */
+
+	/* count limbo as "OK" */
+	num_ok = 1;
+
+	for (serv_addr = server_addrs, i = 0;
+	     i < num_servers;
+	     serv_addr++, i++)
+		for (j = 1; j < nservers; j++) /* j = 1 since we skip limbo */
+			if (otherservers[j].zs_addr.sin_addr.s_addr ==
+			    serv_addr->s_addr) {
+				ok_list_new[i] = 1;
+				ok_list_old[j] = 1;
+				num_ok++;
+				break;	/* for j loop */
+			}
+
+	/* remove any dead servers on old list not on new list. */
+	if (num_ok < nservers) {
+		new_num = 1;		/* limbo */
+		/* count number of servers to keep */
+		for (j = 1; j < nservers; j++)
+			if (ok_list_old[j] ||
+			    (otherservers[j].zs_state != SERV_DEAD))
+				new_num++;
+
+		if (new_num < nservers) {
+			servers = (ZServerDesc_t *) xmalloc(new_num * sizeof(ZServerDesc_t));
+			set_timers = 1; /* set flag so we set later */
+			i = 0;
+			/* do the garbage collection */
+
+			servers[0] = otherservers[0]; /* copy limbo */
+			for (j = 0; j < nservers; j++) {
+				if (ok_list_old[j] ||
+				    otherservers[j].zs_state != SERV_DEAD) {
+					servers[i] = otherservers[j];
+					/* reset timers--pointers moved */
+					timer_reset(otherservers[j].zs_timer);
+					servers[i].zs_timer = (timer) NULL;
+					i++;
+				}
+			}
+			xfree(otherservers);
+			otherservers = servers;
+			nservers = new_num;
+		}
+	}
+	/* add any new servers on new list not on old list. */
+	new_num = 0;
+	for (i = 0; i < num_servers; i++)
+		if (!ok_list_new[i])
+			new_num++;
+	/* new_num is number of extras. */
+	nservers += new_num;
+	otherservers = (ZServerDesc_t *)realloc((caddr_t) otherservers, (unsigned) (nservers * sizeof(ZServerDesc_t)));
+	if (!otherservers) {
+		syslog(LOG_CRIT, "server_reset realloc");
+		abort();
+	}
+
+	for (i = 0; i < num_servers; i++)
+		if (!ok_list_new[i])
+			setup_server(&otherservers[nservers - (new_num--)],
+				     &server_addrs[i]);
+	xfree(server_addrs);
+	if (set_timers)
+		/* reset timers, to go off now.
+		   We can't get a time-left indication (bleagh!)
+		   so we expire them all now.  This will generally
+		   be non-destructive.  We assume that when this code is
+		   entered via a SIGHUP trigger that a system wizard
+		   is watching the goings-on to make sure things straighten
+		   themselves out.
+		 */
+		for (i = 0; i < nservers; i++)
+			otherservers[i].zs_timer =
+				timer_set_rel(0L, server_timo,
+					      (caddr_t) &otherservers[i]);
+			
+	zdbug((LOG_DEBUG, "server_reset: %d servers now", nservers));
 	return;
 }
 
@@ -425,7 +563,6 @@ ZClient_t *client;
 	register int i;
 	char buf[512], *lyst[2];
 	ZNotice_t notice;
-	register ZNotAcked_t *nacked;
 	register ZNotice_t *pnotice; /* speed hack */
 	caddr_t pack;
 	int packlen, auth;
@@ -465,7 +602,7 @@ ZClient_t *client;
 			       error_message(retval));
 			return;
 		}
-		server_forw_reliable(&otherservers[i], pack, packlen, notice);
+		server_forw_reliable(&otherservers[i], pack, packlen, pnotice);
 	}
 }
 
