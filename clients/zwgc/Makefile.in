@@ -16,6 +16,7 @@ top_srcdir=@top_srcdir@
 BUILDTOP=../..
 VPATH=@srcdir@
 CC=@CC@
+YACC=@YACC@
 INSTALL=@INSTALL@
 INSTANTIATE=$(srcdir)/instantiate
 
@@ -72,7 +73,7 @@ install: zwgc
 	$(INSTALL) -m 644 -c $(srcdir)/zwgc.1 $(mandir)/man1
 	$(INSTALL) -m 644 -c $(srcdir)/zwgc.desc $(datadir)
 	$(INSTALL) -m 644 -c $(srcdir)/zwgc_resources $(datadir)
-	$(INSTALL) -m 644 -c $(srcdir)/zephyr.vars $(confdir)
+	$(INSTALL) -m 644 -c zephyr.vars $(confdir)
 
 clean:
 	rm -f $(OBJS) zwgc port_dictionary.[ch] pointer_dictionary.[ch]
