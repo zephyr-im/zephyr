@@ -543,7 +543,7 @@ subscr_marshal_subs(notice, auth, who, found)
     unsigned short temp;
     Code_t retval;
     Client *client;
-    Destlist *subs, *sub;
+    Destlist *subs = NULL, *sub;
     int i;
     int defsubs = 0;
 
@@ -579,63 +579,62 @@ subscr_marshal_subs(notice, auth, who, found)
 
 	client = client_which_client(&who->sin_addr, &reply);
 
-	if (client) {
+	if (client)
 	    subs = client->subs;
-	} else if (strcmp(notice->z_opcode, CLIENT_GIMMEDEFS) == 0) {
+    } else if (strcmp(notice->z_opcode, CLIENT_GIMMEDEFS) == 0) {
 #if 0
-		zdbug((LOG_DEBUG, "gimmedefs"));
+	zdbug((LOG_DEBUG, "gimmedefs"));
 #endif
-		/* subscr_copy_def_subs allocates new pointer rings, so
-		   it must be freed when finished.
-		   the string areas pointed to are static, however.*/
-		subs = subscr_copy_def_subs(notice->z_sender);
-		defsubs = 1;
-	} else {
-		syslog(LOG_ERR, "subscr_marshal bogus opcode %s",
-		       notice->z_opcode);
-		return(NULL);
+	/* subscr_copy_def_subs allocates new pointer rings, so
+	   it must be freed when finished.
+	   the string areas pointed to are static, however.*/
+	subs = subscr_copy_def_subs(notice->z_sender);
+	defsubs = 1;
+    } else {
+	syslog(LOG_ERR, "subscr_marshal bogus opcode %s",
+	       notice->z_opcode);
+	return(NULL);
+    }
+
+    if (subs) {
+
+	/* check authenticity here.  The user must be authentic to get
+	   a list of subscriptions. If he is not subscribed to
+	   anything, this if-clause fails, and he gets a response
+	   indicating no subscriptions.
+	   if retrieving default subscriptions, don't care about
+	   authentication. */
+
+	if (!auth && !defsubs)
+	    return(NULL);
+	if (!defsubs) {
+	    if (client && (strcmp(client->principal->string,
+				  notice->z_sender) != 0)) {
+		zdbug ((LOG_DEBUG,
+			"subscr_marshal: %s requests subs for %s at %s/%d",
+			notice->z_sender, client->principal->string,
+			inet_ntoa(who->sin_addr), ntohs(who->sin_port)));
+		return 0;
+	    }
 	}
 
-	if (subs) {
+	for (sub = subs; sub; sub = sub->next)
+	    (*found)++;
 
-	    /* check authenticity here.  The user must be authentic to get
-	       a list of subscriptions. If he is not subscribed to
-	       anything, this if-clause fails, and he gets a response
-	       indicating no subscriptions.
-	       if retrieving default subscriptions, don't care about
-	       authentication. */
+	/* found is now the number of subscriptions */
 
-	    if (!auth && !defsubs)
-		return(NULL);
-	    if (!defsubs) {
-		if (client && (strcmp(client->principal->string,
-				      notice->z_sender) != 0)) {
-		    zdbug ((LOG_DEBUG,
-			    "subscr_marshal: %s requests subs for %s at %s/%d",
-			    notice->z_sender, client->principal->string,
-			    inet_ntoa(who->sin_addr), ntohs(who->sin_port)));
-		    return 0;
-		}
-	    }
-
-	    for (sub = subs; sub; sub = sub->next)
-		(*found)++;
-
-	    /* found is now the number of subscriptions */
-
-	    /* coalesce the subscription information into a list of char *'s */
-	    answer = (char **) malloc((*found) * NUM_FIELDS * sizeof(char *));
-	    if (answer == NULL) {
-		syslog(LOG_ERR, "subscr no mem(answer)");
-		*found = 0;
-	    } else {
-		i = 0;
-		for (sub = subs; sub; sub = sub->next) {
-		    answer[i * NUM_FIELDS] = sub->dest.classname->string;
-		    answer[i * NUM_FIELDS + 1] = sub->dest.inst->string;
-		    answer[i * NUM_FIELDS + 2] = sub->dest.recip->string;
-		    i++;
-		}
+	/* coalesce the subscription information into a list of char *'s */
+	answer = (char **) malloc((*found) * NUM_FIELDS * sizeof(char *));
+	if (answer == NULL) {
+	    syslog(LOG_ERR, "subscr no mem(answer)");
+	    *found = 0;
+	} else {
+	    i = 0;
+	    for (sub = subs; sub; sub = sub->next) {
+		answer[i * NUM_FIELDS] = sub->dest.classname->string;
+		answer[i * NUM_FIELDS + 1] = sub->dest.inst->string;
+		answer[i * NUM_FIELDS + 2] = sub->dest.recip->string;
+		i++;
 	    }
 	}
     }
