@@ -366,7 +366,7 @@ int X_driver_init(drivername, notfirst, pargc, argv)
     if (temp = get_string_resource("geometry", "Geometry"))
       var_set_variable("default_X_geometry", temp);
 
-    temp=rindex(argv[0],'/');
+    temp=strrchr(argv[0],'/');
 
     app_instance=string_Copy(temp?temp+1:argv[0]);
 
