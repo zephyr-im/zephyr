@@ -9,7 +9,7 @@
  *	$Author$
  *	$Header$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -28,6 +28,7 @@
 
 #include <syslog.h>
 #include <strings.h>
+#include <signal.h>
 #include "timer.h"
 #include "zsrv_err.h"
 
@@ -164,7 +165,7 @@ extern void class_free();
 
 /* found in client_s.c */
 extern Code_t client_register();
-extern void client_deregister();
+extern void client_deregister(), client_dump_clients();
 extern ZClient_t *client_which_client();
 
 /* found in common.c */
@@ -177,11 +178,11 @@ extern void handle_packet(), dispatch(), clt_ack(), nack_release(), sendit();
 extern void hostm_flush(), hostm_shutdown(), hostm_losing();
 extern ZHostList_t *hostm_find_host();
 extern ZServerDesc_t *hostm_find_server();
-extern void hostm_transfer(), hostm_deathgram();
+extern void hostm_transfer(), hostm_deathgram(), hostm_dump_hosts();
 extern Code_t hostm_dispatch();
 
 /* found in server_s.c */
-extern void server_timo(), server_recover();
+extern void server_timo(), server_recover(), server_dump_servers();
 extern void server_init(), server_shutdown();
 extern void server_forward(), server_kill_clt(), server_pending_free();
 extern void server_self_queue(), server_send_queue();
@@ -194,10 +195,10 @@ extern Code_t server_dispatch(), server_adispatch();
 extern Code_t subscr_cancel(), subscr_subscribe(), subscr_send_subs();;
 extern ZClientList_t *subscr_match_list();
 extern void subscr_free_list(), subscr_cancel_client(), subscr_sendlist();
+extern void subscr_dump_subs();
 
 /* found in uloc_s.c */
-extern void uloc_hflush();
-extern void uloc_flush_client();
+extern void uloc_hflush(), uloc_flush_client(), uloc_dump_locs();
 extern Code_t ulogin_dispatch(), ulocate_dispatch(), uloc_send_locations();
 
 /* found in zctl.c */
@@ -249,7 +250,7 @@ extern char *pktypes[];			/* names of the packet types */
 #define	NUM_REXMITS	(5)		/* number of rexmits */
 
 /* hostmanager defines */
-#define	LOSE_TIMO	(15)		/* time during which a losing host
+#define	LOSE_TIMO	(30)		/* time during which a losing host
 					   must respond to a ping */
 
 /* server-server defines */
