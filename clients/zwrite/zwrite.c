@@ -156,7 +156,14 @@ main(argc, argv)
     notice.z_recipient = "";
     if (filsys)
 	    notice.z_default_format = "@bold(Filesystem Operation Message for $instance:)\nFrom: @bold($sender)\n$message";
-    else notice.z_default_format = "Class $class, Instance $instance:\n@center(From: @bold($sender) To: @bold($recipient))\n$message";
+    else if (signature && auth == ZAUTH)
+	notice.z_default_format = "Class $class, Instance $instance:\n@center(To: @bold($recipient))\nFrom: $message";
+    else if (signature)
+	notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance:\n@center(To: @bold($recipient))\nFrom: $message";
+    else if (auth == ZAUTH)
+	notice.z_default_format = "Class $class, Instance $instance:\n$message";
+    else
+	notice.z_default_format = "@bold(UNAUTHENTIC) Class $class, Instance $instance:\n$message";
 
     if (!nocheck && !msgarg && !filsys)
 	send_off(&notice, 0);
