@@ -16,18 +16,12 @@
 
 #ifndef	__ACL__
 #define	__ACL__
-#if defined(__STDC__) || defined(__cplusplus)
-#ifdef __cplusplus
-extern "C" {
-#endif
-    extern int acl_add (const char *, const char *);
-    extern int acl_check (const char *, const char *);
-    extern int acl_delete (const char *, const char *);
-    extern int acl_initialize (const char *, int);
-#ifdef __cplusplus
-}
-#endif
-#else /* not STDC or C++ */
+#if defined(__STDC_)
+    extern int acl_add ( char *,  char *);
+    extern int acl_check ( char *,  char *);
+    extern int acl_delete ( char *,  char *);
+    extern int acl_initialize ( char *, int);
+#else /* not STDC */
 extern int acl_check(), acl_add(), acl_delete(), acl_initialize();
 #endif
 #endif /* __ACL__ */
