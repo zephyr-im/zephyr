@@ -164,14 +164,15 @@ int xselProcessSelection(dpy,w,event)
 #endif
 
    if ((ownership_start == CurrentTime) ||
-       (selreq->time < ownership_start) ||
-       ((ownership_end != CurrentTime) &&
-	(ownership_end > ownership_start) &&
-	(selreq->time > ownership_end)))
-     xselNotify(dpy,selreq,None);
-
-   xselSetProperties(dpy,selreq->requestor,selreq->property,selreq->target,
-		     selreq);
+       ((selreq->time != CurrentTime) &&
+	(selreq->time < ownership_start) ||
+	((ownership_end != CurrentTime) &&
+	 (ownership_end > ownership_start) &&
+	 (selreq->time > ownership_end))))
+       xselNotify(dpy,selreq,None);
+   else
+       xselSetProperties(dpy,selreq->requestor,selreq->property,selreq->target,
+			 selreq);
 
    return(1);
 }
