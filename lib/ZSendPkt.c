@@ -68,7 +68,5 @@ int findack(notice,uid)
 	ZNotice_t *notice;
 	ZUnique_Id_t *uid;
 {
-	int i;
-	
 	return (!ZCompareUID(uid,&notice->z_uid));
 }
