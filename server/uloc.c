@@ -108,7 +108,7 @@ static void ulogin_locate(ZNotice_t *, struct sockaddr_in *who, int auth),
     ulogin_add_user(ZNotice_t *notice, exposure_type exposure,
 		    struct sockaddr_in *who),
     ulogin_flush_user(ZNotice_t *notice);
-static ZLocation_t *ulogin_find(ZNotice_t *notice, int strict);
+static ZLocation_t **ulogin_find(ZNotice_t *notice, int strict);
 static int ulogin_setup(ZNotice_t *notice, ZLocation_t **locs,
 			exposure_type exposure, struct sockaddr_in *who),
     ulogin_parse(ZNotice_t *notice, ZLocation_t **locs),
@@ -310,7 +310,7 @@ static void
 sense_logout(ZNotice_t *notice, struct sockaddr_in *who)
 {
 	ZNotice_t sense_notice;
-	ZLocation_t *loc;
+	ZLocation_t *loc, **locptr;
 	struct sockaddr_in owner;
 	char message[BUFSIZ];
 	int retval, len;
@@ -325,9 +325,11 @@ sense_logout(ZNotice_t *notice, struct sockaddr_in *who)
 	  will eventually result in a flush of the location.
 	 */
 
-	   
-	if (!(loc = ulogin_find(notice, 1)))
-		return;
+	locptr = ulogin_find (notice, 1);
+	if (!locptr)
+	    return;
+	loc = *locptr;
+	assert (loc != 0);
 
 	/* fabricate an addr descriptor for him */
 	owner = *who;
@@ -616,7 +618,11 @@ ulogin_add_user(ZNotice_t *notice, exposure_type exposure, sockaddr_in *who)
 	       (int) exposure));
 #endif
 
-	if ((newloc = ulogin_find(notice, 1))) {
+	{
+	    ZLocation_t **tmp = ulogin_find (notice, 1);
+	    newloc = tmp ? *tmp : 0;
+	}
+	if (newloc) {
 #if 1
 		zdbug((LOG_DEBUG,"ul_add: already here"));
 #endif
@@ -784,15 +790,14 @@ ulogin_parse(ZNotice_t *notice, ZLocation_t **locs)
  * in the table.
  */
 
-static ZLocation_t *
+static ZLocation_t **
 ulogin_find(ZNotice_t *notice, int strict)
 {
 	register int i, rlo, rhi;
-	int compar;
 	ZLocation_t *tmploc = 0;
 
 	if (num_locs == 0)
-		return(NULLZLT);
+		return 0;
 
 	ZString inst (notice->z_class_inst);
 
@@ -820,7 +825,7 @@ ulogin_find(ZNotice_t *notice, int strict)
 #if 1
 			zdbug((LOG_DEBUG,"ul_find not found"));
 #endif
-			return(NULLZLT);
+			return 0;
 		}
 		i = (rhi + rlo) >> 1; /* split the diff */
 	}
@@ -828,13 +833,12 @@ ulogin_find(ZNotice_t *notice, int strict)
 #if 1
 		zdbug((LOG_DEBUG,"ul_find bad fmt"));
 #endif
-		return NULLZLT;
+		return 0;
 	}
 	/* back up to the first of this guy */
 	if (i) {
 		while (i > 0 && locations[--i]->zlt_user == inst) {
-			;
-#if 1
+#if 0
 			zdbug ((LOG_DEBUG,
 				"ulogin_find: backing up: %s %d %s %s",
 				inst.value (), i,
@@ -858,11 +862,11 @@ ulogin_find(ZNotice_t *notice, int strict)
 #endif
 		if (tmploc)
 		  delete tmploc;
-		return NULLZLT;
+		return 0;
 	}
 	if (tmploc)
 	  delete tmploc;
-	return locations[i];
+	return &locations[i];
 }
 
 /*
@@ -878,7 +882,8 @@ ulogin_remove_user(ZNotice_t *notice, int auth, sockaddr_in *who, int *err_retur
 	int omask;
 
 	*err_return = 0;
-	if (!(loc2 = ulogin_find(notice, 1))) {
+	loc = ulogin_find (notice, 1);
+	if (!loc || !(loc2 = *loc)) {
 #if 0
 		zdbug((LOG_DEBUG,"ul_rem: not here"));
 #endif
@@ -955,30 +960,32 @@ ulogin_remove_user(ZNotice_t *notice, int auth, sockaddr_in *who, int *err_retur
 static void
 ulogin_flush_user(ZNotice_t *notice)
 {
-	register ZLocation_t **loc, *loc2;
+	register ZLocation_t **loc, **loc2, *loc3;
 	register int i, j, num_match, num_left;
 	int omask;
 
-	i = num_match = num_left = 0;
+	num_match = num_left = 0;
 
 	if (!(loc2 = ulogin_find(notice, 0))) {
 #if 0
-		zdbug((LOG_DEBUG,"ul_rem: not here"));
+	    zdbug((LOG_DEBUG,"ul_rem: not here"));
 #endif
-		return;
+	    return;
 	}
 
 	/* compute # locations left in the list, after loc2 (inclusive) */
 	{
-	  int k;
-	  for (k = 0; locations[k] != loc2; k++)
-	    ;
-	  num_left = num_locs - k;
+	    int k;
+	    ZLocation_t *tmp = *loc2;
+	    for (k = 0; locations[k] != tmp; k++)
+		;
+	    num_left = num_locs - k;
 	}
 
 	omask = sigblock(sigmask(SIGFPE)); /* don't let disk db dumps start */
 	while (num_left &&
-	       !strcmp(loc2[num_match].zlt_user.value(), notice->z_class_inst)) {
+	       !strcmp(loc2[num_match]->zlt_user.value(),
+		       notice->z_class_inst)) {
 		/* as long as we keep matching, march up the list */
 		num_match++;
 		num_left--;
@@ -1004,14 +1011,24 @@ ulogin_flush_user(ZNotice_t *notice)
 	}
 
 	/* copy old entries */
-	while (i < num_locs && locations[i] != loc2) {
-		/* XXX should bcopy */
-		loc[i] = locations[i];
-		i++;
+	loc3 = *loc2;
+	i = 0;
+	while (1) {
+	    ZLocation_t *tmp = locations[i];
+	    if (tmp == loc3)
+		break;
+#if 0
+	    if (i >= num_locs)
+		break;
+#endif
+	    loc[i] = tmp;
+	    i++;
 	}
 
-	for (j = 0; j < num_match; j++)
-	    delete locations[i++]; /* skip over the matches */
+	/* skip over (and delete) matches */
+	j = i + num_match;
+	while (i < j)
+	    delete locations[i];
 
 	/* copy the rest */
 	while (i < num_locs) {
@@ -1058,7 +1075,11 @@ ulogin_expose_user(ZNotice_t *notice, exposure_type exposure)
 	if (ulogin_parse(notice, &loc2))
 		return(1);
 
-	if (!(loc = ulogin_find(notice, 0))) {
+	{
+	    ZLocation_t **tmp = ulogin_find (notice, 0);
+	    loc = tmp ? *tmp : 0;
+	}
+	if (!loc) {
 #if 0
 		zdbug((LOG_DEBUG,"ul_hide: not here"));
 #endif
@@ -1139,12 +1160,16 @@ ulogin_marshal_locs(ZNotice_t *notice, register int *found, int auth)
 
 	*found = 0;			/* # of matches */
 
-	if (!(loc = ulogin_find(notice, 0)))
+	{
+	    ZLocation_t **tmp = ulogin_find (notice, 0);
+	    loc = tmp ? *tmp : 0;
+	}
+	if (!loc)
 		/* not here anywhere */
 		return((char **)0);
 
 	for (i = 0; locations[i] != loc; i++)
-	  ;
+	    ;
 	ZString inst (notice->z_class_inst);
 	while (i < num_locs && inst == locations[i]->zlt_user) {
 		/* these locations match */
@@ -1248,7 +1273,7 @@ uloc_dump_locs(register FILE *fp)
 		default:
 			sprintf (bufp, "/? %d ?/", locations[i]->zlt_exposure);
 			while (*bufp)
-			  *bufp++;
+			    bufp++;
 			break;
 		}
 		cpy (inet_ntoa (locations[i]->zlt_addr));
