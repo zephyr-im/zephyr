@@ -20,9 +20,9 @@ char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nP
 #endif SABER
 #endif lint
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 1.3";
+char version[] = "Zephyr Server (DEBUG) 2.0EXL";
 #else
-char version[] = "Zephyr Server 1.3";
+char version[] = "Zephyr Server 2.0EXL";
 #endif DEBUG
 /*
  * Server loop for Zephyr.
@@ -87,7 +87,7 @@ int srv_socket;				/* dgram socket for clients
 int bdump_socket = 0;			/* brain dump socket
 					   (closed most of the time) */
 fd_set interesting;			/* the file descrips we are listening
-					 to right now */
+					   to right now */
 int nfildes;				/* number to look at in select() */
 struct sockaddr_in sock_sin;		/* address of the socket */
 struct sockaddr_in bdump_sin;		/* addr of brain dump socket */
