@@ -26,7 +26,7 @@
 #include <zephyr/acl.h>
 #include <sys/file.h>
 
-#include <syslog.h>
+#include <zephyr/zsyslog.h>
 #include <strings.h>
 #include <signal.h>
 #ifdef lint
@@ -187,6 +187,7 @@ extern ZHostList_t *hostm_find_host();
 extern ZServerDesc_t *hostm_find_server();
 extern void hostm_transfer(), hostm_deathgram(), hostm_dump_hosts();
 extern Code_t hostm_dispatch();
+extern void hostm_lose_ignore();
 
 /* found in server.c */
 extern void server_timo(), server_recover(), server_dump_servers();
@@ -213,6 +214,9 @@ extern Code_t ulogin_dispatch(), ulocate_dispatch(), uloc_send_locations();
 /* found in libc.a */
 char *malloc(), *realloc();
 long random();
+
+/* From the Error table library */
+char *error_message();
 
 /* global identifiers */
 
