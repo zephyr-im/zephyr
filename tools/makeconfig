@@ -26,7 +26,7 @@ SUBDIR	= et et/lib et/compile_et ss ss/lib ss/make_commands clients \
 	clients/zbitmap clients/zctl clients/zinit clients/zleave \
 	clients/zlocate clients/zmailnotify clients/znol clients/zpopnotify \
 	clients/zshutdown_notify clients/zstat clients/ztalk clients/zwrite \
-	include lib man man/man1 man/man8 server zhm zwgc \
+	include include/zephyr lib man man/man1 man/man8 server zhm zwgc \
 	zwgc/zbrowser
 
 
