@@ -75,7 +75,7 @@ transmission_tower(notice, packet, pak_len)
 		  Zperr(ret);
 		  com_err("hm", ret, "while sending raw notice");
 	    }
-	    if ((tleft = alarm(0)) > 0)
+	    if (tleft = alarm(0))
 	      (void)alarm(tleft);
 	    else {
 		  timeout_type = NOTICES;

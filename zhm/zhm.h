@@ -20,6 +20,9 @@
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <netdb.h>
+#ifdef lint
+#include <sys/uio.h>			/* make lint shut up */
+#endif /* lint */
 
 #ifdef DEBUG
 #define DPR(a) fprintf(stderr, a); fflush(stderr)
