@@ -46,7 +46,8 @@ char *op;
      notice.z_opcode = op;
      notice.z_sender = "HM";
      notice.z_recipient = "";
-     notice.z_default_format = 0;
+     notice.z_default_format = "";
+     notice.z_num_other_fields = 0;
      notice.z_message_len = 0;
   
      /* Notify server that this host is here */
@@ -77,7 +78,8 @@ char *op;
      notice.z_opcode = op;
      notice.z_sender = "HM";
      notice.z_recipient = "";
-     notice.z_default_format = 0;
+     notice.z_default_format = "";
+     notice.z_num_other_fields = 0;
      notice.z_message_len = 0;
 
      /* Tell server to lose us */
