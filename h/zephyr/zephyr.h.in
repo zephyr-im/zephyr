@@ -167,6 +167,7 @@ Code_t ZFormatRawNoticeList ZP((ZNotice_t *notice, char *list[], int nitems,
 Code_t ZLocateUser ZP((char *, int *, Z_AuthProc));
 Code_t ZRequestLocations ZP((char *, ZAsyncLocateData_t *,
 			     ZNotice_Kind_t, Z_AuthProc));
+Code_t ZhmStat ZP((struct in_addr *, ZNotice_t *));
 Code_t ZInitialize ZP((void));
 Code_t ZSetServerState ZP((int));
 Code_t ZSetFD ZP((int));
