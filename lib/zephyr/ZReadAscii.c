@@ -42,8 +42,8 @@ int ZReadAscii(ptr, len, field, num)
 	    if (len < 0)
 		return (ZERR_BADFIELD);
 	} 
-	c1 = cnvt_xtoi(ptr[0]);
-	c2 = cnvt_xtoi(ptr[1]);
+	c1 = Z_cnvt_xtoi(ptr[0]);
+	c2 = Z_cnvt_xtoi(ptr[1]);
 	if (c1 < 0 || c2 < 0)
 		return(ZERR_BADFIELD);
 	hexbyte = (c1 << 4) | c2;
@@ -60,7 +60,7 @@ int ZReadAscii(ptr, len, field, num)
     return (ZERR_NONE);
 }
 
-cnvt_xtoi(c)
+Z_cnvt_xtoi(c)
     char c;
 {
     c -= '0';

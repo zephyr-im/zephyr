@@ -42,8 +42,8 @@ Code_t ZMakeAscii(ptr, len, field, num)
 	} 
 	if (len < 3)
 	    return (ZERR_FIELDLEN);
-	*ptr++ = cnvt_itox((int) (field[i] >> 4));
-	*ptr++ = cnvt_itox((int) (field[i] & 0xf));
+	*ptr++ = Z_cnvt_itox((int) (field[i] >> 4));
+	*ptr++ = Z_cnvt_itox((int) (field[i] & 0xf));
 	len -= 2;
     }
 
@@ -51,7 +51,7 @@ Code_t ZMakeAscii(ptr, len, field, num)
     return (ZERR_NONE);
 }
 
-cnvt_itox(i)
+Z_cnvt_itox(i)
     int i;
 {
     i += '0';
