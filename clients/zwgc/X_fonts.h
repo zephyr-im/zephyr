@@ -1,3 +1,6 @@
+#ifndef x_fonts_MODULE
+#define x_fonts_MODULE
+
 /* This file is part of the Project Athena Zephyr Notification System.
  * It is one of the source files comprising zwgc, the Zephyr WindowGram
  * client.
@@ -17,9 +20,6 @@ static char rcsid_X_fonts_h[] = "$Header$";
 #endif
 
 #include <zephyr/mit-copyright.h>
-
-#ifndef x_fonts_MODULE
-#define x_fonts_MODULE
 
 #include "X_driver.h"
 
