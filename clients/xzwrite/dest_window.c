@@ -102,7 +102,8 @@ void select_dest()
 	  switch (ret) {
 	  case SEND_OK:
 	       edit_set_title(&dest);
-	       _BCOPY((char *) &dest, (char *) &current_dest, sizeof(DestRec));
+	       (void) memcpy((char *) &current_dest, (char *) &dest,
+			      sizeof(DestRec));
 	       break;
 	  case SENDFAIL_SEND:
 	  case SENDFAIL_RECV:
@@ -113,6 +114,7 @@ void select_dest()
      }
      else {
 	  edit_set_title(&dest);
-	  _BCOPY((char *) &dest, (char *) &current_dest, sizeof(DestRec));
+	  (void) memcpy((char *) &current_dest, (char *) &dest,
+			 sizeof(DestRec));
      }
 }
