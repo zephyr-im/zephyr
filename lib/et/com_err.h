@@ -17,24 +17,22 @@
  * This is a public header file, so autoconf can't help us here. */
 #ifdef __STDC__
 # include <stdarg.h>
-#  ifndef __P
-#   define __P(x) x
-#  endif
+# define ETP(x) x
 # define ETCONST const
 #else
+# define ETP(x) ()
 # define ETCONST
-# ifndef __P
-#  define __P(x) ()
-# endif
 #endif
 
-typedef void (*error_handler_t) __P((ETCONST char *, long, ETCONST char *,
+typedef void (*error_handler_t) ETP((ETCONST char *, long, ETCONST char *,
 				     va_list));
 extern error_handler_t com_err_hook;
-void com_err __P((ETCONST char *, long, ETCONST char *, ...));
-ETCONST char *error_message __P((long));
-ETCONST char *error_message_r __P((long, char *));
-error_handler_t set_com_err_hook __P((error_handler_t));
-error_handler_t reset_com_err_hook __P((void));
+void com_err ETP((ETCONST char *, long, ETCONST char *, ...));
+ETCONST char *error_message ETP((long));
+ETCONST char *error_message_r ETP((long, char *));
+error_handler_t set_com_err_hook ETP((error_handler_t));
+error_handler_t reset_com_err_hook ETP((void));
+
+#undef ETP
 
 #endif /* ! defined(__COM_ERR_H) */

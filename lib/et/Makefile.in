@@ -39,9 +39,9 @@ error_table.o: et_lex.lex.c
 check:
 
 install:
-	$(INSTALL) -m 644 -c libcom_err.a $(libdir)
-	$(INSTALL) -m 644 -c $(srcdir)/com_err.h $(includedir)
-	$(INSTALL) -m 644 -c $(srcdir)/com_err.3 $(mandir)/man3
+	$(INSTALL) -m 644 libcom_err.a $(libdir)
+	$(INSTALL) -m 644 $(srcdir)/com_err.h $(includedir)
+	$(INSTALL) -m 644 $(srcdir)/com_err.3 $(mandir)/man3
 
 clean:
 	rm -f $(OBJS) libcom_err.a compile_et.o error_table.o et_lex.lex.c
