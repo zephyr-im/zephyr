@@ -1645,7 +1645,7 @@ static void handle_src(packet)
 	break;
     case REFRESH:
 	if (packet.subreq.object == SUBSYSTEM) {
-	    init();
+	    init(0);
 	    send_src_reply(packet, SRC_OK, "", sizeof(struct srcrep));
 	} else {
 	    send_src_reply(packet, SRC_SUBMSG, 
