@@ -186,14 +186,19 @@ add_subscriptions(who, subs, notice, server)
 		}
 	    }
 	}
-	if (realm && !bdumping && server && server == me_server) {
-	    retval = subscr_realm_sendit(who, subs, notice, realm);
-	    if (retval != ZERR_NONE) {
-		free_subscriptions(subs);
-		free_string(sender);
-		return(retval);
+	if (realm && !bdumping) {
+	    if (server && server == me_server) {
+	        retval = subscr_realm_sendit(who, subs, notice, realm);
+	        if (retval != ZERR_NONE) {
+		    free_subscriptions(subs);
+		    free_string(sender);
+		    return(retval);
+		} else {
+		    /* free this one, will get from ADD */
+		    free_subscription(subs);
+		}
 	    } else {
-	      free_subscription(subs); /* free this one, will get from ADD */
+	            /* Indicates we leaked traffic back to our realm */
 	    }
 	} else {
 	  retval = triplet_register(who, &subs->dest, NULL);
@@ -1465,17 +1470,27 @@ subscr_check_foreign_subs(notice, who, server, realm, newsubs)
 
     found = 0;
     for (subs = newsubs; subs; subs = next) {
+	Realm *rlm;
 	next=subs->next;
+	if (subs->dest.recip->string[0] != '\0') {
+	  rlm = realm_which_realm(who);
+	  syslog(LOG_WARNING, "subscr bad recip %s by %s (%s)",
+		 subs->dest.recip->string,
+		 sender->string, rlm->name);
+	  continue;
+	}
 	acl = class_get_acl(subs->dest.classname);
 	if (acl) {
-	    Realm *rlm;
 	    rlm = realm_which_realm(who); 
 	    if (rlm && server == me_server) { 
 		if (!realm_sender_in_realm(rlm->name, sender->string)) { 
 		    syslog(LOG_WARNING, "subscr auth not verifiable %s (%s) class %s",
 			   sender->string, rlm->name, 
 			   subs->dest.classname->string);
-		    continue; 
+		    free_subscriptions(newsubs);
+		    free_string(sender);
+		    free(text);
+		    return ZSRV_CLASSRESTRICTED;
 		} 
 	    } 
 	    if (!access_check(sender->string, acl, SUBSCRIBE)) {

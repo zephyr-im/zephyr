@@ -380,7 +380,6 @@ created, its mode is set to read-write, owner only (no access for others).
 .TP
 .B break
 Exits the innermost if, case, or while block.
-.\" .if n .ll +2in
 .TP
 \fBcase \fIexpr1\fR [ ((\fBmatch \fIexpr\fR [,\fIexpr ...\fR]) | \fBdefault\fR)\fI commands \fR] ... \fBendcase\fR
 Evaluates \fIexpr1\fR.  Then, each of the match expressions is
@@ -427,7 +426,6 @@ of the process.
 Completes processing of the current notice.  The remainder of the
 description file is ignored after execution of this command.
 .\" hack because the following line otherwise breaks because it is too long.
-.\" .if n .ll +2in
 .TP
 \fBif \fIexpr1 \fBthen \fIcommands1\fR [\fBelseif \fIexpr2 \fBthen \fIcommands2\fR] ... [\fBelse \fIcommandsn\fR] \fBendif\fR
 If \fIexpr1\fR evaluates to true, execute \fIcommands1\fI, etc. [A conditional
@@ -535,10 +533,7 @@ the TERMCAP entry (see
 for the terminal named by the TERM environment variable.
 Supported @ commands are:
 .RS 10
-.\" .TQ 15
-.\" @em
-.\" Emphasis.  Use underline if available, else reverse video.
-.TP
+.TP 15
 @roman
 Roman (plain) letters (turns off all special modes).
 .TP
@@ -551,15 +546,6 @@ Italic letters (underlining, if available).
 @beep
 "bl" termcap entry, else "^G" (beep the terminal); limited to once per
 message.
-.\" .TQ
-.\" @blink
-.\" "mb"/"me" termcap entry, else nothing.
-.\" .TQ
-.\" @rv
-.\" "so"/"se" termcap entry.
-.\" .TQ
-.\" @u
-.\" "us"/"ue" termcap entry.
 .TP
 @l or @left
 left aligned
@@ -1001,9 +987,9 @@ Other control messages may be implemented in the future.
 
 .SH EXAMPLES
 For an example of a description file, see
-.IR /usr/athena/share/zephyr/zwgc.desc .
+.IR /usr/athena/lib/zephyr/zwgc.desc .
 For an example of X resources, see
-.IR /usr/athena/share/zephyr/zwgc_resources .
+.IR /usr/athena/lib/zephyr/zwgc_resources .
 
 .SH BUGS
 The X selection code can highlight the wrong portions of messages

@@ -1,3 +1,9 @@
+zephyr (2.1.20010518.SNAPSHOT-10.1) unstable; urgency=lown
+
+  * Experimental update to the latest athena code.
+
+ -- Karl Ramm <kcr@1ts.org>  Fri, 30 May 2003 01:11:15 -0400
+
 zephyr (2.1.20010518.SNAPSHOT-10) unstable; urgency=low
 
   * Attack of the Standards-Version continues.
