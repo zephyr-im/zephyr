@@ -15,7 +15,10 @@ CODE=Imakefile
 #ifdef LOCAL_LIBS
 LOC_SUBDIRS = et ss
 #endif /*LOCAL_LIBS*/
-SUBDIRS= ${LOC_SUBDIRS} include lib libdyn clients server zhm zwgc ozwgc man
+#ifdef BuildServer
+SERVER=server
+#endif
+SUBDIRS= ${LOC_SUBDIRS} include lib libdyn clients ${SERVER} zhm zwgc ozwgc man
 /* Need to make sure `all' is the first target */
 all::
 /**/# we need to remove these here; it is not appropriate to remove them
@@ -23,7 +26,17 @@ all::
 /**/# them by accident.
 
 clean::
-	rm -f libs/libzephyr.a libs/libzephyr_p.a libs/llib-lzephyr.ln
+	rm -f libs/libzephyr.a libs/llib-lzephyr.ln
+
+#ifdef PROFILED_LIBS
+clean::
+	rm -f libs/libzephyr_p.a
+#endif
+
+#ifdef HaveUCode
+clean::
+	rm -f libs/libzephyr.b
+#endif
 
 #ifdef OTHER_IMAKE
 world:
