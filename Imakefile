@@ -34,6 +34,10 @@ clean::
 			$(MAKE) $(MFLAGS) clean ;	\
 			echo "### Done with" `pwd`);		\
 	done
+#else
+/* Need to make sure `all' is the first target */
+all::
+
 #endif /* LOCAL_LIBS */
 
 /**/# we need to remove these here; it's not appropriate to remove them
