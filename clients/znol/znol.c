@@ -16,6 +16,7 @@
 #include <zephyr/zephyr.h>
 
 #include <pwd.h>
+#include <string.h>
 
 #ifndef lint
 static char rcsid_znol_c[] = "$Header$";
@@ -24,6 +25,9 @@ static char rcsid_znol_c[] = "$Header$";
 #define SUBSATONCE 7
 #define ON 1
 #define OFF 0
+
+extern char *getenv(), *malloc();
+extern uid_t getuid();
 
 main(argc,argv)
 	int argc;
@@ -42,18 +46,18 @@ main(argc,argv)
 		exit (1);
 	}
 
-	envptr = (char *)getenv("HOME");
+	envptr = getenv("HOME");
 	if (envptr)
-		strcpy(anyonename,envptr);
+		(void) strcpy(anyonename,envptr);
 	else {
-		if (!(pwd = getpwuid(getuid()))) {
+		if (!(pwd = getpwuid((int) getuid()))) {
 			fprintf(stderr,"Who are you?\n");
 			exit (1);
 		}
 
-		strcpy(anyonename,pwd->pw_dir);
+		(void) strcpy(anyonename,pwd->pw_dir);
 	} 
-	strcat(anyonename,"/.anyone");
+	(void) strcat(anyonename,"/.anyone");
 
 	for (arg=1;arg<argc;arg++) {
 		if (!strcmp(argv[arg],"on")) {
@@ -77,7 +81,7 @@ main(argc,argv)
 				fprintf(stderr,"No file name specified\n");
 				exit (1);
 			}
-			strcpy(anyonename,argv[++arg]);
+			(void) strcpy(anyonename,argv[++arg]);
 			continue;
 		}
 		printf("Usage: %s [on|off] [-q] [-l] [-f file]\n",argv[0]);
@@ -105,6 +109,8 @@ main(argc,argv)
 	for (;;) {
 		if (!fgets(cleanname,sizeof cleanname,fp))
 			break;
+		if (cleanname[0] == '#') /* ignore comment lines */
+			continue;	
 		/* Get rid of old-style nol entries, just in case */
 		cleanname[strlen(cleanname)-1] = '\0';
 		while (cleanname[strlen(cleanname)-1] == ' ')
@@ -112,13 +118,13 @@ main(argc,argv)
 		if (*cleanname == '@' || !*cleanname)
 			continue;
 		subs[ind].class = LOGIN_CLASS;
-		strcpy(name,cleanname);
+		(void) strcpy(name,cleanname);
 		if (!index(name,'@')) {
-			strcat(name,"@");
-			strcat(name,ZGetRealm());
+			(void) strcat(name,"@");
+			(void) strcat(name,ZGetRealm());
 		}
-		subs[ind].classinst = (char *)malloc(strlen(name)+1);
-		strcpy(subs[ind].classinst,name);
+		subs[ind].classinst = malloc((unsigned)(strlen(name)+1));
+		(void) strcpy(subs[ind].classinst,name);
 		subs[ind++].recipient = "";
 
 		if (!quiet && onoff == ON) {
@@ -177,5 +183,6 @@ main(argc,argv)
 			exit(1);
 		} 
 
-	fclose(fp);
+	(void) fclose(fp);		/* file is open read-only,
+					   ignore errs */
 }
