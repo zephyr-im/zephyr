@@ -8,7 +8,8 @@
  *	"mit-copyright.h". 
  */
 /*
- *	$Id$
+ *	$Source$
+ *	$Header$
  */
 
 #include "zserver.h"
@@ -121,7 +122,6 @@ SendKerberosData(fd, ticket, service, host)
 {
     int rem;
     char p[32];
-    char krb_realm[REALM_SZ];
     int written;
     int size_to_write;
 
@@ -190,8 +190,18 @@ ZCheckRealmAuthentication(notice, from, realm)
         checksum = compute_rlm_checksum(notice, session_key);
 
         /* If checksum matches, packet is authentic.  If not, we might
-	 * have an outdated session key, so keep going the slow way.
-	 */
+         * have an outdated session key, so keep going the slow way.
+         */
+        if (checksum == notice->z_checksum) {
+          (void) memcpy((char *)__Zephyr_session, (char *)session_key, 
+                        sizeof(C_Block)); /* For control_dispatch() */
+          return ZAUTH_YES;
+        }
+
+        /* Try again. This way we can switch to the same checksums
+         * that the rest of Zephyr uses at a future date, but for now 
+         * we need to be compatible */
+        checksum = compute_checksum(notice, session_key);
         if (checksum == notice->z_checksum) {
 	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
 	    return ZAUTH_YES;
@@ -212,12 +222,17 @@ ZCheckRealmAuthentication(notice, from, realm)
 
     /* Check the cryptographic checksum. */
 #ifdef NOENCRYPTION
-    our_checksum = 0;
+    checksum = 0;
 #else
     checksum = compute_rlm_checksum(notice, dat.session);
 #endif
-    if (checksum != notice->z_checksum)
+    if (checksum != notice->z_checksum) {
+#ifndef NOENCRYPTION
+      checksum = compute_checksum(notice, dat.session);
+      if (checksum != notice->z_checksum)
+#endif
         return ZAUTH_FAILED;
+    }
 
     /* Record the session key, expiry time, and source principal in the
      * hash table, so we can do a fast check next time. */
@@ -296,7 +311,7 @@ ZCheckAuthentication(notice, from)
 
     /* Check the cryptographic checksum. */
 #ifdef NOENCRYPTION
-    our_checksum = 0;
+    checksum = 0;
 #else
     checksum = compute_checksum(notice, dat.session);
 #endif

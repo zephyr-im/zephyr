@@ -107,7 +107,8 @@ char *argv[];
 	    break;
 	}
     if (errflg) {
-	fprintf(stderr, "Usage: %s [-d] [-h] [-r] [-n] [server]\n", argv[0]);
+	fprintf(stderr, "Usage: %s [-d] [-h] [-r] [-n] [-f] [server]\n", 
+		argv[0]);	
 	exit(2);
     }
 

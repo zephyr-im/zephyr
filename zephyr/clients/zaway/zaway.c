@@ -113,7 +113,7 @@ int main(argc,argv)
 	}
 
 	fp = fopen(awayfile,"r");
-	if (!fp && argc > 1) {
+	if (!fp && argc > optind) {
 		fprintf(stderr,"File %s not found!\n",awayfile);
 		exit(1);
 	} 
@@ -136,7 +136,8 @@ int main(argc,argv)
 
 	for (;;) {
 		if ((retval = ZReceiveNotice(&notice, (struct sockaddr_in *)0)) != ZERR_NONE) {
-			com_err(argv[0],retval,"while receiving notice");
+			if (retval != ETIMEDOUT)
+				com_err(argv[0],retval,"while receiving notice");
 			continue;
 		}
 

@@ -3,7 +3,8 @@
  *
  *	Created by:	John T. Kohl
  *
- *	$Id$
+ *	$Source$
+ *	$Author$
  *
  *	Copyright (c) 1987, 1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
@@ -51,10 +52,11 @@ ZCONST char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
  * void nack_release(client)
  *	Client *client;
  *
- * void sendit(notice, auth, who)
+ * void sendit(notice, auth, who, external)
  *	ZNotice_t *notice;
  *	int auth;
  *	struct sockaddr_in *who;
+ *      int external;
  *
  * void xmit(notice, dest, auth, client)
  *	ZNotice_t *notice;
@@ -190,21 +192,33 @@ handle_packet()
 	input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
 	input_sin.sin_port = new_notice.z_port;
 	input_sin.sin_family = AF_INET;
-	realm = realm_which_realm(&input_sin);
-	if (realm) {
-	    authentic = ZCheckRealmAuthentication(&new_notice, &input_sin,
-						  realm->name);
-	} else {
+        /* Should check to see if packet is from another realm's server, 
+           or a client */
+        /* Clients don't check auth of acks, nor do we make it so they
+           can in general, so this is safe. */
+        if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
+          authentic = ZAUTH_YES;
+        } else {
+          if (realm = realm_which_realm(&input_sin)) {
+            authentic = ZCheckRealmAuthentication(&new_notice,
+                                                  &input_sin,
+                                                  realm->name);
+          } else 
 	    authentic = ZCheckAuthentication(&new_notice, &input_sin);
 	}
 	from_server = 1;
     } else {
 	from_server = 0;
-	realm = realm_which_realm(&whoisit);
-	if (realm) {
-	    authentic = ZCheckRealmAuthentication(&new_notice, &whoisit,
-						  realm->name);
-	} else {
+        /* Clients don't check auth of acks, nor do we make it so they
+           can in general, so this is safe. */
+        if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
+          authentic = ZAUTH_YES;
+        } else {
+          if (realm = realm_which_realm(&whoisit)) {
+            authentic = ZCheckRealmAuthentication(&new_notice,
+                                                  &whoisit,
+                                                  realm->name);
+          } else
 	    authentic = ZCheckAuthentication(&new_notice, &whoisit);
 	}
     }
@@ -253,13 +267,12 @@ dispatch(notice, auth, who, from_server)
     }
 #if 0
     if (zdebug) {
-	sprintf(dbg_buf,
+	syslog(LOG_DEBUG,
 		"disp:%s '%s' '%s' '%s' notice to '%s' from '%s' %s/%d/%d",
 		ZNoticeKinds[(int) notice->z_kind], notice->z_class,
 		notice->z_class_inst, notice->z_opcode, notice->z_recipient,
 		notice->z_sender, inet_ntoa(who->sin_addr),
 		ntohs(who->sin_port), ntohs(notice->z_port));
-	syslog(LOG_DEBUG, "%s", dbg_buf);
     }
 #endif
 
@@ -298,12 +311,13 @@ dispatch(notice, auth, who, from_server)
 	admin_notices.val++;
 	status = server_adispatch(notice, authflag, who, me_server);
     } else {
-	if (!bound_for_local_realm(notice)) {
+	if (!realm_bound_for_realm(ZGetRealm(), notice->z_recipient)) {
 	    cp = strchr(notice->z_recipient, '@');
 	    if (!cp ||
-		!(realm = realm_get_realm_by_name(realm_expand_realm(cp + 1))))
+		!(realm = realm_get_realm_by_name(cp + 1))) {
+		/* Foreign user, local realm */
 		sendit(notice, authflag, who, 0);
-	    else
+	    } else
 		realm_handoff(notice, authflag, who, realm, 1);
 	} else {
 	    if (notice->z_recipient[0] == '@')
@@ -338,15 +352,29 @@ sendit(notice, auth, who, external)
     String *class;
 
     class = make_string(notice->z_class, 1);
-    acl = class_get_acl(class);
-    if (acl != NULL) {
+    if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient)) {
+      Realm *rlm;
+
+      acl = class_get_acl(class);
+      if (acl != NULL) {
 	/* if controlled and not auth, fail */
-	if (!auth) {
-	    syslog(LOG_WARNING, "sendit unauthentic %s from %s",
-		   notice->z_class, notice->z_sender);
+        if (!auth) {
+            syslog(LOG_WARNING, "sendit unauthentic %s from %s",
+                   notice->z_class, notice->z_sender);
+	    clt_ack(notice, who, AUTH_FAILED);
+            free_string(class);
+            return;
+        }
+	/* if from foreign realm server, disallow if not realm of sender */
+	rlm = realm_which_realm(who);
+	if (rlm) {
+	  if (!realm_sender_in_realm(rlm->name, notice->z_sender)) {
+	    syslog(LOG_WARNING, "sendit auth not verifiable %s (%s) from %s",
+		   notice->z_class, rlm->name, notice->z_sender);
 	    clt_ack(notice, who, AUTH_FAILED);
 	    free_string(class);
 	    return;
+	  }
 	}
 	/* if not auth to transmit, fail */
 	if (!access_check(notice->z_sender, acl, TRANSMIT)) {
@@ -365,6 +393,7 @@ sendit(notice, auth, who, external)
 	    free_string(class);
 	    return;
 	}
+      }
     }
     if (!realm_which_realm(who)) {
 	if (memcmp(&notice->z_sender_addr.s_addr, &who->sin_addr.s_addr,
@@ -406,15 +435,17 @@ sendit(notice, auth, who, external)
     /* Send to clients subscribed to the triplet itself. */
     dest.classname = class;
     dest.inst = make_string(notice->z_class_inst, 1);
-    if (bound_for_local_realm(notice) && *notice->z_recipient == '@') {
-	dest.recip = make_string("", 0);
-    } else {
-	strncpy(recipbuf, notice->z_recipient, sizeof(recipbuf));
-	recipp = strrchr(recipbuf, '@');
-	if (recipp)
-	    sprintf(recipp + 1, "%s", realm_expand_realm(recipp + 1));
-	dest.recip = make_string(recipbuf, 0);
+    if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient) && 
+	*notice->z_recipient == '@') 
+      dest.recip = make_string("", 0);
+    else {
+      strncpy(recipbuf, notice->z_recipient, sizeof(recipbuf));
+      recipp = strrchr(recipbuf, '@');
+      if (recipp)
+	sprintf(recipp + 1, "%s", realm_expand_realm(recipp + 1));
+      dest.recip = make_string(recipbuf, 0);
     }
+
     if (send_to_dest(notice, auth, &dest, send_counter, external))
 	any = 1;
 
@@ -458,12 +489,16 @@ send_to_dest(notice, auth, dest, send_counter, external)
 	if ((*clientp)->last_send == send_counter)
 	    continue;
 	(*clientp)->last_send = send_counter;
-	if ((*clientp)->realm && external)
+	if ((*clientp)->realm) {
+	  if (external) {
 	    realm_handoff(notice, auth, &clientp[0]->addr, clientp[0]->realm,
 			  1);
-	else
+	    any = 1;
+	  }
+	} else {
 	    xmit(notice, &((*clientp)->addr), auth, *clientp);
-	any = 1;
+	    any = 1;
+	}
     }
 
     return any;
@@ -606,6 +641,104 @@ xmit(notice, dest, auth, client)
 	notice->z_authent_len = 0;
 	notice->z_ascii_authent = (char *)"";
 	retval = ZFormatSmallRawNotice(notice, noticepack, &packlen);
+        /* This code is needed because a Zephyr can "grow" when a remote 
+         * realm name is inserted into the Zephyr before being resent out
+         * locally. It essentially matches the code in realm.c to do the
+         * same thing with authentic Zephyrs.
+         */
+        if (retval == ZERR_PKTLEN) {
+          ZNotice_t partnotice, newnotice;
+          char multi[64];
+          char *buffer, *ptr;
+          int buffer_len, hdrlen, offset, fragsize, ret_len, message_len;
+          int origoffset, origlen;
+
+          free(noticepack);
+
+          retval = ZSetDestAddr(dest);
+          if (retval != ZERR_NONE) {
+            syslog(LOG_WARNING, "xmit set addr: %s", error_message(retval));
+            return;
+          }
+
+          partnotice = *notice;
+          
+          partnotice.z_auth = 0;
+          partnotice.z_authent_len = 0;
+          partnotice.z_ascii_authent = (char *)"";
+
+          origoffset = offset = fragsize = 0;
+          origlen = notice->z_message_len;
+
+          buffer = (char *) malloc(sizeof(ZPacket_t));
+          if (!buffer) {
+            syslog(LOG_ERR, "xmit unauth refrag malloc");
+            return;                 /* DON'T put on nack list */
+          }
+          buffer_len = sizeof(ZPacket_t);
+
+          retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
+                                     &hdrlen, NULL, NULL);
+          if (retval != ZERR_NONE) {
+            syslog(LOG_ERR, "xmit unauth refrag fmt: failed");
+            free(buffer);
+            return;
+          }
+
+          if (notice->z_multinotice && strcmp(notice->z_multinotice, ""))
+            if (sscanf(notice->z_multinotice, "%d/%d", &origoffset, &origlen)
+                != 2) 
+              {
+                syslog(LOG_WARNING, "xmit unauth refrag: parse failed");
+                free(buffer);
+                return;
+              }
+
+              fragsize = Z_MAXPKTLEN-hdrlen-Z_FRAGFUDGE;
+
+          while (offset < notice->z_message_len || !notice->z_message_len) {
+            (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
+            partnotice.z_multinotice = multi;
+            if (offset > 0) {
+              (void) gettimeofday(&partnotice.z_uid.tv, (struct timezone *)0);
+              partnotice.z_uid.tv.tv_sec = htonl((u_long)
+                                                 partnotice.z_uid.tv.tv_sec);
+              partnotice.z_uid.tv.tv_usec = htonl((u_long)
+                                                  partnotice.z_uid.tv.tv_usec);
+              (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr,
+                            sizeof(__My_addr));
+            }
+            partnotice.z_message = notice->z_message+offset;
+            message_len = min(notice->z_message_len-offset, fragsize);
+            partnotice.z_message_len = message_len;
+
+            retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
+                                       &hdrlen, &ptr, NULL);
+            if (retval != ZERR_NONE) {
+              syslog(LOG_WARNING, "xmit unauth refrag raw: %s",
+                     error_message(retval));
+              free(buffer);
+              return;
+            }
+
+            ptr = buffer+hdrlen;
+
+            (void) memcpy(ptr, partnotice.z_message, partnotice.z_message_len);
+            
+            buffer_len = hdrlen+partnotice.z_message_len;
+
+            xmit_frag(&partnotice, buffer, buffer_len, 0);
+
+            offset += fragsize;
+
+            if (!notice->z_message_len)
+              break;
+          }
+          free(buffer);
+          return;
+        }
+        /* End of refrag code */
+
 	if (retval != ZERR_NONE) {
 	    syslog(LOG_ERR, "xmit format: %s", error_message(retval));
 	    free(noticepack);
@@ -786,6 +919,18 @@ clt_ack(notice, who, sent)
     packlen = sizeof(ackpack);
 
     retval = ZFormatSmallRawNotice(&acknotice, ackpack, &packlen);
+
+    if (retval == ZERR_HEADERLEN) {
+      /* Since an ack header can be larger than a message header... (crock) */ 
+      acknotice.z_opcode = "";
+      acknotice.z_class = "";
+      acknotice.z_class_inst = "";
+      acknotice.z_opcode = "";
+      acknotice.z_default_format = "";
+
+      retval = ZFormatSmallRawNotice(&acknotice, ackpack, &packlen);
+    }
+
     if (retval != ZERR_NONE) {
 	syslog(LOG_ERR, "clt_ack format: %s", error_message(retval));
 	return;
@@ -1022,7 +1167,7 @@ control_dispatch(notice, auth, who, server)
 	/* in case it's changed */
 	memcpy(client->session_key, ZGetSession(), sizeof(C_Block));
 #endif
-	retval = subscr_subscribe(client, notice);
+	retval = subscr_subscribe(client, notice, server);
 	if (retval != ZERR_NONE) {
 	    syslog(LOG_WARNING, "subscr failed: %s", error_message(retval));
 	    if (server == me_server)
@@ -1080,9 +1225,11 @@ control_dispatch(notice, auth, who, server)
 #endif
 	client_deregister(client, 0);
     } else {
-	syslog(LOG_WARNING, "unknown ctl opcode %s", opcode);
-	if (server == me_server)
-	    nack(notice, who);
+	syslog(LOG_WARNING, "unknown ctl opcode %s", opcode); 
+	if (server == me_server) {
+	    if (strcmp(notice->z_class_inst, ZEPHYR_CTL_REALM) != 0)
+		nack(notice, who);
+	}
 	return ZERR_NONE;
     }
 
@@ -1120,6 +1267,31 @@ hostm_shutdown()
     }
 }
 
+void
+realm_shutdown()
+{
+    int i, s, newserver;
+    struct sockaddr_in sin;
+
+    for (i = 0; i < nservers; i++) {
+        if (i != me_server_idx && otherservers[i].state == SERV_UP)
+            break;
+    }
+    zdbug((LOG_DEBUG, "rlm_shutdown"));
+
+    newserver = (i < nservers);
+    if (newserver) {
+      while (1) {
+	s = (random() % (nservers - 1)) + 1;
+	if (otherservers[s].state == SERV_UP)
+	  break;
+      }
+      realm_deathgram(&otherservers[s]);
+    } else {
+      realm_deathgram(NULL);
+    }
+}
+
 static void
 hostm_deathgram(sin, server)
     struct sockaddr_in *sin;
@@ -1129,6 +1301,8 @@ hostm_deathgram(sin, server)
     int shutlen;
     ZNotice_t shutnotice;
     char *shutpack;
+
+    memset (&shutnotice, 0, sizeof(shutnotice));
 
     shutnotice.z_kind = HMCTL;
     shutnotice.z_port = sin->sin_port; /* we are sending it */

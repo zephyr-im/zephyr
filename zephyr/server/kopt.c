@@ -1,5 +1,6 @@
 /*
- * $Id$
+ * $Source$
+ * $Author$
  *
  * Copyright 1985, 1986, 1987, 1988, 1990, 1991 by the Massachusetts
  * Institute of Technology.
@@ -296,8 +297,9 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
         mutual = 0;
 #endif /* lint */
     s_kvno = *ptr++;		/* get server key version */
-    strcpy(realm,ptr);		/* And the realm of the issuing KDC */
-    ptr += strlen(ptr) + 1;     /* skip the realm "hint" */
+    strncpy(realm,ptr,REALM_SZ);/* And the realm of the issuing KDC */
+    realm[REALM_SZ-1] = '\0';
+    ptr += strlen(realm) + 1;     /* skip the realm "hint" */
 
     /*
      * If "fn" is NULL, key info should already be set; don't
@@ -377,16 +379,19 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 #define check_ptr() if ((ptr - (char *) req_id->dat) > req_id->length) return(RD_AP_MODIFIED);
 
     ptr = (char *) req_id->dat;
-    strcpy(r_aname,ptr);	/* Authentication name */
+    strncpy(r_aname, ptr, ANAME_SZ);	/* Authentication name */
+    r_aname[ANAME_SZ-1] = '\0';
     ptr += strlen(r_aname) + 1;
     check_ptr();
-    strcpy(r_inst,ptr);		/* Authentication instance */
+    strncpy(r_inst, ptr, INST_SZ);	/* Authentication instance */
+    r_inst[INST_SZ-1] = '\0';
     ptr += strlen(r_inst) + 1;
     check_ptr();
-    strcpy(r_realm,ptr);	/* Authentication name */
+    strncpy(r_realm, ptr, REALM_SZ);	/* Authentication name */
+    r_realm[REALM_SZ-1] = '\0';
     ptr += strlen(r_realm) + 1;
     check_ptr();
-    memcpy(&ad->checksum, ptr, 4);	/* Checksum */
+    memcpy(&ad->checksum, ptr, 4);      /* Checksum */
     ptr += 4;
     check_ptr();
     if (swap_bytes)
@@ -492,122 +497,4 @@ krb_find_ticket(authent, ticket)
 
     return RD_AP_OK;
 }
-
-static char local_realm_buffer[REALM_SZ+1];
-
-int
-krb_get_lrealm(r,n)
-    char *r;
-    int n;
-{
-    FILE *cnffile, *fopen();
-
-    if (n > 1)
-	return KFAILURE;  /* Temporary restriction */
-
-    if (my_realm[0]) {
-	strcpy(r, my_realm);
-	return KSUCCESS;
-    }
-
-    if (local_realm_buffer[0]) {
-	strcpy(r, local_realm_buffer);
-	return KSUCCESS;
-    }
-    
-    cnffile = fopen(KRB_CONF, "r");
-    if (cnffile == NULL) {
-	if (n == 1) {
-	    strcpy(r, KRB_REALM);
-	    return KSUCCESS;
-	} else {
-	    return KFAILURE;
-	}
-    }
-
-    if (fscanf(cnffile,"%s",r) != 1) {
-        fclose(cnffile);
-        return KFAILURE;
-    }
-    fclose(cnffile);
-    return KSUCCESS;
-}
-
-int
-decomp_ticket(tkt, flags, pname, pinstance, prealm, paddress, session,
-              life, time_sec, sname, sinstance, key, key_s)
-    KTEXT tkt;                  /* The ticket to be decoded */
-    unsigned char *flags;       /* Kerberos ticket flags */
-    char *pname;                /* Authentication name */
-    char *pinstance;            /* Principal's instance */
-    char *prealm;               /* Principal's authentication domain */
-    unsigned long *paddress; /* Net address of entity
-                                 * requesting ticket */
-    C_Block session;            /* Session key inserted in ticket */
-    int *life;                  /* Lifetime of the ticket */
-    unsigned long *time_sec; /* Issue time and date */
-    char *sname;                /* Service name */
-    char *sinstance;            /* Service instance */
-    C_Block key;                /* Service's secret key
-                                 * (to decrypt the ticket) */
-    des_key_schedule key_s;	/* The precomputed key schedule */
-{
-    static int tkt_swap_bytes;
-    unsigned char *uptr;
-    char *ptr = (char *)tkt->dat;
-
-#ifndef NOENCRYPTION
-    /* Do the decryption */
-    pcbc_encrypt((C_Block *)tkt->dat,(C_Block *)tkt->dat,
-                 (long) tkt->length,key_s,(C_Block *) key,0);
-#endif /* ! NOENCRYPTION */
-
-    *flags = *ptr;              /* get flags byte */
-    ptr += sizeof(*flags);
-    tkt_swap_bytes = 0;
-    if (HOST_BYTE_ORDER != ((*flags >> K_FLAG_ORDER)& 1))
-        tkt_swap_bytes++;
-
-    if (strlen(ptr) > ANAME_SZ)
-        return(KFAILURE);
-    strcpy(pname,ptr);   /* pname */
-    ptr += strlen(pname) + 1;
-
-    if (strlen(ptr) > INST_SZ)
-        return(KFAILURE);
-    strcpy(pinstance,ptr); /* instance */
-    ptr += strlen(pinstance) + 1;
-
-    if (strlen(ptr) > REALM_SZ)
-        return(KFAILURE);
-    strcpy(prealm,ptr);  /* realm */
-    ptr += strlen(prealm) + 1;
-    /* temporary hack until realms are dealt with properly */
-    if (*prealm == 0)
-	strcpy(prealm, ZGetRealm());
-
-    memcpy((char *)paddress, ptr, 4); /* net address */
-    ptr += 4;
-
-    memcpy((char *)session, ptr, 8); /* session key */
-    ptr+= 8;
-
-    /* get lifetime, being certain we don't get negative lifetimes */
-    uptr = (unsigned char *) ptr++;
-    *life = (int) *uptr;
-
-    memcpy((char *) time_sec, ptr, 4); /* issue time */
-    ptr += 4;
-    if (tkt_swap_bytes)
-	swap_u_long(*time_sec);
-
-    strcpy(sname,ptr);   /* service name */
-    ptr += 1 + strlen(sname);
-
-    strcpy(sinstance,ptr); /* instance */
-    ptr += 1 + strlen(sinstance);
-
-    return(KSUCCESS);
-}
 #endif /* HAVE_KRB4 */
-
