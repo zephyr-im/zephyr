@@ -106,11 +106,15 @@ Z_SendLocation(class, opcode, auth, format)
 	    } else {
 #endif /* X11 */
 		    ttyp = ttyname(0);
-		    bptr[2] = rindex(ttyp, '/');
-		    if (bptr[2])
+		    if (ttyp) {
+			bptr[2] = rindex(ttyp, '/');
+			if (bptr[2])
 			    bptr[2]++;
-		    else
+			else
 			    bptr[2] = ttyp;
+		    }
+		    else
+			bptr[2] = "unknown";
 		    (void) strcpy(mytty, bptr[2]);
 #ifdef X11
 	    }
