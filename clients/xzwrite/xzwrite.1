@@ -32,7 +32,10 @@ each is interpreted in the following way: a line containing no commas
 is taken to mean <MESSAGE,PERSONAL,string>; a line with one comma is
 taken to be either <class,instance,*> or <MESSAGE,instance,recipient>
 depending on the value of the classInst resource (see below); a line
-with two commas is taken to be <class,instance,recipient>.  The lines
+with two commas is taken to be <class,instance,recipient>.  A line
+that begins with an exclamation point (!) is treated as an
+"unsubscription" and has the effect of removing destinations read
+from any other file that match the destination on that line.  The lines
 must appear
 .B WITHOUT WHITESPACE 
 between the fields and with a linefeed between each line.  Blank lines
@@ -255,7 +258,9 @@ appear as the first field in every message sent.
 .I Xzwrite
 will also look in the user's .zephyr.vars file to a signature, first
 for the variable xzwrite-signature and then for the variable
-zwrite-signature.
+zwrite-signature.  If neither is found, 
+.I Xzwrite
+will look in the /etc/passwd file for the user's name.
 .TP
 .B +n (ping = true)
 .br
@@ -372,6 +377,9 @@ Default icon bitmap
 /usr/sipb/lib/app-defaults/XZwrite
 Xzwrite program defaults
 .TP
+/etc/passwd
+Signature field (from gecos information)
+.TP
 ~/.Xresources
 user X resources database file
 .TP
@@ -395,6 +403,5 @@ This man page contains many errors and omissions.
 
 .SH AUTHOR
 
-Written by Barr3y Jaspan (bjaspan@athena.mit.edu), MIT Project Athena
-and MIT Student Information Processing Board, for X11R4, the X
-Toolkit, and the Athena Widgets.
+Written by Barry Jaspan (bjaspan@mit.edu), MIT Project Athena
+and MIT Student Information Processing Board.
