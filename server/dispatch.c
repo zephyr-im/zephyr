@@ -337,6 +337,7 @@ int len, waitforack;
 {
 	char *savebuf;
 	register ZNotAcked_t *nacked;
+	Code_t retval;
 
 	if ((retval = ZSendPacket(buf, len, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "xmit_frag send: %s",
