@@ -8,7 +8,7 @@
 /**/#	$Header$
 /**/#
 SRCDIR= ${SRCTOP}/include/zephyr
-HDRS= acl.h krb_err.h mit-copyright.h zephyr.h zephyr_conf.h zephyr_err.h zephyr_internal.h zsyslog.h
+HDRS= acl.h mit-copyright.h zephyr.h zephyr_conf.h zephyr_internal.h zsyslog.h
 CODE= ${HDRS} Imakefile
 
 all::
