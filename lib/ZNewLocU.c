@@ -70,16 +70,14 @@ Code_t ZNewLocateUser(user, nlocs, auth)
     while (!nrecv || !ack) {
 	    tv.tv_sec = 0;
 	    tv.tv_usec = 500000;
-	    for (i=0;i<HM_TIMEOUT*2;i++) { /* 30 secs in 1/2 sec
-					      intervals */
+	    for (i=0;i<SRV_TIMEOUT*2;i++) {
 		    gotone = 0;
 		    read = setup;
 		    if (select(nfds, &read, (fd_set *) 0,
 			       (fd_set *) 0, &tv) < 0)
 			return (errno);
 		    if (FD_ISSET(ZGetFD(), &read))
-			i--;		/* make sure we time out the
-					   full 30 secs */
+			i--;
 		    retval = ZCheckIfNotice(&retnotice,
 					    (struct sockaddr_in *)0,
 					    ZCompareMultiUIDPred,
