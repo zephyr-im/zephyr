@@ -13,24 +13,22 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZFlushSubscriptions_c[] = "$Header$";
-#endif lint
-
-#include <zephyr/mit-copyright.h>
+static char rcsid_ZFlushSubscriptions_c[] = "$Id$";
+#endif
 
 #include <zephyr/zephyr_internal.h>
 
 Code_t ZFlushSubscriptions()
 {
-	int i;
+	register int i;
 	
 	if (!__subscriptions_list)
 		return (ZERR_NONE);
 
 	for (i=0;i<__subscriptions_num;i++) {
-		free(__subscriptions_list[i].class);
-		free(__subscriptions_list[i].classinst);
-		free(__subscriptions_list[i].recipient);
+		free(__subscriptions_list[i].zsub_class);
+		free(__subscriptions_list[i].zsub_classinst);
+		free(__subscriptions_list[i].zsub_recipient);
 	}
 	
 	free((char *)__subscriptions_list);
