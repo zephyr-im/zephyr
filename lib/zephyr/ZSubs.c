@@ -104,7 +104,7 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     retval = Z_FormatHeader(&notice, header, sizeof(header), &hdrlen, ZAUTH);
     if (retval != ZERR_NONE && !authit)
 	retval = Z_FormatHeader(&notice, header, sizeof(header),
-				&hdrlen, ZAUTH);
+				&hdrlen, ZNOAUTH);
     if (retval != ZERR_NONE) {
 	free((char *)list);
 	return(retval);
