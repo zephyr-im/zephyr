@@ -1,3 +1,7 @@
+This file explains how to build and install Zephyr on a machine.  To
+learn how to use Zephyr once you've installed it, read the file USING.
+To learn how to set up Zephyr service at a site, read the file
+OPERATING.
 
 To build and install Zephyr for the Athena environment, run:
 
