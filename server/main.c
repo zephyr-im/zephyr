@@ -25,9 +25,9 @@ char concurrent[] = "no brain-dump concurrency";
 #endif SABER
 #endif lint
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 3.0";
+char version[] = "Zephyr Server (DEBUG) 3.1";
 #else
-char version[] = "Zephyr Server 3.0";
+char version[] = "Zephyr Server 3.1";
 #endif DEBUG
 /*
  * Server loop for Zephyr.
