@@ -72,7 +72,7 @@ main(argc,argv)
 {
     char user[BUFSIZ],*whichuser;
     ZAsyncLocateData_t ald;
-    int retval,i,numlocs,numfound,loc,auth;
+    int retval,i,numlocs,numfound,loc,auth,rlen;
     ZNotice_t notice;
 #ifdef _POSIX_VERSION
     struct sigaction sa;
@@ -120,12 +120,14 @@ main(argc,argv)
 
     numleft = numusers;
     numfound = 0;
+    rlen = strlen(ZGetRealm());
 
     i = 0;
     for (loc = 0; loc < argc; loc++) {
 	if (argv[loc][0] == '-') continue;
 
-	(void) strcpy(user,argv[loc]);
+	(void) strncpy(user,argv[loc],sizeof(user) - rlen - 2);
+	user[sizeof(user) - rlen - 2] = '\0';
 	if (!strchr(user,'@')) {
 	    (void) strcat(user,"@");
 	    (void) strcat(user,ZGetRealm());
