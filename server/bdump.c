@@ -280,7 +280,7 @@ bdump_send()
 			     SERVER_SERVICE, srvtab_file);
     if (retval != KSUCCESS) {
 	syslog(LOG_ERR, "bdump_send: getkdata: %s",
-	       krb_get_err_txt(retval));
+	       krb_get_err_text(retval));
 	cleanup(server);
 	return;
     }
@@ -472,7 +472,7 @@ bdump_get_v12 (notice, auth, who, server)
     retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
 			     SERVER_SERVICE, srvtab_file);
     if (retval != KSUCCESS) {
-	syslog(LOG_ERR, "bdump_get getkdata: %s",krb_get_err_txt(retval));
+	syslog(LOG_ERR, "bdump_get getkdata: %s",krb_get_err_text(retval));
 	cleanup(server);
 	return;
     }
@@ -688,7 +688,7 @@ get_tgt()
     if (!*my_realm) {
 	retval = krb_get_lrealm(my_realm, 1);
 	if (retval != KSUCCESS) {
-	    syslog(LOG_ERR,"krb_get_lrealm: %s", krb_get_err_txt(retval));
+	    syslog(LOG_ERR,"krb_get_lrealm: %s", krb_get_err_text(retval));
 	    *my_realm = '\0';
 	    return(1);
 	}
@@ -716,7 +716,7 @@ get_tgt()
 	}
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR,"get_tgt: krb_get_svc_in_tkt: %s",
-		   krb_get_err_txt(retval));
+		   krb_get_err_text(retval));
 	    ticket_time = 0L;
 	    return(1);
 	} else {
@@ -729,7 +729,7 @@ get_tgt()
 				  srvtab_file, serv_key);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
-		   krb_get_err_txt(retval));
+		   krb_get_err_text(retval));
 	    return 1;
 	}
 	s = (Sched *) check_key_sched_cache(serv_key);
