@@ -132,13 +132,20 @@ void build_interface(argc, argv)
 	  if (! path1) path1 = "";
 	  path2 = (char *) malloc(strlen(path1) +
 				  strlen(XZWRITE_SEARCH_PATHS) + 2);
-	  sprintf(path2, "%s:%s", path1, XZWRITE_SEARCH_PATHS);
-	  setenv("XFILESEARCHPATH", path2, 1);
-	  free(path2);
+	  if (path2 != NULL)
+	    {
+		sprintf(path2, "%s:%s", path1, XZWRITE_SEARCH_PATHS);
+		setenv("XFILESEARCHPATH", path2, 1);
+		free(path2);
+	    }
      }
 
      toplevel = XtVaAppInitialize(&app_con, "XZwrite", app_options,
+#if XtSpecificationRelease > 4
+				  num_options, argc, argv,
+#else
 				  num_options, (Cardinal *) argc, argv,
+#endif
 				  fallback_resources, NULL);
 
      XtVaGetApplicationResources(toplevel, (XtPointer) &defs, app_resources,
