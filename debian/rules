@@ -36,11 +36,11 @@ build-stamp:
 	set -e; \
 	for dir in krb no-krb ; do  \
 		cd $$dir; \
-	rm -f lib/zephyr/*.o || true; \
+	rm -f lib/*.o || true; \
 		$(MAKE) -C lib			\
 		 FPIC= 					\
 		 LIBEXT=a; \
-		rm -f lib/zephyr/*.o; \
+		rm -f lib/*.o; \
 		$(MAKE) LIBEXT=so \
 			FPIC=-fpic SONAME=$(SONAME); \
 		cd ..; \
