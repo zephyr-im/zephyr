@@ -45,14 +45,17 @@ Code_t ZLocateUser(user,nlocs)
 		return (retval);
 
 	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,&auth,
-				locate_pred,(char *)&notice.z_uid)) !=
+				Z_UIDpred,(char *)&notice.z_uid)) !=
 	    ZERR_NONE)
 		return (retval);
 
+	if (retnotice.z_kind == SERVNAK)
+		return (ZERR_SERVNAK);
+	
 	if (retnotice.z_kind != SERVACK)
 		return (ZERR_INTERNAL);
 
-	end = retnotice.z_message+retnotice.z_message_len+1;
+	end = retnotice.z_message+retnotice.z_message_len;
 
 	__locate_num = 0;
 	
@@ -76,11 +79,4 @@ Code_t ZLocateUser(user,nlocs)
 	*nlocs = __locate_num;
 	
 	return (ZERR_NONE);
-}
-
-static int locate_pred(notice,uid)
-	ZNotice_t *notice;
-	ZUnique_Id_t *uid;
-{
-	return (ZCompareUID(uid,&notice->z_uid));
 }

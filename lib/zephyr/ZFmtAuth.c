@@ -25,28 +25,25 @@ Code_t ZFormatAuthenticNotice(notice,buffer,buffer_len,len,session)
 {
 	char *ptr;
 	int result,retval,hdrlen;
-	AUTH_DAT dat;
-	KTEXT_ST authent;
-	ZChecksum_t our_checksum;
 	CREDENTIALS cred;
 
 	notice->z_auth = 1;
 	notice->z_authent_len = 0;
-	notice->z_ascii_authent = (KTEXT)"";
+	notice->z_ascii_authent = (char *)"";
 	
 	if ((retval = Z_FormatRawHeader(notice,buffer,buffer_len,&hdrlen))
 	    != ZERR_NONE)
 		return (retval);
 
-	for (hdrlen--;buffer[hdrlen];hdrlen--)
+	for (hdrlen--;buffer[hdrlen-1];hdrlen--)
 		;
 	
-	if (result = get_credentials(SERVER_SERVICE,SERVER_INSTANCE,
+/*	if (result = get_credentials(SERVER_SERVICE,SERVER_INSTANCE,
 			    __Zephyr_realm,&cred))
 		return (result+krb_err_base);
-
+*/
 	notice->z_checksum = (ZChecksum_t)quad_cksum(buffer,NULL,hdrlen,0,
-						     cred.session);
+						     session);
 
 	if ((retval = Z_FormatRawHeader(notice,buffer,buffer_len,&hdrlen))
 	    != ZERR_NONE)
