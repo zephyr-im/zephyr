@@ -60,7 +60,7 @@ AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/file.h sys/utsname.h)
 AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h X11/Xaw/Label.h)
 
 if test "$no_x" != "yes"; then
-    if test "$ac_cv_have_x11_xaw_label_h" = yes ; then
+    if test "$ac_cv_header_X11_Xaw_Label_h" = yes ; then
 	XCLIENTS=xzwrite
     fi
     ZWGC_LIBX11=-lX11
@@ -99,7 +99,6 @@ KRB5_SOCKADDR_SA_LEN
 if test "$hesiod" != "no"; then
 	AC_CHECK_LIB(44bsd, strerror)
 	AC_CHECK_LIB(resolv, res_send)
-	AC_CHECK_LIB(resolv, __res_send)
 fi
 
 AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
