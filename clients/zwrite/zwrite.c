@@ -16,6 +16,8 @@
 #include <zephyr/zephyr.h>
 #include <string.h>
 #include <netdb.h>
+#include <pwd.h>
+#include <ctype.h>
 
 #ifndef lint
 static char rcsid_zwrite_c[] = "$Header$";
@@ -42,7 +44,7 @@ main(argc, argv)
 {
     ZNotice_t notice;
     int retval, arg, nocheck, nchars, msgsize, filsys, tabexpand;
-    char bfr[BUFSIZ], *message, *signature;
+    char bfr[BUFSIZ], *message, *signature = NULL;
     char classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ];
 	
     whoami = argv[0];
@@ -156,6 +158,29 @@ main(argc, argv)
 	fprintf(stderr, "No recipients specified.\n");
 	exit (1);
     }
+
+    if (!signature) {
+	/* try to find name in the password file */
+	register struct passwd *pwd;
+	register char *cp = sigbfr;
+	register char *cp2, *pp;
+
+	pwd = getpwuid(getuid());
+	if (pwd) {
+	    cp2 = pwd->pw_gecos;
+	    for (; *cp2 && *cp2 != ',' ; cp2++) {
+		if (*cp2 == '&') {
+		    pp = pwd->pw_name;
+		    *cp++ = islower(*pp) ? toupper(*pp) : *pp;
+		    pp++;
+		    while (*pp)
+			*cp++ = *pp++;
+		} else
+		    *cp++ = *cp2;
+	    }
+	    signature = sigbfr;
+	}
+    }	
 
     notice.z_kind = ACKED;
     notice.z_port = 0;
