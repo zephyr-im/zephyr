@@ -46,12 +46,7 @@ endcase
 
 case $class
 match "WG_CTL_CLASS"
-        if ($opcode == "WG_STARTUP") then
-                print "@large(Zwgc mark II version "+$version+" now running...\n)"
-                put
-	endif
 	exit
-
 #  
 # MAIL NOTIFICATION
 #
