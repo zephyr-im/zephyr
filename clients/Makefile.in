@@ -1,0 +1,13 @@
+SHELL = /bin/sh
+
+SUBDIRS=syslogd @XCLIENTS@ zaway zctl zleave zlocate zmailnotify znol \
+	zpopnotify zshutdown_notify zstat zwgc zwrite
+
+all:
+	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
+
+check install clean:
+	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
+
+.PHONY: all check install clean
+
