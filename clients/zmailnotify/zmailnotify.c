@@ -20,7 +20,6 @@ static char rcsid_zwmnotify_c[] = "$Header$";
 #endif lint
 
 #include <sys/uio.h>
-#include <sys/syslog.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/file.h>
@@ -167,12 +166,18 @@ main()
 		mymail.to = malloc(BUFSIZ);
 		mymail.from = malloc(BUFSIZ);
 		mymail.subj = malloc(BUFSIZ);
-		(void) fgets(mymail.from,BUFSIZ,lock);
-		(void) fgets(mymail.to,BUFSIZ,lock);
-		(void) fgets(mymail.subj,BUFSIZ,lock);
-		mymail.from[strlen(mymail.from)-1] = 0;
-		mymail.to[strlen(mymail.to)-1] = 0;
-		mymail.subj[strlen(mymail.subj)-1] = 0;
+		if (fgets(mymail.from,BUFSIZ,lock) != NULL)
+		    mymail.from[strlen(mymail.from)-1] = 0;
+		else
+		    mymail.from[0]=0;
+		if (fgets(mymail.to,BUFSIZ,lock) != NULL)
+		    mymail.to[strlen(mymail.to)-1] = 0;
+		else
+		    mymail.to[0] = 0;
+		if (fgets(mymail.subj,BUFSIZ,lock) != NULL)
+		    mymail.subj[strlen(mymail.subj)-1] = 0;
+		else
+		    mymail.subj[0] = 0;
 	}
 	else {
 		lock = fopen(lockfile,"w");
@@ -210,6 +215,7 @@ main()
 
 	(void) pop_command("QUIT");
 	pop_close();
+	exit(0);
 }
 
 void get_message(i)
@@ -500,21 +506,19 @@ FILE *f;
     register char *p;
     int c;
 
-    p = buf;
-    while (--n > 0 && (c = fgetc(f)) != EOF)
-      if ((*p++ = c) == '\n') break;
+    p = fgets(buf, n, f);
 
     if (ferror(f)) {
 	(void) strcpy(buf, "error on connection");
 	return (NOTOK);
     }
 
-    if (c == EOF && p == buf) {
+    if (p == NULL) {
 	(void) strcpy(buf, "connection closed by foreign host\n");
 	return (DONE);
     }
 
-    *p = NULL;
+    p = buf + strlen(buf);
     if (*--p == '\n') *p = NULL;
     if (*--p == '\r') *p = NULL;
     return(OK);
