@@ -3,11 +3,16 @@
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms are permitted
- * provided that this notice is preserved and that due credit is given
- * to the University of California at Berkeley. The name of the University
- * may not be used to endorse or promote products derived from this
- * software without specific prior written permission. This software
- * is provided ``as is'' without express or implied warranty.
+ * provided that the above copyright notice and this paragraph are
+ * duplicated in all such forms and that any documentation,
+ * advertising materials, and other materials related to such
+ * distribution and use acknowledge that the software was developed
+ * by the University of California, Berkeley.  The name of the
+ * University may not be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
 #ifndef lint
@@ -17,7 +22,7 @@ char copyright[] =
 #endif /* not lint */
 
 #ifndef lint
-static char sccsid[] = "@(#)syslogd.c	5.23 (Berkeley) 6/6/88";
+static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #endif /* not lint */
 
 /*
@@ -132,6 +137,7 @@ struct filed {
 	char	f_lasttime[16];			/* time of last occurrence */
 	char	f_prevhost[MAXHOSTNAMELEN+1];	/* host from which recd. */
 	int	f_prevpri;			/* pri of f_prevline */
+	int	f_prevfac;			/* fac of f_prevline */
 	int	f_prevlen;			/* length of f_prevline */
 	int	f_prevcount;			/* repetition cnt of prevline */
 	int	f_repeatcount;			/* number of "repeated" msgs */
@@ -386,9 +392,6 @@ main(argc, argv)
 
 	dprintf("off & running....\n");
 
-	init();
-	(void) signal(SIGHUP, init);
-
 	/* initialize zephyr stuff */
 	bzero (&znotice, sizeof (znotice));
 	znotice.z_kind = UNSAFE;
@@ -396,6 +399,9 @@ main(argc, argv)
 	znotice.z_class_inst = LocalHostName;
 	znotice.z_default_format = "Syslog message from $instance, level $opcode:\n$message";
 	(void) ZInitialize ();
+
+	init();
+	(void) signal(SIGHUP, init);
 
 	for (;;) {
 		int nfds, readfds = FDMASK(funix) | inetm | klogm;
@@ -653,6 +659,7 @@ logmsg(pri, msg, from, flags)
 			if (msglen < MAXSVLINE) {
 				f->f_prevlen = msglen;
 				f->f_prevpri = pri;
+				f->f_prevfac = fac;
 				(void) strcpy(f->f_prevline, msg);
 				fprintlog(f, flags, (char *)NULL, fac, prilev);
 			} else {
@@ -978,7 +985,8 @@ domark()
 			dprintf("flush %s: repeated %d times, %d sec.\n",
 			    TypeNames[f->f_type], f->f_prevcount,
 			    repeatinterval[f->f_repeatcount]);
-			fprintlog(f, 0, (char *)NULL);
+			fprintlog(f, 0, (char *)NULL, f->f_prevfac,
+				  f->f_prevpri);
 			BACKOFF(f);
 		}
 	}
@@ -1015,7 +1023,8 @@ die(sig)
 	for (f = Files; f != NULL; f = f->f_next) {
 		/* flush any pending output */
 		if (f->f_prevcount)
-			fprintlog(f, 0, (char *)NULL);
+			fprintlog(f, 0, (char *)NULL, f->f_prevfac,
+				  f->f_prevpri);
 	}
 	if (sig) {
 		dprintf("syslogd: exiting on signal %d\n", sig);
@@ -1048,7 +1057,8 @@ init()
 	for (f = Files; f != NULL; f = next) {
 		/* flush any pending output */
 		if (f->f_prevcount)
-			fprintlog(f, 0, (char *)NULL);
+			fprintlog(f, 0, (char *)NULL, f->f_prevfac,
+				  f->f_prevpri);
 
 		switch (f->f_type) {
 		  case F_FILE:
