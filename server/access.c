@@ -40,7 +40,9 @@ static char rcsid_access_c[] =
  */
 
 #include <sys/param.h>
-
+#ifdef SOLARIS
+#include <sys/filio.h>
+#endif
 #include "zserver.h"
 
 /*
@@ -202,7 +204,7 @@ access_setup(first)
 		return;
 	}
 	while (fgets(class_name, 512, registry) != NULL) {
-		if ((colon_idx = (char *) index(class_name, ':')) != NULL)
+		if ((colon_idx = (char *) strchr(class_name, ':')) != NULL)
 		    *colon_idx = '\0';
 		else if ((len = strlen(class_name)) != 0)
 		    class_name[len - 1] = '\0';
