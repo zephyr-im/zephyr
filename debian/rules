@@ -94,7 +94,7 @@ binary-arch: build install
 		cp debian/zephyr-server.$$file debian/zephyr-server-krb.$$file; \
 		done
 	cp debian/libzephyr3.files debian/libzephyr3-krb.files
-	dh_movefiles  -plibzephyr3 -pzephyr-clients -pzephyr-server -pzephyr-de
+	dh_movefiles  -plibzephyr3 -pzephyr-clients -pzephyr-server -plibzephyr-dev
 	dh_movefiles --sourcedir=debian/tmp-krb -plibzephyr3-krb -pzephyr-server-krb
 	dh_installdebconf 
 	dh_installdocs

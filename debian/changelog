@@ -1,3 +1,9 @@
+zephyr (2.1.20000421.SNAPSHOT-12) unstable; urgency=low
+
+  * libzephyr-dev failed to have any files in it... and no one noticed.
+
+ -- Karl Ramm <kcr@debian.org>  Wed, 16 May 2001 10:25:00 -0400
+
 zephyr (2.1.20000421.SNAPSHOT-11) unstable; urgency=low
 
   * tweak to kopt.c to maybe allow alpha build to work. closes: #94600
@@ -91,6 +97,5 @@ zephyr (2.1.20000421.SNAPSHOT-1) unstable; urgency=low
  -- Karl Ramm <kcr@1ts.org>  Mon,  4 Dec 2000 05:28:22 -0500
 
 Local variables:
-mode: debian-changelog
 add-log-mailing-address "kcr@1ts.org"
 End:
