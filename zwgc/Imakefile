@@ -19,7 +19,7 @@ LIBS2 = -lgen
 #endif
 
 #ifdef __NetBSD__
-OSLIBS=-lcompat
+OSDEFS=-DPOSIX_REGEXP
 #endif
 
 LIBS = $(ZLIB) $(LIB_X) $(TERMCAP) $(LIBS2) $(OSLIBS)
@@ -56,7 +56,7 @@ GENERATED= $(GENSRCS) \
 XDEFS =	-I./Memory -I./String -I./Dictionary -DREVSTACK \
 	-DDEFDESC=\"$(ZLIBDIR)/zwgc.desc\" \
 	-DAPPDEFDATABASE=\"$(ZLIBDIR)/zwgc_resources\" \
-	-DZWGCPATH=\"$(ATHBINDIR)/zwgc\"
+	-DZWGCPATH=\"$(ATHBINDIR)/zwgc\" $(OSDEFS)
 
 SUBDIRS = Memory String Dictionary
 
