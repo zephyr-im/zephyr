@@ -73,7 +73,7 @@ install:: all
 	install -c -s mk_cmds ${DESTDIR}/usr/athena/mk_cmds
 	install -c libss.a ${DESTDIR}${ATHLIBDIR}/libss.a
 	ranlib ${DESTDIR}${ATHLIBDIR}/libss.a
-	install -c libss.a ${DESTDIR}${ATHLIBDIR}/libss_p.a
+	install -c libss_p.a ${DESTDIR}${ATHLIBDIR}/libss_p.a
 	ranlib ${DESTDIR}${ATHLIBDIR}/libss_p.a
 	@rm -rf ${DESTDIR}/usr/include/ss
 	@mkdir ${DESTDIR}/usr/include/ss
