@@ -1,0 +1,47 @@
+.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
+.\" specifies the terms and conditions for redistribution.
+.\"
+.\"	@(#)hm.8	6.1 (MIT) 7/9/87
+.\"
+.TH HM 8 "July 9, 1987"
+.SH NAME
+hm \- Zephyr HostManager
+.SH SYNOPSIS
+.B /etc/athena/hm
+[
+.BI -d
+] [
+.BI server
+]
+.SH DESCRIPTION
+.I Hm
+is the link between a client machine and the zephyr server.  All
+notices sent from programs on the client are funneled through
+.I hm.
+This allows all client programs to be much simpler in function, since
+the HostManager is responsible for handling errors, retransmitting
+lost notices, and holding all notices until they are acknowledged.
+.PP
+The
+.I -d
+option turns on debugging mode, and sends its information to syslog
+LOG_DAEMON messages.
+.PP
+The optional
+.I server
+argument is used to override the default primary server, supplied by
+the
+.I hesiod(3)
+name server.
+.SH SEE ALSO
+zephyr(1), zephyrd(8)
+.SH AUTHOR
+.PP
+David C. Jedlinsky, MIT Project Athena
+.sp
+Copyright (c) 1987 by the Massachusetts Institute of Technology
+.br
+See
+.I zephyr(1)
+for a full copyright notice.
