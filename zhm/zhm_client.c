@@ -19,7 +19,7 @@ static char rcsid_hm_client_c[] = "$Header$";
 #endif SABER
 #endif lint
 
-extern int no_server, timeout_type, nclt;
+extern int no_server, timeout_type, nclt, deactivated;
 extern struct sockaddr_in cli_sin, serv_sin, from;
 
 transmission_tower(notice, packet, pak_len)
@@ -34,8 +34,10 @@ transmission_tower(notice, packet, pak_len)
 
       nclt++;
       if (notice->z_kind == HMCTL) {
-	    if (!strcmp(notice->z_opcode, CLIENT_FLUSH))
-	      send_flush_notice(HM_FLUSH);
+	    if (!strcmp(notice->z_opcode, CLIENT_FLUSH)) {
+		  send_flush_notice(HM_FLUSH);
+		  deactivated = 1;
+	    }
 	    else if (!strcmp(notice->z_opcode, CLIENT_NEW_SERVER))
 	      new_server(NULL);
 	    else
