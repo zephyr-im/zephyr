@@ -62,7 +62,7 @@ ZLIBDES = $(PTOP)/libdes/libdes.a
 ZLIBS = $(ZLIB_KRB) $(LIB_ET) $(ZLIB_HES)
 DYN_LIB = $(PTOP)/libdyn/libdyn.a
 
-DEFINES = $(XDEFS) -I$(BINC) \
+DEFINES = $(XDEFS) -DX11 -I$(BINC) \
 	$(CDEFS_KRB) $(CDEFS_HES) $(CDEFS_ET) $(CDEFS_SS) \
 	$(MACHDEFS)
 
