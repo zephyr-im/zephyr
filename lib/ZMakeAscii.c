@@ -19,7 +19,7 @@
 Code_t ZMakeAscii(ptr,len,field,num)
 	char *ptr;
 	int len;
-	char *field;
+	unsigned char *field;
 	int num;
 {
 	int i;
@@ -28,7 +28,7 @@ Code_t ZMakeAscii(ptr,len,field,num)
 		if (!(i%4)) {
 			if (len < 3+(i!=0))
 				return (ZERR_FIELDLEN);
-			sprintf(*ptr,"%s0x",i?" ":"");
+			sprintf(ptr,"%s0x",i?" ":"");
 			ptr += 2+(i!=0);
 			len -= 2+(i!=0);
 		} 

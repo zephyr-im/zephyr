@@ -49,11 +49,9 @@ Code_t ZPeekIfNotice(buffer,buffer_len,notice,auth,predicate,args)
 				return (ZERR_PKTLEN);
 			bcopy(qptr->packet,buffer,qptr->packet_len);
 			if ((retval = ZParseNotice(buffer,qptr->packet_len,
-						   notice,auth))
+						   notice,auth,&qptr->from))
 			    != ZERR_NONE)
 				return (retval);
-			if (auth)
-				*auth = tmpauth;
 			return (ZERR_NONE);
 		} 
 		/* Grunch! */
