@@ -69,13 +69,6 @@ typedef struct _ZClass_t {
 	ZClientList_t	*zct_clientlist;
 } ZClass_t;
 
-typedef struct _ZHMClient_t {		/* host manager */
-	struct	_ZHMClient_t *q_forw;
-	struct	_ZHMClient_t *q_back;
-	struct	sockaddr_in zhmct_sin;
-	long	zhmct_nexttime;		/* time of next keepalive */
-} ZHMClient_t;
-
 typedef struct _ZHostList_t {
 	struct _ZHostList_t *q_forw;
 	struct _ZHostList_t *q_back;
@@ -155,10 +148,12 @@ extern void dispatch(), clt_ack(), nack_release(), sendit();
 extern void hostm_dispatch(), hostm_flush(), hostm_shutdown(), hostm_losing();
 extern ZHostList_t *hostm_find_host();
 extern ZServerDesc_t *hostm_find_server();
+extern void hostm_transfer();
 
 /* found in server_s.c */
 extern void server_timo(), server_dispatch(), server_recover();
-extern void server_adispatch();
+extern void server_adispatch(), server_init(), server_shutdown();
+extern void server_forward();
 
 /* found in subscr_s.c */
 extern Code_t subscr_cancel(), subscr_subscribe();
@@ -183,10 +178,12 @@ extern int srv_socket;			/* dgram sockets for clients
 					   and other servers */
 extern int zdebug;
 extern char myname[];			/* domain name of this host */
+extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
+
+/* found in server_s.c */
 extern ZServerDesc_t *otherservers;	/* array of servers */
 extern int me_server_idx;		/* me (in the array of servers) */
 extern int nservers;			/* number of other servers*/
-extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
 
 /* useful defines */
 
@@ -199,7 +196,7 @@ extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
 					   must respond to a ping */
 
 /* server-server defines */
-#define	TIMO_UP		((long) 10)	/* timeout between up and tardy */
+#define	TIMO_UP		((long) 20)	/* timeout between up and tardy */
 #define	TIMO_TARDY	((long) 30)	/* timeout btw tardy hellos */
 #define	TIMO_DEAD	((long)(15*60))	/* timeout between hello's for dead */
 
@@ -207,6 +204,10 @@ extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
 					   when tardy */
 #define	H_NUM_STARTING	2		/* num hello's before going dead
 					   when starting */
+
+#define	ADMIN_HELLO	"HELLO"		/* Opcode: hello, are you there */
+#define	ADMIN_IMHERE	"IHEARDYOU"	/* Opcode: yes, I am here */
+#define	ADMIN_SHUTDOWN	"GOODBYE"	/* Opcode: I am shutting down */
 
 #define	NULLZCT		((ZClass_t *) 0)
 #define	NULLZCNT	((ZClient_t *) 0)
@@ -219,7 +220,11 @@ extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
 #define	NULLZPT		((ZPacket_t *) 0)
 #define	NULLZSDT	((ZServerDesc_t *) 0)
 
+/* me_server_idx is the index into otherservers of this server descriptor. */
+/* the 'limbo' server is always the first server */
+
 #define	me_server	&otherservers[me_server_idx]
+#define	limbo_server	otherservers
 
 #define	ack(a,b)	clt_ack(a,b,SENT)
 #define	nack(a,b)	clt_ack(a,b,NOT_SENT)
@@ -231,7 +236,7 @@ extern ZNotAcked_t *nacklist;		/* list of not ack'ed packets */
 #define	xmalloc(a)	malloc((unsigned)(a))
 
 /* the magic class to match all packets */
-#define	MATCHALL_CLASS	"ZMATCH_ALL"
+#define	MATCHALL_CLASS	"zmatch_all"
 
 /* ACL's for pre-registered classes */
 #define	ZEPHYR_CTL_ACL	"/site/zephyr/zctl.acl"
