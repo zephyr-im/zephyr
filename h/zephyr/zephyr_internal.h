@@ -82,13 +82,25 @@ extern int __subscriptions_next;
 
 extern int krb_err_base;
 
-extern char *malloc();
-extern time_t time();
-extern long random();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-extern struct _Z_InputQ *Z_GetFirstComplete();
-extern struct _Z_InputQ *Z_GetNextComplete();
-extern Code_t Z_XmitFragment();
-extern void Z_RemQueue();
+#if defined(__STDC__)
+    extern void *malloc (unsigned);
+#else
+    extern char *malloc();
+#endif
+    extern time_t time Zproto((time_t *));
+    extern long random();
+
+    extern struct _Z_InputQ *Z_GetFirstComplete();
+    extern struct _Z_InputQ *Z_GetNextComplete();
+    extern Code_t Z_XmitFragment Zproto((ZNotice_t*, char *,int,int));
+    extern void Z_RemQueue Zproto ((struct _Z_InputQ *));
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif !__ZINTERNAL_H__
