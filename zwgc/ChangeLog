@@ -1,0 +1,5 @@
+2001-03-26  Ken Raeburn  <raeburn@mit.edu>
+
+	* tty_filter.c [__linux__]: Include termcap.h instead of declaring
+	ospeed.
+

@@ -1,0 +1,29 @@
+2001-08-25  Ken Raeburn  <raeburn@raeburn.org>
+
+	* version.c (version): Now static.  Construct with ANSI C string
+	concatenation, including zserver version string and machine type.
+	(get_version): Return already-initialized string.  Delete code for
+	determining architecture type.
+
+	* zserver.h (version): Delete declaration.
+
+2001-08-25  Ken Raeburn  <raeburn@mit.edu>
+
+	* Makefile.in (OBJS2): New variable, listing all objects except
+	version.o.
+	(OBJS): Use OBJS2.
+	(version.h): Depend on OBJS2 and libzephyr.a, not "always", so
+	version.o doesn't get rebuilt if nothing else has been.
+
+2001-03-26  Ken Raeburn  <raeburn@mit.edu>
+
+	Some changes to build zephyrd with MIT krb5 distribution and
+	compatibility code:
+
+	* Makefile.in (OBJS): Remove kopt.o.
+	* bdump.c (get_tgt): Move stuff relating to krb4 key schedule
+	caching inside "#ifdef BAD_KRB4_HACK".
+	* kstuff.c (ZCheckAuthentication, ZCheckRealmAuthentication):
+	Likewise.
+	* zserver.h (krb_rd_req): Don't declare.
+

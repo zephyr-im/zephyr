@@ -1,0 +1,34 @@
+2001-09-23  Ken Raeburn  <raeburn@mit.edu>
+
+	* configure.in: Check for X11/Xaw/Label.h.  If it's not found,
+	don't build xzwrite.
+
+	* aclocal.m4 (ATHENA_RESOLV_CHECK): New macro.  Check for
+	__res_send as well as res_send.
+	(ATHENA_KRB5_CHECK, ATHENA_KRB4_CHECK, ATHENA_HESIOD_CHECK,
+	ATHENA_ARES_CHECK): AC_REQUIRE it, so we only include the code
+	once.
+	(ATHENA_KRB5_CHECK, ATHENA_KRB4_CHECK): Include $LIBS when trying
+	to link.
+	* acconfig.h (HAVE_LIB_RESOLV): Undef, since acconfig won't cope
+	with the explicit definition now used.
+
+2001-08-25  Ken Raeburn  <raeburn@mit.edu>
+
+	* Makefile.in (h/config.h, h/config.h.in): New targets.
+	(all): Depend on h/config.h.
+	* acconfig.h (HAVE_SA_LEN): New macro.
+
+2001-08-25  Ken Raeburn  <raeburn@mit.edu>
+
+	* Makefile.in (VPATH): Define.
+	(configure): Switch to srcdir before running autoconf.
+
+	* configure.in: Check for ifaddrs.h.
+	(KRB5_SOCKADDR_SA_LEN): Define and use.  Definition copied from
+	krb5 tree.
+
+2001-03-26  Ken Raeburn  <raeburn@mit.edu>
+
+	* Makefile.in (Makefile, config.status, configure): New targets.
+

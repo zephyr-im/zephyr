@@ -1,0 +1,5 @@
+2002-01-05  Ken Raeburn  <raeburn@mit.edu>
+
+	* zhm.c (deactivate, terminate): Change function signatures to be
+	proper signal handler functions (one argument, signal number).
+

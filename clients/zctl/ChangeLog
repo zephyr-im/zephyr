@@ -1,0 +1,5 @@
+2002-03-10  Mark W. Eichin  <eichin@thok.org>
+
+	* zctl_cmds.ct: provide "help" as alias to list_requests.
+	* zctl.1: document it.
+
