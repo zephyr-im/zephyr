@@ -15,7 +15,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_acl_s_c[] = "$Header$";
+static char rcsid_access_c[] = "$Header$";
 #endif SABER
 #endif lint
 

@@ -15,7 +15,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_hostm_s_c[] = "$Header$";
+static char rcsid_hostm_c[] = "$Header$";
 #endif SABER
 #endif lint
 
