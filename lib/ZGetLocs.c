@@ -19,7 +19,7 @@
 #define min(a,b) ((a)<(b)?(a):(b))
 	
 Code_t ZGetLocations(location,numlocs)
-	char *location[];
+	ZLocations_t *location;
 	int *numlocs;
 {
 	int i;
