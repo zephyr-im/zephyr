@@ -34,11 +34,15 @@
  * sequenced evaluations of assignment, and "a && b" for "evaluate assignment
  * b if expression a is true". */
 #define LIST_INSERT(head, elem) \
-	((elem)->next = (head), (head) && ((head)->prev_p = &(elem)->next), \
-	 (head) = (elem), (elem)->prev_p = &(head))
+	((elem)->next = *(head), \
+	 (*head) && ((*(head))->prev_p = &(elem)->next), \
+	 (*head) = (elem), (elem)->prev_p = (head))
 #define LIST_DELETE(elem) \
 	(*(elem)->prev_p = (elem)->next, \
 	 (elem)->next && ((elem)->next->prev_p = (elem)->prev_p))
+
+/* Current time as cached by main(); use instead of time(). */
+#define NOW t_local.tv_sec
 
 #ifdef ZEPHYR_USES_KERBEROS
 #ifndef NOENCRYPTION
@@ -67,9 +71,7 @@ typedef struct _Client {
     C_Block		session_key;	/* session key for this client */
 #endif /* ZEPHYR_USES_KERBEROS */
     String		*principal;	/* krb principal of user */
-    long		last_msg;	/* last message sent to this client */
-    long		last_check;	/* actually, last time the other
-					   server was asked to check... */
+    long		last_msg;	/* last message sent to this client */ 
     int			last_send;	/* Counter for last sent packet. */
     struct _Client	*next, **prev_p;
 } Client;
@@ -174,7 +176,7 @@ Code_t client_send_clients __P((void));
 /* found in common.c */
 char *strsave __P((const char *str));
 unsigned long hash  __P((const char *));
-void subscr_quote __P((char *p, FILE *fp));
+void dump_quote __P((char *p, FILE *fp));
 
 /* found in dispatch.c */
 void handle_packet __P((void));
@@ -268,7 +270,7 @@ extern int bdump_socket;		/* brain dump socket
 
 extern fd_set interesting;		/* the file descrips we are listening
 					 to right now */
-extern int nfildes;			/* number to look at in select() */
+extern int nfds;			/* number to look at in select() */
 extern int zdebug;
 extern char myname[];			/* domain name of this host */
 #ifndef ZEPHYR_USES_HESIOD
@@ -276,14 +278,15 @@ extern char list_file[];
 #endif
 #ifdef ZEPHYR_USES_KERBEROS
 extern char srvtab_file[];
+extern char my_realm[REALM_SZ];
 #endif
 extern char acl_dir[];
 extern char subs_file[];
-extern Unacked *nacklist;		/* list of not ack'ed packets */
 extern const char version[];
 extern u_long npackets;			/* num of packets processed */
-extern long uptime;			/* time we started */
+extern time_t uptime;			/* time we started */
 extern struct in_addr my_addr;
+extern struct timeval t_local;		/* current time */
 
 /* found in bdump.c */
 extern int bdumping;			/* are we dumping right now? */
