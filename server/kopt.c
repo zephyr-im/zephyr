@@ -97,7 +97,13 @@ typedef struct {
 } KeySchedRec;
 static KeySchedRec scheds[HASH_SIZE_1][HASH_SIZE_2];
 
-static Sched* check_key_sched_cache (des_cblock key) {
+#ifdef __STDC__
+static Sched* check_key_sched_cache (des_cblock key)
+#else
+static Sched* check_key_sched_cache (key)
+     des_cblock key;
+#endif
+{
     unsigned int hash_value = key[0] + key[1] * 256;
     KeySchedRec *rec = scheds[hash_value % HASH_SIZE_1];
     int i;
@@ -112,7 +118,14 @@ static Sched* check_key_sched_cache (des_cblock key) {
     return 0;
 }
 
-static void add_to_key_sched_cache (des_cblock key, Sched* sched) {
+#ifdef __STDC__
+static void add_to_key_sched_cache (des_cblock key, Sched* sched)
+#else
+static void add_to_key_sched_cache (key, sched)
+     des_cblock key;
+     Sched* sched;
+#endif
+{
     unsigned int hash_value = key[0] + key[1] * 256;
     KeySchedRec *rec = scheds[hash_value % HASH_SIZE_1];
     int i, oldest = HASH_SIZE_2 - 1;
