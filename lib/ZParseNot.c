@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -14,8 +14,8 @@
 
 #ifndef lint
 static char rcsid_ZParseNotice_c[] =
-    "$Header$";
-#endif lint
+    "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZParseNotice.c,v 1.19 90/11/26 12:26:33 raeburn Exp $";
+#endif
 
 #include <zephyr/mit-copyright.h>
 
@@ -84,6 +84,12 @@ Code_t ZParseNotice(buffer, len, notice)
 	u_short us;
 	ZChecksum_t sum;
     } temp;
+#ifdef __LINE__
+    int lineno;
+#define BAD	do{lineno=__LINE__;goto badpkt;}while(0)
+#else
+#define BAD	goto badpkt
+#endif
 
     bzero((char *)notice, sizeof(ZNotice_t));
 	
@@ -96,6 +102,10 @@ Code_t ZParseNotice(buffer, len, notice)
     if (strncmp(ptr, ZVERSIONHDR, sizeof(ZVERSIONHDR) - 1))
 	return (ZERR_VERS);
     ptr += sizeof(ZVERSIONHDR) - 1;
+    if (!*ptr) {
+	Z_debug ("ZParseNotice: null version string");
+	return ZERR_BADPKT;
+    }
     maj = atoi(ptr);
     if (maj != ZVERSIONMAJOR)
 	return (ZERR_VERS);
@@ -103,30 +113,43 @@ Code_t ZParseNotice(buffer, len, notice)
 
     if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
 		   sizeof(temp.i)) == ZERR_BADFIELD)
-	return (ZERR_BADPKT);
+	BAD;
     numfields = ntohl((u_long) temp.i);
     next_field (ptr);
 
     /*XXX 3 */
     numfields -= 2; /* numfields, version, and checksum */
-    if (numfields < 0)
-	return (ZERR_BADPKT);
+    if (numfields < 0) {
+#ifdef __LINE__
+	lineno = __LINE__ - 2;
+      badpkt:
+	Z_debug ("ZParseNotice: bad packet from %s/%d (line %d)",
+		 inet_ntoa (notice->z_uid.zuid_addr.s_addr),
+		 notice->z_port, lineno);
+#else
+    badpkt:
+	Z_debug ("ZParseNotice: bad packet from %s/%d",
+		 inet_ntoa (notice->z_uid.zuid_addr.s_addr),
+		 notice->z_port);
+#endif
+	return ZERR_BADPKT;
+    }
 
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
 		       sizeof(temp.i)) == ZERR_BADFIELD)
-	    return (ZERR_BADPKT);
+	    BAD;
 	notice->z_kind = (ZNotice_Kind_t)ntohl((u_long) temp.i);
 	numfields--;
 	next_field (ptr);
     }
     else
-	return (ZERR_BADPKT);
+	BAD;
 	
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.uid,
 		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
-	    return (ZERR_BADPKT);
+	    BAD;
 	notice->z_uid = temp.uid;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_uid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_uid.tv.tv_usec);
@@ -134,41 +157,41 @@ Code_t ZParseNotice(buffer, len, notice)
 	next_field (ptr);
     }
     else
-	return (ZERR_BADPKT);
+	BAD;
 	
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.us,
 		       sizeof(u_short)) ==
 	    ZERR_BADFIELD)
-	    return (ZERR_BADPKT);
+	    BAD;
 	notice->z_port = temp.us;
 	numfields--;
 	next_field (ptr);
     }
     else
-	return (ZERR_BADPKT);
+	BAD;
 
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
 		       sizeof(int)) == ZERR_BADFIELD)
-	    return (ZERR_BADPKT);
+	    BAD;
 	notice->z_auth = temp.i;
 	numfields--;
 	next_field (ptr);
     }
     else
-	return (ZERR_BADPKT);
+	BAD;
 	
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.i,
 		       sizeof(int)) == ZERR_BADFIELD)
-	    return (ZERR_BADPKT);
+	    BAD;
 	notice->z_authent_len = ntohl((u_long) temp.i);
 	numfields--;
 	next_field (ptr);
     }
     else
-	return (ZERR_BADPKT);
+	BAD;
 
     if (numfields) {
 	notice->z_ascii_authent = ptr;
@@ -176,7 +199,7 @@ Code_t ZParseNotice(buffer, len, notice)
 	next_field (ptr);
     }
     else
-	return (ZERR_BADPKT);
+	BAD;
 
     if (numfields) {
 	notice->z_class = ptr;
@@ -230,7 +253,7 @@ Code_t ZParseNotice(buffer, len, notice)
     if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.sum,
 		   sizeof(ZChecksum_t))
 	== ZERR_BADFIELD)
-	return (ZERR_BADPKT);
+	BAD;
     notice->z_checksum = ntohl((u_long) temp.sum);
     numfields--;
     next_field (ptr);
@@ -246,7 +269,7 @@ Code_t ZParseNotice(buffer, len, notice)
     if (numfields) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&temp.uid,
 		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
-	    return (ZERR_BADPKT);
+	    BAD;
 	notice->z_multiuid = temp.uid;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_multiuid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_multiuid.tv.tv_usec);
@@ -270,7 +293,7 @@ Code_t ZParseNotice(buffer, len, notice)
     if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
 		   sizeof(ZChecksum_t))
 	== ZERR_BADFIELD)
-	return (ZERR_BADPKT);
+	BAD;
     notice->z_checksum = ntohl(*temp);
     numfields--;
     next_field (ptr);
