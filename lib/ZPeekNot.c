@@ -30,5 +30,5 @@ Code_t ZPeekNotice(buffer,buffer_len,notice,auth,from)
 	    ZERR_NONE)
 		return (retval);
 
-	return (ZParseNotice(buffer,len,notice,auth));
+	return (ZParseNotice(buffer,len,notice,auth,from));
 }

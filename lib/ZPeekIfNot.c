@@ -41,7 +41,8 @@ Code_t ZPeekIfNotice(buffer,buffer_len,notice,auth,predicate,args)
 
 	for (;;qcount--) {
 		if ((retval = ZParseNotice(qptr->packet,qptr->packet_len,
-					   &tmpnotice,&tmpauth)) != ZERR_NONE)
+					   &tmpnotice,&tmpauth,&qptr->from))
+		    != ZERR_NONE)
 			return (retval);
 		if ((predicate)(&tmpnotice,args)) {
 			if (qptr->packet_len > buffer_len)
@@ -51,6 +52,8 @@ Code_t ZPeekIfNotice(buffer,buffer_len,notice,auth,predicate,args)
 						   notice,auth))
 			    != ZERR_NONE)
 				return (retval);
+			if (auth)
+				*auth = tmpauth;
 			return (ZERR_NONE);
 		} 
 		/* Grunch! */
