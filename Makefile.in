@@ -32,7 +32,7 @@ install:
 	${ENSUREDIR} ${DESTDIR}${datadir} 755
 	${ENSUREDIR} ${DESTDIR}${datadir}/zephyr 755
 	${ENSUREDIR} ${DESTDIR}${sysconfdir} 755
-	${ENSUREDIR} ${DESTDIR}${sysconfdir}/acl 755
+	${ENSUREDIR} ${DESTDIR}${sysconfdir}/zephyr/acl 755
 	${ENSUREDIR} ${DESTDIR}${sbindir} 755
 	${ENSUREDIR} ${DESTDIR}${includedir} 755
 	${ENSUREDIR} ${DESTDIR}${includedir}/zephyr 755
