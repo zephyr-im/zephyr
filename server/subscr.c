@@ -153,7 +153,7 @@ ZNotice_t *notice;
 		    continue;
 		}
 		acl = class_get_acl(subs->zst_class);
-		if (acl) {
+		if (acl && !bdumping) {
 			if (!access_check(notice, acl, SUBSCRIBE)) {
 				syslog(LOG_WARNING, "subscr unauth %s %s",
 				       notice->z_sender, subs->zst_class);
