@@ -74,7 +74,7 @@ typedef struct _ZLocation_t {
 #define	QUIET		(-1)
 #define	UNAUTH		(-2)
 
-static void ulogin_locate(), ulogin_add_user();
+static void ulogin_locate(), ulogin_add_user(), ulogin_flush_user();
 static ZLocation_t *ulogin_find();
 static int ulogin_setup(), ulogin_parse(), ul_equiv();
 static int ulogin_remove_user(), ulogin_hide_user();
@@ -128,7 +128,12 @@ ZServerDesc_t *server;
 			clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}
-	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
+	if (!strcmp(notice->z_opcode, LOGIN_USER_FLUSH)) {
+		zdbug((LOG_DEBUG, "user flush"));
+		ulogin_flush_user(notice, who);
+		if (server == me_server)
+			ack(notice, who);
+	} else if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
 		zdbug((LOG_DEBUG,"user login"));
 		ulogin_add_user(notice, VISIBLE, who);
 		if (server == me_server)
@@ -607,6 +612,79 @@ struct sockaddr_in *who;
 #endif DEBUG
 	/* all done */
 	return(quiet);
+}
+
+/*
+ * remove all locs of the user specified in notice from the internal table
+ */
+
+static void
+ulogin_flush_user(notice, who)
+ZNotice_t *notice;
+struct sockaddr_in *who;
+{
+	ZLocation_t *loc, *loc2;
+	register int i, j, num_match, num_left;
+
+	i = num_match = num_left = 0;
+
+	if (!(loc2 = ulogin_find(notice, 0))) {
+		zdbug((LOG_DEBUG,"ul_rem: not here"));
+		return;
+	}
+
+	num_left = num_locs - (loc2 - locations);
+
+	while (num_left &&
+	       !strcmp(loc2[num_match].zlt_user, notice->z_class_inst)) {
+		num_match++;
+		num_locs--;
+		num_left--;
+	}
+	if (num_locs == 0) {		/* last one */
+		zdbug((LOG_DEBUG,"last loc"));
+		xfree(locations);
+		locations = NULLZLT;
+		return;
+	}
+
+	if (!(loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t)))) {
+		syslog(LOG_CRIT, "ul_rem malloc");
+		abort();
+		/*NOTREACHED*/
+	}
+
+	/* copy old entries */
+	while (i < num_locs && &locations[i] < loc2) {
+		loc[i] = locations[i];
+		i++;
+	}
+
+	for (j = 0; j < num_match; j++)
+		i++;				/* skip over the matches */
+
+	/* copy the rest */
+	while (i <= num_locs) {
+		loc[i - num_match] = locations[i];
+		i++;
+	}
+
+	xfree(locations);
+
+	locations = loc;
+
+#ifdef DEBUG
+	if (zdebug) {
+		register int i;
+
+		for (i = 0; i < num_locs; i++)
+			syslog(LOG_DEBUG, "%s/%d",
+			       locations[i].zlt_user,
+			       (int) locations[i].zlt_visible);
+	}
+#endif DEBUG
+	/* all done */
+	return;
 }
 
 /*
