@@ -19,8 +19,9 @@ VPATH=@srcdir@
 CC=@CC@
 INSTALL=@INSTALL@
 
-DEBUG=-O
-CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @CPPFLAGS@
+CPPFLAGS=@CPPFLAGS@
+CFLAGS=@CFLAGS@
+ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h ${CPPFLAGS}
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
@@ -30,6 +31,9 @@ all: zaway
 
 zaway: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
 	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+
+.c.o:
+	${CC} -c ${ALL_CFLAGS} $<
 
 check:
 

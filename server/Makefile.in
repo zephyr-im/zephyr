@@ -18,9 +18,10 @@ VPATH=@srcdir@
 CC=@CC@
 INSTALL=@INSTALL@
 
-DEBUG=-O
-CFLAGS=${DEBUG} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
-	-I${BUILDTOP}/h -I. @CPPFLAGS@
+CPPFLAGS=@CPPFLAGS@
+CFLAGS=@CFLAGS@
+ALL_CFLAGS=${CFLAGS} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
+	-I${BUILDTOP}/h -I. ${CPPFLAGS}
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
@@ -40,6 +41,9 @@ version.o: version.h
 
 version.h: always
 	sh ${srcdir}/new_vers.sh
+
+.c.o:
+	${CC} -c ${ALL_CFLAGS} $<
 
 check:
 

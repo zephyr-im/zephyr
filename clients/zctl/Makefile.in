@@ -19,8 +19,9 @@ VPATH=@srcdir@
 CC=@CC@
 INSTALL=@INSTALL@
 
-DEBUG=-O
-CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ @CPPFLAGS@
+CPPFLAGS=@CPPFLAGS@
+CFLAGS=@CFLAGS@
+ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ ${CPPFLAGS}
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib @LDFLAGS@
 LIBS=-lzephyr -lss @LIBS@ -lcom_err
 
@@ -33,6 +34,9 @@ zctl: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
 
 zctl_cmds.c: zctl_cmds.ct
 	mk_cmds ${srcdir}/zctl_cmds.ct
+
+.c.o:
+	${CC} -c ${ALL_CFLAGS} $<
 
 check:
 
