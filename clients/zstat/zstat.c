@@ -24,8 +24,10 @@
 #if !defined(lint) && !defined(SABER)
 static char rcsid_zstat_c[] = "$Id$";
 #endif
-		     
+
+#ifndef linux /* Defines atol() as a macro. */
 extern long atol();
+#endif
 
 #ifdef __STDC__
 const
