@@ -72,6 +72,12 @@
 	request		flush_locations, "Flush all location information.",
 			flush_locs;
 
+	request		do_hide, "Hide your location.",
+			hide;
+
+	request		do_hide, "Show (un-hide) your location.",
+			unhide;
+
 	request		ss_list_requests, "List available commands.",
 			list_requests, lr, "?";
 
