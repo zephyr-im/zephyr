@@ -76,21 +76,12 @@ char **argv;
 	sprintf(tmpfile, "/tmp/zleave.%d", getuid());
 
 	if (use_zephyr) {
-		envptr = (char *)getenv("WGFILE");
-		if (!envptr) {
-			sprintf(buf,"/tmp/wg.%d",getuid());
-			envptr = buf;
-		} 
-		if (!(fp = fopen(envptr,"r"))) {
+		if ((port = ZGetWGPort()) == -1) {
 			fprintf(stderr,
 				"Can't find WindowGram subscription port.\n");
 			fprintf(stderr,"Will write directly to terminal.\n");
 			use_zephyr = 0;
 		}
-		else {
-			fscanf(fp,"%d",&port);
-			fclose(fp);
-		} 
 	}
 	
 	if (use_zephyr) {
