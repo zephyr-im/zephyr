@@ -40,7 +40,7 @@ LINCLUDES = -IMemory -IString -IDictionary
 GENERATORS= ./generate_stack_instance stack.h
 
 SRCDIR= ${SRCTOP}/zwgc
-BUILDDIR= {$BUILDTOP}/zwgc
+BUILDDIR= ${BUILDTOP}/zwgc
 CONFIG_FILES= zwgc.desc  zephyr.vars zwgc_resources
 CODE= ${GENERATORS} ${HDRS} ${SRCS} ${CONFIG_FILES} Imakefile
 
@@ -56,7 +56,7 @@ GENERATED= port_dictionary.c port_dictionary.h \
 	char_stack.h \
 	string_stack.h \
 	xmode_stack.h \
-	y.tab.h y.tab.c
+	y.tab.h
 	
 
 DEPENDSRCS= ${CODE} ${GENERATED}
