@@ -43,7 +43,7 @@ main(argc, argv)
     char *argv[];
 {
     int retval, arg, nocheck, nchars, msgsize, filsys, tabexpand;
-    char *message, *signature = NULL;
+    char *message, *signature = NULL, *format = NULL;
     static char bfr[BUFSIZ], classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ];
     static char opbfr[BUFSIZ];
     static ZNotice_t notice;
@@ -166,6 +166,12 @@ main(argc, argv)
 	case 'l':			/* literal */
 	    nodot = 1;
 	    break;
+	case 'F':
+	    if (arg == argc-1)
+		usage(whoami);
+	    arg++;
+	    format = argv[arg];
+	    break;
 	default:
 	    usage(whoami);
 	}
@@ -211,7 +217,9 @@ main(argc, argv)
     notice.z_sender = 0;
     notice.z_message_len = 0;
     notice.z_recipient = "";
-    if (filsys == 1)
+    if (format)
+	    notice.z_default_format = format;
+    else if (filsys == 1)
 	    notice.z_default_format = "@bold(Filesystem Operation Message for $instance:)\nFrom: @bold($sender) at $time $date\n$message";
     else if (auth == ZAUTH) {
 	if (signature)
@@ -227,9 +235,6 @@ main(argc, argv)
     if (!nocheck && nrecips)
 	send_off(&notice, 0);
 	
-    if (quiet)
-	notice.z_kind = UNACKED;	/* change for real sending */
-
     if (!msgarg && isatty(0))
 	if (nodot)
 	    printf("Type your message now.  End with the end-of-file character.\n");
@@ -328,12 +333,6 @@ send_off(notice, real)
 	    com_err(whoami, retval, bfr);
 	    break;
 	}
-	if (quiet && real) {
-	    if (nrecips)
-		continue;		/* next! */
-	    else
-		break;			/* no more */
-	}
 	if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
 				ZCompareUIDPred, 
 				(char *)&notice->z_uid)) !=
@@ -345,59 +344,59 @@ send_off(notice, real)
 	    continue;
 	}
 	if (retnotice.z_kind == SERVNAK) {
-	    printf("Received authorization failure while sending to %s\n", 
-		   nrecips?notice->z_recipient:inst);
+	    if (!quiet) {
+		printf("Received authorization failure while sending to %s\n", 
+		       nrecips?notice->z_recipient:inst);
+	    }
 	    ZFreeNotice(&retnotice);
 	    break;			/* if auth fails, punt */
 	} 
 	if (retnotice.z_kind != SERVACK || !retnotice.z_message_len) {
-	    printf("Detected server failure while receiving acknowledgement for %s\n", 
-		   nrecips?notice->z_recipient:inst);
+	    if (!quiet) {
+		printf("Detected server failure while receiving acknowledgement for %s\n", 
+		       nrecips?notice->z_recipient:inst);
+	    }
 	    ZFreeNotice(&retnotice);
 	    continue;
 	}
-	if (!real || (!quiet && real))
-	    if (!strcmp(retnotice.z_message, ZSRVACK_SENT)) {
-		if (real) {
-		    if (verbose)
-			printf("Successful\n");
-		    else
-			printf("%s: Message sent\n", 
-			       nrecips?notice->z_recipient:inst);
-		}
+	if (!strcmp(retnotice.z_message, ZSRVACK_SENT)) {
+	    success = 1;
+	    if (real && !quiet) {
+		if (verbose)
+		    printf("Successful\n");
 		else
-		    success = 1;
+		    printf("%s: Message sent\n", 
+			   nrecips?notice->z_recipient:inst);
+	    }
+	} else if (!strcmp(retnotice.z_message, ZSRVACK_NOTSENT)) {
+	    if (verbose && real && !quiet) {
+		if (strcmp(class, DEFAULT_CLASS))
+		    printf("Not logged in or not subscribing to class %s, instance %s\n", 
+			   class, inst);
+		else
+		    printf("Not logged in or not subscribing to messages\n");
 	    } 
-	    else
-		if (!strcmp(retnotice.z_message, 
-			    ZSRVACK_NOTSENT)) {
-		    if (verbose && real) {
-			if (strcmp(class, DEFAULT_CLASS))
-			    printf("Not logged in or not subscribing to class %s, instance %s\n", 
-				   class, inst);
-			else
-			    printf("Not logged in or not subscribing to messages\n");
-		    } 
+	    else if (!quiet) {
+		if (!nrecips)
+		    printf("No one subscribing to class %s, instance %s\n", 
+			   class, inst);
+		else {
+		    if (strcmp(class, DEFAULT_CLASS))
+			printf("%s: Not logged in or not subscribing to class %s, instance %s\n", 
+			       notice->z_recipient, class, inst);
 		    else
-			if (!nrecips)
-			    printf("No one subscribing to class %s, instance %s\n", 
-				   class, inst);
-			else {
-			    if (strcmp(class, DEFAULT_CLASS))
-				printf("%s: Not logged in or not subscribing to class %s, instance %s\n", 
-				       notice->z_recipient, class, inst);
-			    else
-				printf("%s: Not logged in or not subscribing to messages\n", 
-				       notice->z_recipient);
-			} 
-		} 
-		else
-		    printf("Internal failure - illegal message field in server response\n");
+			printf("%s: Not logged in or not subscribing to messages\n", 
+			       notice->z_recipient);
+		}
+	    }
+	} 
+	else
+	    printf("Internal failure - illegal message field in server response\n");
 	ZFreeNotice(&retnotice);
 	if (!nrecips)
 	    break;
     }
-    if (!real && !success)
+    if (!success)
 	exit(1);
 } 
 
