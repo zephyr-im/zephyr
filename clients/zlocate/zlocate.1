@@ -1,0 +1,38 @@
+.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
+.\" specifies the terms and conditions for redistribution.
+.\"
+.\"	@(#)zlocate.1	6.1 (MIT) 7/9/87
+.\"
+.TH ZLOCATE 1 "July 14, 1987"
+.UC 6
+.SH NAME
+zlocate \- find a user
+.SH SYNOPSIS
+.B zlocate
+[
+.BI user \ ...
+]
+.SH DESCRIPTION
+.I Zlocate
+uses the
+.I Zephyr(1)
+Notification Service to find where a user is currently logged in.  If
+the user is not logged in, or does not want to be found,
+.I zlocate
+prints "Hidden or not logged-in".  Otherwise, each machine that the
+user is currently logged into is printed, along with the time of
+login and tty.
+.SH SEE ALSO
+zctl(1), zephyr(1), zhide(1), znol(1), zwgc(1), hm(8), zephyrd(8)
+.br
+`Zephyr Notification Service'
+.SH AUTHOR
+.PP
+Robert S. French (MIT-Project Athena)
+.sp
+Copyright (c) 1987 by the Massachusetts Institute of Technology
+.br
+See
+.I zephyr(1)
+for a full copyright notice.
