@@ -83,7 +83,7 @@ y.tab.c y.tab.h: parser.y
 check:
 
 install: zwgc
-	${INSTALL} -m 755 -s zwgc ${DESTDIR}${bindir}
+	${INSTALL} -m 755 zwgc ${DESTDIR}${bindir}
 	${INSTALL} -m 644 ${srcdir}/zwgc.1 ${DESTDIR}${mandir}/man1
 	${INSTALL} -m 644 ${srcdir}/zwgc.desc ${DESTDIR}${datadir}/zephyr
 	${INSTALL} -m 644 ${srcdir}/zwgc_resources ${DESTDIR}${datadir}/zephyr

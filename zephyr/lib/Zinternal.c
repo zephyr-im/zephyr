@@ -98,9 +98,6 @@ Code_t Z_krb5_lookup_cksumtype(krb5_enctype e, krb5_cksumtype *c)
 }
 #endif /* HAVE_KRB5 */
 
-#ifdef HAVE_KRB4
-C_Block __Zephyr_session;
-#endif
 char __Zephyr_realm[REALM_SZ];
 
 #ifdef Z_DEBUG

@@ -23,9 +23,9 @@ configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
 	-mkdir krb
-	cd krb&&../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
+	cd krb&& CFLAGS=-g ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
 	-mkdir no-krb
-	cd no-krb&&../configure $(CONFIGURE_ROOT)
+	cd no-krb&& CFLAGS=-g ../configure $(CONFIGURE_ROOT)
 	touch configure-stamp
 
 build: configure-stamp build-stamp
@@ -102,20 +102,11 @@ binary-arch: build install
 	dh_movefiles --sourcedir=debian/tmp-krb -plibzephyr3-krb -pzephyr-server-krb
 	dh_installdebconf 
 	dh_installdocs
-#	dh_installexamples
-#	dh_installmenu
-#	dh_installemacsen
-#	dh_installpam
 	dh_installinit -pzephyr-clients --init-script=zhm
 	dh_installinit -pzephyr-server-krb --init-script=zephyrd
 	dh_installinit -pzephyr-server --init-script=zephyrd
-#	dh_installcron
-#	dh_installmanpages
-#	dh_installinfo
-#	dh_undocumented
 	dh_installchangelogs 
 	dh_strip
-#	dh_link
 	dh_compress
 	dh_fixperms
 	# You may want to make some executables suid here.

@@ -128,6 +128,10 @@ char *bdump_version = "1.2";
 krb5_ccache Z_krb5_ccache;
 #endif
 
+#ifdef HAVE_KRB4
+C_Block __Zephyr_session;
+#endif
+
 int
 main(argc, argv)
     int argc;

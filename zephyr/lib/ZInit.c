@@ -21,6 +21,9 @@ static char rcsid_ZInitialize_c[] =
 #ifdef HAVE_KRB4
 #include <krb_err.h>
 #endif
+#ifdef HAVE_KRB5
+#include <krb5.h>
+#endif
 #ifdef HAVE_KRB5_ERR_H
 #include <krb5_err.h>
 #endif
@@ -39,11 +42,17 @@ Code_t ZInitialize()
     int s, sinsize = sizeof(sin);
     Code_t code;
     ZNotice_t notice;
+#ifdef HAVE_KRB5
+    char **krealms = NULL;
+#else
 #ifdef HAVE_KRB4
     char *krealm = NULL;
     int krbval;
     char d1[ANAME_SZ], d2[INST_SZ];
+#endif
+#endif
 
+#ifdef HAVE_KRB4
     initialize_krb_error_table();
 #endif
 #ifdef HAVE_KRB5
@@ -96,8 +105,14 @@ Code_t ZInitialize()
 	  If this code ever support a multiplexing zhm, this will have to
 	  be made smarter, and probably per-message */
 
+#ifdef HAVE_KRB5
+       code = krb5_get_host_realm(Z_krb5_ctx, notice.z_message, &krealms);
+       if (code)
+	 return(code);
+#else
 #ifdef HAVE_KRB4
        krealm = krb_realmofhost(notice.z_message);
+#endif
 #endif
        hostent = gethostbyname(notice.z_message);
        if (hostent && hostent->h_addrtype == AF_INET)
@@ -106,6 +121,17 @@ Code_t ZInitialize()
        ZFreeNotice(&notice);
     }
 
+#ifdef HAVE_KRB5
+    if (krealms) {
+      strcpy(__Zephyr_realm, krealms[0]);
+      krb5_free_host_realm(Z_krb5_ctx, krealms);
+    } else {
+      /* XXX check ticket file here */
+      code = krb5_get_default_realm(Z_krb5_ctx, __Zephyr_realm);
+      if (code)
+	return code;
+    }
+#else
 #ifdef HAVE_KRB4
     if (krealm) {
 	strcpy(__Zephyr_realm, krealm);
@@ -116,6 +142,7 @@ Code_t ZInitialize()
     }
 #else
     strcpy(__Zephyr_realm, "local-realm");
+#endif
 #endif
 
     __My_addr.s_addr = INADDR_NONE;

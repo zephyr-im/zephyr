@@ -114,5 +114,9 @@ Code_t Z_WaitForNotice __P((ZNotice_t *notice,
 			    int timeout));
 
 void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz);
+
+#ifdef HAVE_KRB5
+int ZGetCreds(krb5_creds **creds_out);
+#endif
 #endif /* __INTERNAL_H__ */
 
