@@ -40,7 +40,7 @@ static char *rcsid_zshutdown_notify_c =
  * the message body.
  */
 
-static char warning[] = "Please detach any filesystems you may have\nattached from this host!";
+static char warning[] = "Please detach any filesystems you may have\nattached from this host by typing detach -host %s";
 
 /*ARGSUSED*/
 main(argc,argv)
@@ -52,6 +52,7 @@ main(argc,argv)
     int retval;
     char hostname[MAXHOSTNAMELEN];
     char msgbuff[BUFSIZ], message[Z_MAXPKTLEN], *ptr;
+    char scratch[BUFSIZ];
     char *msg[N_FIELD_CNT];
 #ifdef Z_HaveKerberos
     char tkt_filename[MAXPATHLEN];
@@ -61,10 +62,6 @@ main(argc,argv)
     extern char *krb_get_phost();
 #endif
 
-    msg[0] = hostname;
-    msg[1] = message;
-    msg[2] = warning;
-
     if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
 	com_err(argv[0], errno, "while finding hostname");
 	exit(1);
@@ -72,6 +69,11 @@ main(argc,argv)
 
     if ((hp = gethostbyname(hostname)) != NULL)
 	    (void) strcpy(hostname, hp->h_name);
+
+    msg[0] = hostname;
+    msg[1] = message;
+    sprintf(scratch, warning, hostname);
+    msg[2] = scratch;
 
 #ifdef Z_HaveKerberos
     (void) sprintf(tkt_filename, "/tmp/tkt_zshut_%d", getpid());
