@@ -110,6 +110,8 @@ access_init()
 		}
 		acl->acl_filename = strsave(class);
 		(void) class_setup_restricted(class, acl);
+		zdbug((LOG_DEBUG, "restricted %s by %s",
+		       class, acl->acl_filename));
 	}
 	(void) fclose(registry);
 
