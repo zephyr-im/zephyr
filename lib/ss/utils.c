@@ -9,8 +9,9 @@
 #include "ss_internal.h"	/* includes stdio and string */
 
 extern FILE *output_file;
-
+#ifndef sun
 extern int exit();
+#endif
 char *gensym(), *str_concat3(), *quote(), *ds();
 extern long gensym_n;
 
