@@ -18,6 +18,10 @@
 #include <zephyr/zephyr.h>
 #include <strings.h>			/* for strcpy, etc. */
 #include <sys/types.h>			/* for time_t, uid_t, etc */
+#ifdef lint
+#include <sys/uio.h>			/* to make lint shut up about
+					   struct/union iovec */
+#endif /* lint */
 
 struct _Z_Hole {
     struct _Z_Hole	*next;
