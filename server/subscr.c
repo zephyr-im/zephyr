@@ -45,6 +45,10 @@ static char rcsid_subscr_s_c[] = "$Header$";
  * void subscr_list_free(list)
  *	ZClientList_t *list;
  *
+ * void subscr_sendlist(notice, who)
+ *	ZNotice_t *notice;
+ *	struct sockaddr_in *who;
+ *
  */
 
 #include "zserver.h"
@@ -54,6 +58,11 @@ extern char *re_comp(), *re_conv(), *rindex(), *index();
 static ZSubscr_t *extract_subscriptions();
 static int subscr_equiv(), clt_unique();
 static void free_subscriptions(), free_sub();
+
+/* WARNING: make sure this is the same as the number of strings you */
+/* plan to hand back to the user in response to a subscription check, */
+/* else you will lose.  See subscr_sendlist() */  
+#define	NUM_FIELDS	3
 
 /*
  * subscribe the client to types described in notice.
@@ -106,6 +115,7 @@ ZNotice_t *notice;
 		}
 
 		if ((retval = class_register(who, subs->zst_class)) != ZERR_NONE) {
+			xfree(subs3);
 			free_subscriptions(newsubs);
 			return(retval);
 		}
@@ -176,8 +186,10 @@ ZNotice_t *notice;
 		for (subs2 = who->zct_subs->q_forw;
 		     subs2 != who->zct_subs;
 		     subs2 = subs2->q_forw)
-			if ((retval = class_register(who, subs2->zst_class)) != ZERR_NONE)
+			if ((retval = class_register(who, subs2->zst_class)) != ZERR_NONE) {
+				free_subscriptions(subs);
 				return(retval);
+			}
 	free_subscriptions(subs);
 	if (found)
 		return(ZERR_NONE);
@@ -255,7 +267,7 @@ ZAcl_t *acl;
 {
 	register ZClientList_t *hits, *clients, *majik, *clients2, *hit2;
 	register char *cp;
-	char *newclass, *saveclass;
+	char *newclass, *saveclass, *newclinst, *saveclinst;
 
 	if (!(hits = (ZClientList_t *) xmalloc(sizeof(ZClientList_t))))
 		return(NULLZCLT);
@@ -270,56 +282,64 @@ ZAcl_t *acl;
 			*cp = tolower(*cp);
 		cp++;
 	}
+	saveclinst = notice->z_class_inst;
+	cp = newclinst = strsave(notice->z_class_inst);
+
+	while (*cp) {
+		if (isupper(*cp))
+			*cp = tolower(*cp);
+		cp++;
+	}
 
 	if (!(clients = class_lookup(newclass))) {
 		if  (!(majik = class_lookup(MATCHALL_CLASS))) {
+			notice->z_class = saveclass;
+			notice->z_class_inst = saveclinst;
 			xfree(newclass);
+			xfree(newclinst);
+			xfree(hits);
 			return(NULLZCLT);
 		}
 	} else
 		majik = class_lookup(MATCHALL_CLASS);
 
 	notice->z_class = newclass;
+	notice->z_class_inst = newclinst;
 	if (clients)
 		for (clients2 = clients->q_forw;
 		     clients2 != clients;
 		     clients2 = clients2->q_forw)
 			if (cl_match(notice, clients2->zclt_client, acl)) {
-				if (!clt_unique(clients2->zclt_client, hits)) {
-					zdbug((LOG_DEBUG,"dup 0x%x", clients2->zclt_client));
+				if (!clt_unique(clients2->zclt_client, hits))
 					continue;
-				}
-				zdbug((LOG_DEBUG,"matched 0x%x", clients2->zclt_client));
 				/* we hit */
 				if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
 					syslog(LOG_WARNING,
 					       "subscr_match: punting/no mem");
 					notice->z_class = saveclass;
 					xfree(newclass);
+					notice->z_class_inst = saveclinst;
+					xfree(newclinst);
 					return(hits);
 				}
 				hit2->zclt_client = clients2->zclt_client;
 				hit2->q_forw = hit2->q_back = hit2;
-
 				xinsque(hit2, hits);
-			} else zdbug((LOG_DEBUG,"didn't match 0x%x",
-				      clients2->zclt_client));
-	
+			} 	
 	if (majik)
 		for (clients2 = majik->q_forw;
 		     clients2 != majik;
 		     clients2 = clients2->q_forw) {
-			if (!clt_unique(clients2->zclt_client, hits)) {
-				zdbug((LOG_DEBUG,"dup 0x%x", clients2->zclt_client));
+			if (!clt_unique(clients2->zclt_client, hits))
 				continue;
-			}
-			zdbug((LOG_DEBUG,"matched 0x%x", clients2->zclt_client));
 			/* we hit */
 			if (!(hit2 = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
 				syslog(LOG_WARNING,
 				       "subscr_match(majik): punting/no mem");
 				notice->z_class = saveclass;
 				xfree(newclass);
+				notice->z_class_inst = saveclinst;
+				xfree(newclinst);
 				return(hits);
 			}
 			hit2->zclt_client = clients2->zclt_client;
@@ -327,14 +347,14 @@ ZAcl_t *acl;
 
 			xinsque(hit2, hits);
 		}
+	notice->z_class = saveclass;
+	xfree(newclass);
+	notice->z_class_inst = saveclinst;
+	xfree(newclinst);
 	if (hits->q_forw == hits) {
-		notice->z_class = saveclass;
-		xfree(newclass);
 		xfree(hits);
 		return(NULLZCLT);
 	}
-	notice->z_class = saveclass;
-	xfree(newclass);
 	return(hits);
 }
 
@@ -353,6 +373,143 @@ ZClientList_t *list;
 		xfree(lyst);
 	}
 	xfree(list);
+	return;
+}
+
+/*
+ * Send the requester a list of his current subscriptions
+ */
+
+void
+subscr_sendlist(notice, who)
+ZNotice_t *notice;
+struct sockaddr_in *who;
+{
+	ZClient_t *client = client_which_client(who, notice);
+	register ZSubscr_t *subs;
+	Code_t retval;
+	ZNotice_t reply;
+	ZPacket_t reppacket;
+	int packlen, i, found = 0;
+	char **answer;
+
+	if (!client || !client->zct_subs) {
+		clt_ack(notice, who, NOT_FOUND);
+		return;
+	}
+
+	for (subs = client->zct_subs->q_forw;
+	     subs != client->zct_subs;
+	     subs = subs->q_forw, found++);
+		
+	/* found is now the number of subscriptions */
+
+	reply = *notice;
+	reply.z_kind = SERVACK;
+	reply.z_authent_len = 0; /* save some space */
+	reply.z_auth = 0;
+
+	packlen = sizeof(reppacket);
+
+	/* coalesce the location information into a list of char *'s */
+	if ((answer = (char **) xmalloc(found * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
+		syslog(LOG_ERR, "subscr no mem(answer)");
+		found = 0;
+	} else
+		for (i = 0, subs = client->zct_subs->q_forw;
+		     i < found ;
+		     i++, subs = subs->q_forw) {
+			answer[i*NUM_FIELDS] = subs->zst_class;
+			answer[i*NUM_FIELDS + 1] = subs->zst_classinst;
+			answer[i*NUM_FIELDS + 2] = subs->zst_recipient;
+		}
+
+	/* if it's too long, chop off one at a time till it fits */
+	while ((retval = ZFormatRawNoticeList(&reply,
+					      answer,
+					      found * NUM_FIELDS,
+					      reppacket,
+					      packlen,
+					      &packlen)) == ZERR_PKTLEN) {
+		found--;
+		reply.z_opcode = CLIENT_INCOMPSUBS;
+	}
+	if (retval != ZERR_NONE) {
+		syslog(LOG_ERR, "subscr_sendlist format: %s",
+		       error_message(retval));
+		xfree(answer);
+		return;
+	}
+	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "subscr_sendlist set addr: %s",
+		       error_message(retval));
+		xfree(answer);
+		return;
+	}
+	if ((retval = ZSendPacket(reppacket, packlen)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "subscr_sendlist xmit: %s",
+		       error_message(retval));
+		xfree(answer);
+		return;
+	}
+	zdbug((LOG_DEBUG,"subscr_sendlist acked"));
+	xfree(answer);
+	return;
+}
+
+/*
+ * Send the client's subscriptions
+ */
+
+void
+subscr_send_subs(client)
+ZClient_t *client;
+{
+	register int i = 0;
+	register ZSubscr_t *sub;
+	char buf[512], buf2[512], *lyst[7 * NUM_FIELDS];
+	int retval;
+	int num = 1;
+
+	zdbug((LOG_DEBUG, "send_subs"));
+	sprintf(buf2, "%d",ntohs(client->zct_sin.sin_port));
+
+	lyst[0] = buf2;
+
+	if ((retval = ZMakeAscii(buf, sizeof(buf), client->zct_cblock,
+				 sizeof(C_Block))) != ZERR_NONE)
+		lyst[++num] = buf;
+
+	bdump_send_list_tcp(SERVACK, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
+		  num > 1 ? "CBLOCK" : "", ADMIN_NEWCLT, myname, "",
+		  lyst, num);
+
+	
+	if (!client->zct_subs)
+		return;
+	for (sub = client->zct_subs->q_forw;
+	     sub != client->zct_subs;
+	     sub = sub->q_forw) {
+		/* for each subscription */
+		lyst[i * NUM_FIELDS] = sub->zst_class;
+		lyst[i * NUM_FIELDS + 1] = sub->zst_classinst;
+		lyst[i * NUM_FIELDS + 2] = sub->zst_recipient;
+		i++;
+		if (i > 7) {
+			/* we only put 7 in each packet, so we don't
+			   run out of room */
+			bdump_send_list_tcp(ACKED, bdump_sin.sin_port,
+				      ZEPHYR_CTL_CLASS, "",
+				      CLIENT_SUBSCRIBE, "", "", lyst,
+				      i * NUM_FIELDS);
+			i = 0;
+		}
+	}
+	if (i) {
+		bdump_send_list_tcp(ACKED, bdump_sin.sin_port, ZEPHYR_CTL_CLASS, "",
+			  CLIENT_SUBSCRIBE, "", "", lyst,
+			  i * NUM_FIELDS);
+	}
 	return;
 }
 
@@ -498,8 +655,8 @@ register ZNotice_t *notice;
 		if (*buf == '\0')
 			/* we've exhausted the subscriptions */
 			return(subs);
-		/* we lowercase the class so we can be case insensitive on
-		   comparisons */
+		/* we lowercase the class and class instance
+		   so we can be case insensitive on comparisons */
 		while (*cp) {
 			if (isupper(*cp))
 				*cp = tolower(*cp);
@@ -509,6 +666,12 @@ register ZNotice_t *notice;
 		zdbug((LOG_DEBUG,"class %s",cp));
 		ADVANCE(1);
 		classinst = buf = cp;
+		while (*cp) {
+			if (isupper(*cp))
+				*cp = tolower(*cp);
+			cp++;
+		}
+		cp = classinst;
 		zdbug((LOG_DEBUG,"clinst %s",cp));
 		ADVANCE(2);
 		recip = cp;
