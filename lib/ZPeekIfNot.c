@@ -14,7 +14,7 @@
 
 #ifndef lint
 static char rcsid_ZPeekIfNotice_c[] = "$Header$";
-#endif lint
+#endif
 
 #include <zephyr/mit-copyright.h>
 
@@ -41,7 +41,7 @@ Code_t ZPeekIfNotice(notice, from, predicate, args)
 				       &tmpnotice)) != ZERR_NONE)
 		return (retval);
 	    if ((*predicate)(&tmpnotice, args)) {
-		if (!(buffer = malloc((unsigned) qptr->packet_len)))
+		if (!(buffer = (char *) malloc((unsigned) qptr->packet_len)))
 		    return (ENOMEM);
 		bcopy(qptr->packet, buffer, qptr->packet_len);
 		if (from)
