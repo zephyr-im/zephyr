@@ -471,6 +471,7 @@ ZClient_t *client;
 	register ZSubscr_t *sub;
 	char buf[512], buf2[512], *lyst[7 * NUM_FIELDS];
 	int num = 1;
+	Code_t retval;
 
 	zdbug((LOG_DEBUG, "send_subs"));
 	(void) sprintf(buf2, "%d",ntohs(client->zct_sin.sin_port));
@@ -481,10 +482,15 @@ ZClient_t *client;
 				 sizeof(C_Block)) != ZERR_NONE)
 		lyst[++num] = buf;
 
-	bdump_send_list_tcp(SERVACK, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
-		  num > 1 ? "CBLOCK" : "", ADMIN_NEWCLT, myname, "",
-		  lyst, num);
-
+	if ((retval = bdump_send_list_tcp(SERVACK, bdump_sin.sin_port,
+					  ZEPHYR_ADMIN_CLASS,
+					  num > 1 ? "CBLOCK" : "",
+					  ADMIN_NEWCLT, myname, "",
+					  lyst, num)) != ZERR_NONE ) {
+		syslog(LOG_ERR, "subscr_send_subs newclt: %s",
+		       error_message(retval));
+		return;
+	}
 	
 	if (!client->zct_subs)
 		return;
@@ -499,17 +505,30 @@ ZClient_t *client;
 		if (i > 7) {
 			/* we only put 7 in each packet, so we don't
 			   run out of room */
-			bdump_send_list_tcp(ACKED, bdump_sin.sin_port,
-				      ZEPHYR_CTL_CLASS, "",
-				      CLIENT_SUBSCRIBE, "", "", lyst,
-				      i * NUM_FIELDS);
+			if ((retval = bdump_send_list_tcp(ACKED,
+							  bdump_sin.sin_port,
+							  ZEPHYR_CTL_CLASS, "",
+							  CLIENT_SUBSCRIBE, "",
+							  "", lyst,
+							  i * NUM_FIELDS))
+			    != ZERR_NONE) {
+				syslog(LOG_ERR, "subscr_send_subs subs: %s",
+				       error_message(retval));
+				return;
+			}
 			i = 0;
 		}
 	}
 	if (i) {
-		bdump_send_list_tcp(ACKED, bdump_sin.sin_port, ZEPHYR_CTL_CLASS, "",
-			  CLIENT_SUBSCRIBE, "", "", lyst,
-			  i * NUM_FIELDS);
+		if ((retval = bdump_send_list_tcp(ACKED, bdump_sin.sin_port,
+						  ZEPHYR_CTL_CLASS, "",
+						  CLIENT_SUBSCRIBE, "", "",
+						  lyst, i * NUM_FIELDS))
+		    != ZERR_NONE) {
+			syslog(LOG_ERR, "subscr_send_subs subs: %s",
+			       error_message(retval));
+			return;
+		}
 	}
 	return;
 }
