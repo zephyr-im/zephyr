@@ -35,7 +35,7 @@
 #define BOOTING 1
 #define NOTICES 2
 
-#define MAXRETRIES 5
+#define MAXRETRIES 2
 
 extern char *malloc();
 
