@@ -29,8 +29,9 @@
 #define	HM_SVCNAME	"zephyr-hm"
 #define	SERVER_SVCNAME	"zephyr-clt"
 
-#if defined(ultrix) && !defined(ULTRIX30)
-/* Ultrix 3.0 has these defined in standard places */
+#if defined(ultrix) && defined(ULTRIX22)
+/* Ultrix 3.0 and beyond have these defined in standard places */
+/* Ultrix 2.2 and previous don't have these defined */
 #define	MAXHOSTNAMELEN	64
 typedef int uid_t;
 typedef int gid_t;
