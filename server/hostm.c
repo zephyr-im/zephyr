@@ -371,10 +371,10 @@ losinghost *which;
 	notice.z_message_len = 0;
 
 	/* generate the other fields */
-	retval = ZFormatNotice(notice, &buffer, &len, ZNOAUTH);
+	retval = ZFormatNotice(&notice, &buffer, &len, ZNOAUTH);
 	if (retval != ZERR_NONE)
 	    return;
-	xfree(*buffer);
+	xfree(buffer);
 
 	/* forge a from address */
 	bzero((char *) &who, sizeof(who));
