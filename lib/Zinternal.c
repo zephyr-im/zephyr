@@ -471,6 +471,11 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
     struct _Z_Hole *hole, *lasthole;
     struct timeval tv;
 
+    /* Bounds check. */
+    if (part < 0 || notice->z_message_len < 0 || part > qptr->msg_len
+	|| notice->z_message_len > qptr->msg_len - part)
+      return (ZERR_NONE);
+
     /* Incorporate this notice's checked authentication. */
     if (notice->z_checked_auth == ZAUTH_FAILED)
 	qptr->auth = ZAUTH_FAILED;
