@@ -5,9 +5,9 @@
  *
  *	$Source$
  *	$Author$
- *	$Header$
+ *	$Zephyr: /mit/zephyr/src/include/zephyr/RCS/zephyr_conf.h,v 1.8 90/12/21 17:40:40 raeburn Exp $
  *
- *	Copyright (c) 1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -16,18 +16,12 @@
 #define __ZEPHYR_CONF_H__
 
 #include <zephyr/mit-copyright.h>
+#include <zephyr/zephyr_paths.h>
 
-/* Kerberos information */
-/* If you are not using Kerberos, comment out the following three lines.
-   These provide default definitions so that users compiling Zephyr
-   programs don't need to put -DKERBEROS on their compile lines. */
-#ifndef KERBEROS
-#define KERBEROS
-#endif
-
+#ifdef Z_HaveKerberos
 #define SERVER_SERVICE		"zephyr"
 #define SERVER_INSTANCE		"zephyr"
-#define SERVER_SRVTAB		"/usr/athena/lib/zephyr/srvtab"
+#endif
 
 /* General filenames */
 #define DEFAULT_VARS_FILE	"/etc/athena/zephyr.vars"
@@ -45,7 +39,7 @@
 /* #endif */
 #endif /* ultrix */
 
-#if defined(ultrix) && defined(ULTRIX22)
+#if (defined(ultrix) && defined(ULTRIX22))
 /* Ultrix 3.0 and beyond have these defined in standard places */
 /* Ultrix 2.2 and previous don't have these defined */
 #define	MAXHOSTNAMELEN	64
@@ -66,11 +60,10 @@ typedef int gid_t;
 #define	FD_CLR(n, p)	((p)->fds_bits[0] &= ~(1 << (n)))
 #endif
 
-#ifndef KERBEROS
+#ifndef Z_HaveKerberos
 #define	REALM_SZ	MAXHOSTNAMELEN
 #define	INST_SZ		0		/* no instances w/o Kerberos */
 #define	ANAME_SZ	9		/* size of a username + null */
-#define	KRB_REALM	"ATHENA.MIT.EDU" /* your local "realm" */
 #endif /* !KERBEROS */
 
 #endif /* __ZEPHYR_CONF_H__ */
