@@ -37,13 +37,21 @@ case "$1" in
 		fi
 	fi
 
-	db_get zephyr-clients/servers
+	zhm_args=""
 	if test -f /etc/default/zephyr-clients
 	then
-		grep -v ^zhm_args /etc/default/zephyr-clients > $tmpfile || true
+		. /etc/default/zephyr-clients
 	fi
-	echo zhm_args=\"${RET}\" >> $tmpfile
-	cat $tmpfile > /etc/default/zephyr-clients
+	if test -z "$zhm_args"
+	then
+		db_get zephyr-clients/servers
+		if test -f /etc/default/zephyr-clients
+		then
+			grep -v ^zhm_args /etc/default/zephyr-clients > $tmpfile || true
+		fi
+		echo zhm_args=\"${RET}\" >> $tmpfile
+		cat $tmpfile > /etc/default/zephyr-clients
+	fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
