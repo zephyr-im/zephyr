@@ -16,8 +16,8 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_hm_client_c[] = "$Header$";
-#endif SABER
-#endif lint
+#endif /* SABER */
+#endif /* lint */
 
 extern int no_server, timeout_type, nclt, deactivated;
 extern struct sockaddr_in cli_sin, serv_sin, from;
