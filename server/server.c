@@ -20,11 +20,9 @@ static char rcsid_server_c[] = "$Id$";
 #endif
 
 #include "zserver.h"
-extern "C" {
 #include <sys/socket.h>			/* for AF_INET */
 #include <netdb.h>			/* for gethostbyname */
 #include <sys/param.h>			/* for BSD */
-}
 
 /*
  * Server manager.  Deal with  traffic to and from other servers.
@@ -67,39 +65,50 @@ extern "C" {
  * void server_reset();
  */
 
+#ifdef __STDC__
+# define        P(s) s
+#else
+# define P(s) ()
+#endif
+
 static void
-    server_flush(ZServerDesc_t *),
-    hello_respond(sockaddr_in *, int, int),
-    srv_responded(sockaddr_in *),
-    send_msg(sockaddr_in *, char *, int),
-    send_msg_list(sockaddr_in *, char *, char **, int, int),
-    srv_nack_cancel(ZNotice_t *, sockaddr_in *),
-    srv_nack_release(ZServerDesc_t *),
-    srv_nack_renumber (int *),
-    server_lost(ZServerDesc_t *),
-    send_stats(sockaddr_in *),
-    server_queue(ZServerDesc_t *, int, caddr_t, int, sockaddr_in *);
+    server_flush P((ZServerDesc_t *)),
+    hello_respond P((struct sockaddr_in *, int, int)),
+    srv_responded P((struct sockaddr_in *)),
+    send_msg P((struct sockaddr_in *, char *, int)),
+    send_msg_list P((struct sockaddr_in *, char *, char **, int, int)),
+    srv_nack_cancel P((ZNotice_t *, struct sockaddr_in *)),
+    srv_nack_release P((ZServerDesc_t *)),
+    srv_nack_renumber  P((int *)),
+    server_lost P((ZServerDesc_t *)),
+    send_stats P((struct sockaddr_in *)),
+    server_queue P((ZServerDesc_t *, int, caddr_t, int, struct sockaddr_in *));
 #define STATIC /* should be static, but is friend elsewhere */
 STATIC void
-    server_hello(ZServerDesc_t *, int),
-    setup_server(ZServerDesc_t *, in_addr *),
-    srv_rexmit(void *),
-    server_forw_reliable(ZServerDesc_t *, caddr_t, int, ZNotice_t *);
+    server_hello P((ZServerDesc_t *, int)),
+    setup_server P((ZServerDesc_t *, struct in_addr *)),
+    srv_rexmit P((void *)),
+    server_forw_reliable P((ZServerDesc_t *, caddr_t, int, ZNotice_t *));
 static Code_t
-    admin_dispatch(ZNotice_t *, int, sockaddr_in *, ZServerDesc_t *),
-    recover_clt(ZNotice_t *, ZServerDesc_t *),
-    kill_clt(ZNotice_t *),
-    extract_addr (ZNotice_t *, sockaddr_in *);
+    admin_dispatch P((ZNotice_t *, int, struct sockaddr_in *,
+		      ZServerDesc_t *)),
+    recover_clt P((ZNotice_t *, ZServerDesc_t *)),
+    kill_clt P((ZNotice_t *, ZServerDesc_t *)),
+    extract_addr  P((ZNotice_t *, struct sockaddr_in *));
+
 
 #ifdef notdef
 static Code_t server_register();
 #endif
 
-static struct in_addr *get_server_addrs(int *number);
+static struct in_addr *get_server_addrs P((int *number));
 #ifndef HESIOD
-static char **get_server_list(char *file);
-static void free_server_list(char **list);
+static char **get_server_list P((char *file));
+static void free_server_list P((char **list));
 #endif
+
+#undef P
+
 
 ZNotAcked_t *srv_nacklist;		/* not acked list for server-server
 					   packets */
@@ -130,8 +139,8 @@ int new_compat_count_subscr = 0;
 #endif /* NEW_COMPAT */
 
 #ifdef DEBUG
-extern int zalone;
-#endif DEBUG
+int zalone;
+#endif /* DEBUG */
 /*
  * Initialize the array of servers.  The `limbo' server goes in the first
  * slot (otherservers[0]).
@@ -141,7 +150,7 @@ extern int zalone;
  */
 
 void
-server_init(void)
+server_init()
 {
 	register int i;
 	struct in_addr *serv_addr, *server_addrs, limbo_addr;
@@ -159,7 +168,7 @@ server_init(void)
 	if (zalone)
 		nservers = 1;
 	else
-#endif DEBUG
+#endif /* DEBUG */
 		/* increment servers to make room for 'limbo' */
 		nservers++;
 
@@ -180,7 +189,7 @@ server_init(void)
 		/* is this me? */
 		if (serv_addr->s_addr == my_addr.s_addr) {
 			me_server_idx = i;
-			otherservers[i].set_state (SERV_UP);
+			otherservers[i].zs_state = SERV_UP;
 			timer_reset(otherservers[i].zs_timer);
 			otherservers[i].zs_timer = (timer) NULL;
 			otherservers[i].zs_update_queue = NULLZSPT;
@@ -203,7 +212,7 @@ server_init(void)
 		}
 		setup_server(&otherservers[nservers - 1], &my_addr);
 		/* we are up. */
-		otherservers[nservers - 1].set_state (SERV_UP);
+		otherservers[nservers - 1].zs_state = SERV_UP;
 
 		/* I don't send hello's to myself--cancel the timer */
 		timer_reset(otherservers[nservers - 1].zs_timer);
@@ -215,7 +224,9 @@ server_init(void)
 		for (i = 1; i < nservers - 1; i++) {
 			timer_reset(otherservers[i].zs_timer);
 			/* all the HELLO's are due now */
-			otherservers[i].zs_timer = timer_set_rel(0L, server_timo, (caddr_t) &otherservers[i]);
+			otherservers[i].zs_timer =
+			  timer_set_rel(0L, server_timo, (void *)
+					&otherservers[i]);
 		}
 		me_server_idx = nservers - 1;
 	}
@@ -243,7 +254,7 @@ server_init(void)
  * handle on a particular server other than by indexing on otherservers[].
  */
 void
-server_reset(void)
+server_reset()
 {
 	int num_servers;
 	struct in_addr *server_addrs;
@@ -261,19 +272,19 @@ server_reset(void)
 		syslog(LOG_INFO, "server_reset while alone, punt");
 		return;
 	}
-#endif DEBUG
+#endif /* DEBUG */
 
 	/* Find out what servers are supposed to be known. */
 	if (!(server_addrs = get_server_addrs(&num_servers))) {
 		syslog(LOG_ERR, "server_reset no servers. nothing done.");
 		return;
 	}
-	ok_list_new = (int *) LOCAL_ALLOC (num_servers * sizeof (int));
+	ok_list_new = (int *) xmalloc (num_servers * sizeof (int));
 	if (ok_list_new == (int *) 0) {
 		syslog(LOG_ERR, "server_reset no mem new");
 		return;
 	}
-	ok_list_old = (int *) LOCAL_ALLOC (nservers * sizeof (int));
+	ok_list_old = (int *) xmalloc (nservers * sizeof (int));
 	if (ok_list_old == (int *) 0) {
 		syslog(LOG_ERR, "server_reset no mem old");
 		xfree(ok_list_new);
@@ -321,7 +332,7 @@ server_reset(void)
 			/* since we are never SERV_DEAD, the following
 			   test prevents removing ourself from the list */
 			if (ok_list_old[j] ||
-			    (otherservers[j].state() != SERV_DEAD)) {
+			    (otherservers[j].zs_state != SERV_DEAD)) {
 				syslog(LOG_INFO, "keeping server %s",
 				       otherservers[j].addr);
 				new_num++;
@@ -335,13 +346,13 @@ server_reset(void)
 			i = 1;
 			servers[0] = otherservers[0]; /* copy limbo */
 
-			srv = (int*) LOCAL_ALLOC (nservers * sizeof (int));
+			srv = (int*) xmalloc (nservers * sizeof (int));
 			bzero (srv, nservers * sizeof (int));
 
 			/* copy the kept servers */
 			for (j = 1; j < nservers; j++) { /* skip limbo */
 				if (ok_list_old[j] ||
-				    otherservers[j].state() != SERV_DEAD) {
+				    otherservers[j].zs_state != SERV_DEAD) {
 					servers[i] = otherservers[j];
 					srv[j] = i;
 					i++;
@@ -356,6 +367,7 @@ server_reset(void)
 			srv_nack_renumber (srv);
 			hostm_renumber_servers (srv);
 
+			xfree(srv);
 			xfree(otherservers);
 			otherservers = servers;
 			nservers = new_num;
@@ -368,7 +380,6 @@ server_reset(void)
 			new_num++;
 	/* new_num is number of extras. */
 	nservers += new_num;
-/*	otherservers = new ZServerDesc_t [nservers];*/
 	otherservers = (ZServerDesc_t *)realloc((caddr_t) otherservers, (unsigned) (nservers * sizeof(ZServerDesc_t)));
 	if (!otherservers) {
 		syslog(LOG_CRIT, "server_reset realloc");
@@ -408,14 +419,14 @@ server_reset(void)
 		if (i != me_server_idx && !otherservers[i].zs_timer) {
 			otherservers[i].zs_timer =
 				timer_set_rel(0L, server_timo,
-					      (caddr_t) &otherservers[i]);
+					      (void *) &otherservers[i]);
 #if 0
 			zdbug((LOG_DEBUG, "reset timer for %s",
 			       otherservers[i].addr));
 #endif
 		}
-	LOCAL_FREE (ok_list_old);
-	LOCAL_FREE (ok_list_new);
+	xfree(ok_list_old);
+	xfree(ok_list_new);
 
 #if 0
 	zdbug((LOG_DEBUG, "server_reset: %d servers now", nservers));
@@ -442,33 +453,38 @@ srv_states[] = {
  */
 
 void
+#ifdef __STDC__
 server_timo(void* arg)
+#else
+server_timo(arg)
+     void* arg;
+#endif
 {
 	ZServerDesc_t *which = (ZServerDesc_t *) arg;
-	int auth;
+	int auth = 0;
 
 #if 0
 	zdbug((LOG_DEBUG,"srv_timo: %s", which->addr));
 #endif
 	/* change state and reset if appropriate */
-	switch(which->state()) {
+	switch(which->zs_state) {
 	case SERV_DEAD:			/* leave him dead */
 		server_flush(which);
 		auth = 1;
 		break;
 	case SERV_UP:			/* he's now tardy */
-		which->set_state (SERV_TARDY);
+		which->zs_state = SERV_TARDY;
 		which->zs_numsent = 0;
 		which->zs_timeout = timo_tardy;
 		auth = 0;
 		break;
 	case SERV_TARDY:
 	case SERV_STARTING:
-		if (which->zs_numsent >= ((which->state() == SERV_TARDY) ?
+		if (which->zs_numsent >= ((which->zs_state == SERV_TARDY) ?
 					  H_NUM_TARDY :
 					  H_NUM_STARTING)) {
 			/* he hasn't answered, assume DEAD */
-			which->set_state (SERV_DEAD);
+			which->zs_state = SERV_DEAD;
 			which->zs_numsent = 0;
 			which->zs_timeout = timo_dead;
 			server_lost(which);
@@ -483,43 +499,45 @@ server_timo(void* arg)
 	   We send a "hello," which increments the counter */
 #if 0
 	zdbug((LOG_DEBUG, "srv %s is %s", which->addr,
-	       srv_states[(int) which->state()]));
+	       srv_states[(int) which->zs_state]));
 #endif
 	server_hello(which, auth);
 	/* reschedule the timer */
 	which->zs_timer = timer_set_rel(which->zs_timeout, server_timo,
-					(caddr_t) which);
+					(void *) which);
 }
 
 /*
  * Dispatch a notice from some other server
  */
 
-extern statistic i_s_ctls, i_s_logins, i_s_admins, i_s_locates;
-
 /*ARGSUSED*/
 Code_t
-server_dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who)
+server_dispatch(notice, auth, who)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
 {
 	ZServerDesc_t *server;
 	struct sockaddr_in newwho;
 	Code_t status;
-	Notice notice = n;
+	ZSTRING *notice_class;
+
 
 #if 1
 	zdbug((LOG_DEBUG, "server_dispatch"));
 #endif
 
-	if (notice.notice->z_kind == SERVACK) {
-		srv_nack_cancel(notice.notice, who);
+	if (notice->z_kind == SERVACK) {
+		srv_nack_cancel(notice, who);
 		srv_responded(who);
 		return(ZERR_NONE);
 	}
 	/* set up a who for the real origin */
 	bzero((caddr_t) &newwho, sizeof(newwho));
 	newwho.sin_family = AF_INET;
-	newwho.sin_addr.s_addr = notice.notice->z_sender_addr.s_addr;
-	newwho.sin_port = notice.notice->z_port;
+	newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
+	newwho.sin_port = notice->z_port;
 
 	server = server_which_server(who);
 
@@ -528,31 +546,34 @@ server_dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who)
 	   to the caller, and the caller will re-queue the message
 	   for us to process later. */
 
-	if (class_is_admin(notice)) {
+	notice_class = make_zstring(notice->z_class_inst,1);
+
+	if (class_is_admin(notice_class)) {
 		/* admins don't get acked, else we get a packet loop */
 		/* will return  requeue if bdump request and dumping */
-		i_s_admins++;
-		return(admin_dispatch(notice.notice, auth, who, server));
-	} else if (class_is_control(notice)) {
-		status = control_dispatch(notice.notice, auth, &newwho, server);
-		i_s_ctls++;
+		i_s_admins.val++;
+		return(admin_dispatch(notice, auth, who, server));
+	} else if (class_is_control(notice_class)) {
+		status = control_dispatch(notice, auth, &newwho, server);
+		i_s_ctls.val++;
 	}
-	else if (class_is_ulogin(notice)) {
-		status = ulogin_dispatch(notice.notice, auth, &newwho, server);
-		i_s_logins++;
+	else if (class_is_ulogin(notice_class)) {
+		status = ulogin_dispatch(notice, auth, &newwho, server);
+		i_s_logins.val++;
 	}
-	else if (class_is_ulocate(notice)) {
-		status = ulocate_dispatch(notice.notice, auth, &newwho, server);
-		i_s_locates++;
+	else if (class_is_ulocate(notice_class)) {
+		status = ulocate_dispatch(notice, auth, &newwho, server);
+		i_s_locates.val++;
 	}
 	else {
 		/* shouldn't come from another server */
 		syslog(LOG_WARNING, "srv_disp: pkt cls %s",
-		       notice.notice->z_class);
+		       notice->z_class);
 		status = ZERR_NONE;	/* XXX */
 	}
 	if (status != ZSRV_REQUEUE)
-		ack(notice.notice, who); /* acknowledge it if processed */
+		ack(notice, who); /* acknowledge it if processed */
+	free_zstring(notice_class);
 	return(status);
 }
 
@@ -564,20 +585,23 @@ server_dispatch(ZNotice_t *n, int auth, struct sockaddr_in *who)
 /*ARGSUSED*/
 static Code_t
 server_register(notice, auth, who)
-ZNotice_t *notice;
-int auth;
-struct sockaddr_in *who;
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
 {
 	ZServerDesc_t *temp;
 	register int i;
 	long timerval;
-	SignalBlock omask (sigmask(SIGFPE)); /* don't do ascii dumps */
+	int old_mask;
+
+	old_mask = sigblock(sigmask(SIGFPE));
 
 	if (who->sin_port != sock_sin.sin_port) {
 #if 0
 		zdbug((LOG_DEBUG, "srv_register wrong port %d",
 		       ntohs(who->sin_port)));
 #endif
+		sigsetmask(old_mask);
 		return 1;
 	}
 	/* Not yet... talk to ken about authenticators */
@@ -586,13 +610,15 @@ struct sockaddr_in *who;
 #if 0
 		zdbug((LOG_DEBUG, "srv_register unauth"));
 #endif
+		sigsetmask(old_mask);
 		return 1;
 	}
 #endif notdef
 	/* OK, go ahead and set him up. */
-	temp = (ZServerDesc_t *)malloc((unsigned) ((nservers + 1) * sizeof(ZServerDesc_t)));
+	temp = (ZServerDesc_t *)xmalloc((unsigned) ((nservers + 1) * sizeof(ZServerDesc_t)));
 	if (!temp) {
 		syslog(LOG_CRIT, "srv_reg malloc");
+		sigsetmask(old_mask);
 		return 1;
 	}
 	bcopy((caddr_t) otherservers, (caddr_t) temp, nservers * sizeof(ZServerDesc_t));
@@ -608,7 +634,7 @@ struct sockaddr_in *who;
 		otherservers[i].zs_timer = timer_set_abs(timerval, server_timo, (caddr_t) &otherservers[i]);
 	}
 	setup_server(&otherservers[nservers], &who->sin_addr);
-	otherservers[nservers].set_state (SERV_STARTING);
+	otherservers[nservers].zs_state = SERV_STARTING;
 	otherservers[nservers].zs_timeout = timo_tardy;
 	otherservers[nservers].zs_update_queue = NULLZSPT;
 	otherservers[nservers].zs_dumping = 0;
@@ -616,8 +642,9 @@ struct sockaddr_in *who;
 	nservers++;
 #if 0
 	zdbug((LOG_DEBUG, "srv %s is %s", otherservers[nservers].addr,
-	       srv_states[(int) otherservers[nservers].state()]));
+	       srv_states[(int) otherservers[nservers].zs_state]));
 #endif
+	sigsetmask(old_mask);
 	return 0;
 }
 #endif
@@ -628,7 +655,8 @@ struct sockaddr_in *who;
  */
 
 void
-server_recover(ZClient_t *client)
+server_recover(client)
+     ZClient_t *client;
 {
 	ZServerDesc_t *server;
 	char *lyst[2];
@@ -666,7 +694,8 @@ server_recover(ZClient_t *client)
  */
 
 void
-server_kill_clt(ZClient_t *client)
+server_kill_clt(client)
+     ZClient_t *client;
 {
 	register int i;
 	char buf[512], *lyst[2];
@@ -704,7 +733,7 @@ server_kill_clt(ZClient_t *client)
 	for (i = 1; i < nservers; i++) {
 		if (i == me_server_idx)	/* don't xmit to myself */
 			continue;
-		if (otherservers[i].state() == SERV_DEAD)
+		if (otherservers[i].zs_state == SERV_DEAD)
 			continue;
 
 		if ((retval = ZFormatNoticeList(pnotice, lyst, 2, &pack, &packlen, auth ? ZAUTH : ZNOAUTH)) != ZERR_NONE) {
@@ -721,7 +750,9 @@ server_kill_clt(ZClient_t *client)
  */
 
 static Code_t
-kill_clt(ZNotice_t *notice, ZServerDesc_t *server)
+kill_clt(notice, server)
+     ZNotice_t *notice;
+     ZServerDesc_t *server;
 {
 	struct sockaddr_in who;
 	ZHostList_t *host;
@@ -762,7 +793,9 @@ kill_clt(ZNotice_t *notice, ZServerDesc_t *server)
  * Another server asked us to initiate recovery protocol with the hostmanager
  */
 static Code_t
-recover_clt(register ZNotice_t *notice, ZServerDesc_t *server)
+recover_clt(notice, server)
+     register ZNotice_t *notice;
+     ZServerDesc_t *server;
 {
 	struct sockaddr_in who;
 	ZClient_t *client;
@@ -795,7 +828,9 @@ recover_clt(register ZNotice_t *notice, ZServerDesc_t *server)
  */
 
 static Code_t
-extract_addr(ZNotice_t *notice, struct sockaddr_in *who)
+extract_addr(notice, who)
+     ZNotice_t *notice;
+     struct sockaddr_in *who;
 {
 	register char *cp = notice->z_message;
 
@@ -824,7 +859,8 @@ extract_addr(ZNotice_t *notice, struct sockaddr_in *who)
  */
 
 static void
-server_flush(register ZServerDesc_t *which)
+server_flush(which)
+     register ZServerDesc_t *which;
 {
 	register ZHostList_t *hst;
 
@@ -855,7 +891,9 @@ server_flush(register ZServerDesc_t *which)
  */
 
 STATIC void
-server_hello(ZServerDesc_t *which, int auth)
+server_hello(which, auth)
+     ZServerDesc_t *which;
+     int auth;
 {
 	send_msg(&which->zs_addr, ADMIN_HELLO, auth);
 	(which->zs_numsent)++;
@@ -868,7 +906,11 @@ server_hello(ZServerDesc_t *which, int auth)
 
 /*ARGSUSED*/
 static Code_t
-admin_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDesc_t *server)
+admin_dispatch(notice, auth, who, server)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
+     ZServerDesc_t *server;
 {
 	register char *opcode = notice->z_opcode;
 	Code_t status = ZERR_NONE;
@@ -888,13 +930,13 @@ admin_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDesc
 		/* we need to transfer all of its hosts to limbo */
 		if (server) {
 			server_lost(server);
-			server->set_state (SERV_DEAD);
+			server->zs_state = SERV_DEAD;
 			server->zs_timeout = timo_dead;
 			/* don't worry about the timer, it will
 			   be set appropriately on the next send */
 #if 0
 			zdbug((LOG_DEBUG, "srv %s is %s", server->addr,
-			       srv_states[(int) server->state()]));
+			       srv_states[(int) server->zs_state]));
 #endif
 		}
 	} else if (!strcmp(opcode, ADMIN_BDUMP)) {
@@ -926,7 +968,8 @@ admin_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDesc
  */
 
 static void
-server_lost(ZServerDesc_t *server)
+server_lost(server)
+     ZServerDesc_t *server;
 {
 	register ZHostList_t *host, *hishost;
 
@@ -948,7 +991,11 @@ server_lost(ZServerDesc_t *server)
 
 /*ARGSUSED*/
 Code_t
-server_adispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDesc_t *server)
+server_adispatch(notice, auth, who, server)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
+     ZServerDesc_t *server;
 {
 
 	/* this had better be a HELLO message--start of acquisition
@@ -977,15 +1024,14 @@ server_adispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who, ZServerDe
 }
 
 static void
-send_stats(struct sockaddr_in *who)
+send_stats(who)
+     struct sockaddr_in *who;
 {
 	register int i;
 	char buf[BUFSIZ];
 	char **responses;
 	int num_resp;
 	char *vers, *pkts, *upt;
-	char *__t;
-#define lstrdup(X) (__t=(char*)LOCAL_ALLOC(strlen(X)+1),strcpy(__t,X),__t)
 
 #if defined(OLD_COMPAT) || defined(NEW_COMPAT)
 	int extrafields = 0;
@@ -994,38 +1040,12 @@ send_stats(struct sockaddr_in *who)
 					/* well, not really...but for
 					   backward compatibility, we gotta
 					   do it this way. */
-	(void) strcpy(buf,version);
-	(void) strcat(buf, "/");
-#ifdef vax
-	(void) strcat(buf, "VAX");
-#endif /* vax */
-#ifdef ibm032
-	(void) strcat(buf, "IBM 032");
-#endif /* ibm032 */
-#ifdef sun
-	(void) strcat(buf, "SUN");
-#ifdef sparc
-	(void) strcat (buf, "-4");
-#endif
-#ifdef sun386
-	(void) strcat (buf, "-386I");
-#endif
-#endif /* sun */
-#ifdef mips
-#ifdef ultrix			/* DECstation */
-	(void) strcat (buf, "DEC-");
-#endif
-	(void) strcat(buf, "MIPS");
-#endif /* mips */
-#ifdef NeXT
-	(void) strcat(buf, "NeXT");
-#endif /* NeXT */
-	vers = lstrdup (buf);
+	vers = get_version();
 
 	(void) sprintf(buf, "%d pkts", npackets);
-	pkts = lstrdup (buf);
+	pkts = strsave(buf);
 	(void) sprintf(buf, "%d seconds operational",NOW - uptime);
-	upt = lstrdup (buf);
+	upt = strsave(buf);
 
 #ifdef OLD_COMPAT
 	if (old_compat_count_uloc) extrafields++;
@@ -1037,11 +1057,11 @@ send_stats(struct sockaddr_in *who)
 	if (new_compat_count_subscr) extrafields++;
 #endif /* NEW_COMPAT */
 #if defined(OLD_COMPAT) || defined(NEW_COMPAT)
-	responses = (char **) LOCAL_ALLOC ((NUM_FIXED + nservers +
-					    extrafields) * sizeof(char **));
+	responses = (char **) xmalloc((NUM_FIXED + nservers + extrafields) *
+				      sizeof(char **));
 #else
-	responses = (char **) LOCAL_ALLOC ((NUM_FIXED + nservers)
-					   *sizeof(char **));
+	responses = (char **) xmalloc ((NUM_FIXED + nservers) * 
+				       sizeof(char **));
 #endif /* OLD_ or NEW_COMPAT */
 	responses[0] = vers;
 	responses[1] = pkts;
@@ -1051,44 +1071,45 @@ send_stats(struct sockaddr_in *who)
 	/* start at 1 and ignore limbo */
 	for (i = 1; i < nservers ; i++) {
 		(void) sprintf(buf, "%s/%s%s", otherservers[i].addr,
-			       srv_states[(int) otherservers[i].state()],
+			       srv_states[(int) otherservers[i].zs_state],
 			       otherservers[i].zs_dumping ? " (DUMPING)" : "");
-		responses[num_resp++] = lstrdup (buf);
+		responses[num_resp++] = strsave (buf);
 	}
 #ifdef OLD_COMPAT
 	if (old_compat_count_uloc) {
 	    (void) sprintf(buf, "%d old old location requests",
 			   old_compat_count_uloc);
-	    responses[num_resp++] = lstrdup (buf);
+	    responses[num_resp++] = strsave (buf);
 	}
 	if (old_compat_count_ulocate) {
 	    (void) sprintf(buf, "%d old old loc lookup requests",
 			   old_compat_count_ulocate);
-	    responses[num_resp++] = lstrdup (buf);
+	    responses[num_resp++] = strsave (buf);
 	}
 	if (old_compat_count_subscr) {
 	    (void) sprintf(buf, "%d old old subscr requests",
 			   old_compat_count_subscr);
-	    responses[num_resp++] = lstrdup (buf);
+	    responses[num_resp++] = strsave (buf);
 	}
 #endif /* OLD_COMPAT */
 #ifdef NEW_COMPAT
 	if (new_compat_count_uloc) {
 	    (void) sprintf(buf, "%d new old location requests",
 			   new_compat_count_uloc);
-	    responses[num_resp++] = lstrdup (buf);
+	    responses[num_resp++] = strsave (buf);
 	}
 	if (new_compat_count_subscr) {
 	    (void) sprintf(buf, "%d new old subscr requests",
 			   new_compat_count_subscr);
-	    responses[num_resp++] = lstrdup (buf);
+	    responses[num_resp++] = strsave (buf);
 	}
 #endif /* NEW_COMPAT */
 
 	send_msg_list(who, ADMIN_STATUS, responses, num_resp, 0);
-	for (i = 0; i < num_resp; i++)
-		LOCAL_FREE (responses[i]);
-	LOCAL_FREE (responses);
+	/* Start at one; don't try to free static version string */
+	for (i = 1; i < num_resp; i++)
+	  xfree(responses[i]);
+	xfree(responses);
 	return;
 }
 
@@ -1104,7 +1125,8 @@ send_stats(struct sockaddr_in *who)
  */
 
 static struct in_addr *
-get_server_addrs(int *number) /* RETURN */
+get_server_addrs(number)
+     int *number; /* RETURN */
 {
 	register int i;
 	char **server_hosts;
@@ -1154,7 +1176,8 @@ static int nhosts = 0;
  */
 
 static char **
-get_server_list(char *file)
+get_server_list(file)
+     char *file;
 {
 	FILE *fp;
 	char buf[MAXHOSTNAMELEN];
@@ -1194,7 +1217,8 @@ get_server_list(char *file)
  * free storage allocated by get_server_list
  */
 static void
-free_server_list(register char **list)
+free_server_list(list)
+     register char **list;
 {
 	char **orig_list = list;
 
@@ -1213,11 +1237,13 @@ free_server_list(register char **list)
  */
 
 STATIC void
-setup_server(register ZServerDesc_t *server, struct in_addr *addr)
+setup_server(server, addr)
+     register ZServerDesc_t *server;
+     struct in_addr *addr;
 {
 	register ZHostList_t *host;
 
-	server->set_state (SERV_DEAD);
+	server->zs_state = SERV_DEAD;
 	server->zs_timeout = timo_dead;
 	server->zs_numsent = 0;
 	server->zs_addr.sin_family = AF_INET;
@@ -1227,8 +1253,8 @@ setup_server(register ZServerDesc_t *server, struct in_addr *addr)
 	strcpy (server->addr, inet_ntoa (*addr));
 
 	/* set up a timer for this server */
-	server->zs_timer = timer_set_rel(0L, server_timo, (caddr_t) server);
-	host = new ZHostList_t;
+	server->zs_timer = timer_set_rel(0L, server_timo, (void *) server);
+	host = (ZHostList_t *) xmalloc(sizeof(ZHostList_t));
 	if (!host) {
 		/* unrecoverable */
 		syslog(LOG_CRIT, "zs_host alloc");
@@ -1248,7 +1274,10 @@ setup_server(register ZServerDesc_t *server, struct in_addr *addr)
  */
 
 static void
-hello_respond(struct sockaddr_in *who, int adj, int auth)
+hello_respond(who, adj, auth)
+     struct sockaddr_in *who;
+     int adj;
+     int auth;
 {
 	register ZServerDesc_t *which;
 
@@ -1265,13 +1294,13 @@ hello_respond(struct sockaddr_in *who, int adj, int auth)
 	if (!(which = server_which_server(who)))
 		return;
 
-	switch (which->state()) {
+	switch (which->zs_state) {
 	case SERV_DEAD:
 		/* he said hello, we thought he was dead.
 		   reschedule his hello for now. */
 		timer_reset(which->zs_timer);
 		which->zs_timer = timer_set_rel(0L, server_timo,
-						(caddr_t) which);
+						(void *) which);
 		break;
 	case SERV_STARTING:
 	case SERV_TARDY:
@@ -1287,7 +1316,8 @@ hello_respond(struct sockaddr_in *who, int adj, int auth)
  */
 
 ZServerDesc_t *
-server_which_server(struct sockaddr_in *who)
+server_which_server(who)
+     struct sockaddr_in *who;
 {
 	register ZServerDesc_t *server;
 	register int i;
@@ -1308,7 +1338,8 @@ server_which_server(struct sockaddr_in *who)
  * appropriately.
  */
 static void
-srv_responded(struct sockaddr_in *who)
+srv_responded(who)
+     struct sockaddr_in *who;
 {
 	register ZServerDesc_t *which = server_which_server(who);
 
@@ -1321,15 +1352,15 @@ srv_responded(struct sockaddr_in *who)
 		return;
 	}
 
-	switch (which->state()) {
+	switch (which->zs_state) {
 	case SERV_DEAD:
 		/* he responded, we thought he was dead. mark as starting
 		   and negotiate */
-		which->set_state (SERV_STARTING);
+		which->zs_state = SERV_STARTING;
 		which->zs_timeout = timo_tardy;
 		timer_reset(which->zs_timer);
 		which->zs_timer = timer_set_rel(0L, server_timo,
-						(caddr_t) which);
+						(void *) which);
 
 	case SERV_STARTING:
 		/* here we negotiate and set up a braindump */
@@ -1339,19 +1370,19 @@ srv_responded(struct sockaddr_in *who)
 		}			
 		break;
 	case SERV_TARDY:
-		which->set_state (SERV_UP);
+		which->zs_state = SERV_UP;
 	case SERV_UP:
 		/* reset the timer and counts */
 		which->zs_numsent = 0;
 		which->zs_timeout = timo_up;
 		timer_reset(which->zs_timer);
 		which->zs_timer = timer_set_rel(which->zs_timeout, server_timo,
-						(caddr_t) which);
+						(void *) which);
 		break;
 	}
 #if 0
 	zdbug((LOG_DEBUG, "srv %s is %s", which->addr,
-	       srv_states[(int) which->state()]));
+	       srv_states[(int) which->zs_state]));
 #endif
 	return;
 }
@@ -1361,7 +1392,7 @@ srv_responded(struct sockaddr_in *who)
  */
 
 void
-server_shutdown(void)
+server_shutdown()
 {
 	register int i;
 
@@ -1378,7 +1409,10 @@ server_shutdown(void)
  */
 
 static void
-send_msg(struct sockaddr_in *who, char *opcode, int auth)
+send_msg(who, opcode, auth)
+     struct sockaddr_in *who;
+     char *opcode;
+     int auth;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
@@ -1433,18 +1467,23 @@ send_msg(struct sockaddr_in *who, char *opcode, int auth)
  */
 
 static void
-send_msg_list(struct sockaddr_in *who, char *opcode, char **lyst, int num,
-	      int auth)
+send_msg_list(who, opcode, lyst, num, auth)
+     struct sockaddr_in *who;
+     char *opcode;
+     char **lyst;
+     int num;
+     int auth;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
 	char *pack;
 	int packlen;
 	Code_t retval;
+	register ZNotAcked_t *nacked;
 
 	pnotice = &notice;
 
-	pnotice->z_kind = ACKED;
+	pnotice->z_kind = UNSAFE;
 
 	pnotice->z_port = sock_sin.sin_port;
 	pnotice->z_class = ZEPHYR_ADMIN_CLASS;
@@ -1478,7 +1517,28 @@ send_msg_list(struct sockaddr_in *who, char *opcode, char **lyst, int num,
 	    xfree(pack);	/* free allocated storage */
 	    return;
 	}
-	xfree(pack);		/* free allocated storage */
+
+	if (!(nacked = (ZNotAcked_t *)xmalloc(sizeof(ZNotAcked_t)))) {
+		/* no space: just punt */
+		syslog(LOG_WARNING, "xmit nack malloc");
+		xfree(pack);
+		return;
+	}
+
+	nacked->na_rexmits = 0;
+	nacked->na_packet = pack;
+	nacked->na_addr = *who;
+	nacked->na_packsz = packlen;
+	nacked->na_uid = pnotice->z_uid;
+	nacked->q_forw = nacked->q_back = nacked;
+	nacked->na_abstimo = NOW + abs_timo;
+
+	/* set a timer to retransmit when done */
+	nacked->na_timer = timer_set_rel(rexmit_secs,
+					 rexmit,
+					 (void *) nacked);
+	/* chain in */
+	xinsque(nacked, nacklist);
 	return;
 }
 
@@ -1487,7 +1547,10 @@ send_msg_list(struct sockaddr_in *who, char *opcode, char **lyst, int num,
  */
 /*ARGSUSED*/
 void
-server_forward(ZNotice_t *notice, int auth, struct sockaddr_in *who)
+server_forward(notice, auth, who)
+     ZNotice_t *notice;
+     int auth;
+     struct sockaddr_in *who;
 {
 	register int i;
 	caddr_t pack;
@@ -1501,7 +1564,7 @@ server_forward(ZNotice_t *notice, int auth, struct sockaddr_in *who)
 	for (i = 1; i < nservers; i++) {
 		if (i == me_server_idx)	/* don't xmit to myself */
 			continue;
-		if (otherservers[i].state() == SERV_DEAD &&
+		if (otherservers[i].zs_state == SERV_DEAD &&
 		    otherservers[i].zs_dumping == 0)
 			/* if we are dumping to him, we want to
 			   queue it, even if he's dead */
@@ -1527,8 +1590,11 @@ server_forward(ZNotice_t *notice, int auth, struct sockaddr_in *who)
 }
 
 STATIC void
-server_forw_reliable(ZServerDesc_t *server, caddr_t pack, int packlen,
-		     ZNotice_t *notice)
+server_forw_reliable(server, pack, packlen, notice)
+     ZServerDesc_t *server;
+     caddr_t pack;
+     int packlen;
+     ZNotice_t *notice;
 {
 	Code_t retval;
 	register ZNotAcked_t *nacked;
@@ -1564,7 +1630,7 @@ server_forw_reliable(ZServerDesc_t *server, caddr_t pack, int packlen,
 	/* set a timer to retransmit */
 	nacked->na_timer = timer_set_rel(srv_rexmit_secs,
 					 srv_rexmit,
-					 (caddr_t) nacked);
+					 (void *) nacked);
 	/* chain in */
 	xinsque(nacked, srv_nacklist);
 	return;
@@ -1576,7 +1642,8 @@ server_forw_reliable(ZServerDesc_t *server, caddr_t pack, int packlen,
  */
 
 void
-server_send_queue(ZServerDesc_t *server)
+server_send_queue(server)
+     ZServerDesc_t *server;
 {
 	register ZSrvPending_t *pending;
 	ZNotice_t notice;
@@ -1607,7 +1674,9 @@ server_send_queue(ZServerDesc_t *server)
  */
 
 static void
-srv_nack_cancel(register ZNotice_t *notice, struct sockaddr_in *who)
+srv_nack_cancel(notice, who)
+     register ZNotice_t *notice;
+     struct sockaddr_in *who;
 {
 	register ZServerDesc_t *which = server_which_server(who);
 	register ZNotAcked_t *nacked;
@@ -1638,7 +1707,12 @@ srv_nack_cancel(register ZNotice_t *notice, struct sockaddr_in *who)
  */
 
 STATIC void
+#ifdef __STDC__
 srv_rexmit(void *arg)
+#else
+srv_rexmit(arg)
+     void *arg;
+#endif
 {
 	ZNotAcked_t *nackpacket = (ZNotAcked_t *) arg;
 	Code_t retval;
@@ -1649,7 +1723,7 @@ srv_rexmit(void *arg)
 	       otherservers[nackpacket->na_srv_idx].addr,
 	       ntohs(otherservers[nackpacket->na_srv_idx].zs_addr.sin_port)));
 #endif
-	if (otherservers[nackpacket->na_srv_idx].state() == SERV_DEAD) {
+	if (otherservers[nackpacket->na_srv_idx].zs_state == SERV_DEAD) {
 #if 0
 		zdbug((LOG_DEBUG, "cancelling send to dead server"));
 #endif
@@ -1675,7 +1749,7 @@ requeue:
 	/* reset the timer */
 	nackpacket->na_timer = timer_set_rel(srv_rexmit_secs,
 					     srv_rexmit,
-					     (caddr_t) nackpacket);
+					     (void *) nackpacket);
 	return;
 }
 
@@ -1685,7 +1759,8 @@ requeue:
  */
 
 static void
-srv_nack_release(ZServerDesc_t *server)
+srv_nack_release(server)
+     ZServerDesc_t *server;
 {
 	/* XXX release any private queue for this server */
 
@@ -1716,7 +1791,8 @@ srv_nack_release(ZServerDesc_t *server)
  */
 
 static void
-srv_nack_renumber (register int* new_idx)
+srv_nack_renumber (new_idx)
+     register int* new_idx;
 {
     /* XXX release any private queue for this server */
 
@@ -1740,8 +1816,12 @@ srv_nack_renumber (register int* new_idx)
  * Queue this notice to be transmitted to the server when it is ready.
  */
 static void
-server_queue(ZServerDesc_t *server, int len, caddr_t pack, int auth,
-	     struct sockaddr_in *who)
+server_queue(server, len, pack, auth, who)
+     ZServerDesc_t *server;
+     int len;
+     caddr_t pack;
+     int auth;
+     struct sockaddr_in *who;
 {
 	register ZSrvPending_t *pending;
 
@@ -1773,7 +1853,8 @@ server_queue(ZServerDesc_t *server, int len, caddr_t pack, int auth,
  */
 
 ZSrvPending_t *
-server_dequeue(register ZServerDesc_t *server)
+server_dequeue(server)
+     register ZServerDesc_t *server;
 {
 	ZSrvPending_t *pending;
 	
@@ -1795,7 +1876,8 @@ server_dequeue(register ZServerDesc_t *server)
  */
 
 void
-server_pending_free(register ZSrvPending_t *pending)
+server_pending_free(pending)
+     register ZSrvPending_t *pending;
 {
 	xfree(pending->pend_packet);
 	xfree(pending);
@@ -1808,7 +1890,10 @@ server_pending_free(register ZSrvPending_t *pending)
  */
 
 void
-server_self_queue(ZNotice_t* notice, int auth, sockaddr_in * who)
+server_self_queue(notice, auth, who)
+     ZNotice_t* notice;
+     int auth;
+     struct sockaddr_in * who;
 {
 	caddr_t pack;
 	int packlen;
@@ -1831,14 +1916,15 @@ server_self_queue(ZNotice_t* notice, int auth, sockaddr_in * who)
  * (true if called from signal handler)
  */
 void
-server_dump_servers(FILE *fp)
+server_dump_servers(fp)
+     FILE *fp;
 {
 	register int i;
 
 	for (i = 0; i < nservers ; i++) {
 		(void) fprintf(fp, "%d:%s/%s%s\n",
 			       i, otherservers[i].addr,
-			       srv_states[(int) otherservers[i].state()],
+			       srv_states[(int) otherservers[i].zs_state],
 			       otherservers[i].zs_dumping ? " (DUMPING)" : "");
 	}
 

@@ -17,9 +17,11 @@
  */
 
 #ifndef lint
+#ifndef SABER
 static char *rcsid_rd_req_c =
-    "$Header$";
+    "$Id$";
 #endif /* lint */
+#endif /* SABER */
 
 #ifdef KERBEROS
 #ifndef NOENCRYPTION

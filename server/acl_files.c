@@ -21,9 +21,11 @@
 
 #include <zephyr/mit-copyright.h>
 
+#ifndef SABER
 #ifndef lint
 static char rcsid_acl_files_c[] = "$Id$";
-#endif lint
+#endif /* lint */
+#endif /* SABER */
 
 /*** Routines for manipulating access control list files ***/
 
@@ -63,10 +65,11 @@ extern time_t time();
 /* Canonicalized form is put in canon, which must be big enough to hold
    MAX_PRINCIPAL_SIZE characters */
 acl_canonicalize_principal(principal, canon)
-char *principal;
-char *canon;
+      char *principal;
+     char *canon;
 {
-    char *dot, *atsign, *end;
+    char *end;
+    char *dot, *atsign;
     int len;
 
     dot = index(principal, INST_SEP);
@@ -234,9 +237,10 @@ FILE *f;
 /* Creates the file with permissions perm if it does not exist */
 /* Erases it if it does */
 /* Returns return value of acl_commit */
-int acl_initialize(acl_file, perm)
-char *acl_file;
-int perm;
+int
+acl_initialize(acl_file, perm)
+      char *acl_file;
+     int perm;
 {
     FILE *new;
     int fd;
@@ -306,8 +310,9 @@ destroy_hash(h)
 }
 
 /* Compute hash value for a string */
-static unsigned hashval(s)
-register char *s;
+static unsigned int
+hashval(s)
+      char *s;
 {
     register unsigned hv;
 
@@ -354,9 +359,10 @@ char *el;
 }
 
 /* Returns nonzero if el is in h */
-static check_hash(h, el)
-struct hashtbl *h;
-char *el;
+static int
+check_hash(h, el)
+     struct hashtbl *h;
+      char *el;
 {
     unsigned hv;
 
@@ -394,9 +400,9 @@ static int acl_cache_next = 0;
 /* Returns index into acl_cache otherwise */
 /* Note that if acl is already loaded, this is just a lookup */
 int acl_load(name)
-char *name;
+      char *name;
 {
-    int i,fd;
+    int i;
     FILE *f;
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];
@@ -457,6 +463,7 @@ char *name;
  * This destroys all cached ACL's so that new ones will be loaded in
  * the next time they are requested.
  */
+void
 acl_cache_reset()
 {
 	int	i;
@@ -475,8 +482,8 @@ acl_cache_reset()
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Principal is not canonicalized, and no wildcarding is done */
 acl_exact_match(acl, principal)
-char *acl;
-char *principal;
+      char *acl;
+      char *principal;
 {
     int idx;
 
@@ -490,9 +497,10 @@ char *principal;
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Recognizes wildcards in acl of the form
    name.*@realm, *.*@realm, and *.*@* */
+int
 acl_check(acl, principal)
-char *acl;
-char *principal;
+      char *acl;
+      char *principal;
 {
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];
@@ -520,9 +528,10 @@ char *principal;
 #ifdef notdef
 /* Adds principal to acl */
 /* Wildcards are interpreted literally */
+int
 acl_add(acl, principal)
-char *acl;
-char *principal;
+      char *acl;
+      char *principal;
 {
     int idx;
     int i;
@@ -554,9 +563,10 @@ char *principal;
 
 /* Removes principal from acl */
 /* Wildcards are interpreted literally */
+int
 acl_delete(acl, principal)
-char *acl;
-char *principal;
+      char *acl;
+      char *principal;
 {
     int idx;
     int i;
