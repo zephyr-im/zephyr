@@ -17,7 +17,7 @@
 
 #ifndef lint
 static char rcsid_zlocate_c[] = "$Header$";
-#endif lint
+#endif /* lint */
 
 /*
  * Copyright (c) 1980 Regents of the University of California.
