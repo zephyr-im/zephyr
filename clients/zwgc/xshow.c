@@ -366,6 +366,7 @@ void xshow(dpy, desc, numstr, numnl)
     int nextblock=0;
     int line=0,linestart=0;
     char *style;
+    int free_style = 0;
     int beepcount = 0;
 
     lines = (xlinedesc *)malloc(sizeof(xlinedesc)*(numnl+1));
@@ -388,6 +389,7 @@ void xshow(dpy, desc, numstr, numnl)
        style = string_Concat2(style,".");
        style = string_Concat2(style,no_dots_downcase_var("sender"));
        string_Downcase(style);
+       free_style = 1;
     }
 
     for (; desc->code!=DT_EOF; desc=desc->next) {
@@ -526,6 +528,8 @@ void xshow(dpy, desc, numstr, numnl)
 		   beepcount);
     free(lines);
     free(auxblocks);
+    if (free_style)
+      free(style);
 }
 
 static void xhandleevent(dpy, w, event)
