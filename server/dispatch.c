@@ -20,6 +20,10 @@ static char rcsid_dispatch_c[] = "$Header$";
 #endif lint
 
 #include "zserver.h"
+#include <sys/socket.h>
+#ifdef lint
+#include <sys/uio.h>			/* so it shuts up */
+#endif lint
 
 /*
  *
@@ -64,6 +68,109 @@ char *pktypes[] = {
 #endif DEBUG
 
 /*
+ * Handle an input packet.
+ * Warning: this function may be called from within a brain dump.
+ */
+
+void
+handle_packet()
+{
+	Code_t status;
+	ZPacket_t input_packet;		/* from the network */
+	ZNotice_t new_notice;		/* parsed from input_packet */
+	int input_len;			/* len of packet */
+	struct sockaddr_in input_sin;	/* constructed for authent */
+	struct sockaddr_in whoisit;	/* for holding peer's address */
+	int authentic;			/* authentic flag */
+	ZSrvPending_t *pending;		/* pending packet */
+	ZHostList_t *host;		/* host ptr */
+
+	/* handle traffic */
+				
+	if (otherservers[me_server_idx].zs_update_queue) {
+		/* something here for me; take care of it */
+		zdbug((LOG_DEBUG, "internal queue process"));
+
+		pending = otherservers[me_server_idx].zs_update_queue->q_forw;
+		host = hostm_find_host(&(pending->pend_who.sin_addr));
+		if (host && host->zh_locked) {
+			/* can't deal with it now. to preserve ordering,
+			   we can't process other packets, esp. since we
+			   may block since we don't really know if there
+			   are things in the real queue. */
+			zdbug((LOG_DEBUG,"host %s is locked",
+			       inet_ntoa(host->zh_addr.sin_addr)));
+			return;
+		}
+		pending = server_dequeue(me_server); /* we can do it, remove */
+
+		if (status = ZParseNotice(pending->pend_packet,
+					  pending->pend_len,
+					  &new_notice)) {
+			syslog(LOG_ERR,
+			       "bad notice parse (%s): %s",
+			       inet_ntoa(pending->pend_who.sin_addr),
+			       error_message(status));
+		} else
+			dispatch(&new_notice, pending->pend_auth,
+				 &pending->pend_who);
+		server_pending_free(pending);
+		return;
+	}
+	/* 
+	 * nothing in internal queue, go to the external library
+	 * queue/socket
+	 */
+	if (status = ZReceivePacket(input_packet,
+				    sizeof(input_packet),
+				    &input_len,
+				    &whoisit)) {
+		syslog(LOG_ERR,
+		       "bad packet receive: %s",
+		       error_message(status));
+		return;
+	}
+	npackets++;
+	if (status = ZParseNotice(input_packet,
+				  input_len,
+				  &new_notice)) {
+		syslog(LOG_ERR,
+		       "bad notice parse (%s): %s",
+		       inet_ntoa(whoisit.sin_addr),
+		       error_message(status));
+		return;
+	}
+	if (server_which_server(&whoisit)) {
+		/* we need to parse twice--once to get
+		   the source addr, second to check
+		   authentication */
+		bzero((caddr_t) &input_sin,
+		      sizeof(input_sin));
+		input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
+		input_sin.sin_port = new_notice.z_port;
+		input_sin.sin_family = AF_INET;
+		authentic = ZCheckAuthentication(&new_notice,
+						 input_packet,
+						 &input_sin);
+	}
+	else
+		authentic = ZCheckAuthentication(&new_notice,
+						 input_packet,
+						 &whoisit);
+	if (whoisit.sin_port != hm_port &&
+	    strcmp(new_notice.z_class,ZEPHYR_ADMIN_CLASS) &&
+	    whoisit.sin_port != sock_sin.sin_port &&
+	    new_notice.z_kind != CLIENTACK) {
+		syslog(LOG_ERR,
+		       "bad port %s/%d",
+		       inet_ntoa(whoisit.sin_addr),
+		       ntohs(whoisit.sin_port));
+		return;
+	}
+	dispatch(&new_notice, authentic, &whoisit);
+	return;
+}
+/*
  * Dispatch a notice.
  */
 
@@ -73,6 +180,8 @@ register ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
 {
+	Code_t status;
+	int dispatched = 0;
 
 	if ((int) notice->z_kind < (int) UNSAFE ||
 	    (int) notice->z_kind > (int) CLIENTACK) {
@@ -103,25 +212,30 @@ struct sockaddr_in *who;
 		return;
 	}
 	if (server_which_server(who)) {
-		server_dispatch(notice, auth, who);
-		return;
+		status = server_dispatch(notice, auth, who);
+		dispatched = 1;
 	} else if (class_is_hm(notice)) {
-		hostm_dispatch(notice, auth, who, me_server);
-		return;
+		status = hostm_dispatch(notice, auth, who, me_server);
+		dispatched = 1;
 	} else if (class_is_control(notice)) {
-		control_dispatch(notice, auth, who, me_server);
-		return;
+		status = control_dispatch(notice, auth, who, me_server);
+		dispatched = 1;
 	} else if (class_is_ulogin(notice)) {
-		ulogin_dispatch(notice, auth, who, me_server);
-		return;
+		status = ulogin_dispatch(notice, auth, who, me_server);
+		dispatched = 1;
 	} else if (class_is_ulocate(notice)) {
-		ulocate_dispatch(notice, auth, who, me_server);
-		return;
+		status = ulocate_dispatch(notice, auth, who, me_server);
+		dispatched = 1;
 	} else if (class_is_admin(notice)) {
-		server_adispatch(notice, auth, who, me_server);
-		return;
+		status = server_adispatch(notice, auth, who, me_server);
+		dispatched = 1;
 	}
 
+	if (dispatched) {
+		if (status == ZSRV_REQUEUE)
+			server_self_queue(notice, auth, who);
+		return;
+	}
 	/* oh well, do the dirty work */
 	sendit(notice, auth, who);
 }
