@@ -5,7 +5,7 @@
  */
 
 #ifndef lint
-static char *rcsid_kstuff_c = "$Header$";
+static char rcsid_kstuff_c[] = "$Header$";
 #endif lint
 
 #include "zserver.h"
