@@ -91,13 +91,14 @@ AC_SUBST(SLIB)
 
 ATHENA_KRB4
 ATHENA_HESIOD
-LIBS="$LIBS $KRB4_LIBS $HESIOD_LIBS"
+ATHENA_REGEXP
+LIBS="$KRB4_LIBS $HESIOD_LIBS $LIBS"
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(putenv re_comp strchr memcpy memmove waitpid getlogin)
-AC_CHECK_FUNCS(strerror random lrand48 gethostid krb_get_err_text krb_log)
+AC_CHECK_FUNCS(putenv strchr memcpy memmove waitpid getlogin strerror random)
+AC_CHECK_FUNCS(lrand48 gethostid krb_get_err_text krb_log)
 
 AC_CONFIG_HEADER(h/config.h)
 AC_OUTPUT(Makefile clients/Makefile clients/syslogd/Makefile
