@@ -2,7 +2,7 @@ zephyr (2.1.20000421.SNAPSHOT-14) unstable; urgency=low
 
   * Fix typo,  closes: #100465 [hartmans]
 
- --
+ -- Sam Hartman <hartmans@debian.org>  Sun, 10 Jun 2001 23:21:32 -0400
 
 zephyr (2.1.20000421.SNAPSHOT-13) unstable; urgency=low
 
