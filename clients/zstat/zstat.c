@@ -35,6 +35,12 @@ char *head[20] = { "Current server =",
 		     "Size:",
 		     "Machine type:"
 };
+char *srv_head[20] = { 
+	"Current server version =",
+	"Packets handled:",
+	"Uptime:",
+	"Server states:",
+};
 
 int serveronly = 0,hmonly = 0;
 u_short hm_port,srv_port;
@@ -215,11 +221,14 @@ hm_stat(host,server)
 srv_stat(host)
 	char *host;
 {
-	int sock,ret;
+	char *line[20],*mp;
+	int sock,i,nf,ret;
 	struct hostent *hp;
 	struct sockaddr_in sin;
 	ZNotice_t notice;
 	ZPacket_t packet;
+	long runtime;
+	struct tm *tim;
 	
 	bzero(&sin,sizeof(struct sockaddr_in));
 
@@ -264,8 +273,29 @@ srv_stat(host)
 		exit(1);
 	}
 
-	printf("%s\n",notice.z_message);
+	mp = notice.z_message;
+	for (nf=0;mp<notice.z_message+notice.z_message_len;nf++) {
+		line[nf] = mp;
+		mp += strlen(mp)+1;
+	}
 
+	for (i=0; i<nf; i++) {
+		if (i < 2)
+			printf("%s %s\n",srv_head[i],line[i]);
+		else if (i == 2) { /* uptime field */
+			runtime = atol(line[i]);
+			tim = gmtime(&runtime);
+			printf("%s %d days, %02d:%02d:%02d\n",
+			       srv_head[i],
+			       tim->tm_yday,
+			       tim->tm_hour,
+			       tim->tm_min,
+			       tim->tm_sec);
+		} else if (i == 3) {
+			printf("%s\n",srv_head[i]);
+			printf("%s\n",line[i]);
+		} else printf("%s\n",line[i]);
+	}
 	close(sock);
 }
 
