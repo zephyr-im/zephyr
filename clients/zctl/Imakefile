@@ -18,9 +18,6 @@ LINCLUDES=-I$(BUILDTOP)/ss
 
 normal_obj_rule()
 
-command_table(zctl_cmds)
-
 program(zctl,${OBJS},,${LIBS},${CLIENTDIR})
 
-clean::
-	rm -f zctl_cmds.ct.o
+command_table_noprof(zctl_cmds)
