@@ -313,7 +313,7 @@ char *msg;
       if (use_zephyr) {
 	    real_message = (char *) malloc(strlen(msg) +
 					   strlen(reminder_message) + 2);
-	    sprintf(real_message,"%s%c%s",msg,'\0',reminder_message);
+	    sprintf(real_message,"%c%s\n%s",'\0',msg,reminder_message);
 
 	    (void) bzero((char *)&notice, sizeof(notice));
 	    notice.z_kind = ACKED;
@@ -323,9 +323,10 @@ char *msg;
 	    notice.z_recipient = ZGetSender();
 	    notice.z_opcode = "";
 	    notice.z_sender = (char *) 0;
-	    notice.z_default_format = "\n$1\n$2";
+	    notice.z_default_format = "\n$2";
 	    notice.z_message = real_message;
-	    notice.z_message_len = strlen(msg)+strlen(reminder_message)+2;
+	    /* +3: initial null, newline, final null */
+	    notice.z_message_len = strlen(msg)+strlen(reminder_message)+3;
 	    
 	    if (ZSendNotice(&notice, ZAUTH) != ZERR_NONE) {
 		  printf("\7\7\7%s\n%s", msg, reminder_message);
