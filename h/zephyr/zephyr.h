@@ -47,6 +47,11 @@ typedef char ZPacket_t[Z_MAXPKTLEN];
 	/* Maximum number of unknown fields in ZNotice_t */
 #define Z_MAXOTHERFIELDS	10
 
+	/* Authentication levels returned by ZCheckAuthentication */
+#define ZAUTH_FAILED    (-1)
+#define ZAUTH_YES       1
+#define ZAUTH_NO        0
+
 	/* Packet type */
 typedef enum { UNSAFE, UNACKED, ACKED, HMACK, HMCTL, SERVACK, SERVNAK,
 		   CLIENTACK, STAT } ZNotice_Kind_t;
