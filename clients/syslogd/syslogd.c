@@ -89,6 +89,9 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #ifdef POSIX
 #include <termios.h>
 #endif
+#ifdef __NetBSD__ /* HAVE_PATHS_H */
+#include <paths.h>
+#endif
 
 #include <zephyr/zephyr.h>
 
@@ -104,15 +107,22 @@ extern char *sys_errlist[];
 #define sighandler_type int
 #endif
 
+#ifdef _PATH_VARRUN
+#define PIDDIR _PATH_VARRUN
+#else
+#define PIDDIR "/etc/"
+#endif
+
+#ifdef COMPAT42
+#define COMPAT_PREFIX "n"
+#else
+#define COMPAT_PREFIX ""
+#endif
+
 #define	CTTY	"/dev/console"
 char	*LogName = "/dev/log";
-#ifdef COMPAT42
-char	*ConfFile = "/etc/nsyslog.conf";
-char	*PidFile = "/etc/nsyslog.pid";
-#else /* !COMPAT42 */
-char	*ConfFile = "/etc/syslog.conf";
-char	*PidFile = "/etc/syslog.pid";
-#endif /* COMPAT42 */
+char	*ConfFile = "/etc/" COMPAT_PREFIX "syslog.conf";
+char	*PidFile = PIDDIR COMPAT_PREFIX "syslog.pid";
 char	ctty[] = CTTY;
 
 #define FDMASK(fd)	(1 << (fd))
@@ -243,9 +253,9 @@ struct code	FacNames[] = {
 	"lpr",		LOG_LPR,
 	"news",		LOG_NEWS,
 	"uucp",		LOG_UUCP,
-	"reserved",     -1,
-	"reserved",     -1,
-	"reserved",     -1,
+	"cron",		LOG_CRON,
+	"authpriv",	LOG_AUTHPRIV,
+	"ftp",		LOG_FTP,
 	"reserved",     -1,
 	"reserved",     -1,
 	"reserved",     -1,
