@@ -290,7 +290,7 @@ bdump_send()
     }
     if (strcmp(kdata.pname, SERVER_SERVICE) ||
 	strcmp(kdata.pinst, SERVER_INSTANCE) ||
-	strcmp(kdata.prealm, ZGetRealm())) {
+	strcmp(kdata.prealm, my_realm)) {
 	syslog(LOG_ERR, "bdump_send: peer not zephyr: %s.%s@%s",
 	       kdata.pname, kdata.pinst, kdata.prealm);
 	cleanup(server);
@@ -598,6 +598,7 @@ bdump_send_list_tcp(kind, addr, class_name, inst, opcode, sender, recip, lyst,
     notice.z_sender = sender;
     notice.z_recipient = recip;
     notice.z_default_format = "";
+    notice.z_dest_realm = "";
     notice.z_num_other_fields = 1;
     notice.z_other_fields[0] = addrbuf;
  
@@ -711,8 +712,8 @@ get_tgt()
 #endif
 	dest_tkt();
 
-	retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, ZGetRealm(),
-				    "krbtgt", ZGetRealm(),
+	retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, my_realm,
+				    "krbtgt", my_realm,
 				    TKTLIFETIME, srvtab_file);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR,"get_tgt: krb_get_svc_in_tkt: %s",
@@ -725,7 +726,7 @@ get_tgt()
 
 #ifndef NOENCRYPTION
 	retval = read_service_key(SERVER_SERVICE, SERVER_INSTANCE,
-				  ZGetRealm(), 0 /*kvno*/,
+				  my_realm, 0 /*kvno*/,
 				  srvtab_file, serv_key);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
@@ -983,6 +984,7 @@ send_list(kind, port, class_name, inst, opcode, sender, recip, lyst, num)
     notice.z_opcode = opcode;
     notice.z_sender = sender;
     notice.z_recipient = recip;
+    notice.z_dest_realm = "";
     notice.z_default_format = "";
     notice.z_num_other_fields = 0;
 	
@@ -1023,6 +1025,7 @@ send_normal_tcp(kind, port, class_name, inst, opcode, sender, recip,
     notice.z_opcode = opcode;
     notice.z_sender = sender;
     notice.z_recipient = recip;
+    notice.z_dest_realm = "";
     notice.z_default_format = "";
     notice.z_message = message;
     notice.z_message_len = len;

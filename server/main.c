@@ -129,7 +129,7 @@ main(argc, argv)
 {
     int nfound;			/* #fildes ready on select */
     fd_set readable;
-    struct timeval tv;
+    struct timeval tv, *ptv;
     int init_from_dump = 0;
     char *dumpfile;
 #ifdef _POSIX_VERSION
@@ -314,13 +314,20 @@ main(argc, argv)
 	    dump_strings();
 
 	readable = interesting;
+	
+	/* remove and process runnable timers from the head of the queue */
+
+	while ((ptv = timer_timeout(&tv)) &&
+	       tv.tv_sec == 0)
+	   timer_process();
+	   
 	if (msgs_queued()) {
 	    /* when there is input in the queue, we
 	       artificially set up to pick up the input */
 	    nfound = 1;
 	    FD_ZERO(&readable);
 	} else  {
-	    nfound = select(nfds, &readable, NULL, NULL, timer_timeout(&tv));
+	    nfound = select(nfds, &readable, NULL, NULL, ptv);
 	}
 
 	/* Initialize t_local for other uses */

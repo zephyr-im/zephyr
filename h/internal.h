@@ -59,17 +59,29 @@ typedef struct _Z_HostNameAddr {
    struct in_addr addr;
 } Z_HostNameAddr;
 
-typedef struct _Z_RealmInfo {
+typedef struct _Z_RealmConfig {
    char *realm;
    Z_HostNameAddr *server_list;
    int nservers;
 } Z_RealmConfig;
 
+typedef struct _Z_RealmList {
+   Z_RealmConfig realm_config;
+#ifdef ZEPHYR_USES_KERBEROS
+   char krealm[REALM_SZ];
+   long last_authent_time;
+   KTEXT_ST last_authent;
+#endif
+} Z_RealmList;
+
 extern struct _Z_InputQ *__Q_Head, *__Q_Tail;
 
 extern int __Zephyr_open;	/* 0 if FD opened, 1 otherwise */
-extern int __HM_set;		/* 0 if dest addr set, 1 otherwise */
 extern int __Zephyr_server;	/* 0 if normal client, 1 if server or zhm */
+
+extern Z_RealmList *__realm_list;
+extern int __nrealms;
+extern int __default_realm;
 
 extern ZLocations_t *__locate_list;
 extern int __locate_num;
@@ -91,7 +103,7 @@ Code_t Z_AddNoticeToEntry __P((struct _Z_InputQ*, ZNotice_t*, int));
 Code_t Z_FormatAuthHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
 Code_t Z_FormatHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
 Code_t Z_FormatRawHeader __P((ZNotice_t *, char*, int,
-			      int*, int*, char **, char **));
+			      int*, char **, int*, char **, char **));
 Code_t Z_FreeRealmConfig(Z_RealmConfig *);
 Code_t Z_ParseRealmConfig(char *, Z_RealmConfig *);
 Code_t Z_ReadEnqueue __P((void));

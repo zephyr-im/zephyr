@@ -145,8 +145,12 @@ int ZCompareMultiUIDPred ZP((ZNotice_t *, void *));
 typedef Code_t (*Z_AuthProc) ZP((ZNotice_t*, char *, int, int *));
 Code_t ZMakeAuthentication ZP((ZNotice_t*, char *,int, int*));
 
+char *ZGetDefaultRealm ZP((void));
+char *ZGetRhs ZP((char *));
 char *ZGetSender ZP((void));
 char *ZGetVariable ZP((char *));
+Code_t ZGetRealmCount ZP((int *));
+Code_t ZGetRealmName ZP((int, char **));
 Code_t ZSetVariable ZP((char *var, char *value));
 Code_t ZUnsetVariable ZP((char *var));
 int ZGetWGPort ZP((void));
@@ -234,20 +238,9 @@ void Z_debug ZP((ZCONST char *, ...));
 extern int __Zephyr_fd;
 extern int __Q_CompleteLength;
 extern struct sockaddr_in __HM_addr;
-extern char __Zephyr_realm[];
 #define ZGetFD()	__Zephyr_fd
 #define ZQLength()	__Q_CompleteLength
 #define ZGetDestAddr()	__HM_addr
-#define ZGetRealm()	__Zephyr_realm
-
-#ifdef ZEPHYR_USES_KERBEROS
-/* Session key for last parsed packet - server only */
-extern C_Block __Zephyr_session;
-#define ZGetSession() (__Zephyr_session)
-#else
-#define __Zephyr_realm ("local-realm")
-#endif
-
 
 #ifdef Z_DEBUG
 void ZSetDebug ZP((void (*)(ZCONST char *, va_list, void *), void *));

@@ -74,7 +74,7 @@ int zeph_locateable(user)
      int   n;
 
      if (strchr(user, '@') == NULL)
-	  sprintf(buf, "%s@%s", user, ZGetRealm());
+	  sprintf(buf, "%s@%s", user, ZGetRhs(NULL));
      ZLocateUser(buf, &n, ZAUTH);
      return (!! n);
 }
@@ -88,7 +88,7 @@ void zeph_subto_logins(users, num)
      char		*name, *realm;
      int        	rlen, c = 0;
 
-     realm = ZGetRealm();
+     realm = ZGetRhs(NULL);
      rlen = strlen(realm);
      sublist = (ZSubscription_t *) Malloc(num*sizeof(ZSubscription_t),
 					  "while subscribing to logins", NULL);

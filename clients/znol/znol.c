@@ -155,7 +155,7 @@ main(argc,argv)
 		if (!strchr(name,'@')) {
 			cp = name + strlen(name);
 			*cp++ = '@';
-			(void) strcpy(cp,ZGetRealm());
+			(void) strcpy(cp, ZGetRhs(NULL));
 		}
 		if ((subs[ind].zsub_classinst = malloc((unsigned)(strlen(name)+1))) == NULL) {
 			fprintf (stderr, "znol: out of memory");

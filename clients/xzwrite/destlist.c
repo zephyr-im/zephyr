@@ -372,7 +372,7 @@ void dest_add_reply(notice)
 	  char *r;
 
 	  r = strchr(notice->z_sender, '@');
-	  if (r && ! strcmp(r+1, ZGetRealm()))
+	  if (r && ! strcmp(r+1, ZGetRhs(NULL)))
 	       *r = '\0';
      }
      

@@ -73,6 +73,7 @@ main(argc,argv)
     char user[BUFSIZ],*whichuser;
     ZAsyncLocateData_t ald;
     int retval,i,numlocs,numfound,loc,auth;
+    char *realm;
     ZNotice_t notice;
 #ifdef _POSIX_VERSION
     struct sigaction sa;
@@ -101,6 +102,12 @@ main(argc,argv)
 	    case '1':
 		oneline = 1;
 		break;
+	    case 'R':
+		if (i+1 == argc)
+		    usage();
+		realm = argv[i+1];
+		i++;
+		break;
 	    default:
 		usage();
 		break;
@@ -123,22 +130,28 @@ main(argc,argv)
 
     i = 0;
     for (loc = 0; loc < argc; loc++) {
-	if (argv[loc][0] == '-') continue;
+	if (argv[loc][0] == '-') {
+	   if (argv[loc][1] == 'R')
+	      loc++;
+	   continue;
+	}
 
 	(void) strcpy(user,argv[loc]);
 	if (!strchr(user,'@')) {
 	    (void) strcat(user,"@");
-	    (void) strcat(user,ZGetRealm());
+	    (void) strcat(user,ZGetRhs(NULL));
 	} 
 	if (parallel) {
-	    if ((retval = ZRequestLocations(user, &ald, i ? UNSAFE : UNACKED,
+	    if ((retval = ZRequestLocations(realm, user, &ald,
+					    i ? UNSAFE : UNACKED,
 					    auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
 		com_err(whoami,retval,"requesting location of %s",user);
 		exit(1);
 	    }
 	    i = 1;
 	} else {
-	    if ((retval = ZLocateUser(user,&numlocs,auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
+	    if ((retval = ZLocateUser(realm, user,&numlocs,
+				      auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
 		com_err(whoami,retval,"while locating user %s",user);
 		exit(1);
 	    }

@@ -139,17 +139,6 @@ AC_SUBST(TLIB)
 AC_SUBST(RLIB)
 AC_SUBST(SLIB)
 
-if test "$hesiod" != "no"; then
-	if test "$hesiod" != "yes"; then
-		CPPFLAGS="${CPPFLAGS} -I${hesiod}/include"
-		LDFLAGS="${LDFLAGS} -L${hesiod}/lib"
-	fi
-	AC_DEFINE(ZEPHYR_USES_HESIOD)
-	AC_CHECK_LIB(hesiod, hes_resolve, LIBS="-lhesiod ${LIBS}",
-		     [AC_CHECK_FUNC(hes_resolve),,
-		      AC_ERROR(Hesiod library not found)])
-fi
-
 if test "$kerberos" != "no"; then
 	if test "$kerberos" != "yes"; then
 		CPPFLAGS="${CPPFLAGS} -I${kerberos}/include"
@@ -161,6 +150,17 @@ if test "$kerberos" != "no"; then
 	LIBS="-lkrb -ldes ${LIBS}"
 else
 	AC_WARN(compiling without Kerberos support; Zephyr will be insecure.)
+fi
+
+if test "$hesiod" != "no"; then
+	if test "$hesiod" != "yes"; then
+		CPPFLAGS="${CPPFLAGS} -I${hesiod}/include"
+		LDFLAGS="${LDFLAGS} -L${hesiod}/lib"
+	fi
+	AC_DEFINE(ZEPHYR_USES_HESIOD)
+	AC_CHECK_LIB(hesiod, hes_resolve, LIBS="-lhesiod ${LIBS}",
+		     [AC_CHECK_FUNC(hes_resolve),,
+		      AC_ERROR(Hesiod library not found)])
 fi
 
 dnl Checks for library functions.

@@ -341,7 +341,7 @@ krb_rd_req(authent,service,instance,from_addr,ad,fn)
 
     if (decomp_ticket(tkt, &ad->k_flags, ad->pname, ad->pinst, ad->prealm,
                       &(ad->address), ad->session, &(ad->life),
-                      &(ad->time_sec), sname, iname, serv_key, serv_ksched.s))
+                      &(ad->time_sec), sname, iname, serv_key, serv_ksched))
         return RD_AP_UNDEC;
 
     if (krb_ap_req_debug) {
@@ -585,7 +585,7 @@ decomp_ticket(tkt, flags, pname, pinstance, prealm, paddress, session,
     ptr += strlen(prealm) + 1;
     /* temporary hack until realms are dealt with properly */
     if (*prealm == 0)
-	strcpy(prealm, ZGetRealm());
+	strcpy(prealm, my_realm);
 
     memcpy((char *)paddress, ptr, 4); /* net address */
     ptr += 4;

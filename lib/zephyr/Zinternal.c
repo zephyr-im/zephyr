@@ -37,7 +37,6 @@ int __Q_Size;
 struct _Z_InputQ *__Q_Head, *__Q_Tail;
 struct sockaddr_in __HM_addr;
 struct sockaddr_in __HM_addr_real;
-int __HM_set;
 int __Zephyr_server;
 ZLocations_t *__locate_list;
 int __locate_num;
@@ -46,10 +45,9 @@ ZSubscription_t *__subscriptions_list;
 int __subscriptions_num;
 int __subscriptions_next;
 
-#ifdef ZEPHYR_USES_KERBEROS
-C_Block __Zephyr_session;
-char __Zephyr_realm[REALM_SZ];
-#endif
+Z_RealmList *__realm_list;
+int __nrealms;
+int __default_realm;
 
 #ifdef Z_DEBUG
 void (*__Z_debug_print) __P((const char *fmt, va_list args, void *closure));
@@ -162,7 +160,6 @@ Code_t Z_GetMyAddr()
     return (ZERR_NONE);
 } 
 
-
 /* Return 1 if there is a packet waiting, 0 otherwise */
 
 int Z_PacketWaiting()
@@ -254,10 +251,9 @@ Code_t Z_ReadWait()
     ZNotice_t notice;
     ZPacket_t packet;
     struct sockaddr_in olddest, from;
-    int from_len, packet_len, part, partof;
+    int i, j, from_len, packet_len, part, partof;
     char *slash;
     Code_t retval;
-    register int i;
 
     if (ZGetFD() < 0)
 	return (ZERR_NOPORT);
@@ -313,8 +309,20 @@ Code_t Z_ReadWait()
 	if (find_or_insert_uid(&notice.z_uid, notice.z_kind))
 	    return(ZERR_NONE);
 
-	/* Check authentication on the notice. */
-	notice.z_checked_auth = ZCheckAuthentication(&notice, &from);
+	notice.z_dest_realm = "unknown-realm";
+
+	for (i=0; i<__nrealms; i++)
+	    for (j=0; j<__realm_list[i].realm_config.nservers; j++)
+		if (from.sin_addr.s_addr ==
+		    __realm_list[i].realm_config.server_list[j].addr.s_addr) {
+		    notice.z_dest_realm = __realm_list[i].realm_config.realm;
+		    break;
+		}
+
+	if ((notice.z_kind != HMACK) && (notice.z_kind != SERVACK)) {
+	   /* Check authentication on the notice. */
+	   notice.z_checked_auth = ZCheckAuthentication(&notice, &from);
+	}
     }
 
 
@@ -606,8 +614,6 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     Z_AuthProc cert_routine;
 {
     Code_t retval;
-    static char version_realm[BUFSIZ]; /* default init should be all \0 */
-    static char version_norealm[BUFSIZ]; /* default init should be all \0 */
     struct sockaddr_in name;
     int namelen = sizeof(name);
 
@@ -639,18 +645,6 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
 
     notice->z_multiuid = notice->z_uid;
 
-    if (notice->z_dest_realm && *notice->z_dest_realm) {
-	if (!version_realm[0])
-	    (void) sprintf(version_realm, "%s%d.%d", ZVERSIONHDR,
-			   ZVERSIONMAJOR, ZVERSIONMINOR_REALM);
-	notice->z_version = version_realm;
-    } else {
-	if (!version_norealm[0])
-	    (void) sprintf(version_norealm, "%s%d.%d", ZVERSIONHDR,
-			   ZVERSIONMAJOR, ZVERSIONMINOR_NOREALM);
-	notice->z_version = version_norealm;
-    }
-
     return Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine);
 }
 
@@ -666,21 +660,25 @@ Code_t Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
 	notice->z_authent_len = 0;
 	notice->z_ascii_authent = "";
 	notice->z_checksum = 0;
-	return (Z_FormatRawHeader(notice, buffer, buffer_len,
-				  len, NULL, NULL, NULL));
+	return (Z_FormatRawHeader(notice, buffer, buffer_len, len,
+				  NULL, NULL, NULL, NULL));
     }
     
     return ((*cert_routine)(notice, buffer, buffer_len, len));
 } 
 	
-Code_t Z_FormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_len,
-			 cstart, cend)
+Code_t Z_FormatRawHeader(notice, buffer, buffer_len, hdr_len,
+			 cksum_start, cksum_len, cstart, cend)
     ZNotice_t *notice;
     char *buffer;
     int buffer_len;
-    int *hdr_len, *cksum_len;
+    int *hdr_len;
+    char **cksum_start;
+    int *cksum_len;
     char **cstart, **cend;
 {
+    static char version_realm[BUFSIZ]; /* default init should be all \0 */
+    static char version_norealm[BUFSIZ]; /* default init should be all \0 */
     char newrecip[BUFSIZ];
     char *ptr, *end;
     int i;
@@ -703,11 +701,33 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_len,
     ptr = buffer;
     end = buffer+buffer_len;
 
-    if (buffer_len < strlen(notice->z_version)+1)
-	return (ZERR_HEADERLEN);
+    if (notice->z_dest_realm &&
+	*notice->z_dest_realm) {
+	if (ZGetRhs(notice->z_dest_realm) == NULL)
+	    return(ZERR_REALMUNKNOWN);
 
-    (void) strcpy(ptr, notice->z_version);
-    ptr += strlen(ptr)+1;
+	if (!version_realm[0])
+	    (void) sprintf(version_realm, "%s%d.%d", ZVERSIONHDR,
+			   ZVERSIONMAJOR, ZVERSIONMINOR_REALM);
+
+	if (Z_AddField(&ptr, version_realm, end))
+	    return (ZERR_HEADERLEN);
+
+	if (Z_AddField(&ptr, notice->z_dest_realm, end))
+	    return (ZERR_HEADERLEN);
+    }
+
+    if (cksum_start)
+	*cksum_start = ptr;
+
+    if (!version_norealm[0])
+	(void) sprintf(version_norealm, "%s%d.%d", ZVERSIONHDR,
+		       ZVERSIONMAJOR, ZVERSIONMINOR_NOREALM);
+
+    notice->z_version = version_norealm;
+
+    if (Z_AddField(&ptr, version_norealm, end))
+	return (ZERR_HEADERLEN);
 
     if (ZMakeAscii32(ptr, end-ptr,
 		     Z_NUMFIELDS + notice->z_num_other_fields)
@@ -751,7 +771,8 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_len,
 	    return (ZERR_HEADERLEN);
     }
     else {
-	(void) sprintf(newrecip, "%s@%s", notice->z_recipient, __Zephyr_realm);
+	(void) sprintf(newrecip, "%s@%s", notice->z_recipient,
+		       ZGetRhs(notice->z_dest_realm));
 	if (Z_AddField(&ptr, newrecip, end))
 	    return (ZERR_HEADERLEN);
     }		
@@ -775,17 +796,9 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_len,
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	
-    for (i=0;i<notice->z_num_other_fields;i++)
-	if (Z_AddField(&ptr, notice->z_other_fields[i], end))
-	    return (ZERR_HEADERLEN);
-    
     if (cksum_len)
-	*cksum_len = ptr-buffer;
+	*cksum_len = ptr-*cksum_start;
 
-    if (notice->z_dest_realm && *notice->z_dest_realm)
-	if (Z_AddField(&ptr, notice->z_dest_realm, end))
-	    return(ZERR_HEADERLEN);
-	
     *hdr_len = ptr-buffer;
 
     return (ZERR_NONE);
@@ -1039,6 +1052,7 @@ Code_t Z_ParseRealmConfig(str, rc)
 	while (*ptra && isspace(*ptra)) ptra++;
 
 	if (*ptra != '\0' && *ptra != '#') {
+	    free(zcluster);
 	    free(rc->realm);
 	    return(ZERR_BADCONF);
 	}
@@ -1070,7 +1084,7 @@ Code_t Z_ParseRealmConfig(str, rc)
 	if (rc->server_list) {
 	    rc->server_list = (Z_HostNameAddr *)
 		realloc(rc->server_list,
-			sizeof(Z_HostNameAddr *)*(rc->nservers+1));
+			sizeof(Z_HostNameAddr)*(rc->nservers+1));
 	} else {
 	    rc->server_list = (Z_HostNameAddr *)
 		malloc(sizeof(Z_HostNameAddr));
@@ -1089,7 +1103,7 @@ Code_t Z_ParseRealmConfig(str, rc)
 	    /* this is clean, but only because hesiod memory management
 	       is gross */
 	    rc->server_list[rc->nservers].name = *hes_serv_list;
-	    serv_list++;
+	    hes_serv_list++;
 	} else
 #endif
 	    if (listtype == HOSTLIST) {
@@ -1188,6 +1202,11 @@ Code_t Z_ParseRealmConfig(str, rc)
 Code_t Z_FreeRealmConfig(rc)
      Z_RealmConfig *rc;
 {
+    int i;
+
+    for (i=0; i<rc->nservers; i++)
+	free(rc->server_list[i].name);
+	
     free(rc->server_list);
     free(rc->realm);
 
@@ -1260,9 +1279,6 @@ int ZQLength () { return __Q_CompleteLength; }
 
 #undef ZGetDestAddr
 struct sockaddr_in ZGetDestAddr () { return __HM_addr; }
-
-#undef ZGetRealm
-Zconst char * ZGetRealm () { return __Zephyr_realm; }
 
 #undef ZSetDebug
 void ZSetDebug(proc, arg)

@@ -41,6 +41,7 @@ static void send_hmctl_notice(ri, op)
      notice.z_sender = "HM";
      notice.z_recipient = "";
      notice.z_default_format = "";
+     notice.z_dest_realm = "";
      notice.z_num_other_fields = 0;
      notice.z_message_len = 0;
   
@@ -198,14 +199,14 @@ void realm_new_server(ri, addr)
     int i;
     int new_server;
 
-    if (ri->state == ATTACHED)
+    if (ri->state == ATTACHED) {
 	disable_realm_retransmits(ri);
-
-    if (ri->current_server != NO_SERVER) {
-	syslog(LOG_INFO, "Server went down, finding new server.");
 	ri->nchange++;
-	send_hmctl_notice(ri, HM_DETACH);
+	syslog(LOG_INFO, "Server went down, finding new server.");
     }
+
+    if (ri->current_server != NO_SERVER)
+	send_hmctl_notice(ri, HM_DETACH);
 
     if (addr) {
 	ri->current_server = EXCEPTION_SERVER;
@@ -217,13 +218,15 @@ void realm_new_server(ri, addr)
 		ri->current_server = i;
 		break;
 	    }
+
+	ri->state = ATTACHING;
     } else if ((new_server = choose_next_server(ri)) == NO_SERVER) {
 	/* the only server went away.  Set a boot timer, try again
 	   later */
-	ri->current_server = NO_SERVER;
-	/* ri->sin doesn't need to be touched */
 
-	ri->state = DEAD_SERVER;
+	ri->current_server = -1;
+
+	ri->state = (ri->state == BOOTING)?NEED_SERVER:DEAD_SERVER;
 	ri->boot_timer = timer_set_rel(DEAD_TIMEOUT, boot_timeout, ri);
 
 	return;
@@ -231,12 +234,11 @@ void realm_new_server(ri, addr)
 	ri->current_server = new_server;
 	ri->sin.sin_addr =
 	    ri->realm_config.server_list[ri->current_server].addr;
+
+	ri->state = (ri->state == NEED_SERVER)?BOOTING:ATTACHING;
     }
 
-    send_hmctl_notice(ri, (ri->state == NEED_SERVER)?HM_BOOT:HM_ATTACH);
-
-    if (ri->state != DEAD_SERVER)
-	ri->state = BOOTING;
+    send_hmctl_notice(ri, (ri->state == BOOTING)?HM_BOOT:HM_ATTACH);
     ri->boot_timer = timer_set_rel(BOOT_TIMEOUT, boot_timeout, ri);
 }
 

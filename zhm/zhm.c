@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/param.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "zhm.h"
 
@@ -457,8 +459,8 @@ static void send_stats(notice, sin)
      ZNotice_t newnotice;
      Code_t ret;
      char *bfr;
-     char *list[20];
-     int len, i, nitems;
+     char **list;
+     int len, i, j, nitems;
      unsigned long size;
 
      newnotice = *notice;
@@ -469,39 +471,76 @@ static void send_stats(notice, sin)
      }
      newnotice.z_kind = HMACK;
 
-     list[0] = (char *) malloc(MAXHOSTNAMELEN);
-     strcpy(list[0], realm_list[0].realm_config.server_list[realm_list[0].current_server].name);
-     list[1] = (char *) malloc(64);
-     sprintf(list[1], "%d", realm_queue_len(&realm_list[0]));
-     list[2] = (char *) malloc(64);
-     sprintf(list[2], "%d", realm_list[0].ncltpkts);
-     list[3] = (char *) malloc(64);
-     sprintf(list[3], "%d", realm_list[0].nsrvpkts);
-     list[4] = (char *) malloc(64);
-     sprintf(list[4], "%d", realm_list[0].nchange);
-     list[5] = (char *) malloc(64);
-     strcpy(list[5], rcsid_hm_c);
-     list[6] = (char *) malloc(64);
-     if (realm_list[0].state == NO_SERVER)
-	  sprintf(list[6], "yes");
-     else
-	  sprintf(list[6], "no");
-     list[7] = (char *) malloc(64);
-     sprintf(list[7], "%ld", (long) (time((time_t *)0) - starttime));
-#ifdef adjust_size
-     size = (unsigned long)sbrk(0);
-     adjust_size (size);
-#else
-     size = -1;
-#endif
-     list[8] = (char *)malloc(64);
-     sprintf(list[8], "%ld", size);
-     list[9] = (char *)malloc(32);
-     strcpy(list[9], MACHINE_TYPE);
-     list[10] = (char *)malloc(64);
-     strcpy(list[10], realm_list[0].realm_config.realm);
+#define NSTATS 12
 
-     nitems = 11;
+     nitems = NSTATS*nrealms;
+
+     list = (char **) malloc(sizeof(char *)*nitems);
+
+     for (i=0; i<nrealms; i++) {
+	list[i*NSTATS] = (char *) malloc(MAXHOSTNAMELEN);
+	if (realm_list[i].current_server == NO_SERVER)
+	    strcpy(list[i*NSTATS+0], "NO_SERVER");
+	else if (realm_list[i].current_server == EXCEPTION_SERVER)
+	    strcpy(list[i*NSTATS+0], inet_ntoa(realm_list[i].sin.sin_addr));
+	else
+	    strcpy(list[i*NSTATS+0],
+		   realm_list[i].realm_config.server_list[realm_list[i].current_server].name);
+	list[i*NSTATS+1] = (char *) malloc(64);
+	sprintf(list[i*NSTATS+1], "%d", realm_queue_len(&realm_list[i]));
+	list[i*NSTATS+2] = (char *) malloc(64);
+	sprintf(list[i*NSTATS+2], "%d", realm_list[i].ncltpkts);
+	list[i*NSTATS+3] = (char *) malloc(64);
+	sprintf(list[i*NSTATS+3], "%d", realm_list[i].nsrvpkts);
+	list[i*NSTATS+4] = (char *) malloc(64);
+	sprintf(list[i*NSTATS+4], "%d", realm_list[i].nchange);
+	list[i*NSTATS+5] = (char *) malloc(64);
+	strcpy(list[i*NSTATS+5], rcsid_hm_c);
+	list[i*NSTATS+6] = (char *) malloc(64);
+	switch (realm_list[i].state) {
+	case NEED_SERVER:
+	    sprintf(list[i*NSTATS+6], "yes (need server)");
+	    break;
+	case DEAD_SERVER:
+	    sprintf(list[i*NSTATS+6], "yes (dead server)");
+	    break;
+	case BOOTING:
+	    sprintf(list[i*NSTATS+6], "yes (booting)");
+	    break;
+	case ATTACHED:
+	    sprintf(list[i*NSTATS+6], "no (attached)");
+	    break;
+	}
+	list[i*NSTATS+7] = (char *) malloc(64);
+	sprintf(list[i*NSTATS+7], "%ld", (long) (time((time_t *)0) - starttime));
+#ifdef adjust_size
+	size = (unsigned long)sbrk(0);
+	adjust_size (size);
+#else
+	size = -1;
+#endif
+	list[i*NSTATS+8] = (char *)malloc(64);
+	sprintf(list[i*NSTATS+8], "%ld", size);
+	list[i*NSTATS+9] = (char *)malloc(32);
+	strcpy(list[i*NSTATS+9], MACHINE_TYPE);
+	list[i*NSTATS+10] = (char *)malloc(64);
+	strcpy(list[i*NSTATS+10], realm_list[i].realm_config.realm);
+
+	len = strlen(realm_list[i].realm_config.realm)+1;
+	len += strlen("hostlist ");
+	for (j=0; j<realm_list[i].realm_config.nservers; j++)
+	   len += 1+strlen(realm_list[i].realm_config.server_list[j].name);
+	len++;
+
+	list[i*NSTATS+11] = (char *) malloc(len);
+	strcpy(list[i*NSTATS+11], realm_list[i].realm_config.realm);
+	strcat(list[i*NSTATS+11], " hostlist");
+	for (j=0; j<realm_list[i].realm_config.nservers; j++) {
+	   strcat(list[i*NSTATS+11], " ");
+	   strcat(list[i*NSTATS+11],
+		  realm_list[i].realm_config.server_list[j].name);
+	}
+     }
 
      /* Since ZFormatRaw* won't change the version number on notices,
 	we need to set the version number explicitly.  This code is taken
@@ -523,6 +562,7 @@ static void send_stats(notice, sin)
      free(bfr);
      for(i=0;i<nitems;i++)
 	  free(list[i]);
+     free(list);
 }
 
 static void die_gracefully()

@@ -18,15 +18,13 @@
 static const char rcsid_ZMakeAuthentication_c[] = "$Id$";
 #endif
 
-#ifdef ZEPHYR_USES_KERBEROS
-#include <krb_err.h>
-static long last_authent_time = 0L;
-static KTEXT_ST last_authent;
-#endif
-
 Code_t ZResetAuthentication () {
 #ifdef ZEPHYR_USES_KERBEROS
-    last_authent_time = 0L;
+    int i;
+
+    for (i=0; i<__nrealms; i++)
+	__realm_list[i].last_authent_time = 0;
+
 #endif
     return ZERR_NONE;
 }
@@ -38,29 +36,40 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, phdr_len)
     int *phdr_len;
 {
 #ifdef ZEPHYR_USES_KERBEROS
+    int i;
     int result;
     time_t now;
     KTEXT_ST authent;
     int cksum_len;
-    char *cstart, *cend;
-    char cheat;
+    char *cksum_start, *cstart, *cend;
     ZChecksum_t checksum;
     CREDENTIALS cred;
     extern unsigned long des_quad_cksum();
 
+    if (notice->z_dest_realm) {
+	for (i=0; i<__nrealms; i++) {
+	    if (strcasecmp(notice->z_dest_realm,
+			   __realm_list[i].realm_config.realm) == 0)
+		break;
+	}
+    } else {
+	i = 0;
+    }
+
     now = time(0);
-    if (last_authent_time == 0 || (now - last_authent_time > 120)) {
-	result = krb_mk_req(&authent, SERVER_SERVICE, 
-			    SERVER_INSTANCE, __Zephyr_realm, 0);
+    if ((__realm_list[i].last_authent_time == 0) ||
+	(now - __realm_list[i].last_authent_time > 120)) {
+	result = krb_mk_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
+			    ZGetRhs(notice->z_dest_realm), 0);
 	if (result != MK_AP_OK) {
-	    last_authent_time = 0;
+	    __realm_list[i].last_authent_time = 0;
 	    return (result+krb_err_base);
         }
-	last_authent_time = now;
-	last_authent = authent;
+	__realm_list[i].last_authent_time = now;
+	__realm_list[i].last_authent = authent;
     }
     else {
-	authent = last_authent;
+	authent = __realm_list[i].last_authent;
     }
     notice->z_auth = 1;
     notice->z_authent_len = authent.length;
@@ -76,34 +85,25 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, phdr_len)
 	return (result);
     }
     result = Z_FormatRawHeader(notice, buffer, buffer_len, phdr_len,
-			       &cksum_len, &cstart, &cend);
+			       &cksum_start, &cksum_len, &cstart, &cend);
     free(notice->z_ascii_authent);
     notice->z_authent_len = 0;
     if (result)
 	return(result);
 
     /* Compute a checksum over the header and message. */
-    /* Cheat!  I know that the minor version number is at offset 6
-       into the packet.  Force it to NOREALM, so that when the server
-       ends up verifying the packet, it's ok.  Next time we do this
-       protocol, make it *truly* extensible so I can avoid this
-       crap. */
-
-    cheat = buffer[6];
-    buffer[6] = ('0'+ZVERSIONMINOR_NOREALM);
 
     if ((result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
-			      __Zephyr_realm, &cred)) != 0)
+			       ZGetRhs(notice->z_dest_realm), &cred)) != 0)
 	return result;
-    checksum = des_quad_cksum(buffer, NULL, cstart - buffer, 0, cred.session);
-    checksum ^= des_quad_cksum(cend, NULL, buffer + cksum_len - cend, 0,
+    checksum = des_quad_cksum(cksum_start, NULL, cstart - cksum_start, 0,
+			      cred.session);
+    checksum ^= des_quad_cksum(cend, NULL, (cksum_start + cksum_len) - cend, 0,
 			       cred.session);
     checksum ^= des_quad_cksum(notice->z_message, NULL, notice->z_message_len,
 			       0, cred.session);
     notice->z_checksum = checksum;
-    ZMakeAscii32(cstart, buffer + buffer_len - cstart, checksum);
-
-    buffer[6] = cheat;
+    ZMakeAscii32(cstart, (buffer + buffer_len) - cstart, checksum);
 
     return (ZERR_NONE);
 #else

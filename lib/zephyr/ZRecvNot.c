@@ -24,8 +24,9 @@ Code_t ZReceiveNotice(notice, from)
 {
     char *buffer;
     struct _Z_InputQ *nextq;
-    int len, auth;
+    int len, auth, i, j;
     Code_t retval;
+    struct sockaddr_in sin;
 
     if ((retval = Z_WaitForComplete()) != ZERR_NONE)
 	return (retval);
@@ -37,9 +38,11 @@ Code_t ZReceiveNotice(notice, from)
     if (!(buffer = (char *) malloc((unsigned) len)))
 	return (ENOMEM);
 
-    if (from)
-	*from = nextq->from;
-    
+    if (!from)
+	from = &sin;
+
+    *from = nextq->from;
+
     (void) memcpy(buffer, nextq->packet, len);
 
     auth = nextq->auth;
@@ -48,5 +51,16 @@ Code_t ZReceiveNotice(notice, from)
     if ((retval = ZParseNotice(buffer, len, notice)) != ZERR_NONE)
 	return (retval);
     notice->z_checked_auth = auth;
+
+    notice->z_dest_realm = "unknown-realm";
+
+    for (i=0; i<__nrealms; i++)
+       for (j=0; j<__realm_list[i].realm_config.nservers; j++)
+	  if (from->sin_addr.s_addr ==
+	      __realm_list[i].realm_config.server_list[j].addr.s_addr) {
+	     notice->z_dest_realm = __realm_list[i].realm_config.realm;
+	     break;
+	  }
+
     return ZERR_NONE;
 }

@@ -426,7 +426,7 @@ sendit(notice, auth, who, external)
 	dest.recip = make_string("", 0);
     } else {
 	strncpy(recipbuf, notice->z_recipient, sizeof(recipbuf));
-	recipp = strrchr(&recipbuf, '@');
+	recipp = strrchr(recipbuf, '@');
 	if (recipp)
 	    sprintf(recipp + 1, "%s", realm_expand_realm(recipp + 1));
 	dest.recip = make_string(recipbuf, 0);
@@ -1137,6 +1137,7 @@ hostm_deathgram(sin, server)
     shutnotice.z_sender = HM_CTL_SERVER;
     shutnotice.z_recipient = hm_recipient();
     shutnotice.z_default_format = "";
+    shutnotice.z_dest_realm = "";
     shutnotice.z_num_other_fields = 0;
     shutnotice.z_message = (server) ? server->addr_str : NULL;
     shutnotice.z_message_len = (server) ? strlen(server->addr_str) + 1 : 0;
@@ -1161,18 +1162,11 @@ hostm_deathgram(sin, server)
 static char *
 hm_recipient()
 {
-    static char *recipient;
-    char *realm;
-
-    if (recipient)
-	return recipient;
-
-    realm = ZGetRealm();
-    if (!realm)
-	realm = "???";
-    recipient = (char *) malloc(strlen(realm) + 4);
-    strcpy (recipient, "hm@");
-    strcat (recipient, realm);
+    /* the server has no notion of what zephyr realm it is.  this is
+       odd, but true.  This may not be true for cmu-style interrealm,
+       but I don't understand that well enough to be sure. */
+    static char recipient[] = "hm@local-realm";
+ 
     return recipient;
 }
 

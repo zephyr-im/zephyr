@@ -1315,6 +1315,7 @@ send_msg_list(who, opcode, lyst, num, auth)
     notice.z_sender = myname;	/* myname is the hostname */
     notice.z_recipient = "";
     notice.z_default_format = "";
+    notice.z_dest_realm = "";
     notice.z_message = NULL;
     notice.z_message_len = 0;
     notice.z_num_other_fields = 0;

@@ -132,7 +132,7 @@ hm_stat(host, do_server)
 	struct in_addr inaddr;
 	Code_t code;
 
-	char *line[20],*mp;
+	char **line,*mp;
 	int sock,i,nf,ret;
 	struct hostent *hp;
 	time_t runtime;
@@ -159,38 +159,50 @@ hm_stat(host, do_server)
 	    exit(-1);
 	}
 	
+	for (nf=0, mp = notice.z_message;
+	     mp<notice.z_message+notice.z_message_len;
+	     nf++, mp += strlen(mp)+1)
+		;
+
+	line = (char **) malloc(sizeof(char *)*nf);
+
 	mp = notice.z_message;
-	for (nf=0;mp<notice.z_message+notice.z_message_len;nf++) {
+	for (nf=0, mp = notice.z_message;
+	     mp<notice.z_message+notice.z_message_len;
+	     nf++, mp += strlen(mp)+1) 
 		line[nf] = mp;
-		mp += strlen(mp)+1;
-	}
+
 
 	printf("HostManager protocol version = %s\n\n",notice.z_version);
 
 	for (i=0; i<nf; i++) {
-		if (((i%(HM_SIZE+1)) == 0) && (i+HM_SIZE<nf)) {
+		if (((i%(HM_SIZE+2)) == 0) && (i+HM_SIZE<nf)) {
 			printf("Zephyr realm = %s\n", line[i+HM_SIZE]);
-			printf("%s %s\n",hm_head[i%(HM_SIZE+1)],line[i]);
-		} else if (((i%(HM_SIZE+1)) == HM_SIZE) ||
-			   (i == nf-1)) {
-			printf("\n");
-			if (do_server) {
-				srv_stat(line[i-(i%(HM_SIZE+1))]);
-				printf("\n");
-			}
-		} else if ((i%(HM_SIZE+1)) == 7) {
+			printf("%s %s\n",hm_head[i%(HM_SIZE+2)],line[i]);
+		} else if ((i%(HM_SIZE+2)) == 7) {
 			runtime = atol(line[i]);
 			tim = gmtime(&runtime);
-			printf("%s %d days, %02d:%02d:%02d\n", hm_head[i],
+			printf("%s %d days, %02d:%02d:%02d\n", hm_head[i%(HM_SIZE+1)],
 				tim->tm_yday,
 				tim->tm_hour,
 				tim->tm_min,
 				tim->tm_sec);
+		} else if ((i%(HM_SIZE+2)) == HM_SIZE) {
+			/* do nothing */
+		} else if (((i%(HM_SIZE+2)) == (HM_SIZE+1)) ||
+			   (i == nf-1)) {
+			printf("\n");
+			if (do_server) {
+				srv_stat(line[i-(i%(HM_SIZE+2))]);
+				printf("\n");
+			}
 		} else {
-			printf("%s %s\n",hm_head[i],line[i]);
+			printf("%s %s\n",hm_head[i%(HM_SIZE+2)],line[i]);
 		}
 	}
 	
+	free(line);
+
 	(void) close(sock);
 	ZFreeNotice(&notice);
 	return(0);

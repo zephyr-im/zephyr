@@ -59,13 +59,14 @@ typedef struct _Queue {
 typedef enum _realm_state {
    NEED_SERVER, /* never had a server, HM_BOOT when we find one.  This can
 		   also be set if a flush was requested when the state
-		   was !=  ATTACHED. */
+		   was != ATTACHED. */
    DEAD_SERVER, /* server timed out, no others around.  This is
-		   actually handled in the same way as BOOTING
-		   (although some of the timeouts are different), but
-		   it's handy to know which of the two states the zhm
-		   is in */
-   BOOTING, /* waiting for HM_BOOT/HM_ATTACH SERVACK */
+		   actually handled in the same way as BOOTING or
+		   ATTACHING (although some of the timeouts are
+		   different), but it's handy to know which of the two
+		   states the zhm is in */
+   BOOTING, /* waiting for HM_BOOT SERVACK */
+   ATTACHING, /* waiting for HM_BOOT SERVACK */
    ATTACHED /* active and connected */
 } realm_state;
 
@@ -88,7 +89,7 @@ typedef struct _realm_info {
 
 /* queue.c */
 void init_realm_queue __P((realm_info *));
-Code_t add_notice_to_realm __P((realm_info *, ZNotice_t *, char *,
+Code_t add_notice_to_realm __P((realm_info *, ZNotice_t *,
 				struct sockaddr_in *, int));
 Code_t remove_notice_from_realm __P((realm_info *, ZNotice_t *,
 				     ZNotice_Kind_t *, struct sockaddr_in *));

@@ -411,4 +411,10 @@ extern struct in_addr my_addr;	/* my inet address */
 #define zdbug(s1)
 #endif /* DEBUG */
 
+#ifdef ZEPHYR_USES_KERBEROS
+/* Session key for last parsed packet - server only */
+extern C_Block __Zephyr_session;
+#define ZGetSession() (__Zephyr_session)
+#endif
+
 #endif /* !__ZSERVER_H__ */

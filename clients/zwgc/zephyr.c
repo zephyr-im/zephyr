@@ -156,28 +156,17 @@ void zephyr_init(notice_handler)
      * not one of the allowed ones, print an error and treat it as
      * EXPOSE_NONE.
      */
-    if (temp = ZGetVariable("exposure")) {
-	if (!(exposure = ZParseExposureLevel(temp))) {
-	    ERROR2("invalid exposure level %s, using exposure level none instead.\n", temp);
-	    exposure = EXPOSE_NONE;
-	}
-    } else
-      exposure = EXPOSE_NONE;
-    error_code = ZSetLocation(exposure); /* <<<>>> */
-    if (error_code != ZERR_LOGINFAIL)
+
+    error_code = set_exposure("*", ZGetVariable("exposure"));
+    if (error_code)
       TRAP( error_code, "while setting location" );
 
-    /*
-     * If the exposure level isn't EXPOSE_NONE, turn on recieving notices.
-     * (this involves reading in the subscription file, etc.)
-     */
-    if (string_Neq(exposure, EXPOSE_NONE))
-      zwgc_startup();
+    zwgc_startup();
 
     /*
      * Set $realm to our realm and $user to our zephyr username:
      */
-    var_set_variable("realm", ZGetRealm());
+    var_set_variable("realm", ZGetDefaultRealm());
     var_set_variable("user", ZGetSender());
 
     /*
@@ -215,12 +204,13 @@ void finalize_zephyr() /* <<<>>> */
 	 */
 #ifdef DEBUG
 	if (zwgc_debug) {
-	    TRAP( ZCancelSubscriptions(0), "while canceling subscriptions" );
-	    TRAP( ZUnsetLocation(), "while unsetting location" );
+	    TRAP( ZCancelSubscriptions(NULL, 0),
+		  "while canceling subscriptions" );
+	    TRAP( ZUnsetLocation(NULL), "while unsetting location" );
 	} else {
 #endif /* DEBUG */
-	    (void) ZCancelSubscriptions(0);
-	    (void) ZUnsetLocation();
+	    (void) ZCancelSubscriptions(NULL, 0);
+	    (void) ZUnsetLocation(NULL);
 #ifdef DEBUG
 	}
 #endif /* DEBUG */

@@ -61,5 +61,7 @@ ec  ZERR_BADCONFHOST,
 	"Unknown host parsing configuration file"
 ec  ZERR_BADCONFREALM,
 	"Realm had no servers while parsing configuration file"
+ec  ZERR_REALMUNKNOWN,
+	"Unknown zephyr realm"
 
 	end

@@ -178,7 +178,7 @@ bound_for_local_realm(notice)
   
   realm = strchr(notice->z_recipient, '@');
   
-  if (!realm || !strcmp(realm_expand_realm(realm + 1), ZGetRealm()))
+  if (!realm || !strcmp(realm_expand_realm(realm + 1), my_realm))
     return 1;
 
   return 0;
@@ -192,7 +192,7 @@ sender_in_realm(notice)
 
   realm = strchr(notice->z_sender, '@');
 
-  if (!realm || !strcmp(realm + 1, ZGetRealm()))
+  if (!realm || !strcmp(realm + 1, my_realm))
     return 1;
 
   return 0;
@@ -796,7 +796,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
   buffer_len = sizeof(ZPacket_t);
 
   retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen,
-			     NULL, &ptr, NULL);
+			     NULL, NULL, &ptr, NULL);
   if (retval != ZERR_NONE) {
     syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
     free(buffer);
@@ -811,7 +811,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 #endif
 
   retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen, 
-                             NULL, NULL, NULL);
+                             NULL, NULL, NULL, NULL);
   if (retval != ZERR_NONE) {
     syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
     free(buffer);
@@ -884,7 +884,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
       }
 
       retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, &hdrlen, 
-                                 NULL, &ptr, NULL);
+                                 NULL, NULL, &ptr, NULL);
       if (retval != ZERR_NONE) {
         syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
         free(buffer);
@@ -900,7 +900,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 #endif
 
       retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, &hdrlen, 
-                                 NULL, NULL, NULL);
+                                 NULL, NULL, NULL, NULL);
       if (retval != ZERR_NONE) {
         syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
         free(buffer);
@@ -1031,7 +1031,7 @@ char *realm;
     /* good ticket */
     return(1);
 
-  if (!strcmp(realm, ZGetRealm())) {
+  if (!strcmp(realm, my_realm)) {
     get_tgt();
     
     /* For Putrify */

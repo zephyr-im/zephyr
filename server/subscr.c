@@ -180,7 +180,7 @@ add_subscriptions(who, subs, notice)
 	/* check the recipient for a realm which isn't ours */
 	realm = NULL;
 	if (subs->dest.recip->string[0] == '@' &&
-	    strcmp((subs->dest.recip->string + 1), ZGetRealm()) != 0)
+	    strcmp((subs->dest.recip->string + 1), my_realm) != 0)
 	    realm = realm_get_realm_by_name(subs->dest.recip->string + 1);
 	if (realm) {
 	    retval = subscr_realm_sendit(who, subs, notice, realm);
@@ -984,7 +984,7 @@ extract_subscriptions(notice)
 	sub->dest.classname = make_string(class_name, 1);
 	sub->dest.inst = make_string(classinst, 1);
 	/* Nuke @REALM if REALM is us. */
-	if (recip[0] == '@' && !strcmp(recip + 1, ZGetRealm()))
+	if (recip[0] == '@' && !strcmp(recip + 1, my_realm))
 	    sub->dest.recip = make_string("", 0);
 	else
 	    sub->dest.recip = make_string(recip, 0);
@@ -1106,6 +1106,7 @@ subscr_realm_sendit(who, subs, notice, realm)
   snotice.z_kind = ACKED;
   snotice.z_num_other_fields = 0;
   snotice.z_default_format = "";
+  snotice.z_dest_realm = "";
   snotice.z_sender = notice->z_sender;
   snotice.z_recipient = notice->z_recipient;
   snotice.z_default_format = notice->z_default_format;
@@ -1223,6 +1224,7 @@ subscr_unsub_sendit(subs, realm)
   unotice.z_port = srv_addr.sin_port;
   unotice.z_num_other_fields = 0;
   unotice.z_default_format = "";
+  unotice.z_dest_realm = "";
 
 #ifdef notdef
   found = 0;

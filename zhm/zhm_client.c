@@ -27,7 +27,6 @@ void transmission_tower(notice, from, packet, pak_len)
      char *packet;
      int pak_len;
 {
-    static char version_norealm[BUFSIZ]; /* default init should be all \0 */
     int i;
     realm_info *ri;
     ZNotice_t gack;
@@ -36,8 +35,8 @@ void transmission_tower(notice, from, packet, pak_len)
 
     if (notice->z_dest_realm) {
 	for (i=0; i<nrealms; i++)
-	    if (strcmp(realm_list[i].realm_config.realm,
-		       notice->z_dest_realm) == NULL) {
+	    if (strcasecmp(realm_list[i].realm_config.realm,
+			   notice->z_dest_realm) == 0) {
 		ri = &realm_list[i];
 		break;
 	    }
@@ -81,17 +80,7 @@ void transmission_tower(notice, from, packet, pak_len)
     }
 
     /* remove the dest realm, since the servers aren't prepared for it */
-    if (notice->z_dest_realm)
-	notice->z_dest_realm[0] = '\0';
-
-    /* It might be the case that the version is ZVERSIONMINOR_REALM.
-       Set it to NOREALM, so that the checksum will be ok when the server
-       sees it. */
-
-    if (!version_norealm[0])
-	(void) sprintf(version_norealm, "%s%d.%d", ZVERSIONHDR,
-			ZVERSIONMAJOR, ZVERSIONMINOR_NOREALM);
-    notice->z_version = version_norealm;
+    notice->z_dest_realm = NULL;
 
     if (ri->current_server != NO_SERVER) {
 	if ((ret = send_outgoing(&ri->sin, notice)) != ZERR_NONE) {
@@ -100,7 +89,7 @@ void transmission_tower(notice, from, packet, pak_len)
 	}
     }
 
-    add_notice_to_realm(ri, notice, packet, &gsin, pak_len);
+    add_notice_to_realm(ri, notice, &gsin, pak_len);
 }
 
 Code_t

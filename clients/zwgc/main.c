@@ -105,6 +105,7 @@ static void fake_startup_packet()
     notice.z_port = 0;
     notice.z_kind = ACKED;
     notice.z_auth = ZAUTH_YES;
+    notice.z_dest_realm = ZGetDefaultRealm();
     sprintf(msgbuf,"Zwgc mark II version %s now running...",
 	    zwgc_version_string);
     notice.z_message = msgbuf;

@@ -25,7 +25,7 @@ CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ @CPPFLAGS@
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @SS_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr -lss @LIBS@ -lcom_err
 
-OBJS=	zctl.o zctl_cmds.o
+OBJS=	zctl.o zutils.o zctl_cmds.o
 
 all: zctl
 

@@ -21,6 +21,7 @@ static char rcsid_ZInitialize_c[] =
 
 #include <sys/socket.h>
 #ifdef ZEPHYR_USES_KERBEROS
+#include <krb.h>
 #include <krb_err.h>
 #endif
 
@@ -28,11 +29,12 @@ Code_t ZInitialize()
 {
     struct servent *hmserv;
     char addr[4];
+    char *def;
 #ifdef ZEPHYR_USES_KERBEROS
     Code_t code;
     ZNotice_t notice;
-    char *krealm;
-    int krbval;
+    char *mp;
+    int i, krbval;
     char d1[ANAME_SZ], d2[INST_SZ];
 
     initialize_krb_error_table();
@@ -55,46 +57,72 @@ Code_t ZInitialize()
 
     (void) memcpy((char *)&__HM_addr.sin_addr, addr, 4);
 
-    __HM_set = 0;
-
     /* Initialize the input queue */
     __Q_Tail = NULL;
     __Q_Head = NULL;
     
-#ifdef ZEPHYR_USES_KERBEROS
-
     /* if the application is a server, there might not be a zhm.  The
        code will fall back to something which might not be "right",
        but this is is ok, since none of the servers call krb_rd_req. */
 
     if (! __Zephyr_server) {
-       if ((code = ZOpenPort(NULL)) != ZERR_NONE)
-	  return(code);
+	char *mp;
 
-       if ((code = ZhmStat(NULL, &notice)) != ZERR_NONE)
-	  return(code);
+	if ((code = ZOpenPort(NULL)) != ZERR_NONE)
+	    return(code);
 
-       ZClosePort();
+	if ((code = ZhmStat(NULL, &notice)) != ZERR_NONE)
+	    return(code);
 
-       /* the first field, which is NUL-terminated, is the server name.
-	  If this code ever support a multiplexing zhm, this will have to
-	  be made smarter, and probably per-message */
+	ZClosePort();
 
-       krealm = krb_realmofhost(notice.z_message);
+	/* the first field, which is NUL-terminated, is the server name.
+	   If this code ever support a multiplexing zhm, this will have to
+	   be made smarter, and probably per-message */
+
+       for (i=0, mp = notice.z_message;
+	    mp<notice.z_message+notice.z_message_len;
+	    i++, mp += strlen(mp)+1)
+	   ;
+
+       __nrealms = i/12;	/* XXX should be a constant */
+       __realm_list = (Z_RealmList *) malloc(sizeof(Z_RealmList)*__nrealms);
+
+       for (i=0, mp = notice.z_message;
+	    mp<notice.z_message+notice.z_message_len;
+	    i++, mp += strlen(mp)+1) {
+	   if (i%12 == 11) {
+	       if ((code =
+		    Z_ParseRealmConfig(mp,&__realm_list[i/12].realm_config))
+		   != ZERR_NONE) {
+		   __nrealms = i/12;
+		   for (i=0; i<__nrealms; i++)
+		       Z_FreeRealmConfig(&__realm_list[i].realm_config);
+		   free(__realm_list);
+		   return(code);
+	       }
+
+#ifdef ZEPHYR_USES_KERBEROS
+	       strcpy(__realm_list[i/12].krealm,
+		      krb_realmofhost(__realm_list[i/12].realm_config.server_list[0].name));
+	       __realm_list[i/12].last_authent_time = 0;
+#endif
+	   }
+       }
 
        ZFreeNotice(&notice);
-    } else {
-       krealm = NULL;
-    }
 
-    if (krealm) {
-	strcpy(__Zephyr_realm, krealm);
-    } else if ((krb_get_tf_fullname(TKT_FILE, d1, d2, __Zephyr_realm)
-		!= KSUCCESS) &&
-	       ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)) {
-	return (krbval);
+       __default_realm = 0;
+
+       if (def = ZGetVariable("defaultrealm")) {
+	   for (i=0; i<__nrealms; i++) {
+	       if (strcasecmp(__realm_list[i].realm_config.realm, def) == 0) {
+		   __default_realm = i;
+		   break;
+	       }
+	   }
+       }
     }
-#endif
 
     /* Get the sender so we can cache it */
     (void) ZGetSender();

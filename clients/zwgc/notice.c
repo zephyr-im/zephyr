@@ -260,6 +260,14 @@ char *decode_notice(notice)
     struct hostent *fromhost;
 
     /*
+     * Decide if its a control notice.  If so, return the notice's
+     * opcode.  Otherwise, parse the notice into variables and return NULL.
+     */
+    if ((strcasecmp(notice->z_class, WG_CTL_CLASS)==0) && /* <<<>>> */
+	(strcasecmp(notice->z_class_inst, WG_CTL_USER)==0))
+      return(notice->z_opcode);
+
+    /*
      * Convert useful notice fields to ascii and store away in
      * description language variables for later use by the
      * the user's program:
@@ -272,15 +280,18 @@ char *decode_notice(notice)
     var_set_variable("recipient",
 		     (notice->z_recipient[0] ? notice->z_recipient : "*"));
     var_set_variable("fullsender", notice->z_sender);
+    var_set_variable("destrealm", notice->z_dest_realm);
     var_set_variable_to_number("port", (int)notice->z_port);
     var_set_variable_then_free_value("kind", z_kind_to_ascii(notice->z_kind));
     var_set_variable_then_free_value("auth", z_auth_to_ascii(notice->z_auth));
 
     /*
      * Set $sender to the name of the notice sender except first strip off the
-     * realm name if it is the local realm:
+     * realm name if it is the kerberos realm of the zephyr server
+     * which delivered the message.
      */
-    if ( (temp=strchr(notice->z_sender,'@')) && string_Eq(temp+1, ZGetRealm()) )
+    if ((temp = strchr(notice->z_sender,'@')) &&
+	string_Eq(temp+1, ZGetRhs(notice->z_dest_realm)))
       var_set_variable_then_free_value("sender",
 				string_CreateFromData(notice->z_sender,
 						      temp-notice->z_sender));
@@ -326,12 +337,5 @@ char *decode_notice(notice)
 		     convert_nulls_to_newlines(notice->z_message,
 					       notice->z_message_len));
 
-    /*
-     * Decide if its a control notice.  If so, return the notice's
-     * opcode.  Otherwise, return NULL:
-     */
-    if ((strcasecmp(notice->z_class, WG_CTL_CLASS)==0) && /* <<<>>> */
-	(strcasecmp(notice->z_class_inst, WG_CTL_USER)==0))
-      return(notice->z_opcode);
     return(0);
 }

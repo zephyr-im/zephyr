@@ -22,6 +22,8 @@ static const char rcsid_kstuff_c[] = "$Id$";
 
 #ifdef ZEPHYR_USES_KERBEROS
 
+C_Block __Zephyr_session;
+
 /* Keep a hash table mapping tickets to session keys, so we can do a fast
  * check of the cryptographic checksum without doing and DES decryptions.
  * Also remember the expiry time of the ticket, so that we can sweep the
@@ -126,7 +128,7 @@ SendKerberosData(fd, ticket, service, host)
     int written;
     int size_to_write;
 
-    rem = krb_mk_req(ticket, service, host, ZGetRealm(), (u_long) 0);
+    rem = krb_mk_req(ticket, service, host, my_realm, (u_long) 0);
     if (rem != KSUCCESS)
 	return rem + krb_err_base;
 

@@ -44,29 +44,44 @@ void init_realm_queue(realm_info *ri)
     DPR("Queue initialized and flushed.\n");
 }
 
-Code_t add_notice_to_realm(ri, notice, packet, repl, len)
+Code_t add_notice_to_realm(ri, notice, repl, len)
     realm_info *ri;
     ZNotice_t *notice;
-    char * packet;
     struct sockaddr_in *repl;
     int len;
 {
     Queue *entry;
+    int length;
+    int retval;
 
     DPR("Adding notice to queue...\n");
     if (!find_notice_in_realm(ri, notice)) {
 	entry = (Queue *) malloc(sizeof(Queue));
 	entry->ri = ri;
 	entry->retries = 0;
-	entry->packet = (char *) malloc(Z_MAXPKTLEN);
-	memcpy(entry->packet, packet, Z_MAXPKTLEN);
-	if (ZParseNotice(entry->packet, len, &entry->notice) != ZERR_NONE) {
-	    syslog(LOG_ERR, "ZParseNotice failed, but succeeded before");
-	    free(entry->packet);
-	} else {
-	    entry->reply = *repl;
-	    LIST_INSERT(&ri->queue, entry);
+	if (!(entry->packet = (char *) malloc((unsigned)sizeof(ZPacket_t))))
+	   return(ENOMEM);
+
+	if ((retval = ZFormatSmallRawNotice(notice, entry->packet, &length))
+	    != ZERR_NONE) {
+	   free(entry->packet);
+	   return(retval);
 	}
+
+	/* I dislike this, but I need a notice which represents the
+	   packet.  since the notice structure refers to the internals
+	   of its packet, I can't use the notice which was passed in,
+	   so I need to make a new one. */
+
+	if ((retval = ZParseNotice(entry->packet, length, &entry->notice))
+	    != ZERR_NONE) {
+	   free(entry->packet);
+	   return(retval);
+	}
+
+	entry->reply = *repl;
+	LIST_INSERT(&ri->queue, entry);
+
 	entry->timer = (ri->state == ATTACHED) ?
 	   timer_set_rel(rexmit_times[0], queue_timeout, entry) : NULL;
     }
@@ -88,7 +103,8 @@ Code_t remove_notice_from_realm(ri, notice, kind, repl)
 
     *kind = entry->notice.z_kind;
     *repl = entry->reply;
-    timer_reset(entry->timer);
+    if (entry->timer)
+       timer_reset(entry->timer);
     free(entry->packet);
     LIST_DELETE(entry);
 #ifdef DEBUG
@@ -200,6 +216,8 @@ static void queue_timeout(arg)
 {
     Queue *entry = (Queue *) arg;
     Code_t ret;
+
+    entry->timer = NULL;
 
     if (ret != ZERR_NONE) {
 	Zperr(ret);
