@@ -63,11 +63,10 @@ Z_SendLocation(class, opcode, auth, format)
     char *bptr[3];
     char *display, *ttyp;
     struct hostent *hent;
+    short wg_port = ZGetWGPort();
 
     notice.z_kind = ACKED;
-    notice.z_port = ZGetWGPort();
-    if (notice.z_port == -1)
-	        notice.z_port = 0;
+    notice.z_port = (u_short) ((wg_port == -1) ? 0 : wg_port);
     notice.z_class = class;
     notice.z_class_inst = ZGetSender();
     notice.z_opcode = opcode;
