@@ -42,7 +42,7 @@ int ZReadAscii(ptr,len,field,num)
 		bfr[2] = '\0';
 		if (!bfr[0] || !bfr[1])
 			return (ZERR_BADFIELD);
-		sscanf(bfr,"%x",field+i);
+		(void) sscanf(bfr,"%x",field+i);
 		ptr += 2;
 		len -= 2;
 		if (len < 1)

@@ -24,7 +24,8 @@ Code_t ZSendPacket(packet,len)
 	Code_t retval;
 	struct sockaddr_in dest;
 	struct timeval tv;
-	int auth,t1,t2,t3,i;
+	int auth,i;
+	fd_set t1,t2,t3;
 	ZPacket_t ackpack;
 	ZNotice_t notice;
 	
@@ -32,15 +33,17 @@ Code_t ZSendPacket(packet,len)
 		return (ZERR_ILLVAL);
 
 	if (ZGetFD() < 0)
-		if ((retval = ZOpenPort(0)) != ZERR_NONE)
+		if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
 			return (retval);
+
+	if ((retval = ZParseNotice(packet,len,&notice,(int *)0,
+				   (struct sockaddr_in *)0)) != ZERR_NONE)
+		return (retval);
 
 	dest = ZGetDestAddr();
 	
 	if (sendto(ZGetFD(),packet,len,0,&dest,sizeof(dest)) < 0)
 		return (errno);
-
-	ZParseNotice(packet,len,&notice,0,0);
 
 	if (notice.z_kind == UNSAFE || notice.z_kind == HMACK ||
 	    notice.z_kind == SERVACK || notice.z_kind == CLIENTACK ||
@@ -51,7 +54,8 @@ Code_t ZSendPacket(packet,len)
 	tv.tv_usec = 500000;
 	
 	for (i=0;i<HM_TIMEOUT*2;i++) {
-		select(0,&t1,&t2,&t3,&tv);
+		if (select(0,&t1,&t2,&t3,&tv) < 0)
+			return (errno);
 		retval = ZCheckIfNotice(ackpack,sizeof ackpack,&notice,
 					&auth,ZCompareUIDPred,
 					(char *)&notice.z_uid);

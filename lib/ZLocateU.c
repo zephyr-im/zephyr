@@ -65,21 +65,23 @@ Code_t ZLocateUser(user,nlocs)
 
 	__locate_num /= 2;
 
-	__locate_list = (ZLocations_t *)malloc(__locate_num*
+	__locate_list = (ZLocations_t *)malloc((unsigned)__locate_num*
 					       sizeof(ZLocations_t));
 	if (!__locate_list)
 		return (ENOMEM);
 	
 	for (ptr=retnotice.z_message,i=0;i<__locate_num;i++) {
-		__locate_list[i].host = (char *)malloc(strlen(ptr)+1);
+		__locate_list[i].host = (char *)malloc((unsigned)strlen(ptr)+
+						       1);
 		if (!__locate_list[i].host)
 			return (ENOMEM);
-		strcpy(__locate_list[i].host,ptr);
+		(void) strcpy(__locate_list[i].host,ptr);
 		ptr += strlen(ptr)+1;
-		__locate_list[i].time = (char *)malloc(strlen(ptr)+1);
+		__locate_list[i].time = (char *)malloc((unsigned)strlen(ptr)+
+						       1);
 		if (!__locate_list[i].time)
 			return (ENOMEM);
-		strcpy(__locate_list[i].time,ptr);
+		(void) strcpy(__locate_list[i].time,ptr);
 		ptr += strlen(ptr)+1;
 	}
 
