@@ -79,6 +79,7 @@ ZNotice_t *notice;
 	register ZSubscr_t *subs, *subs2, *newsubs, *subs3;
 	ZAcl_t *acl;
 	Code_t retval;
+	int relation;
 
 	if (!who->zct_subs) {
 		/* allocate a subscription head */
@@ -106,9 +107,20 @@ ZNotice_t *notice;
 		     subs2 != who->zct_subs;
 		     subs2 = subs2->q_forw) {
 			/* for each existing subscription */
+			relation = strcmp(subs->zst_class, subs2->zst_class);
+			if (relation > 0) /* we have passed the last
+					     possible one */
+				break;
+			if (relation < 0) /* nope... */
+				continue;
 			if (subscr_equiv(subs, subs2)) /* duplicate? */
 				goto duplicate;
 		}
+		/* subs2 now points to the first class which is greater
+		   than the new class. We need to back up so that the
+		   insertion below goes BEFORE this one (i.e. after the
+		   previous one) */
+		subs2 = subs2->q_back;
 
 		/* ok, we are a new subscription. register and chain on. */
 
@@ -129,7 +141,8 @@ ZNotice_t *notice;
 
 		subs3->q_forw = subs3->q_back = subs3;
 
-		xinsque(subs3, who->zct_subs);
+		/* subs2 was adjusted above */
+		xinsque(subs3, subs2);
 
 duplicate:	;			/* just go on to the next */
 	}
@@ -151,7 +164,7 @@ ZNotice_t *notice;
 	ZClient_t *who;
 	register ZSubscr_t *subs, *subs2, *subs3, *subs4;
 	Code_t retval;
-	int found = 0;
+	int found = 0, relation;
 
 	zdbug((LOG_DEBUG,"subscr_cancel"));
 	if (!(who = client_which_client(sin, notice)))
@@ -168,9 +181,17 @@ ZNotice_t *notice;
 	     subs4 != subs;
 	     subs4 = subs4->q_forw)
 		for (subs2 = who->zct_subs->q_forw;
-		     subs2 != who->zct_subs;)
+		     subs2 != who->zct_subs;) {
 			/* for each existing subscription */
 			/* is this what we are canceling? */
+			relation = strcmp(subs4->zst_class, subs2->zst_class);
+			if (relation > 0) /* we have passed the last
+					     possible one */
+				break;
+			if (relation < 0) { /* nope... */
+				subs2 = subs2->q_forw;
+				continue;
+			}
 			if (subscr_equiv(subs4, subs2)) { 
 				/* go back, since remque will change things */
 				subs3 = subs2->q_back;
@@ -183,6 +204,7 @@ ZNotice_t *notice;
 				subs2 = subs3->q_forw;
 			} else
 				subs2 = subs2->q_forw;
+		}
 	/* make sure we are still registered for all the
 	   classes */
 	if (found)
@@ -425,7 +447,7 @@ struct sockaddr_in *who;
 
 	packlen = sizeof(reppacket);
 
-	/* coalesce the location information into a list of char *'s */
+	/* coalesce the subscription information into a list of char *'s */
 	if ((answer = (char **) xmalloc(found * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
 		syslog(LOG_ERR, "subscr no mem(answer)");
 		found = 0;
@@ -579,6 +601,7 @@ register ZClient_t *client;
 ZAcl_t *acl;
 {
 	register ZSubscr_t *subs;
+	int relation;
 
 	if (client->zct_subs == NULLZST) {
 		syslog(LOG_WARNING, "cl_match w/ no subs");
@@ -591,7 +614,10 @@ ZAcl_t *acl;
 		/* for each subscription, do regex matching */
 		/* we don't regex the class, since wildcard
 		   matching on the class is disallowed. */
-		if (strcmp(notice->z_class, subs->zst_class))
+		relation = strcmp(notice->z_class, subs->zst_class);
+		if (relation > 0)	/* past the last possible one */
+			return(0);
+		if (relation < 0)
 			continue;	/* no match */
 		/* an ACL on this class means we don't do any wildcarding. */
 		if (acl) {
@@ -646,16 +672,12 @@ register ZSubscr_t *subs;
 
 /*
  * are the subscriptions the same? 1=yes, 0=no
- * The notice's z_sender field is used as the recipient field for the first
- * subscription
  */
 
 static int
 subscr_equiv(s1, s2)
 register ZSubscr_t *s1, *s2;
 {
-	if (strcmp(s1->zst_class,s2->zst_class))
-		return(0);
 	if (strcmp(s1->zst_classinst,s2->zst_classinst))
 		return(0);
 	if (strcmp(s1->zst_recipient,s2->zst_recipient))
