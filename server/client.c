@@ -113,7 +113,7 @@ ZServerDesc_t *server;
 	xinsque(clist, hlp2->zh_clients);
 	(void) sigsetmask(omask);
 
-	return(ZERR_NONE);
+	return(subscr_def_subs(*client)); /* add default subscriptions */
 }
 
 /*
