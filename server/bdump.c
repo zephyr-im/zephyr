@@ -816,13 +816,10 @@ bdump_recv_loop(server)
 	}
 #if defined (DEBUG)
 	if (zdebug) {
-	    char buf[4096];
-
-	    sprintf(buf, "bdump:%s '%s' '%s' '%s' '%s' '%s'",
+	    syslog(LOG_DEBUG, "bdump:%s '%s' '%s' '%s' '%s' '%s'",
 		    ZNoticeKinds[(int) notice.z_kind], notice.z_class,
 		    notice.z_class_inst, notice.z_opcode, notice.z_sender,
 		    notice.z_recipient);
-	    syslog(LOG_DEBUG, buf);
 	}
 #endif /* DEBUG */
 	if (notice.z_num_other_fields >= 1) {
