@@ -3,7 +3,7 @@ SHELL = /bin/sh
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 datadir=@datadir@
-confdir=@confdir@
+sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
 
@@ -13,15 +13,14 @@ libdir=${exec_prefix}/lib
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
-BUILDTOP=../..
+BUILDTOP=..
 VPATH=@srcdir@
 CC=@CC@
 INSTALL=@INSTALL@
 RANLIB=@RANLIB@
-COMPILE_ET=@COMPILE_ET@
 
 DEBUG=-O
-CFLAGS=${DEBUG} -DCONFDIR=\"${confdir}\" -I${top_srcdir}/h \
+CFLAGS=${DEBUG} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h @CPPFLAGS@
 
 OBJS =	zephyr_err.o ZAsyncLocate.o ZCkAuth.o ZCkIfNot.o ZClosePort.o \
@@ -41,7 +40,7 @@ libzephyr.a: ${OBJS}
 	${RANLIB} $@
 
 zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
-	${COMPILE_ET} ${srcdir}/zephyr_err.et
+	compile_et ${srcdir}/zephyr_err.et
 	mv zephyr_err.h ${BUILDTOP}/h/zephyr
 
 check:
