@@ -125,6 +125,19 @@ performs the equivalent of a
 .B wg_startup
 command.
 .br
+The variable \fBresolved_addresses\fR determines whether zwgc will,
+for an IP address indicating the origin of a message, attempt to look
+up the hostname corresponding to that IP address. The value none
+indicates that hostnames will never be found, and that the zwgc
+fromhost variable will thus always contain an IP address (in
+dotted-decimal form). The value all indicates that there will always
+be an attempt to look up a hostname. Note that in this case, if you
+have any subscriptions with recipient ``\fI*\fR'', these subscriptions
+may be revealed to other Zephyr users who operate their own DNS name
+servers. Any other value is interpreted as a regular expression;
+hostname lookup attempts will occur only if the IP address matches
+this regular expression.
+.br
 Any variable settings you make will be stored in \fI$HOME/.zephyr.vars\fR
 .TP
 .B show \fIvar\fR [ \fIvar\fR \ ... ]

@@ -5,7 +5,9 @@
  *
  *	Created by:	John T. Kohl
  *
- *	$Id$
+ *	$Source$
+ *	$Author$
+ *	$Zephyr: /mit/zephyr/src/server/RCS/zserver.h,v 1.34 91/03/08 12:53:24 raeburn Exp $
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
@@ -67,6 +69,7 @@ typedef struct _Destination Destination;
 typedef struct _Destlist Destlist;
 typedef struct _Realm Realm;
 typedef struct _Realmname Realmname;
+typedef enum _Realm_state Realm_state;
 typedef struct _Client Client;
 typedef struct _Triplet Triplet;
 typedef enum _Server_state Server_state;
@@ -87,14 +90,24 @@ struct _Destlist {
     struct _Destlist	*next, **prev_p;
 };
 
+enum _Realm_state {
+    REALM_UP,				/* Realm is up */
+    REALM_TARDY,			/* Realm due for a hello XXX */
+    REALM_DEAD,				/* Realm is considered dead */
+    REALM_STARTING			/* Realm is between dead and up */
+};
+
 struct _Realm {
     char name[REALM_SZ];
     int count;
     struct sockaddr_in *addrs;
     int idx;				/* which server we are connected to */
-    Destlist *subs;
-    Client *client;
-    long tkt_try;
+    Destlist *subs;                     /* what their clients sub to */
+    Destlist *remsubs;                  /* our subs on their end */
+    Client *client;                     
+    int child_pid;
+    int have_tkt;
+    Realm_state state;
 };
 
 struct _Realmname {
@@ -284,8 +297,9 @@ Code_t server_adispatch __P((ZNotice_t *notice, int auth,
 			     struct sockaddr_in *who, Server *server));
 
 /* found in subscr.c */
+Code_t subscr_foreign_user __P((ZNotice_t *, struct sockaddr_in *, Server *, Realm *));
 Code_t subscr_cancel __P((struct sockaddr_in *sin, ZNotice_t *notice));
-Code_t subscr_subscribe __P((Client *who, ZNotice_t *notice));
+Code_t subscr_subscribe __P((Client *who, ZNotice_t *notice, Server *server));
 Code_t subscr_send_subs __P((Client *client));
 void subscr_cancel_client __P((Client *client));
 void subscr_sendlist __P((ZNotice_t *notice, int auth,
@@ -305,8 +319,11 @@ Code_t ulocate_dispatch __P((ZNotice_t *notice, int auth,
 Code_t uloc_send_locations __P((void));
 
 /* found in realm.c */
+int realm_sender_in_realm __P((char *realm, char *sender));
+int realm_bound_for_realm __P((char *realm, char *recip));
 Realm *realm_which_realm __P((struct sockaddr_in *who));
 Realm *realm_get_realm_by_name __P((char *name));
+Realm *realm_get_realm_by_pid __P((int));
 void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, Realm *, int);
 char *realm_expand_realm(char *);
 void realm_init __P((void));
@@ -314,6 +331,8 @@ Code_t ZCheckRealmAuthentication __P((ZNotice_t *, struct sockaddr_in *,
 				      char *));
 Code_t realm_control_dispatch __P((ZNotice_t *, int, struct sockaddr_in *,
 				   Server *, Realm *));
+void realm_shutdown __P((void));
+void realm_deathgram __P((Server *));
 
 /* found in version.c */
 char *get_version __P((void));
@@ -368,6 +387,9 @@ extern int nservers;			/* number of other servers*/
 extern String *empty;
 extern String *wildcard_instance;
 
+extern Realm *otherrealms;
+extern int nrealms;
+
 extern struct in_addr my_addr;	/* my inet address */
 
 #define class_is_control(classname) (classname == class_control)
@@ -389,6 +411,7 @@ extern struct in_addr my_addr;	/* my inet address */
 #define ADMIN_NEWREALM	"NEXT_REALM"	/* Opcode: this is a new realm */
 #define REALM_REQ_LOCATE "REQ_LOCATE"	/* Opcode: request a location */
 #define REALM_ANS_LOCATE "ANS_LOCATE"	/* Opcode: answer to location */
+#define REALM_BOOT      "SENDSUBS"	/* Opcode: first server in realm */
 
 /* me_server_idx is the index into otherservers of this server descriptor. */
 /* the 'limbo' server is always the first server */

@@ -3,7 +3,8 @@
  *
  *	Created by:	John T. Kohl
  *
- *	$Id$
+ *	$Source$
+ *	$Author$
  *
  *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
@@ -158,6 +159,7 @@ triplet_deregister(client, dest, realm)
 	    if (*triplet->clients == NULL && !triplet->acl) {
 		LIST_DELETE(triplet);
 		free_triplet(triplet);
+		return ZSRV_EMPTYCLASS;
 	    }
 	    return ZERR_NONE;
 	}
