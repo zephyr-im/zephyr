@@ -15,7 +15,7 @@ OBJS = new_string.o
 SRCS = new_string.c
 HDRS = new_string.h
 
-SRCDIR= ${SRCTOP}/zwgc/zwgc.dev/String
+SRCDIR= ${SRCTOP}/zwgc/String
 CODE= ${SRCS} ${HDRS} Imakefile
 
 LINCLUDES= -I../Memory

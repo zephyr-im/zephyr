@@ -22,7 +22,7 @@ LINCLUDES = -I../Memory -I../String
 
 GENERATORS= generate_dictionary_instance
 
-SRCDIR= ${SRCTOP}/zwgc/zwgc.dev/Dictionary
+SRCDIR= ${SRCTOP}/zwgc/Dictionary
 CODE= ${GENERATORS} ${REALSRCS} ${REALHDRS} Imakefile
 
 normal_obj_rule()
