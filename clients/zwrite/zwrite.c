@@ -413,9 +413,11 @@ send_off(notice, real)
 usage(s)
     char *s;
 {
-    printf("Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l] [-p]\n\
-\t[-c class] [-i inst] [-f fsname] [-O opcode] [user ...] [-m message]\n", s);
-    printf("\t-f and -c are mutually exclusive\n\
+    fprintf(stderr,
+	    "Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l] [-p]\n\
+\t[-c class] [-i inst] [-f fsname] [-O opcode] [-s signature]\n\
+\t[user ...] [-m message]\n", s);
+    fprintf(stderr,"\t-f and -c are mutually exclusive\n\
 \t-f and -i are mutually exclusive\n\
 \t-p and -O are mutually exclusive\n\
 \trecipients must be specified unless -c or -f specifies a class\n\
