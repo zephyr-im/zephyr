@@ -168,7 +168,7 @@ extern ZServerDesc_t *server_which_server();
 /* found in subscr_s.c */
 extern Code_t subscr_cancel(), subscr_subscribe(), subscr_send_subs();;
 extern ZClientList_t *subscr_match_list();
-extern void subscr_list_free(), subscr_cancel_client(), subscr_sendlist();
+extern void subscr_free_list(), subscr_cancel_client(), subscr_sendlist();
 
 /* found in uloc_s.c */
 extern void ulogin_dispatch(), ulocate_dispatch(), uloc_hflush();
