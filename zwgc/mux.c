@@ -159,7 +159,7 @@ void mux_loop()
 	input_sources_copy = input_sources;
 
 	i = select(max_source+1, &input_sources_copy, (fd_set *)0,
-		   (fd_set *)NULL, &tv);
+		   (fd_set *)NULL, have_tty ? &tv : (struct timeval *)0);
 
 	if (i == -1) {
 	    if (errno == EINTR)
