@@ -7,19 +7,5 @@
 /**/#	$Author$
 /**/#	$Zephyr: Imakefile,v 1.1 89/03/23 17:21:13 jtkohl Exp $
 /**/#
-#define have_subdirs
-#define no_curdir_lint
 
-SRCDIR= ${SRCTOP}/include
-CODE= Imakefile
-
-SUBDIRS= zephyr
-
-#ifdef LOCAL_LIBS
-all:: com_err.h ss
-depend:: com_err.h ss
-com_err.h:
-	ln -s ../et/lib/com_err.h .
-ss:
-	ln -s ../ss/lib ss
-#endif
+#define ISUBDIRS zephyr
