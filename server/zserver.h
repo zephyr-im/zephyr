@@ -267,6 +267,7 @@ Code_t SendKerberosData  __P((int, KTEXT, char *, char *));
 void sweep_ticket_hash_table __P((void *));
 #endif
 
+#if 0
 /* found in kopt.c */
 #ifdef HAVE_KRB4
 #ifndef NOENCRYPTION
@@ -279,6 +280,7 @@ int krb_rd_req __P((KTEXT authent, char *service, char *instance,
 #endif
 int krb_find_ticket __P((KTEXT authent, KTEXT ticket));
 int krb_get_lrealm __P((char *r, int n));
+#endif
 #endif
 #endif
 

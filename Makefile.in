@@ -49,18 +49,3 @@ install:
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
 .PHONY: all check install clean
-
-aclocal.m4: acinclude.m4
-	cd $(srcdir) && aclocal
-configure: configure.in aclocal.m4
-	cd $(srcdir) && autoconf
-h/config.h.in: configure.in aclocal.m4 acconfig.h
-	cd $(srcdir) && autoheader
-libtool: $(LIBTOOL_DEPS)
-	$(SHELL) ./config.status --recheck
-config.status: configure
-	$(SHELL) ./config.status --recheck
-h/config.h: h/config.h.in config.status
-	$(SHELL) ./config.status
-Makefile: config.status Makefile.in
-	$(SHELL) ./config.status
