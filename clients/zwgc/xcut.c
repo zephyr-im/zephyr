@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xcut_c[] = "$Header$";
+static char rcsid_xcut_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -209,6 +209,9 @@ void xcut(dpy,event,desc_context)
 
       case ButtonRelease:
 	if (w == current_window_in && !((event->xbutton.state)&ShiftMask)) {
+#ifdef REVSTACK
+	   extern int reverse_stack;
+#endif /* REVSTACK */
 	   if (w == selecting_in) selecting_in = 0;
 	   XDeleteContext(dpy, w, desc_context);
 	   XDestroyWindow(dpy, w);
