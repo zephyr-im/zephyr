@@ -26,6 +26,7 @@ static char rcsid_xcut_c[] = "$Id$";
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <sys/time.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "X_gram.h"
@@ -41,6 +42,8 @@ static char rcsid_xcut_c[] = "$Id$";
  */
 
 extern char *xmarkGetText();
+
+extern long ttl;
 
 static char *selected_text=NULL;
 static Window selecting_in = 0;
@@ -128,7 +131,40 @@ void xunmark(dpy,w,gram,desc_context)
    xmarkClear();
    xmarkRedraw(dpy,w,gram,XMARK_REDRAW_OLD);
 }
+
+/* This is out here so xdestroygram can get at it */
      
+static int current_window_in = -1;
+static int current_valid = False;
+
+void xdestroygram(dpy,w,desc_context,gram)
+     Display *dpy;
+     Window w;
+     XContext desc_context;
+     x_gram *gram;
+{
+    struct timeval now;
+
+    gettimeofday(&now,NULL);
+    if ((gram->can_die.tv_sec == 0) ||
+	(gram->can_die.tv_sec > now.tv_sec) ||
+	((gram->can_die.tv_sec == now.tv_sec) &&
+	 (gram->can_die.tv_usec > now.tv_usec)))
+	return;
+
+    if (w == selecting_in) {
+	selecting_in = 0;
+	xmarkClear();
+    }
+    current_window_in = -1;
+    current_valid = False;
+    XDeleteContext(dpy, w, desc_context);
+    XDestroyWindow(dpy, w);
+    delete_gram(gram);
+    free(gram->text);
+    free(gram->blocks);
+    free(gram);
+}
 
 void xcut(dpy,event,desc_context)
      Display *dpy;
@@ -137,8 +173,6 @@ void xcut(dpy,event,desc_context)
 {
     x_gram *gram;
     Window w = event->xany.window;
-    static int current_window_in = -1;
-    static int current_valid = False;
     int changedbound;
 
     /*
@@ -152,6 +186,18 @@ void xcut(dpy,event,desc_context)
      * Dispatch on the event type:
      */
     switch(event->type) {
+      case MapNotify:
+	/* I don't like using the local time, but MapNotify events don't
+	 * come with a timestamp, and there's no way to query the server
+	 */
+
+	if (gram->can_die.tv_sec == 0) {
+	    gettimeofday(&(gram->can_die),NULL);
+	    gram->can_die.tv_sec += (int) (ttl/1000);
+	    gram->can_die.tv_usec += (ttl%1000)*1000;
+	}
+	break;
+
      case LeaveNotify:
 	if (event->xcrossing.window == current_window_in) {
 	    current_valid = False;
@@ -160,7 +206,7 @@ void xcut(dpy,event,desc_context)
 	    current_valid = False;
 	    current_window_in = -1;
 	}
-       break;
+	break;
 
      case MotionNotify:
        if (w == selecting_in) {
@@ -209,24 +255,30 @@ void xcut(dpy,event,desc_context)
 	break;
 
       case ButtonRelease:
-	if (w == current_window_in && current_valid
-	    && !((event->xbutton.state)&ShiftMask)) {
-	    /* valid button release (mouse never left window) */
-	   if (w == selecting_in) {
-	      selecting_in = 0;
-	      xmarkClear();
-	   }
-	   if (reverse_stack && (gram == bottom_gram))
-	      bottom_gram = gram;
-	   current_window_in = -1;
-	   current_valid = False;
-	   XDeleteContext(dpy, w, desc_context);
-	   XDestroyWindow(dpy, w);
-	   if (reverse_stack)
-	     delete_gram(gram);
-	   free(gram->text);
-	   free(gram->blocks);
-	   free(gram);
+	if (w == current_window_in && 
+	    current_valid &&
+	    !((event->xbutton.state)&ShiftMask)) {
+
+	    if ((event->xbutton.state)&ControlMask) {
+		XWindowAttributes wa;
+		int gx,gy;
+		Window temp;
+
+		for (gram = bottom_gram ; gram ; gram = gram->above) {
+		    XGetWindowAttributes(dpy,gram->w,&wa);
+		    XTranslateCoordinates(dpy,gram->w,wa.root,0,0,&gx,&gy,
+					  &temp);
+
+		    if ((wa.map_state == IsViewable) &&
+			(gx <= event->xbutton.x_root) &&
+			(event->xbutton.x_root < gx+wa.width) &&
+			(gy <= event->xbutton.y_root) &&
+			(event->xbutton.y_root < gy+wa.height))
+			xdestroygram(dpy,gram->w,desc_context,gram);
+		}
+	    } else {
+		xdestroygram(dpy,w,desc_context,gram);
+	    }
 	} else if (w == selecting_in && ((event->xbutton.state)&ShiftMask)) {
 	   if (selected_text) free(selected_text);
 	   selected_text = xmarkGetText();
@@ -267,6 +319,8 @@ void xcut(dpy,event,desc_context)
 	/* Note that there is no option to configure a zgram to the middle */
 	break;
 #endif
+      default:
+	break;
     }
 
     XFlush(dpy);
