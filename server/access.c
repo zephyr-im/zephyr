@@ -78,6 +78,7 @@ access_check(sender, acl, accesstype)
 	char buf[MAXPATHLEN];		/* holds the real acl name */
 	char *prefix;
 	int	flag;
+	int retval;
 
 	switch (accesstype) {
 	case TRANSMIT:
@@ -109,13 +110,18 @@ access_check(sender, acl, accesstype)
 		       acl->acl_filename);
 	/*
 	 * If we can't load it (because it probably doesn't exist),
-	 * we grant access by default.  Dangerous!
+	 * we deny access.
 	 */
 #if 0
-	zdbug ((LOG_DEBUG, "checking %s for %s", buf, sender->string));
+	zdbug ((LOG_DEBUG, "checking %s for %s", buf, sender));
 #endif
-	return (acl_load (buf) < 0
-		|| acl_check(buf, sender));
+	
+	retval = acl_load(buf);
+	if (retval < 0) {
+	  syslog(LOG_DEBUG, "Error in acl_load of %s for %s", buf, sender);
+	  return(0);
+	}
+	return (acl_check(buf, sender));
 }
 
 static void
@@ -226,10 +232,7 @@ access_setup (int first)
 			   class_name, error_message(retval));
 		    continue;
 		}
-#if 1
-		else if (zdebug)
-		    syslog(LOG_DEBUG, "restricted %s", class_name);
-#endif
+		zdbug((LOG_DEBUG, "restricted %s", class_name));
 	}
 	(void) fclose(registry);
 
