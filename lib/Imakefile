@@ -1,0 +1,216 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+#define no_curdir_lint
+
+LINTLIBS= ${KRB_LINTLIB} ${DES_LINTLIB} ${COMERR_LINTLIB}
+
+#ifdef KERBEROS
+RSRCS= ${SRCS} ${HDRS} krb_err.et zephyr_err.et
+#else
+RSRCS= ${SRCS} ${HDRS} zephyr_err.et
+#endif
+HDRS= \
+	../include/zephyr/zephyr.h \
+	../include/zephyr/zephyr_conf.h \
+	../include/zephyr/zephyr_internal.h
+
+SRCS=	\
+	ZCheckAuthentication.c \
+	ZCheckIfNotice.c \
+	ZClosePort.c \
+	ZCompareUID.c \
+	ZCompareUIDPred.c \
+	ZFlushLocations.c \
+	ZFlushSubscriptions.c \
+	ZFormatAuthenticNotice.c \
+	ZFormatNotice.c \
+	ZFormatNoticeList.c \
+	ZFormatRawNotice.c \
+	ZFormatRawNoticeList.c \
+	ZFormatSmallRawNotice.c \
+	ZFormatSmallRawNoticeList.c \
+	ZFreeNotice.c \
+	ZGetLocations.c \
+	ZGetSender.c \
+	ZGetSubscriptions.c \
+	ZGetWGPort.c \
+	ZIfNotice.c \
+	ZInitialize.c \
+	ZLocateUser.c \
+	ZLocations.c \
+	ZMakeAscii.c \
+	ZMakeAuthentication.c \
+	ZOpenPort.c \
+	ZParseNotice.c \
+	ZPeekIfNotice.c \
+	ZPeekNotice.c \
+	ZPeekPacket.c \
+	ZPending.c \
+	ZReadAscii.c \
+	ZReceiveNotice.c \
+	ZReceivePacket.c \
+	ZRetrieveSubscriptions.c \
+	ZSendList.c \
+	ZSendNotice.c \
+	ZSendPacket.c \
+	ZSendRawNotice.c \
+	ZSendRawList.c \
+	ZSetDestAddr.c \
+	ZSetFD.c \
+	ZSetServerState.c \
+	ZSubscriptions.c \
+	ZVariables.c \
+	Zinternal.c \
+	acl_files.c
+
+#ifdef KERBEROS
+OLIST=	\
+	krb_err.o \
+	zephyr_err.o \
+	ZCheckAuthentication.o \
+	ZCheckIfNotice.o \
+	ZClosePort.o \
+	ZCompareUID.o \
+	ZCompareUIDPred.o \
+	ZFlushLocations.o \
+	ZFlushSubscriptions.o \
+	ZFormatAuthenticNotice.o \
+	ZFormatNotice.o \
+	ZFormatNoticeList.o \
+	ZFormatRawNotice.o \
+	ZFormatRawNoticeList.o \
+	ZFormatSmallRawNotice.o \
+	ZFormatSmallRawNoticeList.o \
+	ZFreeNotice.o \
+	ZGetLocations.o \
+	ZGetSender.o \
+	ZGetSubscriptions.o \
+	ZGetWGPort.o \
+	ZIfNotice.o \
+	ZInitialize.o \
+	ZLocateUser.o \
+	ZLocations.o \
+	ZMakeAscii.o \
+	ZMakeAuthentication.o \
+	ZOpenPort.o \
+	ZParseNotice.o \
+	ZPeekIfNotice.o \
+	ZPeekNotice.o \
+	ZPeekPacket.o \
+	ZPending.o \
+	ZReadAscii.o \
+	ZReceiveNotice.o \
+	ZReceivePacket.o \
+	ZRetrieveSubscriptions.o \
+	ZSendList.o \
+	ZSendNotice.o \
+	ZSendPacket.o \
+	ZSendRawNotice.o \
+	ZSendRawList.o \
+	ZSetDestAddr.o \
+	ZSetFD.o \
+	ZSetServerState.o \
+	ZSubscriptions.o \
+	ZVariables.o \
+	Zinternal.o \
+	acl_files.o
+#else /* !KERBEROS */
+OLIST=	\
+	zephyr_err.o \
+	ZCheckAuthentication.o \
+	ZCheckIfNotice.o \
+	ZClosePort.o \
+	ZCompareUID.o \
+	ZCompareUIDPred.o \
+	ZFlushLocations.o \
+	ZFlushSubscriptions.o \
+	ZFormatAuthenticNotice.o \
+	ZFormatNotice.o \
+	ZFormatNoticeList.o \
+	ZFormatRawNotice.o \
+	ZFormatRawNoticeList.o \
+	ZFormatSmallRawNotice.o \
+	ZFormatSmallRawNoticeList.o \
+	ZFreeNotice.o \
+	ZGetLocations.o \
+	ZGetSender.o \
+	ZGetSubscriptions.o \
+	ZGetWGPort.o \
+	ZIfNotice.o \
+	ZInitialize.o \
+	ZLocateUser.o \
+	ZLocations.o \
+	ZMakeAscii.o \
+	ZMakeAuthentication.o \
+	ZOpenPort.o \
+	ZParseNotice.o \
+	ZPeekIfNotice.o \
+	ZPeekNotice.o \
+	ZPeekPacket.o \
+	ZPending.o \
+	ZReadAscii.o \
+	ZReceiveNotice.o \
+	ZReceivePacket.o \
+	ZRetrieveSubscriptions.o \
+	ZSendList.o \
+	ZSendNotice.o \
+	ZSendPacket.o \
+	ZSendRawNotice.o \
+	ZSendRawList.o \
+	ZSetDestAddr.o \
+	ZSetFD.o \
+	ZSetServerState.o \
+	ZSubscriptions.o \
+	ZVariables.o \
+	Zinternal.o \
+	acl_files.o
+#endif /* KERBEROS */
+
+/**/#dummy target so that 'make' does a make all.
+all:: libzephyr.a
+
+llib-lzephyr.ln:: ${HDRS}
+	@echo "Don't worry about the complaints about"
+	@echo "possible pointer alignment problems, these are a result"
+	@echo "of casting the return value of malloc()"
+	@echo
+
+library_obj_rule()
+
+install_library_target(zephyr,${OLIST},${SRCS},${LINTLIBS})
+
+error_table(zephyr_err)
+#ifdef KERBEROS
+error_table(krb_err)
+#endif
+
+all::
+	$(RM) ../libs/libzephyr.a ../libs/libzephyr_p.a
+	$(CP) libzephyr.a ../libs/libzephyr.a
+	$(RANLIB) -t ../libs/libzephyr.a
+#ifdef PROFILED_LIBS
+	$(CP) libzephyr_p.a ../libs/libzephyr_p.a
+	$(RANLIB) -t ../libs/libzephyr_p.a
+#endif
+	
+install::
+	-mkdir ${DESTDIR}/usr/include/zephyr
+	install -c -m 0644 ../include/zephyr/zephyr.h ${DESTDIR}/usr/include/zephyr/zephyr.h
+	install -c -m 0644 ../include/zephyr/zephyr_conf.h ${DESTDIR}/usr/include/zephyr/zephyr_conf.h
+	install -c -m 0644 ../include/zephyr/zephyr_internal.h ${DESTDIR}/usr/include/zephyr/zephyr_internal.h
+	install -c -m 0644 ../include/zephyr/zephyr_err.h ${DESTDIR}/usr/include/zephyr/zephyr_err.h
+	install -c -m 0644 ../include/zephyr/krb_err.h ${DESTDIR}/usr/include/zephyr/krb_err.h
+	install -c -m 0644 ../include/zephyr/mit-copyright.h ${DESTDIR}/usr/include/zephyr/mit-copyright.h
+
+#define last_licks()							@@\
+/**/# this is to install the lint lib  This must end			@@\
+/**/# up in the resulting Makefile AFTER the other lint lib stuff.	@@\
+llib-lzephyr.ln::							@@\
+	cp llib-lzephyr.ln ../libs/llib-lzephyr.ln
