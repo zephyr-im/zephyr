@@ -42,6 +42,7 @@ int __locate_next;
 ZSubscription_t *__subscriptions_list;
 int __subscriptions_num;
 int __subscriptions_next;
+int Z_discarded_packets = 0;
 
 #ifdef HAVE_KRB4
 C_Block __Zephyr_session;
@@ -222,10 +223,9 @@ Code_t Z_ReadWait()
     ZNotice_t notice;
     ZPacket_t packet;
     struct sockaddr_in olddest, from;
-    int from_len, packet_len, part, partof;
+    int from_len, packet_len, zvlen, part, partof;
     char *slash;
     Code_t retval;
-    register int i;
     fd_set fds;
     struct timeval tv;
 
@@ -253,15 +253,12 @@ Code_t Z_ReadWait()
     if (!packet_len)
 	return (ZERR_EOF);
 
-    /* XXX Check for null data (debugging) */
-    for (i = packet_len - 1; i >= 0; i--)
-      if (packet[i])
-	goto not_all_null;
-#ifdef Z_DEBUG
-    Z_debug ("got null packet from %s", inet_ntoa (from.sin_addr));
-#endif
-    return ZERR_NONE;
-  not_all_null:
+    /* Ignore obviously non-Zephyr packets. */
+    zvlen = sizeof(ZVERSIONHDR) - 1;
+    if (packet_len < zvlen || memcmp(packet, ZVERSIONHDR, zvlen) != 0) {
+	Z_discarded_packets++;
+	return (ZERR_NONE);
+    }	
 
     /* Parse the notice */
     if ((retval = ZParseNotice(packet, packet_len, &notice)) != ZERR_NONE)
