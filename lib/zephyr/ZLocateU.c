@@ -28,7 +28,8 @@ Code_t ZLocateUser(user, nlocs)
     ZNotice_t notice, retnotice;
     char *ptr, *end;
     int nrecv, ack;
-    fd_set read, write, except;
+    fd_set read, setup;
+    int nfds;
     int gotone;
     struct timeval tv;
 
@@ -57,14 +58,23 @@ Code_t ZLocateUser(user, nlocs)
 
     nrecv = ack = 0;
 
+    FD_ZERO(&setup);
+    FD_SET(ZGetFD(), &setup);
+    nfds = ZGetFD() + 1;
+
     while (!nrecv || !ack) {
 	    tv.tv_sec = 0;
 	    tv.tv_usec = 500000;
 	    for (i=0;i<HM_TIMEOUT*2;i++) { /* 30 secs in 1/2 sec
 					      intervals */
 		    gotone = 0;
-		    if (select(0, &read, &write, &except, &tv) < 0)
-			    return (errno);
+		    read = setup;
+		    if (select(nfds, &read, (fd_set *) 0,
+			       (fd_set *) 0, &tv) < 0)
+			return (errno);
+		    if (FD_ISSET(ZGetFD(), &read))
+			i--;		/* make sure we time out the
+					   full 30 secs */
 		    retval = ZCheckIfNotice(&retnotice,
 					    (struct sockaddr_in *)0,
 					    ZCompareMultiUIDPred,
