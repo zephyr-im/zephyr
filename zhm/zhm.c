@@ -42,6 +42,7 @@ static char rcsid_hm_c[] = "$Header$";
 
 int hmdebug = 0; /* %&*^@ kerberos stole debug variable!!! */
 int no_server = 1, timeout_type = 0, serv_loop = 0;
+int booting = 1;
 int nserv = 0, nclt = 0, nservchang = 0, sig_type = 0;
 long starttime;
 struct sockaddr_in cli_sin, serv_sin, from;
@@ -426,6 +427,7 @@ server_manager(notice)
 	    syslog (LOG_INFO, "Bad notice from port %u.", notice->z_port);
       } else {
 	    /* This is our server, handle the notice */
+	    booting = 0;
 	    DPR ("A notice came in from the server.\n");
 	    nserv++;
 	    switch(notice->z_kind) {
@@ -639,7 +641,10 @@ new_server(sugg_serv)
       syslog (LOG_INFO, "Server went down, finding new server.");
       send_flush_notice(HM_DETACH);
       find_next_server(sugg_serv);
-      send_boot_notice(HM_ATTACH);
+      if (booting)
+	      send_boot_notice(HM_BOOT);
+      else
+	      send_boot_notice(HM_ATTACH);
 }
 
 void handle_timeout()
