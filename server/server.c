@@ -1332,7 +1332,6 @@ struct sockaddr_in *who;
 		if (otherservers[i].zs_dumping) {
 			server_queue(&(otherservers[i]), packlen, pack,
 				     auth, who);
-			xfree(pack);
 			continue;
 		}
 		server_forw_reliable(&otherservers[i], pack, packlen, notice);
