@@ -35,10 +35,10 @@
 
 /* client defines */
 #define	REXMIT_SECS	((long) 20)	/* rexmit delay on normal notices */
-#define	NUM_REXMITS	(5)		/* number of rexmits */
+#define	NUM_REXMITS	(9)		/* number of rexmits */
 
 /* hostmanager defines */
-#define	LOSE_TIMO	(30)		/* time during which a losing host
+#define	LOSE_TIMO	(60)		/* time during which a losing host
 					   must respond to a ping */
 
 /* server-server defines */
