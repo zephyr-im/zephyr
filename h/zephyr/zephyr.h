@@ -15,7 +15,6 @@
 #ifndef __ZEPHYR_H__
 #define __ZEPHYR_H__
 
-#include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr_err.h>
 #include <zephyr/zephyr_conf.h>
 
@@ -141,6 +140,15 @@ extern "C" {
 	char	*tty;
     } ZLocations_t;
 
+    typedef struct _ZAsyncLocateData_t {
+      char		*user;
+      ZUnique_Id_t	uid;
+      char		*version;
+    } ZAsyncLocateData_t;
+
+    /* Predicate for async locate */
+    extern int ZCompareALDPred Zproto((ZNotice_t *, char *));
+
     /* Socket file descriptor */
     extern int __Zephyr_fd;
 
@@ -194,6 +202,8 @@ extern "C" {
     extern Code_t ZSendPacket Zproto((char*, int, int));
     extern Code_t ZSendList Zproto((ZNotice_t*, char *[], int, Z_AuthProc));
     extern Code_t ZFormatNotice Zproto((ZNotice_t*, char**, int*, Z_AuthProc));
+    extern Code_t ZLocateUser Zproto((char *, int *, Z_AuthProc));
+    extern Code_t ZRequestLocations Zproto((char *, ZAsyncLocateData_t *, int, Z_AuthProc));
     extern Code_t ZInitialize Zproto ((void));
     extern Code_t ZSetServerState Zproto((int));
     extern Code_t ZSetFD Zproto ((int));
@@ -218,6 +228,9 @@ extern "C" {
     extern void Z_debug ();
 #endif
 
+    /* Compatibility */
+#define	ZNewLocateUser ZLocateUser
+
 #ifdef Z_HaveKerberos
     /* ZGetSession() macro */
 #define ZGetSession() (__Zephyr_session)
@@ -226,19 +239,19 @@ extern "C" {
 #ifndef __cplusplus
     /* ZGetFD() macro */
     extern int ZGetFD ();
-#define ZGetFD() (__Zephyr_fd+0)
+#define ZGetFD() __Zephyr_fd
 
     /* ZQLength macro */
     extern int ZQLength ();
-#define ZQLength() (__Q_CompleteLength+0)
+#define ZQLength() __Q_CompleteLength
 
     /* ZGetDestAddr() macro */
     extern struct sockaddr_in ZGetDestAddr ();
-#define ZGetDestAddr() (__HM_addr)
+#define ZGetDestAddr() __HM_addr
 
     /* ZGetRealm() macro */
     extern Zconst char * ZGetRealm ();
-#define ZGetRealm() (__Zephyr_realm+0)
+#define ZGetRealm() __Zephyr_realm
 
     /* ZSetDebug() macro */
     extern void ZSetDebug Zproto ((void (*)(const char *, va_list, void *),
