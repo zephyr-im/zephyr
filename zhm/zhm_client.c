@@ -18,7 +18,7 @@ static char rcsid_hm_client_c[] = "$Id$";
 #endif /* SABER */
 #endif /* lint */
 
-extern int no_server, nclt, deactivated;
+extern int no_server, nclt, deactivated, noflushflag;
 extern struct sockaddr_in cli_sin, serv_sin, from;
 
 void transmission_tower(notice, packet, pak_len)
@@ -33,8 +33,12 @@ void transmission_tower(notice, packet, pak_len)
     nclt++;
     if (notice->z_kind == HMCTL) {
 	if (!strcmp(notice->z_opcode, CLIENT_FLUSH)) {
-	    send_flush_notice(HM_FLUSH);
-	    deactivated = 1;
+	    if (noflushflag)
+		syslog(LOG_INFO, "Client requested hm flush (disabled).");
+	    else {
+		send_flush_notice(HM_FLUSH);
+		deactivated = 1;
+	    }
 	} else if (!strcmp(notice->z_opcode, CLIENT_NEW_SERVER)) {
 	    new_server((char *)NULL);
 	} else {

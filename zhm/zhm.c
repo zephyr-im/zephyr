@@ -24,7 +24,7 @@ int use_hesiod = 0;
 
 #define PIDDIR "/var/athena/"
 
-int hmdebug, rebootflag, errflg, dieflag, inetd, oldpid, nofork;
+int hmdebug, rebootflag, noflushflag, errflg, dieflag, inetd, oldpid, nofork;
 int no_server = 1, nservchang, nserv, nclt;
 int booting = 1, timeout_type, deactivated = 1;
 long starttime;
@@ -76,7 +76,7 @@ char *argv[];
 	exit(-1);
     }
     prim_serv[0] = '\0';
-    while ((opt = getopt(argc, argv, "drhin")) != EOF)
+    while ((opt = getopt(argc, argv, "drhinf")) != EOF)
 	switch(opt) {
 	  case 'd':
 	    hmdebug = 1;
@@ -97,6 +97,9 @@ char *argv[];
 	    break;
 	  case 'n':
 	    nofork = 1;
+	    break;
+	  case 'f':
+	    noflushflag = 1;
 	    break;
 	  case '?':
 	  default:
