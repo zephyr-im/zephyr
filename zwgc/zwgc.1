@@ -688,10 +688,24 @@ Entries like
 zwgc*option: value
 Zwgc*option: value
 zwgc.option: value
+*option: value
+.option: value
 .in -5
 .fi
 .sp
 will work.
+.PP
+An entry labeled with zwgc*option in any of the sources takes precedence
+over Zwgc*option, which takes precedence over *option entries.
+The following sources are searched in order:
+.nf
+.in +5
+command-line arguments (-xrm)
+contents of file named by XENVIRONMENT environment variable
+X server resource database (see \fIxrdb\fR(1))
+application resources file
+.in -5
+.fi
 .PP
 Logical values can be ( Yes On True T ) or ( No Off False nil ).
 .TP 15
@@ -808,6 +822,26 @@ Synchronous
 Secondary X synchronous mode specifier.  [default is `off']
 .PP
 The window class is always "Zwgc".
+.SH X BUTTONS
+.PP
+Clicking and releasing any button without the shift key depressed while
+the pointer remains inside a WindowGram window will cause it to
+disappear. If the pointer leaves the window
+while the button is depressed, the window does not disappear; this
+provides a way to avoid accidentally losing messages.
+.PP
+Portions of the text of a message may be selected for "pasting" into other X
+applications by using the shift key in cooperation with the pointer
+buttons.
+Holding the Shift key while depressing Button1 (usually the left button)
+will set a marker at the
+text under the pointer.  Dragging the pointer with Shift-Button1 still
+depressed extends the selection from the start point, until the button
+is released.  The end of the selection may also be
+indicated by releasing Button1, holding down the Shift key, and pressing
+Button3 (usually the right button) at the desired endpoint of the selection.
+The selection will appear with the text and background colors reversed.
+
 .SH COMMAND LINE
 .I zwgc
 is normally invoked from 
@@ -900,6 +934,11 @@ For an example of a description file, see
 For an example of X resources, see
 .IR /usr/athena/lib/zephyr/zwgc_resources .
 
+.SH BUGS
+The X selection code can highlight the wrong portions of messages
+containing formatted text placed with the @center() or @right()
+directives.
+
 .SH FILES
 .TQ 15
 $HOME/.zwgc.desc
@@ -909,7 +948,7 @@ Default location of user's description file
 System-wide description file
 .TQ
 /usr/athena/lib/zephyr/zwgc_resources
-System-wide default X resources.
+Default X application resources.
 .TQ
 $HOME/.zephyr.vars
 File containing variable definitions
@@ -923,8 +962,8 @@ Standard X resources file
 $WGFILE or /tmp/wg.\fIuid\fR
 File used to store WindowGram port number for other clients
 .SH SEE ALSO
-csh(1), kinit(1), zctl(1), zephyr(1), znol(1), X(1), getenv(3), system(3), 
-termcap(5), zephyrd(8), zhm(8)
+csh(1), kinit(1), xrdb(1), zctl(1), zephyr(1), znol(1), X(1), getenv(3),
+system(3), termcap(5), zephyrd(8), zhm(8)
 .br
 Project Athena Technical Plan Section E.4.1, `Zephyr Notification Service'
 .SH AUTHORS
