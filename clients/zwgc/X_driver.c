@@ -37,7 +37,7 @@ static const char rcsid_X_driver_c[] = "$Id$";
 #include "error.h"
 #include "X_gram.h"
 #include "xselect.h"
-#include "ulong_dictionary.h"
+#include "unsigned_long_dictionary.h"
 
 char *app_instance;
 
@@ -153,7 +153,7 @@ int get_bool_resource(name, class, default_value)
     return(result);
 }
 
-static ulong_dictionary color_dict = NULL;
+static unsigned_long_dictionary color_dict = NULL;
 
 /* Requires: name points to color name or hex string.  name must be free'd
  *     eventually by the caller.
@@ -170,14 +170,14 @@ unsigned long x_string_to_color(name,def)
      char *name;
      unsigned long def;
 {
-   ulong_dictionary_binding *binding;
+   unsigned_long_dictionary_binding *binding;
    int exists;
    XColor xc;
 
    if (name == NULL)
      return(def);
 
-   binding = ulong_dictionary_Define(color_dict,name,&exists);
+   binding = unsigned_long_dictionary_Define(color_dict,name,&exists);
 
    if (exists) {
       return((unsigned long) binding->value);
@@ -187,7 +187,7 @@ unsigned long x_string_to_color(name,def)
 	 if (XAllocColor(dpy,
 			 DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
 			 &xc)) {
-	    binding->value = (ulong) xc.pixel;
+	    binding->value = (unsigned long) xc.pixel;
 	    return(xc.pixel);
 	 } else {
 	    ERROR2("Error in XAllocColor on \"%s\": using default color\n",
@@ -197,7 +197,7 @@ unsigned long x_string_to_color(name,def)
 	 ERROR2("Error in XParseColor on \"%s\": using default color\n",
 	       name);
       }      
-      ulong_dictionary_Delete(color_dict,binding);
+      unsigned_long_dictionary_Delete(color_dict,binding);
       return(def);
    }
    /*NOTREACHED*/
@@ -368,7 +368,7 @@ int X_driver_init(drivername, notfirst, pargc, argv)
 
     app_instance=string_Copy(temp?temp+1:argv[0]);
 
-    color_dict = ulong_dictionary_Create(37);
+    color_dict = unsigned_long_dictionary_Create(37);
 
     xshowinit();
     x_gram_init(dpy);

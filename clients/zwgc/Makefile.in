@@ -29,7 +29,7 @@ LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @X_LIBS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err @X_PRE_LIBS@ @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
      @TLIB@ @RLIB@
 
-OBJS=	port_dictionary.o pointer_dictionary.o ulong_dictionary.o \
+OBJS=	port_dictionary.o pointer_dictionary.o unsigned_long_dictionary.o \
 	string_dictionary.o int_dictionary.o string_dictionary_aux.o \
 	parser.o lexer.o node.o exec.o buffer.o main.o zephyr.o X_driver.o \
 	substitute.o port.o xshow.o mux.o eval.o subscriptions.o notice.o \
@@ -49,8 +49,9 @@ port_dictionary.c port_dictionary.h: dictionary.c dictionary.h
 pointer_dictionary.c pointer_dictionary.h: dictionary.c dictionary.h
 	${INSTANTIATE} ${srcdir} dictionary pointer pointer.h
 
-ulong_dictionary.c ulong_dictionary.h: dictionary.c dictionary.h
-	${INSTANTIATE} ${srcdir} dictionary ulong sysdep.h
+unsigned_long_dictionary.c unsigned_long_dictionary.h: dictionary.c \
+							dictionary.h
+	${INSTANTIATE} ${srcdir} dictionary unsigned_long unsigned_long.h
 
 string_dictionary.c string_dictionary.h: dictionary.c dictionary.h
 	${INSTANTIATE} ${srcdir} dictionary string new_string.h
@@ -78,19 +79,19 @@ install: zwgc
 
 clean:
 	rm -f ${OBJS} zwgc port_dictionary.[ch] pointer_dictionary.[ch]
-	rm -f ulong_dictionary.[ch] string_dictionary.[ch] int_dictionary.[ch]
-	rm -f char_stack.h string_stack.h xmode_stack.h
+	rm -f unsigned_long_dictionary.[ch] string_dictionary.[ch]
+	rm -f int_dictionary.[ch] char_stack.h string_stack.h xmode_stack.h
 
 ${OBJS}: ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
 zephyr.o: ${BUILDTOP}/h/zephyr/zephyr.h ${BUILDTOP}/h/zephyr/zephyr_err.h
 
 port_dictionary.o: port.h string_stack.h new_string.h new_memory.h
 pointer_dictionary.o: pointer.h new_string.h new_memory.h
-ulong_dictionary.o: new_string.h new_memory.h
+unsigned_long_dictionary.o: new_string.h new_memory.h
 string_dictionary.o: new_string.h new_memory.h
 int_dictionary.o: new_string.h new_memory.h
 X_driver.o: X_driver.h new_memory.h formatter.h mux.h variables.h error.h
-X_driver.o: X_gram.h xselect.h ulong_dictionary.h
+X_driver.o: X_gram.h xselect.h unsigned_long_dictionary.h
 X_fonts.o: X_fonts.h new_memory.h new_string.h error.h pointer_dictionary.h
 X_fonts.o: zwgc.h
 X_gram.o: X_gram.h xmark.h zwgc.h X_driver.h X_fonts.h error.h new_string.h
