@@ -10,7 +10,9 @@
  */
 
 #ifndef lint
+#ifndef SABER
 static char rcsid_timer_c[] = "$Header$";
+#endif SABER
 #endif lint
 
 /*
@@ -41,18 +43,13 @@ without express or implied warranty.
 #include <stdio.h>
 #include "zserver.h"
 
-/* Maximum simultaneous triggers.. */
-/* This is how many alarms we will process between each select() poll */
-#define MAXSIMUL (16)
-
 long nexttimo = 0L;			/* the Unix time of the next
 					   alarm */
 static timer timers = NULL;
 static long right_now;
 
 char *calloc(), *malloc(), *realloc();
-static void timer_botch();
-static void insert_timer();
+static void timer_botch(), insert_timer(), add_timer();
 
 /*
  * timer_set_rel(time_rel, proc)
@@ -69,7 +66,7 @@ timer timer_set_rel (time_rel, proc, arg)
 {
 	timer new_t;
 	right_now = NOW;
-	new_t = (timer) malloc(TIMER_SIZE);
+	new_t = (timer) xmalloc(TIMER_SIZE);
 	if (new_t == NULL) return(NULL);
 	ALARM_TIME(new_t) = time_rel + right_now;
 	ALARM_FUNC(new_t) = proc;
@@ -77,6 +74,7 @@ timer timer_set_rel (time_rel, proc, arg)
 	ALARM_PREV(new_t) = NULL;
 	ALARM_ARG(new_t)  = arg;
 	add_timer(new_t);
+	zdbug2("timer_set_rel()'ing 0x%x",new_t);
 	return(new_t);
 }
 
@@ -96,7 +94,7 @@ timer timer_set_abs (time_abs, proc, arg)
 {
 	timer new_t;
 
-	new_t = (timer)malloc(TIMER_SIZE);
+	new_t = (timer)xmalloc(TIMER_SIZE);
 	if (new_t == NULL) return(NULL);
 	ALARM_TIME(new_t) = time_abs;
 	ALARM_FUNC(new_t) = proc;
@@ -104,6 +102,7 @@ timer timer_set_abs (time_abs, proc, arg)
 	ALARM_PREV(new_t) = NULL;
 	ALARM_ARG(new_t)  = arg;
 	add_timer(new_t);
+	zdbug2("timer_set_abs()'ing 0x%x",new_t);
 	return(new_t);
 }
 
@@ -122,20 +121,24 @@ timer_reset(tmr)
      timer tmr;
 {
 	if (!ALARM_PREV(tmr) || !ALARM_NEXT(tmr)) {
-		if (zdebug)
-			syslog(LOG_DEBUG, "reset_timer() of unscheduled timer\n");
-		return(-1);
+		zdbug1("timer_reset() of unscheduled timer\n");
+		abort();
 	}
 	if (tmr == timers) {
-		if (zdebug)
-			syslog(LOG_DEBUG, "reset_timer of timer head\n");
-		return(-1);
+		zdbug1("timer_reset of timer head\n");
+		abort();
 	}
-	right_now = NOW;
-	remque(tmr);
+	zdbug2("timer_reset()'ing 0x%x",tmr);
+	xremque(tmr);
 	ALARM_PREV(tmr) = NULL;
 	ALARM_NEXT(tmr) = NULL;
-	free(tmr);
+	xfree(tmr);
+	if (timers == NULL) {
+		zdbug1("reset with no timers\n");
+		abort();
+	}
+	nexttimo = ALARM_TIME(ALARM_NEXT(timers));
+	zdbug2("nexttimo %d", nexttimo);
 	return;
 }
 
@@ -157,11 +160,9 @@ add_timer(new_t)
      timer new_t;
 {
 	if (ALARM_PREV(new_t) || ALARM_NEXT(new_t)) {
-		if (zdebug)
-			syslog(LOG_DEBUG, "add_timer of enqueued timer\n");
-		return(-1);
+		zdbug1("add_timer of enqueued timer\n");
+		abort();
 	}
-	right_now = NOW;
 	insert_timer(new_t);
 	return;
 }
@@ -180,7 +181,7 @@ insert_timer(new_t)
 	register timer t;
 
 	if (timers == NULL) {
-		timers = (timer) malloc(TIMER_SIZE);
+		timers = (timer) xmalloc(TIMER_SIZE);
 		ALARM_NEXT(timers) = timers;
 		ALARM_PREV(timers) = timers;
 		ALARM_TIME(timers) = 0L;
@@ -188,11 +189,16 @@ insert_timer(new_t)
 	}
 	for (t = ALARM_NEXT(timers); t != timers; t = ALARM_NEXT(t)) {
 		if (ALARM_TIME(t) > ALARM_TIME(new_t)) {
-			insque(new_t, ALARM_PREV(t));
+			xinsque(new_t, ALARM_PREV(t));
+			nexttimo = ALARM_TIME(ALARM_NEXT(timers));
+			zdbug2("nexttimo %d", nexttimo);
 			return;
 		}
 	}
-	insque(new_t, ALARM_PREV(timers));
+	xinsque(new_t, ALARM_PREV(timers));
+	nexttimo = ALARM_TIME(ALARM_NEXT(timers));
+	zdbug2("nexttimo %d", nexttimo);
+	return;
 }
 
 /*
@@ -206,41 +212,49 @@ timer_process()
 {
 	register int i;
 	register struct _timer *t;
-	void (*queue[MAXSIMUL])();
-	caddr_t queue_arg[MAXSIMUL];
-	int nqueue=0;
+	void (*queue)();
+	caddr_t queue_arg;
+	int valid = 0;
 
-	for (t=ALARM_NEXT(timers); t != timers && right_now >= ALARM_TIME(t); 
-	     t=ALARM_NEXT(t)) {
+	zdbug1("timer_process");
+	right_now = NOW;
+	t=ALARM_NEXT(timers);
+	if (t != timers && right_now >= ALARM_TIME(t)) {
 		/*
 		 * This one goes off NOW..
 		 * Enqueue the function, and delete the timer.
 		 */
 		register timer s;
-     
-		if (nqueue>MAXSIMUL) break;
-		queue_arg[nqueue] = ALARM_ARG(t);
-		queue[nqueue++]=ALARM_FUNC(t);
-		remque(t); 
+		valid = 1;
+
+		queue_arg = ALARM_ARG(t);
+		queue = ALARM_FUNC(t);
 		s = t;
 		t = ALARM_PREV(t);
+		xremque(s); 
 	        ALARM_PREV(s) = NULL;
 		ALARM_NEXT(s) = NULL;
+		ALARM_FUNC(s) = timer_botch;
+		xfree(s);
+		t = ALARM_NEXT(t);
 	}
 	/* note that in the case that there are no timers, the ALARM_TIME
 	   is set to 0L, which is what the main loop expects as the
 	   nexttimo when we have no timout work to do */
-	nexttimout = ALARM_TIME(t);
+	nexttimo = ALARM_TIME(t);
+	zdbug2("nexttimo %d", nexttimo);
 	
-	for (i=0; i < nqueue; i++)
-		(queue[i])(queue_arg[i]);
+	if (valid) {
+		zdbug3("firing 0x%x(0x%x)", queue, queue_arg);
+		(queue)(queue_arg);
+	}
 	return;
 }
 
 static void
 timer_botch()
 {
-	syslog(LOG_DEBUG, "Timer botch\n");
+	syslog(LOG_CRIT, "Timer botch\n");
 	abort();
 }
 
@@ -249,7 +263,7 @@ print_timers()
 {
 	register timer t;
 
-	printf("\nIt's currently %d\n", NOW);
+	printf("\nIt's currently %ld\n", NOW);
 	for (t=ALARM_NEXT(timers); t != timers; t = ALARM_NEXT(t)) {
 		printf("Timer %x: time %d\n", t, ALARM_TIME(t));
 	}
