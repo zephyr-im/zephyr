@@ -159,14 +159,15 @@ main(argc, argv)
     }
 	
     if (msgarg) {
+	int size = msgsize;
+	for (arg=msgarg;arg<argc;arg++)
+		size += (strlen(argv[arg]) + 1);
+	size++;				/* for the newline */
+	if (message)
+		message = realloc(message, (unsigned) size);
+	else
+		message = malloc((unsigned) size);
 	for (arg=msgarg;arg<argc;arg++) {
-	    if (message)
-		    message = realloc(message,
-				      (unsigned) (msgsize+strlen(argv[arg])+
-				      (arg == argc-1)?2:1));
-	    else
-		    message = malloc((unsigned)(strlen(argv[arg])+
-						((arg == argc-1)?2:1)));
 	    (void) strcpy(message+msgsize, argv[arg]);
 	    msgsize += strlen(argv[arg]);
 	    if (arg != argc-1) {
@@ -177,8 +178,7 @@ main(argc, argv)
 	message[msgsize] = '\n';
 	message[msgsize+1] = '\0';
 	msgsize += 2;
-    }
-    else {
+    } else {
 	if (isatty(0)) {
 	    for (;;) {
 		if (!fgets(bfr, sizeof bfr, stdin))
