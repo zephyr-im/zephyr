@@ -21,10 +21,6 @@ static char rcsid_ZNewLocateUser_c[] =
 
 #include <zephyr/zephyr_internal.h>
 
-#ifdef _AIX
-#include <sys/select.h>
-#endif
-
 Code_t ZNewLocateUser(user, nlocs, auth)
     char *user;
     int *nlocs;
@@ -101,7 +97,7 @@ Code_t ZNewLocateUser(user, nlocs, auth)
 
 	    __locate_num /= 3;
 
-	    __locate_list = (ZLocations_t *)malloc((unsigned)__locate_num*
+	    __locate_list = (ZLocations_t *)malloc((unsigned)(__locate_num+1)*
 						   sizeof(ZLocations_t));
 	    if (!__locate_list) {
 		    ZFreeNotice (&retnotice);
@@ -109,24 +105,28 @@ Code_t ZNewLocateUser(user, nlocs, auth)
 	    }
 	
 	    for (ptr=retnotice.z_message, i=0;i<__locate_num;i++) {
-		    __locate_list[i].host = malloc((unsigned)strlen(ptr)+1);
+		    unsigned int len;
+		    len = strlen (ptr) + 1;
+		    __locate_list[i].host = malloc(len);
 		    if (!__locate_list[i].host) {
 		    nomem:
 			    ZFreeNotice (&retnotice);
 			    return (ENOMEM);
 		    }
 		    (void) strcpy(__locate_list[i].host, ptr);
-		    ptr += strlen(ptr)+1;
-		    __locate_list[i].time = malloc((unsigned)strlen(ptr)+1);
+		    ptr += len;
+		    len = strlen (ptr) + 1;
+		    __locate_list[i].time = malloc(len);
 		    if (!__locate_list[i].time)
 			    goto nomem;
 		    (void) strcpy(__locate_list[i].time, ptr);
-		    ptr += strlen(ptr)+1;
-		    __locate_list[i].tty = malloc((unsigned)strlen(ptr)+1);
+		    ptr += len;
+		    len = strlen (ptr) + 1;
+		    __locate_list[i].tty = malloc(len);
 		    if (!__locate_list[i].tty)
 			    goto nomem;
 		    (void) strcpy(__locate_list[i].tty, ptr);
-		    ptr += strlen(ptr)+1;
+		    ptr += len;
 	    }
 
 	    ZFreeNotice(&retnotice);
