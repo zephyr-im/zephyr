@@ -1,0 +1,44 @@
+.\"	$Source$
+.\"	$Author$
+.\"	$Header$
+.\"
+.\" Copyright 1988 by the Massachusetts Institute of Technology
+.\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
+.\" specifies the terms and conditions for redistribution.
+.\"
+.TH ZSHUTDOWN_NOTIFY 8 "July 8, 1988" "MIT Project Athena"
+.ds ]W MIT Project Athena
+.SH NAME
+zshutdown_notify \- notify users of impending shutdown
+.SH SYNOPSIS
+.B zshutdown_notify
+.SH DESCRIPTION
+.I zshutdown_notify
+reads the standard input until EOF is reached, and then sends a Zephyr
+notice with the official hostname, the collected input, and a warning
+message as the message body of the notice.
+The notice is sent to class FILSRV, instance 
+.I <hostname>,
+recipient "*", where <hostname> is the official hostname of the sending host.
+.PP
+Any users who are using resources on the sending host are expected to
+subscribe to these messages so they will be warned of any impending
+shutdowns.
+.PP
+.I zshutdown_notify
+is usually invoked from within
+.I /etc/shutdown.
+.SH SEE ALSO
+attach(1), zephyr(1), zwgc(1), shutdown(8), zhm(8), zephyrd(8)
+.br
+Project Athena Technical Plan Section E.4.1, `Zephyr Notification
+Service'
+.SH AUTHOR
+.PP
+C. Anthony Della Fera (Digital Equipment Corporation-Project Athena)
+.sp
+Copyright (c) 1987,1988 by the Massachusetts Institute of Technology
+.br
+See
+.I zephyr(1)
+for a full copyright notice.
