@@ -1,0 +1,7 @@
+	command_table	test_cmds;
+
+	request		test_cmd, "test",
+			test;
+
+	end;
+
