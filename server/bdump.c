@@ -88,6 +88,7 @@ static int cancel_outgoing_dump;
 #endif
 
 int bdumping;
+int bdump_concurrent;
 extern char *bdump_version;
 
 /*
@@ -798,7 +799,9 @@ bdump_recv_loop(server)
 	if (packets_waiting()) {
 	    /* A non-braindump packet is waiting; handle it. */
 	    bdumping = 0;
+	    bdump_concurrent = 1;
 	    handle_packet();
+	    bdump_concurrent = 0;
 	    bdumping = 1;
 	}
 	len = sizeof(packet);
