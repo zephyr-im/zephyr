@@ -64,7 +64,7 @@ static char rcsid_subscr_s_c[] = "$Header$";
 static void old_compat_subscr_sendlist();
 #endif /* OLD_COMPAT */
 #ifdef NEW_COMPAT
-#define NEW_OLD_ZEPH_VERS	"ZEPH0.1"
+#define NEW_OLD_ZEPHYR_VERSION	"ZEPH0.1"
 static void new_old_compat_subscr_sendlist();
 #endif /* NEW_COMPAT */
 
@@ -480,7 +480,7 @@ struct sockaddr_in *who;
 	char **answer;
 	int found;
 	struct sockaddr_in send_to_who;
-
+	Code_t retval;
 
 #ifdef OLD_COMPAT
 	if (!strcmp(notice->z_version, OLD_ZEPHYR_VERSION)) {
@@ -529,17 +529,21 @@ struct sockaddr_in *who;
 }
 
 static char **
-subscr_marshal_subs(notice, auth, who, &found)
+subscr_marshal_subs(notice, auth, who, found)
 ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
-int *found;
+register int *found;
 {
 	ZNotice_t reply;
 	char **answer = (char **) NULL;
 	int temp;
+	Code_t retval;
+	ZClient_t *client;
+	register ZSubscr_t *subs;
+	register int i;
 
-	found = 0;
+	*found = 0;
 
 	/* Note that the following code is an incredible crock! */
 	
@@ -583,18 +587,18 @@ int *found;
 
 		for (subs = client->zct_subs->q_forw;
 		     subs != client->zct_subs;
-		     subs = subs->q_forw, found++);
+		     subs = subs->q_forw, (*found)++);
 		
 		/* found is now the number of subscriptions */
 
 		/* coalesce the subscription information into a list of
 		   char *'s */
-		if ((answer = (char **) xmalloc(found * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
+		if ((answer = (char **) xmalloc((*found) * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
 			syslog(LOG_ERR, "subscr no mem(answer)");
-			found = 0;
+			*found = 0;
 		} else
 			for (i = 0, subs = client->zct_subs->q_forw;
-			     i < found ;
+			     i < *found ;
 			     i++, subs = subs->q_forw) {
 				answer[i*NUM_FIELDS] = subs->zst_class;
 				answer[i*NUM_FIELDS + 1] = subs->zst_classinst;
@@ -611,16 +615,14 @@ ZNotice_t *notice;
 int auth;
 struct sockaddr_in *who;
 {
-	ZClient_t *client;
-	register ZSubscr_t *subs;
 	Code_t retval;
 	ZNotice_t reply;
 	ZPacket_t reppacket;
-	register int i;
 	int packlen, found, count, initfound, zerofound;
 	char buf[64];
 	char **answer;
 	struct sockaddr_in send_to_who;
+	register int i;
 
 	reply = *notice;
 	reply.z_kind = SERVACK;
