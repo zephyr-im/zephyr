@@ -1,3 +1,9 @@
+zephyr (2.1.20010518.SNAPSHOT-5) unstable; urgency=low
+
+  * (hopefully) fix build problem on ia64, closes: #142650
+
+ -- Karl Ramm <kcr@debian.org>  Sun, 14 Apr 2002 02:27:50 -0400
+
 zephyr (2.1.20010518.SNAPSHOT-4) unstable; urgency=low
 
   * moved into main
