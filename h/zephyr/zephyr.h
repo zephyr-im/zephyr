@@ -202,10 +202,10 @@ extern int ZMakeAuthentication();
 
 #define EXPOSE_NONE		"NONE"		/* Opcode: Not visible */
 #define EXPOSE_OPSTAFF		"OPSTAFF"	/* Opcode: Opstaff visible */
-#define EXPOSE_REALMVIS		"REALM_VISIBLE"	/* Opcode: Realm visible */
-#define EXPOSE_REALMANN		"REALM_ANNOUNCE"/* Opcode: Realm announced */
-#define EXPOSE_NETVIS		"NET_VISIBLE"	/* Opcode: Net visible */
-#define EXPOSE_NETANN		"NET_ANNOUNCE"	/* Opcode: Net announced */
+#define EXPOSE_REALMVIS		"REALM-VISIBLE"	/* Opcode: Realm visible */
+#define EXPOSE_REALMANN		"REALM-ANNOUNCED"/* Opcode: Realm announced */
+#define EXPOSE_NETVIS		"NET-VISIBLE"	/* Opcode: Net visible */
+#define EXPOSE_NETANN		"NET-ANNOUNCED"	/* Opcode: Net announced */
 #define LOGIN_USER_LOGOUT	"USER_LOGOUT"	/* Opcode: User logout */
 #define	LOGIN_USER_FLUSH	"USER_FLUSH"	/* Opcode: flush all locs */
 
