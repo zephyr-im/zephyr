@@ -121,7 +121,6 @@ SendKerberosData(fd, ticket, service, host)
 {
     int rem;
     char p[32];
-    char krb_realm[REALM_SZ];
     int written;
     int size_to_write;
 
@@ -195,6 +194,15 @@ ZCheckRealmAuthentication(notice, from, realm)
          * ticket isn't cached after a checksum failure), so don't worry
          * about the extra des_quad_cksum() call. */
         if (checksum == notice->z_checksum) {
+          memcpy(__Zephyr_session, session_key, sizeof(C_Block)); 
+          return ZAUTH_YES;
+        }
+
+        /* Try again. This way we can switch to the same checksums
+         * that the rest of Zephyr uses at a future date, but for now 
+         * we need to be compatible */
+        checksum = compute_checksum(notice, session_key);
+        if (checksum == notice->z_checksum) {
 	    memcpy(__Zephyr_session, session_key, sizeof(C_Block));
 	    return ZAUTH_YES;
         }
@@ -214,12 +222,17 @@ ZCheckRealmAuthentication(notice, from, realm)
 
     /* Check the cryptographic checksum. */
 #ifdef NOENCRYPTION
-    our_checksum = 0;
+    checksum = 0;
 #else
     checksum = compute_rlm_checksum(notice, dat.session);
 #endif
-    if (checksum != notice->z_checksum)
-        return ZAUTH_CKSUM_FAILED;
+    if (checksum != notice->z_checksum) {
+#ifndef NOENCRYPTION
+      checksum = compute_checksum(notice, dat.session);
+      if (checksum != notice->z_checksum)
+#endif
+         return ZAUTH_CKSUM_FAILED;
+    }
 
     /* Record the session key, expiry time, and source principal in the
      * hash table, so we can do a fast check next time. */
@@ -300,7 +313,7 @@ ZCheckAuthentication(notice, from)
 
     /* Check the cryptographic checksum. */
 #ifdef NOENCRYPTION
-    our_checksum = 0;
+    checksum = 0;
 #else
     checksum = compute_checksum(notice, dat.session);
 #endif
