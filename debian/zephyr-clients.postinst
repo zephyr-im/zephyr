@@ -54,6 +54,7 @@ EOF
 	fi
 	echo zhm_args=\"${RET}\" >> $tmpfile
 	cat $tmpfile > /etc/default/zephyr-clients
+	rm $tmpfile
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

@@ -1,3 +1,9 @@
+zephyr (2.1.20000421.SNAPSHOT-15) unstable; urgency=low
+
+  * remove the /etc/defaults/zephyr-clients.dpkg-new temporary file
+
+ --
+
 zephyr (2.1.20000421.SNAPSHOT-14) unstable; urgency=low
 
   * Fix typo,  closes: #100465 [hartmans]
