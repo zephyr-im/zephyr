@@ -77,6 +77,11 @@ extern void init_queue(), retransmit_queue();
 #define ok
 #endif /* SUN4_ARCH */
 
+#if defined(ultrix) && defined(mips)
+#define MACHINE "decmips"
+#define ok
+#endif /* ultrix && mips */
+
 #ifndef ok
 #define MACHINE "unknown"
 #endif ok
