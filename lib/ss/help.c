@@ -4,13 +4,6 @@
  * For copyright info, see copyright.h.
  */
 
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/file.h>
-#ifdef POSIX
-#include <fcntl.h>
-#endif
-#include <sys/wait.h>
 #include "ss_internal.h"
 #include "copyright.h"
 
@@ -20,7 +13,7 @@ void ss_help (argc, argv, sci_idx, info_ptr)
     int argc;
     char const * const *argv;
     int sci_idx;
-    pointer info_ptr;
+    void *info_ptr;
 {
     char buffer[MAXPATHLEN];
     char const *request_name;
@@ -78,7 +71,7 @@ got_it:
 	ss_page_stdin();
     default:
 	(void) close(fd); /* what can we do if it fails? */
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	while (wait((int *)0) != child) ;	 /* do nothing if wrong pid */
 #else
 	while (wait((union wait *)0) != child) ; /* do nothing if wrong pid */
@@ -86,12 +79,11 @@ got_it:
     }
 }
 
-#include <sys/types.h>
-#ifndef POSIX	
+#ifndef _POSIX_VERSION
 #include <sys/dir.h>
 #else
 #include <dirent.h>
-#endif /* POSIX */
+#endif /* _POSIX_VERSION */
 
 void ss_add_info_dir(sci_idx, info_dir, code_ptr)
     int sci_idx;

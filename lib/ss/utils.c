@@ -4,14 +4,10 @@
  * For copyright information, see copyright.h.
  */
 
-#include <string.h>
 #include "copyright.h"
-#include "ss_internal.h"	/* includes stdio and string */
+#include "ss_internal.h"
 
 extern FILE *output_file;
-#ifndef sun
-extern int exit();
-#endif
 char *gensym(), *str_concat3(), *quote(), *ds();
 extern long gensym_n;
 
@@ -49,7 +45,7 @@ void generate_function_definition(func)
 {
     fputs("extern void ", output_file);
     fputs(func, output_file);
-    fputs(" __SS_PROTO;\n", output_file);
+    fputs(" __P((int, const char *const *, int, void *));\n", output_file);
 }
 
 char * generate_rqte(func_name, info_string, cmds, options)
@@ -119,7 +115,7 @@ char *quote(string)
 	len = strlen(string)+1;
 	result = malloc(len+2);
 	result[0] = '"';
-	bcopy(string, &result[1], len-1);
+	memcpy(&result[1], string, len-1);
 	result[len] = '"';
 	result[len+1] = '\0';
 	return(result);
@@ -132,6 +128,6 @@ char *ds(s)
 	register int len = strlen(s) + 1;
 	register char *new;
 	new = malloc(len);
-	bcopy(s, new, len);
+	memcpy(new, s, len);
 	return(new);
 }

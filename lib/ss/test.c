@@ -9,8 +9,9 @@
  * $Locker$
  *
  * $Log$
- * Revision 1.1  1993-10-12 02:50:52  probe
- * Initial revision
+ * Revision 1.2  1995-06-30 22:02:50  ghudson
+ * * Brought into Zephyr source tree
+ * * Portability changes for sysdep.h
  *
  * Revision 1.2  89/01/25  07:52:27  raeburn
  * *** empty log message ***

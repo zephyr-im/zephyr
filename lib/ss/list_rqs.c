@@ -7,8 +7,6 @@
 #include "ss_internal.h"
 #include <signal.h>
 #include <setjmp.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 
 #ifdef lint     /* "lint returns a value which is sometimes ignored" */
 #define DONT_USE(x)     x=x;
@@ -24,7 +22,7 @@ ss_list_requests(argc, argv, sci_idx, info_ptr)
     int argc;
     char **argv;
     int sci_idx;
-    pointer info_ptr;
+    void *info_ptr;
 {
     register ss_request_entry *entry;
     register char const * const *name;
@@ -34,7 +32,7 @@ ss_list_requests(argc, argv, sci_idx, info_ptr)
     char buffer[BUFSIZ];
     FILE *output;
     int fd;
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     struct sigaction nsig, osig;
     sigset_t nmask, omask;
     int waitb;
@@ -47,7 +45,7 @@ ss_list_requests(argc, argv, sci_idx, info_ptr)
     DONT_USE(argc);
     DONT_USE(argv);
 
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     sigemptyset(&nmask);
     sigaddset(&nmask, SIGINT);
     sigprocmask(SIG_BLOCK, &nmask, &omask);
@@ -62,7 +60,7 @@ ss_list_requests(argc, argv, sci_idx, info_ptr)
 #endif
     fd = ss_pager_create();
     output = fdopen(fd, "w");
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
 #else
     sigsetmask(mask);
@@ -102,7 +100,7 @@ ss_list_requests(argc, argv, sci_idx, info_ptr)
 #ifndef NO_FORK
     wait(&waitb);
 #endif
-#ifdef POSIX
+#ifdef _POSIX_VERSION
     sigaction(SIGINT, &osig, (struct sigaction *)0);
 #else
     (void) signal(SIGINT, func);

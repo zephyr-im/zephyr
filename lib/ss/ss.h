@@ -10,33 +10,40 @@
 #include <ss/mit-sipb-copyright.h>
 #include <ss/ss_err.h>
 
-extern int errno;
-
+/* Don't use <sysdep.h> for this; the broken Ultrix yacc produces
+ * "char *malloc()", which conflicts with <stdlib.h>. */
 #ifdef __STDC__
-#define __SS_CONST const
-#define __SS_PROTO (int, const char * const *, int, void *)
+# include <stdarg.h>
+# define VA_START(ap, last) va_start(ap, last)
+# ifndef __P
+#  define __P(x) x
+# endif
 #else
-#define __SS_CONST
-#define __SS_PROTO ()
+# include <varargs.h>
+# define VA_START(ap, last) va_start(ap)
+# define const
+# ifndef __P
+#  define __P(x) ()
+# endif
 #endif
 
-typedef __SS_CONST struct _ss_request_entry {
-    __SS_CONST char * __SS_CONST *command_names; /* whatever */
-    void (* __SS_CONST function) __SS_PROTO; /* foo */
-    __SS_CONST char * __SS_CONST info_string;	/* NULL */
-    int flags;			/* 0 */
+typedef const struct _ss_request_entry {
+    const char *const *command_names;
+    void (*const function) __P((int, const char *const *, int, void *));
+    const char * const info_string;
+    int flags;
 } ss_request_entry;
 
-typedef __SS_CONST struct _ss_request_table {
+typedef const struct _ss_request_table {
     int version;
     ss_request_entry *requests;
 } ss_request_table;
 
 #define SS_RQT_TBL_V2	2
 
-typedef struct _ss_rp_options {	/* DEFAULT VALUES */
-    int version;		/* SS_RP_V1 */
-    void (*unknown) __SS_PROTO;	/* call for unknown command */
+typedef struct _ss_rp_options {
+    int version;
+    void (*unknown) __P((int, const char *const *, int, void *));
     int allow_suspend;
     int catch_int;
 } ss_rp_options;
@@ -46,16 +53,10 @@ typedef struct _ss_rp_options {	/* DEFAULT VALUES */
 #define SS_OPT_DONT_LIST	0x0001
 #define SS_OPT_DONT_SUMMARIZE	0x0002
 
-void ss_help __SS_PROTO;
-char *ss_current_request();
-char *ss_name();
-#ifdef __STDC__
-void ss_error (int, long, char const *, ...);
-void ss_perror (int, long, char const *);
-#else
-void ss_error ();
-void ss_perror ();
-#endif
-void ss_abort_subsystem();
+void ss_help __P((int, const char *const *, int, void *));
+char *ss_name __P((int));
+void ss_error __P((int, long, char const *, ...));
+void ss_perror __P((int, long, char const *));
+void ss_abort_subsystem __P((int));
 extern ss_request_table ss_std_requests;
 #endif /* _ss_h */

@@ -9,15 +9,9 @@
 
 #include "ss_internal.h"
 #include "copyright.h"
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/file.h>
-#include <signal.h>
 
 static char MORE[] = "more";
 extern char *_ss_pager_name;
-extern char *getenv();
-extern int errno;
 
 /*
  * this needs a *lot* of work....
@@ -67,14 +61,14 @@ int ss_pager_create()
 void ss_page_stdin()
 {
 	int i;
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	struct sigaction sa;
 	sigset_t mask;
 #endif
 	
 	for (i = 3; i < 32; i++)
 		(void) close(i);
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	sa.sa_handler = SIG_DFL;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
@@ -83,7 +77,7 @@ void ss_page_stdin()
 	(void) signal(SIGINT, SIG_DFL);
 #endif
 	{
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 		sigemptyset(&mask);
 		sigaddset(&mask, SIGINT);
 		sigprocmask(SIG_UNBLOCK, &mask, (sigset_t *)0);

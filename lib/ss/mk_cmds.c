@@ -10,22 +10,16 @@
  */
 
 #include "copyright.h"
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/file.h>
-#include <strings.h>
 #include "ss_internal.h"
 
 static const char copyright[] =
     "Copyright 1987 by MIT Student Information Processing Board";
 
-extern pointer malloc PROTOTYPE((unsigned));
 extern char *last_token;
 extern FILE *output_file;
 
 extern FILE *yyin, *yyout;
-extern int yylineno;
+extern int num_lines;
 
 main(argc, argv)
     int argc;
@@ -33,7 +27,7 @@ main(argc, argv)
 {
     char c_file[MAXPATHLEN];
     int result;
-    char *path, *p;
+    char *path, *p, *q;
 
     if (argc != 2) {
 	fputs("Usage: ", stderr);
@@ -44,12 +38,12 @@ main(argc, argv)
 
     path = malloc(strlen(argv[1])+4); /* extra space to add ".ct" */
     strcpy(path, argv[1]);
-    p = rindex(path, '/');
+    p = strrchr(path, '/');
     if (p == (char *)NULL)
 	p = path;
     else
 	p++;
-    p = rindex(p, '.');
+    p = strrchr(p, '.');
     if (p == (char *)NULL || strcmp(p, ".ct"))
 	strcat(path, ".ct");
     yyin = fopen(path, "r");
@@ -58,9 +52,10 @@ main(argc, argv)
 	exit(1);
     }
 
-    p = rindex(path, '.');
+    p = strrchr(path, '.');
     *p = '\0';
-    strcpy(c_file, path);
+    q = strrchr(path, '/');
+    strcpy(c_file, (q) ? q + 1 : path);
     strcat(c_file, ".c");
     *p = '.';
 
@@ -91,5 +86,5 @@ yyerror(s)
 {
     fputs(s, stderr);
     fprintf(stderr, "\nLine %d; last token was '%s'\n",
-	    yylineno, last_token);
+	    num_lines, last_token);
 }
