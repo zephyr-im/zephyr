@@ -245,8 +245,8 @@ void xcut(dpy,event,desc_context)
 	} else if ((event->xbutton.button==Button4 ||
 		    event->xbutton.button==Button5) &&
 		   !get_bool_resource("scrollDelete","ScrollDelete",0)) {
-	  /* Ignore scroll wheel movement. */
-	  break;
+	   /* Ignore scroll wheel movement. */
+	   break;
 	} else if ( (event->xbutton.state)&ShiftMask ) {
 	   if (event->xbutton.button==Button1) {
 	      if (selecting_in)
