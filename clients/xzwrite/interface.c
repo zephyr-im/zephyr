@@ -44,6 +44,9 @@
  * 		getStringCancel - the cancel button
  */
 
+#include "xzwrite.h"
+#include "GetString.h"
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
@@ -58,9 +61,6 @@
 #include <X11/Xaw/Viewport.h>
 
 #include <zephyr/zephyr.h>	/* for ZGetFD() */
-
-#include "xzwrite.h"
-#include "GetString.h"
 
 #define XVCMW XtVaCreateManagedWidget
 

@@ -1,8 +1,8 @@
-#include <X11/Intrinsic.h>   /* for Boolean */
-#include <zephyr/zephyr.h>
-#include <dyn.h>
-
 #include "xzwrite.h"
+
+#include <X11/Intrinsic.h>   /* for Boolean */
+#include <dyn.h>
+#include <zephyr/zephyr.h>
 
 extern Defaults defs;
 

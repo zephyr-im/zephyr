@@ -1,9 +1,9 @@
-#include <zephyr/zephyr.h>
-
 #include "xzwrite.h"
 #include <string.h>
 #include <dyn.h>
 #include <com_err.h>
+
+#include <zephyr/zephyr.h>
 
 static int zeph_send_notice();
 extern Defaults defs;

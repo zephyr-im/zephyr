@@ -1,6 +1,5 @@
-#include <stdio.h>
+#include <sysdep.h>
 #include <dyn.h>
-#include <string.h>
 
 #include "xzwrite.h"
 
@@ -211,9 +210,10 @@ char **delete_dest_index(i)
 }
 
      
-static int sort_dest_func(c1, c2)
-   char	**c1, **c2;
+static int sort_dest_func(a1, a2)
+   const void *a1, *a2;
 {
+     char	**c1 = (char **) a1, **c2 = (char **) a2;
      char	*s1, *s2, *i1, *i2;
 
      /* A string with a , in it is always less than one without */

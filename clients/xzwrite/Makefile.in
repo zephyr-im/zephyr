@@ -19,8 +19,9 @@ CC=@CC@
 INSTALL=@INSTALL@
 
 DEBUG=-O
-CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @X_CFLAGS@ @CPPFLAGS@
-LDFLAGS=-L$(BUILDTOP)/lib/zephyr -L$(BUILDTOP)/lib/dyn @ET_LDFLAGS@ \
+CFLAGS=$(DEBUG) -DDATADIR=\"$(datadir)\" -I$(top_srcdir)/h -I$(BUILDTOP)/h \
+	@X_CFLAGS@ @CPPFLAGS@
+LDFLAGS=$(DEBUG) -L$(BUILDTOP)/lib/zephyr -L$(BUILDTOP)/lib/dyn @ET_LDFLAGS@ \
 	@X_LIBS@ @LDFLAGS@
 LIBS=-lzephyr -ldyn -lXaw -lXmu -lXt @X_PRE_LIBS@ -lX11 -lXext @X_EXTRA_LIBS@ \
      @LIBS@ -lcom_err
@@ -38,10 +39,10 @@ xzwrite: $(OBJS) $(BUILDTOP)/lib/zephyr/libzephyr.a \
 check:
 
 install: xzwrite XZwrite
-	$(INSTALL) -m 755 -c -s xzwrite $(bindir)
-	$(INSTALL) -m 644 -c $(srcdir)/xzwrite.1 $(mandir)/man1
-	$(INSTALL) -m 644 -c XZwrite $(datadir)
-	$(INSTALL) -m 644 -c $(srcdir)/xzwrite.bitmap $(datadir)
+	$(INSTALL) -m 755 -s xzwrite $(bindir)
+	$(INSTALL) -m 644 $(srcdir)/xzwrite.1 $(mandir)/man1
+	$(INSTALL) -m 644 XZwrite $(datadir)
+	$(INSTALL) -m 644 $(srcdir)/xzwrite.bitmap $(datadir)
 
 clean:
 	rm -f $(OBJS) xzwrite
