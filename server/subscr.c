@@ -58,6 +58,13 @@ static char rcsid_subscr_s_c[] = "$Header$";
 #include "zserver.h"
 #include <ctype.h>
 
+/* for compatibility when sending subscription information to old clients */
+#ifdef OLD_COMPAT
+#define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
+#define	OLD_CLIENT_INCOMPSUBS	"INCOMP"
+static void old_compat_subscr_sendlist();
+#endif /* OLD_COMPAT */
+
 extern char *re_comp(), *re_conv(), *rindex(), *index();
 static ZSubscr_t *extract_subscriptions();
 static int subscr_equiv(), clt_unique();
@@ -460,6 +467,15 @@ struct sockaddr_in *who;
 	char **answer = (char **) NULL;
 	char buf[64];
 
+#ifdef OLD_COMPAT
+	if (!strcmp(notice->z_version, OLD_ZEPHYR_VERSION)) {
+		/* we are talking to an old client; use the old-style
+		   acknowledgement-message */
+		old_compat_subscr_sendlist(notice, auth, who);
+		return;
+	}
+#endif OLD_COMPAT
+
 	/* Note that the following code is an incredible crock! */
 	
 	/* We cannot send multiple packets as acknowledgements to the client,
@@ -576,8 +592,99 @@ struct sockaddr_in *who;
 	return;
 }
 
+#ifdef OLD_COMPAT
+static void
+old_compat_subscr_sendlist(notice, auth, who)
+ZNotice_t *notice;
+int auth;
+struct sockaddr_in *who;
+{
+	ZClient_t *client = client_which_client(who, notice);
+	register ZSubscr_t *subs;
+	Code_t retval;
+	ZNotice_t reply;
+	ZPacket_t reppacket;
+	int packlen, i, found = 0;
+	char **answer = (char **) NULL;
+
+	if (client && client->zct_subs) {
+
+		/* check authenticity here.  The user must be authentic to get
+		   a list of subscriptions. If he is not subscribed to
+		   anything, the above test fails, and he gets a response
+		   indicating no subscriptions */
+
+		if (!auth) {
+			clt_ack(notice, who, AUTH_FAILED);
+			return;
+		}
+
+		for (subs = client->zct_subs->q_forw;
+		     subs != client->zct_subs;
+		     subs = subs->q_forw, found++);
+		
+		/* found is now the number of subscriptions */
+
+		/* coalesce the subscription information into a list of
+		   char *'s */
+		if ((answer = (char **) xmalloc(found * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
+			syslog(LOG_ERR, "subscr no mem(answer)");
+			found = 0;
+		} else
+			for (i = 0, subs = client->zct_subs->q_forw;
+			     i < found ;
+			     i++, subs = subs->q_forw) {
+				answer[i*NUM_FIELDS] = subs->zst_class;
+				answer[i*NUM_FIELDS + 1] = subs->zst_classinst;
+				answer[i*NUM_FIELDS + 2] = subs->zst_recipient;
+			}
+	}
+	/* note that when there are no subscriptions, found == 0, so 
+	   we needn't worry about answer being NULL */
+
+	reply = *notice;
+	reply.z_kind = SERVACK;
+	reply.z_authent_len = 0; /* save some space */
+	reply.z_auth = 0;
+
+	packlen = sizeof(reppacket);
+
+	/* if it's too long, chop off one at a time till it fits */
+	while ((retval = ZFormatRawNoticeList(&reply,
+					      answer,
+					      found * NUM_FIELDS,
+					      reppacket,
+					      packlen,
+					      &packlen)) == ZERR_PKTLEN) {
+		found--;
+		reply.z_opcode = OLD_CLIENT_INCOMPSUBS;
+	}
+	if (retval != ZERR_NONE) {
+		syslog(LOG_ERR, "subscr_sendlist format: %s",
+		       error_message(retval));
+		xfree(answer);
+		return;
+	}
+	if ((retval = ZSetDestAddr(who)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "subscr_sendlist set addr: %s",
+		       error_message(retval));
+		xfree(answer);
+		return;
+	}
+	if ((retval = ZSendPacket(reppacket, packlen)) != ZERR_NONE) {
+		syslog(LOG_WARNING, "subscr_sendlist xmit: %s",
+		       error_message(retval));
+		xfree(answer);
+		return;
+	}
+	zdbug((LOG_DEBUG,"subscr_sendlist acked"));
+	xfree(answer);
+	return;
+}
+#endif OLD_COMPAT
+
 /*
- * Send the client's subscriptions
+ * Send the client's subscriptions to another server
  */
 
 /* version is currently unused; if necessary later versions may key off it
