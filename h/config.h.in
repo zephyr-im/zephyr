@@ -147,9 +147,6 @@
 /* Define if you have the dl library (-ldl).  */
 #undef HAVE_LIBDL
 
-/* Define if you have the hesiod library (-lhesiod).  */
-#undef HAVE_LIBHESIOD
-
 /* Define if you have the krb library (-lkrb).  */
 #undef HAVE_LIBKRB
 
