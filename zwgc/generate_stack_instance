@@ -13,7 +13,7 @@
 #      For copying and distribution information, see the file
 #      "mit-copyright.h".
 #
-set rcsid_generate_stack_instance="$Header$"
+set rcsid_generate_stack_instance='$Header$'
 cat zephyr/mit-copyright.h > /dev/null
 
 set source=/afs/athena.mit.edu/astaff/project/zephyr/@sys/zwgc/zwgc.dev
