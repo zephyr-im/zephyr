@@ -47,19 +47,6 @@ main(argc,argv)
 		exit (1);
 	}
 
-	envptr = getenv("HOME");
-	if (envptr)
-		(void) strcpy(anyonename,envptr);
-	else {
-		if (!(pwd = getpwuid((int) getuid()))) {
-			fprintf(stderr,"Who are you?\n");
-			exit (1);
-		}
-
-		(void) strcpy(anyonename,pwd->pw_dir);
-	} 
-	(void) strcat(anyonename,"/.anyone");
-
 	for (arg=1;arg<argc;arg++) {
 		if (!strcmp(argv[arg],"on")) {
 			onoff = ON;
@@ -114,10 +101,29 @@ main(argc,argv)
 			exit(1);
 		}
 	
+	if (!useronly) {
+		/* If no filename specified, get the default */
+		if (!filenamed) {
+			envptr = getenv("HOME");
+			if (envptr)
+			    (void) strcpy(anyonename,envptr);
+			else {
+				if (!(pwd = getpwuid((int) getuid()))) {
+					fprintf(stderr,"You are not listed in the password file.\n");
+					exit (1);
+				}
+				(void) strcpy(anyonename,pwd->pw_dir);
+			}
+			(void) strcat(anyonename,"/.anyone");
+		}
 
-	if (!useronly && !(fp = fopen(anyonename,"r"))) {
-		fprintf(stderr,"Can't open %s for input\n",anyonename);
-		exit (1);
+		/* if the filename is "-", read stdin */
+		if (strcmp(anyonename,"-") == 0) {
+			fp = stdin;
+		} else if (!(fp = fopen(anyonename,"r"))) {
+			fprintf(stderr,"Can't open %s for input\n",anyonename);
+			exit (1);
+		}
 	}
 
 	ind = 0;
