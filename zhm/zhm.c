@@ -295,8 +295,8 @@ void init_hm()
 					   thanks to inetd */
      } else {
 	     /* Open client socket, for receiving client and server notices */
-	     if ((sp = getservbyname("zephyr-hm", "udp")) == NULL) {
-		     printf("No zephyr-hm entry in /etc/services.\n");
+	     if ((sp = getservbyname(HM_SVCNAME, "udp")) == NULL) {
+		     printf("No %s entry in /etc/services.\n", HM_SVCNAME);
 		     exit(1);
 	     }
 	     cli_port = sp->s_port;
@@ -312,8 +312,8 @@ void init_hm()
   
      /* Open the server socket */
   
-     if ((sp = getservbyname("zephyr-clt", "udp")) == NULL) {
-	  printf("No zephyr-clt entry in /etc/services.\n");
+     if ((sp = getservbyname(SERVER_SVCNAME, "udp")) == NULL) {
+	  printf("No %s entry in /etc/services.\n", SERVER_SVCNAME);
 	  exit(1);
      }
 
@@ -337,7 +337,7 @@ void init_hm()
      serv_sin.sin_port = sp->s_port;
       
      /* Set up communications with server */
-     /* target is "zephyr-clt" port on server machine */
+     /* target is SERVER_SVCNAME port on server machine */
 
      serv_sin.sin_family = AF_INET;
   
