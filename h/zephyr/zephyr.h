@@ -73,9 +73,11 @@
 #define Z_MAXOTHERFIELDS	10
 
     /* Authentication levels returned by ZCheckAuthentication */
-#define ZAUTH_FAILED    (-1)
-#define ZAUTH_YES       1
-#define ZAUTH_NO        0
+#define ZAUTH_FAILED    	(-1)
+#define ZAUTH_YES       	1
+#define ZAUTH_NO        	0
+#define ZAUTH_CKSUM_FAILED	(-2) /* Used only by server. */
+#define ZAUTH_UNSET		(-3) /* Internal to client library. */
 
     /* Packet type */
     typedef enum { UNSAFE, UNACKED, ACKED, HMACK, HMCTL, SERVACK, SERVNAK,
@@ -103,6 +105,7 @@
 	struct		timeval z_time;
 	u_short		z_port;
 	int		z_auth;
+	int		z_checked_auth;
 	int		z_authent_len;
 	char		*z_ascii_authent;
 	char		*z_class;
@@ -203,6 +206,8 @@
     extern Code_t ZSendPacket Zproto((char*, int, int));
     extern Code_t ZSendList Zproto((ZNotice_t*, char *[], int, Z_AuthProc));
     extern Code_t ZFormatNotice Zproto((ZNotice_t*, char**, int*, Z_AuthProc));
+    extern Code_t ZFormatSmallNotice Zproto ((ZNotice_t*, ZPacket_t, int*,
+					      Z_AuthProc));
     extern Code_t ZLocateUser Zproto((char *, int *, Z_AuthProc));
     extern Code_t ZRequestLocations Zproto((char *, ZAsyncLocateData_t *, ZNotice_Kind_t, Z_AuthProc));
     extern Code_t ZInitialize Zproto ((void));
