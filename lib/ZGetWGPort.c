@@ -20,21 +20,28 @@ static char rcsid_ZGetWGPort_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
+extern char *getenv();
+extern uid_t getuid();
+
 int ZGetWGPort()
 {
     char *envptr, name[128];
     FILE *fp;
     int wgport;
 	
-    envptr = (char *)getenv("WGFILE");
+    envptr = getenv("WGFILE");
     if (!envptr) {
-	sprintf(name, "/tmp/wg.%d", getuid());
+	(void) sprintf(name, "/tmp/wg.%d", getuid());
 	envptr = name;
     } 
     if (!(fp = fopen(envptr, "r")))
 	return (-1);
-    fscanf(fp, "%d", &wgport);
-    fclose(fp);
+
+    /* if fscanf fails, return -1 via wgport */
+    if (fscanf(fp, "%d", &wgport) != 1)
+	    wgport = -1;
+
+    (void) fclose(fp);
 
     return (wgport);
 }

@@ -54,7 +54,8 @@ Code_t ZLocateUser(user, nlocs)
     nrecv = ack = 0;
 
     while (!nrecv || !ack) {
-	    if ((retval = ZIfNotice(&retnotice, NULL, ZCompareMultiUIDPred,
+	    if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
+				    ZCompareMultiUIDPred,
 				    (char *)&notice.z_multiuid)) != ZERR_NONE)
 		    return (retval);
 

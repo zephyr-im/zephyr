@@ -25,6 +25,8 @@ static char rcsid_ZVariables_c[] = "$Header$";
 #include <pwd.h>
 
 #define _toupper(c) (islower(c)?toupper(c):c)
+extern char *getenv();
+extern uid_t getuid();
 
 char *ZGetVariable(var)
     char *var;
@@ -54,8 +56,8 @@ Code_t ZSetVariable(var, value)
     if (get_localvarfile(varfile))
 	return (ZERR_INTERNAL);
 
-    strcpy(varfilebackup, varfile);
-    strcat(varfilebackup, ".backup");
+    (void) strcpy(varfilebackup, varfile);
+    (void) strcat(varfilebackup, ".backup");
 	
     if (!(fpout = fopen(varfilebackup, "w")))
 	return (errno);
@@ -70,11 +72,12 @@ Code_t ZSetVariable(var, value)
 	    else
 		fprintf(fpout, "%s\n", varbfr);
 	}
-	fclose(fpin);
+	(void) fclose(fpin);		/* don't care about errs on input */
     } 
     if (!written)
 	fprintf(fpout, "%s = %s\n", var, value);
-    fclose(fpout);
+    if (fclose(fpout) == EOF)
+	    return(EIO);		/* can't rely on errno */
     if (rename(varfilebackup, varfile))
 	return (errno);
     return (ZERR_NONE);
@@ -89,8 +92,8 @@ Code_t ZUnsetVariable(var)
     if (get_localvarfile(varfile))
 	return (ZERR_INTERNAL);
 
-    strcpy(varfilebackup, varfile);
-    strcat(varfilebackup, ".backup");
+    (void) strcpy(varfilebackup, varfile);
+    (void) strcat(varfilebackup, ".backup");
 	
     if (!(fpout = fopen(varfilebackup, "w")))
 	return (errno);
@@ -101,9 +104,10 @@ Code_t ZUnsetVariable(var)
 	    if (!varline(varbfr, var))
 		fprintf(fpout, "%s\n", varbfr);
 	}
-	fclose(fpin);
+	(void) fclose(fpin);		/* don't care about read close errs */
     } 
-    fclose(fpout);
+    if (fclose(fpout) == EOF)
+	    return(EIO);		/* errno isn't reliable */
     if (rename(varfilebackup, varfile))
 	return (errno);
     return (ZERR_NONE);
@@ -115,19 +119,19 @@ static get_localvarfile(bfr)
     char *envptr;
     struct passwd *pwd;
 
-    envptr = (char *)getenv("HOME");
+    envptr = getenv("HOME");
     if (envptr)
-	strcpy(bfr, envptr);
+	(void) strcpy(bfr, envptr);
     else {
-	if (!(pwd = getpwuid(getuid()))) {
+	if (!(pwd = getpwuid((int) getuid()))) {
 	    fprintf(stderr, "Zephyr internal failure: Can't find your entry in /etc/passwd\n");
 	    return (1);
 	}
-	strcpy(bfr, pwd->pw_dir);
+	(void) strcpy(bfr, pwd->pw_dir);
     }
 
-    strcat(bfr, "/");
-    strcat(bfr, ".zephyr.vars");
+    (void) strcat(bfr, "/");
+    (void) strcat(bfr, ".zephyr.vars");
     return (0);
 } 
 	
@@ -148,10 +152,10 @@ static char *get_varval(fn, var)
 	    varbfr[strlen(varbfr)-1] = '\0';
 	if (!(i = varline(varbfr, var)))
 	    continue;
-	fclose(fp);
+	(void) fclose(fp);		/* open read-only, don't care */
 	return (varbfr+i);
     }
-    fclose(fp);
+    (void) fclose(fp);			/* open read-only, don't care */
     return ((char *)0);
 }
 

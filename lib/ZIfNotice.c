@@ -34,7 +34,7 @@ Code_t ZIfNotice(notice, from, predicate, args)
     if ((retval = Z_WaitForComplete()) != ZERR_NONE)
 	return (retval);
 	
-    qptr = (struct _Z_InputQ *) Z_GetFirstComplete();
+    qptr = Z_GetFirstComplete();
     
     for (;;) {
 	while (qptr) {
@@ -42,7 +42,7 @@ Code_t ZIfNotice(notice, from, predicate, args)
 				       &tmpnotice)) != ZERR_NONE)
 		return (retval);
 	    if ((predicate)(&tmpnotice, args)) {
-		if (!(buffer = malloc(qptr->packet_len)))
+		if (!(buffer = malloc((unsigned) qptr->packet_len)))
 		    return (ENOMEM);
 		bcopy(qptr->packet, buffer, qptr->packet_len);
 		if (from)

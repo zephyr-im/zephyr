@@ -31,7 +31,7 @@ Code_t ZReceivePacket(buffer, ret_len, from)
     if ((retval = Z_WaitForComplete()) != ZERR_NONE)
 	return (retval);
 
-    nextq = (struct _Z_InputQ *) Z_GetFirstComplete();
+    nextq = Z_GetFirstComplete();
 
     *ret_len = nextq->packet_len;
     if (*ret_len > Z_MAXPKTLEN)
