@@ -27,11 +27,19 @@
 #include <sys/time.h>
 #include <stdio.h>
 
+#ifndef va_start /* guaranteed to be a macro */
+#if defined(__STDC__) && (defined(__GNUC__) || !defined(ibm032))
+#include <stdarg.h>
+#else
+#include <varargs.h>
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
 #include <krb.h>
 #endif
 
@@ -41,8 +49,10 @@ extern "C" {
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define Zproto(X) X
+#define Zconst const
 #else
 #define Zproto(X) ()
+#define Zconst /* const */
 #endif
 
 #define ZVERSIONHDR	"ZEPH"
@@ -71,6 +81,7 @@ extern "C" {
     /* Packet type */
     typedef enum { UNSAFE, UNACKED, ACKED, HMACK, HMCTL, SERVACK, SERVNAK,
 		       CLIENTACK, STAT } ZNotice_Kind_t;
+    Zconst char *Zconst ZNoticeKinds[((int) STAT) + 1];
 
     /* Unique ID format */
     typedef struct _ZUnique_Id_t {
@@ -149,18 +160,26 @@ extern "C" {
     /* for ZQLength */
     extern int __Q_CompleteLength;
 
-    /* for ZGetRealm */
-    extern char __Zephyr_realm[];
-
-    /* Kerberos error table base */
-    extern int krb_err_base;
-
     /* UNIX error codes */
     extern int errno;
 
-#ifdef KERBEROS
+    /* for ZSetDebug */
+    extern void (*__Z_debug_print) Zproto((const char *fmt, va_list args,
+					   void *closure));
+    extern void *__Z_debug_print_closure;
+
+#ifdef Z_HaveKerberos
+    /* Kerberos error table base */
+    extern int krb_err_base;
+
+    /* for ZGetRealm */
+    extern char __Zephyr_realm[];
+
     /* Session key for last parsed packet - server only */
     extern C_Block __Zephyr_session;
+#else
+    /* for ZGetRealm -- you can change this, if you care... */
+#define __Zephyr_realm ("local-realm")
 #endif
 
     /* ZCompareUIDPred definition */
@@ -195,25 +214,42 @@ extern "C" {
 					  struct sockaddr_in*));
     extern Code_t ZCheckAuthentication Zproto ((ZNotice_t*,
 						struct sockaddr_in*));
+#ifdef Z_HaveKerberos
     extern Code_t ZFormatAuthenticNotice Zproto ((ZNotice_t*, char*, int,
 						  int*, C_Block));
+#endif
     extern Code_t ZFormatRawNotice Zproto ((ZNotice_t *, char**, int *));
+    extern void Z_debug Zproto ((const char *, ...));
 
+#ifdef Z_HaveKerberos
     /* ZGetSession() macro */
+    extern C_Block ZGetSession ();
 #define ZGetSession() (__Zephyr_session)
+#endif
 
 #ifndef __cplusplus
     /* ZGetFD() macro */
-#define ZGetFD() (__Zephyr_fd)
+    extern int ZGetFD ();
+#define ZGetFD() (__Zephyr_fd+0)
 
     /* ZQLength macro */
-#define ZQLength() (__Q_CompleteLength)
+    extern int ZQLength ();
+#define ZQLength() (__Q_CompleteLength+0)
 
     /* ZGetDestAddr() macro */
+    extern struct sockaddr_in ZGetDestAddr ();
 #define ZGetDestAddr() (__HM_addr)
 
     /* ZGetRealm() macro */
-#define ZGetRealm() (__Zephyr_realm)
+    extern Zconst char * ZGetRealm ();
+#define ZGetRealm() (__Zephyr_realm+0)
+
+    /* ZSetDebug() macro */
+    extern void ZSetDebug Zproto ((void (*)(const char *, va_list, void *),
+				   void *));
+#define ZSetDebug(proc,closure)    (__Z_debug_print=(proc), \
+				    __Z_debug_print_closure=(closure), \
+				    (void) 0)
 
     /* Maximum queue length */
 #define Z_MAXQLEN 		30
@@ -239,6 +275,12 @@ extern "C" {
     inline const sockaddr_in& ZGetDestAddr () { return __HM_addr; }
 
     inline const char* ZGetRealm () { return __Zephyr_realm; }
+
+    inline void ZSetDebug (register void (*proc)(char *,va_list,void *),
+			   void *closure) {
+      __Z_debug_print = proc;
+      __Z_debug_print_closure = closure;
+    }
 
     const int Z_MAXQLEN = 30;
 
