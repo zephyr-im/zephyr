@@ -38,7 +38,6 @@ char *zcluster;
 int deactivating = 0;
 int terminating = 0;
 struct hostent *hp;
-char **clust_info;
 char hostname[MAXHOSTNAMELEN], loopback[4];
 char PidFile[128];
 
@@ -241,6 +240,7 @@ char *argv[];
 static void choose_server()
 {
     int i = 0;
+    char **clust_info, **cpp;
 
 #ifdef HAVE_HESIOD
     if (use_hesiod) {
@@ -258,41 +258,44 @@ static void choose_server()
 	
 	if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
 	    zcluster = NULL;
-	} else
-	for ( ; *clust_info; clust_info++) {
-	    /* Remove the following check once we have changed over to
-	     * new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
-	     * server
-	     */
-	    if (!strncasecmp("ZEPHYR", *clust_info, 6)) {
-		register char *c;
+	} else {
+	    for (cpp = clust_info; *cpp; cpp++) {
+		/* Remove the following check once we have changed over to
+		 * new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
+		 * server
+		 */
+		if (!strncasecmp("ZEPHYR", *cpp, 6)) {
+		    register char *c;
 		
-		if ((c = strchr(*clust_info, ' ')) == 0) {
-		    printf("Hesiod error getting primary server info.\n");
-		} else {
-		    strncpy(prim_serv, c+1, sizeof(prim_serv));
-		    prim_serv[sizeof(prim_serv) - 1] = '\0';
-		}
-		break;
-	    }
-	    if (!strncasecmp("ZCLUSTER", *clust_info, 9)) {
-		register char *c;
-		
-		if ((c = strchr(*clust_info, ' ')) == 0) {
-		    printf("Hesiod error getting zcluster info.\n");
-		} else {
-		    if ((zcluster = malloc((unsigned)(strlen(c+1)+1)))
-			!= NULL) {
-			strcpy(zcluster, c+1);
+		    if ((c = strchr(*cpp, ' ')) == 0) {
+			printf("Hesiod error getting primary server info.\n");
 		    } else {
-			printf("Out of memory.\n");
-			exit(-5);
+			strncpy(prim_serv, c+1, sizeof(prim_serv));
+			prim_serv[sizeof(prim_serv) - 1] = '\0';
 		    }
+		    break;
 		}
-		break;
+		if (!strncasecmp("ZCLUSTER", *cpp, 9)) {
+		    register char *c;
+		
+		    if ((c = strchr(*cpp, ' ')) == 0) {
+			printf("Hesiod error getting zcluster info.\n");
+		    } else {
+			if ((zcluster = malloc((unsigned)(strlen(c+1)+1)))
+			    != NULL) {
+			    strcpy(zcluster, c+1);
+			} else {
+			    printf("Out of memory.\n");
+			    exit(-5);
+			}
+		    }
+		    break;
+		}
 	    }
+	    for (cpp = clust_info; *cpp; cpp++)
+		free(*cpp);
 	}
-	
+
 	if (zcluster == NULL) {
 	    if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
 		strcpy(zcluster, "zephyr");
@@ -306,27 +309,29 @@ static void choose_server()
 	    /* wait a bit, and try again */
 	    sleep(30);
 	}
-	clust_info = (char **) malloc(2 * sizeof(char *));
-	if (clust_info == NULL) {
+	cpp = (char **) malloc(2 * sizeof(char *));
+	if (cpp == NULL) {
 	    printf("Out of memory.\n");
 	    exit(-5);
 	}
 	if (prim_serv[0])
-	    clust_info[numserv++] = prim_serv;
-	for (i = 0; serv_list[i]; i++)
+	    cpp[numserv++] = prim_serv;
+	for (i = 0; serv_list[i]; i++) {
 	    /* copy in non-duplicates */
 	    /* assume the names returned in the sloc are full domain names */
-	if (!prim_serv[0] || strcasecmp(prim_serv, serv_list[i])) {
-	    clust_info = (char **) realloc(clust_info,
-					   (numserv+2) * sizeof(char *));
-	    if (clust_info == NULL) {
-		printf("Out of memory.\n");
-		exit(-5);
+	    if (!prim_serv[0] || strcasecmp(prim_serv, serv_list[i])) {
+		cpp = (char **) realloc(cpp, (numserv+2) * sizeof(char *));
+		if (cpp == NULL) {
+		    printf("Out of memory.\n");
+		    exit(-5);
+		}
+		cpp[numserv++] = strsave(serv_list[i]);
 	    }
-	    clust_info[numserv++] = strsave(serv_list[i]);
 	}
-	clust_info[numserv] = NULL;
-	serv_list = clust_info;
+	for (i = 0; serv_list[i]; i++)
+	    free(serv_list[i]);
+	cpp[numserv] = NULL;
+	serv_list = cpp;
     }
 #endif
     
