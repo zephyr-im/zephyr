@@ -34,6 +34,8 @@ static char rcsid_exec_c[] = "$Header$";
 #include "variables.h"
 #include "notice.h"
 
+static int exec_subtree(), exec_fields();
+
 /****************************************************************************/
 /*                                                                          */
 /*                           Utility subroutines:                          */
