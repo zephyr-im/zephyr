@@ -57,7 +57,9 @@ int __locate_next;
 ZSubscription_t *__subscriptions_list;
 int __subscriptions_num;
 int __subscriptions_next;
+#ifdef Z_DEBUG
 void (*__Z_debug_print) Zproto((const char *fmt, va_list args, void *closure));
+#endif
 
 #define min(a,b) ((a)<(b)?(a):(b))
 
@@ -209,7 +211,9 @@ Code_t Z_ReadWait()
     for (i = packet_len - 1; i >= 0; i--)
       if (packet[i])
 	goto not_all_null;
+#ifdef Z_DEBUG
     Z_debug ("got null packet from %s", inet_ntoa (from.sin_addr.s_addr));
+#endif
     return ZERR_NONE;
   not_all_null:
 
@@ -313,7 +317,7 @@ Code_t Z_ReadWait()
 	     */
 	    if (part == 0 && !qptr->header) {
 		qptr->header_len = packet_len-notice.z_message_len;
-		qptr->header = malloc((unsigned) qptr->header_len);
+		qptr->header = (char *) malloc((unsigned) qptr->header_len);
 		if (!qptr->header)
 		    return (ENOMEM);
 		bcopy(packet, qptr->header, qptr->header_len);
@@ -365,7 +369,7 @@ Code_t Z_ReadWait()
      */
     if (__Zephyr_server || part == 0) {
 	qptr->header_len = packet_len-notice.z_message_len;
-	qptr->header = malloc((unsigned) qptr->header_len);
+	qptr->header = (char *) malloc((unsigned) qptr->header_len);
 	if (!qptr->header)
 	    return ENOMEM;
 	bcopy(packet, qptr->header, qptr->header_len);
@@ -383,14 +387,14 @@ Code_t Z_ReadWait()
 	/* allocate a msg buf for this piece */
 	if (notice.z_message_len == 0)
 	    qptr->msg = 0;
-	else if (!(qptr->msg = malloc((unsigned) notice.z_message_len)))
+	else if (!(qptr->msg = (char *) malloc((unsigned) notice.z_message_len)))
 	    return(ENOMEM);
 	else
 	    bcopy(notice.z_message, qptr->msg, notice.z_message_len);
 	qptr->msg_len = notice.z_message_len;
 	__Q_Size += notice.z_message_len;
 	qptr->packet_len = qptr->header_len+qptr->msg_len;
-	if (!(qptr->packet = malloc((unsigned) qptr->packet_len)))
+	if (!(qptr->packet = (char *) malloc((unsigned) qptr->packet_len)))
 	    return (ENOMEM);
 	bcopy(qptr->header, qptr->packet, qptr->header_len);
 	if(qptr->msg)
@@ -402,7 +406,7 @@ Code_t Z_ReadWait()
      * We know how long the message is going to be (this is better
      * than IP fragmentation...), so go ahead and allocate it all.
      */
-    if (!(qptr->msg = malloc((unsigned) partof)) && partof)
+    if (!(qptr->msg = (char *) malloc((unsigned) partof)) && partof)
 	return (ENOMEM);
     qptr->msg_len = partof;
     __Q_Size += partof;
@@ -521,7 +525,7 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
 	qptr->complete = 1;
 	qptr->timep = 0;		/* don't time out anymore */
 	qptr->packet_len = qptr->header_len+qptr->msg_len;
-	if (!(qptr->packet = malloc((unsigned) qptr->packet_len)))
+	if (!(qptr->packet = (char *) malloc((unsigned) qptr->packet_len)))
 	    return (ENOMEM);
 	bcopy(qptr->header, qptr->packet, qptr->header_len);
 	bcopy(qptr->msg, qptr->packet+qptr->header_len, qptr->msg_len);
@@ -863,10 +867,14 @@ int wait;
 	return(ZSendPacket(buf, len, wait));
 }
 
+#ifdef Z_DEBUG
 /* For debugging printing */
 Zconst char *Zconst ZNoticeKinds[] = { "UNSAFE", "UNACKED", "ACKED", "HMACK",
 					 "HMCTL", "SERVACK", "SERVNAK",
-					 "CLIENTACK", "STAT", };
+					 "CLIENTACK", "STAT"};
+#endif
+
+#ifdef Z_DEBUG
 
 #undef Z_debug
 #ifdef Z_varargs
@@ -935,3 +943,4 @@ void ZSetDebug ARGS {
     __Z_debug_print = proc;
     __Z_debug_print_closure = arg;
 }
+#endif /* Z_DEBUG */
