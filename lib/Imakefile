@@ -175,6 +175,8 @@ OLIST=	\
 
 #ifdef KERBEROS
 KRB_OTHERSRCS= krb_err.et
+
+depend:: krb_err.h
 #endif /*KERBEROS*/
 
 OTHERSRCS= zephyr_err.et ${KRB_OTHERSRCS}
