@@ -6,10 +6,11 @@
  *
  *      $Source$
  *      $Author$
- *      $Header: /mit/zephyr/src/server/RCS/timer.h,v 1.9 94/03/15 12:44:40 prob
-e Exp $
+ *      $Header$
  *
  */
+
+#ifndef __TIMER_H
 
 /*
  * timer_manager_ -- routines for handling timers in login_shell
@@ -36,21 +37,20 @@ without express or implied warranty.
 
  */
 
+typedef void (*timer_proc) __P((void *));
+
 typedef struct _Timer {
-        int	heap_pos;		/* Position in timer heap */
-        long    abstime;
-        void    (*func) __P((void*));
-        void *  arg;
+        int		heap_pos;	/* Position in timer heap */
+        long    	abstime;
+        timer_proc	func;
+        void		*arg;
 } Timer;
 
-#define NOW t_local.tv_sec
-typedef void (*timer_proc) __P((void *));
 Timer *timer_set_rel __P((long, timer_proc, void *));
 Timer *timer_set_abs __P((long, timer_proc, void *));
 void timer_reset __P((Timer *));
 void timer_process __P((void));
+struct timeval *timer_timeout __P((struct timeval *tvbuf));
 
-#define timer_when(x)   ALARM_TIME(x)
+#endif /* __TIMER_H */
 
-extern struct timeval t_local;
-extern time_t nexttimo;                   /* Unix time of next timout */
