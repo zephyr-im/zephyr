@@ -97,7 +97,8 @@ Code_t ZParseNotice(buffer,len,notice,auth,from)
 	}
 	
 	if (__Zephyr_server) {
-		if (ZReadAscii(notice->z_ascii_authent,end-ptr,authent.dat,
+		if (ZReadAscii(notice->z_ascii_authent,
+			       strlen(notice->z_ascii_authent)+1,authent.dat,
 			       notice->z_authent_len) == ZERR_BADFIELD) {
 			*auth = 0;
 			return (ZERR_NONE);
