@@ -21,7 +21,7 @@ INSTALL=@INSTALL@
 RANLIB=@RANLIB@
 
 DEBUG=-O
-CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h -I${srcdir} -I. @CPPFLAGS@
+CFLAGS=@CPPFLAGS@ ${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h -I${srcdir} -I.
 
 OBJS=	com_err.o error_message.o et_name.o init_et.o
 

@@ -20,7 +20,7 @@ INSTALL=@INSTALL@
 MK_CMDS=@MK_CMDS@
 
 DEBUG=-O
-CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ @CPPFLAGS@
+CFLAGS=@CPPFLAGS@ ${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @SS_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr -lss @LIBS@ -lcom_err
 

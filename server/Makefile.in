@@ -20,8 +20,8 @@ INSTALL=@INSTALL@
 COMPILE_ET=@COMPILE_ET@
 
 DEBUG=-O
-CFLAGS=	${DEBUG} -DCONFDIR=\"${confdir}\" -I${top_srcdir}/h -I${BUILDTOP}/h \
-	-I. @CPPFLAGS@
+CFLAGS=@CPPFLAGS@ ${DEBUG} -DCONFDIR=\"${confdir}\" -I${top_srcdir}/h \
+	-I${BUILDTOP}/h -I. @CPPFLAGS@
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 

@@ -21,7 +21,7 @@ RANLIB=@RANLIB@
 COMPILE_ET=@COMPILE_ET@
 
 DEBUG=-O
-CFLAGS=${DEBUG} -I${srcdir} -I${top_srcdir}/h -I${BUILDTOP}/h -I. @CPPFLAGS@
+CFLAGS=@CPPFLAGS@ ${DEBUG} -I${srcdir} -I${top_srcdir}/h -I${BUILDTOP}/h -I.
 YFLAGS=-d
 
 OBJS=	ss_err.o data.o help.o error.o execute_cmd.o invocation.o list_rqs.o \

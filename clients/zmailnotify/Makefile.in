@@ -19,7 +19,7 @@ CC=@CC@
 INSTALL=@INSTALL@
 
 DEBUG=-O
-CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h -DKPOP @CPPFLAGS@
+CFLAGS=@CPPFLAGS@ ${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h -DKPOP
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err
 
