@@ -15,13 +15,14 @@
 
 #include <zephyr/zephyr.h>
 #include <ss/ss.h>
+#include <com_err.h>
 #include <pwd.h>
 #include <netdb.h>
 #include <string.h>
 #include <sys/file.h>
 #include <sys/param.h>
 #ifndef lint
-static char rcsid_zctl_c[] = "$Header$";
+static char *rcsid_zctl_c = "$Header$";
 #endif lint
 
 #define SUBSATONCE 7
@@ -51,7 +52,7 @@ char subsname[BUFSIZ];
 char ourhost[MAXHOSTNAMELEN],ourhostcanon[MAXHOSTNAMELEN];
 
 extern ss_request_table zctl_cmds;
-extern char *getenv(), *malloc(), *index(),*malloc();
+extern char *getenv(), *malloc();
 extern uid_t getuid();
 
 main(argc,argv)
