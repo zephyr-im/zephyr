@@ -33,8 +33,9 @@ extern uid_t getuid();
 
 main(argc,argv)
 	int argc;
-	char *argv[];
+	register char *argv[];
 {
+	register char *cp;
 	ZSubscription_t subs[SUBSATONCE];
 	ZLocations_t locations;
 	FILE *fp;
@@ -58,31 +59,37 @@ main(argc,argv)
 			onoff = OFF;
 			continue;
 		} 
-		if (!strcmp(argv[arg],"-q")) {
-			quiet = 1;
-			continue;
-		} 
-		if (!strcmp(argv[arg],"-l")) {
-			justlist = 1;
-			continue;
-		} 
-		if (!strcmp(argv[arg],"-f")) {
-			if (arg == argc-1) {
-				fprintf(stderr,"No file name specified\n");
+		if (argv[arg][0] == '-') {
+			char opt = argv[arg][1];
+			if (opt == 0 || argv[arg][2] != 0)
+				goto usage;
+			switch (argv[arg][1]) {
+			case 'q':
+				quiet = 1;
+				break;
+			case 'l':
+				justlist = 1;
+				break;
+			case 'f':
+				if (arg == argc-1) {
+					fprintf(stderr,"No file name specified\n");
+					goto usage;
+				}
+				(void) strcpy(anyonename,argv[++arg]);
+				filenamed = 1;
+				break;
+			case 'u':
+				if (arg == argc-1) {
+					fprintf(stderr,"No username specified\n");
+					goto usage;
+				}
+				(void) strcpy(cleanname,argv[++arg]);
+				useronly = 1;
+				break;
+			default:
 				goto usage;
 			}
-			(void) strcpy(anyonename,argv[++arg]);
-			filenamed = 1;
 			continue;
-		}
-		if (!strcmp(argv[arg],"-u")) {
-		    if (arg == argc-1) {
-			fprintf(stderr,"No username specified\n");
-			goto usage;
-		    }
-		    (void) strcpy(cleanname,argv[++arg]);
-		    useronly = 1;
-		    continue;
 		}
 	    usage:
 		fprintf(stderr,"Usage: %s [on|off] [-q | -l] [-f file | -u username]\n", argv[0]);
@@ -134,12 +141,14 @@ main(argc,argv)
 		if (!useronly) {
 		    if (!fgets(cleanname,sizeof cleanname,fp))
 			break;
-		    if (cleanname[0] == '#') /* ignore comment lines */
-			continue;	
+		    if (cleanname[0] == '#' || cleanname[0] == '\0' ||
+			cleanname[0] == '\n')
+			continue;	/* ignore comment and empty lines */
 		    /* Get rid of old-style nol entries, just in case */
-		    cleanname[strlen(cleanname)-1] = '\0';
-		    while (cleanname[strlen(cleanname)-1] == ' ')
-			cleanname[strlen(cleanname)-1] = '\0';
+		    cp = cleanname + strlen(cleanname) - 1;
+		    *cp = '\0';
+		    while(*--cp == ' ')
+			*cp = '\0';
 		    if (*cleanname == '@' || !*cleanname)
 			continue;
 		} else if (ind)
@@ -148,8 +157,9 @@ main(argc,argv)
 		subs[ind].zsub_class = LOGIN_CLASS;
 		(void) strcpy(name,cleanname);
 		if (!index(name,'@')) {
-			(void) strcat(name,"@");
-			(void) strcat(name,ZGetRealm());
+			cp = name + strlen(name);
+			*cp++ = '@';
+			(void) strcpy(cp,ZGetRealm());
 		}
 		if ((subs[ind].zsub_classinst = malloc((unsigned)(strlen(name)+1))) == NULL) {
 			fprintf (stderr, "znol: out of memory");
@@ -159,7 +169,7 @@ main(argc,argv)
 		subs[ind++].zsub_recipient = "";
 
 		if (!quiet && onoff == ON) {
-			if ((retval = ZLocateUser(name,&numlocs))
+			if ((retval = ZLocateUser(name,&numlocs,ZAUTH))
 			    != ZERR_NONE) {
 				com_err(argv[0],retval,"locating user");
 				exit(1);
