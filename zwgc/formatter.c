@@ -26,6 +26,10 @@ static char rcsid_formatter_c[] = "$Id$";
 #include "formatter.h"
 #include "text_operations.h"
 
+#if !defined(__STDC__) && !defined(const)
+#define const
+#endif
+
 static int pure_text_length(), env_length();
 
 #ifdef notdef
@@ -49,7 +53,7 @@ static character_class atsign_set = { /* '@' = 0x40 */
   };
 #endif
 
-static character_class paren_set = { /* '(' = 0x28, ')' = 0x29 */
+static const character_class paren_set = { /* '(' = 0x28, ')' = 0x29 */
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,
@@ -68,7 +72,7 @@ static character_class paren_set = { /* '(' = 0x28, ')' = 0x29 */
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
   };
 
-static character_class sbracket_set = { /* '[' = 0x5b, ']' = 0x5d */
+static const character_class sbracket_set = { /* '[' = 0x5b, ']' = 0x5d */
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -87,7 +91,7 @@ static character_class sbracket_set = { /* '[' = 0x5b, ']' = 0x5d */
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
   };
 
-static character_class abracket_set = { /* '<' = 0x3c, '>' = 0x3e */
+static const character_class abracket_set = { /* '<' = 0x3c, '>' = 0x3e */
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -106,7 +110,7 @@ static character_class abracket_set = { /* '<' = 0x3c, '>' = 0x3e */
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
   };
 
-static character_class cbracket_set = { /* '{' = 0x7b, '}' = 0x7d */
+static const character_class cbracket_set = { /* '{' = 0x7b, '}' = 0x7d */
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -125,7 +129,7 @@ static character_class cbracket_set = { /* '{' = 0x7b, '}' = 0x7d */
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
   };
 
-static character_class allbracket_set = {
+static const character_class allbracket_set = {
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,
@@ -144,7 +148,7 @@ static character_class allbracket_set = {
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
   };
 
-static character_class allmaskable_set = {
+static const character_class allmaskable_set = {
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,
@@ -167,9 +171,9 @@ static char brackets[]="()<>[]{}@";
 static char *openbracket[]={"@<","@<","@[","@[","@{","@{","@(","@(","@("};
 static char *closebracket[]={">",">","]","]","}","}",")",")",")"};
 
-int not_contains(str, set)
+static int not_contains(str, set)
      string str;
-     character_class set;
+     const character_class set;
 {
    while (*str && ! set[*str]) str++;
    return (! *str);
