@@ -1,6 +1,6 @@
 /* This file is part of the Project Athena Zephyr Notification System.
- * It contains source for the ZSetLocation, ZUnsetLocation, ZHideLocation,
- * and ZUnhideLocation functions.
+ * It contains source for the ZSetLocation, ZUnsetLocation, and
+ * ZFlushMyLocations functions.
  *
  *	Created by:	Robert French
  *
@@ -28,21 +28,10 @@ static char rcsid_ZLocations_c[] = "$Header$";
 
 uid_t getuid();
 
-Code_t ZSetLocation()
+Code_t ZSetLocation(exposure)
+	char *exposure;
 {
-	char bfr[BUFSIZ];
-	int quiet;
-	struct passwd *pw;
-	
-        quiet = 0;
-	/* XXX a uid_t is a u_short (now), but getpwuid wants an int. AARGH! */
-	if (pw = getpwuid((int) getuid())) {
-		(void) sprintf(bfr,"%s/.hideme",pw->pw_dir);
-		quiet = !access(bfr,F_OK);
-	} 
-
-	return (Z_SendLocation(LOGIN_CLASS,quiet?LOGIN_QUIET_LOGIN:
-			       LOGIN_USER_LOGIN,ZAUTH,
+	return (Z_SendLocation(LOGIN_CLASS,exposure,ZAUTH,
 			       "$sender logged in to $1 on $3 at $2"));
 }
 
@@ -52,19 +41,9 @@ Code_t ZUnsetLocation()
 			       "$sender logged out of $1 on $3 at $2"));
 }
 
-Code_t ZFlushLocations()
+Code_t ZFlushMyLocations()
 {
 	return (Z_SendLocation(LOGIN_CLASS,LOGIN_USER_FLUSH,ZAUTH,""));
-}
-
-Code_t ZHideLocation()
-{
-	return (Z_SendLocation(LOCATE_CLASS,LOCATE_HIDE,ZAUTH,(char *)0));
-}
-
-Code_t ZUnhideLocation()
-{
-	return (Z_SendLocation(LOCATE_CLASS,LOCATE_UNHIDE,ZAUTH,(char *)0));
 }
 
 Z_SendLocation(class,opcode,auth,format)
