@@ -12,6 +12,10 @@
  */
 /* $Header$ */
 
+#ifndef lint
+static char rcsid_ZGetSender_c[] = "$Header$";
+#endif lint
+
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
@@ -37,8 +41,8 @@ char *ZGetSender()
 		   wants an int. AARGH! */
 		pw = getpwuid((int) getuid());
 		if (!pw)
-			return ("unauth");
-		(void) sprintf(sender,"%s@UNAUTH",pw->pw_name);
+			return ("unknown");
+		(void) sprintf(sender,"%s@%s",pw->pw_name,__Zephyr_realm);
 		return (sender);
 	} 
         readstr(fp,pname,ANAME_SZ);
