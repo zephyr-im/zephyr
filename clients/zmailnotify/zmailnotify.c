@@ -192,6 +192,10 @@ main()
 				!strcmp(maillist[nmsgs-i].subj,mymail.subj)))
 			break;
 	}
+
+	(void) pop_command("QUIT");
+	pop_close();
+
 	i++;
 	for (;i<=nmsgs;i++)
 		mail_notify(&maillist[nmsgs-i]);
@@ -209,8 +213,6 @@ main()
 		maillist[nmsgs-i].subj);
 	(void) fclose(lock);
 
-	(void) pop_command("QUIT");
-	pop_close();
 	exit(0);
 }
 
@@ -531,6 +533,12 @@ FILE *f;
 	} else {
 	    (void) strcpy(buf, buf+1);
 	}
+    } else if (*buf == '\0') {
+      /* suck up all future lines, since this is after all only for headers */
+	while(! ((buf[0]=='.') && (buf[1] == '\0')) ) {
+	    if (getline(buf, n, f) != OK) return (NOTOK);
+	}
+	return DONE;
     }
     return(OK);
 }
