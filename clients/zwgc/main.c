@@ -37,7 +37,7 @@ static const char rcsid_main_c[] = "$Id$";
 #include "main.h"
 
 extern void notice_handler();
-static void setup_signals(), detach();
+static void setup_signals(), detach(), signal_exit();
 
 /*
  * Global zwgc-wide variables:
