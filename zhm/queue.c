@@ -103,7 +103,8 @@ Code_t remove_notice_from_queue(notice, kind, repl)
 
     *kind = entry->notice.z_kind;
     *repl = entry->reply;
-    timer_reset(entry->timer);
+    if (entry->timer)
+	timer_reset(entry->timer);
     free(entry->packet);
     LIST_DELETE(entry);
 #ifdef DEBUG
