@@ -30,7 +30,7 @@ static const char rcsid_zwrite_c[] = "$Id$";
 #define MAXRECIPS 100
 
 int nrecips, msgarg, verbose, quiet, nodot;
-char *whoami, *inst, *class, *opcode, *recips[MAXRECIPS];
+char *whoami, *inst, *class, *opcode, *realm, *recips[MAXRECIPS];
 Z_AuthProc auth;
 void un_tabify();
 
@@ -169,6 +169,12 @@ main(argc, argv)
 		usage(whoami);
 	    arg++;
 	    format = argv[arg];
+	    break;
+	case 'r':
+	    if (arg == argc-1)
+		usage(whoami);
+	    arg++;
+	    realm = argv[arg];
 	    break;
 	default:
 	    usage(whoami);
@@ -313,13 +319,18 @@ send_off(notice, real)
     int real;
 {
     int i, success, retval;
-    char bfr[BUFSIZ];
+    char bfr[BUFSIZ], realm_recip[BUFSIZ], *cp;
     ZNotice_t retnotice;
 
     success = 0;
 	
     for (i=0;i<nrecips || !nrecips;i++) {
-	notice->z_recipient = nrecips?recips[i]:"";
+	if (realm) {
+	    sprintf(realm_recip, "%s@%s", (nrecips) ? recips[i] : "", realm);
+	    notice->z_recipient = realm_recip;
+	} else {
+	    notice->z_recipient = (nrecips) ? recips[i] : "";
+	}
 	if (verbose && real)
 	    printf("Sending %smessage, class %s, instance %s, to %s\n", 
 		   auth?"authenticated ":"", 
@@ -408,7 +419,7 @@ usage(s)
     fprintf(stderr,
 	    "Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l]\n\
 \t[-c class] [-i inst] [-O opcode] [-f fsname] [-s signature]\n\
-\t[user ...] [-F format] [-m message]\n", s);
+\t[user ...] [-F format] [-r realm] [-m message]\n", s);
     fprintf(stderr,"\t-f and -c are mutually exclusive\n\
 \t-f and -i are mutually exclusive\n\
 \trecipients must be specified unless -c or -f specifies a class\n\
