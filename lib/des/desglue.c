@@ -27,16 +27,6 @@ string_to_key(str, key)
 
 
 int
-read_pw_string(s, max, prompt, verify)
-    char *s;
-    int max;
-    char *prompt;
-    int verify;
-{
-    return des_read_pw_string (s, max, prompt, verify);
-}
-
-int
 random_key(key)
     des_cblock key;
 {

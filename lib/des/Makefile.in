@@ -21,8 +21,8 @@ DEBUG=-O
 CFLAGS=$(DEBUG) -I$(top_srcdir)/h -I$(BUILDTOP)/h @CPPFLAGS@
 
 OBJS =	f_cbc.o f_cksum.o f_pcbc.o f_sched.o f_ecb.o f_parity.o f_tables.o \
-	key_sched.o debug_decl.o quad_cksum.o random_key.o read_password.o \
-	string_to_key.o weak_key.o new_rnd_key.o util.o desglue.o
+	key_sched.o debug_decl.o quad_cksum.o random_key.o string_to_key.o \
+	weak_key.o new_rnd_key.o util.o desglue.o
 
 all: libdes.a destest
 
