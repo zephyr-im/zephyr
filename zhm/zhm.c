@@ -97,7 +97,7 @@ char *argv[];
     /* Main loop */
     for ever {
 	  DPR ("Waiting for a packet...");
-	  ret = ZReceiveNotice(packet, Z_MAXPKTLEN, &notice, NULL, &from);
+	  ret = ZReceiveNotice(packet, Z_MAXPKTLEN, &notice, &from);
 	  if ((ret != ZERR_NONE) && (ret != EINTR)){
 		Zperr(ret);
 		com_err("hm", ret, "receiving notice");
@@ -112,6 +112,7 @@ char *argv[];
 		DPR2("\tz_opcode: %s\n", notice.z_opcode);
 		DPR2("\tz_sender: %s\n", notice.z_sender);
 		DPR2("\tz_recip: %s\n", notice.z_recipient);
+		DPR2("\tz_default_format: %s\n", notice.z_default_format);
 		if ((notice.z_kind == SERVACK) ||
 		    (notice.z_kind == SERVNAK) ||
 		    (notice.z_kind == HMCTL)) {
@@ -272,6 +273,7 @@ send_boot_notice(op)
       notice.z_opcode = op;
       notice.z_sender = "sender";
       notice.z_recipient = "";
+      notice.z_default_format = 0;
       notice.z_message_len = 0;
       
       /* Notify server that this host is here */
@@ -302,6 +304,7 @@ send_flush_notice(op)
       notice.z_opcode = op;
       notice.z_sender = "sender";
       notice.z_recipient = "";
+      notice.z_default_format = 0;
       notice.z_message_len = 0;
 
       /* Tell server to lose us */
