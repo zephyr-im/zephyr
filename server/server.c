@@ -22,7 +22,7 @@ static char rcsid_server_c[] = "$Header$";
 #include "zserver.h"
 #include <sys/socket.h>			/* for AF_INET */
 #include <netdb.h>			/* for gethostbyname */
-
+#include <sys/param.h>			/* for BSD */
 /*
  * Server manager.  Deal with  traffic to and from other servers.
  *
@@ -66,7 +66,7 @@ static char rcsid_server_c[] = "$Header$";
 
 static void server_hello(), server_flush(), setup_server();
 static void hello_respond(), srv_responded(), send_msg(), send_msg_list();
-static void srv_alive(), srv_nack_cancel(), srv_rexmit(), srv_nack_release();
+static void srv_nack_cancel(), srv_rexmit(), srv_nack_release();
 static void srv_nack_move();
 static void server_lost();
 static void send_stats(), server_queue(), server_forw_reliable();
@@ -674,9 +674,11 @@ ZNotice_t *notice;
 		syslog(LOG_WARNING, "no clt kill_clt");
 		return(ZERR_NONE);	/* XXX */
 	}
-	/* remove the locations, too */
 	if (zdebug)
 		syslog(LOG_DEBUG, "kill_clt clt_dereg");
+
+	hostm_lose_ignore(client);
+	/* remove the locations, too */
 	client_deregister(client, host, 1);
 	return(ZERR_NONE);
 }
@@ -725,12 +727,14 @@ ZNotice_t *notice;
 struct sockaddr_in *who;
 {
 	register char *cp = notice->z_message;
+	extern unsigned long inet_addr();
 
 	if (!notice->z_message_len) {
 		syslog(LOG_WARNING, "bad addr pkt");
 		return(ZSRV_PKSHORT);
 	}
 	who->sin_addr.s_addr = inet_addr(notice->z_message);
+
 	cp += strlen(cp) + 1;
 	if (cp >= notice->z_message + notice->z_message_len) {
 		syslog(LOG_WARNING, "short addr pkt");
@@ -999,7 +1003,6 @@ int *number;				/* RETURN */
 }
 
 #ifndef HESIOD
-#include <sys/param.h>
 
 static int nhosts = 0;
 
@@ -1034,7 +1037,7 @@ char *file;
 
 		if (nused >= nhosts) {
 			/* get more pointer space if necessary */
-			ret_list = (char **)realloc(ret_list,
+			ret_list = (char **)realloc((char *)ret_list,
 						    (unsigned) nhosts * 2);
 			nhosts = nhosts * 2;
 		}
