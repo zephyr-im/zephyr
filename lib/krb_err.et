@@ -1,3 +1,12 @@
+#	Copyright 1987,1988 Massachusetts Institute of Technology
+#
+#	For copying and distribution information, see the file
+#	"mit-copyright.h".
+# 
+#	$Source$
+#	$Author$
+#	$Header$
+#
 	error_table	krb
 
 	ec		KSUCCESS,
