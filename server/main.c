@@ -546,11 +546,13 @@ reap(int sig)
 static void
 do_reset(void)
 {
-	int oerrno = errno;
+	int oerrno;
+	int omask;
 #if 0
 	zdbug((LOG_DEBUG,"do_reset()"));
 #endif
-	SignalBlock no_hups (sigmask (SIGHUP));
+	omask = sigblock (sigmask (SIGHUP));
+	oerrno = errno;
 
 	/* reset various things in the server's state */
 	subscr_reset();
@@ -559,6 +561,7 @@ do_reset(void)
 	syslog (LOG_INFO, "restart completed");
 	doreset = 0;
 	errno = oerrno;
+	sigsetmask (omask);
 }
 
 #ifndef DEBUG
