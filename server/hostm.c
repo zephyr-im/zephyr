@@ -216,8 +216,8 @@ ZServerDesc_t *server;
 	if ((clist = host->zh_clients))
 		for (clt = clist->q_forw; clt != clist; clt = clist->q_forw)
 			/* client_deregister frees this client & subscriptions
-			   and remque()s the client */
-			client_deregister(clt->zclt_client, host);
+			   & locations and remque()s the client */
+			client_deregister(clt->zclt_client, host, 1);
 
 	uloc_hflush(&host->zh_addr.sin_addr);
 	host_detach(&host->zh_addr.sin_addr, server);
