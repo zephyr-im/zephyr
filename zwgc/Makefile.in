@@ -3,7 +3,7 @@ SHELL = /bin/sh
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 datadir=@datadir@
-confdir=@confdir@
+sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
 
@@ -14,7 +14,7 @@ bindir=${exec_prefix}/bin
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
-BUILDTOP=../..
+BUILDTOP=..
 VPATH=@srcdir@
 CC=@CC@
 YACC=@YACC@
@@ -25,7 +25,7 @@ DEBUG=-O
 CFLAGS=${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h -I${srcdir} -I. @X_CFLAGS@ @CPPFLAGS@
 YFLAGS=-d
-LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @X_LIBS@ @LDFLAGS@
+LDFLAGS=${DEBUG} -L${BUILDTOP}/lib @X_LIBS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err @X_PRE_LIBS@ @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
      @TLIB@ @RLIB@
 
@@ -40,7 +40,7 @@ OBJS=	port_dictionary.o pointer_dictionary.o unsigned_long_dictionary.o \
 
 all: zwgc
 
-zwgc: ${OBJS} ${BUILDTOP}/lib/zephyr/libzephyr.a @ETDEP@
+zwgc: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
 	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 port_dictionary.c port_dictionary.h: dictionary.c dictionary.h
@@ -75,7 +75,7 @@ install: zwgc
 	${INSTALL} -m 644 ${srcdir}/zwgc.1 ${DESTDIR}${mandir}/man1
 	${INSTALL} -m 644 ${srcdir}/zwgc.desc ${DESTDIR}${datadir}
 	${INSTALL} -m 644 ${srcdir}/zwgc_resources ${DESTDIR}${datadir}
-	${INSTALL} -m 644 zephyr.vars ${DESTDIR}${confdir}
+	${INSTALL} -m 644 zephyr.vars ${DESTDIR}${sysconfdir}
 
 clean:
 	rm -f ${OBJS} zwgc port_dictionary.[ch] pointer_dictionary.[ch]
