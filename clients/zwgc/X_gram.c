@@ -32,6 +32,8 @@ static char rcsid_X_gram_c[] = "$Id$";
 
 extern XContext desc_context;
 extern char *app_instance;
+extern unsigned long x_string_to_color();
+extern char *getenv();
 
 /*
  *
@@ -39,7 +41,9 @@ extern char *app_instance;
 
 int internal_border_width = 2;
 
-static int reverse_video = 0;
+unsigned long default_fgcolor;
+unsigned long default_bgcolor;
+unsigned long default_bordercolor;
 static int border_width = 1;
 static int cursor_code = XC_sailboat;
 static char *title_name,*icon_name;
@@ -91,8 +95,24 @@ void x_gram_init(dpy)
     char *temp;
     XSizeHints sizehints;
     XWMHints wmhints;
+    unsigned long rv,tc;
 
-    reverse_video = get_bool_resource("reverseVideo", "ReverseVideo", 0);
+    default_fgcolor = BlackPixelOfScreen(DefaultScreenOfDisplay(dpy));
+    default_bgcolor = WhitePixelOfScreen(DefaultScreenOfDisplay(dpy));
+    rv = get_bool_resource("reverseVideo", "ReverseVideo", 0);
+    if (rv) {
+       tc = default_fgcolor;
+       default_fgcolor = default_bgcolor;
+       default_bgcolor = tc;
+    }
+    if (temp = get_string_resource("foreground","Foreground"))
+      default_fgcolor = x_string_to_color(temp,default_fgcolor);
+    if (temp = get_string_resource("background","Background"))
+      default_bgcolor = x_string_to_color(temp,default_bgcolor);
+    default_bordercolor = default_fgcolor;
+    if (temp = get_string_resource("borderColor","BorderColor"))
+      default_bordercolor = x_string_to_color(temp,default_bordercolor);
+
     reverse_stack = get_bool_resource("reverseStack", "ReverseStack", 0);
 
     temp = get_string_resource("borderWidth", "BorderWidth");
@@ -129,8 +149,7 @@ void x_gram_init(dpy)
     classhint.res_class="Zwgc";
 
     group_leader=XCreateSimpleWindow(dpy,DefaultRootWindow(dpy),0,0,100,100,0,
-				     BlackPixel(dpy,DefaultScreen(dpy)),
-				     WhitePixel(dpy,DefaultScreen(dpy)));
+				     default_bordercolor,default_bgcolor);
     sizehints.x = 0;
     sizehints.y = 0;
     sizehints.width = 100;
@@ -145,19 +164,18 @@ void x_gram_init(dpy)
 		      &wmhints,0);
 }
 
-void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize)
+void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
+		   beepcount)
      Display *dpy;
      x_gram *gram;
      int xalign, yalign;
      int xpos, ypos;
      int xsize, ysize;
+     int beepcount;
 {
-    int i;
     Window w;
     XSizeHints sizehints;
     XWMHints wmhints;
-    int foreground_color = BlackPixel(dpy, DefaultScreen(dpy));
-    int background_color = WhitePixel(dpy, DefaultScreen(dpy));
 
     /*
      * Adjust xpos, ypos based on the alignments xalign, yalign and the sizes:
@@ -177,21 +195,11 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize)
 	      - 2*border_width)>>1 + ypos;
 
     /*
-     * Deal with reverse video:
-     */
-    if (reverse_video) {
-	int temp;
-	temp = foreground_color;
-	foreground_color = background_color;
-	background_color = temp;
-    }
-
-    /*
      * Create the window:
      */
     w = XCreateSimpleWindow(dpy,DefaultRootWindow(dpy),xpos,ypos,xsize,
-			    ysize,border_width,foreground_color,
-			    background_color);
+			    ysize,border_width,default_bordercolor,
+			    gram->bgcolor);
     gram->w=w;
 
     XDefineCursor(dpy, w, cursor);
@@ -220,6 +228,9 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize)
 		 );
 
     XMapWindow(dpy, w);
+
+    while (beepcount--)
+	XBell(dpy, 0);
 
    if (reverse_stack) {
       if (bottom_gram) {
@@ -269,41 +280,29 @@ void x_gram_draw(dpy, w, gram, region)
      x_gram *gram;
      Region region;
 {
-   int i,bcsize,ecsize;
+   int i;
    GC gc;
    XGCValues gcvals;
    xblock *xb;
    XTextItem text;
-   unsigned long fg,bg;
-   int startblock,endblock,startchar,endchar,startpixel,endpixel;
+   int startblock,endblock,startpixel,endpixel;
    
 #define SetFG(fg) \
    gcvals.foreground=fg; \
    XChangeGC(dpy,gc,GCForeground,&gcvals)
 
-   if (!reverse_video) {
-      fg = BlackPixel(dpy, DefaultScreen(dpy));
-      bg = WhitePixel(dpy, DefaultScreen(dpy));
-   } else {
-      fg = WhitePixel(dpy, DefaultScreen(dpy));
-      bg = BlackPixel(dpy, DefaultScreen(dpy));
-   }
    gc = XCreateGC(dpy, w, 0, &gcvals);
    XSetRegion(dpy,gc,region);
  
-   if (markgram == gram) {
+   if ((markgram == gram) && (STARTBLOCK != -1) && (ENDBLOCK != -1)) {
       if (xmarkSecond() == XMARK_END_BOUND) {
 	 startblock=STARTBLOCK;
 	 endblock=ENDBLOCK;
-	 startchar=STARTCHAR;
-	 endchar=ENDCHAR;
 	 startpixel=STARTPIXEL;
 	 endpixel=ENDPIXEL;
       } else {
 	 startblock=ENDBLOCK;
 	 endblock=STARTBLOCK;
-	 startchar=ENDCHAR;
-	 endchar=STARTCHAR;
 	 startpixel=ENDPIXEL;
 	 endpixel=STARTPIXEL;
       }
@@ -312,42 +311,43 @@ void x_gram_draw(dpy, w, gram, region)
       endblock = -1;
    }
 
-   SetFG(bg);
    for (i=0,xb=gram->blocks ; i<gram->numblocks ; i++,xb++) {
       if (XRectInRegion(region,xb->x1,xb->y1,xb->x2-xb->x1,
 			xb->y2-xb->y1) != RectangleOut) {
 	 if (i==startblock) {
 	    if (i==endblock) {
+	       SetFG(gram->bgcolor);
 	       XFillRectangle(dpy,w,gc,xb->x1,xb->y1,startpixel,
 			      (xb->y2-xb->y1));
-	       SetFG(fg);
+	       SetFG(xb->fgcolor);
 	       XFillRectangle(dpy,w,gc,xb->x1+startpixel,xb->y1,
 			      (endpixel-startpixel),(xb->y2-xb->y1));
-	       SetFG(bg);
+	       SetFG(gram->bgcolor);
 	       XFillRectangle(dpy,w,gc,xb->x1+endpixel,xb->y1,
 			      (xb->x2-xb->x1-endpixel),(xb->y2-xb->y1));
 	    } else {
+	       SetFG(gram->bgcolor);
 	       XFillRectangle(dpy,w,gc,xb->x1,xb->y1,startpixel,
 			      (xb->y2-xb->y1));
-	       SetFG(fg);
+	       SetFG(xb->fgcolor);
 	       XFillRectangle(dpy,w,gc,xb->x1+startpixel,xb->y1,
 			      (xb->x2-xb->x1-startpixel),(xb->y2-xb->y1));
 	    }
 	 } else if (i==endblock) {
+	    SetFG(xb->fgcolor);
 	    XFillRectangle(dpy,w,gc,xb->x1,xb->y1,endpixel,
 			   (xb->y2-xb->y1));
-	    SetFG(bg);
+	    SetFG(gram->bgcolor);
 	    XFillRectangle(dpy,w,gc,xb->x1+endpixel,xb->y1,
 			   (xb->x2-xb->x1-endpixel),(xb->y2-xb->y1));
 	 } else {
+	    if ((startblock < i) && (i < endblock)) {
+	       SetFG(xb->fgcolor);
+	    } else {
+	       SetFG(gram->bgcolor);
+	    }
 	    XFillRectangle(dpy,w,gc,xb->x1,xb->y1,(xb->x2-xb->x1),
 			   (xb->y2-xb->y1));
-	 }
-      } else {
-	 if (i==startblock) {
-	    if (i != endblock) SetFG(fg);
-	 } else if (i==endblock) {
-	    SetFG(bg);
 	 }
       }
    }
@@ -358,7 +358,7 @@ void x_gram_draw(dpy, w, gram, region)
    for (i=0,xb=gram->blocks ; i<gram->numblocks ; i++,xb++) {
       if (XRectInRegion(region,xb->x1,xb->y1,xb->x2-xb->x1,
 			xb->y2-xb->y1) != RectangleOut) {
-	 SetFG(fg^bg);
+	 SetFG(gram->bgcolor^xb->fgcolor);
 	 text.chars=gram->text+xb->strindex;
 	 text.nchars=xb->strlen;
 	 text.delta=0;

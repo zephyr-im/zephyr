@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_X_driver_c[] = "$Header$";
+static char rcsid_X_driver_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -34,6 +34,7 @@ static char rcsid_X_driver_c[] = "$Header$";
 #include "error.h"
 #include "X_gram.h"
 #include "xselect.h"
+#include "ulong_dictionary.h"
 
 char *app_instance;
 
@@ -54,7 +55,7 @@ Display *dpy = NULL;
  */
 
 #ifndef  APPDEFDATABASE
-#define  APPDEFDATABASE "/afs/athena.mit.edu/astaff/project/zephyr/src/zwgc/zwgc.dev/misc/zwgc_resources"
+#define  APPDEFDATABASE "/usr/athena/lib/zephyr/zwgc_resources"
 #endif
 
 /*
@@ -157,6 +158,56 @@ int get_bool_resource(name, class, default_value)
     return(result);
 }
 
+static ulong_dictionary color_dict = NULL;
+
+/* Requires: name points to color name or hex string.  name must be free'd
+ *     eventually by the caller.
+ * Effects: returns unsigned long pixel value, or default if the
+ *     color is not known by the server.  If name is NULL, returns
+ *     default;
+ *
+ * comment: caches return values from X server round trips.  If name does
+ *     not resolve, this fact is NOT cached, and will result in a round
+ *     trip each time.
+ */
+
+unsigned long x_string_to_color(name,def)
+     char *name;
+     unsigned long def;
+{
+   ulong_dictionary_binding *binding;
+   int exists;
+   XColor xc;
+
+   if (name == NULL)
+     return(def);
+
+   binding = ulong_dictionary_Define(color_dict,name,&exists);
+
+   if (exists) {
+      return((unsigned long) binding->value);
+   } else {
+      if (XParseColor(dpy,DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
+		      name,&xc)) {
+	 if (XAllocColor(dpy,
+			 DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
+			 &xc)) {
+	    binding->value = (ulong) xc.pixel;
+	    return(xc.pixel);
+	 } else {
+	    ERROR2("Error in XAllocColor on \"%s\": using default color\n",
+		   name);
+	 }
+      } else {
+	 ERROR2("Error in XParseColor on \"%s\": using default color\n",
+	       name);
+      }      
+      ulong_dictionary_Delete(color_dict,binding);
+      return(def);
+   }
+   /*NOTREACHED*/
+}
+
 /*
  * Standard X Toolkit command line options:
  */
@@ -244,7 +295,9 @@ int open_display_and_load_resources(pargc, argv)
 
 extern void x_get_input();
 
-int X_driver_init(pargc, argv)
+/*ARGSUSED*/
+int X_driver_init(drivername, pargc, argv)
+     char *drivername;
      int *pargc;
      char **argv;
 {
@@ -272,6 +325,8 @@ int X_driver_init(pargc, argv)
     temp=rindex(argv[0],'/');
 
     app_instance=string_Copy(temp?temp+1:argv[0]);
+
+    color_dict = ulong_dictionary_Create(37);
 
     xshowinit();
     x_gram_init(dpy);

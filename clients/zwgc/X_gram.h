@@ -52,7 +52,10 @@ typedef struct _xmode {
    int italic;
    int size;
    int align;
+   int expcolor;
+   unsigned long color;
    char *substyle;
+   char *font;
 } xmode;
 
 typedef struct _xlinedesc {
