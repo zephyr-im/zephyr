@@ -226,9 +226,11 @@ static int do_mode_change(current_mode_p, text, text_length)
       current_mode_p->alignment = 'r';
 
     /* font commands: */
-    else if (fixed_string_eq("bold", text, text_length))
+    else if (fixed_string_eq("bold", text, text_length) ||
+	     fixed_string_eq("b", text, text_length))
       current_mode_p->bold_p = 1;
-    else if (fixed_string_eq("italic", text, text_length))
+    else if (fixed_string_eq("italic", text, text_length) ||
+	     fixed_string_eq("i", text, text_length))
       current_mode_p->italic_p = 1;
     else if (fixed_string_eq("roman", text, text_length)) {
 	current_mode_p->bold_p = 0;
