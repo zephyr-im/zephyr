@@ -1,4 +1,4 @@
-	et	zefl
+	et	zeph
 
 ec  ZERR_PKTLEN,
 	"Packet too long or buffer too small."
