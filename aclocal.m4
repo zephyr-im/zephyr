@@ -32,8 +32,10 @@ dnl	ATHENA_AFS
 dnl		Sets AFS_LIBS and defines HAVE_AFS if AFS used.  Pass
 dnl		in an argument giving the desired AFS libraries;
 dnl		AFS_LIBS will be set to that value if AFS is found.
+dnl		AFS_DIR will be set to the prefix given.
 dnl	ATHENA_AFS_REQUIRED
-dnl		Generates error if AFS libraries not found.
+dnl		Generates error if AFS libraries not found.  AFS_DIR
+dnl		will be set to the prefix given.
 dnl	ATHENA_KRB4
 dnl		Sets KRB4_LIBS and defines HAVE_KRB4 if krb4 used.
 dnl	ATHENA_KRB4_REQUIRED
@@ -65,7 +67,7 @@ AC_DEFUN(ATHENA_UTIL_COM_ERR,
 if test "$com_err" != no; then
 	if test "$com_err" != yes; then
 		CPPFLAGS="$CPPFLAGS -I$com_err/include"
-		LDFLAGS="$LDFLAGS -I$com_err/lib"
+		LDFLAGS="$LDFLAGS -L$com_err/lib"
 	fi
 	AC_CHECK_LIB(com_err, com_err, :,
 		     [AC_MSG_ERROR(com_err library not found)])
@@ -82,7 +84,7 @@ AC_DEFUN(ATHENA_UTIL_SS,
 if test "$ss" != no; then
 	if test "$ss" != yes; then
 		CPPFLAGS="$CPPFLAGS -I$ss/include"
-		LDFLAGS="$LDFLAGS -I$ss/lib"
+		LDFLAGS="$LDFLAGS -L$ss/lib"
 	fi
 	AC_CHECK_LIB(ss, ss_perror, :,
 		     [AC_MSG_ERROR(ss library not found)], -lcom_err)
@@ -143,7 +145,7 @@ dnl ----- AFS -----
 
 AC_DEFUN(ATHENA_AFS_CHECK,
 [AC_CHECK_FUNC(insque, :, AC_CHECK_LIB(compat, insque))
-AC_CHECK_FUNC(sigvec, :, AC_CHECK_LIB(ucb, sigvec))
+AC_CHECK_FUNC(sigvec, :, AC_CHECK_LIB(ucb, sigvec, LIBS="$LIBS -lc -lucb"))
 AC_CHECK_FUNC(gethostbyname, :, AC_CHECK_LIB(nsl, gethostbyname))
 AC_CHECK_FUNC(socket, :, AC_CHECK_LIB(socket, socket))
 if test "$afs" != yes; then
@@ -151,7 +153,9 @@ if test "$afs" != yes; then
 	LDFLAGS="$LDFLAGS -L$afs/lib -L$afs/lib/afs"
 fi
 AC_CHECK_LIB(sys, pioctl, :, [AC_MSG_ERROR(AFS libraries not found)],
-	     -lrx -llwp -lsys)])
+	     -lrx -llwp -lsys)
+AFS_DIR=$afs
+AC_SUBST(AFS_DIR)])
 
 dnl Specify desired AFS libraries as a parameter.
 AC_DEFUN(ATHENA_AFS,
