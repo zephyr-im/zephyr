@@ -1,3 +1,9 @@
+zephyr (2.1.20010518.SNAPSHOT-10.2) unstable; urgency=low
+
+  * Patch in the krb5 interrealm.
+
+ -- Karl Ramm <kcr@1ts.org>  Fri, 30 May 2003 16:03:47 -0400
+
 zephyr (2.1.20010518.SNAPSHOT-10.1) unstable; urgency=low
 
   * Experimental update to the latest athena code.

@@ -23,7 +23,7 @@ configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
 	-mkdir krb
-	cd krb&&../configure --with-krb4=/usr $(CONFIGURE_ROOT)
+	cd krb&&../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
 	-mkdir no-krb
 	cd no-krb&&../configure $(CONFIGURE_ROOT)
 	touch configure-stamp
