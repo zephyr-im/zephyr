@@ -151,8 +151,9 @@ char *argv[];
 	       if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
 		    (void)strcpy(zcluster, "zephyr");
 	  }
+#ifdef HESIOD
      }
-    
+#endif HESIOD    
      init_hm();
 
      DPR2 ("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
