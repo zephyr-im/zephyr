@@ -40,7 +40,7 @@ install: zhm
 clean:
 	rm -f ${OBJS} zhm
 
-${OBJS}: zhm.h ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
+${OBJS}: zhm.h timer.h ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
 ${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h
 ${OBJS}: ${BUILDTOP}/h/zephyr/zephyr_err.h
 
