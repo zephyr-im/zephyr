@@ -28,7 +28,8 @@ ZMAILNOTIFY=
 #endif /* HESIOD && KERBEROS */
 
 SUBDIRS = zaway zctl zleave zlocate \
-	$(ZMAILNOTIFY) znol zpopnotify zshutdown_notify zstat zwrite $(SYSLOGD)
+	$(ZMAILNOTIFY) znol zpopnotify zshutdown_notify zstat zwrite \
+	$(SYSLOGD) xzwrite
 
 #ifdef OLD_ATHENA_COMPAT
 SHELLSCRIPTS= zlogout zhide zwgc
