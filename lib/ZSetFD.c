@@ -14,7 +14,7 @@
 
 #ifndef lint
 static char rcsid_ZSetFD_c[] = "$Header$";
-#endif lint
+#endif
 
 #include <zephyr/mit-copyright.h>
 
