@@ -524,9 +524,13 @@ void create_file_output_port(name, filename)
      string filename;
 {
     FILE *out;
+    int oumask;
 
     errno = 0;
+
+    oumask = umask(077);		/* allow read/write for us only */
     out = fopen(filename, "w");
+    (void) umask(oumask);
     if (errno) {
 	var_set_variable("error", perror_to_string(errno));
 	return;
