@@ -178,7 +178,7 @@ add_subscriptions(who, subs, notice)
 		return retval;
 	    }
 	}
-	LIST_INSERT(who->subs, subs);
+	LIST_INSERT(&who->subs, subs);
     }
 
     return ZERR_NONE;
@@ -297,7 +297,7 @@ subscr_cancel(sin, notice)
     ZNotice_t *notice;
 {
     Client *who;
-    Destlist *cancel_subs, *subs, *client_subs, *next;
+    Destlist *cancel_subs, *subs, *cancel_next, *client_subs, *client_next;
     Code_t retval;
     int found = 0;
     int relation;
@@ -316,10 +316,10 @@ subscr_cancel(sin, notice)
     if (!cancel_subs)
 	return ZERR_NONE;	/* no subscr -> no error */
 
-    for (subs = cancel_subs; subs; subs = next) {
-	next = subs->next;
-	for (client_subs = who->subs; client_subs; client_subs = next) {
-	    next = client_subs->next;
+    for (subs = cancel_subs; subs; subs = cancel_next) {
+	cancel_next = subs->next;
+	for (client_subs = who->subs; client_subs; client_subs = client_next) {
+	    client_next = client_subs->next;
 	    if (ZDest_eq(&client_subs->dest, &subs->dest)) {
 		LIST_DELETE(client_subs);
 		triplet_deregister(who, &client_subs->dest);
@@ -896,7 +896,7 @@ extract_subscriptions(notice)
 	sub->dest.classname = make_string(class_name, 1);
 	sub->dest.inst = make_string(classinst, 1);
 	sub->dest.recip = make_string(recip, 0);
-	LIST_INSERT(subs, sub);
+	LIST_INSERT(&subs, sub);
     }
     return subs;
 }
@@ -919,11 +919,11 @@ subscr_dump_subs(fp, subs)
 
     for (; subs; subs = subs->next) {
 	fputs("\t\t'", fp);
-	subscr_quote(subs->dest.classname->string, fp);
+	dump_quote(subs->dest.classname->string, fp);
 	fputs("' '", fp);
-	subscr_quote(subs->dest.inst->string, fp);
+	dump_quote(subs->dest.inst->string, fp);
 	fputs("' '", fp);
-	subscr_quote(subs->dest.recip->string, fp);
+	dump_quote(subs->dest.recip->string, fp);
 	fputs("'\n", fp);
     }
 }
