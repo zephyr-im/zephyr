@@ -394,6 +394,9 @@ extern struct in_addr my_addr;	/* my inet address */
 
 #define	max(a,b)	((a) > (b) ? (a) : (b))
 
+#define START_CRITICAL_CODE
+#define END_CRITICAL_CODE
+
 /* the magic class to match all packets */
 #define	MATCHALL_CLASS	"zmatch_all"
 /* the instance that matches all instances */
