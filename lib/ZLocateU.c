@@ -43,12 +43,13 @@ Code_t ZLocateUser(user,nlocs)
 	notice.z_opcode = LOCATE_LOCATE;
 	notice.z_sender = 0;
 	notice.z_recipient = "";
+	notice.z_default_format = "";
 	notice.z_message_len = 0;
 
 	if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE)
 		return (retval);
 
-	if ((retval = Z_NoAuthIfNotice(buffer,sizeof buffer,&retnotice,
+	if ((retval = ZIfNotice(buffer,sizeof buffer,&retnotice,NULL,
 				ZCompareUIDPred,(char *)&notice.z_uid)) !=
 	    ZERR_NONE)
 		return (retval);
