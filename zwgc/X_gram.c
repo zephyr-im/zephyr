@@ -222,7 +222,7 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
 
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
     XSelectInput(dpy, w, ExposureMask|ButtonReleaseMask|ButtonPressMask
-		 |EnterWindowMask|LeaveWindowMask|Button1MotionMask|
+		 |LeaveWindowMask|Button1MotionMask|
 		 Button3MotionMask
 #ifdef notdef
 		 |StructureNotifyMask

@@ -138,6 +138,7 @@ void xcut(dpy,event,desc_context)
     x_gram *gram;
     Window w = event->xany.window;
     static int current_window_in = -1;
+    static int current_valid = False;
     int changedbound;
 
     /*
@@ -151,12 +152,14 @@ void xcut(dpy,event,desc_context)
      * Dispatch on the event type:
      */
     switch(event->type) {
-     case EnterNotify:
-       current_window_in = w;
-       break;
-
      case LeaveNotify:
-       current_window_in = -1;
+	if (event->xcrossing.window == current_window_in) {
+	    current_valid = False;
+	} else {
+	    /* it left in an unusual way, so give up */
+	    current_valid = False;
+	    current_window_in = -1;
+	}
        break;
 
      case MotionNotify:
@@ -201,17 +204,22 @@ void xcut(dpy,event,desc_context)
 	   }
 	} else {
 	   current_window_in = w;
+	   current_valid = True;
 	}
 	break;
 
       case ButtonRelease:
-	if (w == current_window_in && !((event->xbutton.state)&ShiftMask)) {
+	if (w == current_window_in && current_valid
+	    && !((event->xbutton.state)&ShiftMask)) {
+	    /* valid button release (mouse never left window) */
 	   if (w == selecting_in) {
 	      selecting_in = 0;
 	      xmarkClear();
 	   }
 	   if (reverse_stack && (gram == bottom_gram))
 	      bottom_gram = gram;
+	   current_window_in = -1;
+	   current_valid = False;
 	   XDeleteContext(dpy, w, desc_context);
 	   XDestroyWindow(dpy, w);
 	   if (reverse_stack)
@@ -219,7 +227,7 @@ void xcut(dpy,event,desc_context)
 	   free(gram->text);
 	   free(gram->blocks);
 	   free(gram);
-	} else if (w == selecting_in) {
+	} else if (w == selecting_in && ((event->xbutton.state)&ShiftMask)) {
 	   if (selected_text) free(selected_text);
 	   selected_text = xmarkGetText();
 	}
