@@ -16,8 +16,6 @@
 static char rcsid_subscriptions_c[] = "$Id$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
 /****************************************************************************/
 /*                                                                          */
 /*        Subscriptions.c: code to deal with subscriptions & punting:       */
@@ -157,9 +155,9 @@ static void free_subscription_list(list, number_of_elements)
     int i;
 
     for (i=0; i<number_of_elements; i++) {
-	free(list[i].class);
-	free(list[i].classinst);
-	free(list[i].recipient);
+	free(list[i].zsub_class);
+	free(list[i].zsub_classinst);
+	free(list[i].zsub_recipient);
     }
 }
 
@@ -187,9 +185,9 @@ static void subscribe(class, instance, recipient)
      string instance;
      string recipient;
 {
-    subscription_list[subscription_list_size].class = string_Copy(class);
-    subscription_list[subscription_list_size].classinst= string_Copy(instance);
-    subscription_list[subscription_list_size].recipient=string_Copy(recipient);
+    subscription_list[subscription_list_size].zsub_class = string_Copy(class);
+    subscription_list[subscription_list_size].zsub_classinst= string_Copy(instance);
+    subscription_list[subscription_list_size].zsub_recipient=string_Copy(recipient);
 
     if (++subscription_list_size == BATCH_SIZE)
       flush_subscriptions();
@@ -200,10 +198,10 @@ static void unsubscribe(class, instance, recipient)
      string instance;
      string recipient;
 {
-    unsubscription_list[unsubscription_list_size].class = string_Copy(class);
-    unsubscription_list[unsubscription_list_size].classinst
+    unsubscription_list[unsubscription_list_size].zsub_class = string_Copy(class);
+    unsubscription_list[unsubscription_list_size].zsub_classinst
       = string_Copy(instance);
-    unsubscription_list[unsubscription_list_size].recipient
+    unsubscription_list[unsubscription_list_size].zsub_recipient
       = string_Copy(recipient);
 
     if (++unsubscription_list_size == BATCH_SIZE)
