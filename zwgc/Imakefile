@@ -80,15 +80,16 @@ program($(OUTPUT),$(OBJS),,$(LIBRARIES) $(LIBS),$(CLIENTDIR))
 
 #ifdef ATHENA_COMPAT
 /* On Athena, zwgc has been in /usr/etc on VAXes and RTs and some people
-   run in with a full pathname.  For compatbility, install a link. */
+   run in with a full pathname.  For compatbility, make a link. */
 install::
-	$(RM) $(DESTDIR)$(USRETCDIR)/zwgc
-	ln $(DESTDIR)$(CLIENTDIR)/zwgc $(DESTDIR)$(USRETCDIR)/zwgc || ln -s $(CLIENTDIR)/zwgc $(DESTDIR)$(USRETCDIR)/zwgc 
+	$(RM) $(DESTDIR)/usr/etc/zwgc
+	ln $(DESTDIR)$(CLIENTDIR)/zwgc $(DESTDIR)/usr/etc/zwgc || ln -s $(CLIENTDIR)/zwgc $(DESTDIR)/usr/etc/zwgc 
 #endif
 
 depend:: ${DEPENDSRCS}
 	
 install::
+	-mkdir $(DESTDIR)$(ACLDIR)
 	$(RM) $(DESTDIR)$(ACLDIR)/zwgc.desc
 	$(CP) zwgc.desc $(DESTDIR)$(ACLDIR)/zwgc.desc
 	$(CHMOD) 644 $(DESTDIR)$(ACLDIR)/zwgc.desc
