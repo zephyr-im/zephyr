@@ -17,7 +17,7 @@ static char rcsid_character_class_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
-
+#include <zephyr/zephyr.h>
 #include "character_class.h"
 
 /* 
@@ -33,7 +33,7 @@ char * string_to_character_class(str)
 {
     int i;
 
-    bzero(cache, sizeof(cache));
+    _BZERO(cache, sizeof(cache));
 
     for (i=0; i<strlen(str); i++)
       cache[str[i]] = 1;
