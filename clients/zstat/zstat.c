@@ -17,6 +17,8 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>		/* BSD includes this from <sys/param.h>,
+				   but AIX does not. */
 #include "zserver.h"
 
 #if !defined(lint) && !defined(SABER)
