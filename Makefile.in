@@ -8,6 +8,7 @@ sbindir=@sbindir@
 
 includedir=$(prefix)/include
 mandir=$(prefix)/man
+bindir=$(exec_prefix)/bin
 libdir=$(exec_prefix)/lib
 
 srcdir=@srcdir@
@@ -26,6 +27,8 @@ check clean:
 install:
 	$(ENSUREDIR) $(prefix) 755
 	$(ENSUREDIR) $(exec_prefix) 755
+	$(ENSUREDIR) $(bindir) 755
+	$(ENSUREDIR) $(libdir) 755
 	$(ENSUREDIR) $(datadir) 755
 	$(ENSUREDIR) $(confdir) 755
 	$(ENSUREDIR) $(confdir)/acl 755

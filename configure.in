@@ -82,6 +82,8 @@ fi
 
 dnl Checks for programs.
 AC_PROG_CC
+AC_PROG_YACC
+AC_PROG_LEX
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 
@@ -149,7 +151,7 @@ dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(putenv regcomp re_comp strchr memcpy memmove waitpid getlogin)
-AC_CHECK_FUNCS(strerror random lrand48 gethostid)
+AC_CHECK_FUNCS(strerror random lrand48 gethostid krb_get_err_text krb_log)
 
 AC_CONFIG_HEADER(h/config.h h/zephyr/zephyr.h)
 AC_OUTPUT(Makefile clients/Makefile clients/syslogd/Makefile

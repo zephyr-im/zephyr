@@ -6,6 +6,14 @@ We use the included ss and et libraries only when configured without
 the top of the build tree in order to refer to automatically generated
 files in lib/ss and lib/et.
 
+lib/dyn and lib/ss are internal libraries, i.e. they are only used by
+programs (xzwrite uses lib/dyn and zctl uses lib/ss), not by the
+Zephyr API.  lib/et and lib/zephyr are external libraries; they are
+necessary for linking programs which use Zephyr, so their libraries
+are installed in the library directory.  Note that the library built
+in lib/et is named libcom_err.a, not libet.a, and that it is only
+installed if --enable-athena is not used.
+
 The directory h contains header files used internally in the zephyr
 source tree.  The directory h/zephyr contains header files containing
 declarations for the Zephyr API.  h/zephyr/zephyr_err.h is generated
