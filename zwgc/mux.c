@@ -69,6 +69,8 @@ static fd_set input_sources;
 static void (*input_handler[MAX_SOURCES])();
 static pointer input_handler_arg[MAX_SOURCES];
 
+static int check_tty();
+
 /*
  *    void mux_init()
  *        Requires: mux_init has never been called before
