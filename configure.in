@@ -68,13 +68,8 @@ AC_MSG_RESULT(${int32})
 AC_CHECK_LIB(w, wslen)
 AC_CHECK_LIB(dl, dlopen)
 
-# If we can't find connect, try looking in -lsocket and -lnsl.  The
-# Irix 5 libc.so has connect and gethostbyname, but Irix 5 also has
-# libsocket.so which has a bad implementation of gethostbyname (it
-# only looks in /etc/hosts), so we only look for -lsocket if we need
-# it.
-AC_CHECK_FUNC(connect, :, [AC_CHECK_LIB(socket, socket)
-			   AC_CHECK_LIB(nsl, gethostbyname)])
+AC_SEARCH_LIBS(gethostbyname, nsl)
+AC_SEARCH_LIBS(socket, socket)
 
 # Hesiod needs -lresolv on Sun systems for res_send.
 if test "$hesiod" != "no"; then
