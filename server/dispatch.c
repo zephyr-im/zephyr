@@ -497,7 +497,9 @@ ZClient_t *client;
 		return;
 	}
 	if ((retval = ZSendPacket(noticepack, packlen, 0)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "xmit xmit: %s", error_message(retval));
+		syslog(LOG_WARNING, "xmit xmit: (%s/%d) %s",
+		       inet_ntoa(dest->sin_addr), ntohs(dest->sin_port),
+		       error_message(retval));
 		xfree(noticepack);
 		return;
 	}
