@@ -65,9 +65,5 @@ Code_t ZhmStat(hostaddr, notice)
     if (code == 0 || (code < 0 && errno == EINTR) || ZPending() == 0)
 	return(ZERR_HMDEAD);
 
-    code = ZReceiveNotice(notice, (struct sockaddr_in *) 0);
-    if (code != EINTR)
-	return(code);
-
-    return(ZERR_NONE);
+    return(ZReceiveNotice(notice, (struct sockaddr_in *) 0));
 }
