@@ -11,7 +11,7 @@
  *      "mit-copyright.h". 
  */
 
-#include "hm.h"
+#include "zhm.h"
 
 #ifndef lint
 #ifndef SABER
@@ -30,7 +30,7 @@ transmission_tower(notice, packet, pak_len)
       ZNotice_t gack;
       Code_t ret;
       struct sockaddr_in gsin;
-      int tleft;
+      unsigned int tleft;
 
       nclt++;
       if (notice->z_kind == HMCTL) {
@@ -39,7 +39,7 @@ transmission_tower(notice, packet, pak_len)
 		  deactivated = 1;
 	  }
 	    else if (!strcmp(notice->z_opcode, CLIENT_NEW_SERVER))
-		    new_server(NULL);
+		    new_server((char *)NULL);
 	    else
 		    syslog (LOG_INFO, "Bad control notice from client.");
 	    return;
