@@ -70,7 +70,7 @@ Z_SendLocation(class, opcode, auth, format)
     struct hostent *hent;
     short wg_port = ZGetWGPort();
 
-    (void) bzero((char *)&notice, sizeof(notice));
+    (void) _BZERO((char *)&notice, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = (u_short) ((wg_port == -1) ? 0 : wg_port);
     notice.z_class = class;
@@ -103,7 +103,7 @@ Z_SendLocation(class, opcode, auth, format)
 #endif /* X11 */
 		    ttyp = ttyname(0);
 		    if (ttyp) {
-			bptr[2] = rindex(ttyp, '/');
+			bptr[2] = strrchr(ttyp, '/');
 			if (bptr[2])
 			    bptr[2]++;
 			else
