@@ -103,4 +103,4 @@ extern "C" {
 }
 #endif
 
-#endif !__ZINTERNAL_H__
+#endif /* !__ZINTERNAL_H__ */
