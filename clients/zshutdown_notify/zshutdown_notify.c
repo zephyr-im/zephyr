@@ -1,17 +1,3 @@
-/*
- *	$Source$
- *	$Author$
- *	$Locker:  $
- *	$Log: not supported by cvs2svn $
- * Revision 1.1  87/08/08  03:42:52  tony
- * Initial revision
- * 
- */
-
-#ifndef lint
-static char *rcsid_zshutdown_notify_c = "$Header$";
-#endif	lint
-
 /* This file is part of the Project Athena Zephyr Notification System.
  * It contains code for "zshutdown_notify", a utility called by
  * shutdown(8) to do Zephyr notification on shutdown.
@@ -36,13 +22,12 @@ static char *rcsid_zshutdown_notify_c = "$Header$";
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_zlogin_c[] = "$Header$";
+static char *rcsid_zshutdown_notify_c = "$Header$";
 #endif SABER
 #endif lint
 
 #define N_KIND		UNSAFE
-#define N_CLASS_ROOT	"FILSRV"
-#define N_CLASS_INST	"STATUS"
+#define N_CLASS		"FILSRV"
 #define N_OPCODE	"SHUTDOWN"
 #define N_DEF_FORMAT	"@bold(Shutdown message from $1 at $time)\n@center(System going down, message is:)\n\n$2\n\n@center(@bold($3))"
 #define N_FIELD_CNT	3
@@ -61,7 +46,6 @@ main(argc,argv)
     ZNotice_t notice, retnotice;
     struct hostent *hp;
     int retval;
-    char class_str[BUFSIZ];
     char hostname[MAXHOSTNAMELEN];
     char msgbuff[BUFSIZ], message[Z_MAXPKTLEN], *ptr;
     char *msg[N_FIELD_CNT];
@@ -82,8 +66,6 @@ main(argc,argv)
 
     if ((hp = gethostbyname(hostname)) != NULL) strcpy(hostname, hp->h_name);
 
-    sprintf(class_str, "%s.%s", N_CLASS_ROOT, hostname);
-
     ptr = message;
 
     for (;;) {
@@ -100,8 +82,8 @@ main(argc,argv)
 
     notice.z_kind = N_KIND;
     notice.z_port = 0;
-    notice.z_class = class_str;
-    notice.z_class_inst = N_CLASS_INST;
+    notice.z_class = N_CLASS;
+    notice.z_class_inst = hostname;
     notice.z_opcode = N_OPCODE;
     notice.z_sender = 0;
     notice.z_message_len = 0;
