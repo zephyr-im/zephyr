@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -54,6 +54,9 @@ static char rcsid_hostm_s_c[] = "$Header$";
  * void hostm_deathgram(sin, server)
  *	struct sockaddr_in *sin;
  * 	ZServerDesc_t *server;
+ *
+ * void hostm_dump_hosts(fp)
+ *	FILE *fp;
  */
 
 /*
@@ -202,6 +205,7 @@ ZServerDesc_t *server;
 {
 	register ZClientList_t *clist = NULLZCLT, *clt;
 	losinghost *lhp, *lhp2;
+	int omask = sigblock(sigmask(SIGFPE)); /* don't let db dumps start */
 
 	zdbug((LOG_DEBUG,"hostm_flush"));
 
@@ -229,6 +233,7 @@ ZServerDesc_t *server;
 	uloc_hflush(&host->zh_addr.sin_addr);
 	host_detach(&host->zh_addr.sin_addr, server);
 	/* XXX tell other servers */
+	(void) sigsetmask(omask);
 	return;
 }
 
@@ -327,6 +332,7 @@ host_lost(which)
 losinghost *which;
 {
 	ZServerDesc_t *server;
+	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
 	zdbug((LOG_DEBUG,"lost host %s",
 	       inet_ntoa(which->lh_host->zh_addr.sin_addr)));
@@ -335,6 +341,7 @@ losinghost *which;
 		zdbug((LOG_DEBUG,"no server"));
 		xremque(which);
 		xfree(which);
+		(void) sigsetmask(omask);
 		return;
 	}
 	xremque(which);
@@ -342,6 +349,7 @@ losinghost *which;
 	xfree(which);
 
 	/* XXX tell other servers */
+	(void) sigsetmask(omask);
 	return;
 }
 
@@ -354,9 +362,11 @@ host_not_losing(who)
 struct sockaddr_in *who;
 {
 	losinghost *lhp, *lhp2;
+	int omask;
 
 	if (!losing_hosts)
 		return;
+	omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 	for (lhp = losing_hosts->q_forw;
 	     lhp != losing_hosts;)
 		if (lhp->lh_host->zh_addr.sin_addr.s_addr == who->sin_addr.s_addr) {
@@ -379,6 +389,8 @@ struct sockaddr_in *who;
 			lhp = lhp2->q_forw;
 		} else
 			lhp = lhp->q_forw;
+	(void) sigsetmask(omask);
+	return;
 }
 
 
@@ -392,6 +404,8 @@ hostm_transfer(host, server)
 ZHostList_t *host;
 ZServerDesc_t *server;
 {
+	int omask;
+
 	/* we need to unlink and relink him, and change the table entry */
 
 	zdbug((LOG_DEBUG, "hostm_transfer 0x%x to 0x%x", host, server));
@@ -400,6 +414,7 @@ ZServerDesc_t *server;
 	if (hostm_find_server(&host->zh_addr.sin_addr) == server)
 		return;
 
+	omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 	/* remove from old server's queue */
 	xremque(host);
 
@@ -409,6 +424,7 @@ ZServerDesc_t *server;
 
 	/* insert in our queue */
 	xinsque(host, server->zs_hosts);
+	(void) sigsetmask(omask);
 	return;
 }
 
@@ -424,15 +440,18 @@ ZServerDesc_t *server;
 {
 	register ZHostList_t *hlist;
 	register ZClientList_t *clist;
+	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
 	/* allocate a header */
 	if (!(hlist = (ZHostList_t *)xmalloc(sizeof(ZHostList_t)))) {
 		syslog(LOG_WARNING, "hm_attach malloc");
+		(void) sigsetmask(omask);
 		return(ENOMEM);
 	}
 	/* set up */
 	if (!(clist = (ZClientList_t *)xmalloc(sizeof(ZClientList_t)))) {
 		xfree(hlist);
+		(void) sigsetmask(omask);
 		return(ENOMEM);
 	}
 	clist->q_forw = clist->q_back = clist;
@@ -447,6 +466,7 @@ ZServerDesc_t *server;
 
 	/* chain in to the end of the list */
 	xinsque(hlist, server->zs_hosts->q_back);
+	(void) sigsetmask(omask);
 	return(ZERR_NONE);
 }
 
@@ -463,9 +483,11 @@ ZServerDesc_t *server;
 {
 	/* undo what we did in host_attach */
 	register ZHostList_t *hlist;
+	int omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 
 	if (hostm_find_server(addr) != server) {
 		syslog(LOG_WARNING, "host_detach: wrong server");
+		(void) sigsetmask(omask);
 		return;
 	}
 
@@ -481,6 +503,7 @@ ZServerDesc_t *server;
 	remove_host(hlist);
 
 	xfree(hlist);
+	(void) sigsetmask(omask);
 	return;
 }
 
@@ -672,6 +695,7 @@ ZServerDesc_t *server;
 {
 	struct hostlist *oldlist;
 	register int i = 0;
+	int omask;
 
 #ifdef DEBUG
 	char buf[512];
@@ -685,6 +709,8 @@ ZServerDesc_t *server;
 	if (hostm_find_host(&host->zh_addr.sin_addr))
 		return;
 
+	omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
+
 	num_hosts++;
 	oldlist = all_hosts;
 
@@ -696,6 +722,7 @@ ZServerDesc_t *server;
 	if (!oldlist) {			/* this is the first */
 		all_hosts[0].host = host;
 		all_hosts[0].server_index = server - otherservers;
+		(void) sigsetmask(omask);
 		return;
 	}
 
@@ -715,6 +742,7 @@ ZServerDesc_t *server;
 		i++;
 	}
 	xfree(oldlist);
+	(void) sigsetmask(omask);
 #ifdef DEBUG
         if (zdebug) {
                 register int i = 0;
@@ -739,15 +767,18 @@ ZHostList_t *host;
 {
 	struct hostlist *oldlist;
 	register int i = 0;
+	int omask;
 
 	zdbug((LOG_DEBUG,"remove_host %s", inet_ntoa(host->zh_addr.sin_addr)));
 	if (!hostm_find_host(&host->zh_addr.sin_addr))
 		return;
 
+	omask = sigblock(sigmask(SIGFPE)); /* don't start db dumps */
 	if (--num_hosts == 0) {
 		zdbug((LOG_DEBUG,"last host"));
 		xfree(all_hosts);
 		all_hosts = NULLHLT;
+		(void) sigsetmask(omask);
 		return;
 	}
 
@@ -772,5 +803,26 @@ ZHostList_t *host;
 		i++;
 	}
 	xfree(oldlist);
+	(void) sigsetmask(omask);
+	return;
+}
+
+/*
+ * Assumes that SIGFPE is blocked when called; this is true if called from a
+ * signal handler
+ */
+
+void
+hostm_dump_hosts(fp)
+FILE *fp;
+{
+	register int i;
+	char buf[512], scratch[64];
+	for (i = 0; i < num_hosts; i++) {
+		(void) fprintf(fp, "%s/%d:\n", 
+			       inet_ntoa((all_hosts[i].host)->zh_addr.sin_addr),
+			       all_hosts[i].server_index);
+		client_dump_clients(fp,(all_hosts[i].host)->zh_clients);
+	}
 	return;
 }
