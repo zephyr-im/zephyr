@@ -15,7 +15,7 @@ OBJS = new_memory.o
 SRCS = new_memory.c
 HDRS = new_memory.h
 
-SRCDIR= ${SRCTOP}/zwgc/zwgc.dev/Memory
+SRCDIR= ${SRCTOP}/zwgc/Memory
 CODE= ${SRCS} ${HDRS} Imakefile
 
 normal_obj_rule()
