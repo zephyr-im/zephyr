@@ -147,7 +147,7 @@ struct sockaddr_in *who;
 		clt_ack(notice, who, AUTH_FAILED);
 		return;
 	}	
-	if ((clientlist = subscr_match_list(notice, acl))) {
+	if ((clientlist = subscr_match_list(notice))) {
 		for (ptr = clientlist->q_forw;
 		     ptr != clientlist;
 		     ptr = ptr->q_forw) {

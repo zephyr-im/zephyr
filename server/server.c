@@ -21,6 +21,9 @@ static char rcsid_server_s_c[] = "$Header$";
 
 #include "zserver.h"
 #include <sys/socket.h>			/* for AF_INET */
+#ifdef lint
+#include <sys/uio.h>
+#endif lint
 #include <netdb.h>			/* for gethostbyname */
 
 /*
@@ -66,7 +69,9 @@ static void srv_alive(), srv_nack_cancel(), srv_rexmit(), srv_nack_release();
 static void recover_clt(), kill_clt(), server_lost();
 static void send_stats();
 
+#ifdef notdef
 static Code_t server_register();
+#endif notdef
 static struct in_addr *get_server_addrs();
 
 ZNotAcked_t *srv_nacklist;		/* not acked list for server-server
@@ -288,6 +293,7 @@ struct sockaddr_in *who;
 	return;
 }
 
+#ifdef notdef
 /*
  * Register a new server (one not in our list).  This MUST be authenticated.
  */
@@ -342,6 +348,7 @@ struct sockaddr_in *who;
 	       srv_states[(int) otherservers[nservers].zs_state]));
 	return(0);
 }
+#endif notdef
 
 /*
  * Recover a host whose client has stopped responding.

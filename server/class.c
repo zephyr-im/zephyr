@@ -329,6 +329,8 @@ char *class;
 	return(NULLZACLT);
 }
 
+#ifdef notdef
+/* currently not used */
 /*
  * restrict class by associating it with the acl structure acl.
  * return ZERR_NONE if no error, or ZSRV_NOCLASS if there is no such
@@ -357,6 +359,7 @@ ZAcl_t *acl;
 	/* fell off the end, no match */
 	return(ZSRV_NOCLASS);
 }
+#endif notdef
 
 /*
  * restrict class by registering it and  associating it with the acl
