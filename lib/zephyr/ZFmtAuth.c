@@ -24,8 +24,7 @@ Code_t ZFormatAuthenticNotice(notice,buffer,buffer_len,len,session)
 	C_Block		session;
 {
 	char *ptr;
-	int result,retval,hdrlen;
-	CREDENTIALS cred;
+	int retval,hdrlen;
 
 	notice->z_auth = 1;
 	notice->z_authent_len = 0;
