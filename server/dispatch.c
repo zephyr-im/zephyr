@@ -170,9 +170,9 @@ handle_packet()
 		}
 		pending = server_dequeue(me_server); /* we can do it, remove */
 
-		if (status = ZParseNotice(pending->pend_packet,
+		if ((status = ZParseNotice(pending->pend_packet,
 					  pending->pend_len,
-					  &new_notice)) {
+					  &new_notice)) != ZERR_NONE) {
 			syslog(LOG_ERR,
 			       "bad notice parse (%s): %s",
 			       inet_ntoa(pending->pend_who.sin_addr),
@@ -187,18 +187,18 @@ handle_packet()
 	 * nothing in internal queue, go to the external library
 	 * queue/socket
 	 */
-	if (status = ZReceivePacket(input_packet,
+	if ((status = ZReceivePacket(input_packet,
 				    &input_len,
-				    &whoisit)) {
+				    &whoisit)) != ZERR_NONE) {
 		syslog(LOG_ERR,
 		       "bad packet receive: %s from %s",
 		       error_message(status), inet_ntoa(whoisit.sin_addr));
 		return;
 	}
 	npackets++;
-	if (status = ZParseNotice(input_packet,
+	if ((status = ZParseNotice(input_packet,
 				  input_len,
-				  &new_notice)) {
+				  &new_notice)) != ZERR_NONE) {
 		syslog(LOG_ERR,
 		       "bad notice parse (%s): %s",
 		       inet_ntoa(whoisit.sin_addr),
@@ -352,7 +352,7 @@ sendit(notice, auth, who)
 	ZSTRING *z;
 
 	z = make_zstring(notice->z_class,1);
-	if (acl = class_get_acl(z)) {
+	if ((acl = class_get_acl(z)) != NULLZACLT) {
 	  free_zstring(z);
 	    /* if controlled and not auth, fail */
 	    if (!auth) {
@@ -390,7 +390,7 @@ sendit(notice, auth, who)
 	    syslog(LOG_WARNING, "sendit addr mismatch: claimed %s, real %s",
 		   inet_ntoa(notice->z_sender_addr), buffer);
 	}
-	if ((clientlist = subscr_match_list(notice))) {
+	if ((clientlist = subscr_match_list(notice)) != NULLZCLT) {
 		for (ptr = clientlist->q_forw;
 		     ptr != clientlist;
 		     ptr = ptr->q_forw) {
@@ -598,6 +598,7 @@ xmit(notice, dest, auth, client)
 
 	nacked->na_rexmits = 0;
 	nacked->na_packet = noticepack;
+	nacked->na_srv_idx = 0;  /* XXX */
 	nacked->na_addr = *dest;
 	nacked->na_packsz = packlen;
 	nacked->na_uid = notice->z_uid;
@@ -934,7 +935,7 @@ control_dispatch(notice, auth, who, server)
 			return(ZERR_NONE);
 		}
 	} else if (!strcmp(opcode, CLIENT_UNSUBSCRIBE)) {
-		if ((client = client_which_client(who,notice))) {
+		if ((client = client_which_client(who,notice)) != NULLZCNT) {
 			if (strcmp(client->zct_principal->string, notice->z_sender)) {
 				/* you may only cancel for your own clients */
 				if (server == me_server)
@@ -964,7 +965,7 @@ control_dispatch(notice, auth, who, server)
 	} else if (!strcmp(opcode, CLIENT_CANCELSUB)) {
 		/* canceling subscriptions implies I can punt info about
 		 this client */
-		if ((client = client_which_client(who,notice))) {
+		if ((client = client_which_client(who,notice)) != NULLZCNT) {
 			if (strcmp(client->zct_principal->string, notice->z_sender)) {
 				/* you may only cancel for your own clients */
 				if (server == me_server)
