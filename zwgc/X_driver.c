@@ -247,7 +247,7 @@ int open_display_and_load_resources(pargc, argv)
      char **argv;
 {
     XrmDatabase temp_db1, temp_db2, temp_db3;
-    char *filename, *res;
+    char *filename, *res, *xdef;
     extern char *getenv();
 
     /* Initialize X resource manager: */
@@ -274,8 +274,9 @@ int open_display_and_load_resources(pargc, argv)
     /*
      * Get resources from the just opened display:
      */
-    if (dpy->xdefaults != NULL)
-	temp_db2 = XrmGetStringDatabase(dpy->xdefaults);
+    xdef = XResourceManagerString(dpy);
+    if (xdef)
+	temp_db2 = XrmGetStringDatabase(xdef);
     else
 	temp_db2 = NULL;
 
@@ -324,7 +325,7 @@ Display *display;
 {
     extern void finalize_zephyr();
 
-    ERROR2("X IO error on display '%s'--exiting\n", display->display_name);
+    ERROR2("X IO error on display '%s'--exiting\n", DisplayString(display));
     finalize_zephyr();
     exit(1);
 }
