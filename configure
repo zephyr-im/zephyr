@@ -2946,7 +2946,7 @@ if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   ac_save_LIBS="$LIBS"
-LIBS="-lkrb4 -ldes425 -lcom_err $LIBS"
+LIBS="-lkrb4 -ldes425 -lkrb5 -lcrypto -lcom_err $LIBS"
 cat > conftest.$ac_ext <<EOF
 #line 2952 "configure"
 #include "confdefs.h"
@@ -2974,7 +2974,7 @@ LIBS="$ac_save_LIBS"
 fi
 if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
   echo "$ac_t""yes" 1>&6
-  KRB4_LIBS="-lkrb4 -lkrb5 -ldes425 -lcrypto -lcom_err"
+  KRB4_LIBS="-lkrb4 -ldes425 -lkrb5 -lcrypto -lcom_err"
 else
   echo "$ac_t""no" 1>&6
 { echo "configure: error: Kerberos 4 libraries not found" 1>&2; exit 1; }
@@ -3157,24 +3157,24 @@ if test "$rx" != no; then
 		CPPFLAGS="$CPPFLAGS -I$rx/include"
 		LDFLAGS="$LDFLAGS -L$rx/lib"
 	fi
-	echo $ac_n "checking for rx in -lregcomp""... $ac_c" 1>&6
-echo "configure:3162: checking for rx in -lregcomp" >&5
-ac_lib_var=`echo regcomp'_'rx | sed 'y%./+-%__p_%'`
+	echo $ac_n "checking for regcomp in -lrx""... $ac_c" 1>&6
+echo "configure:3162: checking for regcomp in -lrx" >&5
+ac_lib_var=`echo rx'_'regcomp | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   ac_save_LIBS="$LIBS"
-LIBS="-lregcomp  $LIBS"
+LIBS="-lrx  $LIBS"
 cat > conftest.$ac_ext <<EOF
 #line 3170 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
     builtin and then its argument prototype would still apply.  */
-char rx();
+char regcomp();
 
 int main() {
-rx()
+regcomp()
 ; return 0; }
 EOF
 if { (eval echo configure:3181: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
@@ -3250,7 +3250,7 @@ fi
 
 fi
 
-LIBS="$LIBS $KRB4_LIBS $HESIOD_LIBS"
+LIBS="$KRB4_LIBS $HESIOD_LIBS $LIBS"
 
 if test $ac_cv_prog_gcc = yes; then
     echo $ac_n "checking whether ${CC-cc} needs -traditional""... $ac_c" 1>&6
@@ -3404,7 +3404,7 @@ fi
 
 fi
 
-for ac_func in putenv re_comp strchr memcpy memmove waitpid getlogin
+for ac_func in putenv strchr memcpy memmove waitpid getlogin strerror random
 do
 echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
 echo "configure:3411: checking for $ac_func" >&5
@@ -3459,7 +3459,7 @@ else
 fi
 done
 
-for ac_func in strerror random lrand48 gethostid krb_get_err_text krb_log
+for ac_func in lrand48 gethostid krb_get_err_text krb_log
 do
 echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
 echo "configure:3466: checking for $ac_func" >&5
