@@ -93,7 +93,6 @@ Code_t ZSendPacket(packet, len, waitforack)
 	  tv.tv_sec = HM_TIMEOUT + tv.tv_sec - t0.tv_sec;
 	}
     }
-    return (ZERR_HMDEAD);
 }
 
 static int wait_for_hmack(notice, uid)
