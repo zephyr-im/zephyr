@@ -12,9 +12,6 @@
 /* Define if you have the vprintf function.  */
 #undef HAVE_VPRINTF
 
-/* Define if you need to in order for stat and other things to work.  */
-#undef _POSIX_SOURCE
-
 /* Define as the return type of signal handlers (int or void).  */
 #undef RETSIGTYPE
 
@@ -24,11 +21,14 @@
 /* Define to `int' if <sys/types.h> doesn't define.  */
 #undef uid_t
 
+/* Define if the X Window System is missing or not being used.  */
+#undef X_DISPLAY_MISSING
+
 /* Define to compile with Hesiod support. */
-#undef ZEPHYR_USES_HESIOD
+#undef HAVE_HESIOD
 
 /* Define to compile with Kerberos support. */
-#undef ZEPHYR_USES_KERBEROS
+#undef HAVE_KRB4
 
 /* Define to a signed 32-bit integral type. */
 #define ZEPHYR_INT32 long
@@ -36,17 +36,11 @@
 /* Define if you have the System Resource Controller library. */
 #undef HAVE_SRC
 
-/* Define to "unsigned long" if your system headers don't. */
-#undef ulong
-
 /* Define to a temporary directory on your system. */
 #define FOUND_TMP "/var/tmp"
 
 /* Define to the type of the host system. */
 #define MACHINE_TYPE "unknown"
-
-/* Define if `regcomp' exists and works. */
-#undef HAVE_REGCOMP
 
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
@@ -132,9 +126,6 @@
 /* Define if you have the <sys/time.h> header file.  */
 #undef HAVE_SYS_TIME_H
 
-/* Define if you have the <sys/uio.h> header file.  */
-#undef HAVE_SYS_UIO_H
-
 /* Define if you have the <sys/utsname.h> header file.  */
 #undef HAVE_SYS_UTSNAME_H
 
@@ -144,11 +135,11 @@
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
 
+/* Define if you have the 44bsd library (-l44bsd).  */
+#undef HAVE_LIB44BSD
+
 /* Define if you have the dl library (-ldl).  */
 #undef HAVE_LIBDL
-
-/* Define if you have the krb library (-lkrb).  */
-#undef HAVE_LIBKRB
 
 /* Define if you have the nsl library (-lnsl).  */
 #undef HAVE_LIBNSL
