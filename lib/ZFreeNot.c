@@ -13,7 +13,7 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZSendPacket_c[] = "$Header$";
+static char rcsid_ZFreeNotice_c[] = "$Header$";
 #endif lint
 
 #include <zephyr/mit-copyright.h>
