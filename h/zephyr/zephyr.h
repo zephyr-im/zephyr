@@ -97,8 +97,12 @@ extern C_Block __Zephyr_session;
 	/* ZGetDestAddr() macro */
 #define ZGetDestAddr() (__HM_addr)
 
+	/* ZGetRealm() macro */
+extern char __Zephyr_realm[];
+#define ZGetRealm() (__Zephyr_realm)
+
 	/* Maximum packet length */
-#define Z_MAXPKTLEN		576
+#define Z_MAXPKTLEN	        1024
 
 	/* Maximum queue length */
 #define Z_MAXQLEN		30
@@ -106,42 +110,64 @@ extern C_Block __Zephyr_session;
 	/* UNIX error codes */
 extern int errno;
 
+	/* Random declarations */
+extern char *ZGetSender();
+
 	/* Successful function return */
 #define ZERR_NONE		0
+
+	/* Hostmanager wait time (in secs) */
+#define HM_TIMEOUT		30
 
 	/* Kerberos information */
 #define SERVER_SERVICE		"zephyr"
 #define SERVER_INSTANCE		"zephyr"
-#define SERVER_SRVTAB		"/u1/zephyr/src/lib/srvtab"
+#define SERVER_SRVTAB		"/site/zephyr/srvtab"
 
 	/* Packet strings */
 
 #define ZSRVACK_SENT		"SENT"	/* SERVACK codes */
 #define ZSRVACK_NOTSENT		"LOST"
 
-#define ZEPHYR_ADMIN_CLASS	"ZEPHYR_ADMIN"
+	/* Server internal class */
+#define ZEPHYR_ADMIN_CLASS	"ZEPHYR_ADMIN"	/* Class */
 
-#define ZEPHYR_CTL_CLASS	"ZEPHYR_CTL"
-#define ZEPHYR_CTL_CLIENT	"CLIENT"
-#define CLIENT_SUBSCRIBE	"SUBSCRIBE"
-#define CLIENT_UNSUBSCRIBE	"UNSUBSCRIBE"
-#define CLIENT_CANCELSUB	"CLEARSUB"
+	/* Control codes sent to a server */
+#define ZEPHYR_CTL_CLASS	"ZEPHYR_CTL"	/* Class */
 
-#define	HM_CLASS		"HM_CTL"
-#define ZEPHYR_CTL_HM		"HM"
-#define HM_BOOT			"BOOT"
-#define ZEPHYR_CTL_SERVER	"SERVER"
-#define SERVER_SHUTDOWN		"SHUTDOWN"
-#define SERVER_PING		"PING"
+#define ZEPHYR_CTL_CLIENT	"CLIENT"	/* Inst: From client */
+#define CLIENT_SUBSCRIBE	"SUBSCRIBE"	/* Opcode: Subscribe */
+#define CLIENT_UNSUBSCRIBE	"UNSUBSCRIBE"	/* Opcode: Unsubsubscribe */
+#define CLIENT_CANCELSUB	"CLEARSUB"	/* Opcode: Clear all subs */
 
-#define LOGIN_CLASS		"LOGIN"
-#define LOGIN_USER_LOGIN	"USER_LOGIN"
-#define LOGIN_QUIET_LOGIN	"QUIET_LOGIN"
-#define LOGIN_USER_LOGOUT	"USER_LOGOUT"
+#define ZEPHYR_CTL_HM		"HM"		/* Inst: From HM */
+#define HM_BOOT			"BOOT"		/* Opcode: Boot msg */
+#define HM_FLUSH		"FLUSH"		/* Opcode: Flush me */
 
-#define LOCATE_CLASS		"USER_LOCATE"
-#define LOCATE_HIDE		"USER_HIDE"
-#define LOCATE_UNHIDE		"USER_UNHIDE"
-#define LOCATE_LOCATE		"LOCATE"
+	/* Control codes send to a HostManager */
+#define	HM_CTL_CLASS		"HM_CTL"	/* Class */
+
+#define HM_CTL_SERVER		"SERVER"	/* Inst: From server */
+#define SERVER_SHUTDOWN		"SHUTDOWN"	/* Opcode: Server shutdown */
+#define SERVER_PING		"PING"		/* Opcode: PING */
+
+	/* Login class messages */
+#define LOGIN_CLASS		"LOGIN"		/* Class */
+
+/* Class Instance is principal of user who is logging in or logging out */
+
+#define LOGIN_USER_LOGIN	"USER_LOGIN"	/* Opcode: Normal User login */
+#define LOGIN_QUIET_LOGIN	"QUIET_LOGIN"	/* Opcode: Quiet login */
+#define LOGIN_USER_LOGOUT	"USER_LOGOUT"	/* Opcode: User logout */
+
+	/* Locate class messages */
+#define LOCATE_CLASS		"USER_LOCATE"	/* Class */
+
+#define LOCATE_HIDE		"USER_HIDE"	/* Opcode: Hide me */
+#define LOCATE_UNHIDE		"USER_UNHIDE"	/* Opcode: Unhide me */
+
+/* Class Instance is principal of user to locate */
+
+#define LOCATE_LOCATE		"LOCATE"	/* Opcode: Locate user */
 
 #endif !__ZEPHYR_H__
