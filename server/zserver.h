@@ -205,6 +205,11 @@ extern ZServerDesc_t *otherservers;	/* array of servers */
 extern int me_server_idx;		/* me (in the array of servers) */
 extern int nservers;			/* number of other servers*/
 
+#ifdef DEBUG
+/* found in dispatch.c */
+extern char *pktypes[];			/* names of the packet types */
+#endif DEBUG
+
 /* useful defines */
 
 /* client defines */
