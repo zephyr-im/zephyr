@@ -15,10 +15,8 @@
 
 #ifndef lint
 static char rcsid_ZRetrieveSubscriptions_c[] =
-    "$Zephyr: /mit/zephyr/src/lib/RCS/ZRetrieveSubscriptions.c,v 1.20 90/12/20 03:14:12 raeburn Exp $";
+    "$Id$";
 #endif
-
-#include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
 
@@ -135,43 +133,43 @@ static Code_t Z_RetSubs(notice, nsubs, auth_routine)
 			if (!*ptr)
 				__subscriptions_num++;
 
-		__subscriptions_num /= 3;
+		__subscriptions_num = __subscriptions_num / 3;
 
 		__subscriptions_list = (ZSubscription_t *)
 			malloc((unsigned)(__subscriptions_num*
 					  sizeof(ZSubscription_t)));
-		if (!__subscriptions_list) {
+		if (__subscriptions_num && !__subscriptions_list) {
 			ZFreeNotice(&retnotice);
 			return (ENOMEM);
 		}
-	
+
 		for (ptr=retnotice.z_message,i = 0; i< __subscriptions_num; i++) {
-			__subscriptions_list[i].class = (char *)
+			__subscriptions_list[i].zsub_class = (char *)
 				malloc((unsigned)strlen(ptr)+1);
-			if (!__subscriptions_list[i].class) {
+			if (!__subscriptions_list[i].zsub_class) {
 				ZFreeNotice(&retnotice);
 				return (ENOMEM);
 			}
-			(void) strcpy(__subscriptions_list[i].class,ptr);
+			(void) strcpy(__subscriptions_list[i].zsub_class,ptr);
 			ptr += strlen(ptr)+1;
-			__subscriptions_list[i].classinst = (char *)
+			__subscriptions_list[i].zsub_classinst = (char *)
 				malloc((unsigned)strlen(ptr)+1);
-			if (!__subscriptions_list[i].classinst) {
+			if (!__subscriptions_list[i].zsub_classinst) {
 				ZFreeNotice(&retnotice);
 				return (ENOMEM);
 			}
-			(void) strcpy(__subscriptions_list[i].classinst,ptr);
+			(void) strcpy(__subscriptions_list[i].zsub_classinst,ptr);
 			ptr += strlen(ptr)+1;
 			ptr2 = ptr;
 			if (!*ptr2)
 				ptr2 = "*";
-			__subscriptions_list[i].recipient = (char *)
+			__subscriptions_list[i].zsub_recipient = (char *)
 				malloc((unsigned)strlen(ptr2)+1);
-			if (!__subscriptions_list[i].recipient) {
+			if (!__subscriptions_list[i].zsub_recipient) {
 				ZFreeNotice(&retnotice);
 				return (ENOMEM);
 			}
-			(void) strcpy(__subscriptions_list[i].recipient,ptr2);
+			(void) strcpy(__subscriptions_list[i].zsub_recipient,ptr2);
 			ptr += strlen(ptr)+1;
 		}
 		ZFreeNotice(&retnotice);
