@@ -34,6 +34,7 @@
 #endif /* lint */
 #include "timer.h"
 #include "zsrv_err.h"
+#include "zsrv_conf.h"			/* configuration params */
 
 /* definitions for the Zephyr server */
 
@@ -152,6 +153,7 @@ struct qelem {
 	
 /* found in access.c */
 extern int access_check();
+extern void access_init(), access_reinit();
 
 /* found in brain_dump.c */
 extern void bdump_get(), bdump_send(), bdump_offer();
@@ -247,25 +249,6 @@ extern int nservers;			/* number of other servers*/
 extern char *pktypes[];			/* names of the packet types */
 #endif /* DEBUG */
 
-/* useful defines */
-
-/* client defines */
-#define	REXMIT_SECS	((long) 20)	/* rexmit delay on normal notices */
-#define	NUM_REXMITS	(5)		/* number of rexmits */
-
-/* hostmanager defines */
-#define	LOSE_TIMO	(30)		/* time during which a losing host
-					   must respond to a ping */
-
-/* server-server defines */
-#define	TIMO_UP		((long) 60)	/* timeout between up and tardy */
-#define	TIMO_TARDY	((long) 60)	/* timeout btw tardy hellos */
-#define	TIMO_DEAD	((long)(15*60))	/* timeout between hello's for dead */
-
-#define	H_NUM_TARDY	3		/* num hello's before going dead
-					   when tardy */
-#define	H_NUM_STARTING	2		/* num hello's before going dead
-					   when starting */
 
 #define	ADMIN_HELLO	"HELLO"		/* Opcode: hello, are you there */
 #define	ADMIN_IMHERE	"IHEARDYOU"	/* Opcode: yes, I am here */
@@ -319,22 +302,8 @@ extern char *pktypes[];			/* names of the packet types */
 /* the instance that matches all instances */
 #define	WILDCARD_INSTANCE	"*"
 
-/* Magic path names */
-#ifndef HESIOD
-#define SERVER_LIST_FILE	"/usr/athena/lib/zephyr/server.list"
-#endif /* !HESIOD */
-
-/* ACL's for pre-registered classes */
-#define	ZEPHYR_ACL_DIR	"/usr/athena/lib/zephyr/"
-#define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
-
 /* SERVER_SRVTAB is defined in zephyr.h */
 #define	ZEPHYR_SRVTAB	SERVER_SRVTAB
-
-#define	ZEPHYR_TKFILE	"/usr/athena/lib/zephyr/ztkts"
-
-/* default subscription list */
-#define	DEFAULT_SUBS_FILE	"/usr/athena/lib/zephyr/default.subscriptions"
 
 /* debugging macros */
 #ifdef DEBUG
