@@ -1,10 +1,10 @@
 zephyr (2.1.20000421.SNAPSHOT-16) unstable; urgency=low
 
-  * fix bug in zephyr-server config script
+  * fix bugs in zephyr-server config script
   * be more explicit about conflicts between kerberized and non-kerberized
     versions 
 
- -- Karl Ramm <kcr@debian.org>  Tue, 19 Jun 2001 09:29:38 -0400
+ -- Karl Ramm <kcr@debian.org>  Tue, 19 Jun 2001 09:54:32 -0400
 
 zephyr (2.1.20000421.SNAPSHOT-15) unstable; urgency=low
 
