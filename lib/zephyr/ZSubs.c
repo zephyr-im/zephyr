@@ -102,5 +102,6 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
 	ZFreeNotice(&retnotice);
 	return (ZERR_INTERNAL);
     }
+    ZFreeNotice(&retnotice);
     return (ZERR_NONE);
 }
