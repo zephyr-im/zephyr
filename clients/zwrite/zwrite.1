@@ -40,6 +40,8 @@ signature ] [
 class ] [
 .BI -i
 instance ] [
+.BI -r
+realm ] [
 .BI -f
 arg ] [
 .BI user \ ...
@@ -163,6 +165,10 @@ the members subscribe to messages of class "MESSAGE", the specified instance,
 and recipient "*".
 .br
 This argument may not be used in conjunction with the -f option.
+.TP
+.B \-r \fIrealm\fR
+Allows a user to specify a different realm for the message, if the
+server supports interrealm Zephyr.
 .TP
 .B \-F \fIformat\fR
 Allows a user to specify a different default format for the message.
