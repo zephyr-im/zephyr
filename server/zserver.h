@@ -59,8 +59,12 @@ public:
     ZString classname;
     ZString inst;
     ZString recip;
-    void set_hash ();
-    unsigned long hash ();
+    void set_hash () {
+	hash_value = classname.hash() ^ inst.hash() ^ recip.hash();
+    }
+    unsigned long hash () {
+	return hash_value;
+    }
     friend int operator== (const ZDestination&, const ZDestination&);
     ZDestination (const char*, const char* =0, const char* =0);
     ZDestination (const ZString& = null_string,
@@ -69,22 +73,14 @@ public:
     ZDestination (const ZDestination&);
     ~ZDestination ();
     void print (char *buf);
-    static int compare_strings (const ZDestination&, const ZDestination&);
+    static int order_strings (const ZDestination&, const ZDestination&);
 #if !defined(__GNUG__) || defined(FIXED_GXX)
     void *operator new (unsigned int sz) { return zalloc (sz); }
     void operator delete (void *ptr) { zfree (ptr, sizeof (ZDestination)); }
 #endif
 };
 
-inline void ZDestination::set_hash () {
-    hash_value = classname.hash () ^ inst.hash () ^ recip.hash ();
-}
-
 const static ZDestination null_destination = 0;
-
-inline unsigned long ZDestination::hash () {
-    return hash_value;
-}
 
 extern int operator== (const ZDestination&, const ZDestination&);
 
@@ -95,7 +91,7 @@ inline int operator != (const ZDestination& z1, const ZDestination& z2) {
 inline operator< (const ZDestination& z1, const ZDestination& z2) {
     return (z1.hash_value != z2.hash_value
 	    ? z1.hash_value < z2.hash_value
-	    : ZDestination::compare_strings (z1, z2) < 0);
+	    : ZDestination::order_strings (z1, z2) < 0);
 }
 
 inline operator> (const ZDestination& z1, const ZDestination& z2) {
@@ -112,7 +108,9 @@ struct Notice {
     ZString sender;
     int msg_no;
     static int current_msg;
-    Notice (ZNotice_t *);
+    Notice (ZNotice_t *n) : notice(n), dest(n->z_class, n->z_class_inst, n->z_recipient), sender (n->z_sender) {
+	msg_no = current_msg;
+    }
 };
 
 struct ZSubscr_t {
@@ -182,8 +180,15 @@ struct ZClass_t {
 	ZAcl_t	*zct_acl;
 	ZClientList_t	*zct_clientlist;
 
-	ZClass_t (const ZDestination& = null_destination);
-	~ZClass_t ();
+	ZClass_t (const ZDestination& dest = null_destination) : zct_dest (dest) {
+	    q_forw = q_back = this;
+	    zct_clientlist = 0;
+	    zct_acl = 0;
+	}
+	~ZClass_t () {
+	    if (zct_clientlist)
+		xfree (zct_clientlist);
+	}
 #if !defined (__GNUG__) || defined (FIXED_GXX)
 	void *operator new (unsigned int sz) { return zalloc (sz); }
 	void operator delete (void *ptr) { zfree (ptr, sizeof (ZClass_t)); }
@@ -229,6 +234,9 @@ struct ZNotAcked_t {
 	void *operator new (unsigned int sz) { return zalloc (sz); }
 	void operator delete (void *ptr) { zfree (ptr, sizeof (ZNotAcked_t)); }
 #endif
+#ifndef __GNUG__ /* cfront 2.0 breakage... */
+	ZNotAcked_t () { }
+#endif
 };
 
 struct ZSrvPending_t {
@@ -244,8 +252,18 @@ struct ZSrvPending_t {
 #endif
 };
 
-struct ZServerDesc_t {
+class ZServerDesc_t {
 	struct sockaddr_in zs_addr;	/* server's address */
+	friend void server_reset (void);
+	friend void server_recover (ZClient_t *);
+	friend void server_hello (ZServerDesc_t *, int);
+	friend void setup_server (ZServerDesc_t *, in_addr *);
+	friend void server_shutdown (void);
+	friend void server_forw_reliable (ZServerDesc_t*, caddr_t, int,
+					  ZNotice_t *);
+	friend void srv_rexmit (void*);
+	friend ZServerDesc_t*server_which_server(sockaddr_in*);
+    public:
 	long zs_timeout;		/* Length of timeout in sec */
 	timer zs_timer;			/* timer struct for this server */
 	ZHostList_t *zs_hosts;		/* pointer to list of info from this
@@ -254,7 +272,16 @@ struct ZServerDesc_t {
 					   to this server when done dumping */
 	short zs_numsent;		/* number of hello's sent */
 	unsigned int zs_dumping : 1;	/* 1 if dumping, so we should queue */
+	char addr[16];			/* text version of address */
+    private:
 	server_state zs_state;		/* server's state */
+    public:
+	server_state state () {
+	    return zs_state;
+	}
+	void set_state (server_state s) {
+	    zs_state = s;
+	}
 };
 
 enum ZSentType {
@@ -275,6 +302,12 @@ public:
     }
 };
 const int dump_masks = sigmask (SIGFPE) | sigmask (SIGEMT);
+
+/* useful... */
+extern "C" char * inet_ntoa (struct in_addr);
+inline char * inet_ntoa (struct sockaddr_in &s) {
+    return inet_ntoa (s.sin_addr);
+}
 
 /* Function declarations */
 	
@@ -330,8 +363,6 @@ extern unsigned long hash (const char *);
 
 /* found in dispatch.c */
 extern void handle_packet(void);
-extern void dispatch(register ZNotice_t *notice, int auth,
-		     struct sockaddr_in *who);
 extern void clt_ack(ZNotice_t *notice, struct sockaddr_in *who,
 		    ZSentType sent);
 extern void nack_release(ZClient_t *client);
@@ -415,7 +446,6 @@ extern int srv_socket;			/* dgram sockets for clients
 					   and other servers */
 extern int bdump_socket;		/* brain dump socket
 					   (closed most of the time) */
-extern struct sockaddr_in bdump_sin;	/* addr of brain dump socket */
 
 extern fd_set interesting;		/* the file descrips we are listening
 					 to right now */
@@ -503,19 +533,23 @@ extern const ZString wildcard_instance;
 #define zdbug(s1)
 #endif /* DEBUG */
 
-inline Notice::Notice (ZNotice_t *n) : notice (n), dest (n->z_class, n->z_class_inst, n->z_recipient), sender (n->z_sender) {
-    msg_no = current_msg;
-}
-
-inline ZClass_t::ZClass_t (const ZDestination& dest) : zct_dest (dest) {
-    q_forw = q_back = this;
-    zct_clientlist = 0;
-    zct_acl = 0;
-}
-
-inline ZClass_t::~ZClass_t () {
-    if (zct_clientlist)
-	xfree (zct_clientlist);
-}
+/* statistics gathering */
+class statistic {
+    int val;
+    const char *str;
+public:
+    statistic (const char *label) { val = 0; str = label; }
+    int value () { return val; }
+    void reset () { val = 0; }
+    void operator++ () { val++; }
+    void log (int do_reset = 0) {
+	if (do_reset) {
+	    syslog (LOG_INFO, "stats: %s: %d since last report", str, val);
+	    reset ();
+	}
+	else
+	    syslog (LOG_INFO, "stats: %s: %d", str, val);
+    }
+};
 
 #endif /* !__ZSERVER_H__ */
