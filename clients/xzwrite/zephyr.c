@@ -66,7 +66,7 @@ int zeph_locateable(user)
 
      if (index(user, '@') == NULL)
 	  sprintf(buf, "%s@%s", user, ZGetRealm());
-     ZLocateUser(buf, &n);
+     ZLocateUser(buf, &n, ZAUTH);
      return (!! n);
 }
 
