@@ -64,6 +64,7 @@
 #define LdLibs BsdLibs
 #define LintFlags BsdFlags -DAIXV=AIXV -DPOSIX NoBsdArgs
 #define CcFlags LintFlags
+#define CDebugFlags
 #define AnsiCcCmd	xlc -qro -D_ALL_SOURCE
 #define CcCmd		xlc -qlanglvl=extended -D_ALL_SOURCE
 
@@ -125,8 +126,10 @@ clean::
 
 #define NoBsdArgs \
         -Dsignal=signal_oops -Dlongjmp=lonjmp_oops -Dsetjmp=setjmp_oops
+/*
 #undef NoBsdArgs
 #define NoBsdArgs -I/usr/ucbinclude
+*/
 
 #define NOLINT
 #define CcFlags  -DSOLARIS -DPOSIX \
@@ -163,6 +166,6 @@ clean::
 #ifdef UseInstalled
 #define AfsDir /mit/afsuser/@sys
 #else
-#define AfsDir $(TOP)/third/common/afs/@sys/dest
+#define AfsDir /usr/transarc /* wrong, but use for now */
 #endif
 #endif
