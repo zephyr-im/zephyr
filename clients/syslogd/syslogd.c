@@ -791,7 +791,7 @@ fprintlog(f, flags, msg, fac, prilev)
 				       iov[4].iov_base);
 			(void) sprintf(pri_fac_str, "%s.%s", 
 				       FacNames[fac].c_name,
-				       PriNames[prilev].c_name);
+				       PriNames[(prilev & LOG_PRIMASK)].c_name);
 			znotice.z_message = line;
 			/* include the null just in case */
 			znotice.z_message_len = strlen (line) + 1;
