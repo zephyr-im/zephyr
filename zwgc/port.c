@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_port_c[] = "$Header$";
+static char rcsid_port_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -488,9 +488,13 @@ void create_file_append_port(name, filename)
      string filename;
 {
     FILE *out;
+    int oumask;
 
     errno = 0;
+
+    oumask = umask(077);		/* allow read/write for us only */
     out = fopen(filename, "a");
+    (void) umask(oumask);
     if (errno) {
 	var_set_variable("error", perror_to_string(errno));
 	return;
