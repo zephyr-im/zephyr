@@ -32,16 +32,31 @@ Code_t ZMakeAscii(ptr, len, field, num)
 	if (!(i%4)) {
 	    if (len < 3+(i!=0))
 		return (ZERR_FIELDLEN);
-	    (void) sprintf(ptr, "%s0x", i?" ":"");
-	    ptr += 2+(i!=0);
-	    len -= 2+(i!=0);
+	    if (i) {
+		*ptr++ = ' ';
+		len--;
+	    }
+	    *ptr++ = '0';
+	    *ptr++ = 'x';
+	    len -= 2;
 	} 
 	if (len < 3)
 	    return (ZERR_FIELDLEN);
-	(void) sprintf(ptr, "%02x", field[i]);
-	ptr += 2;
+	*ptr++ = cnvt_itox(field[i] >> 4);
+	*ptr++ = cnvt_itox(field[i] & 15);
 	len -= 2;
     }
 
+    *ptr = '\0';
     return (ZERR_NONE);
+}
+
+cnvt_itox(i)
+    int i;
+{
+    i += '0';
+    if (i <= '9')
+	return (i);
+    i += 'A'-'9'-1;
+    return (i);
 }

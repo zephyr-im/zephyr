@@ -187,6 +187,19 @@ Code_t ZParseNotice(buffer, len, notice)
     else
 	notice->z_multinotice = "";
 
+    if (numfields) {
+	if (ZReadAscii(ptr, end-ptr, (unsigned char *)temp, 
+		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
+	    return (ZERR_BADPKT);
+	bcopy((char *)temp, (char *)&notice->z_multiuid, sizeof(ZUnique_Id_t));
+	notice->z_time.tv_sec = ntohl(notice->z_multiuid.tv.tv_sec);
+	notice->z_time.tv_usec = ntohl(notice->z_multiuid.tv.tv_usec);
+	numfields--;
+	ptr += strlen(ptr)+1;
+    }
+    else
+	bzero(&notice->z_multiuid, sizeof(ZUnique_Id_t));
+
     for (i=0;i<Z_MAXOTHERFIELDS && numfields;i++,numfields--) {
 	notice->z_other_fields[i] = ptr;
 	numfields--;

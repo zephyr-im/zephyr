@@ -25,22 +25,13 @@ Code_t ZPeekPacket(buffer, ret_len, from)
     int *ret_len;
     struct sockaddr_in *from;
 {
-    int retval;
+    Code_t retval;
     struct _Z_InputQ *nextq;
     
-    if (ZGetFD() < 0)
-	return (ZERR_NOPORT);
+    if ((retval = Z_WaitForComplete()) != ZERR_NONE)
+	return (retval);
 
-    if (ZQLength()) {
-	if ((retval = Z_ReadEnqueue()) != ZERR_NONE)
-	    return (retval);
-    }
-    else {
-	if ((retval = Z_ReadWait()) != ZERR_NONE)
-	    return (retval);
-    }
-
-    nextq = Z_GetFirstComplete();
+    nextq = (struct _Z_InputQ *)Z_GetFirstComplete();
 
     *ret_len = nextq->packet_len;
     
