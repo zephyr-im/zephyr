@@ -1,0 +1,143 @@
+/*
+ * BSD 4.3
+ */
+#if (defined(vax) && !defined(ultrix)) || defined(ibm032)
+#define LintCFlag -C
+#define ProfCcFlags -pg
+#endif
+
+#if defined(vax) && !defined(ultrix)
+#define AnsiCcCmd gcc -pipe
+#define AnsiLdCmd gcc -pipe
+#define CcFlags "-Dmemmove(a,b,c)=bcopy(b,a,c)"
+#endif
+
+#ifdef ibm032
+#define AnsiCcCmd cc -Hon=read_only_strings
+#define CcFlags
+#endif
+
+
+/*
+ * DECstation ULTRIX
+ */
+
+
+/* 
+ * DEC Alpha OSF/1
+ */
+#if defined(__alpha)
+#define RanlibCmd		ar -tsl
+#define LintLibFlag    	        -o
+#define LintOpts       	        -ax
+#define LintFlags -DPOSIX -xv -std
+#define CcFlags -DPOSIX -std1
+#define NOLINT	/* Until I can install somewhere useful */
+#endif
+
+
+/*
+ * IBM AIX
+ */
+#if defined(_AIX) && defined(_IBMR2)
+#define NOLINT
+
+#ifdef _AIX32
+#define ARBinDir /usr/bin/athena
+#endif
+
+#define BsdLibs -lbsd
+#define BsdFlags -D_BSD
+
+#define NoBsdArgs \
+	/*-Dindex=index_oops*/ /*-Drindex=rindex_oops*/ \
+	-Dbcopy=bcopy_oops /*-Dbzero=bzero_oops*/ -Dbcmp=bcmp_oops \
+	-Dsignal=signal_oops -Dsigsetmask=sigsetmask_oops \
+	-Dsigblock=sigblock_oops -Dsigpause=sigpause_oops \
+	/*-Dsetjmp=setjmp_oops*/ -Dlongjmp=longjmp_oops
+#undef NoBsdArgs
+#define NoBsdArgs
+
+#define LdLibs BsdLibs
+#define LintFlags BsdFlags -DAIXV=AIXV -DPOSIX NoBsdArgs
+#define CcFlags LintFlags
+#define AnsiCcCmd	xlc -qro -D_ALL_SOURCE
+#define CcCmd		xlc -qlanglvl=extended -D_ALL_SOURCE
+
+#if !defined(UseInstalled) || defined(UseSharedLibs)
+#define LdPath -L$(ATHLIBDIR)/shared -L$(ATHLIBDIR)
+
+#define static_program(prog,objs,ldflags,libs)				@@\
+all::	prog								@@\
+prog::	objs								@@\
+	$(LD) ldflags $(LDFLAGS) -o prog objs -L$(ATHLIBDIR) libs $(LDLIBS) @@\
+clean::									@@\
+	$(RM) prog
+#endif
+
+clean::
+	$(RM) bind.??*
+
+#endif	/* _AIX */
+
+
+/*
+ * MAC A/UX
+ */
+#ifdef _AUX_SOURCE
+#define NOLINT
+
+/* Do not use -ZP; this undefines other symbols used by the system .h files */
+#define CcFlags -DPOSIX -D_POSIX_SOURCE -D_BSD_SOURCE
+#define LdLibs -lposix
+#define RanLibCmd \:
+#endif
+
+
+/*
+ * Sun SOLARIS
+ */
+#if defined(sun) && defined(sparc)
+
+#define NoBsdArgs \
+	-Dsignal=signal_oops -Dlongjmp=lonjmp_oops -Dsetjmp=setjmp_oops
+#undef NoBsdArgs
+#define NoBsdArgs -I/usr/ucbinclude
+
+#define NOLINT
+#define CcFlags  -DSOLARIS -DPOSIX \
+	-Dsrandom=srand48 -Drandom=lrand48 NoBsdArgs \
+	-I/usr/gcc/include -I/usr/openwin/include
+#define ProfCcFlags -pg
+#define CDebugFlags -O2
+#define LdPath -L/usr/gcc/lib -L/usr/ccs/lib -L/usr/openwin/lib -L$(ATHLIBDIR)
+#define LdLibs /usr/athena/lib/libresolv.a -lsocket -lnsl -lucb -lelf
+#define AnsiCcCmd /usr/gcc/bin/gcc -B/usr/gcc/lib/ -traditional
+#define AnsiLdCmd /usr/gcc/bin/gcc -B/usr/gcc/lib/
+#define CcCmd AnsiCcCmd
+#define LdCmd AnsiLdCmd
+#define RanLibCmd \:
+#define AfsDir /usr/transarc
+#define ExtraXLibs -lm
+#endif
+
+
+/*
+ * Linux
+ */
+#ifdef linux
+#define NOLINT
+#define NOPROF
+#endif
+
+
+/*
+ * AFS configuration
+ */
+#if !defined(AfsDir) && !defined(NoAFS)
+#ifdef UseInstalled
+#define AfsDir /mit/afsuser/@sys
+#else
+#define AfsDir $(TOP)/third/common/afs/@sys/dest
+#endif
+#endif

@@ -1,0 +1,68 @@
+Tue Nov  8 12:12:32 1988  William Sommerfeld  (wesommer at binkley)
+
+	* (util) Remove \ before { and } characters (causes RT 
+	compiler warning)
+
+	* (read_password) Print a newline after saying "try again".
+
+	* (read_password) Merge in changes by Jim Bloom to do a clearerr
+	after a read fails, and protect against an RTM attack by
+	changing gets to fgets.
+
+Fri Sep 16 16:26:55 1988  Bill Sommerfeld  (wesommer at ra)
+
+	* (read_password) fix dependancies for BSDUNIX.
+
+Mon Sep 12 14:55:23 1988  Bill Sommerfeld  (wesommer at ra)
+
+	* (*) debug->des_debug
+
+	* (*) debug_print() -> des_debug_print()
+
+	* (Makefile) add dbg_prt.o to list of files included in build.
+
+	* (des.c) remove debug_print; it's in dbg_prt.c
+
+        * (des_internal.h) contains definitions of AUTH_DES_ITER, 
+	s-box structures, which aren't part of the encryption interface.
+
+	* (*) #include "conf.h" -> #include "des_internal.h"
+
+	* (*) C_Block -> des_cblock
+
+	* (*) Key_schedule -> des_key_schedule
+
+	* (noop.c) remove #includes for unused include files.
+
+	* (des.c, random_key.c, string_to_key.c) add #include of "des_conf.h"
+
+Fri Sep  9 15:46:13 1988  Bill Sommerfeld  (wesommer at ra)
+
+	* (*) string_to_key() -> des_string_to_key()
+
+	* (*) read_pw_string() -> des_read_pw_string()
+
+	* (*) random_key() -> des_random_key()
+
+	* (*) pcbc_encrypt() -> des_pcbc_encrypt()
+
+	* (*) key_sched() -> des_key_sched()
+
+	* (*) cbc_encrypt() -> des_cbc_encrypt()
+
+	* (*) cbc_cksum() -> des_cbc_cksum()
+
+	* (quad_cksum.c) make {four,two}_bytes_vax_to_nets be static to
+	avoid namespace pollution.
+
+	* (*.c) Rename C_Block_print() to des_cblock_print(). 
+
+	* (make_key_perm.c) Make "key_perm" be static to avoid namespace
+	pollution. 
+
+	* (quad_cksum.c) Make "short_conv" and "long_conv" local
+	variables, to avoid namespace pollution.
+
+
+
+
