@@ -20,6 +20,9 @@ static char rcsid_ZSendPacket_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 #include <sys/socket.h>
+#ifdef _AIX
+#include <sys/select.h>
+#endif
 
 Code_t ZSendPacket(packet, len, waitforack)
     char *packet;

@@ -33,6 +33,10 @@ static char rcsid_mux_c[] = "$Id$";
 #include "zwgc.h"
 #include "pointer.h"
 
+#ifdef _AIX
+#include <sys/select.h>
+#endif
+
 /*
  * mux_end_loop_p - Setting this to true during a mux_loop causes the mux_loop
  *                  to be exited.

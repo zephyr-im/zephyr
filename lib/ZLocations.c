@@ -21,6 +21,10 @@ static char rcsid_ZLocations_c[] = "$Header$";
 
 #include <zephyr/zephyr_internal.h>
 
+#ifdef _AIX
+#include <sys/select.h>
+#endif
+
 #include <pwd.h>
 #include <sys/file.h>
 #include <sys/param.h>
