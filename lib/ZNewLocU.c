@@ -47,5 +47,6 @@ Code_t ZLocateUser(user, nlocs, auth)
     }
 
     ZFreeNotice(&notice);
+    ZFreeALD(&zald);
     return(ZERR_NONE);
 }
