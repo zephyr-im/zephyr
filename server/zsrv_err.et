@@ -27,6 +27,8 @@ ec ZSRV_LEN,
 	"Read/Write length wrong"
 ec ZSRV_UNKNOWNOPCODE,
 	"Unknown opcode"
+ec ZSRV_HOSTLOCKED,
+	"Host record in use"
 ec ZSRV_RCSID,
 	"$Header$"
 	end
