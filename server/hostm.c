@@ -364,6 +364,7 @@ losinghost *which;
 	notice.z_default_format = "";
 	notice.z_num_other_fields = 0;
 	notice.z_message_len = 0;
+	notice.z_num_other_fields = 0;
 
 	/* forge a from address */
 	bzero((char *) &who, sizeof(who));
@@ -559,7 +560,8 @@ ZServerDesc_t *server;
 	shutnotice.z_sender = HM_CTL_SERVER;
 	shutnotice.z_recipient = "hm@ATHENA.MIT.EDU";
 	shutnotice.z_default_format = "";
-	
+	shutnotice.z_num_other_fields = 0;
+
 	if (server) {
 		shutnotice.z_message = inet_ntoa(server->zs_addr.sin_addr);
 		shutnotice.z_message_len = strlen(shutnotice.z_message);
@@ -619,7 +621,8 @@ struct sockaddr_in *sin;
 	shutnotice.z_message = NULL;
 	shutnotice.z_message_len = 0;
 	shutnotice.z_default_format = "";
-	
+	shutnotice.z_num_other_fields = 0;
+
 	if ((retval = ZFormatNotice(&shutnotice,
 				    &shutpack,
 				    &shutlen,
