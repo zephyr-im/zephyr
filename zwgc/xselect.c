@@ -104,7 +104,7 @@ static void xselSetProperties(dpy,w,property,target,selreq)
       for (i=0;i<alistsize;i+=2)
 	xselSetProperties(dpy,w,alist[i+1],alist[i],selreq);
 
-      XFree(alist);
+      XFree((char *) alist);
    } else if (target==ZA_TIMESTAMP) {
       ChangeProp(XA_INTEGER,32,&ownership_start,1);
       XSync(dpy,0);
