@@ -50,7 +50,7 @@ Code_t ZSendPacket(packet,len)
 	ZParseNotice(packet,len,&notice,&auth);
 
 	tv.tv_sec = 0;
-	tv.tv_usec = 400;
+	tv.tv_usec = 400000;
 	
 	for (i=0;i<4;i++) {
 		select(0,&t1,&t2,&t3,&tv);
