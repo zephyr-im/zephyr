@@ -40,7 +40,7 @@ char *AALookup(array, index)
      AElementRec *a;
      int i;
 
-     a = DynGet((char *) array, 0);
+     a = (AElementRec *) DynGet((char *) array, 0);
      for (i=0; i < DynSize(array); i++)
 	  if (strcmp(a[i].index, index) == 0)
 	       return (a[i].value);
