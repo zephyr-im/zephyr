@@ -12,6 +12,10 @@
 DEFINES=-DULTRIX_40
 #endif
 
+#ifdef error_table
+#undef error_table
+#endif
+
 LINTFLAGS=-uhvb 
 LINTFILES= error_message.c et_name.c init_et.c com_err.c # perror.c
 LIBOBJS= error_message.o et_name.o init_et.o com_err.o # perror.o
