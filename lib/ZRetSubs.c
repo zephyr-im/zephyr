@@ -43,6 +43,7 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	notice.z_opcode = CLIENT_GIMMESUBS;
 	notice.z_sender = 0;
 	notice.z_recipient = "";
+	notice.z_default_format = 0;
 	notice.z_message_len = 0;
 
 	if ((retval = ZSendNotice(&notice,ZAUTH)) != ZERR_NONE)
