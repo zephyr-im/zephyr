@@ -97,6 +97,9 @@ timer timer_set_rel (time_rel, proc, arg)
 	return(new_t);
 }
 
+#ifdef notdef
+/* currently unused */
+
 /*
  * timer_set_abs (time_abs, proc, arg)
  *   time_abs: alarm time, absolute
@@ -123,6 +126,7 @@ timer timer_set_abs (time_abs, proc, arg)
 	add_timer(new_t);
 	return(new_t);
 }
+#endif notdef
 
 /*
  * timer_reset

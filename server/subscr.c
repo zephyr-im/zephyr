@@ -38,9 +38,8 @@ static char rcsid_subscr_s_c[] = "$Header$";
  * Code_t subscr_cancel_host(addr)
  *	struct in_addr *addr;
  *
- * ZClientList_t *subscr_match_list(notice, acl)
+ * ZClientList_t *subscr_match_list(notice)
  *	ZNotice_t *notice;
- *	ZAcl_t *acl;
  *
  * void subscr_free_list(list)
  *	ZClientList_t *list;
@@ -50,9 +49,9 @@ static char rcsid_subscr_s_c[] = "$Header$";
  *	int auth;
  *	struct sockaddr_in *who;
  *
- * Code_t subscr_send_subs(client, version)
+ * Code_t subscr_send_subs(client, vers)
  *	ZClient_t *client;
- *	char *version;
+ *	char *vers;
  */
 
 #include "zserver.h"
@@ -291,6 +290,8 @@ register ZClient_t *client;
 	return;
 }
 
+#ifdef notdef
+/* not used for the moment */
 /*
  * Cancel all the subscriptions for clients at this addr.
  */
@@ -312,6 +313,7 @@ struct in_addr *addr;
 		(void) subscr_cancel_client(clt->zclt_client);
 	return(ZERR_NONE);
 }
+#endif notdef
 
 /*
  * Here is the bulk of the work in the subscription manager.
@@ -321,9 +323,8 @@ struct in_addr *addr;
  */
 
 ZClientList_t *
-subscr_match_list(notice, acl)
+subscr_match_list(notice)
 ZNotice_t *notice;
-ZAcl_t *acl;
 {
 	register ZClientList_t *hits, *clients, *majik, *clients2, *hit2;
 	register char *cp;
@@ -375,7 +376,7 @@ ZAcl_t *acl;
 		for (clients2 = clients->q_forw;
 		     clients2 != clients;
 		     clients2 = clients2->q_forw)
-			if (cl_match(notice, clients2->zclt_client, acl)) {
+			if (cl_match(notice, clients2->zclt_client)) {
 				if (!clt_unique(clients2->zclt_client, hits))
 					continue;
 				/* we hit */
@@ -692,9 +693,9 @@ struct sockaddr_in *who;
 
 /*ARGSUSED*/
 Code_t
-subscr_send_subs(client, version)
+subscr_send_subs(client, vers)
 ZClient_t *client;
-char *version;
+char *vers;
 {
 	register int i = 0;
 	register ZSubscr_t *sub;
@@ -790,10 +791,9 @@ ZClientList_t *clist;
  */
 
 static int
-cl_match(notice, client, acl)
+cl_match(notice, client)
 register ZNotice_t *notice;
 register ZClient_t *client;
-ZAcl_t *acl;
 {
 	register ZSubscr_t *subs;
 	int relation;
