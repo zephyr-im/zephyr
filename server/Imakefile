@@ -1,0 +1,62 @@
+/**/#	Copyright 1988 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+
+LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${HES_LIB} ${KRB_LIB} ${DES_LIB}
+LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${HES_LINTLIB} \
+	${KRB_LINTLIB} ${DES_LINTLIB}
+HDRS=	zserver.h \
+	zsrv_conf.h \
+	timer.h \
+	zsrv_err.h
+
+SRCS=	access.c \
+	bdump.c \
+	class.c \
+	client.c \
+	common.c \
+	dispatch.c \
+	hostm.c \
+	main.c \
+	server.c \
+	subscr.c \
+	timer.c \
+	uloc.c \
+	kstuff.c
+
+OBJS= 	zsrv_err.o \
+	access.o \
+	bdump.o \
+	class.o \
+	client.o \
+	common.o \
+	dispatch.o \
+	hostm.o \
+	main.o \
+	server.o \
+	subscr.o \
+	timer.o \
+	uloc.o \
+	kstuff.o
+
+
+DEFINES=-DOLD_COMPAT -DNEW_COMPAT
+normal_obj_rule()
+
+program(zephyrd,${OBJS},,${LIBS},${USRETCDIR})
+
+error_table(zsrv_err)
+
+
+install::
+	-mkdir ${DESTDIR}${ACLDIR}
+	-rm -f ${DESTDIR}${ACLDIR}/?*
+	cp acldir/?* ${DESTDIR}${ACLDIR}
+	${INSTALLFILE} default.subscriptions ${DESTDIR}${ACLDIR}/default.subscriptions
+
