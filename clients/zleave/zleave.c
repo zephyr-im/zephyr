@@ -355,11 +355,13 @@ long secs;
 		secs -= n;
 		if (n > 0)
 			sleep((unsigned) n);
-		l = getlogin();
-		if (l == NULL)
+		if (!use_zephyr) {
+		    l = getlogin();
+		    if (l == NULL)
 			exit(0);
-		if (!use_zephyr && (strcmp(origlogin, l) != 0))
+		    if (strcmp(origlogin, l) != 0)
 			exit(0);
+		}
 	}
 }
 
