@@ -41,7 +41,7 @@ main(argc, argv)
     char *argv[];
 {
     ZNotice_t notice;
-    int retval, arg, nocheck, nchars, msgsize, filsys;
+    int retval, arg, nocheck, nchars, msgsize, filsys, tabexpand;
     char bfr[BUFSIZ], *message, *signature;
     char classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ];
 	
@@ -59,6 +59,7 @@ main(argc, argv)
 
     auth = ZAUTH;
     verbose = quiet = msgarg = nrecips = nocheck = filsys = 0;
+    tabexpand = 1;
 
     if (class = ZGetVariable("zwrite-class")) {
 	(void) strcpy(classbfr, class);
@@ -105,6 +106,9 @@ main(argc, argv)
 	    break;
 	case 'n':
 	    nocheck = 1;
+	    break;
+	case 't':
+	    tabexpand = 0;
 	    break;
 	case 'u':
 	    inst = URGENT_INSTANCE;
@@ -230,7 +234,8 @@ main(argc, argv)
     }
 
     notice.z_opcode = "";
-    un_tabify(&message, &msgsize);
+    if (tabexpand)
+	un_tabify(&message, &msgsize);
     notice.z_message = message;
     notice.z_message_len = msgsize;
 
