@@ -679,7 +679,6 @@ ZServerDesc_t *server;
 		send_stats(who);
 		return;
 	}
-#ifdef notdef
 	syslog(LOG_INFO, "disp: new server?");
 	if (server_register(notice, auth, who) != ZERR_NONE)
 		syslog(LOG_INFO, "new server failed");
@@ -689,7 +688,6 @@ ZServerDesc_t *server;
 		       ntohs(who->sin_port));
 		hello_respond(who, DONT_ADJUST, auth);
 	}
-#endif notdef
 	return;
 }
 
