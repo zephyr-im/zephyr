@@ -37,15 +37,21 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	if (retval != ZERR_NONE && retval != ZERR_NOSUBSCRIPTIONS)
 		return (retval);
 	
+	if (ZGetFD() < 0)
+		if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
+			return (retval);
+
 	notice.z_kind = ACKED;
-	notice.z_port = 0;
+	notice.z_port = __Zephyr_port;
 	notice.z_class = ZEPHYR_CTL_CLASS;
 	notice.z_class_inst = ZEPHYR_CTL_CLIENT;
 	notice.z_opcode = CLIENT_GIMMESUBS;
 	notice.z_sender = 0;
 	notice.z_recipient = "";
-	notice.z_default_format = 0;
+	notice.z_default_format = "";
+	notice.z_num_other_fields = 0;
 	notice.z_message = asciiport;
+
 	if ((retval = ZMakeAscii(asciiport,sizeof(asciiport),
 				 (unsigned char *)&port,
 				 sizeof(u_short))) != ZERR_NONE)
@@ -61,8 +67,9 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 
 	while (!nrecv || !gimmeack) {
 		if ((retval = ZIfNotice(&retnotice,NULL,
-					ZCompareUIDPred,
-					(char *)&notice.z_uid)) != ZERR_NONE)
+					ZCompareMultiUIDPred,
+					(char *)&notice.z_multiuid))
+		    != ZERR_NONE)
 			return (retval);
 
 		if (retnotice.z_kind == SERVNAK) {
@@ -76,8 +83,10 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 			continue;
 		} 
 
-		if (retnotice.z_kind != ACKED)
+		if (retnotice.z_kind != ACKED) {
+			ZFreeNotice(&retnotice);
 			return (ZERR_INTERNAL);
+		}
 
 		nrecv++;
 
