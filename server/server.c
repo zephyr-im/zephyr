@@ -1148,7 +1148,7 @@ int auth;
 		xfree(pack);		/* free allocated storage */
 		return;
 	}
-x	if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
+	if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "snd_msg xmit: %s", error_message(retval));
 		xfree(pack);		/* free allocated storage */
 		return;
