@@ -24,8 +24,8 @@
 #ifndef lint
 #ifndef SABER
 static char *rcsid_zshutdown_notify_c = "$Header$";
-#endif SABER
-#endif lint
+#endif /* SABER */
+#endif /* lint */
 
 #define N_KIND		UNSAFE
 #define N_CLASS		"FILSRV"
