@@ -64,6 +64,7 @@ static void server_hello(), server_flush(), admin_dispatch(), setup_server();
 static void hello_respond(), srv_responded(), send_msg(), send_msg_list();
 static void srv_alive(), srv_nack_cancel(), srv_rexmit(), srv_nack_release();
 static void recover_clt(), kill_clt(), server_lost();
+static void send_stats();
 
 static Code_t server_register();
 static struct in_addr *get_server_addrs();
@@ -167,8 +168,7 @@ server_init()
 	srv_nacklist->q_forw = srv_nacklist->q_back = srv_nacklist;
 }
 
-#ifdef DEBUG
-/* note: these must match the order given in zephyr.h */
+/* note: these must match the order given in zserver.h */
 static char *
 srv_states[] = {
 	"SERV_UP",
@@ -176,7 +176,6 @@ srv_states[] = {
 	"SERV_DEAD",
 	"SERV_STARTING"
 };
-#endif DEBUG
 
 /* 
  * A server timout has expired.  If enough hello's have been unanswered,
@@ -381,7 +380,6 @@ server_kill_clt(client)
 ZClient_t *client;
 {
 	register int i;
-	ZServerDesc_t *server;
 	char buf[512], *lyst[2];
 	ZNotice_t notice;
 	register ZNotAcked_t *nacked;
@@ -665,7 +663,13 @@ ZServerDesc_t *server;
 {
 
 	/* this had better be a HELLO message--start of acquisition
-	   protocol */
+	   protocol, OR a status req packet */
+
+	if (!strcmp(notice->z_opcode, ADMIN_STATUS)) {
+		/* status packet */
+		send_stats(who);
+		return;
+	}
 	syslog(LOG_INFO, "disp: new server?");
 	if (server_register(notice, auth, who) != ZERR_NONE)
 		syslog(LOG_INFO, "new server failed");
@@ -678,6 +682,46 @@ ZServerDesc_t *server;
 	return;
 }
 
+static void
+send_stats(who)
+struct sockaddr_in *who;
+{
+	register int i;
+	char scratch[32];
+	char *newline = "\n";
+	char buf[BUFSIZ];
+	char *responses[1];
+
+	(void) strcpy(buf,version);
+	(void) strcat(buf, "/");
+#ifdef vax
+	(void) strcat(buf, "VAX\n");
+#endif vax
+#ifdef ibm032
+	(void) strcat(buf, "IBM 032\n");
+#endif ibm032
+#ifdef sun
+	(void) strcat(buf, "SUN\n");
+#endif sun
+
+	(void) sprintf(scratch, "%d pkts\n", npackets);
+	(void) strcat(buf, scratch);
+	(void) sprintf(scratch, "up %d seconds\n",NOW - uptime);
+	(void) strcat(buf, scratch);
+
+	(void) strcat(buf, "server states:\n");
+		
+	for (i = 0; i < nservers ; i++) {
+		(void) strcat(buf, inet_ntoa(otherservers[i].zs_addr.sin_addr));
+		(void) strcat(buf, "/");
+		(void) strcat(buf, srv_states[(int) otherservers[i].zs_state]);
+		(void) strcat(buf, newline);
+	}
+
+	responses[0] = buf;
+	send_msg_list(who, ADMIN_STATUS, responses, 1, 0);
+	return;
+}
 /*
  * get a list of server addresses, from Hesiod.  Return a pointer to an
  * array of allocated storage.  This storage is freed by the caller.
@@ -994,6 +1038,10 @@ struct sockaddr_in *who;
 	register ZNotAcked_t *nacked;
 
 
+	if (bdumping) {
+		zdbug((LOG_DEBUG,"bdumping, won't srv_forw"));
+		return;
+	}
 	zdbug((LOG_DEBUG, "srv_forw"));
 	/* don't send to limbo */
 	for (i = 1; i < nservers; i++) {
@@ -1099,6 +1147,14 @@ register ZNotAcked_t *nackpacket;
 	       inet_ntoa(otherservers[nackpacket->na_srv_idx].zs_addr.sin_addr),
 	       ntohs(otherservers[nackpacket->na_srv_idx].zs_addr.sin_port)));
 
+	if (otherservers[nackpacket->na_srv_idx].zs_state == SERV_DEAD) {
+		zdbug((LOG_DEBUG, "canceling send to dead server"));
+		xremque(nackpacket);
+		xfree(nackpacket->na_packet);
+		srv_nack_release(&otherservers[nackpacket->na_srv_idx]);
+		xfree(nackpacket);
+		return;
+	}
 	if ((retval = ZSetDestAddr(&otherservers[nackpacket->na_srv_idx].zs_addr))	
 	    != ZERR_NONE) {
 		syslog(LOG_WARNING, "srv_rexmit set addr: %s",
