@@ -3,7 +3,7 @@ SHELL = /bin/sh
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 datadir=@datadir@
-confdir=@confdir@
+sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 
 includedir=${prefix}/include
@@ -16,7 +16,7 @@ top_srcdir=@top_srcdir@
 ENSUREDIR=${srcdir}/ensure-dir.sh
 INSTALL=@INSTALL@
 
-SUBDIRS=lib clients server zhm
+SUBDIRS=lib libdyn clients server zhm zwgc
 
 all:
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
@@ -30,8 +30,8 @@ install:
 	${ENSUREDIR} ${DESTDIR}${bindir} 755
 	${ENSUREDIR} ${DESTDIR}${libdir} 755
 	${ENSUREDIR} ${DESTDIR}${datadir} 755
-	${ENSUREDIR} ${DESTDIR}${confdir} 755
-	${ENSUREDIR} ${DESTDIR}${confdir}/acl 755
+	${ENSUREDIR} ${DESTDIR}${sysconfdir} 755
+	${ENSUREDIR} ${DESTDIR}${sysconfdir}/acl 755
 	${ENSUREDIR} ${DESTDIR}${sbindir} 755
 	${ENSUREDIR} ${DESTDIR}${includedir} 755
 	${ENSUREDIR} ${DESTDIR}${includedir}/zephyr 755
