@@ -90,7 +90,7 @@ int main(argc,argv)
 	(void) signal(SIGTERM, cleanup);
 	(void) signal(SIGHUP, cleanup);
 #endif
-	if ((retval = ZSubscribeTo(&sub,1,port)) != ZERR_NONE) {
+	if ((retval = ZSubscribeToSansDefaults(&sub,1,port)) != ZERR_NONE) {
 		com_err(argv[0],retval,"while subscribing");
 		exit(1);
 	}
