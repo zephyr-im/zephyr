@@ -9,9 +9,7 @@
 /**/#
 
 #if defined(SYSLOG_COMPAT42)
-SYSLOG_LIB= ../clients/syslogd/syslog.o
-#else
-SYSLOG_LIB=
+SOBJS= ../clients/syslogd/syslog.o
 #endif
 
 SRCS= zhm.c zhm_server.c zhm_client.c queue.c
@@ -19,6 +17,6 @@ OBJS= zhm.o zhm_server.o zhm_client.o queue.o
 
 XDEFS= -DPIDFILE=\"$(ATHCONFDIR)/zhm.pid\"
 
-SimpleProgram(zhm,$(OBJS),$(SYSLOG_LIB) $(ZLIBS) $(LIB_HES),$(ATHRETCDIR))
+SimpleProgram(zhm,$(OBJS) $(SOBJS) $(ZLIB),$(ZLIBS) $(LIB_HES),$(ATHRETCDIR))
 install_man(zhm.8,zhm.8)
 create_depend($(SRCS))

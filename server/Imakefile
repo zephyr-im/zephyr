@@ -54,7 +54,7 @@ OBJS=	access.o \
 	zstring.o
 
 error_table(zsrv_err)
-SimpleProgram(zephyrd,$(OBJS) version.o,$(ZLIBS) $(LIB_HES),$(ATHETCDIR))
+SimpleProgram(zephyrd,$(OBJS) version.o $(ZLIB),$(ZLIBS) $(LIB_HES),$(ATHETCDIR))
 install_man(zephyrd.8,zephyrd.8)
 install_file(default.subscriptions,$(ZLIBDIR))
 
