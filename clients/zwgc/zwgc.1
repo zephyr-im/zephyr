@@ -814,6 +814,13 @@ entirely.
 Transient
 Secondary transient determining value [default False]
 .TP
+enableDelete
+(logical) If true, zwgc creates a WM_PROTOCOLS property on all zgrams, with
+WM_DELETE_WINDOW as contents.
+.TP
+EnableDelete
+Secondary value to enable WM_DELETE_WINDOW protocol on zgrams [default False]
+.TP
 minTimeToLive
 Primary value which specifies the minimum amount of time (``minimum time to
 live'') a WindowGram must be on-screen (in milliseconds) until it can
@@ -875,6 +882,15 @@ is released.  The end of the selection may also be
 indicated by releasing Button1, holding down the Shift key, and pressing
 Button3 (usually the right button) at the desired endpoint of the selection.
 The selection will appear with the text and background colors reversed.
+
+.SH ADDITIONAL X FEATURES
+If
+.I zwgc
+receives a WM_DELETE_WINDOW, it destroys the zephyrgram as if it were
+clicked on.
+.PP
+If a zephyrgram is unmapped, it is removed from the stacking order
+used by reverseStack.
 
 .SH COMMAND LINE
 .I zwgc
