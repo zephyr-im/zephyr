@@ -131,7 +131,7 @@ static char *Font_to_hex(num)
    char *temp;
    int i;
 
-   temp=(char *) malloc((sizeof(Font)<<1)+1);
+   temp=(char *) malloc((sizeof(Font)<<1)+2);
 
    for (i=0;i<((sizeof(Font)<<1)+1);i++)
       temp[i] = hexdigits[(num>>(i*4))&0x0f];
