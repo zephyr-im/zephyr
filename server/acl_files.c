@@ -497,23 +497,26 @@ acl_check(acl, principal)
 {
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];
-    char *realm;
+    char *instance, *realm;
+    int p, i, r;
 
+    /* Parse into principal, instance, and realm. */
     acl_canonicalize_principal(principal, canon);
+    instance = (char *) strchr(canon, INST_SEP);
+    *instance++ = 0;
+    realm = (char *) strchr(instance, REALM_SEP);
+    *realm++ = 0;
 
-    /* Is it there? */
-    if (acl_exact_match(acl, canon))
-	return 1;
-
-    /* Try the wildcards */
-    realm = (char *) strchr(canon, REALM_SEP);
-    *((char *)strchr(canon, INST_SEP)) = '\0'; /* Chuck the instance */
-
-    sprintf(buf, "%s.*%s", canon, realm);
-    if (acl_exact_match(acl, buf)) return 1;
-
-    sprintf(buf, "*.*%s", realm);
-    if (acl_exact_match(acl, buf) || acl_exact_match(acl, "*.*@*")) return(1);
+    for (p = 0; p <= 1; p++) {
+	for (i = 0; i <= 1; i++) {
+	    for (r = 0; r <= 1; r++) {
+		sprintf(buf, "%s%c%s%c%s", (p) ? canon : "*", INST_SEP,
+			(i) ? instance : "*", REALM_SEP, (r) ? realm : "*");
+		if (acl_exact_match(acl, buf))
+		    return 1;
+	    }
+	}
+    }
        
     return(0);
 }
