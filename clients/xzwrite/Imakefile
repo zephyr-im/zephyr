@@ -8,11 +8,6 @@
 /**/#	$Id$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} $(DYN_LIB) ${COMERR_LIB} \
-	${XAW_LIB} ${XMU_LIB} ${XT_LIB} ${X11_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB} \
-	$(DYN_LINTLIB) ${COMERR_LINTLIB}
-
 SRCS	= interface.c resource.c destlist.c util.c bfgets.c \
 	gethomedir.c dest_window.c xzwrite.c edit_window.c zephyr.c\
 	GetString.c Popup.c yank.c menu_window.c logins.c
@@ -21,22 +16,13 @@ OBJS	= interface.o resource.o destlist.o util.o bfgets.o \
 	gethomedir.o dest_window.o xzwrite.o edit_window.o zephyr.o\
 	GetString.o Popup.o yank.o menu_window.o logins.o
 
-HDRS	= GetString.h associate.h xzwrite.h xzwrite-proto.h
+XDEFS=-DXZWRITE_SEARCH_PATHS=\"$(ZLIBDIR)/%N\"
 
-SRCDIR= ${SRCTOP}/clients/xzwrite
-CODE= ${SRCS} ${HDRS} Imakefile xzwrite.1 XZwrite xzwrite.bitmap
-DEFINES=-DXZWRITE_SEARCH_PATHS=\"$(ACLDIR)/%N\"
-
-normal_obj_rule()
-
-program(xzwrite,${OBJS},,${LIBS},${CLIENTDIR})
-
-manpage(1,xzwrite.1)
+zprogram(xzwrite,$(DYN_LIB) $(LIB_XAW))
+install_man(xzwrite.1,xzwrite.1)
+install_file(xzwrite.bitmap,$(ZLIBDIR))
 
 install::
-	-mkdir $(DESTDIR)$(ACLDIR)
-	$(RM) $(DESTDIR)$(ACLDIR)/XZwrite
-	sed -e "s,ACLDIR,$(ACLDIR)," < XZwrite \
-					> $(DESTDIR)$(ACLDIR)/XZwrite
-	$(RM) $(DESTDIR)$(ACLDIR)/xzwrite.bitmap
-	$(CP) xzwrite.bitmap $(DESTDIR)$(ACLDIR)/xzwrite.bitmap
+	$(RM) $(DESTDIR)$(ZLIBDIR)/XZwrite
+	sed -e "s,ACLDIR,$(ZLIBDIR)," \
+		< XZwrite > $(DESTDIR)$(ZLIBDIR)/XZwrite

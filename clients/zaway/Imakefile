@@ -8,14 +8,8 @@
 /**/#	$Header$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} ${COMERR_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB} ${COMERR_LINTLIB}
 SRCS = zaway.c
 OBJS = zaway.o
 
-SRCDIR= ${SRCTOP}/clients/zaway
-CODE= ${SRCS} Imakefile
-
-normal_obj_rule()
-
-program(zaway,${OBJS},,${LIBS},${CLIENTDIR})
+zprogram(zaway,)
+install_man(zaway.1,zaway.1)

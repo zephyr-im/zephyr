@@ -8,22 +8,18 @@
 /**/#	$Id$
 /**/#
 
-LIBS= ${ZEPHYR_LIB} ${KRB_LIB} ${DES_LIB} ${COMERR_LIB} ${HES_LIB}
-LINTLIBS= ${ZEPHYR_LINTLIB} ${KRB_LINTLIB} ${COMERR_LINTLIB} ${DES_LINTLIB}
-DEFINES= -DKPOP
+#if defined(KERBEROS) && defined(HESIOD)
+XDEFS= -DKPOP
 
 SRCS = zmailnotify.c
 OBJS = zmailnotify.o
 
-SRCDIR= ${SRCTOP}/clients/zmailnotify
-CODE= ${SRCS} Imakefile
-
-normal_obj_rule()
-
-program(zmailnotify,${OBJS},,${LIBS},${CLIENTDIR})
+zprogram(zmailnotify,$(LIB_HES))
+install_man(zmailnotify.1,zmailnotify.1)
 
 #ifdef ATHENA_COMPAT
 install::
 	$(RM) $(DESTDIR)/usr/athena/zmailnotify
 	ln -s $(CLIENTDIR)/zmailnotify $(DESTDIR)/usr/athena/zmailnofity
+#endif
 #endif
