@@ -25,9 +25,9 @@ char concurrent[] = "no brain-dump concurrency";
 #endif SABER
 #endif lint
 #ifdef DEBUG
-char version[] = "Zephyr Server (DEBUG) 2.7";
+char version[] = "Zephyr Server (DEBUG) 3.0";
 #else
-char version[] = "Zephyr Server 2.7";
+char version[] = "Zephyr Server 3.0";
 #endif DEBUG
 /*
  * Server loop for Zephyr.
@@ -80,11 +80,14 @@ char version[] = "Zephyr Server 2.7";
 #define	EVER		(;;)		/* don't stop looping */
 
 static int do_net_setup(), initialize();
-static void usage();
-static int bye(), dbug_on(), dbug_off(), dump_db();
+static void usage(), do_reset();
+static int bye(), dbug_on(), dbug_off(), dump_db(), reset();
 #ifndef DEBUG
 static void detach();
 #endif DEBUG
+
+static short doreset = 0;		/* if it becomes 1, perform
+					   reset functions */
 
 int srv_socket;				/* dgram socket for clients
 					   and other servers */
@@ -210,10 +213,14 @@ char **argv;
 	(void) signal(SIGUSR1, dbug_on);
 	(void) signal(SIGUSR2, dbug_off);
 	(void) signal(SIGFPE, dump_db);
+	(void) signal(SIGHUP, reset);
 
 	/* GO! */
 	uptime = NOW;
 	for EVER {
+		if (doreset)
+			do_reset();
+
 		tvp = &nexthost_tv;
 		if (nexttimo != 0L) {
 			nexthost_tv.tv_sec = nexttimo - NOW;
@@ -427,6 +434,24 @@ dump_db()
 		syslog(LOG_ERR, "can't close dump db");
 	}
 	return(0);
+}
+
+static int
+reset()
+{
+	zdbug((LOG_DEBUG,"reset()"));
+	doreset = 1;
+	return(0);
+}
+
+static void
+do_reset()
+{
+	zdbug((LOG_DEBUG,"do_reset()"));
+	/* reset various things in the server's state */
+	subscr_reset();
+	server_reset();
+	doreset = 0;
 }
 
 #ifndef DEBUG
