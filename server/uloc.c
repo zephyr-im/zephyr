@@ -1151,7 +1151,6 @@ ulogin_flush_user(notice)
 
 	/* copy old entries */
 	while (i < num_locs && &locations[i] < loc2) {
-	  /* XXX should _BCOPY */
 	  loc[i] = locations[i];
 	  i++;
 	}
@@ -1163,7 +1162,6 @@ ulogin_flush_user(notice)
 
 	/* copy the rest */
 	while (i < num_locs) {
-		/* XXX should _BCOPY */
 		loc[i - num_match] = locations[i];
 		i++;
 	}
