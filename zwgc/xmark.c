@@ -114,13 +114,15 @@ void xmarkSetBound(gram,x,y,which)
 	 font=get_fontst_from_fid(xb->fid);
 	 for (i=0,s=((gram->text)+(xb->strindex));
 	      xofs<x && i<xb->strlen;
-	      i++,s++)
-	   if (x<=(xofs+=font->per_char[*s - font->min_char_or_byte2].width)) {
+	      i++,s++) {
+	     /* if font->per_char is NULL, then we should use min_bounds */
+	     short usewidth = font->per_char ? font->per_char[*s - font->min_char_or_byte2].width : font->min_bounds.width;
+	   if (x <= (xofs+=usewidth)) {
 	      markchar[which]=i;
-	      markpixel[which]=xofs-xb->x1-
-		font->per_char[*s - font->min_char_or_byte2].width;
+	      markpixel[which]=xofs - xb->x1 - usewidth;
 	      RETURN;
 	   }
+	 }
       }
    }
 
