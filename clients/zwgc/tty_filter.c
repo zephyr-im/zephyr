@@ -389,6 +389,8 @@ static int calc_max_line_width(info)
     int right = 0;
 
     for (; info; info=info->next) {
+	if (info->ignore)
+	    continue;
 	switch (info->alignment) {
 	  case 'l':
 	    left += info->len;
