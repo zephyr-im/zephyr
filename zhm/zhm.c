@@ -95,7 +95,7 @@ char *argv[];
      }
 
      /* Override server argument? */
-     if (optind <= argc) {
+     if (optind < argc) {
 	  (void)strcpy(prim_serv, argv[optind]);
 	  if ((hp = gethostbyname(prim_serv)) == NULL) {
 	       printf("Unknown server name: %s\n", prim_serv);
