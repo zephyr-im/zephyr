@@ -328,16 +328,18 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
     sscanf(geometry, "%c%[0123456789c]%c%[0123456789c]", &xfrom, xpos,
 	   &yfrom, ypos);
 
-    if (xpos[0]=='c')
+    if (xpos[0]=='c') {
       gram_xalign = 0;
-    else
+      gram_xpos = 0;
+    } else
       gram_xpos = atoi(xpos);
     if (xfrom=='-')
       gram_xalign *= -1;
 
-    if (ypos[0]=='c')
+    if (ypos[0]=='c') {
       gram_yalign = 0;
-    else
+      gram_ypos = 0;
+    } else
       gram_ypos = atoi(ypos);
     if (yfrom=='-')
       gram_yalign *= -1;
