@@ -331,8 +331,6 @@ char *class;
 	return(NULLZACLT);
 }
 
-#ifdef notdef
-/* currently not used */
 /*
  * restrict class by associating it with the acl structure acl.
  * return ZERR_NONE if no error, or ZSRV_NOCLASS if there is no such
@@ -361,7 +359,6 @@ ZAcl_t *acl;
 	/* fell off the end, no match */
 	return(ZSRV_NOCLASS);
 }
-#endif notdef
 
 /*
  * restrict class by registering it and  associating it with the acl
@@ -417,17 +414,16 @@ static unsigned int
 hash(string)
 char *string;
 {
-	register unsigned int hval = 0;
+	register int hval = 0;
 	register unsigned char *cp = (unsigned char *) string;
 
 	while (*cp) {
-	    if (isupper(*cp)) {
-		hval = (hval + (tolower(*cp)) * HASHMUL) % HASHSIZE;
-		cp++;
-	    } else
-		hval = (hval + (*cp++) * HASHMUL) % HASHSIZE;
+	    hval *= HASHMUL;
+	    hval += (isascii(*cp) && isupper(*cp)) ? tolower(*cp) : *cp;
+	    hval %= HASHSIZE;
+	    cp++;
 	}
-	return(hval);
+	return hval;
 }
 
 /* set up the class.instance in the class_buf, and return its hash val */
