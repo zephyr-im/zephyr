@@ -1,0 +1,69 @@
+	command_table	zctl_cmds;
+
+	request		set_file, "Set default subscriptions file.",
+			file;
+
+	request		cancel_subs, "Cancel all subscriptions.",
+			cancel;
+
+	request		load_subs, "Subscribe to a subscriptions file.",
+			load, ld;
+
+	request		load_subs, "Unsubscribe to a subscriptions file.",
+			unload, unld;
+
+	request		load_subs, "List a subscriptions file.",
+			list, ls;
+
+	request		subscribe, "Subscribe to a class/class instance.",
+			subscribe, sub;
+
+	request		subscribe, "Unsubscribe to a class/class instance.",
+			unsubscribe, unsub;
+
+	request		sub_file, "Subscribe and add to subscriptions file.",
+			add;
+
+	request		sub_file, "Unsubscribe and delete from subscriptions file.",
+			delete, del, dl;
+
+	request		current, "Retrieve current subscriptions.",
+			retrieve, ret;
+
+	request		current, "Save current subscriptions.",
+			save;
+
+	request		show_var, "Show a variable's value.",
+			show;
+
+	request		set_var, "Set a variable's value.",
+			set;
+
+	request		unset_var, "Delete a variable's value.",
+			unset;
+
+	request		wgc_control, "Get the WindowGram to reread it's description file.",
+			wg_read;
+
+	request		wgc_control, "Tell the WindowGram not to react to incoming notices.",
+			wg_shutdown;
+
+	request		wgc_control, "Tell the WindowGram to react to incoming notices.",
+			wg_startup;
+
+	request		hm_control, "Tell the server to flush information about this host.",
+			hm_flush;
+
+	request		hm_control, "Tell the HostManager to find a new server.",
+			new_server;
+
+	request		flush_locations, "Flush all current location information.",
+			flush_locs;
+
+	request		ss_list_requests, "List available commands.",
+			list_requests, lr, "?";
+
+	request		ss_quit, "Quit.",
+			quit, exit, q;
+
+	end;
