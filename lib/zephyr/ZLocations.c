@@ -30,12 +30,16 @@ Code_t ZInitLocationInfo(hostname, tty)
     char *tty;
 {
     char *ttyp, *p;
+    struct hostent *hent;
 
     if (hostname) {
 	strcpy(host, hostname);
     } else {
 	if (gethostname(host, MAXHOSTNAMELEN) < 0)
 	    return (errno);
+	hent = gethostbyname(host);
+	if (hent)
+	   (void) strcpy(host, hent->h_name);
     }
     if (tty) {
 	strcpy(mytty, tty);
