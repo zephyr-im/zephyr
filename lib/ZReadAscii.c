@@ -25,7 +25,7 @@ int ZReadAscii(ptr,len,field,num)
 	int i;
 	char bfr[3];
 
-	for (i=outlen=0;i<num;i++) {
+	for (i=0;i<num;i++) {
 		if (*ptr == ' ') {
 			ptr++;
 			if (--len < 1)
