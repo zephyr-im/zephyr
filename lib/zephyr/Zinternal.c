@@ -36,7 +36,9 @@ int __Q_Size = 0;
 struct _Z_InputQ *__Q_Head = 0, *__Q_Tail = 0;
 struct sockaddr_in __HM_addr;
 int __HM_set = 0;
+#ifdef KERBEROS
 C_Block __Zephyr_session;
+#endif KERBEROS
 int __Zephyr_server = 0;
 char __Zephyr_realm[REALM_SZ];
 ZLocations_t *__locate_list = 0;
