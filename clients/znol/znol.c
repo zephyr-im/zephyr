@@ -36,7 +36,7 @@ main(argc,argv)
 	char *comment_ptr;
 	int onoff = ON,quiet = 0,justlist = 0,useronly = 0, filenamed = 0;
 	int retval,arg,ind,one,numlocs,i;
-	short wgport;
+	int wgport;
 
 	if ((retval = ZInitialize()) != ZERR_NONE) {
 		com_err(argv[0],retval,"initializing");
