@@ -7,7 +7,7 @@
 .\" specifies the terms and conditions for redistribution.
 .\"
 .\"
-.TH ZWRITE 1 "July 1, 1988" "MIT Project Athena"
+.TH ZWRITE 1 "November 22, 1988" "MIT Project Athena"
 .ds ]W MIT Project Athena
 .SH NAME
 zwrite \- write to another user via Zephyr
@@ -30,6 +30,8 @@ zwrite \- write to another user via Zephyr
 ] [
 .BI -n
 ] [
+.BI -s
+signature ] [
 .BI -c
 class ] [
 .BI -i
@@ -111,6 +113,14 @@ When the
 .B \-m
 option is used, no PING is sent.
 .TP
+.B \-s \fIsignature\fR
+sets the signature to be included in the message.  This overrides any
+setting of the Zephyr variable \fIzwrite-signature\fR.
+\fIsignature\fR must
+be a single argument, hence when using a shell it should be quoted with
+double quotes.  A \fIsignature\fR argument of "" has the same effect as
+leaving \fIzwrite-signature\fR unset (see below).
+.TP
 .B \-c \fIclass\fR
 Allows a user to specify a different class for the message.  This allows
 a message to be sent to a large group of people with some degree of
@@ -167,7 +177,9 @@ variables \fIzwrite-class\fR and \fIzwrite-inst\fR, respectively.
 Command-line options override the defaults.
 .PP
 If the Zephyr variable \fIzwrite-signature\fR is set, its contents are used
-to augment the user's username in the message. 
+to augment the user's username in the message, unless the
+.B -s
+option is used.
 .SH BUGS
 Tab expansion should really be done by the receiver of the message.
 .br
