@@ -20,6 +20,9 @@ static char rcsid_ZRetrieveSubscriptions_c[] = "$Header$";
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
+#ifdef _AIX
+#include <sys/select.h>
+#endif
 
 Code_t ZRetrieveSubscriptions(port,nsubs)
 	u_short port;
