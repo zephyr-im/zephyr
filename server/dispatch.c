@@ -16,7 +16,7 @@
 #ifndef lint
 #ifndef SABER
 static const char rcsid_dispatch_c[] =
-    "$Id$";
+    "$Zephyr: dispatch.C,v 1.36 91/03/08 13:07:11 raeburn Exp $";
 #endif
 #endif
 
@@ -360,8 +360,7 @@ sendit(ZNotice_t *notice, int auth, struct sockaddr_in *who)
 		}
 	    }
 	}
-	if (bcmp(&notice->z_sender_addr.s_addr, &who->sin_addr.s_addr,
-		 sizeof(notice->z_sender_addr.s_addr))) {
+	if (notice->z_sender_addr.s_addr != who->sin_addr.s_addr) {
 	    /* someone is playing games... */
 	    /* inet_ntoa returns pointer to static area */
 	    /* max size is 255.255.255.255 */
