@@ -55,30 +55,11 @@ dnl Command-line option to disable Hesiod support
 AC_ARG_WITH(hesiod,
 	    [  --with-hesiod=PREFIX    Compile with Hesiod support],
 	    [hesiod="$withval"], [hesiod=${hesiod-no}])
-if test "$hesiod" != "no"; then
-	if test "$hesiod" != "yes"; then
-		CPPFLAGS="${CPPFLAGS} -I${hesiod}/include"
-		LDFLAGS="${LDFLAGS} -L${hesiod}/lib"
-	fi
-	AC_DEFINE(ZEPHYR_USES_HESIOD)
-	INSTALLED_LIBS="${INSTALLED_LIBS} -lhesiod"
-fi
 
 dnl Command-line option to disable Kerberos support
 AC_ARG_WITH(krb4,
-	    [  --with-krb4=PREFIX      Compile with Kerberos support],
+	    [  --with-krb4=PREFIX      Compile with Kerberos 4 support],
 	    [kerberos="$withval"], [kerberos=${kerberos-no}])
-if test "$kerberos" != "no"; then
-	if test "$kerberos" != "yes"; then
-		CPPFLAGS="${CPPFLAGS} -I${kerberos}/include"
-		LDFLAGS="${LDFLAGS} -L${kerberos}/lib"
-	fi
-	AC_DEFINE(ZEPHYR_USES_KERBEROS)
-	INSTALLED_LIBS="${INSTALLED_LIBS} -lkrb -ldes"
-else
-	AC_WARN(compiling without Kerberos support; Zephyr will be
-insecure.)
-fi
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -137,12 +118,6 @@ AC_MSG_RESULT(${int32})
 AC_CHECK_LIB(w, wslen)
 AC_CHECK_LIB(dl, dlopen)
 
-# Hesiod needs -lresolv on Sun systems for res_send.  Check this before
-# -lnsl, so that most name resolution gets done by -lnsl.
-if test "$hesiod" != "no"; then
-	AC_CHECK_LIB(resolv, res_send)
-fi
-
 # If we can't find connect, try looking in -lsocket and -lnsl.  The
 # Irix 5 libc.so has connect and gethostbyname, but Irix 5 also has
 # libsocket.so which has a bad implementation of gethostbyname (it
@@ -151,18 +126,47 @@ fi
 AC_FUNC_CHECK(connect, :, [AC_CHECK_LIB(socket, socket)
 			   AC_CHECK_LIB(nsl, gethostbyname)])
 
+# Hesiod needs -lresolv on Sun systems for res_send.
+if test "$hesiod" != "no"; then
+	AC_CHECK_LIB(resolv, res_send)
+fi
+
 AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
 AC_CHECK_LIB(gen, regcmp, [RLIB=-lgen])
 AC_CHECK_LIB(src, srcsrpy, [SLIB=-lsrc; AC_DEFINE(HAVE_SRC)])
 AC_SUBST(TLIB)
 AC_SUBST(RLIB)
 AC_SUBST(SLIB)
-LIBS="${INSTALLED_LIBS} ${LIBS}"
+
+if test "$hesiod" != "no"; then
+	if test "$hesiod" != "yes"; then
+		CPPFLAGS="${CPPFLAGS} -I${hesiod}/include"
+		LDFLAGS="${LDFLAGS} -L${hesiod}/lib"
+	fi
+	AC_DEFINE(ZEPHYR_USES_HESIOD)
+	AC_CHECK_LIB(hesiod, hes_resolve,,
+		     [AC_ERROR(Hesiod library not found)])
+	LIBS="-lhesiod ${LIBS}"
+fi
+
+if test "$kerberos" != "no"; then
+	if test "$kerberos" != "yes"; then
+		CPPFLAGS="${CPPFLAGS} -I${kerberos}/include"
+		LDFLAGS="${LDFLAGS} -L${kerberos}/lib"
+	fi
+	AC_DEFINE(ZEPHYR_USES_KERBEROS)
+	AC_CHECK_LIB(krb, krb_mk_req,,
+		     [AC_ERROR(Kerberos library not found)], -ldes)
+	LIBS="-lkrb -ldes ${LIBS}"
+else
+	AC_WARN(compiling without Kerberos support; Zephyr will be insecure.)
+fi
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(putenv regcomp re_comp strchr memcpy memmove waitpid getlogin)
+ZEPHYR_FUNC_REGCOMP
+AC_CHECK_FUNCS(putenv re_comp strchr memcpy memmove waitpid getlogin)
 AC_CHECK_FUNCS(strerror random lrand48 gethostid krb_get_err_text krb_log)
 
 AC_CONFIG_HEADER(h/config.h h/zephyr/zephyr.h)

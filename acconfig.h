@@ -19,3 +19,6 @@
 /* Define to the type of the host system. */
 #define MACHINE_TYPE "unknown"
 
+/* Define if `regcomp' exists and works. */
+#undef HAVE_REGCOMP
+

@@ -29,7 +29,8 @@ configuration directory and data directory.  h/sysdep.h uses
 h/config.h to include various header files or make various external
 declarations which many programs might be interested in.  h/internal.h
 contains declarations internal to the "Zephyr system proper," which
-includes the Zephyr library, the server, and the hostmanager.
+includes the Zephyr library, the server, the hostmanager, and (for
+now) zstat.
 
 Two header files, h/zephyr/zephyr.h and lib/et/com_err.h (when
 --enable-athena is not used) are public header files; that is, they
