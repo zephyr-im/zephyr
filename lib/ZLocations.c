@@ -7,23 +7,20 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZLocations_c[] = "$Header$";
-#endif lint
+static char rcsid_ZLocations_c[] =
+    "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZLocations.c,v 1.30 90/12/20 03:04:39 raeburn Exp $";
+#endif
 
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
-
-#ifdef _AIX
-#include <sys/select.h>
-#endif
 
 #include <pwd.h>
 #include <sys/file.h>
@@ -72,10 +69,6 @@ Z_SendLocation(class, opcode, auth, format)
     char *ttyp;
     struct hostent *hent;
     short wg_port = ZGetWGPort();
-    register int i;
-    int zfd;
-    fd_set fdmask;
-    struct timeval tv, t0;
 
     (void) bzero((char *)&notice, sizeof(notice));
     notice.z_kind = ACKED;
@@ -136,35 +129,10 @@ Z_SendLocation(class, opcode, auth, format)
     if ((retval = ZSendList(&notice, bptr, 3, auth)) != ZERR_NONE)
 	return (retval);
 
-    tv.tv_sec = SRV_TIMEOUT;
-    tv.tv_usec = 0;
-    FD_ZERO (&fdmask);
-    zfd = ZGetFD();
-    gettimeofday (&t0, 0);
-    t0.tv_sec += SRV_TIMEOUT;
-    while (1) {
-	FD_SET (zfd, &fdmask);
-	i = select (zfd + 1, &fdmask, (fd_set *) 0, (fd_set *) 0, &tv);
-	if (i > 0) {
-	    retval = ZCheckIfNotice (&retnotice, (struct sockaddr_in*) 0,
-				     ZCompareUIDPred, (char *)&notice.z_uid);
-	    if (retval == ZERR_NONE)
-		break;
-	    if (retval != ZERR_NONOTICE)
-		return retval;
-	} else if (i == 0)
-	    return ETIMEDOUT;	/* timeout */
-	else if (errno != EINTR)
-	    return errno;
-	gettimeofday (&tv, 0);
-	tv.tv_usec = t0.tv_usec - tv.tv_usec;
-	if (tv.tv_usec < 0) {
-	    tv.tv_usec += 1000000;
-	    tv.tv_sec = t0.tv_sec - tv.tv_sec - 1;
-	} else {
-	    tv.tv_sec = t0.tv_sec - tv.tv_sec;
-	}
-    }
+    retval = Z_WaitForNotice (&retnotice, ZCompareUIDPred, &notice.z_uid,
+			      SRV_TIMEOUT);
+    if (retval != ZERR_NONE)
+      return retval;
 
     if (retnotice.z_kind == SERVNAK) {
 	if (!retnotice.z_message_len) {
