@@ -1,0 +1,38 @@
+/**/#	Copyright 1990 Massachusetts Institute of Technology.
+/**/#
+/**/#	For copying and distribution information, see the file
+/**/#	"mit-copyright.h". 
+/**/#
+/**/#	$Source$
+/**/#	$Author$
+/**/#	$Header$
+/**/#
+
+LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB} ${DES_LIB} $(DYN_LIB) \
+	-lXaw -lXmu -lXt -lXext -lX11
+LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB} \
+	${DES_LINTLIB} $(DYN_LINTLIB)
+
+SRCS	= interface.c resource.c destlist.c util.c bfgets.c \
+	gethomedir.c dest_window.c xzwrite.c edit_window.c zephyr.c\
+	GetString.c Popup.c yank.c menu_window.c logins.c
+
+OBJS	= interface.o resource.o destlist.o util.o bfgets.o \
+	gethomedir.o dest_window.o xzwrite.o edit_window.o zephyr.o\
+	GetString.o Popup.o yank.o menu_window.o logins.o
+
+HDRS	= GetString.h associate.h xzwrite.h xzwrite-proto.h
+
+SRCDIR= ${SRCTOP}/clients/xzwrite
+CODE= ${SRCS} ${HDRS} Imakefile xzwrite.1 XZwrite
+DEFINES=-DXZWRITE_SEARCH_PATHS=\"$(ACLDIR)\"
+
+normal_obj_rule()
+
+program(xzwrite,${OBJS},,${LIBS},${CLIENTDIR})
+
+manpage(1,xzwrite.1)
+
+install::
+	$(RM) $(ACLDIR)/XZwrite
+	$(CP) XZwrite $(ACLDIR)/XZwrite
