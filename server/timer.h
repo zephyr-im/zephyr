@@ -1,12 +1,13 @@
 /* This file is part of the Project Athena Zephyr Notification System.
  * It contains definitions used by timer.c
  *
- *	Created by:	John T. Kohl
- *	Derived from timer_manager_.h by Ken Raeburn
+ *      Created by:     John T. Kohl
+ *      Derived from timer_manager_.h by Ken Raeburn
  *
- *	$Source$
- *	$Author$
- *	$Header$
+ *      $Source$
+ *      $Author$
+ *      $Header: /mit/zephyr/src/server/RCS/timer.h,v 1.9 94/03/15 12:44:40 prob
+e Exp $
  *
  */
 
@@ -42,22 +43,14 @@ without express or implied warranty.
 #endif
 
 typedef struct _timer {
-	struct _timer 	*next;		/*  Next one to go off.. */
-	struct _timer   *prev;		/*  Previous one to go off.. */
-	/* time for timer to go off, absolute time */
-	long 	alarm_time;
-	/* procedure to call when timer goes off */
-	void 	(*func)P((void*));
-	/* argument for that procedure */
-	void *	arg;
+        int heap_pos;
+        /* time for timer to go off, absolute time */
+        long    time;
+        /* procedure to call when timer goes off */
+        void    (*func)P((void*));
+        /* argument for that procedure */
+        void *  arg;
 } *timer;
-
-#define ALARM_TIME(x) ((x)->alarm_time)
-#define ALARM_FUNC(x) ((x)->func)
-#define ALARM_NEXT(x) ((x)->next)
-#define ALARM_PREV(x) ((x)->prev)
-#define ALARM_ARG(x)  ((x)->arg)
-#define TIMER_SIZE sizeof(struct _timer)
 
 #define NOW t_local.tv_sec
 typedef void (*timer_proc) P((void *));
@@ -67,7 +60,7 @@ extern void timer_reset P((timer)), timer_process P((void));
 
 #undef P
 
-#define	timer_when(x)	ALARM_TIME(x)
+#define timer_when(x)   ALARM_TIME(x)
 
 extern struct timeval t_local;
-extern long nexttimo;			/* Unix time of next timout */
+extern long nexttimo;                   /* Unix time of next timout */
