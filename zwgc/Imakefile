@@ -18,7 +18,11 @@ LIBS2= -lc -lPW
 LIBS2 = -lgen
 #endif
 
-LIBS = $(ZLIB) $(LIB_X) $(TERMCAP) $(LIBS2)
+#ifdef __NetBSD__
+OSLIBS=-lcompat
+#endif
+
+LIBS = $(ZLIB) $(LIB_X) $(TERMCAP) $(LIBS2) $(OSLIBS)
 
 SRCS = port_dictionary.c pointer_dictionary.c ulong_dictionary.c \
 	  parser.y lexer.c node.c exec.c buffer.c main.c zephyr.c X_driver.c\
