@@ -42,7 +42,7 @@ case "$1" in
         # line, the config script should have sucked it into debconf
 	db_get zephyr-clients/servers
 
-	tmpfile=/etc/default/zephyr-clients.dpkg-new
+	tmpfile=/etc/default/zephyr-client.dpkg-new
 	if test -f /etc/default/zephyr-clients
 	then
 		grep -v ^zhm_args /etc/default/zephyr-clients > $tmpfile || true

@@ -1,7 +1,6 @@
 zephyr (2.1.20000421.SNAPSHOT-15) unstable; urgency=low
 
   * remove the /etc/defaults/zephyr-clients.dpkg-new temporary file
-  * fix similar but less nonfunctional typo to the one in -14 
 
  --
 
