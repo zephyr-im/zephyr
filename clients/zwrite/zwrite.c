@@ -14,6 +14,7 @@
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr.h>
+#include <string.h>
 
 #ifndef lint
 static char rcsid_zwrite_c[] = "$Header$";
@@ -35,11 +36,9 @@ main(argc, argv)
     int argc;
     char *argv[];
 {
-    ZNotice_t notice, retnotice;
-    char *buffer;
-    int retval, len, arg, nocheck, nchars, msgsize;
-    long ourtime;
-    char bfr[BUFSIZ], *message, *ptr, *signature;
+    ZNotice_t notice;
+    int retval, arg, nocheck, nchars, msgsize;
+    char bfr[BUFSIZ], *message, *signature;
     char classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ];
 	
     whoami = argv[0];
@@ -52,26 +51,26 @@ main(argc, argv)
     if (argc < 2)
 	usage(whoami);
 
-    bzero(&notice, sizeof(ZNotice_t));
+    bzero((char *) &notice, sizeof(ZNotice_t));
 
     auth = ZAUTH;
     verbose = quiet = msgarg = nrecips = nocheck = 0;
 
     if (class = ZGetVariable("zwrite-class")) {
-	strcpy(classbfr, class);
+	(void) strcpy(classbfr, class);
 	class = classbfr;
     }
     else
 	class = DEFAULT_CLASS;
     if (inst = ZGetVariable("zwrite-inst")) {
-	strcpy(instbfr, inst);
+	(void) strcpy(instbfr, inst);
 	inst = instbfr;
     }
     else
 	inst = DEFAULT_INSTANCE;
     signature = ZGetVariable("zwrite-signature");
     if (signature) {
-	strcpy(sigbfr, signature);
+	(void) strcpy(sigbfr, signature);
 	signature = sigbfr;
     } 
 	
@@ -154,19 +153,21 @@ main(argc, argv)
     message = NULL;
     msgsize = 0;
     if (signature) {
-	message = malloc(strlen(signature)+1);
-	strcpy(message, signature);
+	message = malloc((unsigned)(strlen(signature)+1));
+	(void) strcpy(message, signature);
 	msgsize = strlen(message)+1;
     }
 	
     if (msgarg) {
 	for (arg=msgarg;arg<argc;arg++) {
 	    if (message)
-		    message = realloc(message, msgsize+strlen(argv[arg])+
-				      (arg == argc-1)?2:1);
+		    message = realloc(message,
+				      (unsigned) (msgsize+strlen(argv[arg])+
+				      (arg == argc-1)?2:1));
 	    else
-		    message = malloc(strlen(argv[arg])+ ((arg == argc-1)?2:1));
-	    strcpy(message+msgsize, argv[arg]);
+		    message = malloc((unsigned)(strlen(argv[arg])+
+						((arg == argc-1)?2:1)));
+	    (void) strcpy(message+msgsize, argv[arg]);
 	    msgsize += strlen(argv[arg]);
 	    if (arg != argc-1) {
 		message[msgsize] = ' ';
@@ -186,14 +187,14 @@ main(argc, argv)
 		    (bfr[1] == '\n' || bfr[1] == '\0'))
 		    break;
 		if (message)
-			message = realloc(message, msgsize+
-					  strlen(bfr));
+			message = realloc(message,
+					  (unsigned)(msgsize+strlen(bfr)));
 		else
-			message = malloc(msgsize+strlen(bfr));
-		strcpy(message+msgsize, bfr);
+			message = malloc((unsigned)(msgsize+strlen(bfr)));
+		(void) strcpy(message+msgsize, bfr);
 		msgsize += strlen(bfr);
 	    }
-	    message = realloc(message, msgsize+1);
+	    message = realloc(message, (unsigned)(msgsize+1));
 	    message[msgsize] = '\0';
 	}
 	else {	/* Use read so you can send binary messages... */
@@ -202,7 +203,7 @@ main(argc, argv)
 		    fprintf(stderr, "Read error from stdin!  Can't continue!\n");
 		    exit(1);
 		}
-		message = realloc(message, msgsize+nchars);
+		message = realloc(message, (unsigned)(msgsize+nchars));
 		bcopy(bfr, message+msgsize, nchars);
 		msgsize += nchars;
 	    }
@@ -223,7 +224,6 @@ send_off(notice, real)
 {
     int i, success, retval;
     char bfr[BUFSIZ];
-    char *buffer;
     ZNotice_t retnotice;
 
     success = 0;
@@ -236,17 +236,17 @@ send_off(notice, real)
 		   class, inst, 
 		   nrecips?notice->z_recipient:"everyone");
 	if ((retval = ZSendNotice(notice, real?auth:ZNOAUTH)) != ZERR_NONE) {
-	    sprintf(bfr, "while sending notice to %s", 
+	    (void) sprintf(bfr, "while sending notice to %s", 
 		    nrecips?notice->z_recipient:inst);
 	    com_err(whoami, retval, bfr);
 	    continue;
 	}
-	if ((retval = ZIfNotice(&retnotice, 
-				0, ZCompareUIDPred, 
+	if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
+				ZCompareUIDPred, 
 				(char *)&notice->z_uid)) !=
 	    ZERR_NONE) {
 	    ZFreeNotice(&retnotice);
-	    sprintf(bfr, "while waiting for acknowledgement for %s", 
+	    (void) sprintf(bfr, "while waiting for acknowledgement for %s", 
 		    nrecips?notice->z_recipient:inst);
 	    com_err(whoami, retval, bfr);
 	    continue;
