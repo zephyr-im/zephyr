@@ -37,7 +37,7 @@ char *malloc(), *realloc();
 # endif
 char *getenv(), *strerror(), *ctime(), *strcpy();
 time_t time();
-INT_32_TYPE random();
+ZEPHYR_INT32 random();
 #endif
 
 #ifndef HAVE_RANDOM
@@ -135,7 +135,7 @@ char *strchr(), *strrchr();
 uid_t getuid();
 char *ttyname();
 #ifdef HAVE_GETHOSTID
-INT_32_TYPE gethostid();
+ZEPHYR_INT32 gethostid();
 #endif
 #endif
 
