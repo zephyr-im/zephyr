@@ -1052,6 +1052,7 @@ struct sockaddr_in *who;
 {
 	char **answer;
 	int found;
+	Code_t retval;
 
 #if defined(NEW_COMPAT) || defined(OLD_COMPAT)
 	if (!strcmp(notice->z_version, NEW_OLD_ZEPHYR_VERSION) ||
@@ -1150,17 +1151,17 @@ register int *found;
 
 #ifdef DEBUG
 	if (zdebug) {
-		for (i = 0; i < found ; i++)
+		for (i = 0; i < *found ; i++)
 			zdbug((LOG_DEBUG,"found %s", matches[i]->zlt_user));
 	}
 #endif DEBUG
 
 	/* coalesce the location information into a list of char *'s */
-	if ((answer = (char **) xmalloc(found * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
+	if ((answer = (char **)xmalloc((*found) * NUM_FIELDS * sizeof(char *))) == (char **) 0) {
 		syslog(LOG_ERR, "zloc no mem(answer)");
-		found = 0;
+		*found = 0;
 	} else
-		for (i = 0; i < found ; i++) {
+		for (i = 0; i < *found ; i++) {
 			answer[i*NUM_FIELDS] = matches[i]->zlt_machine;
 			answer[i*NUM_FIELDS + 1] = matches[i]->zlt_time;
 			answer[i*NUM_FIELDS + 2] = matches[i]->zlt_tty;
