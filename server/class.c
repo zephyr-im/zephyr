@@ -15,7 +15,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_class_c[] = "$Header$";
+static char rcsid_class_c[] = "$Id$";
 #endif SABER
 #endif lint
 
@@ -128,7 +128,7 @@ ZSubscr_t *subs;
 	} else {
 		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
 			/* walk down the list, looking for a match */
-			if (!strcmp(ptr2->zct_classname, class_buf))
+			if (!strcasecmp(ptr2->zct_classname, class_buf))
 				return(insert_client(ptr2, client));
 
 		/* fell off the end, no match */
@@ -157,7 +157,7 @@ ZSubscr_t *subs;
 	
 	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
 		/* walk down the list, looking for a match */
-		if (!strcmp(ptr2->zct_classname, class_buf)) {
+		if (!strcasecmp(ptr2->zct_classname, class_buf)) {
 			if ((retval = remove_client(ptr2, client)) == EMPTY_CLASS) {
 				zdbug((LOG_DEBUG,"empty class"));
 				/* Don't free up restricted classes. */
@@ -199,7 +199,7 @@ ZSubscr_t *subs;
 		/* go search the list for the class */
 		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
 			/* walk down the list, looking for a match */
-			if (!strcmp(ptr2->zct_classname, class_buf)) {
+			if (!strcasecmp(ptr2->zct_classname, class_buf)) {
 				list = ptr2->zct_clientlist;
 				break;
 			}
@@ -212,7 +212,7 @@ ZSubscr_t *subs;
 		/* go search the list for the class */
 		for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw) {
 			/* walk down the list, looking for a match */
-			if (!strcmp(ptr2->zct_classname, class_buf)) {
+			if (!strcasecmp(ptr2->zct_classname, class_buf)) {
 				wc_list = ptr2->zct_clientlist;
 				break;
 			}
@@ -274,35 +274,35 @@ int
 class_is_control(notice)
 ZNotice_t *notice;
 {
-	return(!strcmp(notice->z_class, ZEPHYR_CTL_CLASS));
+	return(!strcasecmp(notice->z_class, ZEPHYR_CTL_CLASS));
 }
 
 int
 class_is_admin(notice)
 ZNotice_t *notice;
 {
-	return(!strcmp(notice->z_class, ZEPHYR_ADMIN_CLASS));
+	return(!strcasecmp(notice->z_class, ZEPHYR_ADMIN_CLASS));
 }
 
 int
 class_is_hm(notice)
 ZNotice_t *notice;
 {
-	return(!strcmp(notice->z_class, HM_CTL_CLASS));
+	return(!strcasecmp(notice->z_class, HM_CTL_CLASS));
 }
 
 int
 class_is_ulogin(notice)
 ZNotice_t *notice;
 {
-	return(!strcmp(notice->z_class, LOGIN_CLASS));
+	return(!strcasecmp(notice->z_class, LOGIN_CLASS));
 }
 
 int
 class_is_ulocate(notice)
 ZNotice_t *notice;
 {
-	return(!strcmp(notice->z_class, LOCATE_CLASS));
+	return(!strcasecmp(notice->z_class, LOCATE_CLASS));
 }
 
 /*
@@ -322,7 +322,7 @@ char *class;
 
 	/* walk down the list, looking for a match */
 	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
-		if (!strcmp(ptr2->zct_classname, class))
+		if (!strcasecmp(ptr2->zct_classname, class))
 			return(ptr2->zct_acl);
 
 	/* fell off the end, no match ==> not restricted */
@@ -349,7 +349,7 @@ ZAcl_t *acl;
 		return(ZSRV_NOCLASS);
 	for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
 		/* walk down the list, looking for a match */
-		if (!strcmp(ptr2->zct_classname, class)) {
+		if (!strcasecmp(ptr2->zct_classname, class)) {
 			if (ptr2->zct_acl)
 				return(ZSRV_CLASSRESTRICTED);
 			ptr2->zct_acl = acl;
@@ -397,7 +397,7 @@ ZAcl_t *acl;
 	} else {
 	    for (ptr2 = ptr->q_forw; ptr2 != ptr; ptr2 = ptr2->q_forw)
 		/* walk down the list, looking for a match */
-		if (!strcmp(ptr2->zct_classname, class))
+		if (!strcasecmp(ptr2->zct_classname, class))
 		    return(ZSRV_CLASSXISTS);
 	    if (!(ptr2 = class_alloc(class)))
 		return(ENOMEM);
@@ -418,8 +418,13 @@ char *string;
 	register unsigned int hval = 0;
 	register unsigned char *cp = (unsigned char *) string;
 
-	while (*cp)
+	while (*cp) {
+	    if (isupper(*cp)) {
+		hval = (hval + (tolower(*cp)) * HASHMUL) % HASHSIZE;
+		cp++;
+	    } else
 		hval = (hval + (*cp++) * HASHMUL) % HASHSIZE;
+	}
 	return(hval);
 }
 
