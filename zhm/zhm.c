@@ -3,8 +3,7 @@
  *
  *      Created by:     David C. Jedlinsky
  *
- *      $Source$
- *      $Author$
+ *      $Id$
  *
  *      Copyright (c) 1987,1991 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file

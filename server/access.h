@@ -6,8 +6,6 @@
  *
  * Created by Ken Raeburn.
  *
- * $Source$
- * $Author$
  * $Id$
  *
  * Copyright (c) 1990 by the Massachusetts Institute of Technology.

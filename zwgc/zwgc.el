@@ -2,8 +2,7 @@
 ;
 ; This file is part of the Project Athena Zephyr Notification System.
 ; Created by: Mark W. Eichin <eichin@athena.mit.edu>
-; $Source$
-; $Author$
+; $Id$
 ; Copyright (c) 1988 by the Massachusetts Institute of Technology.
 ; For copying and distribution information, see the file
 ; "mit-copyright.h". 

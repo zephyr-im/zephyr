@@ -1,6 +1,4 @@
-#	$Source$
-#	$Author$
-#	$Header$
+#	$Id$
 #
 	command_table	zctl_cmds;
 

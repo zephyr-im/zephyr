@@ -8,8 +8,7 @@
  *	"mit-copyright.h". 
  */
 /*
- *	$Source$
- *	$Header$
+ *	$Id$
  */
 
 #include "zserver.h"

@@ -1,6 +1,5 @@
 /*
- * $Source$
- * $Author$
+ * $Id$
  *
  * Copyright 1985, 1986, 1987, 1988, 1990, 1991 by the Massachusetts
  * Institute of Technology.

@@ -4,8 +4,7 @@
  *
  *	Created by:	<Joe Random Hacker>
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *
  *	Copyright (c) 1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
@@ -15,7 +14,7 @@
 #include "mit-copyright.h"
 
 #ifndef lint
-static char rcsid_ZWaitForNotice_c[] = "$Zephyr$";
+static char rcsid_ZWaitForNotice_c[] = "$Id$";
 #endif
 
 #include <internal.h>

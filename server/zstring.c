@@ -3,8 +3,7 @@
  *
  *	Created by:	Lucien W. Van Elsen
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *
  *	Copyright (c) 1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file

@@ -3,9 +3,7 @@
  *
  *	Created by:	John T. Kohl
  *
- *	$Source$
  *	$Id$
- *	$Author$
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file

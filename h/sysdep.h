@@ -3,8 +3,7 @@
  *
  *	Created by:	Greg Hudson
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *	$Zephyr: /mit/zephyr/src/include/zephyr/RCS/zephyr_conf.h,v 1.8 90/12/21 17:40:40 raeburn Exp $
  *
  *	Copyright (c) 1988,1991 by the Massachusetts Institute of Technology.

@@ -3,15 +3,13 @@
  *
  *	Created by:	Robert French
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of
  *	Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
-/* $Header$ */
 
 #include <internal.h>
 #include <arpa/inet.h>
