@@ -113,7 +113,7 @@ char *argv[];
 		break;
 	      case SIGHUP:
 		sig_type = 0;
-		new_server(NULL);
+		send_flush_notice(HM_FLUSH);
 		break;
 	      case SIGTERM:
 		sig_type = 0;
@@ -149,15 +149,17 @@ char *argv[];
 		      DPR2("\tz_sender: %s\n", notice.z_sender);
 		      DPR2("\tz_recip: %s\n", notice.z_recipient);
 		      DPR2("\tz_def_format: %s\n", notice.z_default_format);
-		      if ((notice.z_kind == SERVACK) ||
-			  (notice.z_kind == SERVNAK) ||
-			  (notice.z_kind == HMCTL)) {
+		      if ((bcmp(loopback, &from.sin_addr, 4) != 0) &&
+			  ((notice.z_kind == SERVACK) ||
+			   (notice.z_kind == SERVNAK) ||
+			   (notice.z_kind == HMCTL))) {
 			    server_manager(&notice);
 		      } else {
 			    if ((bcmp(loopback, &from.sin_addr, 4) == 0) &&
 				((notice.z_kind == UNSAFE) ||
 				 (notice.z_kind == UNACKED) ||
-				 (notice.z_kind == ACKED))) {
+				 (notice.z_kind == ACKED) ||
+				 (notice.z_kind == HMCTL))) {
 				  /* Client program... */
 				  transmission_tower(&notice, packet, pak_len);
 				  DPR2 ("Pending = %d\n", ZPending());
@@ -531,26 +533,34 @@ transmission_tower(notice, packet, pak_len)
       int tleft;
 
       nclt++;
-      if (notice->z_kind != UNSAFE) {
-	    gack = *notice;
-	    gack.z_kind = HMACK;
-	    gack.z_message_len = 0;
-	    gsin = cli_sin;
-	    gsin.sin_port = from.sin_port;
-	    if (gack.z_port == 0)
-	      gack.z_port = from.sin_port;
-	    DPR2 ("Client Port = %u\n", ntohs(gack.z_port));
-	    notice->z_port = gack.z_port;
-	    if ((ret = ZSetDestAddr(&gsin)) != ZERR_NONE) {
-		  Zperr(ret);
-		  com_err("hm", ret, "setting destination");
-	    }
-	    /* Bounce ACK to library */
-	    if ((ret = ZSendRawNotice(&gack)) != ZERR_NONE) {
-		  Zperr(ret);
-		  com_err("hm", ret, "sending raw notice");
-	    }
-      }
+      if (notice->z_kind == HMCTL) {
+	    if (!strcmp(notice->z_opcode, CLIENT_FLUSH))
+	      send_flush_notice(HM_FLUSH);
+	    else if (!strcmp(notice->z_opcode, CLIENT_NEW_SERVER))
+	      new_server(NULL);
+	    else
+	      syslog (LOG_INFO, "Bad control notice from client.");
+      } else
+	if (notice->z_kind != UNSAFE) {
+	      gack = *notice;
+	      gack.z_kind = HMACK;
+	      gack.z_message_len = 0;
+	      gsin = cli_sin;
+	      gsin.sin_port = from.sin_port;
+	      if (gack.z_port == 0)
+		gack.z_port = from.sin_port;
+	      DPR2 ("Client Port = %u\n", ntohs(gack.z_port));
+	      notice->z_port = gack.z_port;
+	      if ((ret = ZSetDestAddr(&gsin)) != ZERR_NONE) {
+		    Zperr(ret);
+		    com_err("hm", ret, "setting destination");
+	      }
+	      /* Bounce ACK to library */
+	      if ((ret = ZSendRawNotice(&gack)) != ZERR_NONE) {
+		    Zperr(ret);
+		    com_err("hm", ret, "sending raw notice");
+	      }
+	}
       if (!no_server) {
 	    DPR2 ("Server Port = %u\n", ntohs(serv_sin.sin_port));
 	    if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
