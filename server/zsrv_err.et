@@ -1,0 +1,22 @@
+#	$Source$
+#	$Author$
+#	$Header$
+	et	zsrv
+
+ec ZSRV_BADASSOC,
+	"Client not associated with class"
+ec ZSRV_NOCLT,
+	"No such client"
+ec ZSRV_NOSUB,
+	"No such subscription"
+ec ZSRV_NOCLASS,
+	"Class unkown"
+ec ZSRV_CLASSXISTS,
+	"Class already registered"
+ec ZSRV_HNOTFOUND,
+	"Host manager unknown"
+ec ZSRV_WRONGSRV,
+	"Host not on this server"
+ec ZSRV_RCSID,
+	"$Header$"
+	end
