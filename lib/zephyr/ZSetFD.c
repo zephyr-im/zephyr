@@ -22,6 +22,7 @@ Code_t ZSetFD(port)
 	ZClosePort();
 
 	__Zephyr_fd = port;
-
+	__Zephyr_open = 0;
+	
 	return (ZERR_NONE);
 }
