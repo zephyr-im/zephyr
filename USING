@@ -1,6 +1,7 @@
-This file explains how to use an existing Zephyr service.  To learn
-how to set up a Zephyr service, read the file OPERATING.  To learn how
-to build and install Zephyr, read the file INSTALL.
+This file explains how to use an existing Zephyr service once you've
+built and installed the Zephyr 2.0 distribution.  To learn how to
+build and install Zephyr, read the file INSTALL.  To learn how to set
+up Zephyr service at a site, read the file OPERATING.
 
 First, before you can do anything else, your client machine must be
 running zhm from the local system binary directory (/etc/athena/zephyr
@@ -12,14 +13,18 @@ you may want to check if the machine is configured to start up zhm
 automatically at boot time.
 
 Once you have zhm running, you can start receiving zephyrgrams by
-running the command "zwgc", which stands for "Zephyr WindowGram
-Client".  If you built Zephyr with X support and are using an X
-display, you will receive messages as windows on your screen (click on
-them to get rid of them); otherwise, you will receive messages in your
-terminal as text.  Read the man page on zwgc to find out how to
-configure it using the .zwgc.desc file in your home directory.
+running the command:
 
-You can send messages to another user with
+	zwgc
+
+"zwgc" stands for "Zephyr WindowGram Client".  If you built Zephyr
+with X support and are using an X display, you will receive messages
+as windows on your screen (click on them to get rid of them);
+otherwise, you will receive messages in your terminal as text.  Read
+the man page on zwgc to find out how to configure it using the
+.zwgc.desc file in your home directory.
+
+You can send messages to another user with:
 
 	zwrite username
 
