@@ -46,7 +46,7 @@ static void setup_signals(), detach();
 int zwgc_debug = 0;
 #endif
 
-static char *zwgc_version_string = "0.4.6";
+static char *zwgc_version_string = "0.4.7";
 
 /*
  * description_filename_override - <<<>>>
@@ -386,6 +386,7 @@ static void setup_signals(dofork)
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGINT, &sa, (struct sigaction *)0);
 	sigaction(SIGTSTP, &sa, (struct sigaction *)0);
+	sigaction(SIGTTOU, &sa, (struct sigaction *)0);
 	sigaction(SIGQUIT, &sa, (struct sigaction *)0);
     } else {
 	/* clean up on SIGINT; exiting on logout is the user's problem, now. */
@@ -408,6 +409,7 @@ static void setup_signals(dofork)
 	/* Ignore keyboard signals if forking.  Bad things will happen. */
 	signal(SIGINT, SIG_IGN);
 	signal(SIGTSTP, SIG_IGN);
+	signal(SIGTTOU, SIG_IGN);
 	signal(SIGQUIT, SIG_IGN);
     } else {
 	/* clean up on SIGINT; exiting on logout is the user's problem, now. */
@@ -444,4 +446,3 @@ static void detach()
       exit(0);
   }
 }	
-
