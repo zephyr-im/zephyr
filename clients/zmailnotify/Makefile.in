@@ -34,7 +34,7 @@ zmailnotify: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
 check:
 
 install: zmailnotify
-	${INSTALL} -m 755 -s zmailnotify ${DESTDIR}${sbindir}
+	${INSTALL} -m 755 -s zmailnotify ${DESTDIR}${bindir}
 	${INSTALL} -m 644 ${srcdir}/zmailnotify.1 ${DESTDIR}${mandir}/man1
 
 clean:
