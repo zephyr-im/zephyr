@@ -11,35 +11,11 @@
 #define no_curdir_lint
 
 NEWTOP=.
-SUBDIRS = lib server zhm clients zwgc man
-
+CODE=Imakefile
 #ifdef LOCAL_LIBS
-LIBSUBDIRS = LIBSUBDIRS_DEFINED
-/**/# We need to make the libraries, which don't have Imakefiles, before
-/**/# we make the rest of the world.
-all::
-	@for d in  $(LIBSUBDIRS); \
-	do \
-		(cd $$d; echo "### Making" all "in" `pwd`;	\
-			$(MAKE) $(MFLAGS) GLOBAL_CDEFS="$(GLOBAL_CDEFS)" all ;\
-			echo "##--- Making" lint "in" `pwd`;	\
-			$(MAKE) $(MFLAGS) GLOBAL_CDEFS="$(GLOBAL_CDEFS)" lint;\
-			echo "### Done with" `pwd`);		\
-	done
-/**/# The libraries also need cleaning
-clean::
-	@for d in  $(LIBSUBDIRS); \
-	do \
-		(cd $$d; echo "### Making" clean "in" `pwd`;	\
-			$(MAKE) $(MFLAGS) clean ;	\
-			echo "### Done with" `pwd`);		\
-	done
-#else
-/* Need to make sure `all' is the first target */
-all::
-
-#endif /* LOCAL_LIBS */
-
+LOC_SUBDIRS = et ss
+#endif /*LOCAL_LIBS*/
+SUBDIRS= ${LOC_SUBDIRS} include lib clients server zhm zwgc man
 /**/# we need to remove these here; it's not appropriate to remove them
 /**/# from lib/Makefile since someone may type 'make clean' there and nuke
 /**/# them by accident.
@@ -67,12 +43,17 @@ world:
 depend::
 	(cd makedepend; make ${MFLAGS} all)
 
+clean::
+	(cd makedepend; make ${MFLAGS} clean)
+
 #ifdef LOCAL_LIBS
 /**/# We need to make ss.h so that make depend can find it.
 /**/# and to make ss.h, we need et/compile_et
 depend::
-	(cd et; make ${MFLAGS} compile_et)
-	(cd ss; make ${MFLAGS} ss.h)
+	(cd et; make ${MFLAGS} depend)
+	(cd et; make ${MFLAGS} all)
+	(cd ss; make ${MFLAGS} depend)
+	(cd ss/lib; make ${MFLAGS} ss.h)
 #endif /* LOCAL_LIBS */
 #endif
 
