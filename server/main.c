@@ -209,8 +209,10 @@ main(int argc, char **argv)
 	if (chdir("/usr/tmp") != 0)
 		syslog(LOG_ERR,"chdir failed (%m) (execution continuing)");
 
+#ifndef macII /* A/UX doesn't have setpriority */
 	if (setpriority(PRIO_PROCESS, getpid(), -10))
 		syslog(LOG_ERR,"setpriority failed (%m)");
+#endif
 #endif
 
 	FD_ZERO(&interesting);
