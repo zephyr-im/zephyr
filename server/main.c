@@ -16,10 +16,10 @@
 #ifndef lint
 #ifndef SABER
 static char rcsid_main_c[] = "$Header$";
-static char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nPortions Copyright (c) 1986 Student Information Processing Board, Massachusetts Institute of Technology\n";
-static char version[] = "Zephyr Server (Prerelease) 0.1";
 #endif SABER
 #endif lint
+static char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nPortions Copyright (c) 1986 Student Information Processing Board, Massachusetts Institute of Technology\n";
+static char version[] = "Zephyr Server (Prerelease) 0.1";
 
 /*
  * Server loop for Zephyr.
@@ -53,7 +53,6 @@ static int bye();
 #ifndef DEBUG
 static void detach();
 #endif DEBUG
-char *rindex(), *strncpy();
 
 int srv_socket;				/* dgram socket for clients
 					   and other servers */
@@ -73,14 +72,13 @@ char *programname;			/* set to the last element of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 
 ZAcl_t zctlacl = { ZEPHYR_CTL_ACL };
-#ifdef notdef
 /* These  are commented out until the ACL package does wildcarding. */
-ZAcl_t hmacl = { HM_ACL };
 ZAcl_t loginacl = { LOGIN_ACL };
 ZAcl_t locateacl = { LOCATE_ACL };
-#endif notdef
 ZAcl_t matchallacl = { MATCH_ALL_ACL };
+#ifdef DEBUG
 int zdebug = 0;
+#endif DEBUG
 
 main(argc,argv)
 int argc;
@@ -296,12 +294,8 @@ initialize()
 
 	/* restrict certain classes */
 	(void) class_setup_restricted(ZEPHYR_CTL_CLASS, &zctlacl);
-#ifdef notdef
-	/* These  are commented out until the ACL package does wildcarding. */
-	(void) class_setup_restricted(HM_CLASS, &hmacl);
 	(void) class_setup_restricted(LOGIN_CLASS, &loginacl);
 	(void) class_setup_restricted(LOCATE_CLASS, &locateacl);
-#endif notdef
 	(void) class_setup_restricted(MATCHALL_CLASS, &matchallacl);
 	
 	return(0);
@@ -464,7 +458,7 @@ detach()
 		(void) close(i);
 	}
 	i = open("/dev/tty", O_RDWR, 666);
-	(void) ioctl(i, TIOCNOTTY, 0);
+	(void) ioctl(i, TIOCNOTTY, (caddr_t) 0);
 	(void) close(i);
 
 }
