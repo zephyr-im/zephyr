@@ -18,14 +18,10 @@ static char rcsid_ZVariables_c[] = "$Header$";
 #endif
 
 #include <zephyr/mit-copyright.h>
-
 #include <zephyr/zephyr_internal.h>
 
 #include <ctype.h>
 #include <pwd.h>
-
-extern char *getenv();
-extern uid_t getuid();
 
 static int get_localvarfile();
 static char *get_varval();
