@@ -144,7 +144,7 @@ extern char *ZGetSender();
 	/* Kerberos information */
 #define SERVER_SERVICE		"zephyr"
 #define SERVER_INSTANCE		"zephyr"
-#define SERVER_SRVTAB		"/site/zephyr/srvtab"
+#define SERVER_SRVTAB		"/usr/athena/lib/zephyr/srvtab"
 
 	/* Kerberos defines for ZFormatNotice, et al. */
 extern int ZMakeAuthentication();
