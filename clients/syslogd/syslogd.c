@@ -85,9 +85,9 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #include <krb.h>
 
 #ifdef ultrix
-#define SIGTYPE void
+#define sighandler_type void
 #else
-#define SIGTYPE int
+#define sighandler_type int
 #endif
 
 #define	CTTY	"/dev/console"
@@ -268,7 +268,7 @@ main(argc, argv)
 #else
 	char line[MSG_BSIZE + 1];
 #endif /* COMPAT42 */
-	extern SIGTYPE die(), domark(), reapchild();
+	extern sighandler_type die(), domark(), reapchild();
 
 	while (--argc > 0) {
 		p = *++argv;
@@ -936,7 +936,7 @@ wallmsg(f, iov)
 	reenter = 0;
 }
 
-SIGTYPE
+sighandler_type
 reapchild()
 {
 	union wait status;
@@ -973,7 +973,7 @@ cvthname(f)
 	return (hp->h_name);
 }
 
-SIGTYPE
+sighandler_type
 domark()
 {
 	register struct filed *f;
@@ -1017,7 +1017,7 @@ logerror(type)
 	logmsg(LOG_SYSLOG|LOG_ERR, buf, LocalHostName, ADDDATE);
 }
 
-SIGTYPE
+sighandler_type
 die(sig)
 {
 	register struct filed *f;
