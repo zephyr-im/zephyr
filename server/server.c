@@ -15,7 +15,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_server_c[] = "$Header$";
+static char rcsid_server_c[] = "$Id$";
 #endif SABER
 #endif lint
 
@@ -97,6 +97,17 @@ int timo_tardy = TIMO_TARDY;
 int timo_dead = TIMO_DEAD;
 
 long srv_rexmit_secs = REXMIT_SECS;
+
+/* counters to measure old protocol use */
+#ifdef OLD_COMPAT
+int old_compat_count_uloc = 0;
+int old_compat_count_ulocate = 0;
+int old_compat_count_subscr = 0;
+#endif /* OLD_COMPAT */
+#ifdef NEW_COMPAT
+int new_compat_count_uloc = 0;
+int new_compat_count_subscr = 0;
+#endif /* NEW_COMPAT */
 
 #ifdef DEBUG
 extern int zalone;
@@ -905,8 +916,13 @@ struct sockaddr_in *who;
 	char **responses;
 	int num_resp;
 	char *vers, *pkts, *upt;
+#if defined(OLD_COMPAT) || defined(NEW_COMPAT)
+	int extrafields = 0;
+#endif /* OLD_ or NEW_COMPAT */
 #define	NUM_FIXED 3			/* 3 fixed fields, plus server info */
-
+					/* well, not really...but for
+					   backward compatibility, we gotta
+					   do it this way. */
 	(void) strcpy(buf,version);
 	(void) strcat(buf, "/");
 #ifdef vax
@@ -931,7 +947,21 @@ struct sockaddr_in *who;
 	(void) sprintf(buf, "%d seconds operational",NOW - uptime);
 	upt = strsave(buf);
 
+#ifdef OLD_COMPAT
+	if (old_compat_count_uloc) extrafields++;
+	if (old_compat_count_ulocate) extrafields++;
+	if (old_compat_count_subscr) extrafields++;
+#endif /* OLD_COMPAT */
+#ifdef NEW_COMPAT
+	if (new_compat_count_uloc) extrafields++;
+	if (new_compat_count_subscr) extrafields++;
+#endif /* NEW_COMPAT */
+#if defined(OLD_COMPAT) || defined(NEW_COMPAT)
+	responses = (char **) xmalloc((NUM_FIXED + nservers +
+				       extrafields) * sizeof(char **));
+#else
 	responses = (char **) xmalloc((NUM_FIXED + nservers)*sizeof(char **));
+#endif /* OLD_ or NEW_COMPAT */
 	responses[0] = vers;
 	responses[1] = pkts;
 	responses[2] = upt;
@@ -945,6 +975,35 @@ struct sockaddr_in *who;
 			       otherservers[i].zs_dumping ? " (DUMPING)" : "");
 		responses[num_resp++] = strsave(buf);
 	}
+#ifdef OLD_COMPAT
+	if (old_compat_count_uloc) {
+	    (void) sprintf(buf, "%d old old location requests",
+			   old_compat_count_uloc);
+	    responses[num_resp++] = strsave(buf);
+	}
+	if (old_compat_count_ulocate) {
+	    (void) sprintf(buf, "%d old old loc lookup requests",
+			   old_compat_count_ulocate);
+	    responses[num_resp++] = strsave(buf);
+	}
+	if (old_compat_count_subscr) {
+	    (void) sprintf(buf, "%d old old subscr requests",
+			   old_compat_count_subscr);
+	    responses[num_resp++] = strsave(buf);
+	}
+#endif /* OLD_COMPAT */
+#ifdef NEW_COMPAT
+	if (new_compat_count_uloc) {
+	    (void) sprintf(buf, "%d new old location requests",
+			   new_compat_count_uloc);
+	    responses[num_resp++] = strsave(buf);
+	}
+	if (new_compat_count_subscr) {
+	    (void) sprintf(buf, "%d new old subscr requests",
+			   new_compat_count_subscr);
+	    responses[num_resp++] = strsave(buf);
+	}
+#endif /* NEW_COMPAT */
 
 	send_msg_list(who, ADMIN_STATUS, responses, num_resp, 0);
 	for (i = 0; i < num_resp; i++)
