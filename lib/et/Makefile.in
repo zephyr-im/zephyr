@@ -10,6 +10,7 @@ lsbindir=@lsbindir@
 includedir=${prefix}/include
 mandir=${prefix}/man
 libdir=${exec_prefix}/lib
+bindir=${exec_prefix}/bin
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
@@ -43,6 +44,7 @@ install:
 	${INSTALL} -m 644 libcom_err.a ${DESTDIR}${libdir}
 	${INSTALL} -m 644 ${srcdir}/com_err.h ${DESTDIR}${includedir}
 	${INSTALL} -m 644 ${srcdir}/com_err.3 ${DESTDIR}${mandir}/man3
+	${INSTALL} -s -m 755 compile_et ${DESTDIR}${bindir}
 
 clean:
 	rm -f ${OBJS} libcom_err.a compile_et.o error_table.o et_lex.lex.c
