@@ -13,39 +13,39 @@ libdir=${exec_prefix}/lib
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
+top_builddir=..
 BUILDTOP=..
 VPATH=@srcdir@
 CC=@CC@
-RANLIB=@RANLIB@
+LIBTOOL=@LIBTOOL@
 
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h ${CPPFLAGS}
 
-OBJS =	dyn_append.o dyn_create.o dyn_debug.o dyn_delete.o dyn_insert.o \
-	dyn_paranoid.o dyn_put.o dyn_realloc.o dyn_size.o
+OBJS =	dyn_append.lo dyn_create.lo dyn_debug.lo dyn_delete.lo dyn_insert.lo \
+	dyn_paranoid.lo dyn_put.lo dyn_realloc.lo dyn_size.lo
 
-all: libdyn.a dyntest
+all: libzdyn.la dyntest
 
-libdyn.a: ${OBJS}
-	ar cru $@ ${OBJS}
-	${RANLIB} $@
+libzdyn.la: ${OBJS}
+	${LIBTOOL} ${CC} -all-static -version-info 1:0:0 -o libzdyn.la ${OBJS} -rpath $(libdir)
 
-dyntest: libdyn.a dyntest.o
-	${CC} ${LDFLAGS} -o $@ dyntest.o libdyn.a
+dyntest: dyntest.lo libzdyn.la 
+	${LIBTOOL} ${CC} ${LDFLAGS} -o $@ dyntest.lo libzdyn.la
 
-.c.o:
-	${CC} -c ${ALL_CFLAGS} $<
+.c.lo:
+	${LIBTOOL} ${CC} -c ${ALL_CFLAGS} $<
 
 check:
 
 install:
 
 clean:
-	rm -f ${OBJS} libdyn.a dyntest.o dyntest
+	${LIBTOOL} rm -f ${OBJS} libzdyn.la dyntest.lo dyntest
 
-${OBJS} dyntest.o: dynP.h ${top_srcdir}/h/dyn.h ${top_srcdir}/h/sysdep.h
-${OBJS} dyntest.o: ${BUILDTOP}/h/config.h
+${OBJS} dyntest.lo: dynP.h ${top_srcdir}/h/dyn.h ${top_srcdir}/h/sysdep.h
+${OBJS} dyntest.lo: ${BUILDTOP}/h/config.h
 
 .PHONY: all check install clean
-
+.SUFFIXES: .lo

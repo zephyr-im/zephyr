@@ -13,33 +13,36 @@ libdir=${exec_prefix}/lib
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
+top_builddir=..
 BUILDTOP=..
 VPATH=@srcdir@
 CC=@CC@
 INSTALL=@INSTALL@
+LIBTOOL=@LIBTOOL@
 
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h -I. ${CPPFLAGS}
 LDFLAGS=-L${BUILDTOP}/lib @LDFLAGS@
-LIBS=-lzephyr @LIBS@ -lcom_err
+LIBS=${BUILDTOP}/lib/libzephyr.la @LIBS@ -lcom_err
 
-OBJS=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \
-	dispatch.o kopt.o kstuff.o main.o server.o subscr.o timer.o uloc.o \
-	zstring.o realm.o version.o
+OBJS=	${OBJS2} version.o
+OBJS2=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \
+	dispatch.o kstuff.o main.o server.o subscr.o timer.o uloc.o \
+	zstring.o realm.o
 
 all: zephyrd
 
-zephyrd: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
-	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+zephyrd: ${OBJS} ${BUILDTOP}/lib/libzephyr.la
+	${LIBTOOL} ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 zsrv_err.c zsrv_err.h: zsrv_err.et
 	compile_et ${srcdir}/zsrv_err.et
 
 version.o: version.h
 
-version.h: always
+version.h: ${OBJS2} ${BUILDTOP}/lib/libzephyr.la
 	sh ${srcdir}/new_vers.sh
 
 .c.o:
@@ -49,13 +52,13 @@ check:
 
 # No dependency on zephyrd, to avoid rebuilding version.o.
 install:
-	${INSTALL} -m 755 -s zephyrd ${DESTDIR}${sbindir}
-	${INSTALL} -m 644 ${srcdir}/zephyrd.8 ${DESTDIR}${mandir}/man8
-	${INSTALL} -m 644 ${srcdir}/default.subscriptions \
+	${LIBTOOL} ${INSTALL} -m 755 -s zephyrd ${DESTDIR}${sbindir}
+	${LIBTOOL} ${INSTALL} -m 644 ${srcdir}/zephyrd.8 ${DESTDIR}${mandir}/man8
+	${LIBTOOL} ${INSTALL} -m 644 ${srcdir}/default.subscriptions \
 		${DESTDIR}${sysconfdir}/zephyr
 
 clean:
-	rm -f ${OBJS} zephyrd zsrv_err.[ch]
+	${LIBTOOL} rm -f ${OBJS} zephyrd zsrv_err.[ch]
 
 always:
 
