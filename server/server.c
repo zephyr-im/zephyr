@@ -76,7 +76,7 @@ static void
     hello_respond P((struct sockaddr_in *, int, int)),
     srv_responded P((struct sockaddr_in *)),
     send_msg P((struct sockaddr_in *, char *, int)),
-    send_msg_list P((struct sockaddr_in *, char *, char **, int, int)),
+    send_msg_list P((struct sockaddr_in *, char *, char **, int, int, int)),
     srv_nack_cancel P((ZNotice_t *, struct sockaddr_in *)),
     srv_nack_release P((ZServerDesc_t *)),
     srv_nack_renumber  P((int *)),
@@ -682,7 +682,7 @@ server_recover(client)
 			(void) sprintf(buf, "%d", ntohs(client->zct_sin.sin_port));
 			lyst[1] = buf;
 			send_msg_list(&server->zs_addr, ADMIN_LOST_CLT,
-				      lyst, 2, 0);
+				      lyst, 2, 0, server - otherservers);
 			return;
 		}
 	} else
@@ -1108,7 +1108,7 @@ send_stats(who)
 	}
 #endif /* NEW_COMPAT */
 
-	send_msg_list(who, ADMIN_STATUS, responses, num_resp, 0);
+	send_msg_list(who, ADMIN_STATUS, responses, num_resp, 0, -1);
 	/* Start at one; don't try to free static version string */
 	for (i = 1; i < num_resp; i++)
 	  xfree(responses[i]);
@@ -1466,15 +1466,18 @@ send_msg(who, opcode, auth)
  * send a notice with a message to who with admin class and opcode and
  * message body as specified.
  * auth is set if we want to send authenticated
+ * server_idx is -1 if we are sending to a client, or the server index
+ *  if we are sending to a server.
  */
 
 static void
-send_msg_list(who, opcode, lyst, num, auth)
+send_msg_list(who, opcode, lyst, num, auth, server_idx)
      struct sockaddr_in *who;
      char *opcode;
      char **lyst;
      int num;
      int auth;
+     int server_idx;
 {
 	ZNotice_t notice;
 	register ZNotice_t *pnotice; /* speed hack */
@@ -1529,19 +1532,22 @@ send_msg_list(who, opcode, lyst, num, auth)
 
 	nacked->na_rexmits = 0;
 	nacked->na_packet = pack;
-	nacked->na_addr = *who;
 	nacked->na_packsz = packlen;
 	nacked->na_uid = pnotice->z_uid;
 	nacked->q_forw = nacked->q_back = nacked;
 	nacked->na_abstimo = NOW + abs_timo;
 
-	/* set a timer to retransmit when done */
-	nacked->na_timer = timer_set_rel(rexmit_secs,
-					 rexmit,
-					 (void *) nacked);
-	/* chain in */
-	xinsque(nacked, nacklist);
-	return;
+	/* Set the address and chain into the appropriate queue. */
+	if (server_idx < 0) {
+	    nacked->na_addr = *who;
+	    nacked->na_timer = timer_set_rel(rexmit_secs, rexmit, nacked);
+	    xinsque(nacked, nacklist);
+	} else {
+	    nacked->na_srv_idx = server_idx;
+	    nacked->na_timer = timer_set_rel(srv_rexmit_secs, srv_rexmit,
+					     nacked);
+	    xinsque(nacked, srv_nacklist);
+	}
 }
 
 /*
@@ -1802,7 +1808,7 @@ srv_nack_renumber (new_idx)
 
     /* search the not-yet-acked list for anything destined to 'from', and
        change the index to 'to'. */
-    for (nacked = nacklist->q_forw; nacked != nacklist;) {
+    for (nacked = srv_nacklist->q_forw; nacked != srv_nacklist;) {
 	int idx = new_idx[nacked->na_srv_idx];
 	if (idx < 0) {
 	    syslog (LOG_ERR,
