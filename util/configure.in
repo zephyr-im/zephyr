@@ -1,0 +1,7 @@
+AC_INIT(configure.in)
+CONFIG_RULES
+AC_SET_BUILDTOP
+CONFIG_DIRS(et ss)
+MAKE_SUBDIRS("making",all)
+MAKE_SUBDIRS("cleaning",clean)
+V5_AC_OUTPUT_MAKEFILE
