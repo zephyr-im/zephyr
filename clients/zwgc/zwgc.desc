@@ -1,0 +1,77 @@
+case $auth
+match "yes"
+	set aval = "Authentic"
+match "no"
+	set aval = "UNAUTHENTIC"
+match "forged"
+	set aval = "UNAUTHENTIC"
+endcase
+
+case $class
+match "WG_CTL_CLASS"
+        if ($opcode == "WG_STARTUP") then
+                print "@large(Zwgc mark II version "+$version+" now running...\n)"
+                put
+	endif
+	exit
+
+match "message"
+	if (upcase($opcode) == "PING") then exit endif
+
+	case $instance
+	match "PERSONAL"
+		set type = "Personal"
+	match "URGENT"
+		set type = "Urgent"
+	default
+		set type = "Instance "+$instance
+	endcase
+
+	fields signature body
+	if ($body == "") then
+		set body = $signature
+		set signature = ""
+	endif
+	if ($signature =~ "From: .*") then
+		set dummy = lany($signature,"From: ")
+	endif
+	if ($signature =~ "\n$") then
+		set dummy = rany($signature,"\n")
+	endif
+	if ($signature == "") then
+		set ftext = "From: @bold("+protect($sender)+")"
+	else
+		set ftext = "From: @bold("+protect($signature)+" <"+
+			protect($sender)+">)"
+	endif
+
+	print "@center(@bold("+$aval+") "+$type+" message at "+$time+
+		" on "+$date+")\n"+$ftext+"\n\n"
+	print $body
+	put
+	exit
+
+match "login"
+	case $opcode
+	match "USER_LOGIN"
+		set log = "logged in"
+	match "USER_LOGOUT"
+		set log = "logged out"
+	default
+		set log = "unknown opcode"
+	endcase
+
+	fields host when tty
+	print "@center(@bold("+$sender+") "+$log+")\n"
+	print "@center(on @bold("+$host+") on "+$tty+")\n"
+	print "@center(at "+$when+")"
+	put
+	exit
+
+default
+	print "(Authentication: @bold("+$aval+"))\n"
+	print substitute($default)
+	put
+	exit
+
+endcase
