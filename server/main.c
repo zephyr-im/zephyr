@@ -17,7 +17,7 @@
 #ifndef SABER
 static char rcsid_main_c[] = "$Header$";
 static char copyright[] = "Copyright (c) 1987 Massachusetts Institute of Technology.\nPortions Copyright (c) 1986 Student Information Processing Board, Massachusetts Institute of Technology\n";
-static char version[] = "Zephyr Server (Prerelease) 0.4";
+static char version[] = "Zephyr Server (Prerelease) 0.5";
 #endif SABER
 #endif lint
 
