@@ -28,6 +28,7 @@ static char rcsid_standard_ports_c[] = "$Id$";
 #include "new_memory.h"
 #include "port.h"
 #include "variables.h"
+#include "error.h"
 
 extern string tty_filter();
 extern char *X_driver();
@@ -106,6 +107,10 @@ static struct standard_port_info {
  * 1 = not ok to use as the default output port
  * 2 = disabled
  */
+#define	DEFAULT_OK	0
+#define	DEFAULT_NOTOK	1
+#define	DISABLED	2
+
     int port_setup_status;
     int (*port_init)();
 #define  INPUT_DESC  0
@@ -116,18 +121,18 @@ static struct standard_port_info {
     char *(*function)();
     int setup_arg;
 } standard_port_info_table[] = {
-    { "X",            0, X_driver_init,   OUTPUT_PROC, X_driver,     0},
-    { "tty",          0, tty_filter_init, OUTPUT_PROC, tty_driver,   0},
-    { "plain",        0, tty_filter_init, OUTPUT_PROC, plain_driver, 0},
-    { "stdout",       0, NULL,            OUTPUT_DESC, NULL,         1},
-    { "stderr",       0, NULL,            OUTPUT_DESC, NULL,         2},
+{ "X",            DEFAULT_OK, X_driver_init,      OUTPUT_PROC, X_driver, 0},
+{ "tty",          DEFAULT_NOTOK, tty_filter_init, OUTPUT_PROC, tty_driver,  0},
+{ "plain",        DEFAULT_NOTOK, tty_filter_init, OUTPUT_PROC, plain_driver, 0},
+{ "stdout",       DEFAULT_NOTOK, NULL,            OUTPUT_DESC, NULL, 1},
+{ "stderr",       DEFAULT_NOTOK, NULL,            OUTPUT_DESC, NULL, 2},
 
-    { "stdin",        1, NULL,            INPUT_DESC,  NULL,         0},
-    { "loopback",     1, NULL,            FILTER,      noop_filter,  0},
-    { "plain_filter", 1, tty_filter_init, FILTER,      plain_filter, 0},
-    { "tty_filter",   1, tty_filter_init, FILTER,      fancy_filter, 0},
+{ "stdin",        DEFAULT_NOTOK, NULL,            INPUT_DESC,  NULL, 0},
+{ "loopback",     DEFAULT_NOTOK, NULL,            FILTER, noop_filter, 0},
+{ "plain_filter", DEFAULT_NOTOK, tty_filter_init, FILTER, plain_filter, 0},
+{ "tty_filter",   DEFAULT_NOTOK, tty_filter_init, FILTER, fancy_filter, 0},
 
-    { NULL,           2, NULL,            FILTER,      NULL,         0} };
+{ NULL,           DISABLED, NULL,            FILTER,      NULL,         0} };
 
 /*
  * <<<>>>
@@ -139,10 +144,36 @@ static struct standard_port_info *get_standard_port_info(port_name)
     struct standard_port_info *p;
 
     for (p=standard_port_info_table; p->port_name; p++)
-      if (string_Eq(p->port_name, port_name) && p->port_setup_status!=2)
+      if (string_Eq(p->port_name, port_name) && p->port_setup_status!=DISABLED)
         return(p);
 
     return(NULL);
+}
+
+/*
+ *  Internal Routine:
+ *
+ *    int boolean_value_of(string text)
+ *         Effects: If text represents yes/true/on, return 1.  If text
+ *                  representes no/false/off, return 0.  Otherwise,
+ *                  returns -1.
+ */
+
+static int boolean_value_of(text)
+     string text;
+{
+    if (!text)
+	return(-1);			/* not set */
+    if (!strcasecmp("yes", text) || !strcasecmp("y", text) ||
+        !strcasecmp("true", text) || !strcasecmp("t", text) ||
+        !strcasecmp("on", text))
+      return(1);
+    else if (!strcasecmp("no", text) || !strcasecmp("n", text) ||
+        !strcasecmp("false", text) || !strcasecmp("f", text) ||
+        !strcasecmp("off", text))
+      return(0);
+    else
+      return(-1);
 }
 
 /*
@@ -157,6 +188,7 @@ void init_standard_ports(pargc, argv)
     string first_working_port = "";
     string default_port = "";
     char **new, **current;
+    int fallback;
 
     /*
      * Process argument list handling "-disable <port>" and
@@ -168,34 +200,43 @@ void init_standard_ports(pargc, argv)
             if (!*current)
               usage();
             if (p = get_standard_port_info((string) *current))
-              p->port_setup_status = 2;
+		p->port_setup_status = DISABLED;
         } else if (string_Eq((string) *current, "-default")) {
             current++; *pargc -= 2;
             if (!*current)
               usage();
             default_port = (string) *current;
+            if (p = get_standard_port_info((string) *current))
+		p->port_setup_status = DEFAULT_OK;
         } else if (string_Eq((string) *current, "-ttymode")) {
 	    default_port = (string) "tty";
 	    (*pargc)--;
+            if (p = get_standard_port_info(default_port))
+		p->port_setup_status = DEFAULT_OK;
 	} else
           *(new++) = *current;
     }
     *new = *current;
 
+    fallback = boolean_value_of(ZGetVariable("fallback"));
     /*
      * Initialize all non-disabled ports.  If a port reports an error,
      * disable that port.  Set default_port if not already set
      * by the -default argument to the first non-disabled port.
      */
     for (p = standard_port_info_table; p->port_name; p++) {
-        if (p->port_setup_status==2)
+        if (p->port_setup_status == DISABLED)
           continue;
 
         if (p->port_init && (*(p->port_init))(p->port_name, pargc, argv)) {
-            p->port_setup_status = 2;
+            p->port_setup_status = DISABLED;
             continue;
         }
 
+	if (fallback == 1) {
+	    /* we are doing fallback,  make DEFAULT_NOTOK ports OK */
+	    p->port_setup_status = DEFAULT_OK;
+	}
         if (!*first_working_port)
           first_working_port = p->port_name;
 	switch (p->type) {
@@ -217,9 +258,24 @@ void init_standard_ports(pargc, argv)
 	}
     }
 
-    if (!get_standard_port_info(default_port))
-      default_port = first_working_port;
-
-    var_set_variable("output_driver", default_port);
+    if (!default_port[0]) {
+	/* no default port has been set */
+	for (p = get_standard_port_info(first_working_port); p->port_name; p++)
+	    if ((p->port_setup_status == DEFAULT_OK))
+		break;
+	if (p->port_name)
+	    var_set_variable("output_driver", p->port_name);
+	else { /* no suitable default has been found */
+	    if (fallback == -1)		/* complain, since indeterminate */
+		ERROR(
+"\7\7\7There is no X display available, so zwgc cannot run.\n\
+THIS MEANS THAT YOU WILL NOT RECEIVE ANY ZEPHYR MESSAGES.\n\
+If you wish to receive Zephyr messages, you should start zwgc\n\
+with the -ttymode option (type '/usr/etc/zwgc -ttymode').\n\
+Read the zwgc(1) manual page for details on the fallback variable.\n\n");
+	    exit(1);
+	}
+    } else
+	var_set_variable("output_driver", default_port);
 
 }
