@@ -101,7 +101,7 @@ char *service, *host;			/* service name, foreign host */
 
     rem=KSUCCESS;
 
-    rem = get_krbrlm(krb_realm,1);
+    rem = krb_get_lrealm(krb_realm,1);
     if (rem != KSUCCESS)
       return(rem);
 
