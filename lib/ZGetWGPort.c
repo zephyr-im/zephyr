@@ -38,7 +38,7 @@ short ZGetWGPort()
 	return (-1);
 
     /* if fscanf fails, return -1 via wgport */
-    if (fscanf(fp, "%d", &wgport) != 1)
+    if (fscanf(fp, "%hd", &wgport) != 1)
 	    wgport = -1;
 
     (void) fclose(fp);
