@@ -32,7 +32,9 @@ typedef struct _defaults {
      Boolean debug;
      Boolean pong_scan;
      Boolean auto_reply;
-     int max_yanks, command_mask;
+     int max_yanks, command_mask, columns;
+     String  zsigfile;
+     String  logfile;
 } Defaults;
 
 /* Structure to contain a legal zephyr triple */
