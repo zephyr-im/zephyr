@@ -1,0 +1,38 @@
+zephyr (2.1.20000421.SNAPSHOT-5) unstable; urgency=low
+
+  * fix braino in my debconf stuff.
+
+ -- Karl C. Ramm <kcr@permabit.com>  Wed,  7 Feb 2001 17:18:45 -0500
+
+zephyr (2.1.20000421.SNAPSHOT-4) unstable; urgency=low
+
+  * rename /etc/zephyr/zephyr.conf to /etc/default/zephyr-client
+  * fix bug in zephyr-client postinst
+
+ -- Karl C. Ramm <kcr@permabit.com>  Wed,  7 Feb 2001 17:00:51 -0500
+
+zephyr (2.1.20000421.SNAPSHOT-3) unstable; urgency=low
+
+  * make the acl files on the server actually work
+  * make zwgc look in the light place for zephyr.vars
+  * in short, fix everything from -2.
+
+ -- Karl C. Ramm <kcr@permabit.com>  Wed,  7 Feb 2001 15:06:10 -0500
+
+zephyr (2.1.20000421.SNAPSHOT-2) unstable; urgency=low
+
+  * add acl files to the server
+  * add zephyr.vars file to the client
+
+ -- Karl C. Ramm <kcr@permabit.com>  Tue,  2 Jan 2001 13:13:01 -0500
+
+zephyr (2.1.20000421.SNAPSHOT-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Karl Ramm <kcr@1ts.org>  Mon,  4 Dec 2000 05:28:22 -0500
+
+Local variables:
+mode: debian-changelog
+add-log-mailing-address "kcr@1ts.org"
+End:

@@ -1,0 +1,5 @@
+Template: zephyr-client/servers
+Type: string
+Description: What are your zephyr servers?
+ Please type the full names of your zephyr servers, seperated by spaces.
+ (note that this can be a subset of what you're telling the servers)
