@@ -438,7 +438,7 @@ string tty_filter(text, use_fonts)
 	    string item = string_Copy("");
 	    
 	    if (info->bold_p && use_fonts) {
-		if (temp = string_dictionary_Fetch(termcap_dict, "B.rv"))
+		if (temp = string_dictionary_Fetch(termcap_dict, "B.bold"))
 		  item = string_Concat2(item, temp);
 	    } else if (info->italic_p && use_fonts) {
 		if (temp = string_dictionary_Fetch(termcap_dict, "B.u"))
@@ -449,7 +449,7 @@ string tty_filter(text, use_fonts)
 	    free(temp);
 
 	    if (info->bold_p && use_fonts) {
-		if (temp = string_dictionary_Fetch(termcap_dict, "E.rv"))
+		if (temp = string_dictionary_Fetch(termcap_dict, "E.bold"))
 		  item = string_Concat2(item, temp);
 	    } else if (info->italic_p && use_fonts) {
 		if (temp = string_dictionary_Fetch(termcap_dict, "E.u"))
