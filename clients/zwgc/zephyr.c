@@ -185,6 +185,8 @@ void zephyr_init(notice_handler)
 void finalize_zephyr() /* <<<>>> */
 {
     string temp;
+    int i, cnt;
+    char *realm;
 
     if (zephyr_inited) {
 	/*
@@ -202,18 +204,28 @@ void finalize_zephyr() /* <<<>>> */
 	 * Cancel our subscriptions, unset our location, and close our zephyr
 	 * connection:
 	 */
+
+	TRAP(ZGetRealmCount(&cnt), "while getting realm count");
+	if (error_code)
+	    return;
+
+	for (i=0; i<cnt; i++) {
+	    TRAP(ZGetRealmName(i, &realm), "while getting realm name");
+	    if (error_code)
+		continue;
 #ifdef DEBUG
-	if (zwgc_debug) {
-	    TRAP( ZCancelSubscriptions(NULL, 0),
-		  "while canceling subscriptions" );
-	    TRAP( ZUnsetLocation(NULL), "while unsetting location" );
-	} else {
+	    if (zwgc_debug) {
+		TRAP( ZCancelSubscriptions(realm, 0),
+		      "while canceling subscriptions" );
+		TRAP( ZUnsetLocation(realm), "while unsetting location" );
+	    } else {
 #endif /* DEBUG */
-	    (void) ZCancelSubscriptions(NULL, 0);
-	    (void) ZUnsetLocation(NULL);
+		(void) ZCancelSubscriptions(realm, 0);
+		(void) ZUnsetLocation(realm);
 #ifdef DEBUG
+	    }
+#endif /* DEBUG */
 	}
-#endif /* DEBUG */
 	ZClosePort();
     }
     return;
