@@ -49,7 +49,7 @@ void xmarkSetBound(gram,x,y,which)
    int i,xofs,yofs;
    XFontStruct *font;
    xblock *xb;
-   char *s;
+   unsigned char *s;
 
 #ifdef MARK_DEBUG
 #define RETURN \
@@ -112,7 +112,7 @@ void xmarkSetBound(gram,x,y,which)
 	    RETURN;
 	 }
 	 font=get_fontst_from_fid(xb->fid);
-	 for (i=0,s=((gram->text)+(xb->strindex));
+	 for (i=0,s=(unsigned char *)((gram->text)+(xb->strindex));
 	      xofs<x && i<xb->strlen;
 	      i++,s++) {
 	     /* if font->per_char is NULL, then we should use min_bounds */
