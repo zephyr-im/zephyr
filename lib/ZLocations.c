@@ -66,7 +66,6 @@ Z_SendLocation(class, opcode, auth, format)
     struct hostent *hent;
     short wg_port = ZGetWGPort();
     int gotone = 0;
-    fd_set t1, t2, t3;
     register int i;
     struct timeval tv;
 
@@ -126,7 +125,7 @@ Z_SendLocation(class, opcode, auth, format)
     for (i=0;i<HM_TIMEOUT*2;i++) {
 	tv.tv_sec = 0;
 	tv.tv_usec = 500000;
-	if (select(0, &t1, &t2, &t3, &tv) < 0)
+	if (select(0, (fd_set *) 0, (fd_set *) 0, (fd_set *) 0, &tv) < 0)
 	    return (errno);
 	retval = ZCheckIfNotice(&retnotice, (struct sockaddr_in *)0,
 				ZCompareUIDPred, (char *)&notice.z_uid);
