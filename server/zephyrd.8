@@ -32,19 +32,40 @@ The server then enters a dispatch loop, servicing requests from clients and
 other servers.
 .SH ACCESS CONTROL
 Certain notice classes are restricted by the Zephyr server.  Each such
-class has an access control list enumerating who may transmit or
-subscribe to that particular class.
+class has access control lists enumerating who may transmit (xmt-*.acl) or
+subscribe to that particular class.  Subscriptions may be
+restricted either absolutely (sub-*.acl files), or by instance restrictions.
+iws-*.acl files control subscriptions to wildcarded instances.
+iui-*.acl files control subscriptions to instances which are not the
+Kerberos principal identity of the subscriber.
+If an access control list of a given type is absent, there is no
+restriction of that type on the class, except that any notices of the
+class must be authenticated.
+The class registry lists all classes which are restricted.
 .SH FILES
-/usr/athena/lib/zephyr/sub-*.acl	Access Control Lists for subscribing
-.br
-/usr/athena/lib/zephyr/xmt-*.acl	Access Control Lists for transmitting
-.br
-/usr/athena/lib/zephyr/srvtab		Kerberos Service keys
-.br
-/usr/athena/lib/zephyr/ztkts		Current kerberos tickets for exchange with other servers 
-.br
+.TP \w'/usr/athena/lib/zephyr/class-registry.acl'u+4n
+/usr/athena/lib/zephyr/class-registry.acl
+List of classes which are restricted
+.TP
+/usr/athena/lib/zephyr/iws-*.acl
+Access Control Lists for instance-wildcard restrictions
+.TP
+/usr/athena/lib/zephyr/iui-*.acl
+Access Control Lists for instance-identity restrictions
+.TP
+/usr/athena/lib/zephyr/sub-*.acl
+Access Control Lists for subscribing
+.TP
+/usr/athena/lib/zephyr/xmt-*.acl
+Access Control Lists for transmitting
+.TP
+/usr/athena/lib/zephyr/srvtab
+Kerberos Service keys
+.TP
+/usr/athena/lib/zephyr/ztkts
+Current kerberos tickets for exchange with other servers 
 .SH SEE ALSO
-zephyr(1), zhm(8), kerberos(?), hesiod(?)
+zephyr(1), zhm(8), kerberos(?), hesiod(?), access_control_lists(?)
 .br
 Athena Technical Plan, Sections E.4.1 (Zephyr Notification Service) and
 E.2.1 (Kerberos Authentication and Authorization System)
@@ -52,7 +73,7 @@ E.2.1 (Kerberos Authentication and Authorization System)
 .PP
 John T. Kohl, MIT Project Athena
 .sp
-Copyright (c) 1987 by the Massachusetts Institute of Technology
+Copyright (c) 1987,1988 by the Massachusetts Institute of Technology
 .br
 See
 .I zephyr(1)
