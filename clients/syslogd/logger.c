@@ -51,7 +51,9 @@ main(argc, argv)
 		switch((char)ch) {
 		case 'f':		/* file to log */
 			if (freopen(optarg, "r", stdin) == NULL) {
-				fprintf("logger: ");
+				int save_errno = errno;
+				fprintf(stderr, "logger: ");
+				errno = save_errno;
 				perror(optarg);
 				exit(1);
 			}
