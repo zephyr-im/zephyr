@@ -40,6 +40,7 @@ LINCLUDES = -IMemory -IString -IDictionary
 GENERATORS= ./generate_stack_instance stack.h
 
 SRCDIR= ${SRCTOP}/zwgc
+BUILDDIR= {$BUILDTOP}/zwgc
 CONFIG_FILES= zwgc.desc  zephyr.vars zwgc_resources
 CODE= ${GENERATORS} ${HDRS} ${SRCS} ${CONFIG_FILES} Imakefile
 
@@ -108,33 +109,33 @@ parser.o: parser.y
 # /* How to generate a port dictionary: */
 #
 port_dictionary.c port_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ${SRCDIR}/Dictionary port port.h
+	Dictionary/generate_dictionary_instance ${BUILDDIR}/Dictionary port port.h
 
 #
 # /* How to generate a pointer dictionary: */
 #
 pointer_dictionary.c pointer_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ${SRCDIR}/Dictionary pointer pointer.h
+	Dictionary/generate_dictionary_instance ${BUILDDIR}/Dictionary pointer pointer.h
 
 #
 # /* How to generate a ulong dictionary: */
 #
 ulong_dictionary.c ulong_dictionary.h: Dictionary/dictionary.c Dictionary/dictionary.h
-	Dictionary/generate_dictionary_instance ${SRCDIR}/Dictionary ulong ulong.h
+	Dictionary/generate_dictionary_instance ${BUILDDIR}/Dictionary ulong ulong.h
 
 #
 # /* How to generate a char stack: */
 #
 char_stack.h: stack.h
-	./generate_stack_instance ${SRCDIR} char
+	./generate_stack_instance ${BUILDDIR} char
 #
 # /* How to generate a string stack: */
 #
 string_stack.h: stack.h
-	./generate_stack_instance ${SRCDIR} string
+	./generate_stack_instance ${BUILDDIR} string
 #
 # /* How to generate a xmode stack: */
 #
 xmode_stack.h: stack.h
-	./generate_stack_instance ${SRCDIR} xmode
+	./generate_stack_instance ${BUILDDIR} xmode
 
