@@ -618,8 +618,10 @@ environments, evaluated in the context of the current style and
 substyle.
 .IP
 The style is specific to each window.  Its name has three dot
-(``.'') separated fields, which are by default the class, instance, and
-recipient of the message.  The style can be altered setting the
+(``.'') separated fields, which are by default the values of the class,
+instance, and recipient variables, with all dots changed to underscores
+(``_'') and all letters converted to lowercase.  The style can be
+altered by setting the
 .I style
 variable.  Note that it \fBmust always\fR have exactly two ``.''
 characters in it.
