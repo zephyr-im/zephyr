@@ -23,7 +23,7 @@ CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ ${CPPFLAGS}
 LDFLAGS=-L${BUILDTOP}/lib @LDFLAGS@
-LIBS=-lzephyr -lss @LIBS@ -lcom_err
+LIBS=-lzephyr -lss -lreadline -lhistory -lcurses @LIBS@ -lcom_err
 
 OBJS=	zctl.o zctl_cmds.o
 
