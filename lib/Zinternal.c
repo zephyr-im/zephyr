@@ -307,17 +307,12 @@ Code_t Z_ReadWait()
 	    ZNotice_t tmpnotice;
 	    ZPacket_t pkt;
 	    int len;
-	    time_t now;
 
 	    tmpnotice = notice;
 	    tmpnotice.z_kind = CLIENTACK;
 	    tmpnotice.z_message_len = 0;
 	    olddest = __HM_addr;
 	    __HM_addr = from;
-	    time(&now);
-	    printf("%d seconds elapsed between packet and ack.\n",
-		   now - tmpnotice.z_time.tv_sec);
-	    fflush(stdout);
 	    if ((retval = ZFormatSmallRawNotice(&tmpnotice, pkt, &len))
 		!= ZERR_NONE)
 		return(retval);
