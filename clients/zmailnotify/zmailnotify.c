@@ -47,6 +47,7 @@ char *PrincipalHostname();
 #endif
 
 void get_message(), pop_close(), mail_notify(), fatal_pop_err ();
+int pop_command __P((char *, ...));
 #define MAXMAIL 4
 
 struct _mail {
