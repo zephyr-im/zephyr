@@ -17,6 +17,8 @@ XrmOptionDescRec app_options[] = {
      {"-v","*verbose", XrmoptionNoArg, (caddr_t) "false"},
      {"-close","*closeOnSend", XrmoptionNoArg, (caddr_t) "false"},
      {"+close","*closeOnSend", XrmoptionNoArg, (caddr_t) "true"},
+     {"-clear","*clearOnSend", XrmoptionNoArg, (caddr_t) "false"},
+     {"+clear","*clearOnSend", XrmoptionNoArg, (caddr_t) "true"},
      {"+n","*ping", XrmoptionNoArg, (caddr_t) "true"},
      {"-n","*ping", XrmoptionNoArg, (caddr_t) "false"},
      {"+yd","*yankDest", XrmoptionNoArg, (caddr_t) "true"},
@@ -43,6 +45,9 @@ XrmOptionDescRec app_options[] = {
      {"-pong", "*pongScan", XrmoptionNoArg, (caddr_t) "false"},
      {"+reply", "*autoReply", XrmoptionNoArg, (caddr_t) "true"},
      {"-reply", "*autoReply", XrmoptionNoArg, (caddr_t) "false"},
+     {"-columns", "*columns", XrmoptionSepArg, (caddr_t) 80},
+     {"-zsigs", "*randomZsigFile", XrmoptionSepArg, (caddr_t) "*"},
+     {"-logfile", "*logFile", XrmoptionSepArg, (caddr_t) "*"},
 };
 
 #define offset(field) XtOffset(Defaults *, field)
@@ -64,6 +69,9 @@ XtResource app_resources[] = {
 
      {"closeOnSend", "Close", XtRBoolean, sizeof(Boolean), 
       offset(close_on_send), XtRString, "false"}, 
+
+     {"clearOnSend", "Close", XtRBoolean, sizeof(Boolean), 
+      offset(clear_on_send), XtRString, "false"}, 
 
      {"ping", "Ping", XtRBoolean, sizeof(Boolean), 
       offset(ping), XtRString, "true"}, 
@@ -103,6 +111,15 @@ XtResource app_resources[] = {
 
      {"autoReply", "AutoReply", XtRBoolean, sizeof(Boolean),
       offset(auto_reply), XtRString, "false"},
+
+     {"columns", "Columns", XtRInt, sizeof(int),
+	offset(columns), XtRString, "80"},
+     
+     {"randomZsigFile", "RandomZsigFile", XtRString, sizeof(String),
+	offset(zsigfile), XtRString, "*"},
+
+     {"logFile", "LogFile", XtRString, sizeof(String),
+	offset(logfile), XtRString, "*"},
 };
 #undef offset
 
