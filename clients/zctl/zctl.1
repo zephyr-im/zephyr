@@ -110,7 +110,8 @@ Set the value of Zephyr variable \fIvar\fR to \fIvalue\fR, or null if
 no \fIvalue\fR is specified.  The variable \fBexposure\fR has special
 significance, and can only be set to the values none, opstaff, realm-visible,
 realm-announced, net-visible, and net-announced.  Setting this variable
-immediately updates the information in the Zephyr servers.  In addition,
+immediately updates the information in the Zephyr servers (see below for
+an explanation of the exposure levels).  In addition,
 setting this variable to none automatically performs the equivalent of a 
 .B wg_shutdown
 command, and setting it to one of the other values automatically
@@ -196,6 +197,53 @@ un-subscriptions, the un-subscriptions are automatically sent to the
 server as if you had used the
 .B unsubscribe
 command.
+.SH EXPOSURE LEVELS
+The different exposure levels affect the operation of zephyr and its
+interaction with the user, as follows:
+.TP 10
+.I none
+This completely disables Zephyr for the user. The user is not
+registered with Zephyr.  No user location information is
+retained by Zephyr.  No login or logout announcements will be
+sent.  No subscriptions will be entered for the user, and no notices
+will be displayed by 
+.I zwgc(1).
+.TP
+.I opstaff
+The user is registered with Zephyr.  No login or logout
+announcements will be sent, and location information will only be
+visible to Operations staff.  Default subscriptions and any additional
+personal subscriptions will be entered for the user.
+.TP
+.I realm-visible
+The user is registered with Zephyr.  User location information is retained by
+Zephyr and made available only to users within the user's
+Kerberos realm.  No login or logout announcements will be sent.  This
+is the system default.  Default subscriptions and any additional
+personal subscriptions will be entered for the user.
+.TP
+.I realm-announced
+The user is registered with Zephyr.  User location information is retained by
+Zephyr and made available only to users authenticated within the user's
+Kerberos realm.  Login and logout announcements will be sent, but only to
+users within the user's Kerberos realm who have explicitly requested
+such via subscriptions.  Default subscriptions and any additional
+personal subscriptions will be entered for the user.
+.TP
+.I net-visible
+The user is registered with Zephyr.  User location information is
+retained by Zephyr and made available to any authenticated user who
+requests such. Login and logout announcements will be sent only to users
+within the user's Kerberos realm who have explicitly requested such via
+subscriptions.  Default subscriptions and any additional personal
+subscriptions will be entered for the user.
+.TP
+.I net-announced
+The user is registered with Zephyr. User location information is retained by
+Zephyr and made available to any authenticated user who requests such.  Login
+and logout announcements will be sent to any user has requested such.
+Default subscriptions and any additional personal
+subscriptions will be entered for the user.
 .SH EXAMPLES
 .TP 25
 .B zctl
@@ -213,6 +261,10 @@ Save all current subscriptions to the default subscriptions file.
 .TP
 .B zctl set exposure none
 Set your exposure level to `none', effectively turning off Zephyr.
+.SH BUGS
+The current implementation of the Zephyr server (\fIzephyrd(8)\fR) makes
+no distinction between realm-announced, net-visible and net-announced
+exposure levels.
 .SH SEE ALSO
 zephyr(1), zwgc(1), zhm(8), zephyrd(8)
 gethostbyname(3)
