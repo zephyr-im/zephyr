@@ -18,12 +18,12 @@ static char rcsid_ZInitialize_c[] =
 #endif
 
 #include <zephyr/mit-copyright.h>
-
 #include <zephyr/zephyr_internal.h>
+
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/param.h>
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
 #include "krb_err.h"
 #endif
 
@@ -31,14 +31,13 @@ Code_t ZInitialize()
 {
     struct servent *hmserv;
     char addr[4];
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
     int krbval;
-#endif
-    
-    initialize_zeph_error_table();
-#ifdef KERBEROS
+
     initialize_krb_error_table();
 #endif
+
+    initialize_zeph_error_table();
     
     (void) memset((char *)&__HM_addr, 0, sizeof(__HM_addr));
 
@@ -60,7 +59,7 @@ Code_t ZInitialize()
 
     __HM_set = 0;
 
-#ifdef KERBEROS    
+#ifdef Z_HaveKerberos    
     if ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)
 	return (krbval);
 #endif

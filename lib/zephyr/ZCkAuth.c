@@ -32,7 +32,7 @@ int ZCheckAuthentication(notice, from)
     ZNotice_t *notice;
     struct sockaddr_in *from;
 {	
-#ifdef KERBEROS
+#ifdef Z_HaveKerberos
     int result;
     char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
     KTEXT_ST authent;
