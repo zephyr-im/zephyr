@@ -53,7 +53,7 @@ char *realmname;
 	if (fgets(linebuf, BUFSIZ, rlm_file) == NULL) {
 		/* error reading */
 		(void) fclose(rlm_file);
-		break;
+		return(expand);
 	}
 
 	while (1) {
