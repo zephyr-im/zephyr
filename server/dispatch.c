@@ -692,15 +692,19 @@ rexmit(arg)
     if (rexmit_times[nacked->rexmits] == -1) {
 	if (!nacked->client
 	    || NOW - nacked->client->last_ack >= CLIENT_GIVEUP_MIN) {
-	    /* The client (if there was one) has been unresponsive.  Give up
-	     * sending this packet, and kill the client if there was one. */
+	    /* The client (if there was one) has been unresponsive.
+	     * Give up sending this packet, and kill the client if
+	     * there was one.  (Make sure to remove nacked from the
+	     * nack list before calling client_deregister(), which
+	     * scans the nack list.)
+	     */
 	    LIST_DELETE(nacked);
-	    free(nacked->packet);
-	    free(nacked);
 	    if (nacked->client) {
 		server_kill_clt(nacked->client);
 		client_deregister(nacked->client, 1);
 	    }
+	    free(nacked->packet);
+	    free(nacked);
 	    return;
 	} else {
 	    /* The client has sent us an ack recently.  Retry with the maximum
