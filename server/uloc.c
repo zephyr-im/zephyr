@@ -280,6 +280,7 @@ struct sockaddr_in *who;
 }
 
 
+/*ARGSUSED*/
 static void
 sense_logout(notice, who)
 ZNotice_t *notice;
@@ -289,6 +290,7 @@ struct sockaddr_in *who;
 	ZLocation_t *loc;
 	struct sockaddr_in owner;
 
+	/* XXX todo: have the messsage print the IP addr */
 	/*
 	  someone tried an unauthentic logout.  Try to send a message
 	  to the person named in the message, warning them of this.
@@ -319,7 +321,7 @@ struct sockaddr_in *who;
 	sense_notice.z_num_other_fields = 0;
 
 	/* transmit the message to the owning port of the location. */
-	xmit(&sense_notice, &owner, 0, NULLZCLT);
+	xmit(&sense_notice, &owner, 0, NULLZCNT);
 }
 /*
  * Dispatch a LOCATE notice.
@@ -1077,7 +1079,7 @@ struct sockaddr_in *who;
 		return;
 	}
 #endif /* NEW_COMPAT || OLD_COMPAT */
-	answer = ulogin_marshal_locs(notice, who, &found);
+	answer = ulogin_marshal_locs(notice, &found);
 
 	send_to_who = *who;
 	send_to_who.sin_port = notice->z_port;
@@ -1111,9 +1113,8 @@ struct sockaddr_in *who;
  */
 
 static char **
-ulogin_marshal_locs(notice, who, found)
+ulogin_marshal_locs(notice, found)
 ZNotice_t *notice;
-struct sockaddr_in *who;
 register int *found;
 {
 	ZLocation_t **matches = (ZLocation_t **) 0;
@@ -1201,7 +1202,7 @@ struct sockaddr_in *who;
 	ZNotice_t reply;
 	Code_t retval;
 
-	answer = ulogin_marshal_locs(notice, who, &found);
+	answer = ulogin_marshal_locs(notice, &found);
 
 	reply = *notice;
 	reply.z_kind = SERVACK;
