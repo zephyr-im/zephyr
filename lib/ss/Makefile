@@ -16,7 +16,7 @@ INCDIR=
 
 # flags
 
-CFLAGS=	-O -I.
+CFLAGS=	-O -I. -g
 
 LINTFLAGS= -uhv
 
@@ -78,7 +78,7 @@ install: all
 	ranlib ${DESTDIR}/usr/athena/lib/libss_p.a
 	@rm -rf ${DESTDIR}/usr/include/ss
 	@mkdir ${DESTDIR}/usr/include/ss
-	cp ss.h ss_internal.h copyright.h ${DESTDIR}/usr/include/ss/
+	cp ss.h ss_err.h ss_internal.h copyright.h ${DESTDIR}/usr/include/ss/
 	cp copyright.h ${DESTDIR}/usr/include/ss/mit-sipb-copyright.h
 
 tags:	TAGS
