@@ -23,5 +23,5 @@ static char rcsid_ZCompareUID_c[] = "$Id$";
 int ZCompareUID(uid1, uid2)
     ZUnique_Id_t *uid1, *uid2;
 {
-    return (!_BCMP((char *)uid1, (char *)uid2, sizeof (*uid1)));
+    return (!memcmp((char *)uid1, (char *)uid2, sizeof (*uid1)));
 }
