@@ -62,7 +62,6 @@ OBJS=	access.o \
 	subscr.o \
 	timer.o \
 	uloc.o \
-	version.o \
 	zsrv_err.o \
 	zstring.o
 
@@ -74,13 +73,7 @@ CODE= ${SRCS} ${HDRS} ${OTHERSRCS} ${CONFIG_FILES} Imakefile
 DEFINES= $(SYSLOG_DEF) -DCONCURRENT
 normal_obj_rule()
 
-zephyrd:: new_vers.sh
-	-$(RM) zephyrd
-	sh new_vers.sh
-
-program(zephyrd,${OBJS},,${LIBS},${USRETCDIR})
-
-saber_program(zephyrd, ${SRCS}, ${OBJS}, , ${LIBS})
+program(zephyrd,${OBJS} version.o,,${LIBS},${USRETCDIR})
 
 error_table_noprof(zsrv_err)
 
@@ -94,6 +87,9 @@ install::
 	cp acldir/?* ${DESTDIR}${ACLDIR}
 	${INSTALLFILE} default.subscriptions ${DESTDIR}${ACLDIR}/default.subscriptions
 
+zephyrd: version.o
+version.o: version.h
 
-version.h::
+version.h: $(SRCS)
+	$(RM) version.h
 	sh new_vers.sh
