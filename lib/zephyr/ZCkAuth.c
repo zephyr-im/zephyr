@@ -71,11 +71,14 @@ int ZCheckAuthentication(notice, from)
 			      __Zephyr_realm, &cred))
 	return (ZAUTH_NO);
 
+#ifdef NOENCRYPTION
+    our_checksum = 0;
+#else
     our_checksum = (ZChecksum_t)quad_cksum(notice->z_packet, NULL, 
 					   notice->z_default_format+
 					   strlen(notice->z_default_format)+1-
 					   notice->z_packet, 0, cred.session);
-
+#endif
     /* if mismatched checksum, then the packet was corrupted */
     return ((our_checksum == notice->z_checksum) ? ZAUTH_YES : ZAUTH_FAILED);
 
