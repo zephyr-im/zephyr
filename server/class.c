@@ -452,6 +452,7 @@ char *class;
 
 	ptr->zct_classname = strsave(class);
 	if (!(clist = (ZClientList_t *) xmalloc(sizeof(ZClientList_t)))) {
+		xfree(ptr->zct_classname);
 		xfree(ptr);
 		return(NULLZCT);
 	}
