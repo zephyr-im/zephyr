@@ -32,6 +32,10 @@ zwrite \- write to another user via Zephyr
 ] [
 .BI -l
 ] [
+.BI -p
+] [
+.BI -O
+opcode ] [
 .BI -s
 signature ] [
 .BI -c
@@ -104,10 +108,11 @@ instance of the message to ``URGENT''.
 Causes
 .I zwrite
 to ignore the Zephyr variables 
-.I zwrite-class
+.IR zwrite-class ,
+.IR zwrite-inst ,
 and
-.I zwrite-inst
-when picking a default class and instance.
+.I zwrite-opcode
+when picking the default class, instance and opcode.
 .TP
 .B \-n
 prevents
@@ -161,6 +166,16 @@ and recipient "*".
 .br
 This argument may not be used in conjunction with the -f option.
 .TP
+.B \-O \fIopcode\fR
+Allows a user to specify a different opcode for the message.
+Some Zephyr notice display programs may use the opcode to decide how to
+display a notice.
+.br
+This argument may not be used in conjunction with the -p option.
+.TP
+.B \-p
+sets the opcode to ``PRETTY''.
+.TP
 .B \-f \fIarg\fR
 Allows a user to specify an argument to be interpreted as a filesystem
 specification.  The class is set to 
@@ -197,18 +212,20 @@ option is not specified, the user is prompted for the message to be
 sent.  The message may be terminated by typing ^D or ``.'' on a line
 by itself.
 .PP
-The default class for messages is ``MESSAGE'', and the default instance
-is ``PERSONAL''.  These defaults can be overridden by setting the Zephyr
+The default class for messages is ``MESSAGE'',  the default instance
+is ``PERSONAL'', and the default opcode is ``VERBATIM''.  These defaults
+can be overridden by setting the Zephyr
 variables
-.I zwrite-class
-and
+.IR zwrite-class ,
 .IR zwrite-inst ,
+and
+.IR zwrite-opcode ,
 respectively.
 .br
 Command-line options override the defaults.
 .PP
 If the class is ``MESSAGE'' and the instance is either ``PERSONAL'' or
-``URGENT'', a recipient must be specified.  These comparisons are
+``URGENT'', a recipient must be specified.  These checks are
 case-sensitive.
 .PP
 Unless the
