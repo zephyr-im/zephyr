@@ -20,7 +20,7 @@ enum zalloc_memtype {
     FREE=0, ALLOCATED,
     N_zalloc_memtype
 };
-static int count[max_size][(int) N_zalloc_memtype];
+static int zalloc_count[max_size][(int) N_zalloc_memtype];
 #endif
 
 struct dummy {
@@ -66,7 +66,7 @@ extern "C" {
     void bzero (void *, unsigned int);
 }
 
-static inline void memset (void *ptr, int size, int fill) {
+static inline void zmemset (void *ptr, int size, int fill) {
 #ifdef ZALLOC_DEBUG
     char *cptr = (char *) ptr;
     while (size--)
@@ -103,7 +103,7 @@ void *zalloc (unsigned int size) {
 		     free_space, bucket);
 #endif
 #ifdef ZALLOC_STATS
-	    count[BUCKET (free_space_size)][FREE]++;
+	    zalloc_count[BUCKET (free_space_size)][FREE]++;
 #endif
 	}
 
@@ -123,9 +123,9 @@ return_it:
 #ifdef ZALLOC_DEBUG_PRINT
     fprintf (stderr, "returning %08X\n", ret);
 #endif
-    memset (ret, size, 0xe5);
+    zmemset (ret, size, 0xe5);
 #ifdef ZALLOC_STATS
-    count[bucket][FREE]--, count[bucket][ALLOCATED]++;
+    zalloc_count[bucket][FREE]--, zalloc_count[bucket][ALLOCATED]++;
 #endif
     return ret;
 }
@@ -140,7 +140,7 @@ void zfree (void *ptr, unsigned int size) {
     }
 
     void **b = &buckets[bucket];
-    memset (ptr, size, 0xe5);
+    zmemset (ptr, size, 0xe5);
     *(void **) ptr = *b;
     *b = ptr;
 #ifdef ZALLOC_DEBUG
@@ -158,7 +158,7 @@ void zfree (void *ptr, unsigned int size) {
 #endif
 
 #ifdef ZALLOC_STATS
-    count[bucket][FREE]++, count[bucket][ALLOCATED]--;
+    zalloc_count[bucket][FREE]++, zalloc_count[bucket][ALLOCATED]--;
 #endif
 }
 #endif
