@@ -6,35 +6,30 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZSendPacket_c[] = "$Header$";
-#endif lint
+static char rcsid_ZSendPacket_c[] =
+    "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZSendPacket.c,v 1.28 90/12/12 02:11:34 jfc Exp $";
+#endif
 
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
 #include <sys/socket.h>
-#ifdef _AIX
-#include <sys/select.h>
-#endif
 
 Code_t ZSendPacket(packet, len, waitforack)
     char *packet;
     int len;
     int waitforack;
 {
-    int wait_for_hmack();
+    static int wait_for_hmack();
     Code_t retval;
     struct sockaddr_in dest;
-    struct timeval tv, t0;
-    fd_set zfdmask;
-    int i, zfd;
     ZNotice_t notice, acknotice;
 	
     if (!packet || len < 0)
@@ -59,43 +54,13 @@ Code_t ZSendPacket(packet, len, waitforack)
     if ((retval = ZParseNotice(packet, len, &notice)) != ZERR_NONE)
 	return (retval);
     
-    tv.tv_sec = HM_TIMEOUT;
-    tv.tv_usec = 0;
-    /* It is documented in select(2) that future versions of select
-       will adjust the passed timeout to indicate the time remaining.
-       When this is done, the variable t0 and all references to it
-       can be removed.  */
-    gettimeofday(&t0, 0);
-    FD_ZERO(&zfdmask);
-    zfd = ZGetFD();
-    FD_SET(zfd, &zfdmask);
-    while(1) {
-      i = select(zfd + 1, &zfdmask, (fd_set *) 0, (fd_set *) 0, &tv);
-      if(i > 0) {
-	retval = ZCheckIfNotice(&acknotice, (struct sockaddr_in *)0,
-				wait_for_hmack, (char *)&notice.z_uid);
-	if (retval == ZERR_NONE) {
-	  ZFreeNotice(&acknotice);
-	  return (ZERR_NONE);
-	}
-	if (retval != ZERR_NONOTICE)
-	  return (retval);
-      } else if(i == 0) {	/* time out */
-	return ZERR_HMDEAD;
-      } else if(i < 0 && errno != EINTR) {
-	return errno;
-      }
-      /* Here to end of loop deleted if/when select modifies passed timeout */
-      gettimeofday(&tv, 0);
-      tv.tv_usec = tv.tv_usec - t0.tv_usec;
-      if(tv.tv_usec < 0)
-	{
-	  tv.tv_usec += 1000000;
-	  tv.tv_sec = HM_TIMEOUT - 1 + tv.tv_sec - t0.tv_sec;
-	} else {
-	  tv.tv_sec = HM_TIMEOUT + tv.tv_sec - t0.tv_sec;
-	}
-    }
+    retval = Z_WaitForNotice (&acknotice, wait_for_hmack, &notice.z_uid,
+			      HM_TIMEOUT);
+    if (retval == ETIMEDOUT)
+      return ZERR_HMDEAD;
+    if (retval == ZERR_NONE)
+      ZFreeNotice (&acknotice);
+    return retval;
 }
 
 static int wait_for_hmack(notice, uid)
