@@ -27,7 +27,7 @@ Code_t ZFormatNoticeList(notice, list, nitems, buffer, ret_len,
     int nitems;
     char **buffer;
     int *ret_len;
-    int (*cert_routine)();
+    Z_AuthProc cert_routine;
 {
     char header[Z_MAXHEADERLEN];
     int hdrlen, i, size;
