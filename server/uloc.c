@@ -179,6 +179,7 @@ ZServerDesc_t *server;
 	}
 	if (!auth) {
 		zdbug((LOG_DEBUG,"unauthentic ulogin"));
+		sense_logout(notice, who);
 		if (server == me_server)
 			clt_ack(notice, who, AUTH_FAILED);
 		return(ZERR_NONE);
@@ -289,7 +290,12 @@ struct sockaddr_in *who;
 	ZNotice_t sense_notice;
 	ZLocation_t *loc;
 	struct sockaddr_in owner;
+	char message[BUFSIZ];
+	int retval, len;
+	char *pkt;
+	ZClient_t *client;
 
+	(void) bzero((char *)&sense_notice, sizeof(sense_notice));
 	/* XXX todo: have the messsage print the IP addr */
 	/*
 	  someone tried an unauthentic logout.  Try to send a message
@@ -303,25 +309,39 @@ struct sockaddr_in *who;
 		return;
 
 	/* fabricate an addr descriptor for him */
-	(void) bzero((char *)&owner, sizeof(owner));
+	owner = *who;
 	owner.sin_addr.s_addr = loc->zlt_addr.s_addr;
 	owner.sin_port = loc->zlt_port;
 
 	sense_notice.z_kind = ACKED;
-	sense_notice.z_port = sock_sin.sin_port; /* we are sending it */
+	sense_notice.z_port = loc->zlt_port;
 	sense_notice.z_class = "MESSAGE";
 	sense_notice.z_class_inst = "URGENT";
 	sense_notice.z_opcode = "";
 	sense_notice.z_sender = "Zephyr Server";
 	sense_notice.z_recipient = loc->zlt_user;
 	sense_notice.z_default_format = "Urgent Message from $sender at $time:\n\n$1";
-	sense_notice.z_message = "Someone tried an unauthentic logout for you";
-	sense_notice.z_message_len = strlen(sense_notice.z_message);
-	sense_notice.z_uid = notice->z_multiuid;
-	sense_notice.z_num_other_fields = 0;
+	(void) sprintf(message,
+		       "Someone at host %s tried an unauthorized \nchange to your login information",
+		       inet_ntoa(notice->z_sender_addr));
+	sense_notice.z_message = message;
+	sense_notice.z_message_len = strlen(message) + 1;
 
+	/* we format the notice to generate a UID and other stuff */
+	if ((retval = ZFormatNotice(&sense_notice, &pkt, &len, ZNOAUTH))
+	    != ZERR_NONE) {
+		syslog(LOG_ERR, "sense_logout: %s", error_message(retval));
+		return;
+	}
+	xfree(pkt);			/* free packet */
+	/* the following list of freed items is derived from Zinternal.c
+	 and Z_FormatHeader() */
+	xfree(sense_notice.z_version);
+
+	client = client_which_client(who, &sense_notice);
 	/* transmit the message to the owning port of the location. */
-	xmit(&sense_notice, &owner, 0, NULLZCNT);
+	xmit(&sense_notice, &owner, 1, client);
+	return;	
 }
 /*
  * Dispatch a LOCATE notice.
