@@ -6,9 +6,11 @@ read the file INSTALL.
 To set up a Zephyr service, follow these steps:
 
 1. Choose the machines you wish to have act as Zephyr servers at your
-site.  A Zephyr server may require a fair amount of CPU and network
-bandwidth, and should be configured with enough memory so that the
-server process swaps rarely if at all.
+site.  Expect the server to be CPU-efficient but to consume a bit more
+memory than it has to (at MIT, with around a thousand concurrent
+users, the Zephyr server's data size is 40MB).  If you have a lot of
+users, the server should have enough memory so that the process swaps
+rarely if at all.
 
 2a. If you configured Zephyr with Hesiod support, make sure your
 Hesiod realm has a "zephyr.sloc" entry containing a record for each
