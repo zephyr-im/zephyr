@@ -23,6 +23,7 @@
 
 extern string protect();
 extern string verbatim();
+extern string stylestrip();
 extern string lany();
 extern string lbreak();
 extern string lspan();
