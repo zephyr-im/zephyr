@@ -85,7 +85,8 @@ char **argv;
 			sub.zsub_class = MESSAGE_CLASS;
 			sub.zsub_classinst = INSTANCE;
 			sub.zsub_recipient = ZGetSender();
-			if (ZSubscribeTo(&sub,1,(u_short)port) != ZERR_NONE) {
+			if (ZSubscribeTo(NULL, &sub,1,(u_short)port)
+			    != ZERR_NONE) {
 				fprintf(stderr,
 					"Subscription error!  Writing to your terminal...\n");
 				use_zephyr = 0;
