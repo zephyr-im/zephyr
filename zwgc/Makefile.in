@@ -27,7 +27,7 @@ CFLAGS=${DEBUG} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
 YFLAGS=-d
 LDFLAGS=${DEBUG} -L${BUILDTOP}/lib @X_LIBS@ @LDFLAGS@
 LIBS=-lzephyr @LIBS@ -lcom_err @X_PRE_LIBS@ @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
-     @TLIB@ @RLIB@
+     @TLIB@ @RX_LIBS@
 
 OBJS=	port_dictionary.o pointer_dictionary.o unsigned_long_dictionary.o \
 	string_dictionary.o int_dictionary.o string_dictionary_aux.o \
