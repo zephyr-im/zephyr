@@ -413,9 +413,8 @@ main(argc, argv)
 	sunx.sun_family = AF_UNIX;
 	(void) strncpy(sunx.sun_path, LogName, sizeof sunx.sun_path);
 	funix = socket(AF_UNIX, SOCK_DGRAM, 0);
-	if (funix < 0 || bind(funix, (struct sockaddr *) &sunx,
-			      sizeof(sunx.sun_len)+sizeof(sunx.sun_family)
-			      +strlen(sunx.sun_path)) < 0 ||
+	if (funix < 0 ||
+	    bind(funix, (struct sockaddr *) &sunx, sizeof(sunx)) < 0) ||
 	    chmod(LogName, 0666) < 0) {
 		(void) sprintf(line, "cannot create %s", LogName);
 		logerror(line);
