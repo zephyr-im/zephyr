@@ -12,10 +12,10 @@
 
 #include "dynP.h"
 
-int DynPut();
+static int DynPut __P((DynObject obj, DynPtr el, int index));
 
 DynPtr DynGet(obj, num)
-   DynObjectP obj;
+   DynObject obj;
    int num;
 {
      if (num < 0) {
@@ -32,14 +32,14 @@ DynPtr DynGet(obj, num)
      }
      
      if (obj->debug)
-	  fprintf(stderr, "dyn: get: Returning address %d + %d.\n",
+	  fprintf(stderr, "dyn: get: Returning address %p + %d.\n",
 		  obj->array, obj->el_size*num);
      
      return (DynPtr) obj->array + obj->el_size*num;
 }
 
 int DynAdd(obj, el)
-   DynObjectP obj;
+   DynObject obj;
    DynPtr el;
 {
      int	ret;
@@ -60,15 +60,15 @@ int DynAdd(obj, el)
  * obj->num_el) will not be updated properly and many other functions
  * in the library will lose.  Have a nice day.
  */
-int DynPut(obj, el, index)
-   DynObjectP obj;
+static int DynPut(obj, el, index)
+   DynObject obj;
    DynPtr el;
    int index;
 {
      int ret;
      
      if (obj->debug)
-	  fprintf(stderr, "dyn: put: Writing %d bytes from %d to %d + %d\n",
+	  fprintf(stderr, "dyn: put: Writing %d bytes from %p to %p + %d\n",
 		  obj->el_size, el, obj->array, index*obj->el_size);
 
      if ((ret = _DynResize(obj, index)) != DYN_OK)

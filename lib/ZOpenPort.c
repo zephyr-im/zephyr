@@ -16,9 +16,7 @@
 static char rcsid_ZOpenPort_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 #include <sys/socket.h>
 
 Code_t ZOpenPort(port)

@@ -13,30 +13,16 @@
  */
 /* $Header$ */
 
-#ifndef lint
-static char rcsid_Zinternal_c[] =
-  "$Id$";
-static char copyright[] =
-  "Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.";
-#endif
-
-#include <zephyr/zephyr_internal.h>
-#include <netdb.h>
+#include <internal.h>
 #include <arpa/inet.h>
-#include <sys/param.h>
 #include <sys/socket.h>
-#include <sys/ioctl.h>
 #include <utmp.h>
-#include <krb.h>
 
-#ifdef SOLARIS
-#include <sys/filio.h>
-#endif
-
-#ifdef __STDC__
-typedef void *pointer;
-#else
-typedef char *pointer;
+#ifndef lint
+static const char rcsid_Zinternal_c[] =
+  "$Id$";
+static const char copyright[] =
+  "Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.";
 #endif
 
 extern char *inet_ntoa ();
@@ -60,16 +46,20 @@ ZSubscription_t *__subscriptions_list;
 int __subscriptions_num;
 int __subscriptions_next;
 
-#ifdef Z_HaveKerberos
+#ifdef ZEPHYR_USES_KERBEROS
 C_Block __Zephyr_session;
 char __Zephyr_realm[REALM_SZ];
 #endif
 
 #ifdef Z_DEBUG
-void (*__Z_debug_print) Zproto((const char *fmt, va_list args, void *closure));
+void (*__Z_debug_print) __P((const char *fmt, va_list args, void *closure));
+void *__Z_debug_print_closure;
 #endif
 
 #define min(a,b) ((a)<(b)?(a):(b))
+
+static int Z_AddField __P((char **ptr, char *field, char *end));
+static int find_or_insert_uid __P((ZUnique_Id_t *uid, ZNotice_Kind_t kind));
 
 /* Find or insert uid in the old uids buffer.  The buffer is a sorted
  * circular queue.  We make the assumption that most packets arrive in
@@ -177,12 +167,13 @@ Code_t Z_GetMyAddr()
 
 int Z_PacketWaiting()
 {
-    int bytes;
+    struct timeval tv;
+    fd_set read;
 
-    if (ioctl(ZGetFD(), FIONREAD, (char *)&bytes) < 0)
-	return (0);
-
-    return (bytes > 0);
+    tv.tv_sec = tv.tv_usec = 0;
+    FD_ZERO(&read);
+    FD_SET(ZGetFD(), &read);
+    return (select(ZGetFD() + 1, &read, NULL, NULL, &tv));
 } 
 
 
@@ -266,7 +257,6 @@ Code_t Z_ReadWait()
     int from_len, packet_len, part, partof;
     char *slash;
     Code_t retval;
-    static int filter_idx = -1;
     register int i;
 
     if (ZGetFD() < 0)
@@ -288,7 +278,7 @@ Code_t Z_ReadWait()
       if (packet[i])
 	goto not_all_null;
 #ifdef Z_DEBUG
-    Z_debug ("got null packet from %s", inet_ntoa (from.sin_addr.s_addr));
+    Z_debug ("got null packet from %s", inet_ntoa (from.sin_addr));
 #endif
     return ZERR_NONE;
   not_all_null:
@@ -613,7 +603,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     char *buffer;
     int buffer_len;
     int *len;
-    int (*cert_routine)();
+    Z_AuthProc cert_routine;
 {
     Code_t retval;
     static char version[BUFSIZ]; /* default init should be all \0 */
@@ -661,7 +651,7 @@ Code_t Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
     char *buffer;
     int buffer_len;
     int *len;
-    int (*cert_routine)();
+    Z_AuthProc cert_routine;
 {
     if (!cert_routine) {
 	notice->z_auth = 0;
@@ -682,10 +672,6 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     int *len;
     char **cstart, **cend;
 {
-    union {
-	int i;
-	ZChecksum_t sum;
-    } temp;
     char newrecip[BUFSIZ];
     char *ptr, *end;
     int i;
@@ -714,36 +700,29 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     (void) strcpy(ptr, notice->z_version);
     ptr += strlen(ptr)+1;
 
-    temp.i = htonl((u_long) (ZNUMFIELDS+notice->z_num_other_fields));
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i)) == ZERR_FIELDLEN)
+    if (ZMakeAscii32(ptr, end-ptr, Z_NUMFIELDS + notice->z_num_other_fields)
+	== ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
-	
-    temp.i = htonl((u_long) notice->z_kind);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i)) == ZERR_FIELDLEN)
+
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_kind) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
-	
+
     if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid, 
 		   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
-	
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_port, 
-		   sizeof(u_short)) == ZERR_FIELDLEN)
+
+    if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_port)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_auth, 
-		   sizeof(int)) == ZERR_FIELDLEN)
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_auth) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
-    temp.i = htonl((u_long) notice->z_authent_len);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
-		   sizeof(temp.i)) == ZERR_FIELDLEN)
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_authent_len) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
@@ -762,8 +741,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	    return (ZERR_HEADERLEN);
     }
     else {
-	(void) sprintf(newrecip, "%s@%s", notice->z_recipient, 
-		       __Zephyr_realm);
+	(void) sprintf(newrecip, "%s@%s", notice->z_recipient, __Zephyr_realm);
 	if (Z_AddField(&ptr, newrecip, end))
 	    return (ZERR_HEADERLEN);
     }		
@@ -773,9 +751,7 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
     /* copy back the end pointer location for crypto checksum */
     if (cstart)
 	*cstart = ptr;
-    temp.sum = htonl(notice->z_checksum);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.sum,
-		   sizeof(temp.sum)) == ZERR_FIELDLEN)
+    if (ZMakeAscii32(ptr, end-ptr, notice->z_checksum) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
     if (cend)
@@ -793,19 +769,12 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 	if (Z_AddField(&ptr, notice->z_other_fields[i], end))
 	    return (ZERR_HEADERLEN);
     
-#ifdef notdef
-    temp = htonl(notice->z_checksum);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
-		   sizeof(ZChecksum_t)) == ZERR_FIELDLEN)
-	return (ZERR_HEADERLEN);
-    ptr += strlen(ptr)+1;
-#endif
-    
     *len = ptr-buffer;
 	
     return (ZERR_NONE);
 }
 
+static int
 Z_AddField(ptr, field, end)
     char **ptr, *field, *end;
 {
@@ -904,8 +873,8 @@ void Z_RemQueue(qptr)
 Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
     ZNotice_t *notice;
     int len;
-    Code_t (*cert_func)();
-    Code_t (*send_func)();
+    Z_AuthProc cert_func;
+    Z_SendProc send_func;
 {
     ZNotice_t partnotice;
     ZPacket_t buffer;
@@ -970,15 +939,26 @@ int wait;
 
 #ifdef Z_DEBUG
 /* For debugging printing */
-Zconst char *Zconst ZNoticeKinds[] = { "UNSAFE", "UNACKED", "ACKED", "HMACK",
-					 "HMCTL", "SERVACK", "SERVNAK",
-					 "CLIENTACK", "STAT"};
+const char *const ZNoticeKinds[] = {
+    "UNSAFE", "UNACKED", "ACKED", "HMACK", "HMCTL", "SERVACK", "SERVNAK",
+    "CLIENTACK", "STAT"
+};
 #endif
 
 #ifdef Z_DEBUG
 
 #undef Z_debug
-#ifdef Z_varargs
+#ifdef HAVE_STDARG_H
+void Z_debug (const char *format, ...)
+{
+    va_list pvar;
+    if (!__Z_debug_print)
+      return;
+    va_start (pvar, format);
+    (*__Z_debug_print) (format, pvar, __Z_debug_print_closure);
+    va_end (pvar);
+}
+#else /* stdarg */
 void Z_debug (va_alist) va_dcl
 {
     va_list pvar;
@@ -990,36 +970,19 @@ void Z_debug (va_alist) va_dcl
     (*__Z_debug_print) (format, pvar, __Z_debug_print_closure);
     va_end (pvar);
 }
-#else /* stdarg */
-void Z_debug (const char *format, ...)
-{
-    va_list pvar;
-    if (!__Z_debug_print)
-      return;
-    va_start (pvar, format);
-    (*__Z_debug_print) (format, pvar, __Z_debug_print_closure);
-    va_end (pvar);
-}
 #endif
 
 void Z_debug_stderr (format, args, closure)
-#ifdef __STDC__
-     const
-#endif
-       char *format;
+     const char *format;
      va_list args;
-#ifdef __STDC__
      void *closure;
-#else
-     char *closure;
-#endif
 {
-#ifndef NO_VPRINTF
-  vfprintf (stderr, format, args);
+#ifdef HAVE_VPRINTF
+    vfprintf (stderr, format, args);
 #else
-  _doprnt (format, args, stderr);
+    _doprnt (format, args, stderr);
 #endif
-  putc ('\n', stderr);
+    putc ('\n', stderr);
 }
 
 #undef ZGetFD
@@ -1034,14 +997,13 @@ struct sockaddr_in ZGetDestAddr () { return __HM_addr; }
 #undef ZGetRealm
 Zconst char * ZGetRealm () { return __Zephyr_realm; }
 
-#ifdef __STDC__
-#define ARGS	(void (*proc)(const char *,va_list,void *), void *arg)
-#else
-#define ARGS	(proc, arg) void (*proc)(); char *arg;
-#endif
 #undef ZSetDebug
-void ZSetDebug ARGS {
+void ZSetDebug(proc, arg)
+    void (*proc) __P((const char *, va_list, void *));
+    char *arg;
+{
     __Z_debug_print = proc;
     __Z_debug_print_closure = arg;
 }
 #endif /* Z_DEBUG */
+

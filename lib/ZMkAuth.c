@@ -12,19 +12,20 @@
  */
 /* $Id$ */
 
+#include <internal.h>
+
 #ifndef lint
-static char rcsid_ZMakeAuthentication_c[] = "$Id$";
+static const char rcsid_ZMakeAuthentication_c[] = "$Id$";
 #endif
 
-#include <zephyr/zephyr_internal.h>
-#ifdef Z_HaveKerberos
-#include "krb_err.h"
+#ifdef ZEPHYR_USES_KERBEROS
+#include <krb_err.h>
 static long last_authent_time = 0L;
 static KTEXT_ST last_authent;
 #endif
 
 Code_t ZResetAuthentication () {
-#ifdef Z_HaveKerberos
+#ifdef ZEPHYR_USES_KERBEROS
     last_authent_time = 0L;
 #endif
     return ZERR_NONE;
@@ -36,13 +37,14 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
     int buffer_len;
     int *len;
 {
-#ifdef Z_HaveKerberos
+#ifdef ZEPHYR_USES_KERBEROS
     int result;
-    long now,time();
+    time_t now;
     KTEXT_ST authent;
     char *cstart, *cend;
-    long checksum;
+    ZChecksum_t checksum;
     CREDENTIALS cred;
+    extern unsigned long des_quad_cksum();
 
     now = time(0);
     if (last_authent_time == 0 || (now - last_authent_time > 120)) {
@@ -79,18 +81,16 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
 	return(result);
 
     /* Compute a checksum over the header and message. */
-    if (result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
-			      __Zephyr_realm, &cred))
+    if ((result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
+			      __Zephyr_realm, &cred)) != 0)
 	return result;
     checksum = des_quad_cksum(buffer, NULL, cstart - buffer, 0, cred.session);
     checksum ^= des_quad_cksum(cend, NULL, buffer + *len - cend, 0,
 			       cred.session);
     checksum ^= des_quad_cksum(notice->z_message, NULL, notice->z_message_len,
 			       0, cred.session);
-    notice->z_checksum = (ZChecksum_t) checksum;
-    checksum = htonl(checksum);
-    ZMakeAscii(cstart, buffer + buffer_len - cstart,
-	       (unsigned char *) &checksum, sizeof(checksum));
+    notice->z_checksum = checksum;
+    ZMakeAscii32(cstart, buffer + buffer_len - cstart, checksum);
 
     return (ZERR_NONE);
 #else

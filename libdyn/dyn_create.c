@@ -21,12 +21,12 @@
 
 static int default_increment = DEFAULT_INC;
 
-DynObjectP DynCreate(el_size, inc)
+DynObject DynCreate(el_size, inc)
    int	el_size, inc;
 {
-     DynObjectP obj;
+     DynObject obj;
 
-     obj = (DynObjectP) malloc(sizeof(DynObjectRecP));
+     obj = (DynObject) malloc(sizeof(DynObjectRec));
      if (obj == NULL)
 	  return NULL;
 
@@ -40,7 +40,7 @@ DynObjectP DynCreate(el_size, inc)
 }
 
 int DynDestroy(obj)
-   DynObjectP obj;
+   DynObject obj;
 {
      free(obj->array);
      free(obj);

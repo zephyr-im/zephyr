@@ -1,0 +1,47 @@
+SHELL = /bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+datadir=@datadir@
+confdir=@confdir@
+sbindir=@sbindir@
+lsbindir=@lsbindir@
+
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
+bindir=${exec_prefix}/bin
+
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+BUILDTOP=../..
+VPATH=@srcdir@
+CC=@CC@
+INSTALL=@INSTALL@
+
+DEBUG=-g
+CFLAGS=${DEBUG} -I${top_srcdir}/h -I${BUILDTOP}/h @CPPFLAGS@
+LDFLAGS=${DEBUG} -L${BUILDTOP}/lib/zephyr @ET_LDFLAGS@ @LDFLAGS@
+LIBS=-lzephyr @LIBS@ -lcom_err
+
+OBJS=	zlocate.o
+
+all: zlocate
+
+zlocate: ${OBJS} ${BUILDTOP}/lib/zephyr/libzephyr.a @ETDEP@
+	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+
+check:
+
+install: zlocate
+	${INSTALL} -m 755 -s zlocate ${DESTDIR}${bindir}
+	${INSTALL} -m 644 ${srcdir}/zlocate.1 ${DESTDIR}${mandir}/man1
+
+clean:
+	rm -f ${OBJS} zlocate
+
+${OBJS}: ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
+${OBJS}: ${BUILDTOP}/h/zephyr/zephyr.h ${BUILDTOP}/h/zephyr/zephyr_err.h
+
+.PHONY: all check install clean
+

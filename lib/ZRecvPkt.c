@@ -16,9 +16,7 @@
 static char rcsid_ZReceivePacket_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZReceivePacket(buffer, ret_len, from)
     ZPacket_t buffer;

@@ -1,6 +1,5 @@
-#include <stdio.h>
+#include <sysdep.h>
 #include <dyn.h>
-#include <string.h>
 
 #include "xzwrite.h"
 
@@ -154,7 +153,7 @@ char **dest_add(dest)
 	     *dest->zinst ? dest->zinst : "*",
 	     *dest->zrecip ? dest->zrecip : "*");
 
-     if (DynAdd(dests, &buf) == DYN_NOMEM) {
+     if (DynAdd(dests, (DynPtr) &buf) == DYN_NOMEM) {
 	  Warning("Out of memory adding destination ", buf, ".  Skipping.",
 		  NULL);
 	  free(buf);
@@ -173,7 +172,7 @@ char **dest_add_string(s)
      if (! parse_into_dest(&dest, s))
 	  return NULL;
      
-     if (DynAdd(dests, &s) == DYN_NOMEM)
+     if (DynAdd(dests, (DynPtr) &s) == DYN_NOMEM)
 	  Warning("Out of memory adding destination ", s, ".  Skipping.",
 		  NULL);
 
@@ -211,9 +210,10 @@ char **delete_dest_index(i)
 }
 
      
-static int sort_dest_func(c1, c2)
-   char	**c1, **c2;
+static int sort_dest_func(a1, a2)
+   const void *a1, *a2;
 {
+     char	**c1 = (char **) a1, **c2 = (char **) a2;
      char	*s1, *s2, *i1, *i2;
 
      /* A string with a , in it is always less than one without */
@@ -291,7 +291,6 @@ char **sort_destinations()
 }
 
 /* Fills in dest from s */
-#define distance(a,b)		((int) b - (int) a)
 int parse_into_dest(dest, s)
    Dest	dest;
    char	*s;
@@ -311,7 +310,7 @@ int parse_into_dest(dest, s)
      /* Check for just class,instance or instace,recipient */
      else if ((b=strchr((++a), ','))==0) {
 	  if (defs.class_inst) {
-	       x = distance(s, a-1);
+	       x = a - 1 - s;
 	       if (x >= ZLEN)
 		    return 0;
 
@@ -320,7 +319,7 @@ int parse_into_dest(dest, s)
 	       strcpy(dest->zinst, a);
 	       strcpy(dest->zrecip, "*"); }
 	  else {
-	       x = distance(s, a-1);
+	       x = a - 1 - s;
 	       if (x >= ZLEN)
 		    return 0;
 	       
@@ -333,8 +332,8 @@ int parse_into_dest(dest, s)
      /* Otherwise, deal with class,instance,recipent */
      else {
 	  ++b;
-	  x = distance(s, a-1);
-	  y = distance(a, b-1);
+	  x = a - 1 - s;
+	  y = b - 1 - a;
 	  if (x >= ZLEN || y >= ZLEN)
 	       return 0;
 	  
@@ -349,7 +348,6 @@ int parse_into_dest(dest, s)
 
      return 1;
 }
-#undef distance
 
 /*
  * notice is from <MESSAGE,inst,sender>.  If inst is "PERSONAL", add
@@ -362,7 +360,6 @@ int parse_into_dest(dest, s)
 void dest_add_reply(notice)
    ZNotice_t *notice;
 {
-     Dest dest;
      char **list, *newdest, buf[ZLEN*3+2];
      int i, num;
 

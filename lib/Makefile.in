@@ -1,0 +1,61 @@
+SHELL = /bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+datadir=@datadir@
+confdir=@confdir@
+sbindir=@sbindir@
+lsbindir=@lsbindir@
+
+includedir=${prefix}/include
+mandir=${prefix}/man
+libdir=${exec_prefix}/lib
+
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+BUILDTOP=../..
+VPATH=@srcdir@
+CC=@CC@
+INSTALL=@INSTALL@
+RANLIB=@RANLIB@
+COMPILE_ET=@COMPILE_ET@
+
+DEBUG=-O
+CFLAGS=${DEBUG} -DCONFDIR=\"${confdir}\" -I${top_srcdir}/h \
+	-I${BUILDTOP}/h @CPPFLAGS@
+
+OBJS =	zephyr_err.o ZAsyncLocate.o ZCkAuth.o ZCkIfNot.o ZClosePort.o \
+	ZCmpUID.o ZCmpUIDP.o ZFlsLocs.o ZFlsSubs.o ZFmtAuth.o ZFmtList.o \
+	ZFmtNotice.o ZFmtRaw.o ZFmtRawLst.o ZFmtSmRLst.o ZFmtSmRaw.o \
+	ZFreeNot.o ZGetLocs.o ZGetSender.o ZGetSubs.o ZGetWGPort.o ZhmStat.o \
+	ZIfNotice.o ZInit.o ZLocations.o ZMakeAscii.o ZMkAuth.o ZNewLocU.o \
+	ZOpenPort.o ZParseNot.o ZPeekIfNot.o ZPeekNot.o ZPeekPkt.o ZPending.o \
+	ZReadAscii.o ZRecvNot.o ZRecvPkt.o ZRetSubs.o ZSendList.o ZSendNot.o \
+	ZSendPkt.o ZSendRaw.o ZSendRLst.o ZSetDest.o ZSetFD.o ZSetSrv.o \
+	ZSubs.o ZVariables.o ZWait4Not.o Zinternal.o
+
+all: libzephyr.a
+
+libzephyr.a: ${OBJS}
+	ar cru $@ ${OBJS}
+	${RANLIB} $@
+
+zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
+	${COMPILE_ET} ${srcdir}/zephyr_err.et
+	mv zephyr_err.h ${BUILDTOP}/h/zephyr
+
+check:
+
+install: libzephyr.a
+	${INSTALL} -m 644 libzephyr.a ${DESTDIR}${libdir}
+	${INSTALL} -m 644 ${srcdir}/zephyr.1 ${DESTDIR}${mandir}/man1
+
+clean:
+	rm -f ${OBJS} libzephyr.a zephyr_err.c zephyr_err.h
+
+${OBJS}: ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
+${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h
+${OBJS}: ${BUILDTOP}/h/zephyr/zephyr_err.h
+
+.PHONY: all check install clean
+

@@ -1,19 +1,19 @@
-#include <X11/Intrinsic.h>   /* for Boolean */
-#include <zephyr/zephyr.h>
-#include <dyn.h>
-
 #include "xzwrite.h"
+
+#include <X11/Intrinsic.h>   /* for Boolean */
+#include <dyn.h>
+#include <zephyr/zephyr.h>
 
 extern Defaults defs;
 
-#define distance(a,b)		((int) b - (int) a)
 void logins_deal(notice)
    ZNotice_t *notice;
 {
-     char		*newdest;
+     char		*newdest, *p;
      int		d;
 
-     d = distance(notice->z_class_inst, strchr(notice->z_class_inst, '@'));
+     p = strchr(notice->z_class_inst, '@');
+     d = (p) ? p - notice->z_class_inst : strlen(notice->z_class_inst);
      newdest = (char *) Malloc(d+1, "while dealing with login/logout notice",
 			       NULL);
      strncpy(newdest, notice->z_class_inst, d);
@@ -33,7 +33,6 @@ void logins_deal(notice)
 	  free(newdest);
      }
 }
-#undef distance
 
 /* Considers a destination with a , and without a . in to be a username */
 void logins_subscribe()
@@ -52,7 +51,7 @@ void logins_subscribe()
      while (--num) {
 	  parse_into_dest(&dest, list[num]);
 	  if (*dest.zrecip)
-	       if (DynAdd(users, list + num) != DYN_OK)
+	       if (DynAdd(users, (DynPtr)(list + num)) != DYN_OK)
 		    Error("Out of memory subscribing to logins", NULL);
      }
 

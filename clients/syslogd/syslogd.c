@@ -45,6 +45,8 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
  * more extensive changes by Eric Allman (again)
  * changes for Zephyr and a little dynamic allocation 
  *    by Jon Rochlis (MIT), July 1987
+ * fixes, dynamic allocation, autoconf changes by Greg Hudson (MIT), 1995
+ * Solaris support by John Hawkinson (MIT), 1995
  */
 
 #define	MAXLINE		1024		/* maximum line length */
@@ -53,85 +55,51 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #define DEFSPRI		(LOG_KERN|LOG_CRIT)
 #define TIMERINTVL	30		/* interval for checking flush, mark */
 
-#ifdef SOLARIS
-#define MSG_BSIZE BUFSIZ
+#if defined(__sun__) && defined(__svr4__)
 #define STREAMS_LOG_DRIVER
 #endif
+#ifdef STREAMS_LOG_DRIVER
+#undef COMPAT42
+#endif
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <time.h>
-#ifdef _IBMR2
-#include <sys/select.h>
+#include <sysdep.h>
+#ifdef HAVE_SRC
 #include <spc.h>	/* For support of the SRC system */
 #endif
 #include <utmp.h>
-#include <ctype.h>
-#include <string.h>
 #include <setjmp.h>
-#include <fcntl.h>
-#include <syslog.h>
-#include <sys/param.h>
-#include <sys/errno.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
 #include <sys/socket.h>
-#include <sys/file.h>
-#ifndef COMPAT42
-#include <sys/msgbuf.h>
-#endif
-#include <sys/uio.h>
 #include <sys/un.h>
-#include <sys/time.h>
 #include <sys/resource.h>
-#include <sys/signal.h>
+#include <sys/uio.h>
 #include <netdb.h>
-
 #ifdef STREAMS_LOG_DRIVER
 #include <sys/stream.h>
 #include <sys/strlog.h>
 #include <sys/log.h>
-
 #include <poll.h>
 #include <stropts.h>
 #endif
 
-#ifdef POSIX
-#include <termios.h>
-#endif
-
 #include <zephyr/zephyr.h>
+#include <com_err.h>
 
-extern int sys_nerr;
-#ifdef SUNOS
-extern char *sys_errlist[];
-#define strerror(n) sys_errlist[n]
-#endif
-
-#if defined(ultrix) || defined(POSIX)
-#define sighandler_type void
+#ifdef _PATH_VARRUN
+#define PIDDIR _PATH_VARRUN
 #else
-#define sighandler_type int
+#define PIDDIR "/etc/"
 #endif
 
 #define	CTTY	"/dev/console"
 char	*LogName = "/dev/log";
-#ifdef COMPAT42
-char	*ConfFile = "/etc/nsyslog.conf";
-char	*PidFile = "/etc/nsyslog.pid";
-#else /* !COMPAT42 */
-char	*ConfFile = "/etc/syslog.conf";
-char	*PidFile = "/etc/syslog.pid";
-#endif /* COMPAT42 */
+char	ConfFile[128];
+char	PidFile[128];
 char	ctty[] = CTTY;
 
 #define FDMASK(fd)	(1 << (fd))
 
 #define	dprintf		if (Debug) printf
 
-#define UNAMESZ         ANAME_SZ+INST_SZ+REALM_SZ /* 8 isn't good enough anymore */
-#define UTMPNAMESZ	8
 #define MAXUNAMES	20	/* maximum number of user names */
 #define MAXFNAME	200	/* max file pathname length */
 
@@ -159,7 +127,7 @@ struct filed {
 	time_t	f_time;			/* time this was last written */
 	u_char	f_pmask[LOG_NFACILITIES+1];	/* priority mask */
 	union {
-		char	f_uname[MAXUNAMES][UNAMESZ+1];
+		char	*f_uname[MAXUNAMES];
 		struct {
 			char	f_hname[MAXHOSTNAMELEN+1];
 			struct sockaddr_in	f_addr;
@@ -215,6 +183,7 @@ int	LogPort;		/* port number for INET connections */
 int	Initialized = 0;	/* set when we have initialized ourselves */
 int	MarkInterval = 20 * 60;	/* interval between marks in seconds */
 int	MarkSeq = 0;		/* mark sequence number */
+time_t	now;
 
 ZNotice_t znotice;              /* for zephyr notices */
 
@@ -228,73 +197,95 @@ struct code {
 };
 
 struct code	PriNames[] = {
-	"panic",	LOG_EMERG,
-	"alert",	LOG_ALERT,
-	"crit",		LOG_CRIT,
-	"error",	LOG_ERR,
-	"warning",	LOG_WARNING,
-	"notice",	LOG_NOTICE,
-	"info",		LOG_INFO,
-	"debug",	LOG_DEBUG,
-	"none",		NOPRI,
-	"emerg",	LOG_EMERG,
-	"err",		LOG_ERR,
-	"warn",		LOG_WARNING,
-	NULL,		-1
+	{ "panic",	LOG_EMERG },
+	{ "alert",	LOG_ALERT },
+	{ "crit",	LOG_CRIT },
+	{ "error",	LOG_ERR },
+	{ "warning",	LOG_WARNING },
+	{ "notice",	LOG_NOTICE },
+	{ "info",	LOG_INFO },
+	{ "debug",	LOG_DEBUG },
+	{ "none",	NOPRI },
+	{ "emerg",	LOG_EMERG },
+	{ "err",	LOG_ERR },
+	{ "warn",	LOG_WARNING },
+	{ NULL,		-1 }
 };
 
 /* reserved added so zephyr can use this table */
 struct code	FacNames[] = {
-	"kern",		LOG_KERN,
-	"user",		LOG_USER,
-	"mail",		LOG_MAIL,
-	"daemon",	LOG_DAEMON,
-	"auth",		LOG_AUTH,
-	"syslog",	LOG_SYSLOG,
-	"lpr",		LOG_LPR,
-	"news",		LOG_NEWS,
-	"uucp",		LOG_UUCP,
-	"reserved",     -1,
-	"reserved",     -1,
-	"reserved",     -1,
-	"reserved",     -1,
-	"reserved",     -1,
-	"reserved",     -1,
-	"reserved",     -1,
-	"local0",	LOG_LOCAL0,
-	"local1",	LOG_LOCAL1,
-	"local2",	LOG_LOCAL2,
-	"local3",	LOG_LOCAL3,
-	"local4",	LOG_LOCAL4,
-	"local5",	LOG_LOCAL5,
-	"local6",	LOG_LOCAL6,
-	"local7",	LOG_LOCAL7,
-	"security",	LOG_AUTH,
-	"mark",		LOG_MARK,
-	NULL,		-1
+	{ "kern",	LOG_KERN },
+	{ "user",	LOG_USER },
+	{ "mail",	LOG_MAIL },
+	{ "daemon",	LOG_DAEMON },
+	{ "auth",	LOG_AUTH },
+	{ "syslog",	LOG_SYSLOG },
+	{ "lpr",	LOG_LPR },
+	{ "news",	LOG_NEWS },
+	{ "uucp",	LOG_UUCP },
+	{ "cron",	LOG_CRON },
+	{ "authpriv",	LOG_AUTHPRIV },
+	{ "ftp",	LOG_FTP },
+	{ "reserved",	-1 },
+	{ "reserved",	-1 },
+	{ "reserved",	-1 },
+	{ "cron",	LOG_CRON },
+	{ "local0",	LOG_LOCAL0 },
+	{ "local1",	LOG_LOCAL1 },
+	{ "local2",	LOG_LOCAL2 },
+	{ "local3",	LOG_LOCAL3 },
+	{ "local4",	LOG_LOCAL4 },
+	{ "local5",	LOG_LOCAL5 },
+	{ "local6",	LOG_LOCAL6 },
+	{ "local7",	LOG_LOCAL7 },
+	{ "security",	LOG_AUTH },
+	{ "mark",	LOG_MARK },
+	{ NULL,		-1 }
 };
 
-static sighandler_type
-	die(),
-	domark(),
-	reapchild(),
-	init(),
-	endtty();
+static void usage __P((void));
+static void untty __P((void));
+static void printline __P((const char *hname, char *msg));
+#ifndef STREAMS_LOG_DRIVER
+static void printsys __P((char *msg));
+#endif
+static void logmsg __P((int pri, const char *msg, const char *from,
+			int flags));
+static void fprintlog __P((register struct filed *f, int flags,
+			   const char *msg, int fac, int prilev));
+static RETSIGTYPE endtty __P((int sig));
+static void wallmsg __P((register struct filed *f, struct iovec *iov));
+static RETSIGTYPE reapchild __P((int sig));
+static const char *cvthname __P((struct sockaddr_in *f));
+static RETSIGTYPE domark __P((int sig));
+static void logerror __P((const char *type));
+static RETSIGTYPE die __P((int sig));
+static RETSIGTYPE init __P((int sig));
+static void cfline __P((char *line, register struct filed *f));
+static int decode __P((char *name, struct code *codetab));
+#ifdef HAVE_SRC
+static void handle_src __P((struct srcreq packet));
+static void send_src_reply __P((struct srcreq orig_packet, int rtncode,
+				char *packet, int len));
+#endif
 
-main(argc, argv)
+int main(argc, argv)
 	int argc;
 	char **argv;
 {
 	register int i;
 	register char *p;
-	int funix, inetm = 0, fklog, klogm, len;
+	int funix, inetm = 0, klogm, len;
+#ifndef STREAMS_LOG_DRIVER
 	struct sockaddr_un sunx, fromunix;
+	int fklog;
+#endif
 	struct sockaddr_in sin, frominet;
 	FILE *fp;
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	struct sigaction action;
 #endif
-#ifdef _AIX
+#ifdef HAVE_SRC
 	int using_src = 1;
 	struct sockaddr srcsockaddr, fromsrc;
 	struct srcreq srcreq;
@@ -307,6 +298,8 @@ main(argc, argv)
 	char line[MSG_BSIZE + 1];
 #endif
 
+	strcpy(ConfFile, "/etc/syslog.conf");
+	sprintf(PidFile, "%ssyslog.pid", PIDDIR);
 	while (--argc > 0) {
 		p = *++argv;
 		if (p[0] != '-')
@@ -314,7 +307,7 @@ main(argc, argv)
 		switch (p[1]) {
 		case 'f':		/* configuration file */
 			if (p[2] != '\0')
-				ConfFile = &p[2];
+				strcpy(ConfFile, &p[2]);
 			break;
 
 		case 'd':		/* debug */
@@ -336,7 +329,7 @@ main(argc, argv)
 		}
 	}
 
-#ifdef _AIX
+#ifdef HAVE_SRC
 	addrlen = sizeof(struct sockaddr);
 	if (getsockname(0, &srcsockaddr, &addrlen) < 0) {
 		using_src = 0;
@@ -351,7 +344,7 @@ main(argc, argv)
 #endif
 
 	if (!Debug) {
-#ifdef _AIX
+#ifdef HAVE_SRC
 		/* Don't fork if using SRC;
 		 * SRC will think the program exited */
 		if (!using_src)
@@ -366,7 +359,7 @@ main(argc, argv)
 		(void) dup2(0, 2);
 		untty();
 	} else {
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 		static char buf[BUFSIZ];
 		setvbuf (stdout, buf, _IOLBF, BUFSIZ);
 #else
@@ -377,13 +370,13 @@ main(argc, argv)
 	consfile.f_type = F_CONSOLE;
 	(void) strcpy(consfile.f_un.f_fname, ctty);
 	(void) gethostname(LocalHostName, sizeof LocalHostName);
-	if (p = strchr(LocalHostName, '.')) {
+	if ((p = strchr(LocalHostName, '.')) != NULL) {
 		*p++ = '\0';
 		LocalDomain = p;
 	}
 	else
 		LocalDomain = "";
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
 
@@ -412,15 +405,15 @@ main(argc, argv)
 	(void) signal(SIGALRM, domark);
 #endif
 	(void) alarm(TIMERINTVL);
-
+ 
 #ifndef STREAMS_LOG_DRIVER
 	(void) unlink(LogName);
 
 	sunx.sun_family = AF_UNIX;
 	(void) strncpy(sunx.sun_path, LogName, sizeof sunx.sun_path);
 	funix = socket(AF_UNIX, SOCK_DGRAM, 0);
-	if (funix < 0 || bind(funix, (struct sockaddr *) &sunx,
-	    sizeof(sunx.sun_family)+strlen(sunx.sun_path)) < 0 ||
+	if (funix < 0 ||
+	    bind(funix, (struct sockaddr *) &sunx, sizeof(sunx)) < 0 ||
 	    chmod(LogName, 0666) < 0) {
 		(void) sprintf(line, "cannot create %s", LogName);
 		logerror(line);
@@ -451,7 +444,6 @@ main(argc, argv)
 	finet = socket(AF_INET, SOCK_DGRAM, 0);
 	if (finet >= 0) {
 		struct servent *sp;
-		int one = 1;
 
 		sp = getservbyname("syslog", "udp");
 		if (sp == NULL) {
@@ -465,7 +457,7 @@ main(argc, argv)
 #ifdef COMPAT42
 		(void) close(finet);
 #else
-		if (bind(finet, &sin, sizeof(sin)) < 0) {
+		if (bind(finet, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 			logerror("bind");
 			if (!Debug)
 				die(0);
@@ -475,25 +467,27 @@ main(argc, argv)
 		}
 #endif /* COMPAT42 */
 	}
-#if defined(COMPAT42)
+#ifdef COMPAT42
 	InetInuse = 1;
 	inetm = 0;
 	klogm = 0;
-#elif defined(STREAMS_LOG_DRIVER)
+#else
+#ifdef STREAMS_LOG_DRIVER
 	klogm = 0;
-#else /* !COMPAT42, !STREAMS_LOG_DRIVER */
+#else
 	if ((fklog = open("/dev/klog", O_RDONLY)) >= 0)
 		klogm = FDMASK(fklog);
 	else {
 		dprintf("can't open /dev/klog (%d)\n", errno);
 		klogm = 0;
 	}
+#endif
 #endif /* COMPAT42 */
 
 	/* tuck my process id away */
 	fp = fopen(PidFile, "w");
 	if (fp != NULL) {
-		fprintf(fp, "%d\n", getpid());
+		fprintf(fp, "%d\n", (int) getpid());
 		(void) fclose(fp);
 	}
 
@@ -507,17 +501,12 @@ main(argc, argv)
 	znotice.z_default_format = "Syslog message from $instance, level $opcode:\n$message";
 	(void) ZInitialize ();
 
-	init();
-#ifdef POSIX
+	init(0);
+#ifdef _POSIX_VERSION
 	action.sa_handler = init;
 	sigaction(SIGHUP, &action, NULL);
 #else
 	(void) signal(SIGHUP, init);
-#endif
-
-#ifndef STREAMS_LOG_DRIVER
-	dprintf("fdmasks: funix=%d, inetm=%d, klogm=%d\n",
-		FDMASK(funix), inetm, klogm);
 #endif
 
 	for (;;) {
@@ -534,12 +523,12 @@ main(argc, argv)
 				   readfds[POLLFD_unix].revents,
 				   readfds[POLLFD_inet].fd,
 				   readfds[POLLFD_inet].revents);
-
 		nfds = poll(readfds, 2, INFTIM);
 
 #else /* STREAMS_LOG_DRIVER */
 		int readfds = FDMASK(funix) | inetm | klogm;
-#ifdef _AIX
+
+#ifdef HAVE_SRC
 		if (using_src)
 		  readfds |= FDMASK(src_fd);
 #endif
@@ -547,16 +536,15 @@ main(argc, argv)
 		dprintf("readfds = %#x\n", readfds);
 		nfds = select(20, (fd_set *) &readfds, (fd_set *) NULL,
 				  (fd_set *) NULL, (struct timeval *) NULL);
-		dprintf("got a message (%d, %#x)\n", nfds, readfds);
 #endif /* STREAMS_LOG_DRIVER */
 		if (nfds == 0)
 			continue;
 		if (nfds < 0) {
 			if (errno != EINTR)
 #ifdef STREAMS_LOG_DRIVER
-			  logerror("poll");
+				logerror("poll");
 #else
-			  logerror("select");
+				logerror("select");
 #endif
 			continue;
 		}
@@ -576,7 +564,10 @@ main(argc, argv)
   		  i = getmsg(funix, &ctl, &dat, &flags);
 		  if ((i==0)) {
 #if (NLOGARGS != 3)
-#error This section of code assumes that NLOGARGS is 3. If that is not the case, this needs to be editted by hand. Sorry, but sed magic was too much for me.
+		      error "This section of code assumes that NLOGARGS is 3.";
+		      error "If that's not the case, this needs to be editted";
+		      error "by hand. Sorry, but sed magic was too much for";
+		      error "me.";
 #else
 		    {
 		    char null[] = "", *p;
@@ -599,7 +590,7 @@ main(argc, argv)
 		  } else if (i > 0) {
 		    sprintf(line, "getmsg() > 1 (%X)", i);
 		    logerror(line);
-		  }
+ 		  }
 		}
 #else /* STREAMS_LOG_DRIVER */
 		dprintf("got a message (%d, %#x)\n", nfds, readfds);
@@ -623,7 +614,7 @@ main(argc, argv)
 				printline(LocalHostName, line);
 			} else if (i < 0 && errno != EINTR)
 				logerror("recvfrom unix");
-		      }
+		}
 #endif /* STREAMS_LOG_DRIVER */
 #ifdef STREAMS_LOG_DRIVER
 		if (readfds[POLLFD_inet].revents & (POLLIN|POLLPRI)) {
@@ -631,16 +622,15 @@ main(argc, argv)
 		if (readfds & inetm) {
 #endif
 			len = sizeof frominet;
-			i = recvfrom(finet, line, MAXLINE, 0, &frominet, &len);
+			i = recvfrom(finet, line, MAXLINE, 0,
+				     (struct sockaddr *) &frominet, &len);
 			if (i > 0) {
-				extern char *cvthname();
-
 				line[i] = '\0';
 				printline(cvthname(&frominet), line);
 			} else if (i < 0 && errno != EINTR)
 				logerror("recvfrom inet");
 		} 
-#ifdef _AIX
+#ifdef HAVE_SRC
 		dprintf("%d %d %d\n", using_src, readfds, FDMASK(src_fd));
 		if (using_src && (readfds & (FDMASK(src_fd)))) {
 		  dprintf("got a src packet\n");
@@ -649,29 +639,33 @@ main(argc, argv)
 			      &len);
 		  dprintf("finished recvfrom, %d\n",i);
 		}
-/*		  if (i > 0) {
+#if 0
+		  if (i > 0) {
 		    handle_src(srcreq);
 		  } else if (i < 0 && errno != EINTR)
 		    logerror("recvfrom src");
-		} */
-#endif /* _AIX */
+		}
+#endif
+#endif /* HAVE_SRC */
 	}
 }
 
-usage()
+static void usage()
 {
 	fprintf(stderr, "usage: syslogd [-d] [-mmarkinterval] [-ppath] [-fconffile]\n");
 	exit(1);
 }
 
-untty()
+static void untty()
 {
 	int i;
 
 	if (!Debug) {
 		i = open("/dev/tty", O_RDWR);
 		if (i >= 0) {
+#ifdef TIOCNOTTY /* Only necessary on old systems. */
 			(void) ioctl(i, (int) TIOCNOTTY, (char *)0);
+#endif
 			(void) close(i);
 		}
 	}
@@ -682,8 +676,8 @@ untty()
  * on the appropriate log files.
  */
 
-printline(hname, msg)
-	char *hname;
+static void printline(hname, msg)
+	const char *hname;
 	char *msg;
 {
 	register char *p, *q;
@@ -727,7 +721,8 @@ printline(hname, msg)
  * Take a raw input line from /dev/klog, split and format similar to syslog().
  */
 
-printsys(msg)
+#ifndef STREAMS_LOG_DRIVER
+static void printsys(msg)
 	char *msg;
 {
 	register char *p, *q;
@@ -761,23 +756,22 @@ printsys(msg)
 		logmsg(pri, line, LocalHostName, flags);
 	}
 }
-
-time_t	now;
+#endif
 
 /*
  * Log a message to the appropriate log files, users, etc. based on
  * the priority.
  */
 
-logmsg(pri, msg, from, flags)
+static void logmsg(pri, msg, from, flags)
 	int pri;
-	char *msg, *from;
+	const char *msg, *from;
 	int flags;
 {
 	register struct filed *f;
 	int fac, prilev, msglen;
-	char *timestamp;
-#ifdef POSIX
+	const char *timestamp;
+#ifdef _POSIX_VERSION
 	sigset_t osig, sig;
 #else
 	int omask;
@@ -785,7 +779,7 @@ logmsg(pri, msg, from, flags)
 
 	dprintf("logmsg: pri %o, flags %x, from %s, msg %s\n", pri, flags, from, msg);
 
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	(void) sigemptyset(&sig);
 	(void) sigaddset(&sig, SIGHUP);
 	(void) sigaddset(&sig, SIGALRM);
@@ -828,7 +822,7 @@ logmsg(pri, msg, from, flags)
 			fprintlog(f, flags, (char *)NULL, fac, prilev);
 			(void) close(f->f_file);
 		}
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 		(void) sigprocmask(SIG_SETMASK, &osig, (sigset_t *)0);
 #else
 		(void) sigsetmask(omask);
@@ -855,8 +849,8 @@ logmsg(pri, msg, from, flags)
 		    !strcmp(from, f->f_prevhost)) {
 			(void) strncpy(f->f_lasttime, timestamp, 15);
 			f->f_prevcount++;
-			dprintf("msg repeated %d times, %d sec of %d\n",
-			    f->f_prevcount, now - f->f_time,
+			dprintf("msg repeated %d times, %ld sec of %d\n",
+			    f->f_prevcount, (long)(now - f->f_time),
 			    repeatinterval[f->f_repeatcount]);
 			/*
 			 * If domark would have logged this by now,
@@ -876,6 +870,7 @@ logmsg(pri, msg, from, flags)
 			(void) strncpy(f->f_lasttime, timestamp, 15);
 			(void) strncpy(f->f_prevhost, from,
 					sizeof(f->f_prevhost));
+			f->f_prevhost[sizeof(f->f_prevhost) - 1] = 0;
 			if (msglen < MAXSVLINE) {
 				f->f_prevlen = msglen;
 				f->f_prevpri = pri;
@@ -889,23 +884,23 @@ logmsg(pri, msg, from, flags)
 			}
 		}
 	}
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	(void) sigprocmask(SIG_SETMASK, &osig, (sigset_t *)0);
 #else
 	(void) sigsetmask(omask);
 #endif
 }
 
-fprintlog(f, flags, msg, fac, prilev)
+static void fprintlog(f, flags, msg, fac, prilev)
 	register struct filed *f;
 	int flags;
-	char *msg;
+	const char *msg;
 	int fac, prilev;
 {
 	struct iovec iov[6];
 	register struct iovec *v = iov;
 	register int l;
-	char line[MAXLINE + 1];
+	char line[MAXLINE + MAXHOSTNAMELEN + 21];
 	char repbuf[80];
 	char pri_fac_str[35];
 	int i;
@@ -924,7 +919,7 @@ fprintlog(f, flags, msg, fac, prilev)
 	v->iov_len = 1;
 	v++;
 	if (msg) {
-		v->iov_base = msg;
+		v->iov_base = (char *) msg;
 		v->iov_len = strlen(msg);
 	} else if (f->f_prevcount > 1) {
 		(void) sprintf(repbuf, "last message repeated %d times",
@@ -953,9 +948,11 @@ fprintlog(f, flags, msg, fac, prilev)
 		if (l > MAXLINE)
 			l = MAXLINE;
 #ifdef COMPAT42
-		if (sendto(f->f_file, line, l, 0, &f->f_un.f_forw.f_addr,
+		if (sendto(f->f_file, line, l, 0,
+			   (struct sockaddr *) &f->f_un.f_forw.f_addr,
 #else
-		if (sendto(finet, line, l, 0, &f->f_un.f_forw.f_addr,
+		if (sendto(finet, line, l, 0,
+			   (struct sockaddr *) &f->f_un.f_forw.f_addr,
 #endif
 		    sizeof f->f_un.f_forw.f_addr) != l) {
 			int e = errno;
@@ -1013,6 +1010,11 @@ fprintlog(f, flags, msg, fac, prilev)
 				       iov[0].iov_base,
 				       iov[2].iov_base,
 				       iov[4].iov_base);
+			if (!msg && f->f_prevcount > 1) {
+				/* Include previous line with Zephyrgram. */
+				sprintf(line + strlen(line), ":\n%*s",
+					f->f_prevlen, f->f_prevline);
+			}
 			(void) sprintf(pri_fac_str, "%s.%s", 
 				       FacNames[fac].c_name,
 				       PriNames[(prilev & LOG_PRIMASK)].c_name);
@@ -1022,7 +1024,7 @@ fprintlog(f, flags, msg, fac, prilev)
 			znotice.z_opcode = pri_fac_str;
 			dprintf (" z_opcode %s\n", pri_fac_str);
 			for (i = 0; i < MAXUNAMES; i++) {
-			  if (!f->f_un.f_uname[i][0]) 
+			  if (!f->f_un.f_uname[i]) 
 			    break;
 			  /* map "*" into null recipient and therefore
 			     anybody who is listening */
@@ -1047,16 +1049,16 @@ fprintlog(f, flags, msg, fac, prilev)
 	f->f_prevcount = 0;
 }
 
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 sigjmp_buf ttybuf;
 #else
 jmp_buf ttybuf;
 #endif
 
-static sighandler_type
-endtty()
+static RETSIGTYPE endtty(sig)
+	int sig;
 {
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	siglongjmp(ttybuf, 1);
 #else
 	longjmp(ttybuf, 1);
@@ -1070,7 +1072,7 @@ endtty()
  *	world, or a list of approved users.
  */
 
-wallmsg(f, iov)
+static void wallmsg(f, iov)
 	register struct filed *f;
 	struct iovec *iov;
 {
@@ -1081,7 +1083,7 @@ wallmsg(f, iov)
 	struct utmp ut;
 	static char p[6+sizeof(ut.ut_line)] = "/dev/";
 	char greetings[200];
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 	struct sigaction action;
 #endif
 
@@ -1100,7 +1102,7 @@ wallmsg(f, iov)
 	 * and doing notty().
 	 */
 	if (fork() == 0) {
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 		action.sa_flags = 0;
 		(void) sigemptyset(&action.sa_mask);
 		
@@ -1136,7 +1138,7 @@ wallmsg(f, iov)
 			/* should we send the message to this user? */
 			if (f->f_type == F_USERS) {
 				for (i = 0; i < MAXUNAMES; i++) {
-					if (!f->f_un.f_uname[i][0]) {
+					if (!f->f_un.f_uname[i]) {
 						i = MAXUNAMES;
 						break;
 					}
@@ -1156,7 +1158,7 @@ wallmsg(f, iov)
 				iov[0].iov_len = len;
 				iov[1].iov_len = 0;
 			}
-#ifdef POSIX
+#ifdef _POSIX_VERSION
 			if (sigsetjmp(ttybuf, 1) == 0)
 #else
 			if (setjmp(ttybuf) == 0)
@@ -1184,23 +1186,22 @@ wallmsg(f, iov)
 	reenter = 0;
 }
 
-static sighandler_type
-reapchild()
+static RETSIGTYPE reapchild(sig)
+	int sig;
 {
-#ifdef POSIX
-    int status;
-    while (waitpid(-1, &status, WNOHANG) > 0) ;
+#ifdef HAVE_WAITPID
+	int status;
+	while (waitpid(-1, &status, WNOHANG) > 0) ;
 #else
-    union wait status;
-    while (wait3(&status, WNOHANG, (struct rusage *) NULL) > 0) ;
+	union wait status;
+	while (wait3(&status, WNOHANG, (struct rusage *) NULL) > 0) ;
 #endif
 }
 
 /*
  * Return a printable representation of a host address.
  */
-char *
-cvthname(f)
+static const char *cvthname(f)
 	struct sockaddr_in *f;
 {
 	struct hostent *hp;
@@ -1213,7 +1214,8 @@ cvthname(f)
 		dprintf("Malformed from address\n");
 		return ("???");
 	}
-	hp = gethostbyaddr(&f->sin_addr, sizeof(struct in_addr), f->sin_family);
+	hp = gethostbyaddr((const char *) &f->sin_addr, sizeof(struct in_addr),
+			   f->sin_family);
 	if (hp == 0) {
 		dprintf("Host name for your address (%s) unknown\n",
 			inet_ntoa(f->sin_addr));
@@ -1224,8 +1226,8 @@ cvthname(f)
 	return (hp->h_name);
 }
 
-static sighandler_type
-domark()
+static RETSIGTYPE domark(sig)
+	int sig;
 {
 	register struct filed *f;
 
@@ -1252,24 +1254,19 @@ domark()
 /*
  * Print syslogd errors some place.
  */
-logerror(type)
-	char *type;
+static void logerror(type)
+	const char *type;
 {
 	char buf[100];
 
-	if (errno == 0)
-		(void) sprintf(buf, "syslogd: %s", type);
-	else if ((unsigned) errno > sys_nerr)
-		(void) sprintf(buf, "syslogd: %s: error %d", type, errno);
-	else
-		(void) sprintf(buf, "syslogd: %s: %s", type, strerror(errno));
+	sprintf(buf, "syslogd: %s", strerror(errno));
 	errno = 0;
 	dprintf("%s\n", buf);
 	logmsg(LOG_SYSLOG|LOG_ERR, buf, LocalHostName, ADDDATE);
 }
 
-static sighandler_type
-die(sig)
+static RETSIGTYPE die(sig)
+    	int sig;
 {
 	register struct filed *f;
 	char buf[100];
@@ -1287,7 +1284,7 @@ die(sig)
 		logerror(buf);
 	}
 #ifndef STREAMS_LOG_DRIVER
-	(void) unlink(LogName);
+  	(void) unlink(LogName);
 #endif
 	exit(0);
 }
@@ -1296,8 +1293,8 @@ die(sig)
  *  INIT -- Initialize syslogd from configuration table
  */
 
-static sighandler_type
-init()
+static RETSIGTYPE init(sig)
+	int sig;
 {
 	register int i;
 	register FILE *cf;
@@ -1316,7 +1313,6 @@ init()
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL, f->f_prevfac,
 				  f->f_prevpri);
-
 		switch (f->f_type) {
 		  case F_FILE:
 		  case F_TTY:
@@ -1325,6 +1321,13 @@ init()
 		  case F_FORW:
 #endif
 			(void) close(f->f_file);
+			break;
+
+		  case F_USERS:
+		  case F_ZEPHYR:
+
+			for (i = 0; i < MAXUNAMES && f->f_un.f_uname[i]; i++)
+			    free(f->f_un.f_uname[i]);
 			break;
 		}
 		next = f->f_next;
@@ -1389,7 +1392,7 @@ init()
 				break;
 
 			case F_USERS:
-				for (i = 0; i < MAXUNAMES && *f->f_un.f_uname[i]; i++)
+				for (i = 0; i < MAXUNAMES && f->f_un.f_uname[i]; i++)
 					printf("%s, ", f->f_un.f_uname[i]);
 				break;
 			}
@@ -1405,7 +1408,7 @@ init()
  * Crack a configuration file line
  */
 
-cfline(line, f)
+static void cfline(line, f)
 	char *line;
 	register struct filed *f;
 {
@@ -1541,15 +1544,18 @@ cfline(line, f)
 		for (i = 0; i < MAXUNAMES && *p; i++) {
 			for (q = p; *q && *q != ','; )
 				q++;
-			(void) strncpy(f->f_un.f_uname[i], p, UTMPNAMESZ);
-			if ((q - p) > UTMPNAMESZ)
-				f->f_un.f_uname[i][UTMPNAMESZ] = '\0';
-			else
-				f->f_un.f_uname[i][q - p] = '\0';
+			f->f_un.f_uname[i] = malloc(q - p + 1);
+			if (f->f_un.f_uname[i]) {
+			    strncpy(f->f_un.f_uname[i], p, q - p);
+			    f->f_un.f_uname[i][q - p] = 0;
+			} else {
+			    break;
+			}
 			while (*q == ',' || *q == ' ')
 				q++;
 			p = q;
 		}
+		f->f_un.f_uname[i] = NULL;
 		f->f_type = F_USERS;
 		break;
 
@@ -1557,15 +1563,18 @@ cfline(line, f)
 		for (i = 0; i < MAXUNAMES && *p; i++) {
 			for (q = p; *q && *q != ','; )
 				q++;
-			(void) strncpy(f->f_un.f_uname[i], p, UNAMESZ);
-			if ((q - p) > UNAMESZ)
-				f->f_un.f_uname[i][UNAMESZ] = '\0';
-			else
-				f->f_un.f_uname[i][q - p] = '\0';
+			f->f_un.f_uname[i] = malloc(q - p + 1);
+			if (f->f_un.f_uname[i]) {
+			    strncpy(f->f_un.f_uname[i], p, q - p);
+			    f->f_un.f_uname[i][q - p] = 0;
+			} else {
+			    break;
+			}
 			while (*q == ',' || *q == ' ')
 				q++;
 			p = q;
 		}
+		f->f_un.f_uname[i] = NULL;
 		f->f_type = F_ZEPHYR;
 		break;
 	}
@@ -1576,7 +1585,7 @@ cfline(line, f)
  *  Decode a symbolic name to a numeric value
  */
 
-decode(name, codetab)
+static int decode(name, codetab)
 	char *name;
 	struct code *codetab;
 {
@@ -1598,11 +1607,10 @@ decode(name, codetab)
 	return (-1);
 }
 
-#ifdef _AIX
+#ifdef HAVE_SRC
 /* Routines for handling the SRC (System Resource Controller) system */
 
-void
-handle_src(packet)
+static void handle_src(packet)
     struct srcreq packet;
 {
     void send_src_reply();
@@ -1638,7 +1646,7 @@ handle_src(packet)
 	break;
     case REFRESH:
 	if (packet.subreq.object == SUBSYSTEM) {
-	    init();
+	    init(0);
 	    send_src_reply(packet, SRC_OK, "", sizeof(struct srcrep));
 	} else {
 	    send_src_reply(packet, SRC_SUBMSG, 
@@ -1649,8 +1657,7 @@ handle_src(packet)
     }
 }
 
-void
-send_src_reply(orig_packet, rtncode, packet,len)
+static void send_src_reply(orig_packet, rtncode, packet,len)
     struct srcreq orig_packet;
     int rtncode;
     char *packet;
@@ -1668,4 +1675,4 @@ send_src_reply(orig_packet, rtncode, packet,len)
     srcsrpy(srcrrqs(&orig_packet), (char *)&reply, len, cont);
 }
 
-#endif /* _AIX */
+#endif /* HAVE_SRC */

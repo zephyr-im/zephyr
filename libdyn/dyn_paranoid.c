@@ -15,8 +15,8 @@
 #include "dynP.h"
 
 int DynParanoid(obj, state)
-   DynObjectP obj;
-   char state;
+   DynObject obj;
+   int state;
 {
      obj->paranoid = state;
 

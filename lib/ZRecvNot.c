@@ -16,9 +16,7 @@
 static char rcsid_ZReceiveNotice_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZReceiveNotice(notice, from)
     ZNotice_t *notice;

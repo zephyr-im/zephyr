@@ -16,21 +16,19 @@
 static char rcsid_ZSendNotice_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZSendNotice(notice, cert_routine)
     ZNotice_t *notice;
-    int (*cert_routine)();
+    Z_AuthProc cert_routine;
 {
     return(ZSrvSendNotice(notice, cert_routine, Z_XmitFragment));
 }
 
 Code_t ZSrvSendNotice(notice, cert_routine, send_routine)
     ZNotice_t *notice;
-    int (*cert_routine)();
-    int (*send_routine)();
+    Z_AuthProc cert_routine;
+    Code_t (*send_routine)();
 {    
     Code_t retval;
     ZNotice_t newnotice;

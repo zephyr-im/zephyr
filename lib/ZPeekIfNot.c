@@ -16,9 +16,7 @@
 static char rcsid_ZPeekIfNotice_c[] = "$Header$";
 #endif
 
-#include <zephyr/mit-copyright.h>
-
-#include <zephyr/zephyr_internal.h>
+#include <internal.h>
 
 Code_t ZPeekIfNotice(notice, from, predicate, args)
     ZNotice_t *notice;

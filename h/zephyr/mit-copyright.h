@@ -1,6 +1,6 @@
 /*
 
-Copyright 1987,1988 by the Massachusetts Institute of Technology
+Copyright 1987,1988,1995 by the Massachusetts Institute of Technology
 
 All rights reserved.
 

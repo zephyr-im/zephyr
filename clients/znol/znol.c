@@ -11,13 +11,13 @@
  *	"mit-copyright.h". 
  */
 
+#include <sysdep.h>
 #include <zephyr/zephyr.h>
 
 #include <pwd.h>
-#include <string.h>
 
 #ifndef lint
-static char rcsid_znol_c[] = "$Id$";
+static const char rcsid_znol_c[] = "$Id$";
 #endif 
 
 #define SUBSATONCE 7
@@ -142,9 +142,8 @@ main(argc,argv)
 			*comment_ptr = '\0'; /* Ignore from # onwards */
 		    /* Get rid of old-style nol entries, just in case */
 		    cp = cleanname + strlen(cleanname) - 1;
-		    if (*cp == '\n')
-			*cp = '\0';
-		    while (*--cp == ' ')
+		    *cp = '\0';
+		    while(*--cp == ' ')
 			*cp = '\0';
 		    if (*cleanname == '@' || !*cleanname)
 			continue;
