@@ -1,16 +1,22 @@
 #include <stdio.h>
+#include <string.h>
 #include <pwd.h>
+#include <dyn.h>
 
 #include "xzwrite.h"
 
 extern Defaults defs;
+DynObject zsigs = NULL;
+
+#define islower(foo) ((foo) >= 'a' && (foo) <= 'z')
+#define toupper(foo) ((foo)+'A'-'a')
+
+Boolean set_random_zsigs();
 
 main(argc, argv)
    int	argc;
    char	**argv;
 {
-     char sigbfr[BUFSIZ];
-     
      zeph_init();
 
      build_interface(&argc, argv);
@@ -38,6 +44,10 @@ set_signature()
      char *sig, sigbfr[BUFSIZ];
      
      /* Do magic with signature */
+     if (defs.zsigfile)
+       if (strcmp(defs.zsigfile, "*"))
+	 if (set_random_zsigs()) return;
+
      if (*defs.signature)
 	  return;
 
@@ -80,4 +90,34 @@ usage()
 {
      fprintf(stderr, "Usage:  xzwrite [ -toolkitoption ... ] [-s signature] [+d | -d] [+n | -n]\n\t[+v | -v] [+yd | -yd] [+av | -av] [+ci | -ci] [-my yanks]\n\t[+l | -l] [+a | -a] [+x | -x] [+z | -z] [+pong | -pong] [+reply | -reply]\n");
      exit(1);
+}
+
+#define BUF_SIZE 1024
+
+Boolean set_random_zsigs()
+{ int x, n;
+  char z[BUF_SIZE], *z2;
+  FILE *fp;
+
+  fp = fopen(defs.zsigfile, "r");
+  if (!fp) {
+    fprintf(stderr, "xzwrite: cant open file \"%s\".\n", defs.zsigfile);
+    return False; }
+  
+  zsigs = DynCreate(sizeof(char*), 5);
+  
+  while ( fgets(z, BUF_SIZE, fp) != NULL) {
+    if (z[0] == '#' || z[0] == 0) continue;
+    n = strlen(z);
+    z2 = (char *) calloc (sizeof(char), n);
+    if (!z2) {
+      fprintf(stderr, "xzwrite: out of memory.\n"); exit(1); }
+    if (z[n-1] == '\n') { n--; z[n] = 0; }
+    for (x = 0; x <= n; x++) {
+      if (z[x] != '\\') z2[x] = z[x];
+      else z2[x] = '\n'; }
+    DynAdd(zsigs, (DynPtr) &z2); }
+
+  fclose(fp);
+  return True;
 }
