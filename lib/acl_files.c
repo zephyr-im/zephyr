@@ -32,6 +32,7 @@ static char rcsid_acl_files_c[] = "$Id$";
 #include <sys/stat.h>
 #include <ctype.h>
 #include <sys/param.h>			/* for MAXHOSTNAMELEN */
+#include <errno.h>
 
 /* "aname.inst@realm" */
 #define MAX_PRINCIPAL_SIZE  (ANAME_SZ + INST_SZ + REALM_SZ + 3)
@@ -43,8 +44,8 @@ static char rcsid_acl_files_c[] = "$Id$";
 #define NEW_FILE "%s.~NEWACL~"	/* Format for name of altered acl file */
 #define WAIT_TIME 300		/* Maximum time allowed write acl file */
 
-#define CACHED_ACLS 12		/* How many acls to cache */
-#define ACL_LEN 64		/* Twice a reasonable acl length */
+#define CACHED_ACLS 64		/* How many acls to cache */
+#define ACL_LEN 256		/* Twice a reasonable acl length */
 
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -53,24 +54,20 @@ static char rcsid_acl_files_c[] = "$Id$";
 
 #define COR(a,b) ((a!=NULL)?(a):(b))
 
-extern int errno;
-
-extern time_t time();
-
 /* Canonicalize a principal name */
 /* If instance is missing, it becomes "" */
 /* If realm is missing, it becomes the local realm */
 /* Canonicalized form is put in canon, which must be big enough to hold
    MAX_PRINCIPAL_SIZE characters */
 acl_canonicalize_principal(principal, canon)
-char *principal;
-char *canon;
+    char *principal;
+    char *canon;
 {
     char *dot, *atsign, *end;
     int len;
 
-    dot = strchr(principal, INST_SEP);
-    atsign = strchr(principal, REALM_SEP);
+    dot = (char *)strchr(principal, INST_SEP);
+    atsign = (char *)strchr(principal, REALM_SEP);
 
     /* Maybe we're done already */
     if(dot != NULL && atsign != NULL) {
@@ -129,7 +126,7 @@ char *canon;
 /* or NULL if file cannot be modified */
 /* REQUIRES WRITE PERMISSION TO CONTAINING DIRECTORY */
 static FILE *acl_lock_file(acl_file)
-char *acl_file;
+    char *acl_file;
 {
     struct stat s;
     char new[LINESIZE];
@@ -177,8 +174,8 @@ char *acl_file;
 /* Returns < 0 if some other error occurs */
 /* Closes f */
 static int acl_commit(acl_file, f)
-char *acl_file;
-FILE *f;     
+    char *acl_file;
+    FILE *f;     
 {
 #ifdef WRITE_ACL
     char new[LINESIZE];
@@ -205,8 +202,8 @@ FILE *f;
 /* Returns 0 if successful, < 0 otherwise */
 /* Closes f */
 static int acl_abort(acl_file, f)
-char *acl_file;
-FILE *f;     
+    char *acl_file;
+    FILE *f;     
 {
 #ifdef WRITE_ACL
     char new[LINESIZE];
@@ -233,9 +230,10 @@ FILE *f;
 /* Creates the file with permissions perm if it does not exist */
 /* Erases it if it does */
 /* Returns return value of acl_commit */
-int acl_initialize(acl_file, perm)
-char *acl_file;
-int perm;
+int
+acl_initialize(acl_file, perm)
+    char *acl_file;
+    int perm;
 {
     FILE *new;
     int fd;
@@ -257,7 +255,7 @@ int perm;
 /* Eliminate all whitespace character in buf */
 /* Modifies its argument */
 static nuke_whitespace(buf)
-char *buf;
+    char *buf;
 {
     register char *pin, *pout;
 
@@ -276,7 +274,7 @@ struct hashtbl {
 
 /* Make an empty hash table of size s */
 static struct hashtbl *make_hash(size)
-int size;
+    int size;
 {
     struct hashtbl *h;
 
@@ -303,8 +301,9 @@ destroy_hash(h)
 }
 
 /* Compute hash value for a string */
-static unsigned hashval(s)
-register char *s;
+static unsigned int
+hashval(s)
+    register char *s;
 {
     register unsigned hv;
 
@@ -316,8 +315,8 @@ register char *s;
 
 /* Add an element to a hash table */
 static add_hash(h, el)
-struct hashtbl *h;
-char *el;
+    struct hashtbl *h;
+    char *el;
 {
     unsigned hv;
     char *s;
@@ -348,9 +347,10 @@ char *el;
 }
 
 /* Returns nonzero if el is in h */
-static check_hash(h, el)
-struct hashtbl *h;
-char *el;
+static int
+check_hash(h, el)
+    struct hashtbl *h;
+    char *el;
 {
     unsigned hv;
 
@@ -376,7 +376,7 @@ static int acl_cache_next = 0;
 /* Returns index into acl_cache otherwise */
 /* Note that if acl is already loaded, this is just a lookup */
 int acl_load(name)
-char *name;
+    char *name;
 {
     int i;
     FILE *f;
@@ -408,7 +408,7 @@ char *name;
     /* Force reload */
     acl_cache[i].acl = (struct hashtbl *) 0;
 
- got_it:
+got_it:
     /*
      * See if we need to reload the ACL
      */
@@ -435,24 +435,24 @@ char *name;
  */
 acl_cache_reset()
 {
-	int	i;
-	
-	/* See if it's there already */
-	for(i = 0; i < acl_cache_count; i++)
-	    if (acl_cache[i].acl) {
-		destroy_hash(acl_cache[i].acl);
-		acl_cache[i].acl = (struct hashtbl *) 0;
-	    }
-	acl_cache_count = 0;
-	acl_cache_next = 0;
+    int	i;
+    
+    /* See if it's there already */
+    for(i = 0; i < acl_cache_count; i++)
+    if (acl_cache[i].acl) {
+	destroy_hash(acl_cache[i].acl);
+	acl_cache[i].acl = (struct hashtbl *) 0;
+    }
+    acl_cache_count = 0;
+    acl_cache_next = 0;
 }
 
 
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Principal is not canonicalized, and no wildcarding is done */
 acl_exact_match(acl, principal)
-char *acl;
-char *principal;
+    char *acl;
+    char *principal;
 {
     int idx;
 
@@ -464,8 +464,8 @@ char *principal;
 /* Recognizes wildcards in acl of the form
    name.*@realm, *.*@realm, and *.*@* */
 acl_check(acl, principal)
-char *acl;
-char *principal;
+    char *acl;
+    char *principal;
 {
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];
@@ -478,8 +478,8 @@ char *principal;
 	return 1;
 
     /* Try the wildcards */
-    realm = strchr(canon, REALM_SEP);
-    *strchr(canon, INST_SEP) = '\0';	/* Chuck the instance */
+    realm = (char *)strchr(canon, REALM_SEP);
+    *((char *)strchr(canon, INST_SEP)) = '\0';	/* Chuck the instance */
 
     sprintf(buf, "%s.*%s", canon, realm);
     if(acl_exact_match(acl, buf)) return 1;
@@ -493,8 +493,8 @@ char *principal;
 /* Adds principal to acl */
 /* Wildcards are interpreted literally */
 acl_add(acl, principal)
-char *acl;
-char *principal;
+    char *acl;
+    char *principal;
 {
     int idx;
     int i;
@@ -526,9 +526,10 @@ char *principal;
 
 /* Removes principal from acl */
 /* Wildcards are interpreted literally */
+int
 acl_delete(acl, principal)
-char *acl;
-char *principal;
+    char *acl;
+    char *principal;
 {
     int idx;
     int i;
