@@ -91,6 +91,8 @@ void com_err_va (whoami, code, fmt, args)
     const char *fmt;
     va_list args;
 {
+  if (! com_err_hook)
+        com_err_hook = default_com_err_proc;
     (*com_err_hook) (whoami, code, fmt, args);
 }
 
