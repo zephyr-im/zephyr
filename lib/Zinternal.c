@@ -48,8 +48,8 @@ int __subscriptions_next;
 
 #ifdef ZEPHYR_USES_KERBEROS
 C_Block __Zephyr_session;
-char __Zephyr_realm[REALM_SZ];
 #endif
+char __Zephyr_realm[REALM_SZ];
 
 #ifdef Z_DEBUG
 void (*__Z_debug_print) __P((const char *fmt, va_list args, void *closure));
