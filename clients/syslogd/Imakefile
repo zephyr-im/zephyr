@@ -5,12 +5,12 @@
 /**/#
 /**/#	$Source$
 /**/#	$Author$
-/**/#	$Header$
+/**/#	$Id$
 /**/#
 
-LIBS= $(ZEPHYR_LIB) $(COMERR_LIB) $(KRB_LIB)
+LIBS= $(ZEPHYR_LIB) $(KRB_LIB) $(COMERR_LIB)
 LINCLUDES=-I.
-LINTLIBS=$(ZEPHYR_LINTLIB) $(COMERR_LINTLIB) $(KRB_LINTLIB)
+LINTLIBS=$(ZEPHYR_LINTLIB) $(KRB_LINTLIB) $(COMERR_LINTLIB)
 SRCS = syslogd.c
 OBJS = syslogd.o
 HDRS= syslog.h
@@ -31,4 +31,6 @@ normal_obj_rule()
 genutil(logger, $(TOBJS),,)
 #endif
 
-program(syslogd,$(OBJS),,$(LIBS),$(USRETCDIR))
+program(syslogd,$(OBJS),,$(LIBS),$(ETCATHDIR))
+
+manpage(8,syslogd.8)
