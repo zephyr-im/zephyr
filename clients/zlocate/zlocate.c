@@ -128,7 +128,7 @@ main(argc,argv)
 	if (argv[loc][0] == '-') continue;
 
 	(void) strcpy(user,argv[loc]);
-	if (!index(user,'@')) {
+	if (!strchr(user,'@')) {
 	    (void) strcat(user,"@");
 	    (void) strcat(user,ZGetRealm());
 	} 
