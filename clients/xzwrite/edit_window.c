@@ -21,15 +21,15 @@ void send_message()
 {
      char	*buf;
      int	ret;
+     Widget	text_source;
 
      /* I should do more interesting things with these error conditions */
 
-     XtVaGetValues(editor,
-		   XtNstring, (XtArgVal) &buf,
-		   NULL);
+     XtVaGetValues(editor, XtNstring, (XtArgVal) &buf,
+		   XTNtextSource, (XtArgVal) &text_source, NULL);
 
      ret = zeph_send_message(&current_dest, buf);
-     XawAsciiSourceFreeString(editor);
+     XawAsciiSourceFreeString(text_source);
 
      switch (ret) {
      case SEND_OK:
@@ -45,6 +45,9 @@ void send_message()
      /* Only the second argument matters */
      if (defs.close_on_send)
 	  XtCallActionProc(toplevel, "CloseSend", NULL, NULL, 0);
+
+     if (defs.clear_on_send)
+	  XTCallActionProc(toplevel, "ClearEditor", NULL, NULL, 0);
 }
 
 void edit_set_title(dest)
@@ -111,13 +114,13 @@ void edit_yank_next()
 void edit_yank_store()
 {
      char *buf;
+     Widget text_source;
 
-     XtVaGetValues(editor,
-                 XtNstring, (XtArgVal) &buf,
-                 NULL);
+     XtVaGetValues(editor, XtNstring, (XtArgVal) &buf,
+		   XtNtextSource, (XtArgVal) &text_source, NULL);
 
      if (buf != NULL && *buf != '\0')
 	  yank_store(&current_dest, buf);
 
-     XawAsciiSourceFreeString(editor);
+     XawAsciiSourceFreeString(text_source);
 }
