@@ -1,8 +1,9 @@
 zephyr (2.1.sourceforge2-1) experimental; urgency=low
 
   * Another sourceforge snapshot; should fix some libtool issues.
+  * Don't depend on libzephyr-dev
 
- -- Sam Hartman <hartmans@mit.edu>  Sat, 13 Jul 2002 00:08:37 -0400
+ -- Sam Hartman <hartmans@mit.edu>  Sat, 13 Jul 2002 00:34:24 -0400
 
 zephyr (2.1.sourceforge1-1) experimental; urgency=low
 
