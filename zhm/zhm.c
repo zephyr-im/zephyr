@@ -24,7 +24,7 @@ static char rcsid_hm_c[] = "$Header$";
 #include <hesiod.h>
 #endif HESIOD
 
-int hmdebug = 0, rebootflag = 0, errflg = 0, dieflag = 0, oldpid;
+int hmdebug = 0, rebootflag = 0, errflg = 0, dieflag = 0, inetd = 0, oldpid;
 int no_server = 1, nservchang = 0, nserv = 0, nclt = 0;
 int booting = 1, timeout_type = 0, deactivated = 1;
 long starttime;
@@ -56,13 +56,12 @@ char *argv[];
      int opt, pak_len;
      extern int optind;
 
-     /* Override server argument? */
      if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
 	  printf("Can't find my hostname?!\n");
 	  exit(-1);
      }
      *prim_serv = NULL;
-     while ((opt = getopt(argc, argv, "drh")) != EOF)
+     while ((opt = getopt(argc, argv, "drhi")) != EOF)
 	  switch(opt) {
 	  case 'd':
 	       hmdebug++;
@@ -75,6 +74,12 @@ char *argv[];
 	       /* Reboot host -- send boot notice -- and exit */
 	       rebootflag++;
 	       break;
+	  case 'i':
+	       /* inetd operation: don't do bind ourselves, fd 0 is
+		  already connected to a socket. Implies -h */
+	       inetd++;
+	       dieflag++;
+	       break;
 	  case '?':
 	  default:
 	       errflg++;
@@ -84,6 +89,8 @@ char *argv[];
 	  fprintf(stderr, "Usage: %s [-d] [-h] [-r] [server]\n", argv[0]);
 	  exit(2);
      }
+
+     /* Override server argument? */
      if (optind <= argc) {
 	  (void)strcpy(prim_serv, argv[optind]);
 	  if ((hp = gethostbyname(prim_serv)) == NULL) {
@@ -282,17 +289,22 @@ void init_hm()
 	  (void) fclose(fp);
      }
 
-     /* Open client socket, for receiving client and server notices */
-     if ((sp = getservbyname("zephyr-hm", "udp")) == NULL) {
-	  printf("No zephyr-hm entry in /etc/services.\n");
-	  exit(1);
-     }
-     cli_port = sp->s_port;
+     if (inetd) {
+	     ZSetFD(0);			/* fd 0 is on the socket,
+					   thanks to inetd */
+     } else {
+	     /* Open client socket, for receiving client and server notices */
+	     if ((sp = getservbyname("zephyr-hm", "udp")) == NULL) {
+		     printf("No zephyr-hm entry in /etc/services.\n");
+		     exit(1);
+	     }
+	     cli_port = sp->s_port;
       
-     if ((ret = ZOpenPort(&cli_port)) != ZERR_NONE) {
-	  Zperr(ret);
-	  com_err("hm", ret, "opening port");
-	  exit(ret);
+	     if ((ret = ZOpenPort(&cli_port)) != ZERR_NONE) {
+		     Zperr(ret);
+		     com_err("hm", ret, "opening port");
+		     exit(ret);
+	     }
      }
      cli_sin = ZGetDestAddr();
      cli_sin.sin_port = sp->s_port;
@@ -305,13 +317,14 @@ void init_hm()
      }
 
 #ifndef DEBUG
-     detach();
+     if (!inetd)
+	     detach();
   
      /* Write pid to file */
      fp = fopen(PidFile, "w");
      if (fp != NULL) {
-	  fprintf(fp, "%d\n", getpid());
-	  (void) fclose(fp);
+	     fprintf(fp, "%d\n", getpid());
+	     (void) fclose(fp);
      }
 #endif DEBUG
 
