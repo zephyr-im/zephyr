@@ -230,11 +230,11 @@ main(int argc, char **argv)
 #define SIG_IGN SignalIgnore
 #endif
 	(void) signal(SIGINT, SIG_IGN);
-	syslog(LOG_INFO, "Ready for action");
 #else
 	(void) signal(SIGINT, bye);
 	(void) signal(SIGTERM, bye);
-#endif DEBUG
+#endif
+	syslog(LOG_INFO, "Ready for action");
 	(void) signal(SIGUSR1, dbug_on);
 	(void) signal(SIGUSR2, dbug_off);
 	(void) signal(SIGCHLD, reap);
