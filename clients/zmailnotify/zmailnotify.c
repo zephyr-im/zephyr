@@ -62,7 +62,8 @@ char *prog = "zmailnotify";
 
 /* This entire program is a kludge - beware! */
 
-main()
+main(argc, argv)
+    char *argv[];
 {
 	FILE *lock;
 	int nmsgs;
