@@ -10,8 +10,6 @@
  * and MIT-Project Athena, 1989.
  */
 
-#include <stdio.h>
-
 #include "dynP.h"
 
 int DynPut();
@@ -76,7 +74,7 @@ int DynPut(obj, el, index)
      if ((ret = _DynResize(obj, index)) != DYN_OK)
 	  return ret;
      
-     bcopy(el, obj->array + index*obj->el_size, obj->el_size);
+     (void) memmove(obj->array + index*obj->el_size, el, obj->el_size);
 
      if (obj->debug)
 	  fprintf(stderr, "dyn: put: done.\n");
