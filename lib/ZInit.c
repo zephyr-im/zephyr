@@ -34,9 +34,9 @@ Code_t ZInitialize()
     int krbval;
 #endif
     
-    init_zeph_err_tbl();
+    initialize_zeph_error_table();
 #ifdef KERBEROS
-    init_krb_err_tbl();
+    initialize_krb_error_table();
 #endif
     
     bzero((char *)&__HM_addr, sizeof(__HM_addr));
