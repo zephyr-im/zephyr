@@ -28,6 +28,11 @@
 #include "access.h"
 #include "acl.h"
 
+/* For krb_rd_req prototype and definition. */
+#ifndef KRB_INT32
+#define KRB_INT32 ZEPHYR_INT32
+#endif
+
 /* These macros are for insertion into and deletion from a singly-linked list
  * with back pointers to the previous element's next pointer.  In order to
  * make these macros act like expressions, they use the comma operator for
@@ -207,7 +212,7 @@ Sched *check_key_sched_cache __P((des_cblock key));
 void add_to_key_sched_cache __P((des_cblock key, Sched *sched));
 int krb_set_key __P((char *key, int cvt));
 int krb_rd_req __P((KTEXT authent, char *service, char *instance,
-		    long from_addr, AUTH_DAT *ad, char *fn));
+		    unsigned KRB_INT32 from_addr, AUTH_DAT *ad, char *fn));
 int krb_find_ticket __P((KTEXT authent, KTEXT ticket));
 int krb_get_lrealm __P((char *r, int n));
 #endif
