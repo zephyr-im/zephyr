@@ -31,7 +31,6 @@ Code_t ZSendPacket(packet, len, waitforack)
     struct sockaddr_in dest;
     struct timeval tv;
     int i;
-    fd_set t1, t2, t3;
     ZNotice_t notice, acknotice;
 	
     if (!packet || len < 0)
@@ -60,7 +59,7 @@ Code_t ZSendPacket(packet, len, waitforack)
     tv.tv_usec = 500000;
 
     for (i=0;i<HM_TIMEOUT*2;i++) {
-	if (select(0, &t1, &t2, &t3, &tv) < 0)
+	if (select(0, (fd_set *) 0, (fd_set *) 0, (fd_set *) 0, &tv) < 0)
 	    return (errno);
 	retval = ZCheckIfNotice(&acknotice, (struct sockaddr_in *)0,
 				wait_for_hmack, (char *)&notice.z_uid);
