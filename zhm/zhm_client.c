@@ -37,12 +37,13 @@ transmission_tower(notice, packet, pak_len)
 	    if (!strcmp(notice->z_opcode, CLIENT_FLUSH)) {
 		  send_flush_notice(HM_FLUSH);
 		  deactivated = 1;
-	    }
+	  }
 	    else if (!strcmp(notice->z_opcode, CLIENT_NEW_SERVER))
-	      new_server(NULL);
+		    new_server(NULL);
 	    else
-	      syslog (LOG_INFO, "Bad control notice from client.");
-      } else
+		    syslog (LOG_INFO, "Bad control notice from client.");
+	    return;
+    } else
 	if (notice->z_kind != UNSAFE) {
 	      gack = *notice;
 	      gack.z_kind = HMACK;
