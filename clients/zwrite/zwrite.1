@@ -74,8 +74,8 @@ instance of the message to ``URGENT''.
 .B \-o
 Causes
 .I zwrite
-to ignore the environment variables ZEPHYR_CLASS and ZEPHYR_INST when picking
-a default class and instance.
+to ignore the Zephyr variables \fIzwrite-class\fR and \fIzwrite-inst\fR
+when picking a default class and instance.
 .TP
 .B \-c
 Allows a user to specify a different class for the message.  This allows
@@ -107,10 +107,10 @@ sent.  The message may be terminated by typing ^D or ``.'' on a line
 by itself.
 .PP
 The default class for messages is ``MESSAGE'', and the default instance
-is ``PERSONAL''.  These defaults can be changed by setting the environment
-variables ZEPHYR_CLASS and ZEPHYR_INST, respectively.
+is ``PERSONAL''.  These defaults can be changed by setting the Zephyr
+variables \fIzwrite-class\fR and \fIzwrite-inst\fR, respectively.
 .PP
-If the environment variable ZEPHYR_SIGNATURE is set, its contents are used
+If the Zephyr variable \fIzephyr-signature\fR is set, its contents are used
 to augment the user's username in the message. 
 .SH SEE ALSO
 kerberosintro(1), zctl(1), zephyr(1), zwgc(1), zhm(8), zephyrd(8)
