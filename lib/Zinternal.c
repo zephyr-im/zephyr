@@ -342,6 +342,8 @@ Code_t Z_ReadWait()
     if (__Zephyr_server || part == 0) {
 	qptr->header_len = packet_len-notice.z_message_len;
 	qptr->header = malloc((unsigned) qptr->header_len);
+	if (!qptr->header)
+	    return ENOMEM;
 	bcopy(packet, qptr->header, qptr->header_len);
     }
 
@@ -525,8 +527,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
 
     bcopy(__My_addr, (char *)&notice->z_uid.zuid_addr, __My_length);
 
-    bcopy((char *)&notice->z_uid,
-	  (char *)&notice->z_multiuid, sizeof(ZUnique_Id_t));
+    notice->z_multiuid = notice->z_uid;
 
     if (!*version)
 	    (void) sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR,
@@ -537,6 +538,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
 	notice->z_auth = 0;
 	notice->z_authent_len = 0;
 	notice->z_ascii_authent = "";
+	notice->z_checksum = 0;
 	return (Z_FormatRawHeader(notice, buffer, buffer_len,
 				  len, (char **) 0));
     }
@@ -551,7 +553,10 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
     int *len;
     char **sumend_ptr;
 {
-    unsigned int temp;
+    union {
+	int i;
+	ZChecksum_t sum;
+    } temp;
     char newrecip[BUFSIZ];
     char *ptr, *end;
     int i;
@@ -580,15 +585,15 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
     (void) strcpy(ptr, notice->z_version);
     ptr += strlen(ptr)+1;
 
-    temp = htonl((u_long) (ZNUMFIELDS+notice->z_num_other_fields));
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
-		   sizeof(int)) == ZERR_FIELDLEN)
+    temp.i = htonl((u_long) (ZNUMFIELDS+notice->z_num_other_fields));
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
+		   sizeof(temp.i)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	
-    temp = htonl((u_long) notice->z_kind);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
-		   sizeof(int)) == ZERR_FIELDLEN)
+    temp.i = htonl((u_long) notice->z_kind);
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
+		   sizeof(temp.i)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	
@@ -607,9 +612,9 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
-    temp = htonl((u_long) notice->z_authent_len);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
-		   sizeof(int)) == ZERR_FIELDLEN)
+    temp.i = htonl((u_long) notice->z_authent_len);
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.i,
+		   sizeof(temp.i)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 	
@@ -640,9 +645,9 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, sumend_ptr)
     if (sumend_ptr)
 	*sumend_ptr = ptr;
 
-    temp = htonl(notice->z_checksum);
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp, 
-		   sizeof(ZChecksum_t)) == ZERR_FIELDLEN)
+    temp.sum = htonl(notice->z_checksum);
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&temp.sum,
+		   sizeof(temp.sum)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
@@ -779,8 +784,8 @@ Code_t Z_SendFragmentedNotice(notice, len, send_func)
     
     offset = 0;
 
-    waitforack = (notice->z_kind == UNACKED || notice->z_kind == ACKED) &&
-	!__Zephyr_server;
+    waitforack = ((notice->z_kind == UNACKED || notice->z_kind == ACKED)
+		  && !__Zephyr_server);
     
     partnotice = *notice;
 
