@@ -620,6 +620,7 @@ ulogin_find(user, host, port)
 	    free_string(str);
 	    return loc;
 	}
+	loc++;
     }
 
     free_string(str);
