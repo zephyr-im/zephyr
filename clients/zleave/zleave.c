@@ -81,11 +81,6 @@ char **argv;
 	      fprintf(stderr,"No Zephyr! Will write directly to terminal.\n");
 	      use_zephyr = 0;
 	}
-	if ((cp = getlogin()) == NULL) {
-		fputs("leave: You are not logged in.\n", stderr);
-		exit(1);
-	}
-	(void) strcpy(origlogin, cp);
 	(void) sprintf(tempfile, "/tmp/zleave.%d", (int) getuid());
 
 	if (use_zephyr) {
@@ -105,6 +100,13 @@ char **argv;
 			} 
 		}
 	}	
+	if (!use_zephyr) {
+	    if ((cp = getlogin()) == NULL) {
+		fputs("leave: You are not logged in.\n", stderr);
+		exit(1);
+	    }
+	    (void) strcpy(origlogin, cp);
+	}
 
 	if (argc < 2) {
 		printf("When do you have to leave? ");
@@ -286,12 +288,14 @@ long slp;
 char *msg;
 {
       ZNotice_t notice;
+      ZNotice_t retnotice;
+      int retval;
 
       delay(slp);
 
       if (use_zephyr) {
 	    (void) bzero((char *)&notice, sizeof(notice));
-	    notice.z_kind = UNACKED;
+	    notice.z_kind = ACKED;
 	    notice.z_port = 0;
 	    notice.z_class = MESSAGE_CLASS;
 	    notice.z_class_inst = INSTANCE;
@@ -304,7 +308,32 @@ char *msg;
 	    
 	    if (ZSendNotice(&notice, ZNOAUTH) != ZERR_NONE) {
 		  printf("\7\7\7%s\n", msg);
+		  use_zephyr = 0;
 	    }
+	    if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
+				    ZCompareUIDPred, 
+				    (char *)&notice.z_uid)) != ZERR_NONE) {
+		fprintf(stderr,
+			"zleave: %s while waiting for acknowledgement\n", 
+			error_message(retval));
+		use_zephyr = 0;
+	    }
+	    if (retnotice.z_kind == SERVNAK) {
+		fprintf(stderr,
+			"zleave: authorization failure while sending\n");
+		use_zephyr = 0;
+	    } 
+	    if (retnotice.z_kind != SERVACK || !retnotice.z_message_len) {
+		fprintf(stderr, "zleave: Detected server failure while receiving acknowledgement\n");
+		use_zephyr = 0;
+	    }
+	    if (strcmp(retnotice.z_message, ZSRVACK_SENT)) {
+		/* it wasn't sent */
+		exit(0);
+	    }
+	    if (!use_zephyr)
+		exit(1);
+	    ZFreeNotice(&retnotice);
       } else
 	printf("\7\7\7%s\n", msg);
 }
@@ -329,7 +358,7 @@ long secs;
 		l = getlogin();
 		if (l == NULL)
 			exit(0);
-		if (strcmp(origlogin, l) != 0)
+		if (!use_zephyr && (strcmp(origlogin, l) != 0))
 			exit(0);
 	}
 }
