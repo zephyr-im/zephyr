@@ -29,7 +29,7 @@
 
 #include <zephyr/zsyslog.h>
 
-#include <strings.h>
+#include <string.h>
 #include <signal.h>
 #ifdef lint
 #include <sys/uio.h>			/* so it shuts up about struct iovec */

@@ -62,7 +62,7 @@ static char rcsid_subscr_c[] = "$Id$";
 
 #include "zserver.h"
 #include <ctype.h>
-#include <strings.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #ifdef __STDC__

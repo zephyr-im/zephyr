@@ -65,7 +65,7 @@ extern int krbONE;
 #define		KERB_ERR_NULL_KEY			10
 
 #include <sys/time.h>
-#include <strings.h>
+#include <string.h>
 
 extern int krb_ap_req_debug;
 

@@ -38,7 +38,7 @@ static char sccsid[] = "@(#)syslog.c	5.14 (Berkeley) 5/20/88";
 #include <sys/signal.h>
 #include <syslog.h>
 #include <netdb.h>
-#include <strings.h>
+#include <string.h>
 
 #define	MAXLINE	1024			/* max message size */
 #define NULL	0			/* manifest */
