@@ -1,10 +1,13 @@
-.\" Copyright 1987 by the Massachusetts Institute of Technology
+.\"	$Source$
+.\"	$Author$
+.\"	$Header$
+.\"
+.\" Copyright 1987,1988 by the Massachusetts Institute of Technology
 .\" All rights reserved.  The file /usr/include/zephyr/mit-copyright.h
 .\" specifies the terms and conditions for redistribution.
 .\"
-.\"	@(#)zephyr.1	6.1 (MIT) 7/9/87
-.\"
-.TH ZEPHYR 1 "July 9, 1987"
+.TH ZEPHYR 1 "July 1, 1988" "MIT Project Athena"
+.ds ]W MIT Project Athena
 .SH NAME
 zephyr \- Zephyr Notification Service
 .SH DESCRIPTION
@@ -25,36 +28,40 @@ purpose Zephyr clients, the WindowGram client and the HostManager
 client provide user and client host communication support.
 .PP
 .I Zephyrd(8)
-servers run on designated server machines.  These servers contain a
+servers run on designated server machines.  These servers maintain a
 database of subscriptions and locations for every user using Zephyr.
 The servers stay in contact with one another, and provide a reliable
-backup system in the event of network failures.
+backup system (via duplication) in the event of network failures.
 .PP
-Each client machine on the network runs an
+Each client machine on the network runs a
 .I zhm(8)
 HostManager client program which is the link between the Zephyr
 servers and the users.  User programs send notices to the HostManager,
 and the HostManager forwards these notices to the nearest server for
 action.  The HostManager is responsible for ensuring that the notices
-reach a server, and for finding a new one if its primary server
-vanishes.
+reach a server, and for finding a new one if its server fails to respond.
 .PP
-Each user on the network will automatically run a WindowGram program
+Each user on the network usually automatically runs a WindowGram client program
 upon login.
 .I Zwgc(1)
-handles the way notices are displayed to the user, and handles user
-responses.  Only notices which the user has subscribed to will be sent
-to the WindowGram.
+displays notices to the user, and handles user
+responses.  Only notices to which the user has subscribed will be sent
+to the WindowGram client.
 .PP
 Subscriptions are handled through the
 .I zctl(1)
 program.  This program allows the user to add or delete subscriptions
 from Zephyr, and to add the subscriptions to a file.
 .SH SEE ALSO
-kerberosintro(1), zctl(1), zhide(1), zleave(1), zlocate(1), znol(1), zwgc(1),
-zwrite(1), zhm(8), zephyrd(8)
+kerberosintro(1)
 .br
-`Zephyr Notification Service'
+zaway(1), zctl(1), zleave(1), zlocate(1), znol(1), zwgc(1),
+zwrite(1)
+.br
+zhm(8), zephyrd(8), zinit(8), zstat(8), syslogd(8)
+.br
+Project Athena Technical Plan Section E.4.1, `Zephyr Notification
+Service'
 .SH AUTHORS
 .PP
 .br
@@ -62,23 +69,9 @@ Tony Della Fera (MIT-Project Athena, DEC),
 Mark W. Eichin (MIT-Project Athena),
 Robert S. French (MIT-Project Athena),
 David C. Jedlinsky (MIT-Project Athena),
-John T. Kohl (MIT-Project Athena),
+John T. Kohl (MIT-Project Athena, DEC),
 William E. Sommerfeld (MIT-Project Athena).
 .sp2
-Copyright (c) 1987 by the Massachusetts Institute of Technology
+Copyright (c) 1987,1988 by the Massachusetts Institute of Technology
 .sp
-Permission to use, copy, modify, and distribute this
-software and its documentation for any purpose and without
-fee is hereby granted, provided that the above copyright
-notice appear in all copies and that both that copyright
-notice and this permission notice appear in supporting
-documentation, and that the name of M.I.T. not be used in
-advertising or publicity pertaining to distribution of the
-software without specific, written prior permission.
-M.I.T. makes no representations about the suitability of
-this software for any purpose.  It is provided "as is"
-without express or implied warranty.
-.sp
-This software is not subject to any license of the American Telephone
-and Telegraph Company or of the Regents of the University of
-California.
+All Rights Reserved.
