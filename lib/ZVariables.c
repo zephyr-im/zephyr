@@ -139,7 +139,7 @@ static char *get_varval(fn, var)
     char *var;
 {
     FILE *fp;
-    char varbfr[512];
+    static char varbfr[512];
     int i;
 	
     fp = fopen(fn, "r");
