@@ -522,6 +522,13 @@ void asm_wrapper_kopt_c () {
     asm("   brx r15 \n mfs r10,r2"); /* return result */
     asm("   .long 0xdf02df00");	/* for debugging */
     
+#ifdef USE_LIBC_STRLEN
+  }
+#else
+    /* Note- do not use this version of strlen when compiling with -g; -g */
+    /* causes extra no-ops to be inserted between instructions, which cause */
+    /* the delayed branch instructions to fail. */
+
     /*
      * Fast strlen, with optional trapping of null pointers.  Also from
      * John Carr.
@@ -568,5 +575,6 @@ void asm_wrapper_kopt_c () {
     asm("	inc	r2,3");
     asm("	.long	0xdf02df00"); /* trace table */
 }
+#endif /* USE_LIBC_STRLEN */
 #endif /* __GNUC__ || __HIGHC__ */
 #endif /* ibm032 */
