@@ -51,7 +51,7 @@ long rexmit_secs = REXMIT_SECS;
 long abs_timo = REXMIT_SECS*NUM_REXMITS + 10;
 
 #ifdef DEBUG
-static char *pktypes[] = {
+char *pktypes[] = {
 	"UNSAFE",
 	"UNACKED",
 	"ACKED",
@@ -438,8 +438,7 @@ struct sockaddr_in *who;
 	     nacked != nacklist;
 	     nacked = nacked->q_forw)
 		if ((nacked->na_client == client))
-			if (ZCompareUID((caddr_t) &nacked->na_uid,
-				  (caddr_t) &notice->z_uid)) {
+			if (ZCompareUID(&nacked->na_uid, &notice->z_uid)) {
 				timer_reset(nacked->na_timer);
 				xfree(nacked->na_packet);
 				xremque(nacked);
