@@ -58,7 +58,9 @@ match "WG_CTL_CLASS"
 #
 # 2) If you wish to be notified of the sender, recipient and subject of the
 # new mail, remove the pound-signs from the beginning of the 10 lines below
-# between 'match "mail"' and 'exit', inclusive.
+# between 'match "MAIL"' and 'exit', inclusive, and type the command
+#	zctl add mail popret
+# to your prompt.
 #
 # Note: The use of the following lines is NOT necessary to receive
 # notifications of new mail.  The only effect of uncommenting these
