@@ -12,6 +12,10 @@
  */
 /* $Header$ */
 
+#ifndef lint
+static char rcsid_ZFormatRawNoticeList_c[] = "$Header$";
+#endif lint
+
 #include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr.h>
