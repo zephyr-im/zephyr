@@ -1,33 +1,17 @@
-#
-#	Makefile for ss library
-#
-# Copyright 1987, 1988 by the MIT Student Information Processing Board
-# For copyright info, see copyright.h.
-#
-#	$Header$
-#	$Locker$
 
-DESTDIR=
-BINDIR=
-LIBDIR=
-INCDIR=
 #ETDIR=../../et/src/
 
-# flags
-
 #ifdef ultrix
-CFLAGS=	-O -I. -DPOSIX
+DEFINES=-I. -DPOSIX
 #else
-CFLAGS=	-O -I. 
+DEFINES=-I. 
 #endif
 
-LINTFLAGS= -uhv -I.
+LINTFLAGS=-uhv
 
-# for the library
 
 LIB=	libss.a
 COMERR=	-lcom_err
-#COMERR=	$(ETDIR)libcom_err.a
 
 # with ss_err.o first, ss_err.h should get rebuilt first too.  shouldn't
 # be relying on this, though.
@@ -65,34 +49,32 @@ FILES=	$(SRCS) $(MKCMDSFILES) $(HFILES) \
 	ss_err.et std_rqs.ct Makefile \
 	test.c commands.ct ss mit-sipb-copyright.h
 
-#
-# stuff to build
-#
+create_dir($(ATHINCDIR)/ss)
 
-all::	libss.a mk_cmds libss_p.a llib-lss.ln # lint
+ProfiledObjectRule()
 
-dist:	archives
+SimpleLibrary(ss,$(OBJS),$(ATHLIBDIR))
+SimpleLint(ss,$(SRCS))
 
-install:: all
-	install -c -s mk_cmds ${DESTDIR}/usr/athena/mk_cmds
-	install -c libss.a ${DESTDIR}${ATHLIBDIR}/libss.a
-	ranlib ${DESTDIR}${ATHLIBDIR}/libss.a
-	install -c libss_p.a ${DESTDIR}${ATHLIBDIR}/libss_p.a
-	ranlib ${DESTDIR}${ATHLIBDIR}/libss_p.a
-	@rm -rf ${DESTDIR}/usr/include/ss
-	@mkdir ${DESTDIR}/usr/include/ss
-	cp ss.h ss_err.h ss_internal.h copyright.h ${DESTDIR}/usr/include/ss/
-	cp copyright.h ${DESTDIR}/usr/include/ss/mit-sipb-copyright.h
-	install -c -m 644 llib-lss.ln ${DESTDIR}/usr/lib/lint/llib-lss.ln
+SimpleProgram(mk_cmds, $(MKCMDSOBJS),-ll,$(ATHBINDIR))
 
-tags:	TAGS
+install_file(ss.h,$(ATHINCDIR)/ss/)
+install_file(ss_err.h,$(ATHINCDIR)/ss/)
+install_file(ss_internal.h,$(ATHINCDIR)/ss/)
+install_file(copyright.h,$(ATHINCDIR)/ss/)
+install_file(copyright.h,$(ATHINCDIR)/ss/mit-sipb-copyright.h)
+
+all::	mk_cmds
+
+
+clean::
+	rm -f \#* *.bak \
+		ss_err.h ss_err.c ct.tab.c ct.tab.h cmd_tbl.c \
+		lex.yy.c y.tab.c \
+		ss.ar ss.tar std_rqs.c \
+		TAGS test
 
 .SUFFIXES:	.ct
-
-.c.o:
-	${CC} ${CFLAGS} -p -c $*.c
-	mv -f $*.o profiled/$*.o
-	$(CC) $(CFLAGS) -c $*.c
 
 std_rqs.c: mk_cmds std_rqs.ct
 	./mk_cmds $*.ct
@@ -109,33 +91,12 @@ ct.tab.c ct.tab.h: ct.y
 	mv -f y.tab.c ct.tab.c
 	mv -f y.tab.h ct.tab.h
 
-#
-libss.a:	$(OBJS)
-	rm -f $@
-	ar cruv $@ $(OBJS)
-	ranlib $@
-
-libss_p.a:	$(OBJS)
-	rm -f $@
-	cd profiled;ar cruv ../$@ $(OBJS)
-	ranlib $@
-
 libss.o:	$(OBJS)
 	ld -r -s -o $@ $(OBJS)
 	chmod -x $@
 
-lint:	llib-lss.ln
-
 ../et/llib-lcom_err.ln:
 	cd ../etc ; make ${MFLAGS} llib-lcom_err.ln
-
-llib-lss.ln:	$(SRCS) ../et/llib-lcom_err.ln
-	lint ${LINTCFLAG}ss $(LINTFLAGS) $(SRCS) | \
-		egrep -v 'possible pointer alignment problem' | \
-		egrep -v 'returns value which is'
-
-mk_cmds:	$(MKCMDSOBJS)
-	$(CC) $(CFLAGS) -o $@ $(MKCMDSOBJS) -ll
 
 TAGS:	$(CFILES)
 	-etags $(CFILES)
@@ -155,19 +116,13 @@ test:	test.o commands.o $(LIB)
 commands.c: mk_cmds commands.ct
 	./mk_cmds $*.ct
 
+dist:	archives
+tags:	TAGS
+
 saber:	${SRCS} ss_err.o std_rqs.o
 	saber ${SABEROPTS} ${SRCS} -I../et -G ss_err.o std_rqs.o -lcom_err
 
-clean:	
-	rm -f *.o *~ \#* *.bak core \
-		ss_err.h ss_err.c ct.tab.c ct.tab.h cmd_tbl.c \
-		lex.yy.c y.tab.c \
-		libss.a libss_p.a llib-lss.ln mk_cmds \
-		ss.ar ss.tar std_rqs.c \
-		TAGS test profiled/?*.o
-
-# 'make depend' code
-depend: $(CFILES) ss_err.h
+depend:: $(CFILES) ss_err.h
 	makedepend $(CFLAGS) $(CFILES) 
 
 
