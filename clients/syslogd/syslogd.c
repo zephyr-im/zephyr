@@ -151,8 +151,8 @@ ZNotice_t znotice;              /* for zephyr notices */
 
 extern	int errno, sys_nerr;
 extern	char *sys_errlist[];
-extern	char *ctime(), *index();
-
+extern	char *ctime(), *index(), *error_message(), *malloc(), *strcpyn();
+extern	long time();
 
 /* used by cfline and now zephyr ... be careful that the order is consistent
    with syslog.h or Zephyr messages will contain bogus info ... */
@@ -275,7 +275,7 @@ main(argc, argv)
 	(void) signal(SIGQUIT, Debug ? die : SIG_IGN);
 	(void) signal(SIGCHLD, reapchild);
 	(void) signal(SIGALRM, domark);
-	(void) alarm(MarkInterval * 60 / MARKCOUNT);
+	(void) alarm((unsigned)(MarkInterval * 60 / MARKCOUNT));
 	(void) unlink(LogName);
 
 	sun.sun_family = AF_UNIX;
@@ -330,7 +330,7 @@ main(argc, argv)
 	(void) signal(SIGHUP, init);
 
 	/* initialize zephyr stuff */
-	bzero (&znotice, sizeof (znotice));
+	bzero ((char *)&znotice, sizeof (znotice));
 	znotice.z_kind = UNSAFE;
 	znotice.z_class = "SYSLOG";
 	znotice.z_class_inst = LocalHostName;
@@ -400,7 +400,7 @@ untty()
 	if (!Debug) {
 		i = open("/dev/tty", O_RDWR);
 		if (i >= 0) {
-			(void) ioctl(i, (int) TIOCNOTTY, (char *)0);
+			(void) ioctl(i, TIOCNOTTY, (char *)0);
 			(void) close(i);
 		}
 	}
@@ -760,7 +760,7 @@ wallmsg(f, iov)
 
 		/* compute the device name */
 		p = "/dev/12345678";
-		strcpyn(&p[5], ut.ut_line, UTMPNAMESZ);
+		(void) strcpyn(&p[5], ut.ut_line, UTMPNAMESZ);
 
 		/*
 		 * Might as well fork instead of using nonblocking I/O
@@ -811,7 +811,7 @@ cvthname(f)
 		dprintf("Malformed from address\n");
 		return ("???");
 	}
-	hp = gethostbyaddr(&f->sin_addr, sizeof(struct in_addr), f->sin_family);
+	hp = gethostbyaddr((char *)&f->sin_addr, sizeof(struct in_addr), f->sin_family);
 	if (hp == 0) {
 		dprintf("Host name for your address (%s) unknown\n",
 			inet_ntoa(f->sin_addr));
@@ -828,7 +828,7 @@ domark()
 		logmsg(LOG_INFO, "-- MARK --", LocalHostName, ADDDATE|MARK);
 	else
 		flushmsg();
-	alarm(MarkInterval * 60 / MARKCOUNT);
+	(void)alarm((unsigned)(MarkInterval * 60 / MARKCOUNT));
 }
 
 flushmsg()
@@ -903,7 +903,7 @@ init()
 		f->f_type = F_UNUSED;
 	}
 
-	if (Files) free (Files);
+	if (Files) free ((char *)Files);
 
 	/* open the configuration file */
 	if ((cf = fopen(ConfFile, "r")) == NULL) {
@@ -927,7 +927,7 @@ init()
 
 	rewind (cf);
 
-	Files = (struct filed *) malloc (sizeof (struct filed) * nlogs);
+	Files = (struct filed *) malloc ((unsigned)(sizeof (struct filed) * nlogs));
 	dprintf ("allocated %d filed entries\n", nlogs);
 	if (Files == NULL) {
 	  logerror ("can't malloc log table, trying default");
