@@ -119,6 +119,10 @@ char **argv;
 		else
 		    usage();
 	    }
+
+	if (!reminder_message)
+	    reminder_message = "";
+
 	if (argc < 2) {
 		printf("When do you have to leave? ");
 		(void) fflush(stdout);
