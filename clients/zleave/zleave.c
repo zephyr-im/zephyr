@@ -331,7 +331,7 @@ char *msg;
 	    if (ZSendNotice(&notice, ZAUTH) != ZERR_NONE) {
 		  printf("\7\7\7%s\n%s", msg, reminder_message);
 		  use_zephyr = 0;
-	    }
+	    } else
 	    if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
 				    ZCompareUIDPred, 
 				    (char *)&notice.z_uid)) != ZERR_NONE) {
@@ -339,16 +339,16 @@ char *msg;
 			"zleave: %s while waiting for acknowledgement\n", 
 			error_message(retval));
 		use_zephyr = 0;
-	    }
+	    } else
 	    if (retnotice.z_kind == SERVNAK) {
 		fprintf(stderr,
 			"zleave: authorization failure while sending\n");
 		use_zephyr = 0;
-	    } 
+	    } else
 	    if (retnotice.z_kind != SERVACK || !retnotice.z_message_len) {
 		fprintf(stderr, "zleave: Detected server failure while receiving acknowledgement\n");
 		use_zephyr = 0;
-	    }
+	    } else
 	    if (strcmp(retnotice.z_message, ZSRVACK_SENT)) {
 		/* it wasn't sent */
 		exit(0);
