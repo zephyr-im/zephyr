@@ -28,12 +28,18 @@ void zeph_dispatch(client_data, source, input_id)
 	      (! strcmp(notice.z_opcode, "USER_LOGIN") ||
 	       ! strcmp(notice.z_opcode, "USER_LOGOUT")))
 	       logins_deal(&notice);
+
 	  else if (defs.auto_reply &&
 		   ! strcasecmp(notice.z_class, DEFAULT_CLASS) &&
 		   ! strcasecmp(notice.z_recipient, ZGetSender()))
 	       dest_add_reply(&notice);
-	  else {
-	       Warning("Invalid notice.\n", "To: <", notice.z_class, ", ",
+	  
+	  /* Handle the zlocating bug the Zephyr library explicitly. */
+	  /* Only display bogon zlocate packets in debug mode */
+	  else if (strcmp(notice.z_class, LOCATE_CLASS) || defs.debug) {
+	       Warning("XZwrite: Unexpected notice received.  ",
+		       "You can probably ignore this.\n",
+		       "To: <", notice.z_class, ", ",
 		       notice.z_class_inst, ", ", (*notice.z_recipient) ?
 		       notice.z_recipient : "*", ">\n",
 		       "From: ", notice.z_sender, "\nOpcode: ",
