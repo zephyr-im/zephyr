@@ -68,8 +68,9 @@ static string_dictionary termcap_dict;
 #define EAT_PADDING(var) while (*var && isdigit(*var)) var++
 
 /* ARGSUSED */
-int tty_filter_init(drivername, pargc, argv)
+int tty_filter_init(drivername, notfirst, pargc, argv)
 char *drivername;
+char notfirst;
 int *pargc;
 char **argv;
 {
@@ -82,8 +83,9 @@ char **argv;
     termcap_dict = string_dictionary_Create(7);
 
     if (!(term = getenv("TERM"))) {	/* Only use termcap if $TERM.	*/
-	if (isrealtty)
-	    /* only complain if initializing tty mode */
+	if (isrealtty && !notfirst)
+	    /* only complain if initializing tty mode, and would be first
+	       available port */
 	    ERROR("$TERM not set.  tty mode will be plain.\n");
     } else {
 	tgetent(tc_buf, term);

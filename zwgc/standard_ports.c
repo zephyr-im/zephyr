@@ -231,7 +231,9 @@ void init_standard_ports(pargc, argv)
         if (p->port_setup_status == DISABLED)
           continue;
 
-        if (p->port_init && (*(p->port_init))(p->port_name, pargc, argv)) {
+        if (p->port_init && (*(p->port_init))(p->port_name,
+					      *first_working_port,
+					      pargc, argv)) {
             p->port_setup_status = DISABLED;
             continue;
         }
