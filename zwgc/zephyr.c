@@ -13,7 +13,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_zephyr_c[] = "$Header$";
+static char rcsid_zephyr_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -33,6 +33,7 @@ static char rcsid_zephyr_c[] = "$Header$";
 #include "mux.h"
 #include "subscriptions.h"
 #include "variables.h"
+#include "pointer.h"
 
 /*
  *  Internal Routine:
@@ -187,7 +188,7 @@ void zephyr_init(notice_handler)
      * <<<>>>
      */
     mux_add_input_source(ZGetFD(), (void (*)())handle_zephyr_input,
-			 (void *)notice_handler);
+			 (pointer)notice_handler);
 }
 
 /*
