@@ -36,6 +36,7 @@ static char rcsid_port_c[] = "$Id$";
  * <<<>>>
  */
 
+#if defined(SUNOS) || defined(vax)
 extern int errno, sys_nerr;
 extern char *sys_errlist[];
 
@@ -48,6 +49,15 @@ string perror_to_string(errno)
     /* <<<>>> */
     return("illegal error number returned in errno!");
 }
+#else
+#include <errno.h>
+
+string perror_to_string(errno)
+     int errno;
+{
+     return(strerror(errno));
+}
+#endif
 
 /****************************************************************************/
 /*                                                                          */
