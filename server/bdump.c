@@ -547,7 +547,7 @@ bdump_get(ZNotice_t *notice, int auth, sockaddr_in *who, ZServerDesc_t *server)
 {
 #if 1
 	if (zdebug)
-		syslog(LOG_DEBUG, "bdump_get: bdump v%d avail %s",
+		syslog(LOG_DEBUG, "bdump_get: bdump v%s avail %s",
 		       notice->z_class_inst, inet_ntoa(who->sin_addr));
 #endif
 
