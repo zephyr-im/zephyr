@@ -17,6 +17,7 @@ static char rcsid_formatter_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
+#include <zephyr/zephyr.h>
 
 #include <stdio.h>
 #include <ctype.h>
@@ -248,7 +249,7 @@ string verbatim(str, bracketsonly)
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='<';
-	 bcopy(str,temp+2,len);
+	 _BCOPY(str,temp+2,len);
 	 temp[len+2]='>';
 	 temp[len+3]='\0';
 	 free(str);
@@ -258,7 +259,7 @@ string verbatim(str, bracketsonly)
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='[';
-	 bcopy(str,temp+2,len);
+	 _BCOPY(str,temp+2,len);
 	 temp[len+2]=']';
 	 temp[len+3]='\0';
 	 free(str);
@@ -268,7 +269,7 @@ string verbatim(str, bracketsonly)
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='{';
-	 bcopy(str,temp+2,len);
+	 _BCOPY(str,temp+2,len);
 	 temp[len+2]='}';
 	 temp[len+3]='\0';
 	 free(str);
@@ -278,7 +279,7 @@ string verbatim(str, bracketsonly)
 	 temp=(char *) malloc((len=strlen(str))+4);
 	 temp[0]='@';
 	 temp[1]='(';
-	 bcopy(str,temp+2,len);
+	 _BCOPY(str,temp+2,len);
 	 temp[len+2]=')';
 	 temp[len+3]='\0';
 	 free(str);
@@ -426,7 +427,7 @@ static int text_length(text,terminator)
 	 return(len);
 
       if (*(text+1)=='@')
-	 bcopy(text+2,text+1,strlen(text+1));
+	 _BCOPY(text+2,text+1,strlen(text+1));
       else if (env_length(text+1) != -1)
 	return(len);
 
