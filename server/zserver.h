@@ -67,10 +67,12 @@ public:
 		  const ZString& = null_string,
 		  const ZString& = null_string);
     ZDestination (const ZDestination&);
+    ~ZDestination ();
     void print (char *buf);
     static int compare_strings (const ZDestination&, const ZDestination&);
-#ifndef __GNUG__
-    ~ZDestination ();
+#if !defined(__GNUG__) || defined(FIXED_GXX)
+    void *operator new (unsigned int sz) { return zalloc (sz); }
+    void operator delete (void *ptr) { zfree (ptr, sizeof (ZDestination)); }
 #endif
 };
 
@@ -118,7 +120,7 @@ struct ZSubscr_t {
 		   const ZString& = null_string,
 		   const ZString& = null_string);
 	ZSubscr_t (const ZSubscr_t&);
-#ifndef __GNUG__
+#if !defined (__GNUG__) || defined (FIXED_GXX)
 	void *operator new (unsigned int sz) { return zalloc (sz); }
 	void operator delete (void *ptr) { zfree (ptr, sizeof (ZSubscr_t)); }
 #endif
@@ -127,7 +129,7 @@ struct ZSubscr_t {
 extern int operator== (const ZSubscr_t&, const ZSubscr_t&);
 extern int operator>= (const ZSubscr_t&, const ZSubscr_t&);
 
-typedef struct ZClient_t {
+struct ZClient_t {
 	struct sockaddr_in zct_sin;	/* ipaddr/port of client */
 	struct ZSubscr_t *zct_subs;	/* subscriptions */
 #ifdef KERBEROS
@@ -140,7 +142,7 @@ typedef struct ZClient_t {
 	ZClient_t () {
 	    last_msg = last_check = 0;
 	}
-#ifndef __GNUG__
+#if !defined (__GNUG__) || defined (FIXED_GXX)
 	void *operator new (unsigned int sz) { return zalloc (sz); }
 	void operator delete (void *ptr) { zfree (ptr, sizeof (ZClient_t)); }
 #endif
@@ -150,7 +152,7 @@ struct ZClientList_t {
 	ZClientList_t	*q_forw;
 	ZClientList_t	*q_back;
 	ZClient_t	*zclt_client;
-#ifndef __GNUG__
+#if !defined (__GNUG__) || defined (FIXED_GXX)
 	void *operator new (unsigned int sz) { return zalloc (sz); }
 	void operator delete (void *ptr) { zfree (ptr, sizeof (ZClientList_t)); }
 #endif
@@ -165,24 +167,24 @@ struct ZClass_t {
 
 	ZClass_t (const ZDestination& = null_destination);
 	~ZClass_t ();
-#ifndef __GNUG__
+#if !defined (__GNUG__) || defined (FIXED_GXX)
 	void *operator new (unsigned int sz) { return zalloc (sz); }
 	void operator delete (void *ptr) { zfree (ptr, sizeof (ZClass_t)); }
 #endif
 };
 
-typedef struct _ZHostList_t {
-	struct _ZHostList_t *q_forw;
-	struct _ZHostList_t *q_back;
+struct ZHostList_t {
+	struct ZHostList_t *q_forw;
+	struct ZHostList_t *q_back;
 	ZClientList_t	*zh_clients;
 	sockaddr_in	zh_addr;	/* IP addr/port of hostmanager */
 	unsigned int zh_locked : 1;	/* 1 if this host is locked for
 					   a braindump */
-#ifndef __GNUG__
+#if !defined (__GNUG__) || defined (FIXED_GXX)
 	void *operator new (unsigned int sz) { return zalloc (sz); }
-	void operator delete (void *ptr) { zfree (ptr, sizeof (_ZHostList_t)); }
+	void operator delete (void *ptr) { zfree (ptr, sizeof (ZHostList_t)); }
 #endif
-} ZHostList_t;
+};
 
 enum server_state {
 	SERV_UP,			/* Server is up */
@@ -191,9 +193,9 @@ enum server_state {
 	SERV_STARTING			/* Server is between dead and up */
 };
 
-typedef struct _ZNotAcked_t {
-	struct _ZNotAcked_t *q_forw;	/* link to next */
-	struct _ZNotAcked_t *q_back;	/* link to prev */
+struct ZNotAcked_t {
+	struct ZNotAcked_t *q_forw;	/* link to next */
+	struct ZNotAcked_t *q_back;	/* link to prev */
 	timer na_timer;			/* timer for retransmit */
 	long na_abstimo;		/* absolute timeout to drop after */
 	short na_rexmits;		/* number of retransmits */
@@ -206,24 +208,24 @@ typedef struct _ZNotAcked_t {
 	} dest;
 #define na_addr	dest.na_sin
 #define na_srv_idx	dest.srv_idx
-#ifndef __GNUG__
+#if !defined (__GNUG__) || defined (FIXED_GXX)
 	void *operator new (unsigned int sz) { return zalloc (sz); }
-	void operator delete (void *ptr) { zfree (ptr, sizeof (_ZNotAcked_t)); }
+	void operator delete (void *ptr) { zfree (ptr, sizeof (ZNotAcked_t)); }
 #endif
-} ZNotAcked_t;
+};
 
-typedef struct _ZSrvPending_t {
-	struct _ZSrvPending_t *q_forw;	/* link to next */
-	struct _ZSrvPending_t *q_back;	/* link to prev */
+struct ZSrvPending_t {
+	struct ZSrvPending_t *q_forw;	/* link to next */
+	struct ZSrvPending_t *q_back;	/* link to prev */
 	caddr_t pend_packet;		/* the notice (in pkt form) */
 	short pend_len;			/* len of pkt */
 	unsigned int pend_auth : 1;	/* whether it is authentic */
 	struct sockaddr_in pend_who;	/* the addr of the sender */
-#ifndef __GNUG__
+#if !defined (__GNUG__) || defined (FIXED_GXX)
 	void *operator new (unsigned int sz) { return zalloc (sz); }
-	void operator delete (void *ptr) { zfree (ptr, sizeof (_ZSrvPending_t)); }
+	void operator delete (void *ptr) { zfree (ptr, sizeof (ZSrvPending_t)); }
 #endif
-} ZSrvPending_t;
+};
 
 struct ZServerDesc_t {
 	struct sockaddr_in zs_addr;	/* server's address */
