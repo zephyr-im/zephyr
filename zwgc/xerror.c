@@ -32,6 +32,7 @@ static int xerrortrap(dpy,xerrev)
    xerror_happened = 1;
 }
 
+/*ARGSUSED*/
 void begin_xerror_trap(dpy)
      Display *dpy;
 {

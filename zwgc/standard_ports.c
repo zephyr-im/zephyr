@@ -29,12 +29,15 @@ static char rcsid_standard_ports_c[] = "$Id$";
 #include "port.h"
 #include "variables.h"
 #include "error.h"
+#include <zephyr/zephyr.h>
 
 extern string tty_filter();
 extern char *X_driver();
 
 extern int X_driver_init();
 extern int tty_filter_init();
+
+extern void usage();
 
 /*
  *

@@ -24,9 +24,9 @@ static char rcsid_xrevstack_h[] = "$Id$";
 extern x_gram *bottom_gram; /* for testing against NULL */
 extern int reverse_stack; /* is reverse stack on? */
 
-void add_to_bottom(/* x_gram */);
-void delete_from_list(/* x_gram */);
-void pull_to_top(/* x_gram */);
-void push_to_bottom(/* x_gram */);
+extern void add_to_bottom(/* x_gram */);
+extern void delete_gram(/* x_gram */);
+extern void pull_to_top(/* x_gram */);
+extern void push_to_bottom(/* x_gram */);
 
 #endif /* _XREVSTACK_H_ */
