@@ -1,20 +1,12 @@
-This is the Project Athena Zephyr notification system version 2.0.
+This is a snapshot of the Project Athena Zephyr notification system.
 Zephyr allows users to send messages to other users or to groups of
 users.  Users can view incoming Zephyr messages as windowgrams
 (transient X windows) or as text on a terminal. Zephyr can optionally
 make use of the Kerberos version 4 security library or the Hesiod
 service name resolution library.
 
-Please note that Zephyr version 2.0 is not compatible with previous
-versions of Zephyr, in two important ways.  First, the inter-server
-brain dump protocol has changed, so a version 2.0 Zephyr server and an
-older Zephyr server will not be able to brain dump to each other.
-Second, Zephyr clients built from sources earlier than the January 3,
-1995 snapshot will not be able to send authentic notices through
-version 2.0 Zephyr servers.
-
-Comments, suggestions, bug reports, or patches should go to
-bug-zephyr@mit.edu.
+Bug reports or patches should go to bug-zephyr@mit.edu.  Please do not
+send questions about snapshots; they are not supported.
 
 To find out how to configure, build, and install Zephyr, read the file
 INSTALL.
