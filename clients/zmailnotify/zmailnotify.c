@@ -287,7 +287,7 @@ void get_message(i)
 	int i;
 {
 	int mbx_write();
-	if (pop_retr(i, mbx_write, 0) != OK)
+	if (pop_scan(i, mbx_write, 0) != OK)
 	    fatal_pop_err ();
 }
 
@@ -527,12 +527,16 @@ int *nmsgs, *nbytes;
     }
 }
 
-pop_retr(msgno, action, arg)
+pop_scan(msgno, action, arg)
 int (*action)();
 {
     char buf[4096];
 
+#ifdef HAVE_POP3_TOP
+    (void) sprintf(buf, "TOP %d 0", msgno);
+#else
     (void) sprintf(buf, "RETR %d", msgno);
+#endif
     if (putline(buf, Errmsg, sfo) == NOTOK) return(NOTOK);
 
     if (getline(buf, sizeof buf, sfi) != OK) {
@@ -632,7 +636,7 @@ FILE *f;
 /*ARGSUSED*/
 mbx_write(line, dummy)
 char *line;
-int dummy;				/* for consistency with pop_retr */
+int dummy;				/* for consistency with pop_scan */
 {
 	if (mailptr) {
 		mailptr = realloc(mailptr,(unsigned)(strlen(mailptr)+strlen(line)+2));
