@@ -23,7 +23,8 @@ static char buffer[25];
 
 struct et_list * _et_list = (struct et_list *) NULL;
 
-const char * error_message (int code)
+const char * error_message (code)
+long	code;
 {
     int offset;
     struct et_list *et;
