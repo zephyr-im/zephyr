@@ -87,14 +87,18 @@ match "WG_CTL_CLASS"
 #	put
 #	exit
 match "message"
-	case $instance
-	match "PERSONAL"
-		set type = "Personal"
-	match "URGENT"
-		set type = "Urgent"
-	default
+	if (downcase($recipient) == downcase($user)) then
+		case $instance
+		match "PERSONAL"
+			set type = "Personal"
+		match "URGENT"
+			set type = "Urgent"
+		default
+			set type = $instance
+		endcase
+	else
 		set type = "Instance "+$instance
-	endcase
+	endif
 
 	fields signature body
 	if ($body == "") then
