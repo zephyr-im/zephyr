@@ -16,7 +16,13 @@
 #define __ZINTERNAL_H__
 
 #include <zephyr/zephyr.h>
+#if defined(_POSIX_SOURCE) || defined(SYSV)
+#include <string.h>
+#define	index	strchr
+#define	rindex	strrchr
+#else
 #include <strings.h>			/* for strcpy, etc. */
+#endif
 #include <sys/types.h>			/* for time_t, uid_t, etc */
 #ifdef lint
 #include <sys/uio.h>			/* to make lint shut up about
