@@ -426,7 +426,12 @@ struct in_addr *addr;
 {
 	ZLocation_t *loc;
 	register int i = 0, new_num = 0;
-	int omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
+	int omask;
+
+	if (!locations)
+	    return;			/* none to flush */
+
+	omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
 
 	/* slightly inefficient, assume the worst, and allocate enough space */
 	if (!(loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t)))) {
@@ -450,8 +455,7 @@ struct in_addr *addr;
 		i++;
 	}
 
-	if (locations)
-	    xfree(locations);
+	xfree(locations);
 
 	if (!new_num) {
 		zdbug((LOG_DEBUG,"no more locs"));
@@ -485,7 +489,12 @@ struct sockaddr_in *sin;
 {
 	ZLocation_t *loc;
 	register int i = 0, new_num = 0;
-	int omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
+	int omask;
+
+	if (!locations)
+	    return;			/* none to flush */
+
+	omask = sigblock(sigmask(SIGFPE)); /* don't do ascii dumps */
 
 	/* slightly inefficient, assume the worst, and allocate enough space */
 	if (!(loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t)))) {
@@ -510,8 +519,7 @@ struct sockaddr_in *sin;
 		i++;
 	}
 
-	if (locations)
-	    xfree(locations);
+	xfree(locations);
 
 	if (!new_num) {
 		zdbug((LOG_DEBUG,"no more locs"));
@@ -975,7 +983,7 @@ static void
 ulogin_flush_user(notice)
 ZNotice_t *notice;
 {
-	ZLocation_t *loc, *loc2;
+	register ZLocation_t *loc, *loc2;
 	register int i, j, num_match, num_left;
 	int omask;
 
@@ -986,24 +994,29 @@ ZNotice_t *notice;
 		return;
 	}
 
+	/* compute # locations left in the list, after loc2 (inclusive) */
 	num_left = num_locs - (loc2 - locations);
 
 	omask = sigblock(sigmask(SIGFPE)); /* don't let disk db dumps start */
 	while (num_left &&
 	       !strcmp(loc2[num_match].zlt_user, notice->z_class_inst)) {
+		/* as long as we keep matching, march up the list */
 		num_match++;
-		num_locs--;
 		num_left--;
 	}
-	if (num_locs == 0) {		/* last one */
+	if (num_locs == num_match) {	/* no other locations left */
 		zdbug((LOG_DEBUG,"last loc"));
+		for (j = 0; j < num_match; j++)
+		    free_loc(&loc2[j]);	/* free storage */
 		xfree(locations);
 		locations = NULLZLT;
+		num_locs = 0;
 		(void) sigsetmask(omask);
 		return;
 	}
 
-	if (!(loc = (ZLocation_t *) xmalloc(num_locs * sizeof(ZLocation_t)))) {
+	if (!(loc = (ZLocation_t *) xmalloc((num_locs - num_match) *
+					    sizeof(ZLocation_t)))) {
 		syslog(LOG_CRIT, "ul_rem malloc");
 		abort();
 		/*NOTREACHED*/
@@ -1011,6 +1024,7 @@ ZNotice_t *notice;
 
 	/* copy old entries */
 	while (i < num_locs && &locations[i] < loc2) {
+		/* XXX should bcopy */
 		loc[i] = locations[i];
 		i++;
 	}
@@ -1021,7 +1035,8 @@ ZNotice_t *notice;
 	}
 
 	/* copy the rest */
-	while (i <= num_locs) {
+	while (i < num_locs) {
+		/* XXX should bcopy */
 		loc[i - num_match] = locations[i];
 		i++;
 	}
@@ -1029,6 +1044,7 @@ ZNotice_t *notice;
 	xfree(locations);
 
 	locations = loc;
+	num_locs -= num_match;
 
 	(void) sigsetmask(omask);
 #ifdef DEBUG
