@@ -27,7 +27,7 @@ CODE= ${GENERATORS} ${REALSRCS} ${REALHDRS} Imakefile
 
 normal_obj_rule()
 
-all:: dictionary_spec $(OBJS)
+all:: string_dictionary.h dictionary_spec $(OBJS)
 
 depend:: ${GENERATORS} ${SRCS}
 
