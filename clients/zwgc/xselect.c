@@ -74,7 +74,7 @@ static Atom RequestAtoms[] = {
 #define PROP(prop,targ) ((prop)!=None?(prop):(targ))
 #define ChangeProp(type,format,data,size) \
   XChangeProperty(dpy,w,PROP(property,target),(type),(format), \
-		  (unsigned char *) (data),(size))
+		  PropModeReplace, (unsigned char *) (data),(size))
 
 static void xselSetProperties(dpy,w,property,target,selreq)
      Display *dpy;
