@@ -773,10 +773,17 @@ ZServerDesc_t *server;
 						      wantdefs)) != ZERR_NONE)
 			{
 				syslog(LOG_WARNING,
-				       "subscr. register failed: %s",
+				       "subscr. register %s/%s/%d failed: %s",
+				       notice->z_sender,
+				       inet_ntoa(who->sin_addr),
+				       ntohs(notice->z_port),
 				       error_message(retval));
-				if (server == me_server)
+				if (server == me_server) {
+				    if (retval == ZSRV_BADSUBPORT) {
+					clt_ack(notice, who, AUTH_FAILED);
+				    } else
 					hostm_deathgram(who, me_server);
+				}
 				return(ZERR_NONE);
 			}
 			if (!(client = client_which_client(who, notice))) {
