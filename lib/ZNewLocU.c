@@ -14,126 +14,38 @@
 
 #ifndef lint
 static char rcsid_ZNewLocateUser_c[] =
-    "$Zephyr: /mit/zephyr/src/lib/RCS/ZNewLocateUser.c,v 1.4 90/12/20 03:10:34 raeburn Exp $";
+    "$Id$";
 #endif
-
-#include <zephyr/mit-copyright.h>
 
 #include <zephyr/zephyr_internal.h>
 
-Code_t ZNewLocateUser(user, nlocs, auth)
+Code_t ZLocateUser(user, nlocs, auth)
     char *user;
     int *nlocs;
-    int (*auth)();
+    Z_AuthProc auth;
 {
-    register int i, retval;
-    ZNotice_t notice, retnotice;
-    char *ptr, *end;
-    int nrecv, ack;
+    register int retval;
+    ZNotice_t notice;
+    ZAsyncLocateData_t zald;
 
-    retval = ZFlushLocations();
+    (void) ZFlushLocations();	/* ZFlushLocations never fails (the library
+				   is allowed to know this). */
 
-    if (retval != ZERR_NONE && retval != ZERR_NOLOCATIONS)
-	return (retval);
-	
-    if (ZGetFD() < 0)
-	    if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
-		    return (retval);
+    if ((retval = ZRequestLocations(user, &zald, UNACKED, auth)) != ZERR_NONE)
+	return(retval);
 
-    (void) bzero((char *)&notice, sizeof(notice));
-    notice.z_kind = ACKED;
-    notice.z_port = __Zephyr_port;
-    notice.z_class = LOCATE_CLASS;
-    notice.z_class_inst = user;
-    notice.z_opcode = LOCATE_LOCATE;
-    notice.z_sender = 0;
-    notice.z_recipient = "";
-    notice.z_default_format = "";
-    notice.z_message_len = 0;
+    retval = Z_WaitForNotice (&notice, ZCompareALDPred,
+			      (char *) &zald, SRV_TIMEOUT);
+    if (retval == ZERR_NONOTICE)
+	return ETIMEDOUT;
+    if (retval != ZERR_NONE)
+	return retval;
 
-    if ((retval = ZSendNotice(&notice, auth)) != ZERR_NONE)
-	return (retval);
-
-    nrecv = ack = 0;
-
-    while (!nrecv || !ack) {
-	    retval = Z_WaitForNotice (&retnotice, ZCompareMultiUIDPred,
-				      &notice.z_multiuid, SRV_TIMEOUT);
-	    if (retval == ZERR_NONOTICE)
-	      return ETIMEDOUT;
-	    else if (retval != ZERR_NONE)
-	      return retval;
-
-	    if (retnotice.z_kind == SERVNAK) {
-		    ZFreeNotice(&retnotice);
-		    return (ZERR_SERVNAK);
-	    }
-	    /* non-matching protocol version numbers means the
-	       server is probably an older version--must punt */
-	    if (strcmp(notice.z_version,retnotice.z_version)) {
-		    ZFreeNotice(&retnotice);
-		    return(ZERR_VERS);
-	    }
-	    if (retnotice.z_kind == SERVACK &&
-		!strcmp(retnotice.z_opcode,LOCATE_LOCATE)) {
-		    ack = 1;
-		    ZFreeNotice (&retnotice);
-		    continue;
-	    } 	
-
-	    if (retnotice.z_kind != ACKED) {
-		    ZFreeNotice(&retnotice);
-		    return (ZERR_INTERNAL);
-	    }
-	    nrecv++;
-
-	    end = retnotice.z_message+retnotice.z_message_len;
-
-	    __locate_num = 0;
-	
-	    for (ptr=retnotice.z_message;ptr<end;ptr++)
-		    if (!*ptr)
-			    __locate_num++;
-
-	    __locate_num /= 3;
-
-	    __locate_list = (ZLocations_t *)malloc((unsigned)(__locate_num+1)*
-						   sizeof(ZLocations_t));
-	    if (!__locate_list) {
-		    ZFreeNotice (&retnotice);
-		    return (ENOMEM);
-	    }
-	
-	    for (ptr=retnotice.z_message, i=0;i<__locate_num;i++) {
-		    unsigned int len;
-		    len = strlen (ptr) + 1;
-		    __locate_list[i].host = malloc(len);
-		    if (!__locate_list[i].host) {
-		    nomem:
-			    ZFreeNotice (&retnotice);
-			    return (ENOMEM);
-		    }
-		    (void) strcpy(__locate_list[i].host, ptr);
-		    ptr += len;
-		    len = strlen (ptr) + 1;
-		    __locate_list[i].time = malloc(len);
-		    if (!__locate_list[i].time)
-			    goto nomem;
-		    (void) strcpy(__locate_list[i].time, ptr);
-		    ptr += len;
-		    len = strlen (ptr) + 1;
-		    __locate_list[i].tty = malloc(len);
-		    if (!__locate_list[i].tty)
-			    goto nomem;
-		    (void) strcpy(__locate_list[i].tty, ptr);
-		    ptr += len;
-	    }
-
-	    ZFreeNotice(&retnotice);
+    if ((retval = ZParseLocations(&notice, &zald, nlocs, NULL)) != ZERR_NONE) {
+	ZFreeNotice(&notice);
+	return(retval);
     }
 
-    __locate_next = 0;
-    *nlocs = __locate_num;
-	
-    return (ZERR_NONE);
+    ZFreeNotice(&notice);
+    return(ZERR_NONE);
 }
