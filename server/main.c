@@ -57,7 +57,7 @@ static char rcsid_main_c[] =
    <stdio.h>
    <sys/file.h>
    <syslog.h>
-   <string.h>
+   <strings.h>
    <signal.h>
    timer.h
    zsrv_err.h
@@ -242,6 +242,9 @@ main(argc, argv)
 	   for retransmits, initialize error tables,
 	   set up restricted classes */
 
+	/* Initialize t_local for other uses */
+	(void) gettimeofday(&t_local, (struct timezone *)0);
+
 	if (initialize())
 		exit(1);
 
@@ -313,7 +316,7 @@ main(argc, argv)
 
 	syslog(LOG_NOTICE, "Ready for action");
 
-	/* Initialize t_local for other uses */
+	/* Reinitialize t_local now that initialization is done. */
 	(void) gettimeofday(&t_local, (struct timezone *)0);
 	/* GO! */
 	uptime = NOW;
@@ -442,17 +445,9 @@ initialize()
 	class_hm = make_zstring(HM_CTL_CLASS, 1);
 	class_ulogin = make_zstring(LOGIN_CLASS, 1);
 	class_ulocate = make_zstring(LOCATE_CLASS, 1);
-	wildcard_class = make_zstring(MATCHALL_CLASS, 1);
 	wildcard_instance = make_zstring(WILDCARD_INSTANCE, 1);
 	empty = make_zstring("", 0);
 
-	matchall_sub.q_forw = &matchall_sub;
-	matchall_sub.q_back = &matchall_sub;
-	matchall_sub.zst_dest.classname = wildcard_class;
-	matchall_sub.zst_dest.inst = dup_zstring(empty);
-	matchall_sub.zst_dest.recip = dup_zstring(empty);
-
-	set_ZDestination_hash(&matchall_sub.zst_dest);
 	/* restrict certain classes */
 	access_init();
 	return(0);
@@ -670,6 +665,7 @@ static void dump_db()
 	server_dump_servers(fp);
 	uloc_dump_locs(fp);
 	hostm_dump_hosts(fp);
+	class_dump_subs(fp);
 	syslog(LOG_INFO, "dump done");
 	if (fclose(fp) == EOF) {
 		syslog(LOG_ERR, "can't close dump db");
