@@ -173,6 +173,7 @@ bdump_send()
 	Code_t retval;
 	int fromlen = sizeof(from);
 	int omask;
+	int on = 1;
 #ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
@@ -187,6 +188,9 @@ bdump_send()
 		syslog(LOG_ERR,"accept: %m");
 		return;
 	}
+	if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *)&on,
+	    sizeof (on)) < 0)
+		syslog(LOG_WARNING, "setsockopt (SO_KEEPALIVE): %m");
  
 #ifndef KERBEROS
 	fromport = ntohs(from.sin_port);
@@ -302,6 +306,7 @@ ZServerDesc_t *server;
 	struct sockaddr_in from;
 	Code_t retval;
 	int omask;
+	int on = 1;
 #ifdef KERBEROS
 	KTEXT_ST ticket;
 	AUTH_DAT kdata;
@@ -368,6 +373,9 @@ ZServerDesc_t *server;
 		cleanup(server, omask);
 		return;
 	}
+	if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *)&on,
+	    sizeof (on)) < 0)
+		syslog(LOG_WARNING, "setsockopt (SO_KEEPALIVE): %m");
 	zdbug((LOG_DEBUG, "gbd connected"));
  
 	/* Now begin the brain dump. */
