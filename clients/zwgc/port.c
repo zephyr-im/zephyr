@@ -425,7 +425,7 @@ void create_port_from_files(name, input, output)
 {
     port *p = create_named_port(name);
 
-#if !defined(ibm032)
+#if !defined(__HIGHC__)
     p->get = input ? get_file : NULL;
     p->put = output ? put_file : NULL;
 #else
