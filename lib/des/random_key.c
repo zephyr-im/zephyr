@@ -22,17 +22,13 @@
  * spm	8/85	MIT project athena
  */
 
+#include "mit-copyright.h"
+#include "des.h"
+
 #ifndef	lint
-static char rcsid_random_key_c[] =
+static const char rcsid_random_key_c[] =
     "$Id$";
 #endif
-
-#include "mit-copyright.h"
-#include <stdio.h>
-#include <time.h>
-#include <sys/time.h>
-
-#include "des.h"
 
 #ifdef USE_RAND48
 #define random	lrand48

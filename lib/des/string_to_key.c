@@ -23,14 +23,13 @@
  *	spm	8/85	MIT project athena
  */
 
-#ifndef	lint
-static char rcsid_string_to_key_c[] =
-    "$Id$";
-#endif
-
 #include "mit-copyright.h"
 #include "des.h"
-#include <stdio.h>
+
+#ifndef	lint
+static const char rcsid_string_to_key_c[] =
+    "$Id$";
+#endif
 
 extern int des_debug;
 

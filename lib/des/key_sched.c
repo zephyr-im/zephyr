@@ -30,13 +30,12 @@
  * Originally written 6/85 by Steve Miller, MIT Project Athena.
  */
 
+#include "des.h"
+
 #ifndef	lint
-static char rcsid_key_sched_c[] =
+static const char rcsid_key_sched_c[] =
     "$Id$";
 #endif
-
-#include <stdio.h>
-#include "des.h"
 
 int
 des_key_sched(k,schedule)

@@ -8,12 +8,12 @@
  * Mark Eichin -- Cygnus Support
  */
 
+#include "des.h"
+
 #ifndef	lint
-static char rcsid_f_parity_c[] =
+static const char rcsid_f_parity_c[] =
     "$Id$";
 #endif
-
-#include "des.h"
 
 /*
  * des_fixup_key_parity: Forces odd parity per byte; parity is bits

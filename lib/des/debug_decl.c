@@ -10,8 +10,10 @@
  * Declaration of debugging flag.
  */
 
+#include "des.h"
+
 #ifndef	lint
-static char rcsid_debug_decl_c[] =
+static const char rcsid_debug_decl_c[] =
     "$Id$";
 #endif
 

@@ -16,17 +16,13 @@
  * without license from the U.S. Commerce department.
  */
 
-#ifndef	lint
-static char rcsid_new_rnd_key_c[] =
-    "$Id";
-#endif
-
 #include "mit-copyright.h"
-
 #include "des.h"
-#include <time.h>
-#include <time.h>
-#include <sys/time.h>
+
+#ifndef	lint
+static const char rcsid_new_rnd_key_c[] =
+    "$Id: ";
+#endif
 
 /*
  * des_new_random_key: create a random des key

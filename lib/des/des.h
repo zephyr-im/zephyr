@@ -22,10 +22,10 @@
 #include "mit-copyright.h"
 #include <sysdep.h>
 
-#define KRB_INT32 INT_32_TYPE
-#define KRB_UINT32 unsigned INT_32_TYPE
-#define int32 INT_32_TYPE
-#define u_int32 unsigned INT_32_TYPE
+#define KRB_INT32 ZEPHYR_INT32
+#define KRB_UINT32 unsigned ZEPHYR_INT32
+#define int32 ZEPHYR_INT32
+#define u_int32 unsigned ZEPHYR_INT32
 
 typedef unsigned char des_cblock[8];	/* crypto-block size */
 /* Key schedule */

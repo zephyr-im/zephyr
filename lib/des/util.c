@@ -10,14 +10,13 @@
  * Miscellaneous debug printing utilities
  */
 
-#ifndef	lint
-static char rcsid_util_c[] =
-    "$Id$";
-#endif
-
 #include "mit-copyright.h"
 #include "des.h"
-#include <stdio.h>
+
+#ifndef	lint
+static const char rcsid_util_c[] =
+    "$Id$";
+#endif
 
 void des_cblock_print_file(x, fp)
     des_cblock x;
