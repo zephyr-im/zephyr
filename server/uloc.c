@@ -85,7 +85,6 @@ typedef struct _ZLocation_t {
 #define	UNAUTH		(-2)
 #ifdef OLD_COMPAT
 #define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
-#define	LOGIN_USER_LOGIN	"USER_LOGIN"
 #define	LOGIN_QUIET_LOGIN	"QUIET_LOGIN"
 #endif /* OLD_COMPAT */
 
@@ -93,6 +92,7 @@ static void ulogin_locate(), ulogin_add_user(), ulogin_flush_user();
 static ZLocation_t *ulogin_find();
 static int ulogin_setup(), ulogin_parse(), ul_equiv(), ulogin_expose_user();
 static exposure_type ulogin_remove_user();
+static void login_sendit();
 
 static ZLocation_t *locations = NULLZLT; /* ptr to first in array */
 static int num_locs = 0;		/* number in array */
@@ -221,17 +221,17 @@ ZServerDesc_t *server;
 		zdbug((LOG_DEBUG,"realmann"));
 		ulogin_add_user(notice, REALM_ANN, who);
 		if (server == me_server) /* announce to the realm */
-			sendit(notice, auth, who);
+			login_sendit(notice, auth, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_NETVIS)) {
 		zdbug((LOG_DEBUG,"netvis"));
 		ulogin_add_user(notice, NET_VIS, who);
 		if (server == me_server) /* announce to the realm */
-			sendit(notice, auth, who);
+			login_sendit(notice, auth, who);
 	} else if (!strcmp(notice->z_opcode, EXPOSE_NETANN)) {
 		zdbug((LOG_DEBUG,"netann"));
 		ulogin_add_user(notice, NET_ANN, who);
 		if (server == me_server) /* tell the world */
-			sendit(notice, auth, who);
+			login_sendit(notice, auth, who);
 	} else {
 		syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
 		if (server == me_server)
@@ -242,6 +242,26 @@ ZServerDesc_t *server;
 		server_forward(notice, auth, who);
 	return;
 }
+
+static void
+login_sendit(notice, auth, who)
+ZNotice_t *notice;
+int auth;
+struct sockaddr_in *who;
+{
+	ZNotice_t log_notice;
+
+	/* we must copy the notice struct here because we need the original
+	   for forwarding.  We needn't copy the private data of the notice,
+	   since that isn't modified by sendit and its subroutines. */
+
+	log_notice = *notice;
+
+	log_notice.z_opcode = LOGIN_USER_LOGIN;
+	sendit(&log_notice, auth, who);
+	return;
+}
+
 
 /*
  * Dispatch a LOCATE notice.
@@ -413,9 +433,9 @@ struct sockaddr_in *sin;
 
 /*ARGSUSED*/
 Code_t
-uloc_send_locations(host, version)
+uloc_send_locations(host, vers)
 ZHostList_t *host;
-char *version;
+char *vers;
 {
 	register ZLocation_t *loc;
 	register int i;
@@ -433,7 +453,7 @@ char *version;
 
 
 #ifdef OLD_COMPAT
-		if (!strcmp(version, OLD_ZEPHYR_VERSION))
+		if (!strcmp(vers, OLD_ZEPHYR_VERSION))
 			/* the other server is using the old
 			   protocol version; send old-style
 			   location/login information */
@@ -906,7 +926,7 @@ ZNotice_t *notice;
 exposure_type exposure;
 {
 	ZLocation_t *loc, loc2;
-	int index, notfound = 1;
+	int idx, notfound = 1;
 
 	zdbug((LOG_DEBUG,"ul_expose: %s type %d", notice->z_sender,
 	       (int) exposure));
@@ -918,18 +938,18 @@ exposure_type exposure;
 		zdbug((LOG_DEBUG,"ul_hide: not here"));
 		return(1);
 	}
-	index = loc - locations;
+	idx = loc - locations;
 
-	while ((index < num_locs) &&
-	       !strcmp(locations[index].zlt_user, loc2.zlt_user)) {
+	while ((idx < num_locs) &&
+	       !strcmp(locations[idx].zlt_user, loc2.zlt_user)) {
 
 		/* change exposure and owner for each loc on that host */
-		if (!strcmp(locations[index].zlt_machine, loc2.zlt_machine)) {
+		if (!strcmp(locations[idx].zlt_machine, loc2.zlt_machine)) {
 			notfound = 0;
-			locations[index].zlt_exposure = exposure;
-			locations[index].zlt_port = notice->z_port;
+			locations[idx].zlt_exposure = exposure;
+			locations[idx].zlt_port = notice->z_port;
 		}
-		index++;
+		idx++;
 	}
 
 	return(notfound);
