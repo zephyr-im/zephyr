@@ -29,6 +29,15 @@ Code_t ZSubscribeTo(sublist, nitems, port)
     return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE, 1));
 }
 
+Code_t ZSubscribeToSansDefaults(sublist, nitems, port)
+    ZSubscription_t *sublist;
+    int nitems;
+    u_short port;
+{
+    return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE_NODEFS,
+			    1));
+}
+
 Code_t ZUnsubscribeTo(sublist, nitems, port)
     ZSubscription_t *sublist;
     int nitems;
