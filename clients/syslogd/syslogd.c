@@ -53,6 +53,10 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #define DEFSPRI		(LOG_KERN|LOG_CRIT)
 #define TIMERINTVL	30		/* interval for checking flush, mark */
 
+#ifdef SOLARIS
+#define MSG_BSIZE BUFSIZ
+#endif
+
 #include <stdio.h>
 #ifdef macII
 #include <sys/types.h>
@@ -67,7 +71,7 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #include <ctype.h>
 #include <strings.h>
 #include <setjmp.h>
-
+#include <fcntl.h>
 #include <syslog.h>
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -85,10 +89,13 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #include <sys/resource.h>
 #include <sys/signal.h>
 #include <netdb.h>
+#ifdef POSIX
+#include <termios.h>
+#endif
 
 #include <zephyr/zephyr.h>
 
-#if defined(ultrix) || defined(_POSIX_SOURCE)
+#if defined(ultrix) || defined(POSIX)
 #define sighandler_type void
 #else
 #define sighandler_type int
@@ -267,7 +274,7 @@ main(argc, argv)
 	struct sockaddr_un sunx, fromunix;
 	struct sockaddr_in sin, frominet;
 	FILE *fp;
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	struct sigaction action;
 #endif
 #ifdef _AIX
@@ -360,7 +367,7 @@ main(argc, argv)
 	}
 	else
 		LocalDomain = "";
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
 
@@ -389,7 +396,7 @@ main(argc, argv)
 #endif /* !ultrix */
 	(void) signal(SIGCHLD, reapchild);
 	(void) signal(SIGALRM, domark);
-#endif /* _POSIX_SOURCE */
+#endif /* POSIX */
 	(void) alarm(TIMERINTVL);
 	(void) unlink(LogName);
 
@@ -414,7 +421,7 @@ main(argc, argv)
 			logerror("syslog/udp: unknown service");
 			die(0);
 		}
-		bzero(sin.sin_zero, sizeof(sin.sin_zero));
+		_BZERO(sin.sin_zero, sizeof(sin.sin_zero));
 		sin.sin_family = AF_INET;
 		sin.sin_port = LogPort = sp->s_port;
 #ifdef COMPAT42
@@ -453,7 +460,7 @@ main(argc, argv)
 	dprintf("off & running....\n");
 
 	/* initialize zephyr stuff */
-	bzero (&znotice, sizeof (znotice));
+	_BZERO (&znotice, sizeof (znotice));
 	znotice.z_kind = UNSAFE;
 	znotice.z_class = "SYSLOG";
 	znotice.z_class_inst = LocalHostName;
@@ -461,7 +468,7 @@ main(argc, argv)
 	(void) ZInitialize ();
 
 	init();
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	action.sa_handler = init;
 	sigaction(SIGHUP, &action, NULL);
 #else
@@ -654,13 +661,24 @@ logmsg(pri, msg, from, flags)
 	int flags;
 {
 	register struct filed *f;
-	int fac, prilev;
-	int omask, msglen;
+	int fac, prilev, msglen;
 	char *timestamp;
+#ifdef POSIX
+	sigset_t osig, sig;
+#else
+	int omask;
+#endif
 
 	dprintf("logmsg: pri %o, flags %x, from %s, msg %s\n", pri, flags, from, msg);
 
+#ifdef POSIX
+	(void) sigemptyset(&sig);
+	(void) sigaddset(&sig, SIGHUP);
+	(void) sigaddset(&sig, SIGALRM);
+	(void) sigprocmask(SIG_BLOCK, &sig, &osig);
+#else
 	omask = sigblock(sigmask(SIGHUP)|sigmask(SIGALRM));
+#endif
 
 	/*
 	 * Check to see if msg looks non-standard.
@@ -696,7 +714,11 @@ logmsg(pri, msg, from, flags)
 			fprintlog(f, flags, (char *)NULL, fac, prilev);
 			(void) close(f->f_file);
 		}
+#ifdef POSIX
+		(void) sigprocmask(SIG_SETMASK, &osig, (sigset_t *)0);
+#else
 		(void) sigsetmask(omask);
+#endif
 		return;
 	}
 	for (f = Files; f; f = f->f_next) {
@@ -753,7 +775,11 @@ logmsg(pri, msg, from, flags)
 			}
 		}
 	}
+#ifdef POSIX
+	(void) sigprocmask(SIG_SETMASK, &osig, (sigset_t *)0);
+#else
 	(void) sigsetmask(omask);
+#endif
 }
 
 fprintlog(f, flags, msg, fac, prilev)
@@ -933,7 +959,7 @@ wallmsg(f, iov)
 	struct utmp ut;
 	static char p[6+sizeof(ut.ut_line)] = "/dev/";
 	char greetings[200];
-#ifdef _POSIX_SOURCE
+#ifdef POSIX
 	struct sigaction action;
 #endif
 
@@ -952,26 +978,28 @@ wallmsg(f, iov)
 	 * and doing notty().
 	 */
 	if (fork() == 0) {
-#ifdef _POSIX_SOURCE
-	  action.sa_flags = 0;
-	  sigemptyset(&action.sa_mask);
-
-	  action.sa_handler = SIG_DFL;
-	  sigaction(SIGTERM, &action, NULL);
-
-	  alarm(0);
-	  action.sa_handler = endtty;
-	  sigaction(SIGALRM, &action, NULL);
-
-	  action.sa_handler = SIG_IGN;
-	  sigaction(SIGTTOU, &action, NULL);
+#ifdef POSIX
+		action.sa_flags = 0;
+		(void) sigemptyset(&action.sa_mask);
+		
+		action.sa_handler = SIG_DFL;
+		(void) sigaction(SIGTERM, &action, NULL);
+		
+		alarm(0);
+		action.sa_handler = endtty;
+		(void) sigaction(SIGALRM, &action, NULL);
+		
+		action.sa_handler = SIG_IGN;
+		(void) sigaction(SIGTTOU, &action, NULL);
+		
+		(void)sigprocmask(SIG_SETMASK, &action.sa_mask, (sigset_t *)0);
 #else
 		(void) signal(SIGTERM, SIG_DFL);
 		(void) alarm(0);
 		(void) signal(SIGALRM, endtty);
 		(void) signal(SIGTTOU, SIG_IGN);
-#endif
 		(void) sigsetmask(0);
+#endif
 		(void) sprintf(greetings,
 		    "\r\n\7Message from syslogd@%s at %.24s ...\r\n",
 			iov[2].iov_base, ctime(&now));
@@ -1032,14 +1060,13 @@ wallmsg(f, iov)
 sighandler_type
 reapchild()
 {
-#ifdef _POSIX_SOURCE
-  pid_t status;
+#ifdef POSIX
+    int status;
+    while (waitpid(-1, &status, WNOHANG) > 0) ;
 #else
-	union wait status;
+    union wait status;
+    while (wait3(&status, WNOHANG, (struct rusage *) NULL) > 0) ;
 #endif
-
-	while (wait3(&status, WNOHANG, (struct rusage *) NULL) > 0)
-		;
 }
 
 /*
@@ -1266,7 +1293,7 @@ cfline(line, f)
 	errno = 0;	/* keep sys_errlist stuff out of logerror messages */
 
 	/* clear out file entry */
-	bzero((char *) f, sizeof *f);
+	_BZERO((char *) f, sizeof *f);
 	for (i = 0; i <= LOG_NFACILITIES; i++)
 		f->f_pmask[i] = NOPRI;
 
@@ -1343,11 +1370,11 @@ cfline(line, f)
 			logerror(buf);
 			break;
 		}
-		bzero((char *) &f->f_un.f_forw.f_addr,
+		_BZERO((char *) &f->f_un.f_forw.f_addr,
 			 sizeof f->f_un.f_forw.f_addr);
 		f->f_un.f_forw.f_addr.sin_family = AF_INET;
 		f->f_un.f_forw.f_addr.sin_port = LogPort;
-		bcopy(hp->h_addr, (char *) &f->f_un.f_forw.f_addr.sin_addr, hp->h_length);
+		_BCOPY(hp->h_addr, (char *) &f->f_un.f_forw.f_addr.sin_addr, hp->h_length);
 #ifdef COMPAT42
 		f->f_file = socket(AF_INET, SOCK_DGRAM, 0);
 		if (f->f_file < 0) {
@@ -1506,7 +1533,7 @@ send_src_reply(orig_packet,rtncode,packet,len)
   strcpy(reply.svrreply.objname, "syslogd");
   reply.svrreply.objtext[0] = '\0';
   reply.svrreply.objname[0] = '\0';
-  bcopy(packet,reply.svrreply.rtnmsg,len);
+  _BCOPY(packet,reply.svrreply.rtnmsg,len);
 
   srcsrpy(srcrrqs(&orig_packet), (char *)&reply, len, cont);
 }
