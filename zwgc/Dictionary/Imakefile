@@ -41,12 +41,12 @@ dictionary_spec: dictionary.h
 # Generate a int dictionary instance:
 #
 int_dictionary.c int_dictionary.h: dictionary.c dictionary.h
-	./generate_dictionary_instance int
+	./generate_dictionary_instance ${SRCDIR} int
 #
 # Generate a string dictionary instance:
 #
 string_dictionary.c string_dictionary.h: dictionary.c dictionary.h
-	./generate_dictionary_instance string new_string.h
+	./generate_dictionary_instance ${SRCDIR} string new_string.h
 
 clean::
 	$(RM) $(OBJS) dictionary_spec int_dictionary.c string_dictionary.c \
