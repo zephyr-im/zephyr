@@ -526,6 +526,8 @@ ZNotice_t *notice;
 		return(ZERR_NONE);	/* XXX */
 	}
 	/* remove the locations, too */
+	if (zdebug)
+		syslog(LOG_DEBUG, "kill_clt clt_dereg");
 	client_deregister(client, host, 1);
 	return(ZERR_NONE);
 }
