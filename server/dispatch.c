@@ -275,13 +275,33 @@ struct sockaddr_in *who;
 	ZAcl_t *acl;
 	register ZClientList_t *clientlist, *ptr;
 
-	if ((acl = class_get_acl(notice->z_class)) &&
-	    (!auth || !access_check(notice, acl, TRANSMIT) ||
-	     strcmp(notice->z_class_inst, notice->z_sender))) {
-		syslog(LOG_WARNING, "sendit unauthorized %s", notice->z_class);
+	if (acl = class_get_acl(notice->z_class)) {
+	    /* if controlled and not auth, fail */
+	    if (!auth) {
+		syslog(LOG_WARNING, "sendit unauthentic %s from %s",
+		       notice->z_class, notice->z_sender);
 		clt_ack(notice, who, AUTH_FAILED);
 		return;
-	}	
+	    }
+	    /* if not auth to transmit, fail */
+	    if (!access_check(notice, acl, TRANSMIT)) {
+		syslog(LOG_WARNING, "sendit unauthorized %s from %s",
+		       notice->z_class, notice->z_sender);
+		clt_ack(notice, who, AUTH_FAILED);
+		return;
+	    }
+	    /* sender != inst and not auth to send to others --> fail */
+	    if (strcmp(notice->z_sender, notice->z_class_inst) &&
+		!access_check(notice, acl, INSTUID)) {
+		syslog(LOG_WARNING,
+		       "sendit unauth uid %s %s.%s",
+		       notice->z_sender,
+		       notice->z_class,
+		       notice->z_class_inst);
+		clt_ack(notice, who, AUTH_FAILED);
+		return;
+	    }
+	}
 	if ((clientlist = subscr_match_list(notice))) {
 		for (ptr = clientlist->q_forw;
 		     ptr != clientlist;
@@ -796,6 +816,7 @@ ZServerDesc_t *server;
 				if (zdebug)
 					syslog(LOG_DEBUG,
 					       "cancelsub clt_dereg");
+				hostm_lose_ignore(client);
 				(void) client_deregister(client, host, 0);
 			}
 
