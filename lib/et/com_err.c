@@ -12,7 +12,9 @@
  * C.  Grump grump...
  */
 #if ! __GNUC__
+#if !defined(__osf__)
 #define VARARGS 1
+#endif
 #endif
 
 /* We don't have the v*printf routines... */
