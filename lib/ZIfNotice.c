@@ -31,12 +31,7 @@ Code_t ZIfNotice(notice, from, predicate, args)
     char *buffer;
     struct _Z_InputQ *qptr;
 
-    if (ZQLength())
-	retval = Z_ReadEnqueue();
-    else
-	retval = Z_ReadWait();
-	
-    if (retval != ZERR_NONE)
+    if ((retval = Z_WaitForComplete()) != ZERR_NONE)
 	return (retval);
 	
     qptr = (struct _Z_InputQ *) Z_GetFirstComplete();

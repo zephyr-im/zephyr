@@ -51,6 +51,7 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
     char *opcode;
     int authit;
 {
+    int wait_for_servack();
     int i, retval;
     ZNotice_t notice, retnotice;
     char **list;
@@ -90,12 +91,12 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
 	return (retval);
 
     if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *)0, 
-			    ZCompareUIDPred, (char *)&notice.z_uid)) !=
+			    wait_for_servack, (char *)&notice.z_uid)) !=
 	ZERR_NONE)
 	return (retval);
 
     ZFreeNotice(&retnotice);
-    
+
     if (retnotice.z_kind == SERVNAK)
 	return (ZERR_SERVNAK);
 	
@@ -103,4 +104,11 @@ Z_Subscriptions(sublist, nitems, port, opcode, authit)
 	return (ZERR_INTERNAL);
 
     return (ZERR_NONE);
+}
+
+static wait_for_servack(notice, uid)
+    ZNotice_t *notice;
+    ZUnique_Id_t *uid;
+{
+    return (notice->z_kind == SERVACK && ZCompareUID(&notice->z_uid, uid));
 }

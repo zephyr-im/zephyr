@@ -73,6 +73,10 @@ Code_t ZInitialize()
 
     /* Get the sender so we can cache it */
     (void) ZGetSender();
-	
+
+    /* Initialize the input queue */
+    __Q_Tail = NULL;
+    __Q_Head = NULL;
+    
     return (ZERR_NONE);
 }
