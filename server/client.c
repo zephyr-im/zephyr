@@ -115,11 +115,11 @@ client_register(notice, who, client, server, wantdefaults)
 	clist->zclt_client = *client;
 
 	/* initialize the struct */
-	_BZERO((caddr_t) &(*client)->zct_sin,
-	      sizeof(struct sockaddr_in));
+	(void) memset((caddr_t) &(*client)->zct_sin, 0,
+		      sizeof(struct sockaddr_in));
 #ifdef KERBEROS
-	_BZERO((caddr_t) &(*client)->zct_cblock,
-	      sizeof((*client)->zct_cblock));
+	(void) memset((caddr_t) &(*client)->zct_cblock, 0,
+		      sizeof((*client)->zct_cblock));
 #endif
 	(*client)->zct_sin.sin_addr.s_addr = who->sin_addr.s_addr;
 	(*client)->zct_sin.sin_port = notice->z_port;

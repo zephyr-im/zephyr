@@ -298,43 +298,43 @@ hostm_flush(host, server)
 void
 hostm_shutdown()
 {
-	register ZHostList_t *hosts = otherservers[me_server_idx].zs_hosts;
-	register ZHostList_t *host;
-	int newserver, i;
+    register ZHostList_t *hosts = otherservers[me_server_idx].zs_hosts;
+    register ZHostList_t *host;
+    int newserver, i;
 
 #if 0
-	zdbug((LOG_DEBUG,"hostm_shutdown"));
+    zdbug((LOG_DEBUG,"hostm_shutdown"));
 #endif
-	if (!hosts)
-		return;
-
-	for (i = 0; i < nservers; i++){
-		if (i == me_server_idx) continue;
-		if (otherservers[i].zs_state == SERV_UP)
-			break;
-	}
-	if (i == nservers)		/* no other servers are up */
-		newserver = 0;
-	else
-		newserver = 1;
-
-	/* kill them all */
-	for (host = hosts->q_forw;
-	     host != hosts;
-	     host = host->q_forw) {
-		/* recommend a random, known up server */
-		if (newserver) {
-			do
-				newserver = (int) (random() % (nservers - 1)) + 1;
-			while (newserver == limbo_server_idx() ||
-			       (otherservers[newserver].zs_state != SERV_UP &&
-				otherservers[newserver].zs_state != SERV_TARDY) ||
-			       newserver == me_server_idx);
-			hostm_deathgram(&host->zh_addr, &otherservers[newserver]);
-		} else
-			hostm_deathgram(&host->zh_addr, NULLZSDT);
-	}
+    if (!hosts)
 	return;
+
+    for (i = 0; i < nservers; i++){
+	if (i == me_server_idx) continue;
+	if (otherservers[i].zs_state == SERV_UP)
+	    break;
+    }
+    if (i == nservers)				/* no other servers are up */
+	newserver = 0;
+    else
+	newserver = 1;
+
+    /* kill them all */
+    for (host = hosts->q_forw;
+	 host != hosts;
+	 host = host->q_forw) {
+	/* recommend a random, known up server */
+	if (newserver) {
+	    do
+		newserver = (int) (random() % (nservers - 1)) + 1;
+	    while (newserver == limbo_server_idx() ||
+		   (otherservers[newserver].zs_state != SERV_UP &&
+		    otherservers[newserver].zs_state != SERV_TARDY) ||
+		   newserver == me_server_idx);
+	    hostm_deathgram(&host->zh_addr, &otherservers[newserver]);
+	} else
+	    hostm_deathgram(&host->zh_addr, NULLZSDT);
+    }
+    return;
 }
 
 
@@ -431,8 +431,8 @@ host_lost(arg)
 	xremque(which);
 	hostm_flush(which->lh_host, server);
 
-	_BZERO((caddr_t)&notice, sizeof(notice));
-
+	(void) memset((caddr_t)&notice, 0, sizeof(notice));
+	
 	/* tell other servers to flush this host */
 	notice.z_kind = HMCTL;
 	notice.z_auth = 0;
@@ -453,7 +453,7 @@ host_lost(arg)
 	xfree(buffer);
 
 	/* forge a from address */
-	_BZERO((char *) &who, sizeof(who));
+	(void) memset((char *) &who, 0, sizeof(who));
 	who.sin_addr.s_addr = which->lh_host->zh_addr.sin_addr.s_addr;
 	who.sin_port = hm_port;
 	who.sin_family = AF_INET;
