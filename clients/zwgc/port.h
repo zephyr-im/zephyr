@@ -1,3 +1,6 @@
+#ifndef port_TYPE
+#define port_TYPE
+
 /* This file is part of the Project Athena Zephyr Notification System.
  * It is one of the source files comprising zwgc, the Zephyr WindowGram
  * client.
@@ -17,9 +20,6 @@ static char rcsid_port_h[] = "$Header$";
 #endif
 
 #include <zephyr/mit-copyright.h>
-
-#ifndef port_TYPE
-#define port_TYPE
 
 #include <stdio.h>
 #include "new_string.h"
