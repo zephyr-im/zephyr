@@ -218,10 +218,10 @@ typedef struct _tty_str_info {
     int len;
 
     char alignment; /* 'l', 'c', 'r', or ' ' to indicate newline */
-    int bold_p : 1;
-    int italic_p : 1;
-    int bell_p : 1;
-    int ignore: 1;
+    unsigned int bold_p : 1;
+    unsigned int italic_p : 1;
+    unsigned int bell_p : 1;
+    unsigned int ignore: 1;
 } tty_str_info;
 
 static void free_info(info)

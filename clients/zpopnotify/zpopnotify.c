@@ -28,6 +28,8 @@ static char rcsid_zpopnotify_c[] = "$Id$";
 #define MAIL_CLASS "MAIL"
 #define MAIL_INSTANCE "POP"
 
+void usage();
+
 main(argc,argv)
 	int argc;
 	char *argv[];
@@ -94,6 +96,7 @@ main(argc,argv)
 	}
 }
 
+void
 usage(whoami)
 	char *whoami;
 {

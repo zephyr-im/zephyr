@@ -429,8 +429,8 @@ static int exec_subtree(node)
 /***************************************************************************/
 
 static char *notice_fields;
-static notice_fields_length = 0;
-static number_of_fields = 0;
+static int notice_fields_length = 0;
+static int number_of_fields = 0;
 
 static int exec_fields(node)
      Node *node;

@@ -187,7 +187,7 @@ void zephyr_init(notice_handler)
      * <<<>>>
      */
     mux_add_input_source(ZGetFD(), (void (*)())handle_zephyr_input,
-			 (pointer)notice_handler);
+			 notice_handler);
     zephyr_inited = 1;
     return;
 }

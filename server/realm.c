@@ -166,6 +166,7 @@ realm_send_realms()
     if (retval = (subscr_send_realm_subs(&otherrealms[cnt])) != ZERR_NONE)
       return(retval);
   }
+  return ZERR_NONE;
 }
 
 int
@@ -751,14 +752,15 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
   offset = 0;
 
   /* first, build an authent */
-  retval = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, realm, &cred);
+  retval = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, realm->name, &cred);
   if (retval != GC_OK) {
     syslog(LOG_WARNING, "rlm_sendit_auth get_cred: %s",
            error_message(retval+krb_err_base));
     return;
   }
 
-  retval = krb_mk_req(&authent, SERVER_SERVICE, SERVER_INSTANCE, realm, 1);
+  retval = krb_mk_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
+		      realm->name, 1);
   if (retval != MK_AP_OK) {
     syslog(LOG_WARNING, "rlm_sendit_auth mk_req: %s",
            error_message(retval+krb_err_base));

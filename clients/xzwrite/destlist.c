@@ -23,7 +23,7 @@ static DynObject	dests;
 extern Defaults		defs;
 
 static void get_dest_from_file(), _get_default_dest();
-static int sort_dest_func();
+static int sort_dest_func(const void *, const void *);
 
 /* A function for debugging */
 void dest_print()

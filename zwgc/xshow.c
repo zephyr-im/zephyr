@@ -43,6 +43,7 @@ extern unsigned long default_bgcolor;
 extern unsigned long default_fgcolor;
 extern unsigned long x_string_to_color();
 
+void
 xshowinit()
 {
     desc_context = XUniqueContext();
