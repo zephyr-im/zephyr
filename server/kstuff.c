@@ -91,20 +91,15 @@ GetKerberosData(int fd, struct in_addr haddr, AUTH_DAT *kdata, char *service, ch
  * get the ticket and write it to the file descriptor
  */
 
-SendKerberosData(int fd, KTEXT ticket, char *service, char *host)
-       					/* file descriptor to write onto */
-             				/* where to put ticket (return) */
-                     			/* service name, foreign host */
+SendKerberosData(int fd,	/* file descriptor to write onto */
+		 KTEXT ticket,	/* where to put ticket (return) */
+		 char *service,	/* service name, foreign host */
+		 char *host)
 {
     int rem;
     char p[32];
     char krb_realm[REALM_SZ];
-    static int failed = 0;
     int written;
-
-    rem=KSUCCESS;
-
-    if (failed) abort();
 
     rem = krb_get_lrealm(krb_realm,1);
     if (rem != KSUCCESS)
@@ -273,10 +268,9 @@ int ZCheckAuthentication(ZNotice_t *notice, sockaddr_in *from) {
 	if (ZReadAscii(notice->z_ascii_authent, auth_len + 1, 
 		       (unsigned char *)authent.dat, 
 		       notice->z_authent_len) == ZERR_BADFIELD) {
-#if 1
-	    syslog (LOG_DEBUG, "ZReadAscii failed (len:%s) -> AUTH_FAILED",
-		    error_message (ZERR_BADFIELD));
-#endif
+	    syslog (LOG_DEBUG,
+		    "ZReadAscii failed (len:%s) -> AUTH_FAILED (from %s)",
+		    error_message (ZERR_BADFIELD), inet_ntoa (from->sin_addr));
 	    return (ZAUTH_FAILED);
 	}
 	authent.length = notice->z_authent_len;
@@ -296,9 +290,7 @@ int ZCheckAuthentication(ZNotice_t *notice, sockaddr_in *from) {
 	    (void) sprintf(srcprincipal, "%s%s%s@%s", dat.pname, 
 			   dat.pinst[0]?".":"", dat.pinst, dat.prealm);
 	    if (strcmp(srcprincipal, notice->z_sender)) {
-#if 1
 		syslog (LOG_DEBUG, "principal mismatch->AUTH_FAILED");
-#endif
 		return (ZAUTH_FAILED);
 	    }
 	    a.principal = srcprincipal;
@@ -311,20 +303,16 @@ int ZCheckAuthentication(ZNotice_t *notice, sockaddr_in *from) {
 	    add_to_cache (a);
 	    return(ZAUTH_YES);
 	} else {
-#if 1
-	    syslog (LOG_DEBUG, "krb_rd_req failed->AUTH_FAILED: %s",
-		    krb_err_txt [result]);
-#endif
+	    syslog (LOG_DEBUG, "krb_rd_req failed (%s)->AUTH_FAILED (from %s)",
+		    krb_err_txt [result], inet_ntoa (from->sin_addr));
 	    return (ZAUTH_FAILED);	/* didn't decode correctly */
 	}
     }
     
     if (result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
 			      __Zephyr_realm, &cred)) {
-#if 1
-	syslog (LOG_DEBUG, "krb_get_cred failed->AUTH_NO: %s",
-		krb_err_txt [result]);
-#endif
+	syslog (LOG_DEBUG, "krb_get_cred failed (%s) ->AUTH_NO (from %s)",
+		krb_err_txt [result], inet_ntoa (from->sin_addr));
 	return (ZAUTH_NO);
     }
 
@@ -341,9 +329,8 @@ int ZCheckAuthentication(ZNotice_t *notice, sockaddr_in *from) {
 	return ZAUTH_YES;
     }
     else {
-#if 1
-	syslog (LOG_DEBUG, "checksum mismatch->AUTH_FAILED");
-#endif
+	syslog (LOG_DEBUG, "checksum mismatch->AUTH_FAILED (from %s)",
+		inet_ntoa (from->sin_addr));
 	return ZAUTH_FAILED;
     }
 } 
