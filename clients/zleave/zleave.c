@@ -49,7 +49,9 @@ static char sccsid[] = "@(#)leave.c	5.2 (Berkeley) 12/2/87";
 #define MESSAGE_CLASS "MESSAGE"
 #define INSTANCE "LEAVE"
 /*
- * zleave [[+]hhmm] [can[cel]]
+ * zleave [[+]hhmm [ -m "Reminder Message" ]]
+ *  or
+ * zleave can[cel]
  *
  * Reminds you when you have to leave.
  * Leave prompts for input and goes away if you hit return.
@@ -60,6 +62,7 @@ char origlogin[20];
 char tempfile[40];
 char *getlogin();
 char *whenleave;
+char *reminder_message = NULL;
 char buff[100];
 int use_zephyr=1, oldpid;
 
@@ -74,7 +77,7 @@ char **argv;
 	FILE *fp;
 	struct tm *nv;
 	int gethm();
-	int port;
+	int port, c;
 	ZSubscription_t sub;
 	
 	if (ZInitialize() != ZERR_NONE) {
@@ -108,6 +111,14 @@ char **argv;
 	    (void) strcpy(origlogin, cp);
 	}
 
+	c = 1;
+	while ((c<argc) && (! reminder_message))
+	    if (!strcmp(argv[c++],"-m")) {
+		if (argv[c])
+		    reminder_message = argv[c];
+		else
+		    usage();
+	    }
 	if (argc < 2) {
 		printf("When do you have to leave? ");
 		(void) fflush(stdout);
@@ -173,7 +184,8 @@ char **argv;
 
 usage()
 {
-	fprintf(stderr, "usage: zleave [[+]hhmm] [can[cel]]\n");
+	fprintf(stderr, "usage: zleave [[+]hhmm [-m \"Reminder Message\"]]\n\
+\tor: zleave can[cel]\n");
 	exit(1);
 }
 
@@ -290,10 +302,15 @@ char *msg;
       ZNotice_t notice;
       ZNotice_t retnotice;
       int retval;
+      char *real_message;
 
       delay(slp);
 
       if (use_zephyr) {
+	    real_message = (char *) malloc(strlen(msg) +
+					   strlen(reminder_message) + 2);
+	    sprintf(real_message,"%s%c%s",msg,'\0',reminder_message);
+
 	    (void) bzero((char *)&notice, sizeof(notice));
 	    notice.z_kind = ACKED;
 	    notice.z_port = 0;
@@ -302,12 +319,12 @@ char *msg;
 	    notice.z_recipient = ZGetSender();
 	    notice.z_opcode = "";
 	    notice.z_sender = (char *) 0;
-	    notice.z_default_format = "\n$1";
-	    notice.z_message = msg;
-	    notice.z_message_len = strlen(msg);
+	    notice.z_default_format = "\n$1\n$2";
+	    notice.z_message = real_message;
+	    notice.z_message_len = strlen(msg)+strlen(reminder_message)+2;
 	    
-	    if (ZSendNotice(&notice, ZNOAUTH) != ZERR_NONE) {
-		  printf("\7\7\7%s\n", msg);
+	    if (ZSendNotice(&notice, ZAUTH) != ZERR_NONE) {
+		  printf("\7\7\7%s\n%s", msg, reminder_message);
 		  use_zephyr = 0;
 	    }
 	    if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
@@ -334,8 +351,9 @@ char *msg;
 	    if (!use_zephyr)
 		exit(1);
 	    ZFreeNotice(&retnotice);
+	    free(real_message);
       } else
-	printf("\7\7\7%s\n", msg);
+	printf("\7\7\7%s\n%s", msg, reminder_message);
 }
 
 /*
