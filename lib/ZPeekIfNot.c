@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -34,14 +34,13 @@ Code_t ZPeekIfNotice(notice, from, predicate, args)
     if ((retval = Z_WaitForComplete()) != ZERR_NONE)
 	return (retval);
     
-    qptr = Z_GetFirstComplete();
-    
     for (;;) {
+	qptr = Z_GetFirstComplete();
 	while (qptr) {
 	    if ((retval = ZParseNotice(qptr->packet, qptr->packet_len, 
 				       &tmpnotice)) != ZERR_NONE)
 		return (retval);
-	    if ((predicate)(&tmpnotice, args)) {
+	    if ((*predicate)(&tmpnotice, args)) {
 		if (!(buffer = malloc((unsigned) qptr->packet_len)))
 		    return (ENOMEM);
 		bcopy(qptr->packet, buffer, qptr->packet_len);

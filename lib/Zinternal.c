@@ -6,7 +6,7 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
@@ -15,6 +15,8 @@
 #ifndef lint
 static char rcsid_Zinternal_c[] = "$Header$";
 #endif lint
+
+static char copyright[] = "Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.";
 
 #include <zephyr/mit-copyright.h>
 
@@ -143,7 +145,7 @@ struct _Z_InputQ *Z_SearchQueue(uid, kind)
 	    return (qptr);
 	next = qptr->next;
 	if (qptr->timep && (qptr->timep+Z_NOTICETIMELIMIT < tv.tv_sec))
-	    (void) Z_RemQueue(qptr);
+	    Z_RemQueue(qptr);
 	qptr = next;
     }
     return (NULL);
@@ -269,7 +271,7 @@ Code_t Z_ReadWait()
     }
 
     /*
-     * We'll have to creata a new entry...make sure the queue isn't
+     * We'll have to create a new entry...make sure the queue isn't
      * going to get too big.
      */
     if (__Q_Size+(__Zephyr_server ? notice.z_message_len : partof) > Z_MAXQUEUESIZE)
@@ -311,7 +313,7 @@ Code_t Z_ReadWait()
      */
     if (__Zephyr_server || part == 0) {
 	qptr->header_len = packet_len-notice.z_message_len;
-	qptr->header = malloc((unsigned) (packet_len-notice.z_message_len));
+	qptr->header = malloc((unsigned) qptr->header_len);
 	bcopy(packet, qptr->header, qptr->header_len);
     }
 
@@ -322,7 +324,7 @@ Code_t Z_ReadWait()
      */
     if (__Zephyr_server || (part == 0 && notice.z_message_len == partof)) {
 	__Q_CompleteLength++;
-	qptr->holelist = NULL;
+	qptr->holelist = (struct _Z_Hole *) 0;
 	qptr->complete = 1;
 	/* allocate a msg buf for this piece */
 	if (!(qptr->msg = malloc((unsigned) notice.z_message_len)))
@@ -355,7 +357,7 @@ Code_t Z_ReadWait()
     if (!(qptr->holelist = (struct _Z_Hole *)
 	  malloc(sizeof(struct _Z_Hole))))
 	return (ENOMEM);
-    qptr->holelist->next = NULL;
+    qptr->holelist->next = (struct _Z_Hole *) 0;
     qptr->holelist->first = 0;
     qptr->holelist->last = partof-1;
     return (Z_AddNoticeToEntry(qptr, &notice, part));
@@ -379,7 +381,7 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
     last = part+notice->z_message_len-1;
 
     hole = qptr->holelist;
-    lasthole = NULL;
+    lasthole = (struct _Z_Hole *) 0;
 
     /* copy in the message body */
     (void) bcopy(notice->z_message, qptr->msg+part, notice->z_message_len);
@@ -408,7 +410,7 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
 	if (part > oldfirst) {
 	    /* Search for the end of the hole list */
 	    hole = qptr->holelist;
-	    lasthole = NULL;
+	    lasthole = (struct _Z_Hole *) 0;
 	    while (hole) {
 		lasthole = hole;
 		hole = hole->next;
@@ -432,7 +434,7 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
 	if (last < oldlast) {
 	    /* Search for the end of the hole list */
 	    hole = qptr->holelist;
-	    lasthole = NULL;
+	    lasthole = (struct _Z_Hole *) 0;
 	    while (hole) {
 		lasthole = hole;
 		hole = hole->next;
@@ -449,7 +451,7 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
 		    return (ENOMEM);
 		hole = qptr->holelist;
 	    }
-	    hole->next = NULL;
+	    hole->next = (struct _Z_Hole *) 0;
 	    hole->first = last+1;
 	    hole->last = oldlast;
 	}
@@ -668,7 +670,7 @@ struct _Z_InputQ *Z_GetFirstComplete()
 	qptr = qptr->next;
     }
 
-    return (NULL);
+    return ((struct _Z_InputQ *)0);
 }
 
 struct _Z_InputQ *Z_GetNextComplete(qptr)
@@ -681,10 +683,10 @@ struct _Z_InputQ *Z_GetNextComplete(qptr)
 	qptr = qptr->next;
     }
 
-    return (NULL);
+    return ((struct _Z_InputQ *)0);
 }
 
-Z_RemQueue(qptr)
+void Z_RemQueue(qptr)
     struct _Z_InputQ *qptr;
 {
     struct _Z_Hole *hole, *nexthole;
@@ -710,20 +712,20 @@ Z_RemQueue(qptr)
     
     if (qptr == __Q_Head && __Q_Head == __Q_Tail) {
 	free ((char *)qptr);
-	__Q_Head = NULL;
-	__Q_Tail = NULL;
+	__Q_Head = (struct _Z_InputQ *)0;
+	__Q_Tail = (struct _Z_InputQ *)0;
 	return (ZERR_NONE);
     }
     
     if (qptr == __Q_Head) {
 	__Q_Head = qptr->next;
-	__Q_Head->prev = NULL;
+	__Q_Head->prev = (struct _Z_InputQ *)0;
 	free ((char *)qptr);
 	return (ZERR_NONE);
     } 
     if (qptr == __Q_Tail) {
 	__Q_Tail = qptr->prev;
-	__Q_Tail->next = NULL;
+	__Q_Tail->next = (struct _Z_InputQ *)0;
 	free ((char *)qptr);
 	return (ZERR_NONE);
     }
@@ -733,10 +735,10 @@ Z_RemQueue(qptr)
     return (ZERR_NONE);
 }
 
-Code_t Z_SendFragmentedNotice(notice, len, func)
+Code_t Z_SendFragmentedNotice(notice, len, send_func)
     ZNotice_t *notice;
     int len;
-    Code_t (*func)();
+    Code_t (*send_func)();
 {
     ZNotice_t partnotice;
     ZPacket_t buffer;
@@ -777,8 +779,8 @@ Code_t Z_SendFragmentedNotice(notice, len, func)
 	    free(buffer);
 	    return (retval);
 	}
-	if ((retval = (*func)(&partnotice, buffer, ret_len, waitforack)) !=
-	    ZERR_NONE) {
+	if ((retval = (*send_func)(&partnotice, buffer, ret_len,
+				   waitforack)) != ZERR_NONE) {
 	    free(buffer);
 	    return (retval);
 	}
