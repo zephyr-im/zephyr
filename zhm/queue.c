@@ -133,6 +133,8 @@ Code_t retransmit_queue(sin)
 		  fprintf(stderr, "Error = %d\n", ret);
 		  com_err("queue", ret, "sending raw notice");
 	    }
+	    srch->q_data->timeout = TIMEOUT;
+	    srch->q_data->retries = 0;
 	    srch = srch->q_forw;
       } while (srch != &hm_queue);
 }
