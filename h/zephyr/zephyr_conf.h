@@ -30,17 +30,10 @@
 #define	HM_SVCNAME	"zephyr-hm"
 #define	SERVER_SVCNAME	"zephyr-clt"
 
-#if defined(vax) && !defined(ultrix)
-#define _BCOPY bcopy
-#define _BZERO bzero
-#define _BCMP  bcmp
-#else
-#define _BCOPY(a,b,n) memmove(b,a,n)
-#define _BZERO(a,n)   memset(a,0,n)
-#define _BCMP(a,b,n)  memcmp(a,b,n)
-#endif
-
 #if defined(vax) || defined(ibm032)
+#define memset(a,b,c) bzero(a,c)
+#define memmove(a,b,c) bcopy(b,a,c)
+#define memcmp(a,b,c) bcmp(a,b,c)
 #define strchr index
 #define strrchr rindex
 #endif
@@ -60,7 +53,7 @@
 #define	MAXHOSTNAMELEN	64
 typedef int uid_t;
 typedef int gid_t;
-#ifndef KERBEROS
+#ifndef Z_HaveKerberos
 #define FD_ZERO(p)  ((p)->fds_bits[0] = 0)
 #define FD_SET(n, p)   ((p)->fds_bits[0] |= (1 << (n)))
 #define FD_ISSET(n, p)   ((p)->fds_bits[0] & (1 << (n)))
