@@ -42,6 +42,7 @@ char **ss_parse (sci_idx, line_ptr, argc_ptr)
     register int argc;
     register enum parse_mode parse_mode;
 
+    *argc_ptr = 0;	/* In case of error return something sane */
     argv = (char **) malloc (sizeof(char *));
     if (argv == (char **)NULL) {
 	ss_error(sci_idx, errno, "Can't allocate storage");
