@@ -7,10 +7,14 @@
 /**/#	$Author$
 /**/#	$Header$
 /**/#
+
 LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB} ${DES_LIB}
 LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB} ${DES_LINTLIB}
 SRCS = zlocate.c
 OBJS = zlocate.o
+
+SRCDIR= ${SRCTOP}/clients/zlocate
+CODE= ${SRCS} Imakefile
 
 normal_obj_rule()
 

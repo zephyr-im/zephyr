@@ -7,14 +7,20 @@
 /**/#	$Author$
 /**/#	$Header$
 /**/#
+
 LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${SS_LIB} ${KRB_LIB} ${DES_LIB}
 LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${SS_LINTLIB} \
 	${KRB_LINTLIB} ${DES_LINTLIB}
 SRCS = zctl.c
 OBJS = zctl.o zctl_cmds.o
+OTHERSRCS= zctl_cmds.ct
+
 #ifdef LOCAL_LIBS
-LINCLUDES=-I$(BUILDTOP)/ss
+LINCLUDES=-I$(BUILDTOP)/ss/lib
 #endif
+
+SRCDIR= ${SRCTOP}/clients/zctl
+CODE= ${OTHERSRCS} ${SRCS} Imakefile
 
 normal_obj_rule()
 

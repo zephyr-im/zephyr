@@ -7,10 +7,14 @@
 /**/#	$Author$
 /**/#	$Header$
 /**/#
+
 LIBS= ${ZEPHYR_LIB} ${COMERR_LIB} ${KRB_LIB}
 LINTLIBS= ${ZEPHYR_LINTLIB} ${COMERR_LINTLIB} ${KRB_LINTLIB}
 SRCS = zpopnotify.c
 OBJS = zpopnotify.o
+
+SRCDIR= ${SRCTOP}/clients/zpopnotify
+CODE= ${SRCS} Imakefile
 
 normal_obj_rule()
 
