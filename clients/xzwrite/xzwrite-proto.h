@@ -65,6 +65,7 @@ int zeph_send_message P((Dest dest , char *msg ));
 int zeph_ping P((Dest dest ));
 int zeph_pong P((Dest dest ));
 char *zeph_get_signature P((void ));
+void log_message P((Dest dest , char *msg ));
 
 /* GetString.c */
 Widget InitGetString P((Widget parent , char *name ));
