@@ -247,7 +247,9 @@ int open_display_and_load_resources(pargc, argv)
      int *pargc;
      char **argv;
 {
-    XrmDatabase temp_db1, temp_db2;
+    XrmDatabase temp_db1, temp_db2, temp_db3;
+    char *filename;
+    extern char *getenv();
 
     /* Initialize X resource manager: */
     XrmInitialize();
@@ -276,11 +278,20 @@ int open_display_and_load_resources(pargc, argv)
     temp_db2 = XrmGetStringDatabase(dpy->xdefaults);
 
     /*
-     * Merge the 3 sets of resources together such that when searching
+     * Merge the 4 sets of resources together such that when searching
      * for resources, they are checking in the following order:
-     * command arguments, server resources, application resources
+     * command arguments, XENVIRONMENT resources, server resources,
+     * application resources
      */
     XrmMergeDatabases(temp_db2, &temp_db1);
+    /*
+     * Get XENVIRONMENT resources, if they exist, and merge
+     */
+    if (filename = getenv("XENVIRONMENT"))
+    {
+	temp_db3 = XrmGetFileDatabase(filename);
+	XrmMergeDatabases(temp_db3, &temp_db1);
+    }
     XrmMergeDatabases(x_resources, &temp_db1);
     x_resources = temp_db1;
 
