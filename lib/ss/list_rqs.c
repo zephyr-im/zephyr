@@ -34,7 +34,11 @@ ss_list_requests(argc, argv, sci_idx, info_ptr)
     FILE *output;
     int fd;
     int mask;
+#ifdef POSIX
+    void (*func)();
+#else
     int (*func)();
+#endif
     union wait waitb;
 
     DONT_USE(argc);
