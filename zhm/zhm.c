@@ -23,11 +23,7 @@ int use_hesiod = 0;
 #define srandom srand48
 #endif
 
-#ifdef _PATH_VARRUN
-#define PIDDIR _PATH_VARRUN
-#else
-#define PIDDIR "/etc/"
-#endif
+#define PIDDIR "/var/athena/"
 
 int hmdebug, rebootflag, errflg, dieflag, inetd, oldpid, nofork;
 int no_server = 1, nservchang, nserv, nclt;
