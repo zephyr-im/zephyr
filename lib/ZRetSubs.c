@@ -29,6 +29,9 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	ZNotice_t notice;
 	char asciiport[50];
 	
+	if (!port)			/* use default port */
+	    port = __Zephyr_port;
+
 	if ((retval = ZMakeAscii(asciiport,sizeof(asciiport),
 				 (unsigned char *)&port,
 				 sizeof(u_short))) != ZERR_NONE)
