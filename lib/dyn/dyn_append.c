@@ -15,12 +15,12 @@
 #include "dynP.h"
 
 int DynAppend(obj, els, num)
-   DynObjectP obj;
+   DynObject obj;
    DynPtr els;
    int num;
 {
      if (obj->debug)
-	  fprintf(stderr, "dyn: append: Writing %d bytes from %d to %d + %d\n",
+	  fprintf(stderr, "dyn: append: Writing %d bytes from %p to %p + %d\n",
 		  obj->el_size*num, els, obj->array, obj->num_el*obj->el_size);
 
      if (obj->size < obj->num_el + num) {

@@ -18,7 +18,8 @@
 #ifndef _DynP_h
 #define _DynP_h
 
-#include "dyn.h"
+#include <sysdep.h>
+#include <dyn.h>
 
 /*
  * Rep invariant:
@@ -35,20 +36,14 @@ typedef struct _DynObject {
      DynPtr	array;
      int	el_size, num_el, size, inc;
      char	debug, paranoid;
-} DynObjectRecP, *DynObjectP;
+} DynObjectRec;
 
 /* Internal functions */
-int _DynRealloc();
+int _DynRealloc __P((DynObject obj, int num_incs));
 
 #define _DynResize(obj, req) \
      ((obj)->size > (req) ? DYN_OK : \
      (_DynRealloc((obj), (((req) - (obj)->size) / (obj)->inc) + 1)))
-
-/* external (C library) functions */
-#include <stdio.h>
-#ifdef POSIX
-#include <stdlib.h>
-#endif
 
 #endif /* _DynP_h */
 /* DON'T ADD STUFF AFTER THIS #endif */
