@@ -23,7 +23,6 @@ Code_t ZParseNotice(buffer,len,notice,auth)
 	int		*auth;
 {
 	char *ptr;
-	int i;
 	unsigned int temp[3];
 
 	ptr = buffer;

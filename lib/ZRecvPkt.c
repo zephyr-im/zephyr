@@ -25,7 +25,6 @@ Code_t ZReceivePacket(buffer,buffer_len,ret_len)
 	int		*ret_len;
 {
 	int retval;
-	struct _Z_InputQ *old_head;
 	
 	if (ZGetFD() < 0)
 		return (ZERR_NOPORT);
