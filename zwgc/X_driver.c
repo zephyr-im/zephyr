@@ -287,6 +287,24 @@ int open_display_and_load_resources(pargc, argv)
     return(0);
 }
 
+/*
+ * X_driver_ioerror: called by Xlib in case of an X IO error.
+ * Shouldn't return (according to man page).
+ *
+ * on IO error, we clean up and exit.
+ *
+ * XXX it would be better to set mux_end_loop_p, but we can't return to
+ * get there (Xlib will exit if this routine returns).
+ *
+ */
+
+int X_driver_ioerror(display)
+Display *display;
+{
+    ERROR2("X IO error on display '%s'--exiting\n", display->display_name);
+    finalize_zephyr();
+    exit(1);
+}
 /****************************************************************************/
 /*                                                                          */
 /*                Code to deal with initializing the driver:                */
@@ -313,6 +331,8 @@ int X_driver_init(drivername, pargc, argv)
 	ERROR("Unable to open X display -- disabling X driver.\n");
 	return(1);
     }
+
+    XSetIOErrorHandler(X_driver_ioerror);
 
     /*
      * For now, set some useful variables using resources:
