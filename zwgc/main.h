@@ -19,6 +19,12 @@
 #ifndef main_MODULE
 #define main_MODULE
 
+#ifdef HAVE_ARES
+#include <ares.h>
+
+extern ares_channel achannel;
+#endif
+
 extern char *progname;
 extern char *subscriptions_filename_override;
 extern char *location_override;

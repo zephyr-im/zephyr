@@ -77,7 +77,7 @@ static string get_zwgc_port_number_filename()
 static void handle_zephyr_input(notice_handler)
      void (*notice_handler)();
 {
-    ZNotice_t notice;
+    ZNotice_t *notice;
     struct sockaddr_in from;
     int complete_packets_ready;
 
@@ -89,11 +89,12 @@ static void handle_zephyr_input(notice_handler)
 	if (complete_packets_ready==0)
 	  return;
 
-	TRAP( ZReceiveNotice(&notice, &from), "while getting zephyr notice" );
+	notice = malloc(sizeof(ZNotice_t));
+
+	TRAP( ZReceiveNotice(notice, &from), "while getting zephyr notice" );
 	if (!error_code) {
-	    notice.z_auth = ZCheckAuthentication(&notice, &from);
-	    notice_handler(&notice);
-	    ZFreeNotice(&notice);
+	    notice->z_auth = ZCheckAuthentication(notice, &from);
+	    notice_handler(notice);
 	}
     }
 }
