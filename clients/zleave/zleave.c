@@ -37,6 +37,7 @@ static char sccsid[] = "@(#)leave.c	5.1 (Berkeley) 5/31/85";
 
 #include <stdio.h>
 #include <signal.h>
+#include <string.h>
 
 #define MESSAGE_CLASS "MESSAGE"
 #define INSTANCE "LEAVE"
@@ -52,28 +53,29 @@ char origlogin[20];
 char tmpfile[40];
 char *getlogin();
 char *whenleave;
-char *ctime();
 char buff[100];
 int use_zephyr=1, oldpid;
+
+extern uid_t getuid();
+long time();
 
 main(argc, argv)
 char **argv;
 {
 	long when, tod, now, diff, hours, minutes;
-	char *cp,*envptr,buf[64];
+	char *cp;
 	FILE *fp;
-	int *nv;
+	struct tm *nv;
 	int atoi();
-	int ret;
 	int port;
 	ZSubscription_t sub;
 	
-	if ((ret = ZInitialize()) != ZERR_NONE) {
+	if (ZInitialize() != ZERR_NONE) {
 	      fprintf(stderr,"No Zephyr! Will write directly to terminal.\n");
 	      use_zephyr = 0;
 	}
-	strcpy(origlogin, getlogin());
-	sprintf(tmpfile, "/tmp/zleave.%d", getuid());
+	(void) strcpy(origlogin, getlogin());
+	(void) sprintf(tmpfile, "/tmp/zleave.%d", (int) getuid());
 
 	if (use_zephyr) {
 		if ((port = ZGetWGPort()) == -1) {
@@ -97,7 +99,7 @@ char **argv;
 
 	if (argc < 2) {
 		printf("When do you have to leave? ");
-		fflush(stdout);
+		(void) fflush(stdout);
 		buff[read(0, buff, sizeof buff)] = 0;
 		cp = buff;
 	} else
@@ -122,11 +124,15 @@ char **argv;
 		    printf("No zleave is currently running.\n");
 		    exit(0);
 	      }
-	      fscanf(fp, "%d", &oldpid);
-	      fclose(fp);
+	      if (fscanf(fp, "%d", &oldpid) != 1) {
+		      printf("The zleave pid file is corrupted.\n");
+		      (void) fclose(fp);
+		      exit(0);
+	      }
+	      (void) fclose(fp);
 	      if (kill(oldpid,9))
 		    printf("No zleave is currently running.\n");
-	      unlink(tmpfile);
+	      (void) unlink(tmpfile);
 	      exit(0);
 	}
 	if (*cp < '0' || *cp > '9')
@@ -142,12 +148,12 @@ char **argv;
 	if (hours < 0 || hours > 12 || minutes < 0 || minutes > 59)
 		usage();
 
-	time(&now);
-	nv = (int *)localtime(&now);
+	(void) time(&now);
+	nv = localtime(&now);
 	when = 60*hours+minutes;
-	if (nv[2] > 12)
-		nv[2] -= 12;	/* do am/pm bit */
-	now = 60*nv[2] + nv[1];
+	if (nv->tm_hour > 12)
+		nv->tm_hour -= 12;	/* do am/pm bit */
+	now = 60 * nv->tm_hour + nv->tm_min;
 	diff = when - now;
 	while (diff < 0)
 		diff += 12*60;
@@ -171,8 +177,8 @@ long nmins;
 {
 	char *msg1, *msg2, *msg3, *msg4;
 	register int i;
-	int slp1, slp2, slp3, slp4;
-	int seconds, gseconds;
+	long slp1, slp2, slp3, slp4;
+	long seconds, gseconds;
 	long daytime;
 	FILE *fp;
 
@@ -201,17 +207,17 @@ long nmins;
 	slp3 = seconds;
 
 	msg4 = "You're going to be late!";
-	slp4 = 60;
+	slp4 = 60L;
 
-	time(&daytime);
+	(void) time(&daytime);
 	daytime += gseconds;
 	whenleave = ctime(&daytime);
 
 	if (fp = fopen(tmpfile,"r")) {
-	      fscanf(fp, "%d", &oldpid);
-	      fclose(fp);
-	      if (!kill(oldpid,9))
-		    printf("Old zleave process killed.\n");
+	      if (fscanf(fp, "%d", &oldpid) == 1)
+		      if (!kill(oldpid,9))
+			      printf("Old zleave process killed.\n");
+	      (void) fclose(fp);
 	}
 	printf("Alarm set for %s", whenleave);
 
@@ -232,13 +238,14 @@ long nmins;
 	  fprintf(stderr, "Cannot open pid file.\n");
 	else {
 	      fprintf(fp, "%d\n", getpid());
-	      fclose(fp);
+	      if (fclose(fp) == EOF)
+		      (void) perror("fclose on pid file");
 	}
 
-	signal(SIGINT, SIG_IGN);
-	signal(SIGQUIT, SIG_IGN);
-	signal(SIGTERM, SIG_IGN);
-	signal(SIGTTOU, SIG_IGN);
+	(void) signal(SIGINT, SIG_IGN);
+	(void) signal(SIGQUIT, SIG_IGN);
+	(void) signal(SIGTERM, SIG_IGN);
+	(void) signal(SIGTTOU, SIG_IGN);
 
 	if (slp1)
 		bother(slp1, msg1);
@@ -248,16 +255,15 @@ long nmins;
 	for (i = 0; i < 10; i++)
 		bother(slp4, msg4);
 
-	bother(0, "That was the last time I'll tell you. Bye.");
+	bother(0L, "That was the last time I'll tell you. Bye.");
 	exit(0);
 }
 
 bother(slp, msg)
-int slp;
+long slp;
 char *msg;
 {
       ZNotice_t notice;
-      int ret;
 
       delay(slp);
 
@@ -273,7 +279,7 @@ char *msg;
 	    notice.z_message = msg;
 	    notice.z_message_len = strlen(msg);
 	    
-	    if ((ret = ZSendNotice(&notice, ZNOAUTH)) != ZERR_NONE) {
+	    if (ZSendNotice(&notice, ZNOAUTH) != ZERR_NONE) {
 		  printf("\7\7\7%s\n", msg);
 	    }
       } else
@@ -285,9 +291,9 @@ char *msg;
  * knows what zero means.
  */
 delay(secs)
-int secs;
+long secs;
 {
-	int n;
+	long n;
 
 	while (secs > 0) {
 		n = 100;
@@ -295,7 +301,7 @@ int secs;
 			n = secs;
 		secs -= n;
 		if (n > 0)
-			sleep(n);
+			sleep((unsigned) n);
 		if (strcmp(origlogin, getlogin()))
 			exit(0);
 	}
