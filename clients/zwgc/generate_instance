@@ -1,0 +1,42 @@
+#!/bin/sh -
+
+# This file is part of the Project Athena Zephyr Notification System.
+# It is one of the source files comprising zwgc, the Zephyr WindowGram
+# client.
+#
+# $Id$
+#
+# Copyright (c) 1989,1993 by the Massachusetts Institute of Technology.
+# For copying and distribution information, see the file
+# "mit-copyright.h".
+#
+
+if [ "$1" = "" ]; then
+	echo "Usage: generate_instance <srcdir> <stack|dictionary> <name> [<include file>]"
+	exit 1
+fi
+
+source=$1
+type=$2
+name=$3
+incfile=$4
+
+if [ ! -f ${source}/${type}.h ]; then
+	echo "$0: unable to open ${source}/${type}.h"
+	exit 2
+fi
+
+case $type in
+dictionary)
+	if [ ! -f ${source}/${type}.c ]; then
+		echo "$0: unable to open ${source}/${type}.c"
+		exit 2
+	fi
+	sed "s/TYPE_T/$name/g" ${source}/${type}.c > ${name}_${type}.c
+	;;
+esac
+
+if [ "$incfile" != "" ]; then
+	echo "#include \"$incfile\"" > ${name}_${type}.h
+fi
+sed "s/TYPE_T/$name/g" ${source}/${type}.h >> ${name}_${type}.h
