@@ -20,31 +20,27 @@ static char rcsid_ZFormatRawNotice_c[] = "$Header$";
 
 #include <zephyr/zephyr.h>
 
-Code_t ZFormatRawNotice(notice,buffer,buffer_len,len)
-	ZNotice_t	*notice;
-	ZPacket_t	buffer;
-	int		buffer_len;
-	int		*len;
+Code_t ZFormatRawNotice(notice, buffer, ret_len, cert_routine)
+    ZNotice_t *notice;
+    char **buffer;
+    int *ret_len;
+    int (*cert_routine)();
 {
-	char *ptr;
-	int hdrlen;
-	Code_t retval;
+    char header[Z_MAXHEADERLEN];
+    char *ptr;
+    int hdrlen;
+    Code_t retval;
 
-	if ((retval = Z_FormatRawHeader(notice,buffer,buffer_len,&hdrlen)) !=
-	    ZERR_NONE)
-		return (retval);
+    if ((retval = Z_FormatRawHeader(notice, header, sizeof(header), &hdrlen, 
+				    cert_routine)) != ZERR_NONE)
+	return (retval);
 
-	ptr = buffer+hdrlen;
+    *ret_len = hdrlen+notice->z_message_len;
 
-	if (notice->z_message_len+hdrlen > buffer_len)
-		return (ZERR_PKTLEN);
+    if (!(*buffer = malloc(*ret_len)))
+	return (ENOMEM);
 
-	bcopy(notice->z_message,ptr,notice->z_message_len);
+    bcopy(notice->z_message, *buffer+hdrlen, notice->z_message_len);
 
-	*len = hdrlen+notice->z_message_len;
-
-	if (*len > Z_MAXPKTLEN)
-		return (ZERR_PKTLEN);
-
-	return (ZERR_NONE);
+    return (ZERR_NONE);
 }
