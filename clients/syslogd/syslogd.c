@@ -55,6 +55,7 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 
 #ifdef SOLARIS
 #define MSG_BSIZE BUFSIZ
+#define STREAMS_LOG_DRIVER
 #endif
 
 #include <stdio.h>
@@ -86,6 +87,16 @@ static char sccsid[] = "@(#)syslogd.c	5.24 (Berkeley) 6/18/88";
 #include <sys/resource.h>
 #include <sys/signal.h>
 #include <netdb.h>
+
+#ifdef STREAMS_LOG_DRIVER
+#include <sys/stream.h>
+#include <sys/strlog.h>
+#include <sys/log.h>
+
+#include <poll.h>
+#include <stropts.h>
+#endif
+
 #ifdef POSIX
 #include <termios.h>
 #endif
@@ -376,9 +387,12 @@ main(argc, argv)
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
 
-	action.sa_handler = Debug ? die : SIG_IGN;
+	action.sa_handler = die;
 	sigaction(SIGTERM, &action, NULL);
+
+	action.sa_handler = Debug ? die : SIG_IGN;
 	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGQUIT, &action, NULL);
 
 	action.sa_handler = reapchild;
 	sigaction(SIGCHLD, &action, NULL);
@@ -398,6 +412,8 @@ main(argc, argv)
 	(void) signal(SIGALRM, domark);
 #endif
 	(void) alarm(TIMERINTVL);
+
+#ifndef STREAMS_LOG_DRIVER
 	(void) unlink(LogName);
 
 	sunx.sun_family = AF_UNIX;
@@ -411,9 +427,31 @@ main(argc, argv)
 		dprintf("cannot create %s (%d)\n", LogName, errno);
 		die(0);
 	}
+#else /* STREAMS_LOG_DRIVER */
+	if ((funix=open(LogName, O_RDONLY)) < 0) {
+	  sprintf(line, "cannot open %s", LogName);
+	  logerror(line);
+	  dprintf("cannot open %s (%d)\n", LogName, errno);
+	  die(0);
+	}
+	{
+	  struct strioctl ioc;
+	  ioc.ic_cmd = I_CONSLOG;
+	  ioc.ic_timout = 0;		/* 15 seconds default */
+	  ioc.ic_len = 0; ioc.ic_dp = NULL;
+	  if (ioctl(funix, I_STR, &ioc) < 0) {
+	    sprintf(line, "cannot setup STREAMS logging on %s", LogName);
+	    logerror(line);
+	    dprintf("cannot setup STREAMS logging on %s (%d)", LogName,
+		    errno);
+	    die(0);
+	  }
+	}
+#endif /* STREAMS_LOG_DRIVER */
 	finet = socket(AF_INET, SOCK_DGRAM, 0);
 	if (finet >= 0) {
 		struct servent *sp;
+		int one = 1;
 
 		sp = getservbyname("syslog", "udp");
 		if (sp == NULL) {
@@ -421,7 +459,7 @@ main(argc, argv)
 			logerror("syslog/udp: unknown service");
 			die(0);
 		}
-		(void) memset(sin.sin_zero, 0, sizeof(sin.sin_zero));
+		(void) memset(&sin, 0, sizeof(sin));
 		sin.sin_family = AF_INET;
 		sin.sin_port = LogPort = sp->s_port;
 #ifdef COMPAT42
@@ -437,11 +475,13 @@ main(argc, argv)
 		}
 #endif /* COMPAT42 */
 	}
-#ifdef COMPAT42
+#if defined(COMPAT42)
 	InetInuse = 1;
 	inetm = 0;
 	klogm = 0;
-#else
+#elif defined(STREAMS_LOG_DRIVER)
+	klogm = 0;
+#else /* !COMPAT42, !STREAMS_LOG_DRIVER */
 	if ((fklog = open("/dev/klog", O_RDONLY)) >= 0)
 		klogm = FDMASK(fklog);
 	else {
@@ -475,9 +515,30 @@ main(argc, argv)
 	(void) signal(SIGHUP, init);
 #endif
 
-	for (;;) {
-		int nfds, readfds = FDMASK(funix) | inetm | klogm;
+#ifndef STREAMS_LOG_DRIVER
+	dprintf("fdmasks: funix=%d, inetm=%d, klogm=%d\n",
+		FDMASK(funix), inetm, klogm);
+#endif
 
+	for (;;) {
+		int nfds;
+#ifdef STREAMS_LOG_DRIVER
+		struct pollfd readfds[2] = {
+		  { funix, POLLIN | POLLPRI, 0 }, 
+		  { finet, POLLIN | POLLPRI, 0 } };
+#  define POLLFD_unix 0
+#  define POLLFD_inet 1
+
+		errno = 0; dprintf("readfds = {(%d,%#x),(%d,%#x)}\n",
+				   readfds[POLLFD_unix].fd,
+				   readfds[POLLFD_unix].revents,
+				   readfds[POLLFD_inet].fd,
+				   readfds[POLLFD_inet].revents);
+
+		nfds = poll(readfds, 2, INFTIM);
+
+#else /* STREAMS_LOG_DRIVER */
+		int readfds = FDMASK(funix) | inetm | klogm;
 #ifdef _AIX
 		if (using_src)
 		  readfds |= FDMASK(src_fd);
@@ -486,13 +547,61 @@ main(argc, argv)
 		dprintf("readfds = %#x\n", readfds);
 		nfds = select(20, (fd_set *) &readfds, (fd_set *) NULL,
 				  (fd_set *) NULL, (struct timeval *) NULL);
+		dprintf("got a message (%d, %#x)\n", nfds, readfds);
+#endif /* STREAMS_LOG_DRIVER */
 		if (nfds == 0)
 			continue;
 		if (nfds < 0) {
 			if (errno != EINTR)
-				logerror("select");
+#ifdef STREAMS_LOG_DRIVER
+			  logerror("poll");
+#else
+			  logerror("select");
+#endif
 			continue;
 		}
+#ifdef STREAMS_LOG_DRIVER
+		dprintf("got a message {(%d, %#x), (%d, %#x)}\n",
+			readfds[POLLFD_unix].fd, readfds[0].revents,
+			readfds[POLLFD_inet].fd, readfds[1].revents);
+		if (readfds[POLLFD_unix].revents & (POLLIN|POLLPRI)) {
+		  struct log_ctl logctl;
+		  char datbuf[BUFSIZ];
+		  struct strbuf dat = { (sizeof(int)*2+sizeof(datbuf)),
+		    0, datbuf };
+		  struct strbuf ctl = {
+		    (sizeof(int)*2+sizeof(logctl)), 0, (char*)&logctl };
+		  int flags = 0;
+
+  		  i = getmsg(funix, &ctl, &dat, &flags);
+		  if ((i==0)) {
+#if (NLOGARGS != 3)
+#error This section of code assumes that NLOGARGS is 3. If that is not the case, this needs to be editted by hand. Sorry, but sed magic was too much for me.
+#else
+		    {
+		    char null[] = "", *p;
+		    char *logargs[NLOGARGS] = { null, null, null };
+
+		    logargs[0]=dat.buf;
+		    p=memchr(logargs[0], 0, sizeof(dat.buf)); /* XXX */
+	            if (p != NULL)
+			logargs[1]=p++;
+		    p=memchr(logargs[1], 0, sizeof(dat.buf)); /* XXX */
+	            if (p != NULL)
+			logargs[2]=p++;
+		    sprintf(line, logargs[0], logargs[1], logargs[2]);
+		    }
+#endif /* NLOGARGS != 3 */
+		    line[strlen(line)-1]=0;
+		    logmsg(logctl.pri, line, LocalHostName, 0);
+		  } else if (i < 0 && errno != EINTR) {
+		    logerror("getmsg() unix");
+		  } else if (i > 0) {
+		    sprintf(line, "getmsg() > 1 (%X)", i);
+		    logerror(line);
+		  }
+		}
+#else /* STREAMS_LOG_DRIVER */
 		dprintf("got a message (%d, %#x)\n", nfds, readfds);
 		if (readfds & klogm) {
 			i = read(fklog, line, sizeof(line) - 1);
@@ -514,8 +623,13 @@ main(argc, argv)
 				printline(LocalHostName, line);
 			} else if (i < 0 && errno != EINTR)
 				logerror("recvfrom unix");
-		}
+		      }
+#endif /* STREAMS_LOG_DRIVER */
+#ifdef STREAMS_LOG_DRIVER
+		if (readfds[POLLFD_inet].revents & (POLLIN|POLLPRI)) {
+#else
 		if (readfds & inetm) {
+#endif
 			len = sizeof frominet;
 			i = recvfrom(finet, line, MAXLINE, 0, &frominet, &len);
 			if (i > 0) {
@@ -1172,7 +1286,9 @@ die(sig)
 		errno = 0;
 		logerror(buf);
 	}
+#ifndef STREAMS_LOG_DRIVER
 	(void) unlink(LogName);
+#endif
 	exit(0);
 }
 
