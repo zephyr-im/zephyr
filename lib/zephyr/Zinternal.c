@@ -6,16 +6,19 @@
  *	$Source$
  *	$Author$
  *
- *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
+ *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of
+ *	Technology.
  *	For copying and distribution information, see the file
  *	"mit-copyright.h". 
  */
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_Zinternal_c[] = "$Id$";
-static char copyright[] = "Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.";
-#endif lint
+static char rcsid_Zinternal_c[] =
+  "$Zephyr: Zinternal.c,v 1.22 91/03/08 11:50:59 raeburn Exp $";
+static char copyright[] =
+  "Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.";
+#endif
 
 #include <zephyr/mit-copyright.h>
 
@@ -25,6 +28,12 @@ static char copyright[] = "Copyright (c) 1987,1988 by the Massachusetts Institut
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <utmp.h>
+/* are we using varargs or stdarg? */
+#if !(defined(__STDC__) && (defined(__GNUC__) || !defined(ibm032)))
+#define VARARGS
+#endif
+
+extern char *inet_ntoa ();
 
 int __Zephyr_fd = -1;
 int __Zephyr_open;
@@ -39,18 +48,23 @@ struct sockaddr_in __HM_addr_real;
 int __HM_set;
 #ifdef KERBEROS
 C_Block __Zephyr_session;
+char __Zephyr_realm[REALM_SZ];
 #endif
 int __Zephyr_server;
-char __Zephyr_realm[REALM_SZ];
 ZLocations_t *__locate_list;
 int __locate_num;
 int __locate_next;
 ZSubscription_t *__subscriptions_list;
 int __subscriptions_num;
 int __subscriptions_next;
+void (*__Z_debug_print) Zproto((const char *fmt, va_list args, void *closure));
+#ifdef __STDC__
+void *__Z_debug_print_closure;
+#else
+char *__Z_debug_print_closure;
+#endif
 
 #define min(a,b) ((a)<(b)?(a):(b))
-
 
 /* Get the address of the local host and cache it */
 
@@ -192,6 +206,14 @@ Code_t Z_ReadWait()
     if (!packet_len)
 	return (ZERR_EOF);
 
+    /* XXX Check for null data (debugging) */
+    for (i = packet_len - 1; i >= 0; i--)
+      if (packet[i])
+	goto not_all_null;
+    Z_debug ("got null packet from %s", inet_ntoa (from.sin_addr.s_addr));
+    return ZERR_NONE;
+  not_all_null:
+
     /* Parse the notice */
     if ((retval = ZParseNotice(packet, packet_len, &notice)) != ZERR_NONE)
 	return (retval);
@@ -227,6 +249,7 @@ Code_t Z_ReadWait()
 	    filter_idx = 1;
 	} else {
 	    for (i = 0; i < Z_FILTERDEPTH; i++)
+		if (old_uids[i].uid.tv.tv_sec != 0)
 		    if (ZCompareUID(&notice.z_uid, &old_uids[i].uid) &&
 			(notice.z_kind == old_uids[i].kind))
 			    return(ZERR_NONE);
@@ -836,9 +859,107 @@ int wait;
 	return(ZSendPacket(buf, len, wait));
 }
 
+/* For debugging printing */
+Zconst char *Zconst ZNoticeKinds[] = { "UNSAFE", "UNACKED", "ACKED", "HMACK",
+					 "HMCTL", "SERVACK", "SERVNAK",
+					 "CLIENTACK", "STAT", };
+
+#undef Z_debug
+#ifdef VARARGS
+void Z_debug (va_alist) va_dcl
+{
+    va_list pvar;
+    char *format;
+    if (!__Z_debug_print)
+      return;
+    va_start (pvar);
+    format = va_arg (pvar, char *);
+    (*__Z_debug_print) (format, pvar, __Z_debug_print_closure);
+    va_end (pvar);
+}
+#else /* STDC */
+void Z_debug (const char *format, ...)
+{
+    va_list pvar;
+    if (!__Z_debug_print)
+      return;
+    va_start (pvar, format);
+    (*__Z_debug_print) (format, pvar, __Z_debug_print_closure);
+    va_end (pvar);
+}
+#endif
+
+void Z_debug_stderr (format, args, closure)
+#ifdef __STDC__
+     const
+#endif
+       char *format;
+     va_list args;
+#ifdef __STDC__
+     void *closure;
+#else
+     char *closure;
+#endif
+{
+#ifndef NO_VPRINTF
+  vfprintf (stderr, format, args);
+#else
+  _doprnt (format, args, stderr);
+#endif
+  putc ('\n', stderr);
+}
+
 #if (BSD < 43) || defined(STRCASE)
 #ifndef ULTRIX30
 /* Ultrix 3.0 has strcasecmp/strncasecmp */
 #include "strcasecmp.c"
 #endif /* ULTRIX30 */
 #endif /* BSD < 43 */
+
+#if defined (sparc) && __GNUC__ == 1
+/* GCC version 1 passes structures incorrectly on the Sparc.
+   This addition will cause things to work correctly if everything
+   using inet_ntoa is compiled with gcc.  If not, you lose anyways.  */
+char *inet_ntoa (addr)
+     struct in_addr addr;
+{
+  static char buf[16];
+  sprintf (buf, "%d.%d.%d.%d",
+	   addr.S_un.S_un_b.s_b1,
+	   addr.S_un.S_un_b.s_b2,
+	   addr.S_un.S_un_b.s_b3,
+	   addr.S_un.S_un_b.s_b4);
+  return buf;
+}
+#endif
+
+#ifdef __GNUC__
+#define inline __inline__
+#else
+#define inline
+#endif
+
+static inline int rZGetFD () { return ZGetFD (); }
+#undef ZGetFD
+int ZGetFD () { return rZGetFD (); }
+
+static inline int rZQLength () { return ZQLength (); }
+#undef ZQLength
+int ZQLength () { return rZQLength (); }
+
+static inline struct sockaddr_in rZGetDestAddr () { return ZGetDestAddr (); }
+#undef ZGetDestAddr
+struct sockaddr_in ZGetDestAddr () { return rZGetDestAddr (); }
+
+static inline Zconst char * rZGetRealm () { return ZGetRealm (); }
+#undef ZGetRealm
+Zconst char * ZGetRealm () { return rZGetRealm (); }
+
+#ifdef __STDC__
+#define ARGS	(void (*proc)(const char *,va_list,void *), void *arg)
+#else
+#define ARGS	(proc, arg) void (*proc)(); char *arg;
+#endif
+static inline void rZSetDebug ARGS { ZSetDebug (proc, arg); }
+#undef ZSetDebug
+void ZSetDebug ARGS { rZSetDebug (proc, arg); }
