@@ -18,14 +18,23 @@ zaway \- tell other people that you aren't around
 .I file
 ]
 .SH DESCRIPTION
-.I Zaway
+.I zaway
 provides a way for you to automatically send replies when other people
 contact you using
-.I zwrite(1). Zaway
+.I zwrite(1). zaway
 subscribes itself to class "MESSAGE", instance "*", so that it can
 monitor your incoming messages.  It does not affect the operation of any
-of client receiving messages.
-.I Zaway
+other client receiving messages.
+.I zaway
+is typically run when you are leaving your terminal or display
+temporarily.
+.I zaway
+usually never exits; when you return to your terminal you should type
+the interrupt character (usually ^C) in order to make
+.I zaway
+exit.
+.PP
+.I zaway
 uses a message file (which defaults
 to $HOME/.away) to describe what reponses should be sent to which
 senders.  The general format of this file
@@ -48,10 +57,12 @@ only be sent if the user name has not matched yet.
 .PP
 If no file is specified,
 and no default file can be found, the following message is returned:
+.sp
 .in +5
 I'm sorry, but I am currently away from the terminal and am
 not able to receive your message.
 .in -5
+.sp
 If a user name does not match any of those listed in the file, and no
 "*" or "%" field is specified, no return message is sent.
 All messages are preceded by the line "Automated reply:".
