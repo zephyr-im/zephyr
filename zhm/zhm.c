@@ -49,7 +49,7 @@ extern char *index(), *strcpy(), *sbrk();
 extern long time();
 
 void init_hm(), detach(), handle_timeout(), resend_notices(), die_gracefully();
-void set_sig_type();
+int set_sig_type();
 
 #if BSD < 43
 char *upcase();
@@ -134,7 +134,8 @@ char *argv[];
 		    if ((c = index(*clust_info, ' ')) == 0) {
 			 printf("Hesiod error getting zcluster info.\n");
 		    } else {
-			 if ((zcluster = malloc(strlen(c+1)+1)) != NULL) {
+			 if ((zcluster = malloc((unsigned)(strlen(c+1)+1)))
+			     != NULL) {
 			      (void)strcpy(zcluster, c+1);
 			 } else {
 			      printf("Out of memory.\n");
@@ -147,7 +148,7 @@ char *argv[];
 #endif HESIOD
 	  
 	  if (zcluster == NULL) {
-	       if ((zcluster = malloc(strlen("zephyr")+1)) != NULL)
+	       if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
 		    (void)strcpy(zcluster, "zephyr");
 	  }
      }
@@ -298,7 +299,7 @@ void init_hm()
      }
 
      if (inetd) {
-	     ZSetFD(0);			/* fd 0 is on the socket,
+	     (void) ZSetFD(0);		/* fd 0 is on the socket,
 					   thanks to inetd */
      } else {
 	     /* Open client socket, for receiving client and server notices */
@@ -401,10 +402,11 @@ void detach()
      }
 }
 
-void set_sig_type(sig)
+int set_sig_type(sig)
      int sig;
 {
      sig_type = sig;
+     return(0);
 }
 
 send_stats(notice, sin)
