@@ -15,7 +15,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_subscr_s_c[] = "$Header$";
+static char rcsid_subscr_c[] = "$Header$";
 #endif SABER
 #endif lint
 

@@ -15,7 +15,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_class_s_c[] = "$Header$";
+static char rcsid_class_c[] = "$Header$";
 #endif SABER
 #endif lint
 
