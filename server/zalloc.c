@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "zalloc.h"
 
+#ifndef MPROF
 /*
  * Pick some size here that will help keep down the number of calls to
  * malloc, but doesn't waste too much space.  To avoid waste of space,
@@ -22,7 +23,24 @@ static void *free_space;
 static int free_space_size;
 static void *buckets[max_size];
 
-const unsigned int sz = sizeof (void *);
+struct dummy {
+    int a;
+    virtual int i() { return a; }
+};
+
+union misc_types {		/* used only for its size */
+    void *void_p;
+    int i;
+    long l;
+    double d;
+    int (dummy::* member_p) ();
+    /* Can't just use a `dummy' object, because it has an invisible
+       constructor.  */
+    char cc[sizeof (dummy)];
+};
+
+const unsigned int sz = sizeof (misc_types);
+
 inline unsigned int round (unsigned int size) {
     size += sz - 1;
     size -= (size % sz);
@@ -123,3 +141,4 @@ void zfree (void *ptr, unsigned int size) {
 #endif
 #endif
 }
+#endif
