@@ -23,6 +23,10 @@ ec ZSRV_PKSHORT,
 	"Pkt length too short"
 ec ZSRV_BUFSHORT,
 	"Buffer too short"	
+ec ZSRV_LEN,
+	"Read/Write length wrong"
+ec ZSRV_UNKNOWNOPCODE,
+	"Unknown opcode"
 ec ZSRV_RCSID,
 	"$Header$"
 	end
