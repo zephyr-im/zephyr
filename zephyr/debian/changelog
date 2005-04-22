@@ -1,3 +1,9 @@
+zephyr (2.1.20010518.SNAPSHOT-11krb5) unstable; urgency=low
+
+  * Build for CSAIL
+
+ -- Karl Ramm <kcr@csail.mit.edu>  Wed, 27 Oct 2004 14:42:42 -0400
+
 zephyr (2.1.20010518.SNAPSHOT-10.3) unstable; urgency=low
 
   * first milestone krb5 client changes (still krb4 protocol)
