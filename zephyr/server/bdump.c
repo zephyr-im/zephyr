@@ -278,7 +278,12 @@ bdump_send()
     }
  
     /* Now begin the brain dump. */
- 
+#ifdef HAVE_KRB5
+    { /* "server" side */
+	krb5_auth_context actx;
+	
+    }
+#else  /* HAVE_KRB5 */  
 #ifdef HAVE_KRB4
     /* receive the authenticator */
     retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
@@ -317,6 +322,7 @@ bdump_send()
 	return;
     }
 #endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB5 */    
 
     retval = setup_file_pointers();
     if (retval != 0) {
@@ -456,6 +462,73 @@ bdump_get_v12 (notice, auth, who, server)
  
     /* Now begin the brain dump. */
 
+#ifdef HAVE_KRB5
+    { /* "client" side */
+	krb5_auth_context actx;
+	krb5_creds creds;
+	krb5_creads *credsp;
+	krb5_principal principal;
+	krb5_data data;
+
+	memset((char *)&creds, 0, sizeof(creds));
+
+	retval = krb5_build_principal(Z_krb5_ctx, &principal, 
+				      strlen(ZGetRealm()),
+				      ZGetRealm(),
+				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
+				      0); 
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_get: krb5_build_principal: %s", erro_message(retval));
+	    cleanup(server);
+	    return;
+	}
+
+	retval = krb5_copy_principal(Z_krb5_ctx, principal, &creds.server);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (server): %s", erro_message(retval));
+	    krb5_free_principal(Z_krb5_ctx, principal);
+	    cleanup(server);
+	    return;
+	}
+	
+	retval = krb5_copy_principal(Z_krb5_ctx, principal, &creds.client);
+	krb5_free_principal(Z_krb5_ctx, principal);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (client): %s", erro_message(retval));
+	    krb5_free_cred_contents(Z_krb5_ctx, creds);
+	    cleanup(server);
+	    return;
+	}
+
+	retval = krb5_get_credentials(Z_krb5_context, 0, Z_krb5_ccache,
+				      &creds, &credsp);
+	krb5_free_cred_contents(Z_krb5_ctx, creds);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_get: krb5_get_credentials: %s", erro_message(retval));
+	    cleanup(server);
+	    return;
+	}
+
+	retval = krb5_auth_con_init(Z_krb5_ctx, &actx);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_get: krb5_auth_con_init: %s", erro_message(retval));
+	    krb5_free_creds(Z_krb5_ctx, credsp);
+	    cleanup(server);
+	    return;
+	}
+
+	memset((char *)data, 0, sizeof(krb5_data));
+	retval = krb5_mk_req_ext(Z_krb5_ctx, &actx, AP_OPTS_MUTUAL_REQUIRE|AP_OPTS_USE_SUBKEY,
+				 NULL, credsp, &data);
+i	if (retval) {
+	    syslog(LOG_ERR, "bdump_get: krb5_mk_req_ext: %s", erro_message(retval));
+	    krb5_auth_con_free(Z_krb5_ctx, actx);
+	    krb5_free_creds(Z_krb5_ctx, credsp);
+	    cleanup(server);
+	    return;
+	}
+    }
+#else    
 #ifdef HAVE_KRB4
     /* send an authenticator */
     if (get_tgt()) {
@@ -491,6 +564,7 @@ bdump_get_v12 (notice, auth, who, server)
 	return;
     }
 #endif /* HAVE_KRB4 */
+#endif    
     retval = setup_file_pointers();
     if (retval != 0) {
 	syslog(LOG_WARNING, "bdump_get: can't set up file pointers: %s",
