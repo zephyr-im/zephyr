@@ -478,14 +478,14 @@ bdump_get_v12 (notice, auth, who, server)
 				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
 				      0); 
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_get: krb5_build_principal: %s", erro_message(retval));
+	    syslog(LOG_ERR, "bdump_get: krb5_build_principal: %s", error_message(retval));
 	    cleanup(server);
 	    return;
 	}
 
 	retval = krb5_copy_principal(Z_krb5_ctx, principal, &creds.server);
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (server): %s", erro_message(retval));
+	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (server): %s", error_message(retval));
 	    krb5_free_principal(Z_krb5_ctx, principal);
 	    cleanup(server);
 	    return;
@@ -494,7 +494,7 @@ bdump_get_v12 (notice, auth, who, server)
 	retval = krb5_copy_principal(Z_krb5_ctx, principal, &creds.client);
 	krb5_free_principal(Z_krb5_ctx, principal);
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (client): %s", erro_message(retval));
+	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (client): %s", error_message(retval));
 	    krb5_free_cred_contents(Z_krb5_ctx, creds);
 	    cleanup(server);
 	    return;
@@ -504,14 +504,14 @@ bdump_get_v12 (notice, auth, who, server)
 				      &creds, &credsp);
 	krb5_free_cred_contents(Z_krb5_ctx, creds);
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_get: krb5_get_credentials: %s", erro_message(retval));
+	    syslog(LOG_ERR, "bdump_get: krb5_get_credentials: %s", error_message(retval));
 	    cleanup(server);
 	    return;
 	}
 
 	retval = krb5_auth_con_init(Z_krb5_ctx, &actx);
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_get: krb5_auth_con_init: %s", erro_message(retval));
+	    syslog(LOG_ERR, "bdump_get: krb5_auth_con_init: %s", error_message(retval));
 	    krb5_free_creds(Z_krb5_ctx, credsp);
 	    cleanup(server);
 	    return;
@@ -521,7 +521,7 @@ bdump_get_v12 (notice, auth, who, server)
 	retval = krb5_mk_req_ext(Z_krb5_ctx, &actx, AP_OPTS_MUTUAL_REQUIRE|AP_OPTS_USE_SUBKEY,
 				 NULL, credsp, &data);
 i	if (retval) {
-	    syslog(LOG_ERR, "bdump_get: krb5_mk_req_ext: %s", erro_message(retval));
+	    syslog(LOG_ERR, "bdump_get: krb5_mk_req_ext: %s", error_message(retval));
 	    krb5_auth_con_free(Z_krb5_ctx, actx);
 	    krb5_free_creds(Z_krb5_ctx, credsp);
 	    cleanup(server);
