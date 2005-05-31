@@ -100,7 +100,7 @@ void x_set_icccm_hints(dpy,w,name,icon_name,psizehints,pwmhints,main_window)
 {
    XStoreName(dpy,w,name);
    XSetIconName(dpy,w,icon_name);
-   XSetNormalHints(dpy,w,psizehints);
+   XSetWMNormalHints(dpy,w,psizehints);
    XSetWMHints(dpy,w,pwmhints);
    XSetClassHint(dpy,w,&classhint);
    /* in order for some wm's to iconify, the window shouldn't be transient.
@@ -261,6 +261,24 @@ void x_gram_init(dpy)
     }
 }
 
+int x_calc_gravity(xalign, yalign)
+     int xalign, yalign;
+{
+    if (yalign > 0) {					/* North */
+	return (xalign > 0)  ? NorthWestGravity
+	     : (xalign == 0) ? NorthGravity
+	     :                 NorthEastGravity;
+    } else if (yalign == 0) {				/* Center */
+	return (xalign > 0)  ? WestGravity
+	     : (xalign == 0) ? CenterGravity
+	     :                 EastGravity;
+    } else {						/* South */
+	return (xalign > 0)  ? SouthWestGravity
+	     : (xalign == 0) ? SouthGravity
+	     :                 SouthEastGravity;
+    }
+}
+
 void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
 		   beepcount)
      Display *dpy;
@@ -309,7 +327,8 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     sizehints.y = ypos;
     sizehints.width = xsize;
     sizehints.height = ysize;
-    sizehints.flags = USPosition|USSize;
+    sizehints.win_gravity = x_calc_gravity(xalign, yalign);
+    sizehints.flags = USPosition|USSize|PWinGravity;
 
     wmhints.input = False;
     wmhints.initial_state = NormalState;
@@ -348,6 +367,11 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
        
        winchanges.sibling=bottom_gram->w;
        winchanges.stack_mode=Below;
+       /* Metacity may use border_width even if it's not specified in
+	* the value mask, so we must initialize it.  See:
+	* http://bugzilla.gnome.org/show_bug.cgi?id=305257 */
+       winchanges.border_width=border_width;
+
        begin_xerror_trap (dpy);
        XReconfigureWMWindow (dpy, w, DefaultScreen (dpy),
 			     CWSibling|CWStackMode, &winchanges);
