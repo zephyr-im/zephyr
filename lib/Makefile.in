@@ -25,6 +25,8 @@ CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h ${CPPFLAGS}
+LDFLAGS=@LDFLAGS@
+LIBS=@LIBS@ -lcom_err
 
 OBJS =	zephyr_err.lo ZAsyncLocate.lo ZCkAuth.lo ZCkIfNot.lo ZClosePort.lo \
 	ZCmpUID.lo ZCmpUIDP.lo ZFlsLocs.lo ZFlsSubs.lo ZFmtAuth.lo \
@@ -43,7 +45,7 @@ all: libzephyr.la
 
 libzephyr.la: ${OBJS}
 	${LIBTOOL} --mode=link ${CC} -rpath ${libdir} -version-info 3:0:0 \
-	  -o $@ ${OBJS}
+	  ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
 	compile_et ${srcdir}/zephyr_err.et
