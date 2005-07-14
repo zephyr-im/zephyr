@@ -11,23 +11,26 @@ includedir=${prefix}/include
 mandir=${prefix}/man
 libdir=${exec_prefix}/lib
 bindir=${exec_prefix}/bin
+top_builddir=..
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
 BUILDTOP=..
 VPATH=@srcdir@
+LIBTOOL=@LIBTOOL@
 CC=@CC@
 YACC=@YACC@
 INSTALL=@INSTALL@
 INSTANTIATE=${srcdir}/instantiate
 
+LIBZEPHYR=${BUILDTOP}/lib/libzephyr.la
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h -I${srcdir} -I. @X_CFLAGS@ ${CPPFLAGS}
 YFLAGS=-d
-LDFLAGS=-L${BUILDTOP}/lib @X_LIBS@ @LDFLAGS@
-LIBS=-lzephyr @LIBS@ -lcom_err @X_PRE_LIBS@ @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
+LDFLAGS=@X_LIBS@ @LDFLAGS@
+LIBS=${LIBZEPHYR} @LIBS@ -lcom_err @X_PRE_LIBS@ @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
      @TLIB@ @REGEX_LIBS@ @ARES_LIBS@
 
 OBJS=	port_dictionary.o pointer_dictionary.o unsigned_long_dictionary.o \
@@ -41,8 +44,8 @@ OBJS=	port_dictionary.o pointer_dictionary.o unsigned_long_dictionary.o \
 
 all: zwgc
 
-zwgc: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
-	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+zwgc: ${OBJS} ${LIBZEPHYR}
+	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 port_dictionary.c port_dictionary.h: dictionary.c dictionary.h
 	${INSTANTIATE} ${srcdir} dictionary port port.h
@@ -83,13 +86,14 @@ y.tab.c y.tab.h: parser.y
 check:
 
 install: zwgc
-	${INSTALL} -m 755 -s zwgc ${DESTDIR}${bindir}
+	${LIBTOOL} --mode=install ${INSTALL} -m 755 zwgc ${DESTDIR}${bindir}
 	${INSTALL} -m 644 ${srcdir}/zwgc.1 ${DESTDIR}${mandir}/man1
 	${INSTALL} -m 644 ${srcdir}/zwgc.desc ${DESTDIR}${datadir}/zephyr
 	${INSTALL} -m 644 ${srcdir}/zwgc_resources ${DESTDIR}${datadir}/zephyr
 
 clean:
-	rm -f ${OBJS} zwgc port_dictionary.[ch] pointer_dictionary.[ch]
+	${LIBTOOL} --mode=clean rm -f zwgc
+	rm -f ${OBJS} port_dictionary.[ch] pointer_dictionary.[ch]
 	rm -f unsigned_long_dictionary.[ch] string_dictionary.[ch]
 	rm -f int_dictionary.[ch] char_stack.h string_stack.h xmode_stack.h
 	rm -f y.tab.[ch]

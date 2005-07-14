@@ -11,26 +11,29 @@ includedir=${prefix}/include
 mandir=${prefix}/man
 libdir=${exec_prefix}/lib
 bindir=${exec_prefix}/bin
+top_builddir=../..
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
 BUILDTOP=../..
 VPATH=@srcdir@
+LIBTOOL=@LIBTOOL@
 CC=@CC@
 INSTALL=@INSTALL@
 
+LIBZEPHYR=${BUILDTOP}/lib/libzephyr.la
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ ${CPPFLAGS}
-LDFLAGS=-L${BUILDTOP}/lib @LDFLAGS@
-LIBS=-lzephyr -lss -lreadline -lhistory -lcurses @LIBS@ -lcom_err
+LDFLAGS=@LDFLAGS@
+LIBS=${LIBZEPHYR} -lss -lreadline -lhistory -lcurses @LIBS@ -lcom_err
 
 OBJS=	zctl.o zctl_cmds.o
 
 all: zctl
 
-zctl: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
-	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+zctl: ${OBJS} ${LIBZEPHYR}
+	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 zctl_cmds.c: zctl_cmds.ct
 	mk_cmds ${srcdir}/zctl_cmds.ct
@@ -41,11 +44,12 @@ zctl_cmds.c: zctl_cmds.ct
 check:
 
 install: zctl
-	${INSTALL} -m 755 -s zctl ${DESTDIR}${bindir}
+	${LIBTOOL} --mode=install ${INSTALL} -m 755 zctl ${DESTDIR}${bindir}
 	${INSTALL} -m 644 ${srcdir}/zctl.1 ${DESTDIR}${mandir}/man1
 
 clean:
-	rm -f ${OBJS} zctl_cmds.c zctl
+	${LIBTOOL} --mode=clean rm -f zctl
+	rm -f ${OBJS} zctl_cmds.c
 
 ${OBJS}: ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
 ${OBJS}: ${BUILDTOP}/h/zephyr/zephyr.h ${BUILDTOP}/h/zephyr/zephyr_err.h
