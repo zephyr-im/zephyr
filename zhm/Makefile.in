@@ -10,26 +10,29 @@ lsbindir=@lsbindir@
 includedir=${prefix}/include
 mandir=${prefix}/man
 libdir=${exec_prefix}/lib
+top_builddir=..
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
 BUILDTOP=..
 VPATH=@srcdir@
+LIBTOOL=@LIBTOOL@
 CC=@CC@
 INSTALL=@INSTALL@
 
+LIBZEPHYR=${BUILDTOP}/lib/libzephyr.la
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h ${CPPFLAGS}
-LDFLAGS=-L${BUILDTOP}/lib @LDFLAGS@
-LIBS=-lzephyr @LIBS@ -lcom_err
+LDFLAGS=@LDFLAGS@
+LIBS=${LIBZEPHYR} @LIBS@ -lcom_err
 
 OBJS=	timer.o queue.o zhm.o zhm_client.o zhm_server.o
 
 all: zhm
 
-zhm: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
-	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+zhm: ${OBJS} ${LIBZEPHYR}
+	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<
@@ -37,11 +40,12 @@ zhm: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
 check:
 
 install: zhm
-	${INSTALL} -m 755 -s zhm ${DESTDIR}${lsbindir}
+	${LIBTOOL} --mode=install ${INSTALL} -m 755 zhm ${DESTDIR}${lsbindir}
 	${INSTALL} -m 644 ${srcdir}/zhm.8 ${DESTDIR}${mandir}/man8
 
 clean:
-	rm -f ${OBJS} zhm
+	${LIBTOOL} --mode=clean rm -f zhm
+	rm -f ${OBJS}
 
 ${OBJS}: zhm.h timer.h ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
 ${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h

@@ -6,6 +6,7 @@ datadir=@datadir@
 sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
+top_builddir=../..
 
 includedir=${prefix}/include
 mandir=${prefix}/man
@@ -16,17 +17,20 @@ srcdir=@srcdir@
 top_srcdir=@top_srcdir@
 BUILDTOP=../..
 VPATH=@srcdir@
+LIBTOOL=@LIBTOOL@
 CC=@CC@
 INSTALL=@INSTALL@
 at=@
 
+LIBZEPHYR=${BUILDTOP}/lib/libzephyr.la
+LIBDYN=${BUILDTOP}/libdyn/libdyn.a
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h @X_CFLAGS@ ${CPPFLAGS}
-LDFLAGS=-L${BUILDTOP}/lib -L${BUILDTOP}/libdyn @X_LIBS@ @LDFLAGS@
-LIBS=-lzephyr -ldyn -lXaw -lXmu -lXt @X_PRE_LIBS@ -lX11 -lXext @X_EXTRA_LIBS@ \
-     @LIBS@ -lcom_err
+LDFLAGS=@X_LIBS@ @LDFLAGS@
+LIBS=${LIBZEPHYR} ${LIBDYN} -lXaw -lXmu -lXt @X_PRE_LIBS@ -lX11 -lXext \
+	@X_EXTRA_LIBS@ @LIBS@ -lcom_err
 
 OBJS=	interface.o resource.o destlist.o util.o bfgets.o gethomedir.o \
 	dest_window.o xzwrite.o edit_window.o zephyr.o GetString.o Popup.o \
@@ -34,8 +38,8 @@ OBJS=	interface.o resource.o destlist.o util.o bfgets.o gethomedir.o \
 
 all: xzwrite XZwrite
 
-xzwrite: ${OBJS} ${BUILDTOP}/lib/libzephyr.a ${BUILDTOP}/libdyn/libdyn.a
-	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+xzwrite: ${OBJS} ${LIBZEPHYR} ${LIBDYN}
+	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<
@@ -48,13 +52,14 @@ XZwrite: XZwrite.in
 check:
 
 install: xzwrite XZwrite
-	${INSTALL} -m 755 -s xzwrite ${DESTDIR}${bindir}
+	${LIBTOOL} --mode=install ${INSTALL} -m 755 xzwrite ${DESTDIR}${bindir}
 	${INSTALL} -m 644 ${srcdir}/xzwrite.1 ${DESTDIR}${mandir}/man1
 	${INSTALL} -m 644 XZwrite ${DESTDIR}${datadir}/zephyr
 	${INSTALL} -m 644 ${srcdir}/xzwrite.bitmap ${DESTDIR}${datadir}/zephyr
 
 clean:
-	rm -f ${OBJS} xzwrite
+	${LIBTOOL} --mode=clean rm -f xzwrite
+	rm -f ${OBJS}
 
 ${OBJS}: xzwrite.h xzwrite-proto.h ${top_srcdir}/h/sysdep.h
 ${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h

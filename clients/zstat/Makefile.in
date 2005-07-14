@@ -11,26 +11,29 @@ includedir=${prefix}/include
 mandir=${prefix}/man
 libdir=${exec_prefix}/lib
 bindir=${exec_prefix}/bin
+top_builddir=../..
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
 BUILDTOP=../..
 VPATH=@srcdir@
+LIBTOOL=@LIBTOOL@
 CC=@CC@
 INSTALL=@INSTALL@
 
+LIBZEPHYR=${BUILDTOP}/lib/libzephyr.la
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h ${CPPFLAGS}
-LDFLAGS=-L${BUILDTOP}/lib @LDFLAGS@
-LIBS=-lzephyr @LIBS@ -lcom_err
+LDFLAGS=@LDFLAGS@
+LIBS=${LIBZEPHYR} @LIBS@ -lcom_err
 
 OBJS=	zstat.o
 
 all: zstat
 
-zstat: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
-	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+zstat: ${OBJS} ${LIBZEPHYR}
+	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<
@@ -38,11 +41,12 @@ zstat: ${OBJS} ${BUILDTOP}/lib/libzephyr.a
 check:
 
 install: zstat
-	${INSTALL} -m 755 -s zstat ${DESTDIR}${bindir}
+	${LIBTOOL} --mode=install ${INSTALL} -m 755 zstat ${DESTDIR}${bindir}
 	${INSTALL} -m 644 ${srcdir}/zstat.8 ${DESTDIR}${mandir}/man8
 
 clean:
-	rm -f ${OBJS} zstat
+	${LIBTOOL} --mode=clean rm -f zstat
+	rm -f ${OBJS}
 
 ${OBJS}: zserver.h ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
 ${OBJS}: ${BUILDTOP}/h/zephyr/zephyr.h ${BUILDTOP}/h/zephyr/zephyr_err.h
