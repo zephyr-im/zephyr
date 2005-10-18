@@ -16,10 +16,14 @@ Milestone 2 (done)
 Milestone 3 (done)
 	  * client sends only new-style messages
 
-Milestone 3.5 (in progress)
+Milestone 3.5 (in progress) [done?]
 	  * refactor checksumming code
 
-Milestone 4
+Milestone 4 [done?]
+          * Desired end state that server uses the old checksum for single-des keys,
+          and new checksum for everything else, thus the first clause in the
+	  following is obsolete:
+	  This may be the case, someone needs to check.
 	  * server sends only newstyle messages, and can't brain dump the
 	  new keys.  (this tests the codepath opened in milestone 1)
 
