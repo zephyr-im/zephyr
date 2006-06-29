@@ -28,10 +28,9 @@ ZReceiveNotice(ZNotice_t *notice,
     if ((retval = Z_WaitForComplete()) != ZERR_NONE)
 	return (retval);
 
-    if (!nextq)
-	return (ENOMEM);
-
     nextq = Z_GetFirstComplete();
+    if (!nextq)
+      return (ENOMEM);
 
     len = nextq->packet_len;
     
