@@ -165,7 +165,7 @@ int main(argc,argv)
 		}
 
 		if (cmdline_msg) {
-			ptr = malloc(strlen(cmdline_msg));
+			ptr = malloc(strlen(cmdline_msg)+1);
 			if (!ptr) {
 				com_err(argv[0],ENOMEM,"while getting cmdline message");
 				exit(1);
