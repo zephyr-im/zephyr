@@ -9,8 +9,9 @@ lsbindir=@lsbindir@
 top_builddir=..
 
 includedir=${prefix}/include
-mandir=${prefix}/man
+mandir=@mandir@
 libdir=${exec_prefix}/lib
+LIBS=@LIBS@
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
@@ -21,8 +22,9 @@ CC=@CC@
 INSTALL=@INSTALL@
 RANLIB=@RANLIB@
 
+DEBUG=-O
 CPPFLAGS=@CPPFLAGS@
-CFLAGS=@CFLAGS@
+CFLAGS=@CFLAGS@ ${DEBUG}
 ALL_CFLAGS=${CFLAGS} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h ${CPPFLAGS}
 LDFLAGS=@LDFLAGS@

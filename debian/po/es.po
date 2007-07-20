@@ -1,0 +1,96 @@
+# zephyr debconf translation to spanish
+# Copyright (C) 2001, 2006, 2007 Software in the Public Interest
+# This file is distributed under the same license as the zephyr package.
+#
+# Changes:
+# - Initial translation
+#        Carlos Valdivia Yagüe <valyag@dat.etsit.upm.es>, 2001, 2006, 2007
+#
+#    Translators, if you are not familiar with the PO format, gettext
+#    documentation is worth reading, especially sections dedicated to
+#    this format, e.g. by running:
+#         info -n '(gettext)PO Files'
+#         info -n '(gettext)Header Entry'
+#
+#    Some information specific to po-debconf are available at
+#            /usr/share/doc/po-debconf/README-trans
+#         or http://www.debian.org/intl/l10n/po-debconf/README-trans
+#
+#    Developers do not need to manually edit POT or PO files.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: zephyr 2.1.20010518.SNAPSHOT-17\n"
+"Report-Msgid-Bugs-To: kcr@debian.org\n"
+"POT-Creation-Date: 2007-07-19 04:11-0400\n"
+"PO-Revision-Date: 2007-04-25 01:00+0200\n"
+"Last-Translator: Carlos Valdivia Yagüe <valyag@dat.etsit.upm.es>\n"
+"Language-Team: Debian L10n Spanish <debian-l10n-spanish@lists.debian.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+msgid "Zephyr servers:"
+msgstr "Servidores zephyr:"
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001
+#, fuzzy
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(note that this can be a subset of what you're telling the servers) If you "
+"are using hesiod to advertise your zephyr servers, leave this blank."
+msgstr ""
+"Por favor, introduzca el nombre completo de sus servidores zephyr separados "
+"por espacios (tenga en cuenta que puede tratarse de un subconjunto de lo que "
+"usted considera como los servidores)."
+
+#. Type: string
+#. Description
+#: ../zephyr-server.templates:1001
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(Note that this can be a superset of that you're telling the clients.)"
+msgstr ""
+"Por favor, introduzca los nombres completos de los servidores zephyr "
+"separados por espacios (tenga en cuenta que se puede tratar de un conjunto "
+"más amplio de lo que usted considera como los clientes)."
+
+#~ msgid "for internal use"
+#~ msgstr "para uso interno"
+
+#~ msgid ""
+#~ "We want to try and capture user changes when they edit a config file "
+#~ "manually.  To do this we look at the file in the config script. However, "
+#~ "in the case of preconfigure, the config script is run twice before the "
+#~ "postinst is run.  Thus we may read the wrong value before the edited "
+#~ "value is written out in postinst. If this is false we skip reading config "
+#~ "files until postinst runs."
+#~ msgstr ""
+#~ "Para averiguar qué cambios ha realizado el usuario manualmente en el "
+#~ "fichero de configuración, es preciso mirar en el fichero que hay en el "
+#~ "script de configuración. Sin embargo, si se trata de preconfigurar el "
+#~ "paquete, dicho script se ejecuta dos veces antes de que lo haga el "
+#~ "posterior a la instalación. De ese modo, es posible obtener un valor "
+#~ "equivocado antes de que se guarde después de la instalación el valor "
+#~ "editado. Si no es éste el caso, nos saltamos la lectura de los ficheros "
+#~ "de configuración hasta que se ejecute el script posterior a la "
+#~ "instalación."
+
+#~ msgid "You have no zephyr servers specified for the client"
+#~ msgstr "No ha especificado servidores zephyr para el cliente"
+
+#~ msgid ""
+#~ "The zephyr-clients package for whatever reason does not have any zephyr "
+#~ "servers configured.  Please edit the file /etc/default/zephyr-clients and "
+#~ "add the names of your zephyr servers, separated by spaces to the zhm_args "
+#~ "variable."
+#~ msgstr ""
+#~ "Por algún motivo el paquete zephyr-clients no tiene configurado ningún "
+#~ "servidor zephyr. Por favor, edite el fichero /etc/default/zephyr-clients "
+#~ "y añada los nombres de los servidores zephyr separados por espacios en la "
+#~ "variable zhm_args."

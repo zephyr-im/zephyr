@@ -1,0 +1,164 @@
+#!/usr/bin/make -f
+# Sample debian/rules that uses debhelper. 
+# GNU copyright 1997 by Joey Hess.
+#
+# This version is for a hypothetical package that builds an
+# architecture-dependant package, as well as an architecture-independent
+# package.
+
+# Uncomment this to turn on verbose mode. 
+#export DH_VERBOSE=1
+
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+SONAME=3
+CONFIGURE_ROOT=--prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --sysconfdir=/etc --datadir=/etc  --with-ares=/usr --with-hesiod=/usr
+
+# see /usr/share/doc/autotools-dev/README.Debian.gz
+export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+# FOR AUTOCONF 2.52 AND NEWER ONLY
+ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
+  confflags += --build $(DEB_HOST_GNU_TYPE)
+else
+  confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
+endif
+
+
+# The autotools target adds forced build-time dependencies on
+# autotools-dev (for /usr/share/misc/config.*) and devscripts (for dch)
+# It's also a .PHONY make target.
+autotools:
+	chmod u+x config.sub
+	chmod u+x config.guess
+	OLDDATESUB=`config.sub -t | tr -d -` ;\
+	OLDDATEGUESS=`config.guess -t | tr -d -` ;\
+	NEWDATESUB=`/usr/share/misc/config.sub -t | tr -d -` ;\
+	NEWDATEGUESS=`/usr/share/misc/config.guess -t | tr -d -` ;\
+	if [ $$OLDDATESUB -lt $$NEWDATESUB -o \
+	     $$OLDDATEGUESS -lt $$NEWDATEGUESS ]; then \
+	   dch -a -p "GNU config automated update: config.sub\
+	     ($$OLDDATESUB to $$NEWDATESUB), config.guess\
+	     ($$OLDDATEGUESS to $$NEWDATEGUESS)" ;\
+	   cp -f /usr/share/misc/config.sub config.sub ;\
+	   cp -f /usr/share/misc/config.guess config.guess ;\
+	   echo WARNING: GNU config scripts updated from master copies 1>&2 ;\
+	fi
+
+configure: configure-stamp autotools
+configure-stamp:
+	dh_testdir
+	# Add here commands to configure the package.
+	-mkdir krb
+	cd krb&&../configure --with-krb4=/usr $(CONFIGURE_ROOT)
+	-mkdir no-krb
+	cd no-krb&&../configure $(CONFIGURE_ROOT)
+	touch configure-stamp
+
+build: configure-stamp build-stamp
+build-stamp:
+	dh_testdir
+
+	# Add here commands to compile the package.
+	set -e; \
+	for dir in krb no-krb ; do  \
+		cd $$dir; \
+	rm -f lib/*.o || true; \
+		$(MAKE) -C lib			\
+		 FPIC= 					\
+		 LIBEXT=a; \
+		rm -f lib/*.o; \
+		$(MAKE) LIBEXT=so \
+			FPIC=-fpic SONAME=$(SONAME); \
+		cd ..; \
+		done
+
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	-rm -f build-stamp configure-stamp
+
+	# Add here commands to clean up after the build process.
+	-rm -rf krb no-krb debian/tmp-krb
+	-rm debian/zephyr-server-krb.files
+	-rm debian/zephyr-server-krb.templates
+	-rm debian/zephyr-server-krb.config
+	-rm debian/zephyr-server-krb.postinst
+	-rm debian/libzephyr3-krb.files
+
+	dh_clean
+
+install: DH_OPTIONS=
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	-rm -rf debian/tmp-krb
+	dh_installdirs
+
+	# Add here commands to install the package into debian/tmp.
+	cd no-krb&&$(MAKE) install DESTDIR=`pwd`/../debian/tmp
+	cd krb&&$(MAKE)  DESTDIR=`pwd`/../debian/tmp-krb install
+	mv debian/tmp/usr/lib/libzephyr.so debian/tmp/usr/lib/libzephyr.so.$(SONAME)
+	ln -s libzephyr.so.$(SONAME) debian/tmp/usr/lib/libzephyr.so
+		mv debian/tmp-krb/usr/lib/libzephyr.so debian/tmp-krb/usr/lib/libzephyr.so.$(SONAME)
+	ln -s libzephyr.so.$(SONAME) debian/tmp-krb/usr/lib/libzephyr.so
+	mkdir -p debian/tmp/etc/zephyr/acl
+	set -x; for i in debian/acl/*; do install -c -m 644 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
+	install -c -m 644 debian/zephyr.vars debian/tmp/etc/zephyr
+	install -c -m 644 debian/default.subscriptions debian/tmp/etc/zephyr
+	cp -pr debian/tmp/etc/zephyr/acl debian/tmp-krb/etc/zephyr
+
+# Build architecture-independent files here.
+# Pass -i to all debhelper commands in this target to reduce clutter.
+binary-indep: build install
+
+# Build architecture-dependent files here.
+# Pass -a to all debhelper commands in this target to reduce clutter.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	set -e; \
+	for file  in  files templates config postinst docs; do \
+		cp debian/zephyr-server.$$file debian/zephyr-server-krb.$$file; \
+		done
+	cp debian/libzephyr3.files debian/libzephyr3-krb.files
+	dh_movefiles  -plibzephyr3 -pzephyr-clients -pzephyr-server -plibzephyr-dev
+	dh_movefiles --sourcedir=debian/tmp-krb -plibzephyr3-krb -pzephyr-server-krb
+	dh_installdebconf 
+	dh_installdocs
+#	dh_installexamples
+#	dh_installmenu
+#	dh_installemacsen
+#	dh_installpam
+	dh_installinit -pzephyr-clients --init-script=zhm --no-start
+	dh_installinit -pzephyr-server-krb --init-script=zephyrd
+	dh_installinit -pzephyr-server --init-script=zephyrd
+#	dh_installcron
+#	dh_installmanpages
+#	dh_installinfo
+#	dh_undocumented
+	dh_installchangelogs 
+	dh_strip
+#	dh_link
+	dh_compress
+	dh_fixperms
+	# You may want to make some executables suid here.
+	dh_makeshlibs
+	# sigh
+	cp debian/libzephyr3/DEBIAN/shlibs debian/libzephyr3-krb/DEBIAN/shlibs
+	dh_shlibdeps
+	dh_installdeb
+#	dh_perl
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+
+.PHONY: autotools build clean binary-indep binary-arch binary install configure
+
+

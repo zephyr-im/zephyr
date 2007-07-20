@@ -1,0 +1,86 @@
+#
+#    Translators, if you are not familiar with the PO format, gettext
+#    documentation is worth reading, especially sections dedicated to
+#    this format, e.g. by running:
+#         info -n '(gettext)PO Files'
+#         info -n '(gettext)Header Entry'
+#
+#    Some information specific to po-debconf are available at
+#            /usr/share/doc/po-debconf/README-trans
+#         or http://www.debian.org/intl/l10n/po-debconf/README-trans
+#
+#    Developers do not need to manually edit POT or PO files.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: zephyr\n"
+"Report-Msgid-Bugs-To: kcr@debian.org\n"
+"POT-Creation-Date: 2007-07-19 04:11-0400\n"
+"PO-Revision-Date: 2005-03-16 20:16+0100\n"
+"Last-Translator: Miroslav Kure <kurem@debian.cz>\n"
+"Language-Team: Czech <debian-l10n-czech@debian.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ISO-8859-2\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+msgid "Zephyr servers:"
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001
+#, fuzzy
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(note that this can be a subset of what you're telling the servers) If you "
+"are using hesiod to advertise your zephyr servers, leave this blank."
+msgstr ""
+"Zadejte mezerami oddìlená celá jména va¹ich zephyr serverù (mù¾e to být i "
+"podmno¾ina toho, co sdìlujete serverùm)."
+
+#. Type: string
+#. Description
+#: ../zephyr-server.templates:1001
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(Note that this can be a superset of that you're telling the clients.)"
+msgstr ""
+"Zadejte mezerami oddìlená celá jména va¹ich zephyr serverù (mù¾e to být i "
+"nadmno¾ina toho, co sdìlujete klientùm)."
+
+#~ msgid ""
+#~ "We want to try and capture user changes when they edit a config file "
+#~ "manually.  To do this we look at the file in the config script. However, "
+#~ "in the case of preconfigure, the config script is run twice before the "
+#~ "postinst is run.  Thus we may read the wrong value before the edited "
+#~ "value is written out in postinst. If this is false we skip reading config "
+#~ "files until postinst runs."
+#~ msgstr ""
+#~ "Sna¾íme se rozpoznat a zachytit u¾ivatelovy ruèní zmìny v konfiguraèním "
+#~ "souboru, co¾ se dìje v konfiguraèním skriptu. Ov¹em v pøípadì "
+#~ "pøedkonfigurace je konfiguraèní skript spu¹tìn dvakrát pøed spu¹tìním "
+#~ "poinstalaèního skriptu a tudí¾ mù¾eme pøeèíst chybnou hodnotu pøed tím, "
+#~ "ne¾ je upravená hodnota zapsána v poinstalaèním kroku. Pokud je to "
+#~ "chybnì, pøeskoèíme ètení kofiguraèních souborù a¾ do poinstalaèní fáze."
+
+#~ msgid "You have no zephyr servers specified for the client"
+#~ msgstr "Pro klienta jste nezadali ¾ádné zephyr servery"
+
+#~ msgid ""
+#~ "The zephyr-clients package for whatever reason does not have any zephyr "
+#~ "servers configured.  Please edit the file /etc/default/zephyr-clients and "
+#~ "add the names of your zephyr servers, separated by spaces to the zhm_args "
+#~ "variable."
+#~ msgstr ""
+#~ "Balíèek zephyr-clients nemá z nìjakého dùvodu nakonfigurován ¾ádný zephyr "
+#~ "server. Upravte prosím soubor /etc/default/zephyr-clients a pøidejte do "
+#~ "nìj do promìnné zhm_args mezerami oddìlená jména zephyr serverù."
+
+#~ msgid "What are your zephyr servers?"
+#~ msgstr "Jaké jsou va¹e zephyr servery?"
+
+#~ msgid "You should never see this"
+#~ msgstr "Toto jste nikdy nemìli vidìt"

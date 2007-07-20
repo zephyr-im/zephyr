@@ -619,12 +619,14 @@ realm_deathgram(server)
 	zdbug((LOG_DEBUG, "rlm_deathgram: suggesting %s to %s", 
 	       (server) ? server->addr_str : "nothing", realm->name));
 
+#ifdef HAVE_KRB4
 	if (!ticket_lookup(realm->name))
 	    if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "rlm_deathgram failed: %s", 
 		       error_message(retval));
 		return;
 	    }
+#endif
 
 	if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH)) 
 	    != ZERR_NONE) 
@@ -683,12 +685,14 @@ realm_wakeup()
 	    snotice.z_message = NULL;
 	    snotice.z_message_len = 0;
 
+#ifdef HAVE_KRB4
 	    if (!ticket_lookup(realm->name))
 		if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
 		    syslog(LOG_WARNING, "rlm_wakeup failed: %s", 
 			   error_message(retval));
 		    continue;
 		}
+#endif
 
 	    if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH)) 
 		!= ZERR_NONE) 
@@ -1227,8 +1231,8 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 	    (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
 	    partnotice.z_multinotice = multi;
 	    if (offset > 0) {
-		(void) gettimeofday(&partnotice.z_uid.tv, 
-				    (struct timezone *)0);
+		(void) Z_gettimeofday(&partnotice.z_uid.tv, 
+				      (struct timezone *)0);
 		partnotice.z_uid.tv.tv_sec = htonl((u_long) 
 						   partnotice.z_uid.tv.tv_sec);
 		partnotice.z_uid.tv.tv_usec = 

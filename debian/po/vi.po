@@ -1,0 +1,84 @@
+# Vietnamese translation for Zephyr.
+# Copyright © 2005 Free Software Foundation, Inc.
+# Clytie Siddall <clytie@riverland.net.au>, 2005.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: zephyr 2.1.20010518.SNAPSHOT-13\n"
+"Report-Msgid-Bugs-To: kcr@debian.org\n"
+"POT-Creation-Date: 2007-07-19 04:11-0400\n"
+"PO-Revision-Date: 2005-08-21 21:51+0930\n"
+"Last-Translator: Clytie Siddall <clytie@riverland.net.au>\n"
+"Language-Team: Vietnamese <gnomevi-list@lists.sourceforge.net>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0\n"
+"X-Generator: LocFactoryEditor 1.2.2\n"
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+msgid "Zephyr servers:"
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001
+#, fuzzy
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(note that this can be a subset of what you're telling the servers) If you "
+"are using hesiod to advertise your zephyr servers, leave this blank."
+msgstr ""
+"Hãy gõ tên đầy đủ của các trình phục vụ zephyr của bạn, định giới bằng dấu "
+"cách (ghi chú: đây có thể là nhóm con của điều mà bạn đang báo những trình "
+"phục vụ)."
+
+#. Type: string
+#. Description
+#: ../zephyr-server.templates:1001
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(Note that this can be a superset of that you're telling the clients.)"
+msgstr ""
+"Hãy gõ tên đầy đủ của các trình phục vụ zephyr của bạn, định giới bằng dấu "
+"cách (ghi chú: điều này có thể là siêu nhóm của điều mà bạn đang báo những "
+"trình khách)."
+
+#~ msgid ""
+#~ "We want to try and capture user changes when they edit a config file "
+#~ "manually.  To do this we look at the file in the config script. However, "
+#~ "in the case of preconfigure, the config script is run twice before the "
+#~ "postinst is run.  Thus we may read the wrong value before the edited "
+#~ "value is written out in postinst. If this is false we skip reading config "
+#~ "files until postinst runs."
+#~ msgstr ""
+#~ "Chúng tôi muốn cố bắt các thay đổi của người dùng khi họ hiệu chỉnh tập "
+#~ "tin cấu hình. Để làm như thế, chúng tôi xem tập tin trong cấu hình. Tuy "
+#~ "nhiên, trong trường hợp cấu hình trước, có chạy tập lệnh cấu hình hai lần "
+#~ "trước khi chạy tiến trình cuối cùng cài đặt. Vì vậy chúng tôi có lẽ sẽ "
+#~ "đọc giá trị không đúng, trước khi giá trị đã sửa đổi được ghi ra trong "
+#~ "tiến trình cuối cùng cài đặt. Nếu giá trị này Sai thì cúng tôi bỏ qua đọc "
+#~ "tập tin cấu hình, đến khi tiến trình cuối cùng cài đặt có cháy. "
+
+#~ msgid "You have no zephyr servers specified for the client"
+#~ msgstr ""
+#~ "Bạn không có trình phục vụ zephyr nào được xác định cho trình khách."
+
+#~ msgid ""
+#~ "The zephyr-clients package for whatever reason does not have any zephyr "
+#~ "servers configured.  Please edit the file /etc/default/zephyr-clients and "
+#~ "add the names of your zephyr servers, separated by spaces to the zhm_args "
+#~ "variable."
+#~ msgstr ""
+#~ "Gói zephyr-clients (khách zephyr), vì lý do nào, không có cấu hình trình "
+#~ "phục vụ zephyr nào. Bạn hãy hiệu chỉnh tập tin </etc/default/zephyr-"
+#~ "clients> và thêm tên của các trình phục vụ zephyr bạn, định giới bằng dấu "
+#~ "cách đến biến « zhm_args »."
+
+#~ msgid "What are your zephyr servers?"
+#~ msgstr "Bạn có trình phục vụ zephyr nào?"
+
+#~ msgid "You should never see this"
+#~ msgstr "Bạn không bao giờ nên thấy điều này."

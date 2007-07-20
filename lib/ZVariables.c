@@ -36,7 +36,7 @@ char *ZGetVariable(var)
     if ((ret = get_varval(varfile, var)) != ZERR_NONE)
 	return (ret);
 
-    sprintf(varfile, "%s/zephyr.vars", SYSCONFDIR);
+    sprintf(varfile, "%s/zephyr/zephyr.vars", SYSCONFDIR);
     return (get_varval(varfile, var));
 }
 

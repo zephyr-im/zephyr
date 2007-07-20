@@ -580,6 +580,14 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
     return (ZERR_NONE);
 }
 
+void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz)
+{
+        struct timeval tv;
+        (void) gettimeofday(&tv, tz); /* yeah, yeah, I know */
+        ztv->tv_sec=tv.tv_sec;
+        ztv->tv_usec=tv.tv_usec;
+}
+
 Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     ZNotice_t *notice;
     char *buffer;
@@ -609,7 +617,7 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
 
     notice->z_multinotice = "";
     
-    (void) gettimeofday(&notice->z_uid.tv, (struct timezone *)0);
+    (void) Z_gettimeofday(&notice->z_uid.tv, (struct timezone *)0);
     notice->z_uid.tv.tv_sec = htonl((u_long) notice->z_uid.tv.tv_sec);
     notice->z_uid.tv.tv_usec = htonl((u_long) notice->z_uid.tv.tv_usec);
     
@@ -878,8 +886,8 @@ Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
 	(void) sprintf(multi, "%d/%d", offset, notice->z_message_len);
 	partnotice.z_multinotice = multi;
 	if (offset > 0) {
-	    (void) gettimeofday(&partnotice.z_uid.tv,
-				(struct timezone *)0);
+	    (void) Z_gettimeofday(&partnotice.z_uid.tv,
+				  (struct timezone *)0);
 	    partnotice.z_uid.tv.tv_sec =
 		htonl((u_long) partnotice.z_uid.tv.tv_sec);
 	    partnotice.z_uid.tv.tv_usec =

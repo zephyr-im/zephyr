@@ -76,6 +76,7 @@ AC_SEARCH_LIBS(socket, socket)
 if test "$hesiod" != "no"; then
 	AC_CHECK_LIB(44bsd, strerror)
 	AC_CHECK_LIB(resolv, res_send)
+	AC_CHECK_LIB(resolv, __res_send)
 fi
 
 AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])

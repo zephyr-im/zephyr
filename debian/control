@@ -1,0 +1,97 @@
+Source: zephyr
+Section: net
+Priority: optional
+Maintainer: Karl Ramm <kcr@debian.org>
+Uploaders: Karl Ramm <kcr@debian.org>, Sam Hartman <hartmans@debian.org>
+Build-Depends: debhelper (>= 4), libares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev, libreadline5-dev, libx11-dev, libxt-dev, x-dev, libxaw7-dev | libxaw8-dev, libxmu-dev, libncurses5-dev, bison, libhesiod-dev
+Standards-Version: 3.7.2.2
+
+Package: libzephyr3
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}
+Conflicts: libzephyr3-krb
+Description: The original "Instant Message" system libraries without Kerberos
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: libzephyr3-krb
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, krb4-config
+Conflicts: libzephyr3
+Provides: libzephyr3
+Description: The original "Instant Message" system libraries with Kerberos 
+ This version of the library uses Kerberos for message authentication.
+ .
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: zephyr-clients
+Section: net
+Replaces: zephyr-client
+Architecture: any
+Depends: ${shlibs:Depends}, debianutils (>= 1.6), debconf | debconf-2.0
+Description: The original "Instant Message" system client
+ This package only contains the clients; you'll need a server to talk to.
+ .
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: zephyr-server
+Section: net
+Architecture: any
+Depends: ${shlibs:Depends}, debconf | debconf-2.0
+Conflicts: zephyr-server-krb
+Description: The original "Instant Message" system-server without Kerberos
+ You probably only need one server for a group of clients.
+ This can be a memory-intensive server, especially for very large sites.
+ .
+ The server maintains a location and subscription database for all the
+ receiving clients. All zephyrgrams are sent to the server to be routed
+ to the intended recipient.
+ .
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: zephyr-server-krb
+Section: net
+Architecture: any
+Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr3-krb
+Conflicts: zephyr-server
+Description: The original "Instant Message" system-server with Kerberos
+ You probably only need one server for a group of clients.
+ This can be a memory-intensive server, especially for very large sites.
+ .
+ The server maintains a location and subscription database for all the
+ receiving clients. All zephyrgrams are sent to the server to be routed
+ to the intended recipient.
+ .
+ This version of the server uses Kerberos for message authentication.
+ .
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: libzephyr-dev
+Section: libdevel
+Architecture: any
+Depends: libzephyr3 (= ${binary:Version}) | libzephyr3-krb (= ${binary:Version}), libc6-dev
+Description: The original "Instant Message" system development libraries
+ This package is needed to compile certain other zephyr clients. There are
+ various other clients available, including a totally gratuitous Motif client,
+ a Tcl client, several Emacs clients, and a number of X clients.
+ .
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.

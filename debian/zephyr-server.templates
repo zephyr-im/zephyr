@@ -1,0 +1,16 @@
+Template: zephyr-server/servers
+Type: string
+_Description: Zephyr servers:
+ Please type the full names of your zephyr servers, separated by spaces.
+ (Note that this can be a superset of that you're telling the clients.)
+
+Template: zephyr-server/read_conf
+Type: boolean
+Default: true
+Description: for internal use
+ We want to try and capture user changes when they edit a config file
+ manually.  To do this we look at the file in the config script. However,
+ in the case of preconfigure, the config script is run twice before the
+ postinst is run.  Thus we may read the wrong value before the edited value
+ is written out in postinst. If this is false we skip reading config files
+ until postinst runs.

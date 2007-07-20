@@ -277,7 +277,7 @@ if test "$hesiod" != yes; then
 	LDFLAGS="$LDFLAGS -L$hesiod/lib"
 fi
 AC_CHECK_LIB(hesiod, hes_resolve, :,
-	     [AC_MSG_ERROR(Hesiod library not found)])])
+	     [AC_MSG_ERROR(Hesiod library not found)],$LIBS)])
 
 AC_DEFUN([ATHENA_HESIOD],
 [AC_ARG_WITH(hesiod,

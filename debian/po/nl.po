@@ -1,0 +1,89 @@
+#
+#    Translators, if you are not familiar with the PO format, gettext
+#    documentation is worth reading, especially sections dedicated to
+#    this format, e.g. by running:
+#         info -n '(gettext)PO Files'
+#         info -n '(gettext)Header Entry'
+#
+#    Some information specific to po-debconf are available at
+#            /usr/share/doc/po-debconf/README-trans
+#         or http://www.debian.org/intl/l10n/po-debconf/README-trans
+#
+#    Developers do not need to manually edit POT or PO files.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: zephyr\n"
+"Report-Msgid-Bugs-To: kcr@debian.org\n"
+"POT-Creation-Date: 2007-07-19 04:11-0400\n"
+"PO-Revision-Date: 2007-02-28 21:28+0100\n"
+"Last-Translator: Bart Cornelis <cobaco@skolelinux.no>\n"
+"Language-Team: debian-l10n-dutch <debian-l10n-dutch@lists.debian.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+msgid "Zephyr servers:"
+msgstr "Zephyr-servers:"
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001
+#, fuzzy
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(note that this can be a subset of what you're telling the servers) If you "
+"are using hesiod to advertise your zephyr servers, leave this blank."
+msgstr ""
+"Gelieve de volledige naam van uw zephyr-servers op te geven gescheiden door "
+"spaties (merk op dat dit een subset kan zijn van wat u aan de servers "
+"vertelt)."
+
+#. Type: string
+#. Description
+#: ../zephyr-server.templates:1001
+#, fuzzy
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(Note that this can be a superset of that you're telling the clients.)"
+msgstr ""
+"Gelieve de volledige namen van uw zephyr-servers op te geven, gescheiden "
+"door spaties (merk op dat dit een superset kan zijn van wat u de clients "
+"verteld)."
+
+#~ msgid "for internal use"
+#~ msgstr "voor intern gebruik"
+
+#~ msgid ""
+#~ "We want to try and capture user changes when they edit a config file "
+#~ "manually.  To do this we look at the file in the config script. However, "
+#~ "in the case of preconfigure, the config script is run twice before the "
+#~ "postinst is run.  Thus we may read the wrong value before the edited "
+#~ "value is written out in postinst. If this is false we skip reading config "
+#~ "files until postinst runs."
+#~ msgstr ""
+#~ "Er wordt geprobeerd om gebruikersaanpassingen op te vangen wanneer een "
+#~ "configuratiebestand handmatig aangepast wordt.  Hiertoe kijkt het "
+#~ "'config'-script in het configuratiebestand, maar in het geval van "
+#~ "preconfigure wordt dit script tweemaal uitgevoerd voordat het 'postinst'-"
+#~ "script gedraaid wordt. Dit kan er toe leiden dat de verkeerde waarde "
+#~ "wordt uitgeschreven voordat de aangepaste waarde uitgeschreven wordt in "
+#~ "het 'postinst'-script. Als dit onwaar is slaan we het lezen van "
+#~ "configuratiebestanden over totdat het 'postinst'-script uitgevoerd is."
+
+#~ msgid "You have no zephyr servers specified for the client"
+#~ msgstr "U heeft geen zephyr-servers opgegeven voor de client."
+
+#~ msgid ""
+#~ "The zephyr-clients package for whatever reason does not have any zephyr "
+#~ "servers configured.  Please edit the file /etc/default/zephyr-clients and "
+#~ "add the names of your zephyr servers, separated by spaces to the zhm_args "
+#~ "variable."
+#~ msgstr ""
+#~ "Het 'zephyr-clients'-pakket heeft om wat voor reden dan ook geen zephyr-"
+#~ "servers ingesteld. Gelieve het bestand /etc/default/zephyr-clients aan te "
+#~ "passen en de namen van uw zephyr-servers gescheiden door spaties toe te "
+#~ "voegen aan de 'zhm_args'-variabele."
