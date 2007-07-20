@@ -22,9 +22,6 @@ Code_t ZOpenPort(port)
 {
     struct sockaddr_in bindin;
     int len;
-#ifdef SO_BSDCOMPAT
-    int on = 1;
-#endif
     
     (void) ZClosePort();
 
@@ -32,11 +29,6 @@ Code_t ZOpenPort(port)
 	__Zephyr_fd = -1;
 	return (errno);
     }
-
-#ifdef SO_BSDCOMPAT
-    /* Prevent Linux from giving us socket errors we don't care about. */
-    setsockopt(__Zephyr_fd, SOL_SOCKET, SO_BSDCOMPAT, &on, sizeof(on));
-#endif
 
     bindin.sin_family = AF_INET;
 
@@ -67,12 +59,4 @@ Code_t ZOpenPort(port)
 	*port = bindin.sin_port;
 
     return (ZERR_NONE);
-}
-
-int ZGetPort()
-{
-    if (__Zephyr_open)
-	return(__Zephyr_port);
-    else
-	return(-1);
 }

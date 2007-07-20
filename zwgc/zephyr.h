@@ -19,5 +19,6 @@
 
 extern void zephyr_init();
 extern void finalize_zephyr();
+extern void write_wgfile();
 
 #endif

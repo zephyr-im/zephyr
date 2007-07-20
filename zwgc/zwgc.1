@@ -177,7 +177,7 @@ as the information used to determine this hostname is not guaranteed to
 be correct (even for authentic messages).
 .TP
 .B fullsender
-The notice sender's name, including the kerberos realm name.
+The notice sender's name, including the zephyr realm name.
 .TP
 .B instance
 The instance of the current notice.
@@ -209,8 +209,8 @@ The recipient for the current notice.  If the notice is a multicast
 (sent to several people), the recipient is set to ``*''.
 .TP
 .B sender
-Usually a shortened version of fullsender.  If the kerberos realm of
-the sender is equal to the kerberos realm of the zephyr servers, 
+Usually a shortened version of fullsender.  If the realm of the sender
+is equal to the realm of the recipient,
 .I sender
 omits the realm name.
 .TP
@@ -380,7 +380,6 @@ created, its mode is set to read-write, owner only (no access for others).
 .TP
 .B break
 Exits the innermost if, case, or while block.
-.\" .if n .ll +2in
 .TP
 \fBcase \fIexpr1\fR [ ((\fBmatch \fIexpr\fR [,\fIexpr ...\fR]) | \fBdefault\fR)\fI commands \fR] ... \fBendcase\fR
 Evaluates \fIexpr1\fR.  Then, each of the match expressions is
@@ -427,7 +426,6 @@ of the process.
 Completes processing of the current notice.  The remainder of the
 description file is ignored after execution of this command.
 .\" hack because the following line otherwise breaks because it is too long.
-.\" .if n .ll +2in
 .TP
 \fBif \fIexpr1 \fBthen \fIcommands1\fR [\fBelseif \fIexpr2 \fBthen \fIcommands2\fR] ... [\fBelse \fIcommandsn\fR] \fBendif\fR
 If \fIexpr1\fR evaluates to true, execute \fIcommands1\fI, etc. [A conditional
@@ -535,10 +533,7 @@ the TERMCAP entry (see
 for the terminal named by the TERM environment variable.
 Supported @ commands are:
 .RS 10
-.\" .TQ 15
-.\" @em
-.\" Emphasis.  Use underline if available, else reverse video.
-.TP
+.TP 15
 @roman
 Roman (plain) letters (turns off all special modes).
 .TP
@@ -551,15 +546,6 @@ Italic letters (underlining, if available).
 @beep
 "bl" termcap entry, else "^G" (beep the terminal); limited to once per
 message.
-.\" .TQ
-.\" @blink
-.\" "mb"/"me" termcap entry, else nothing.
-.\" .TQ
-.\" @rv
-.\" "so"/"se" termcap entry.
-.\" .TQ
-.\" @u
-.\" "us"/"ue" termcap entry.
 .TP
 @l or @left
 left aligned
@@ -825,6 +811,27 @@ entirely.
 Transient
 Secondary transient determining value [default False]
 .TP
+allDesktops
+(logical) Primary value which determines if zephyrgram windows should
+appear on all desktops, for those window managers which support multiple
+desktops (sometimes referred to as workspaces).  When this resource is
+true (the default),
+.I zwgc
+sets the \fB_NET_WM_DESKTOP\fR property to 0xFFFFFFFF for each zephyrgram
+window, indicating that it should appear on all desktops.
+.TP
+AllDesktops
+Secondary value determining whether zephyrgram windows should appear
+on all desktops.
+.TP
+scrollDelete 
+(logical) If true, scrolling over a zgram will cause it
+to be deleted
+.TP
+ScrollDelete
+Secondary value to enable deletion of a zgram by scrolling over it
+[default False]
+.TP
 enableDelete
 (logical) If true, zwgc creates a WM_PROTOCOLS property on all zgrams, with
 WM_DELETE_WINDOW as contents.
@@ -969,7 +976,12 @@ SIGINT, SIGQUIT, and SIGTSTP are ignored because they can be sent
 inadvertently, and bizarre side-effects can result.  If you want them
 to be acted on, then run
 .I zwgc -nofork &
-
+.PP
+If
+.I zwgc
+receives a SIGUSR1, it will rewrite the file used to store the
+WindowGram port number ($WGFILE or /tmp/wg.\fIuid\fR), in the event
+that the file has been lost.
 .SH CONTROL MESSAGES
 In order to allow some special user controls over the behavior of
 .IR zwgc ,
@@ -1028,7 +1040,7 @@ System-wide description file
 /usr/athena/share/zephyr/zwgc_resources
 Default X application resources.
 .TP
-$HOME/.zephyr.vars
+$ZEPHYR_VARS or $HOME/.zephyr.vars
 File containing variable definitions
 .TP
 $HOME/.zephyr.subs

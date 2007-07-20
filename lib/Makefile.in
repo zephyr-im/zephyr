@@ -6,69 +6,68 @@ datadir=@datadir@
 sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
+top_builddir=..
 
 includedir=${prefix}/include
-mandir=@mandir@
+mandir=${prefix}/man
 libdir=${exec_prefix}/lib
-LIBS=@LIBS@
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
-top_builddir=..
 BUILDTOP=..
 VPATH=@srcdir@
+LIBTOOL=@LIBTOOL@
 CC=@CC@
 INSTALL=@INSTALL@
-LIBTOOL=@LIBTOOL@
-FPIC=
-DEBUG=-O
+RANLIB=@RANLIB@
 
 CPPFLAGS=@CPPFLAGS@
-CFLAGS=@CFLAGS@ ${DEBUG} ${FPIC}
+CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h ${CPPFLAGS}
-LIBS=@LIBS@
+LDFLAGS=@LDFLAGS@
+LIBS=@LIBS@ -lcom_err
 
-OBJS = zephyr_err.lo ZAsyncLocate.lo ZCkAuth.lo ZCkIfNot.lo		\
-	ZClosePort.lo ZCmpUID.lo ZCmpUIDP.lo ZFlsLocs.lo ZFlsSubs.lo	\
-	ZFmtAuth.lo ZFmtList.lo ZFmtNotice.lo ZFmtRaw.lo ZFmtRawLst.lo	\
-	ZFmtSmRLst.lo ZFmtSmRaw.lo ZFreeNot.lo ZGetDefRlm.lo		\
-	ZGetLocs.lo ZGetRhs.lo ZGetSender.lo ZGetSubs.lo ZGetWGPort.lo	\
-	ZhmStat.lo ZIfNotice.lo ZInit.lo ZLocations.lo ZMakeAscii.lo	\
-	ZMkAuth.lo ZNewLocU.lo ZOpenPort.lo ZParseNot.lo ZPeekIfNot.lo	\
-	ZPeekNot.lo ZPeekPkt.lo ZPending.lo ZReadAscii.lo ZRealmCnt.lo	\
-	ZRecvNot.lo ZRecvPkt.lo ZRetSubs.lo ZSendList.lo ZSendNot.lo	\
-	ZSendPkt.lo ZSendRaw.lo ZSendRLst.lo ZSetDest.lo ZSetFD.lo	\
-	ZSetSrv.lo ZSubs.lo ZVariables.lo ZWait4Not.lo Zinternal.lo
+OBJS =	zephyr_err.lo ZAsyncLocate.lo ZCkAuth.lo ZCkIfNot.lo ZClosePort.lo \
+	ZCmpUID.lo ZCmpUIDP.lo ZFlsLocs.lo ZFlsSubs.lo ZFmtAuth.lo \
+	ZFmtList.lo ZFmtNotice.lo ZFmtRaw.lo ZFmtRawLst.lo ZFmtSmRLst.lo \
+	ZFmtSmRaw.lo ZFreeNot.lo ZGetLocs.lo ZGetSender.lo ZGetSubs.lo \
+	ZGetWGPort.lo ZhmStat.lo ZIfNotice.lo ZInit.lo ZLocations.lo \
+	ZMakeAscii.lo ZMkAuth.lo ZNewLocU.lo ZOpenPort.lo ZParseNot.lo \
+	ZPeekIfNot.lo ZPeekNot.lo ZPeekPkt.lo ZPending.lo ZReadAscii.lo \
+	ZRecvNot.lo ZRecvPkt.lo ZRetSubs.lo ZSendList.lo ZSendNot.lo \
+	ZSendPkt.lo ZSendRaw.lo ZSendRLst.lo ZSetDest.lo ZSetFD.lo ZSetSrv.lo \
+	ZSubs.lo ZVariables.lo ZWait4Not.lo Zinternal.lo
+
+.SUFFIXES: .lo
 
 all: libzephyr.la
 
 libzephyr.la: ${OBJS}
-	${LIBTOOL} $(CC) -version-info 4:0:0 -o libzephyr.la $(OBJS) -rpath $(libdir) $(LIBS)
-
-
+	${LIBTOOL} --mode=link ${CC} -rpath ${libdir} -version-info 3:0:0 \
+	  ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
 	compile_et ${srcdir}/zephyr_err.et
 	mv zephyr_err.h ${BUILDTOP}/h/zephyr
 
+.c.lo:
+	${LIBTOOL} --mode=compile ${CC} -c -o $@ ${ALL_CFLAGS} $<
+
 check:
 
 install: libzephyr.la
-	${LIBTOOL} ${INSTALL} -m 644 libzephyr.la ${DESTDIR}${libdir}
-	${LIBTOOL} ${INSTALL} -m 644 ${srcdir}/zephyr.1 ${DESTDIR}${mandir}/man1
-
+	${LIBTOOL} --mode=install ${INSTALL} -m 644 libzephyr.la \
+	  ${DESTDIR}${libdir}
+	${INSTALL} -m 644 ${srcdir}/zephyr.1 ${DESTDIR}${mandir}/man1
 
 clean:
-	${LIBTOOL} rm -f ${OBJS} libzephyr.la zephyr_err.c zephyr_err.h
+	rm -f zephyr_err.c zephyr_err.h
+	${LIBTOOL} --mode=clean rm -f ${OBJS} libzephyr.la
 
 ${OBJS}: ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
 ${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h
 ${OBJS}: ${BUILDTOP}/h/zephyr/zephyr_err.h
 
 .PHONY: all check install clean
-.SUFFIXES: .lo
-
-.c.lo:
-	${LIBTOOL} ${CC} -c ${ALL_CFLAGS} $<
 

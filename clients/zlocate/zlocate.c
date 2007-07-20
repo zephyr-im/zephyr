@@ -72,7 +72,6 @@ main(argc,argv)
     char user[BUFSIZ],*whichuser;
     ZAsyncLocateData_t ald;
     int retval,i,numlocs,numfound,loc,auth,rlen;
-    char *galaxy;
     ZNotice_t notice;
 #ifdef _POSIX_VERSION
     struct sigaction sa;
@@ -101,12 +100,6 @@ main(argc,argv)
 	    case '1':
 		oneline = 1;
 		break;
-	    case 'G':
-		if (i+1 == argc)
-		    usage();
-		galaxy = argv[i+1];
-		i++;
-		break;
 	    default:
 		usage();
 		break;
@@ -126,37 +119,27 @@ main(argc,argv)
 
     numleft = numusers;
     numfound = 0;
+    rlen = strlen(ZGetRealm());
 
     i = 0;
     for (loc = 0; loc < argc; loc++) {
-	char *rhs;
-
-	if (argv[loc][0] == '-') {
-	   if (argv[loc][1] == 'G')
-	      loc++;
-	   continue;
-	}
-
-	rhs = ZGetRhs(galaxy);
-	rlen = strlen(rhs);
+	if (argv[loc][0] == '-') continue;
 
 	(void) strncpy(user,argv[loc],sizeof(user) - rlen - 2);
 	user[sizeof(user) - rlen - 2] = '\0';
 	if (!strchr(user,'@')) {
 	    (void) strcat(user,"@");
-	    (void) strcat(user,rhs);
+	    (void) strcat(user,ZGetRealm());
 	} 
 	if (parallel) {
-	    if ((retval = ZRequestLocations(galaxy, user, &ald,
-					    i ? UNSAFE : UNACKED,
+	    if ((retval = ZRequestLocations(user, &ald, i ? UNSAFE : UNACKED,
 					    auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
 		com_err(whoami,retval,"requesting location of %s",user);
 		exit(1);
 	    }
 	    i = 1;
 	} else {
-	    if ((retval = ZLocateUser(galaxy, user,&numlocs,
-				      auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
+	    if ((retval = ZLocateUser(user,&numlocs,auth?ZAUTH:ZNOAUTH)) != ZERR_NONE) {
 		com_err(whoami,retval,"while locating user %s",user);
 		exit(1);
 	    }

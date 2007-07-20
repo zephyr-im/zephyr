@@ -14,7 +14,6 @@
 #include <zephyr/mit-copyright.h>
 #include "zserver.h"
 #include <sys/socket.h>
-#include <string.h>
 
 #ifndef lint
 #ifndef SABER
@@ -92,9 +91,11 @@ static Code_t extract_addr __P((ZNotice_t *, struct sockaddr_in *));
 static Code_t server_register();
 #endif
 
-static int get_server_galaxy __P((const char *));
-
-char my_galaxy[MAXHOSTNAMELEN];		/* my galaxy name */
+static struct in_addr *get_server_addrs __P((int *number));
+#ifndef HAVE_HESIOD
+static char **get_server_list __P((char *file));
+static void free_server_list __P((char **list));
+#endif
 
 static Unacked *srv_nacktab[SRV_NACKTAB_HASHSIZE];
 Server *otherservers;		/* points to an array of the known
@@ -110,6 +111,17 @@ long timo_up = TIMO_UP;
 long timo_tardy = TIMO_TARDY;
 long timo_dead = TIMO_DEAD;
 
+/* counters to measure old protocol use */
+#ifdef OLD_COMPAT
+int old_compat_count_uloc = 0;
+int old_compat_count_ulocate = 0;
+int old_compat_count_subscr = 0;
+#endif /* OLD_COMPAT */
+#ifdef NEW_COMPAT
+int new_compat_count_uloc = 0;
+int new_compat_count_subscr = 0;
+#endif /* NEW_COMPAT */
+
 #ifdef DEBUG
 int zalone;
 #endif /* DEBUG */
@@ -124,24 +136,16 @@ int zalone;
 void
 server_init()
 {
-    int i, j;
-    struct in_addr *serv_addr, limbo_addr;
+    int i;
+    struct in_addr *serv_addr, *server_addrs, limbo_addr;
 
     /* we don't need to mask SIGFPE here since when we are called,
        the signal handler isn't set up yet. */
 
-    if (get_server_galaxy(localconf_file)) {
-	syslog(LOG_ERR, "Could not read galaxy from %s", localconf_file);
-	exit(1);
-    }
-
-    for (j=0; j<ngalaxies; j++)
-	if (strcmp(galaxy_list[j].galaxy_config.galaxy, my_galaxy) == 0)
-	    break;
-
-    if (j == ngalaxies) {
-	syslog(LOG_ERR, "Local galaxy (%s) not found in galaxy list",
-	       my_galaxy);
+    /* talk to hesiod here, set nservers */
+    server_addrs = get_server_addrs(&nservers);
+    if (!server_addrs) {
+	syslog(LOG_ERR, "No servers?!?");
 	exit(1);
     }
 
@@ -151,7 +155,7 @@ server_init()
     else
 #endif /* DEBUG */
 	/* increment servers to make room for 'limbo' */
-	nservers = galaxy_list[j].galaxy_config.nservers+1;
+	nservers++;
 
     otherservers = (Server *) malloc(nservers * sizeof(Server));
     me_server_idx = -1;
@@ -164,9 +168,7 @@ server_init()
     otherservers[0].queue = NULL;
     otherservers[0].dumping = 0;
 
-    for (i = 1; i < nservers; i++) {
-	serv_addr = &galaxy_list[j].galaxy_config.server_list[i-1].addr;
-
+    for (serv_addr = server_addrs, i = 1; i < nservers; serv_addr++, i++) {
 	setup_server(&otherservers[i], serv_addr);
 	/* is this me? */
 	if (serv_addr->s_addr == my_addr.s_addr) {
@@ -182,10 +184,37 @@ server_init()
 	}
     }
 
+    /* free up the addresses */
+    free(server_addrs);
+
     if (me_server_idx == -1) {
-	syslog(LOG_ERR, "I'm a renegade server!");
-	exit(1);
+	syslog(LOG_WARNING, "I'm a renegade server!");
+	otherservers = (Server *) realloc(otherservers,
+					  ++nservers * sizeof(Server));
+	if (!otherservers) {
+	    syslog(LOG_CRIT, "renegade realloc");
+	    abort();
+	}
+	setup_server(&otherservers[nservers - 1], &my_addr);
+	/* we are up. */
+	otherservers[nservers - 1].state = SERV_UP;
+
+	/* I don't send hello's to myself--cancel the timer */
+	timer_reset(otherservers[nservers - 1].timer);
+	otherservers[nservers - 1].timer = NULL;
+
+	/* cancel and reschedule all the timers--pointers need
+	   adjusting */
+	/* don't reschedule limbo's timer, so start i=1 */
+	for (i = 1; i < nservers - 1; i++) {
+	    timer_reset(otherservers[i].timer);
+	    /* all the HELLO's are due now */
+	    otherservers[i].timer = timer_set_rel(0L, server_timo,
+						  &otherservers[i]);
+	}
+	me_server_idx = nservers - 1;
     }
+
 }
 
 /*
@@ -204,9 +233,10 @@ void
 server_reset()
 {
     int num_servers;
+    struct in_addr *server_addrs;
     struct in_addr *serv_addr;
     Server *servers;
-    int i, j, k;
+    int i, j;
     int *ok_list_new, *ok_list_old;
     int num_ok, new_num;
 
@@ -221,17 +251,12 @@ server_reset()
 #endif /* DEBUG */
 
     /* Find out what servers are supposed to be known. */
-    for (k=0; k<ngalaxies; k++)
-	if (strcmp(galaxy_list[k].galaxy_config.galaxy, my_galaxy) == 0)
-	    break;
-
-    if (k == ngalaxies) {
-	syslog(LOG_ERR, "server_reset: Local galaxy (%s) not found in galaxy list",
-	       my_galaxy);
+    server_addrs = get_server_addrs(&num_servers);
+    if (!server_addrs) {
+	syslog(LOG_ERR, "server_reset no servers. nothing done.");
 	return;
     }
-
-    ok_list_new = (int *) malloc(galaxy_list[k].galaxy_config.nservers * sizeof(int));
+    ok_list_new = (int *) malloc(num_servers * sizeof(int));
     if (!ok_list_new) {
 	syslog(LOG_ERR, "server_reset no mem new");
 	return;
@@ -261,9 +286,7 @@ server_reset()
     num_ok = 1;
     ok_list_old[0] = 1;	/* limbo is OK */
 
-    for (i=0; i<galaxy_list[k].galaxy_config.nservers; i++) {
-	serv_addr = &galaxy_list[k].galaxy_config.server_list[i].addr;
-
+    for (serv_addr = server_addrs, i = 0; i < num_servers; serv_addr++, i++) {
 	for (j = 1; j < nservers; j++) { /* j = 1 since we skip limbo */
 	    if (otherservers[j].addr.sin_addr.s_addr == serv_addr->s_addr) {
 		/* if server is on both lists, mark */
@@ -357,12 +380,12 @@ server_reset()
     for (i = 0; i < num_servers; i++) {
 	if (!ok_list_new[i]) {
 	    setup_server(&otherservers[nservers - (new_num--)],
-			 &galaxy_list[k].galaxy_config.server_list[i].addr);
-	    syslog(LOG_INFO, "adding server %s", 
-		   inet_ntoa(galaxy_list[k].galaxy_config.server_list[i].addr));
+			 &server_addrs[i]);
+	    syslog(LOG_INFO, "adding server %s", inet_ntoa(server_addrs[i]));
 	}
     }
 
+    free(server_addrs);
     /* reset timers, to go off now.
        We can't get a time-left indication (bleagh!)
        so we expire them all now.  This will generally
@@ -873,6 +896,20 @@ send_stats(who)
     sprintf(buf, "%d seconds operational",NOW - uptime);
     upt = strsave(buf);
 
+#ifdef OLD_COMPAT
+    if (old_compat_count_uloc)
+	extrafields++;
+    if (old_compat_count_ulocate)
+	extrafields++;
+    if (old_compat_count_subscr)
+	extrafields++;
+#endif /* OLD_COMPAT */
+#ifdef NEW_COMPAT
+    if (new_compat_count_uloc)
+	extrafields++;
+    if (new_compat_count_subscr)
+	extrafields++;
+#endif /* NEW_COMPAT */
     extrafields += nrealms;
     responses = (char **) malloc((NUM_FIXED + nservers + extrafields) *
 				 sizeof(char *));
@@ -888,6 +925,31 @@ send_stats(who)
 		otherservers[i].dumping ? " (DUMPING)" : "");
 	responses[num_resp++] = strsave(buf);
     }
+#ifdef OLD_COMPAT
+    if (old_compat_count_uloc) {
+	sprintf(buf, "%d old old location requests", old_compat_count_uloc);
+	responses[num_resp++] = strsave(buf);
+    }
+    if (old_compat_count_ulocate) {
+	sprintf(buf, "%d old old loc lookup requests",
+		old_compat_count_ulocate);
+	responses[num_resp++] = strsave(buf);
+    }
+    if (old_compat_count_subscr) {
+	sprintf(buf, "%d old old subscr requests", old_compat_count_subscr);
+	responses[num_resp++] = strsave(buf);
+    }
+#endif /* OLD_COMPAT */
+#ifdef NEW_COMPAT
+    if (new_compat_count_uloc) {
+	sprintf(buf, "%d new old location requests", new_compat_count_uloc);
+	responses[num_resp++] = strsave(buf);
+    }
+    if (new_compat_count_subscr) {
+	sprintf(buf, "%d new old subscr requests", new_compat_count_subscr);
+	responses[num_resp++] = strsave(buf);
+    }
+#endif /* NEW_COMPAT */
     for (realm = otherrealms, i = 0; i < nrealms ; i++, realm++) {
       sprintf(buf, "%s(%s)/%s", realm->name, 
 	      inet_ntoa((realm->addrs[realm->idx]).sin_addr),
@@ -904,45 +966,131 @@ send_stats(who)
 }
 
 /*
- * Get the local galaxy name.
+ * Get a list of server addresses.
+#ifdef HAVE_HESIOD
+ * This list is retrieved from Hesiod.
+#else
+ * This list is read from a file.
+#endif
+ * Return a pointer to an array of allocated storage.  This storage is
+ * freed by the caller.
  */
 
-int get_server_galaxy(const char *file)
+static struct in_addr *
+get_server_addrs(number)
+    int *number; /* RETURN */
+{
+    int i;
+    char **server_hosts;
+    char **cpp;
+    struct in_addr *addrs;
+    struct in_addr *addr;
+    struct hostent *hp;
+
+#ifdef HAVE_HESIOD
+    /* get the names from Hesiod */
+    server_hosts = hes_resolve("zephyr","sloc");
+    if (!server_hosts)
+	return NULL;
+#else
+    server_hosts = get_server_list(list_file);
+    if (!server_hosts)
+	return NULL;
+#endif
+    /* count up */
+    i = 0;
+    for (cpp = server_hosts; *cpp; cpp++)
+	i++;
+	
+    addrs = (struct in_addr *) malloc(i * sizeof(struct in_addr));
+
+    /* Convert to in_addr's */
+    for (cpp = server_hosts, addr = addrs, i = 0; *cpp; cpp++) {
+	hp = gethostbyname(*cpp);
+	if (hp) {
+	    memcpy(addr, hp->h_addr, sizeof(struct in_addr));
+	    addr++, i++;
+	} else {
+	    syslog(LOG_WARNING, "hostname failed, %s", *cpp);
+	}
+    }
+    *number = i;
+#ifndef HAVE_HESIOD
+    free_server_list(server_hosts);
+#endif
+    return addrs;
+}
+
+#ifndef HAVE_HESIOD
+
+static int nhosts = 0;
+
+/*
+ * read "file" to get a list of names of hosts to peer with.
+ * The file should contain a list of host names, one per line.
+ */
+
+static char **
+get_server_list(file)
+    char *file;
 {
     FILE *fp;
-    char line[1024];
-    char *nl;
+    char buf[MAXHOSTNAMELEN];
+    char **ret_list;
+    int nused = 0;
+    char *newline;
 
-    /* if it's already set (presumably by -g), just return. */
-    if (my_galaxy[0] != '\0')
-	return;
+    /* start with 16, realloc if necessary */
+    nhosts = 16;
+    ret_list = (char **) malloc(nhosts * sizeof(char *));
 
     fp = fopen(file, "r");
-    if (!fp)
-	return(1);
+    if (fp) {
+	while (fgets(buf, MAXHOSTNAMELEN, fp)) {
+	    /* nuke the newline, being careful not to overrun
+	       the buffer searching for it with strlen() */
+	    buf[MAXHOSTNAMELEN - 1] = '\0';
+	    newline = strchr(buf, '\n');
+	    if (newline)
+		*newline = '\0';
 
-    while(!feof(fp)) {
-	if (!fgets(line, sizeof(line), fp)) {
-	    fclose(fp);
-	    return(2);
+	    if (nused + 1 >= nhosts) {
+		/* get more pointer space if necessary */
+		/* +1 to leave room for null pointer */
+		ret_list = (char **) realloc(ret_list, nhosts * 2);
+		nhosts = nhosts * 2;
+	    }
+	    ret_list[nused++] = strsave(buf);
 	}
-	if (strncasecmp(line, "galaxy=", 7) == 0)
-	    break;
+	fclose(fp);
+    } else {
+	if (gethostname(buf, sizeof(buf)) < 0) {
+	    free(ret_list);
+	    return NULL;
+	}
+	ret_list[nused++] = strsave(buf);
     }
-    fclose(fp);
-
-    /* remove final newline */
-    nl = strchr(line, '\n');
-    if (nl)
-	*nl = '\0';
-
-    if (line+7 == '\0')
-	return(3);
-
-    strcpy(my_galaxy, line+7);
-
-    return(0);
+    ret_list[nused] = NULL;
+    return ret_list;
 }
+
+/* 
+ * free storage allocated by get_server_list
+ */
+static void
+free_server_list(list)
+    char **list;
+{
+    char **orig_list = list;
+
+    if (!nhosts)			/* nothing allocated */
+	return;
+    for (; *list; list++)
+	free(*list);
+    free(orig_list);
+    return;
+}
+#endif
 
 /*
  * initialize the server structure for address addr, and set a timer

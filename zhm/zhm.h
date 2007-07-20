@@ -42,78 +42,30 @@
 #define Zperr(e)
 #endif
 
-#define BOOT_TIMEOUT 10
-#define DEAD_TIMEOUT 5*60
+#define ever (;;)
 
-typedef struct _Queue {
-    struct _galaxy_info *gi;
-    Timer *timer;
-    int retries;
-    ZNotice_t notice;
-    caddr_t packet;
-    struct sockaddr_in reply;
-    struct _Queue *next, **prev_p;
-} Queue;
-
-typedef enum _galaxy_state {
-   NEED_SERVER, /* never had a server, HM_BOOT when we find one.  This can
-		   also be set if a flush was requested when the state
-		   was != ATTACHED. */
-   DEAD_SERVER, /* server timed out, no others around.  This is
-		   actually handled in the same way as BOOTING or
-		   ATTACHING (although some of the timeouts are
-		   different), but it's handy to know which of the two
-		   states the zhm is in */
-   BOOTING, /* waiting for HM_BOOT SERVACK */
-   ATTACHING, /* waiting for HM_BOOT SERVACK */
-   ATTACHED /* active and connected */
-} galaxy_state;
-
-typedef struct _galaxy_info {
-   Z_GalaxyConfig galaxy_config;
-
-#define NO_SERVER -1
-#define EXCEPTION_SERVER -2
-   int current_server;
-   struct sockaddr_in sin;
-   galaxy_state state;
-
-   int nchange;
-   int nsrvpkts;
-   int ncltpkts;
-
-   Queue *queue;
-   Timer *boot_timer;
-} galaxy_info;
+#define BOOTING 1
+#define NOTICES 2
 
 /* main.c */
+void die_gracefully __P((void));
 
 /* zhm_client.c */
-void transmission_tower __P((ZNotice_t *, struct sockaddr_in *, char *, int));
-Code_t send_outgoing __P((struct sockaddr_in *, ZNotice_t *));
+void transmission_tower __P((ZNotice_t *, char *, int));
+Code_t send_outgoing __P((ZNotice_t *));
 
 /* queue.c */
-void init_galaxy_queue __P((galaxy_info *));
-Code_t add_notice_to_galaxy __P((galaxy_info *, ZNotice_t *,
-				struct sockaddr_in *, int));
-Code_t remove_notice_from_galaxy __P((galaxy_info *, ZNotice_t *,
-				     ZNotice_Kind_t *, struct sockaddr_in *));
-void retransmit_galaxy __P((galaxy_info *));
-void disable_galaxy_retransmits __P((galaxy_info *));
-int galaxy_queue_len __P((galaxy_info *));
+void init_queue __P((void));
+Code_t add_notice_to_queue __P((ZNotice_t *, char *, struct sockaddr_in *,
+				int));
+Code_t remove_notice_from_queue __P((ZNotice_t *, ZNotice_Kind_t *,
+				     struct sockaddr_in *));
+void retransmit_queue __P((struct sockaddr_in *));
+void disable_queue_retransmits __P((void));
+int queue_len __P((void));
 
-/* zhm.c */
-extern galaxy_info *galaxy_list;
-extern int ngalaxies;
-extern int noflushflag;
-
-/* zhm_server.c */
-void server_manager __P((ZNotice_t *, struct sockaddr_in *));
-void hm_control __P((galaxy_info *, ZNotice_t *));
-void galaxy_new_server __P((galaxy_info *, struct in_addr *addr));
-void galaxy_flush __P((galaxy_info *));
-void galaxy_reset __P((galaxy_info *));
-
+struct sockaddr_in serv_sin;
+extern int rexmit_times[];
 
 #ifdef vax
 #define use_etext

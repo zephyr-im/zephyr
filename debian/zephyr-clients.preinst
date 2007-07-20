@@ -1,6 +1,0 @@
-#!/bin/sh
-
-if test -x /etc/init.d/zhm
-then
-	/etc/init.d/zhm stop
-fi

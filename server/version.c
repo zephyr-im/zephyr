@@ -17,14 +17,11 @@
 
 const char zephyr_version[] = "Zephyr system version 2.0";
 
-static char version[] = {
-    "Zephyr Server "
 #ifdef DEBUG
-    "(DEBUG) "
+const char version[] = "Zephyr server (DEBUG) $Revision$";
+#else
+const char version[] = "Zephyr server $Revision$";
 #endif
-    "$Revision$"
-    ": " ZSERVER_VERSION_STRING "/" MACHINE_TYPE
-};
 
 #if !defined (lint) && !defined (SABER)
 static const char rcsid_version_c[] =
@@ -36,5 +33,51 @@ static const char copyright[] =
 char *
 get_version()
 {
-    return version;
+  static char vers_buf[256];
+
+  if (vers_buf[0] == '\0') {
+#ifdef DEBUG
+    sprintf(vers_buf,"Zephyr Server (DEBUG) $Revision$: %s",
+	    ZSERVER_VERSION_STRING);
+#else
+    sprintf(vers_buf,"Zephyr Server $Revision$: %s",
+	    ZSERVER_VERSION_STRING);
+#endif /* DEBUG */
+
+    (void) strcat(vers_buf, "/");
+#ifdef vax
+    (void) strcat(vers_buf, "VAX");
+#endif /* vax */
+#ifdef ibm032
+    (void) strcat(vers_buf, "IBM RT");
+#endif /* ibm032 */
+#ifdef _IBMR2
+    (void) strcat(vers_buf, "IBM RS/6000");
+#endif /* _IBMR2 */
+#ifdef sun
+    (void) strcat(vers_buf, "SUN");
+#ifdef sparc
+    (void) strcat (vers_buf, "-4");
+#endif /* sparc */
+#ifdef sun386
+    (void) strcat (vers_buf, "-386I");
+#endif /* sun386 */
+#endif /* sun */
+
+#ifdef mips
+#ifdef ultrix			/* DECstation */
+    (void) strcat (vers_buf, "DEC-");
+#endif /* ultrix */
+    (void) strcat(vers_buf, "MIPS");
+#endif /* mips */
+#ifdef NeXT
+    (void) strcat(vers_buf, "NeXT");
+#endif /* NeXT */
+  }
+  return(vers_buf);
 }
+
+
+
+
+

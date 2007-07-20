@@ -17,7 +17,16 @@ static char rcsid_ZParseNotice_c[] =
 
 #include <internal.h>
 
-#define next_field(ptr)	ptr += strlen (ptr) + 1
+/* Skip to the next NUL-terminated field in the packet. */
+static char *next_field(ptr, end)
+    char *ptr, *end;
+{
+    while (ptr < end && *ptr != '\0')
+	ptr++;
+    if (ptr < end)
+	ptr++;
+    return (ptr);
+}
 
 Code_t ZParseNotice(buffer, len, notice)
     char *buffer;
@@ -26,7 +35,7 @@ Code_t ZParseNotice(buffer, len, notice)
 {
     char *ptr, *end;
     unsigned long temp;
-    int maj, min, numfields, i;
+    int maj, numfields, i;
 
 #ifdef __LINE__
     int lineno;
@@ -62,21 +71,12 @@ Code_t ZParseNotice(buffer, len, notice)
     maj = atoi(ptr);
     if (maj != ZVERSIONMAJOR)
 	return (ZERR_VERS);
-    while (*ptr != '.') ptr++;
-    min = atoi(ptr+1);
-    next_field (ptr);
-
-    if (min == ZVERSIONMINOR_GALAXY) {
-       notice->z_dest_galaxy = ptr;
-       next_field (ptr);
-       /* skip the dummy version field */
-       next_field (ptr);
-    }
+    ptr = next_field(ptr, end);
 
     if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	BAD_PACKET;
     numfields = temp;
-    next_field (ptr);
+    ptr = next_field(ptr, end);
 
     /*XXX 3 */
     numfields -= 2; /* numfields, version, and checksum */
@@ -100,151 +100,153 @@ Code_t ZParseNotice(buffer, len, notice)
 	return ZERR_BADPKT;
     }
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_kind = (ZNotice_Kind_t)temp;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	BAD_PACKET;
 	
-    if (numfields) {
+    if (numfields && ptr < end) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid,
 		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_uid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_uid.tv.tv_usec);
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	BAD_PACKET;
 	
-    if (numfields) {
+    if (numfields && ptr < end) {
 	if (ZReadAscii16(ptr, end-ptr, &notice->z_port) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_port = htons(notice->z_port);
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	BAD_PACKET;
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_auth = temp;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	BAD_PACKET;
     notice->z_checked_auth = ZAUTH_UNSET;
 	
-    if (numfields) {
+    if (numfields && ptr < end) {
 	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_authent_len = temp;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	BAD_PACKET;
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	notice->z_ascii_authent = ptr;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	BAD_PACKET;
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	notice->z_class = ptr;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	notice->z_class = "";
 	
-    if (numfields) {
+    if (numfields && ptr < end) {
 	notice->z_class_inst = ptr;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	notice->z_class_inst = "";
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	notice->z_opcode = ptr;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	notice->z_opcode = "";
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	notice->z_sender = ptr;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	notice->z_sender = "";
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	notice->z_recipient = ptr;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	notice->z_recipient = "";
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	notice->z_default_format = ptr;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	notice->z_default_format = "";
 	
-/*XXX*/
     if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	BAD_PACKET;
     notice->z_checksum = temp;
     numfields--;
-    next_field (ptr);
+    ptr = next_field(ptr, end);
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	notice->z_multinotice = ptr;
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	notice->z_multinotice = "";
 
-    if (numfields) {
+    if (numfields && ptr < end) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid,
 		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
 	    BAD_PACKET;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_multiuid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_multiuid.tv.tv_usec);
 	numfields--;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     else
 	notice->z_multiuid = notice->z_uid;
 
-    for (i=0;i<Z_MAXOTHERFIELDS && numfields;i++,numfields--) {
+    for (i=0;ptr < end && i<Z_MAXOTHERFIELDS && numfields;i++,numfields--) {
 	notice->z_other_fields[i] = ptr;
-	next_field (ptr);
+	ptr = next_field(ptr, end);
     }
     notice->z_num_other_fields = i;
     
-    for (i=0;i<numfields;i++)
-	next_field (ptr);
-	
+    for (i=0;ptr < end && numfields;numfields--)
+	ptr = next_field(ptr, end);
+
+    if (numfields || *(ptr - 1) != '\0')
+	BAD_PACKET;
+
     notice->z_message = (caddr_t) ptr;
     notice->z_message_len = len-(ptr-buffer);
 

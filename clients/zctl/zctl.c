@@ -3,8 +3,7 @@
  *
  *	Created by:	Robert French
  *
- *	$Source$
- *	$Author$
+ *	$Id$
  *
  *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
@@ -13,46 +12,50 @@
 
 #include <sysdep.h>
 #include <zephyr/zephyr.h>
-#ifdef HAVE_SS_SS_H
 #include <ss/ss.h>
-#else
-# ifdef HAVE_KRB5_SS_H
-# include <krb5/ss.h>
-# endif
-#endif
 #include <com_err.h>
 #include <pwd.h>
 #include <netdb.h>
-#include <errno.h>
 #ifndef lint
 static const char *rcsid_zctl_c = "$Id$";
 #endif
 
-#include "zutils.h"
+#define SUBSATONCE 7
+#define SUB 0
+#define UNSUB 1
+#define LIST 2
 
 #define USERS_SUBS "/.zephyr.subs"
 #define OLD_SUBS "/.subscriptions"
+
+#define	TOKEN_HOSTNAME	"%host%"
+#define	TOKEN_CANONNAME	"%canon%"
+#define	TOKEN_ME	"%me%"
+#define	TOKEN_WILD	"*"
+
+#define	ALL		0
+#define	UNSUBONLY	1
+#define	SUBONLY		2
 
 #define	ERR		(-1)
 #define	NOT_REMOVED	0
 #define	REMOVED		1
 int purge_subs();
-void add_file(char *fn, char *galaxy, short wgport, ZSubscription_t *subs,
-	      int mode);
-void del_file(char *fn, char *galaxy, short wgport, ZSubscription_t *subs,
-	      int mode);
-
 
 int sci_idx;
 char subsname[BUFSIZ];
+char ourhost[MAXHOSTNAMELEN],ourhostcanon[MAXHOSTNAMELEN];
 
 extern ss_request_table zctl_cmds;
+
+void add_file(), del_file(), fix_macros(), fix_macros2();
 
 main(argc,argv)
 	int argc;
 	char *argv[];
 {
 	struct passwd *pwd;
+	struct hostent *hent;
 	char ssline[BUFSIZ],oldsubsname[BUFSIZ],*envptr,*tty = NULL;
 	int retval,code,i;
 #ifdef HAVE_SYS_UTSNAME
@@ -98,6 +101,24 @@ main(argc,argv)
 		}
 	}
 
+#ifdef HAVE_SYS_UTSNAME
+	uname(&name);
+	strcpy(ourhost, name.nodename);
+#else
+	if (gethostname(ourhost,MAXHOSTNAMELEN) == -1) {
+		com_err(argv[0],errno,"while getting host name");
+		exit (1);
+	}
+#endif
+
+	if (!(hent = gethostbyname(ourhost))) {
+		fprintf(stderr,"%s: Can't resolve hostname %s; %s may be "
+			"wrong in subscriptions",argv[0],ourhost,
+			TOKEN_CANONNAME);
+		strncpy(ourhostcanon,ourhost,sizeof(ourhostcanon)-1);
+	} else
+		strncpy(ourhostcanon,hent->h_name,sizeof(ourhostcanon)-1);
+
 	sci_idx = ss_create_invocation("zctl","",0,&zctl_cmds,&code);
 	if (code) {
 		ss_perror(sci_idx,code,"while creating invocation");
@@ -118,9 +139,9 @@ main(argc,argv)
 
 	printf("ZCTL $Revision$ (Protocol %s%d.%d) - Type '?' for a list of commands.\n\n",
 	       ZVERSIONHDR,
-	       ZVERSIONMAJOR,ZVERSIONMINOR_GALAXY);
+	       ZVERSIONMAJOR,ZVERSIONMINOR);
 	
-	code = ss_listen(sci_idx);
+	ss_listen(sci_idx);
 	exit(0);
 }
 
@@ -145,136 +166,113 @@ flush_locations(argc,argv)
 	int argc;
 	char *argv[];
 {
-    int retval;
-    char *galaxy;
-    int cnt, i;
+	int retval;
 	
-    if (argc > 2) {
-	fprintf(stderr,"Usage: %s [galaxy]\n",argv[0]);
-	return;
-    }
-
-    galaxy = (argc > 1)?argv[1]:NULL;
-
-    if (galaxy && strcmp(galaxy, "*") == 0) {
-	if (retval = ZGetGalaxyCount(&cnt)) {
-	    ss_perror(sci_idx, retval, "while getting galaxy count");
-	    return;
-	}
-
-	for (i=0; i<cnt; i++) {
-	    if (retval = ZGetGalaxyName(i, &galaxy)) {
-		ss_perror(sci_idx, retval, "while getting galaxy name");
-		return;
-	    }
-
-	    if ((retval = ZFlushMyLocations(galaxy)) != ZERR_NONE) {
-		ss_perror(sci_idx, retval, "while flushing locations");
-		return;
-	    }
-	}
-    } else {
-	if ((retval = ZFlushMyLocations(galaxy)) != ZERR_NONE) {
-	    ss_perror(sci_idx, retval, "while flushing locations");
-	    return;
-	}
-    }
-}
-
-void
-wgc_control(argc,argv)
-	int argc;
-	char *argv[];
-{
-	Code_t retval;
-
 	if (argc > 1) {
 		fprintf(stderr,"Usage: %s\n",argv[0]);
 		return;
 	}
 
-	if (!strcmp(argv[0],"wg_read")) {
-		retval = send_wgc_control(USER_REREAD, NULL, 0);
-	} else if (!strcmp(argv[0],"wg_shutdown")) {
-		retval = send_wgc_control(USER_SHUTDOWN, NULL, 0);
-	} else if (!strcmp(argv[0],"wg_startup")) {
-		retval = send_wgc_control(USER_STARTUP, NULL, 0);
-	} else if (!strcmp(argv[0],"wg_exit")) {
-		retval = send_wgc_control(USER_EXIT, NULL, 0);
-	} else {
+	if ((retval = ZFlushMyLocations()) != ZERR_NONE)
+		ss_perror(sci_idx,retval,"while flushing locations");
+}
+
+void
+wgc_control(argc,argv)
+	int argc;
+	register char **argv;
+{
+	int retval;
+	short newport;
+	struct sockaddr_in newsin;
+	ZNotice_t notice;
+
+	newsin = ZGetDestAddr();
+
+	if (argc > 1) {
+		fprintf(stderr,"Usage: %s\n",argv[0]);
+		return;
+	}
+	
+	if ((newport = ZGetWGPort()) == -1) {
+		ss_perror(sci_idx,errno,"while getting WindowGram port");
+		return;
+	}
+
+	newsin.sin_port = (u_short) newport;
+	if ((retval = ZSetDestAddr(&newsin)) != ZERR_NONE) {
+		ss_perror(sci_idx,retval,"while setting destination address");
+		return;
+	}
+
+	(void) memset((char *)&notice, 0, sizeof(notice));
+	notice.z_kind = UNSAFE;
+	notice.z_port = 0;
+	notice.z_class = WG_CTL_CLASS;
+	notice.z_class_inst = WG_CTL_USER;
+
+	if (!strcmp(argv[0],"wg_read"))
+		notice.z_opcode = USER_REREAD;
+	if (!strcmp(argv[0],"wg_shutdown"))
+		notice.z_opcode = USER_SHUTDOWN;
+	if (!strcmp(argv[0],"wg_startup"))
+		notice.z_opcode = USER_STARTUP;
+	if (!strcmp(argv[0],"wg_exit"))
+		notice.z_opcode = USER_EXIT;
+	if (!notice.z_opcode) {
 		fprintf(stderr,
 			"unknown WindowGram client control command %s\n",
 			argv[0]);
 		return;
 	}
+	notice.z_sender = 0;
+	notice.z_recipient = "";
+	notice.z_default_format = "";
+	notice.z_message_len = 0;
 
-	if (retval)
-		ss_perror(sci_idx, retval,
-			  "while sending WindowGram control message");
-}
+	if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE)
+		ss_perror(sci_idx,retval,"while sending notice");
+
+	if ((retval = ZInitialize()) != ZERR_NONE)
+		ss_perror(sci_idx,retval,
+			  "while reinitializing");
+} 
 
 void
 hm_control(argc,argv)
 	int argc;
 	char *argv[];
 {
-    int retval;
-    ZNotice_t notice;
-    char *galaxy;
-    int cnt, i;
+	int retval;
+	ZNotice_t notice;
 
-    if (argc > 2) {
-	fprintf(stderr,"Usage: %s [galaxy]\n",argv[0]);
-	return;
-    }
+	if (argc > 1) {
+		fprintf(stderr,"Usage: %s\n",argv[0]);
+		return;
+	}
 	
-    galaxy = (argc > 1)?argv[1]:NULL;
+	(void) memset((char *)&notice, 0, sizeof(notice));
+	notice.z_kind = HMCTL;
+	notice.z_port = 0;
+	notice.z_class = HM_CTL_CLASS;
+	notice.z_class_inst = HM_CTL_CLIENT;
 
-    (void) memset((char *)&notice, 0, sizeof(notice));
-    notice.z_kind = HMCTL;
-    notice.z_port = 0;
-    notice.z_class = HM_CTL_CLASS;
-    notice.z_class_inst = HM_CTL_CLIENT;
-
-    if (!strcmp(argv[0],"hm_flush"))
-	notice.z_opcode = CLIENT_FLUSH;
-    if (!strcmp(argv[0],"new_server"))
-	notice.z_opcode = CLIENT_NEW_SERVER;
-    if (!notice.z_opcode) {
-	fprintf(stderr, "unknown HostManager control command %s\n",
-		argv[0]);
-	return;
-    }
-    notice.z_sender = 0;
-    notice.z_recipient = "";
-    notice.z_default_format = "";
-    notice.z_message_len = 0;
-
-    if (galaxy && strcmp(galaxy, "*") == 0) {
-	if (retval = ZGetGalaxyCount(&cnt)) {
-	    ss_perror(sci_idx, retval, "while getting galaxy count");
-	    return;
-	}
-
-	for (i=0; i<cnt; i++) {
-	    if (retval = ZGetGalaxyName(i, &galaxy)) {
-		ss_perror(sci_idx, retval, "while getting galaxy name");
+	if (!strcmp(argv[0],"hm_flush"))
+		notice.z_opcode = CLIENT_FLUSH;
+	if (!strcmp(argv[0],"new_server"))
+		notice.z_opcode = CLIENT_NEW_SERVER;
+	if (!notice.z_opcode) {
+		fprintf(stderr, "unknown HostManager control command %s\n",
+			argv[0]);
 		return;
-	    }
+	}
+	notice.z_sender = 0;
+	notice.z_recipient = "";
+	notice.z_default_format = "";
+	notice.z_message_len = 0;
 
-	    notice.z_dest_galaxy = galaxy;
-
-	    if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE) {
+	if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE)
 		ss_perror(sci_idx,retval,"while sending notice");
-		return;
-	    }
-	}
-    } else {
-	if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE) {
-	    ss_perror(sci_idx,retval,"while sending notice");
-	    return;
-	}
-    }
 } 
 
 void
@@ -304,55 +302,79 @@ set_var(argc,argv)
 	int argc;
 	register char **argv;
 {
-    int retval,setting_exp,i;
-    char *galaxy;
-    char varcat[BUFSIZ];
+	int retval,setting_exp,i;
+	char *exp_level,*newargv[1];
+	char varcat[BUFSIZ];
 	
-    if (argc < 2) {
-	fprintf(stderr,"Usage: %s <varname> [value]\n",
-		argv[0]);
-	return;
-    }
-
-    setting_exp = 0;
-
-    if (strncasecmp(argv[1],"exposure",8) == 0) {
-	setting_exp = 1;
-	if (argc != 3) {
-	    fprintf(stderr, "An exposure setting must be specified.\n");
-	    return;
+	if (argc < 2) {
+		fprintf(stderr,"Usage: %s <varname> [value]\n",
+			argv[0]);
+		return;
 	}
-	if (strlen(argv[1]) == 8) {
-	    galaxy = NULL; /* the default */
-	} else if ((strlen(argv[1]) == 9) ||
-		   (ZGetRhs(argv[1]+9) == NULL)) {
-	    fprintf(stderr, "The exposure variable's galaxy name was empty or invalid.\nUse a variable of the form exposure-GALAXYNAME.\n");
-	    return;
-	} else {
-	    galaxy = argv[1]+9;
-	}
-    } 
 
-    if (argc == 2)
-	retval = ZSetVariable(argv[1],"");
-    else {
-	(void) strcpy(varcat,argv[2]);
-	for (i=3;i<argc;i++) {
-	    (void) strcat(varcat," ");
-	    (void) strcat(varcat,argv[i]);
+	setting_exp = 0;
+
+	if (!strcasecmp(argv[1],"exposure")) {
+		setting_exp = 1;
+		if (argc != 3) {
+			fprintf(stderr,"An exposure setting must be specified.\n");
+			return;
+		}
+		exp_level = (char *)0;
+		if (!strcasecmp(argv[2],EXPOSE_NONE))
+			exp_level = EXPOSE_NONE;
+		if (!strcasecmp(argv[2],EXPOSE_OPSTAFF))
+			exp_level = EXPOSE_OPSTAFF;
+		if (!strcasecmp(argv[2],EXPOSE_REALMVIS))
+			exp_level = EXPOSE_REALMVIS;
+		if (!strcasecmp(argv[2],EXPOSE_REALMANN))
+			exp_level = EXPOSE_REALMANN;
+		if (!strcasecmp(argv[2],EXPOSE_NETVIS))
+			exp_level = EXPOSE_NETVIS;
+		if (!strcasecmp(argv[2],EXPOSE_NETANN))
+			exp_level = EXPOSE_NETANN;
+		if (!exp_level) {
+			fprintf(stderr,"The exposure setting must be one of:\n");
+			fprintf(stderr,"%s, %s, %s, %s, %s, %s.\n",
+				EXPOSE_NONE,
+				EXPOSE_OPSTAFF,
+				EXPOSE_REALMVIS,
+				EXPOSE_REALMANN,
+				EXPOSE_NETVIS,
+				EXPOSE_NETANN);
+			return;
+		}
 	} 
-	retval = ZSetVariable(argv[1],varcat);
-    } 
+	if (argc == 2)
+		retval = ZSetVariable(argv[1],"");
+	else {
+		(void) strcpy(varcat,argv[2]);
+		for (i=3;i<argc;i++) {
+			(void) strcat(varcat," ");
+			(void) strcat(varcat,argv[i]);
+		} 
+		retval = ZSetVariable(argv[1],varcat);
+	} 
 
-    if (retval != ZERR_NONE) {
-	ss_perror(sci_idx,retval,"while setting variable value");
-	return;
-    }
+	if (retval != ZERR_NONE) {
+		ss_perror(sci_idx,retval,"while setting variable value");
+		return;
+	}
 
-    /* Side-effects?  Naw, us? */
+	/* Side-effects?  Naw, us? */
 	
-    if (setting_exp)
-	set_exposure(galaxy?galaxy:"*", argv[2]);
+	if (setting_exp) {
+		if ((retval = ZSetLocation(exp_level)) != ZERR_NONE)
+			ss_perror(sci_idx,retval,"while changing exposure status");
+		if (!strcmp(exp_level,EXPOSE_NONE)) {
+			newargv[0] = "wg_shutdown";
+			wgc_control(1,newargv);
+		} else {
+			newargv[0] = "wg_startup";
+			wgc_control(1,newargv);
+		}
+		return;
+	} 
 }
 
 void
@@ -360,32 +382,20 @@ do_hide(argc,argv)
 	int argc;
 	char *argv[];
 {
-    char *exp_level;
-    char *galaxy;
-    int cnt, i;
-    Code_t code;
+	char *exp_level = NULL;
+	Code_t retval;
 
-    if (argc > 2) {
-	fprintf(stderr, "Usage: %s [galaxy]\n",argv[0]);
+	if (argc != 1) {
+		fprintf(stderr, "Usage: %s\n",argv[0]);
+		return;
+	}
+	if (!strcmp(argv[0],"unhide"))
+		exp_level = EXPOSE_REALMVIS;
+	else
+		exp_level = EXPOSE_OPSTAFF;
+	if ((retval = ZSetLocation(exp_level)) != ZERR_NONE)
+		ss_perror(sci_idx,retval,"while changing exposure status");
 	return;
-    }
-
-    if (strcmp(argv[0], "unhide") == 0) {
-	exp_level = ZGetVariable("exposure");
-	if (exp_level)
-	    exp_level = ZParseExposureLevel(exp_level);
-	if (!exp_level)
-	    exp_level = EXPOSE_REALMVIS;
-    } else {
-	exp_level = EXPOSE_OPSTAFF;
-    }
-
-    galaxy = (argc > 1)?argv[1]:NULL;
-
-    if (code = set_exposure(galaxy, exp_level)) {
-	ss_perror(sci_idx, code, "while setting exposures");
-	return;
-    }
 }
 
 void
@@ -406,54 +416,26 @@ unset_var(argc,argv)
 			ss_perror(sci_idx,retval,
 				  "while unsetting variable value");
 }
-	
+
 void
 cancel_subs(argc,argv)
 	int argc;
 	char *argv[];
 {
-    int retval;
-    short wgport;
-    int i, cnt;
-    char *galaxy;
+	int retval;
+	short wgport;
 
-    if (argc > 2) {
-	fprintf(stderr,"Usage: %s [galaxy]\n",argv[0]);
-	return;
-    }
-
-    if ((wgport = ZGetWGPort()) == -1) {
-	ss_perror(sci_idx,errno,"while finding WindowGram port");
-	return;
-    } 
-
-    galaxy = (argc > 1)?argv[1]:NULL;
-
-    if (galaxy && strcmp(galaxy, "*") == 0) {
-	if (retval = ZGetGalaxyCount(&cnt)) {
-	    ss_perror(sci_idx, retval, "while getting galaxy count");
-	    return;
-	}
-
-	for (i=0; i<cnt; i++) {
-	    if (retval = ZGetGalaxyName(i, &galaxy)) {
-		ss_perror(sci_idx, retval, "while getting galaxy name");
+	if (argc != 1) {
+		fprintf(stderr,"Usage: %s\n",argv[0]);
 		return;
-	    }
+	} 
 
-	    if ((retval = ZCancelSubscriptions(galaxy, (u_short)wgport))
-		!= ZERR_NONE) {
+ 	if ((wgport = ZGetWGPort()) == -1) {
+		ss_perror(sci_idx,errno,"while finding WindowGram port");
+		return;
+	} 
+	if ((retval = ZCancelSubscriptions((u_short)wgport)) != ZERR_NONE)
 		ss_perror(sci_idx,retval,"while cancelling subscriptions");
-		return;
-	    }
-	}
-    } else {
-	if ((retval = ZCancelSubscriptions(galaxy, (u_short)wgport))
-	    != ZERR_NONE) {
-	    ss_perror(sci_idx,retval,"while cancelling subscriptions");
-	    return;
-	}
-    }
 }
 
 void
@@ -464,35 +446,15 @@ subscribe(argc,argv)
 	int retval;
 	short wgport;
 	ZSubscription_t sub,sub2;
-	char *galaxy;
-	int mode;
 	
-	if (argc > 5 || argc < 3) {
-		fprintf(stderr,"Usage: %s class instance [* [galaxy]]\n",
-			argv[0]);
+	if (argc > 4 || argc < 3) {
+		fprintf(stderr,"Usage: %s class instance [*]\n",argv[0]);
 		return;
 	}
 	
-	if (strncmp(argv[0], "sub", 3) == 0) {
-		mode = SUB;
-	} else if (strncmp(argv[0], "unsub", 5) == 0) {
-		mode = UNSUB;
-	} else if ((strncmp(argv[0], "punt", 4) == 0) ||
-		   (strncmp(argv[0], "sup", 3) == 0)) {
-		mode = PUNT;
-	} else if ((strncmp(argv[0], "unpunt", 6) == 0) ||
-		   (strncmp(argv[0], "unsup", 5) == 0)) {
-		mode = UNPUNT;
-	} else {
-		ss_perror(sci_idx, 0, "internal error in subscribe");
-		exit(1);
-	}
-
 	sub.zsub_class = argv[1];
 	sub.zsub_classinst = argv[2];
-	sub.zsub_recipient = (argc > 3)?argv[3]:
-		(((mode == PUNT) || (mode == UNPUNT))?"":ZGetSender());
-	galaxy = (argc > 4)?argv[4]:NULL;
+	sub.zsub_recipient = (argc == 3)?ZGetSender():argv[3];
 
 	fix_macros(&sub,&sub2,1);
 	
@@ -501,26 +463,12 @@ subscribe(argc,argv)
 		return;
 	} 
 
-	switch (mode) {
-	case SUB:
-		if (retval = ZSubscribeTo(galaxy, &sub2, 1, (u_short) wgport))
-			ss_perror(sci_idx, retval, "while subscribing");
-		break;
-	case UNSUB:
-		if (retval = ZUnsubscribeTo(galaxy, &sub2, 1, (u_short) wgport))
-			ss_perror(sci_idx, retval, "while subscribing");
-		break;
-	case PUNT:
-		if (retval = xpunt(sub2.zsub_class, sub2.zsub_classinst,
-				  sub2.zsub_recipient, PUNT))
-			ss_perror(sci_idx, retval, "while suppressing");
-		break;
-	case UNPUNT:
-		if (retval = xpunt(sub2.zsub_class, sub2.zsub_classinst,
-				    sub2.zsub_recipient, UNPUNT))
-			ss_perror(sci_idx, retval, "while unsuppressing");
-		break;
-	}
+	retval = (*argv[0] == 's') ?
+		ZSubscribeToSansDefaults(&sub2,1,(u_short)wgport) :
+		ZUnsubscribeTo(&sub2,1,(u_short)wgport);
+	
+	if (retval != ZERR_NONE)
+		ss_perror(sci_idx,retval,"while subscribing");
 } 
 
 void
@@ -530,145 +478,69 @@ sub_file(argc,argv)
 {
 	ZSubscription_t sub;
 	short wgport;
-	char fn[MAXPATHLEN];
-	char *arggalaxy, *galaxy;
-	int cnt, i;
-	Code_t retval;
-	int del, mode;
 
-	if (argc > 5 || argc < 3) {
-		fprintf(stderr,"Usage: %s class instance [* [galaxy]]\n",
-			argv[0]);
+	if (argc > 4 || argc < 3) {
+		fprintf(stderr,"Usage: %s class instance [*]\n",argv[0]);
 		return;
-	}
-
-	if (!strcmp(argv[0],"add")) {
-		del = 0;
-		mode = SUB;
-	} else if (!strcmp(argv[0],"add_unsubscription") ||
-		   !strcmp(argv[0],"add_un")) {
-		del = 0;
-		mode = UNSUB;
-	} else if (!strcmp(argv[0],"add_suppression") ||
-		   !strcmp(argv[0],"add_punt")) {
-		del = 0;
-		mode = PUNT;
-	} else if (!strcmp(argv[0],"delete") ||
-		   !strcmp(argv[0],"del") ||
-		   !strcmp(argv[0],"dl")) {
-		del = 1;
-		mode = SUB;
-	} else if (!strcmp(argv[0],"delete_unsubscription") ||
-		   !strcmp(argv[0],"del_un")) {
-		del = 1;
-		mode = UNSUB;
-	} else if (!strcmp(argv[0],"delete_suppression") ||
-		   !strcmp(argv[0],"del_punt")) {
-		del = 1;
-		mode = PUNT;
-	} else {
-		ss_perror(sci_idx,0,"unknown command name");
 	}
 
 	if (argv[1][0] == '!') {
-		ss_perror(sci_idx,0, (mode == UNSUB)?
+		ss_perror(sci_idx,0,
+			  (!strcmp(argv[0],"add_unsubscription") ||
+			   !strcmp(argv[0],"add_un") ||
+			   !strcmp(argv[0],"delete_unsubscription") ||
+			   !strcmp(argv[0],"del_un")) ?
 			  "Do not use `!' as the first character of a class.\n\tIt is automatically added before modifying the subscription file." :
 			  "Do not use `!' as the first character of a class.\n\tIt is reserved for internal use with un-subscriptions.");
 		return;
-	} else if (argv[1][0] == '-') {
-		ss_perror(sci_idx,0, (mode == PUNT)?
-			  "Do not use `-' as the first character of a class.\n\tIt is automatically added before modifying the subscription file." :
-			  "Do not use `-' as the first character of a class.\n\tIt is reserved for internal use with suppressions.");
-		return;
 	}
-
 	sub.zsub_class = argv[1];
 	sub.zsub_classinst = argv[2];
-	sub.zsub_recipient = (argc > 3)?argv[3]:
-		(((mode == PUNT) || (mode == UNPUNT))?"":TOKEN_ME);
-	arggalaxy = (argc > 4)?argv[4]:NULL;
+	sub.zsub_recipient = (argc == 3)?TOKEN_ME:argv[3];
 
-	if (arggalaxy) {
-	    if (retval = ZGetGalaxyCount(&cnt)) {
-		ss_perror(sci_idx, retval, "while getting galaxy count");
+	if (make_exist(subsname))
 		return;
-	    }
-
-	    for (i=0; i<cnt; i++) {
-		if (retval = ZGetGalaxyName(i, &galaxy)) {
-		    ss_perror(sci_idx, retval, "while getting galaxy name");
-		    return;
-		}
-
-		if (strcasecmp(galaxy, arggalaxy) == 0)
-		    break;
-	    }
-
-	    if (i == cnt) {
-		ss_perror(sci_idx, 0,
-			  "unknown galaxy specified while modifying subscripion file");
-		return;
-	    }
-	} else {
-	    galaxy = ZGetDefaultGalaxy();
-	}
-
  	if ((wgport = ZGetWGPort()) == -1) {
 		ss_perror(sci_idx,errno,"while finding WindowGram port");
 		return;
 	} 
 
-	strcpy(fn, subsname);
-	strcat(fn, "-");
-	strcat(fn, galaxy);
-
-	if (!strcmp(argv[0],"add")) {
-		add_file(fn, galaxy, wgport, &sub, SUB);
-	} else if (!strcmp(argv[0],"add_unsubscription") ||
-		   !strcmp(argv[0],"add_un")) {
-		add_file(fn, galaxy, wgport, &sub, UNSUB);
-	} else if (!strcmp(argv[0],"add_suppression") ||
-		   !strcmp(argv[0],"add_punt")) {
-		add_file(fn, galaxy, wgport, &sub, PUNT);
-	} else if (!strcmp(argv[0],"delete") ||
-		   !strcmp(argv[0],"del") ||
-		   !strcmp(argv[0],"dl")) {
-		del_file(fn, galaxy, wgport, &sub, SUB);
-	} else if (!strcmp(argv[0],"delete_unsubscription") ||
-		   !strcmp(argv[0],"del_un")) {
-		del_file(fn, galaxy, wgport, &sub, UNSUB);
-	} else if (!strcmp(argv[0],"delete_suppression") ||
-		   !strcmp(argv[0],"del_punt")) {
-		del_file(fn, galaxy, wgport, &sub, PUNT);
-	} else {
+	if (!strcmp(argv[0],"add"))
+		add_file(wgport,&sub,0);
+	else if (!strcmp(argv[0],"add_unsubscription") ||
+		 !strcmp(argv[0],"add_un"))
+		add_file(wgport,&sub,1);
+	else if (!strcmp(argv[0],"delete") ||
+		 !strcmp(argv[0],"del") ||
+		 !strcmp(argv[0],"dl"))
+		del_file(wgport,&sub,0);
+	else if (!strcmp(argv[0],"delete_unsubscription") ||
+		 !strcmp(argv[0],"del_un")) {
+		del_file(wgport,&sub,1);
+	} else
 		ss_perror(sci_idx,0,"unknown command name");
-	}
 	return;
 }
 
 void
-add_file(fn,galaxy,wgport,subs,mode)
-     char *fn;
-     char *galaxy;
-     short wgport;
-     ZSubscription_t *subs;
-     int mode;
+add_file(wgport,subs,unsub)
+short wgport;
+ZSubscription_t *subs;
+int unsub;
 {
 	FILE *fp;
 	char errbuf[BUFSIZ];
 	ZSubscription_t sub2;
 	Code_t retval;
 
-	(void) purge_subs(fn,subs,ALL);	/* remove copies in the subs file */
-	if (!(fp = fopen(fn,"a"))) {
-		(void) sprintf(errbuf,"while opening %s for append", fn);
+	(void) purge_subs(subs,ALL);	/* remove copies in the subs file */
+	if (!(fp = fopen(subsname,"a"))) {
+		(void) sprintf(errbuf,"while opening %s for append",subsname);
 		ss_perror(sci_idx,errno,errbuf);
 		return;
 	} 
 	fprintf(fp,"%s%s,%s,%s\n",
-		((mode == UNSUB) ? "!" : 
-		 ((mode == PUNT) ? "*" :
-		  "")),
+		unsub ? "!" : "",
 		subs->zsub_class, subs->zsub_classinst, subs->zsub_recipient);
 	if (fclose(fp) == EOF) {
 		(void) sprintf(errbuf, "while closing %s", subsname);
@@ -676,70 +548,53 @@ add_file(fn,galaxy,wgport,subs,mode)
 		return;
 	}
 	fix_macros(subs,&sub2,1);
-	if (mode == UNSUB) {
-		if (retval = ZUnsubscribeTo(galaxy, &sub2,1,(u_short)wgport))
-			ss_perror(sci_idx, retval, "while subscribing");
-	} else if (mode == PUNT) {
-		if (retval = xpunt(sub2.zsub_class, sub2.zsub_classinst,
-				  sub2.zsub_recipient, PUNT))
-			ss_perror(sci_idx, retval, "while unsubscribing");
-	} else {
-		if (retval = ZSubscribeTo(galaxy, &sub2,1,(u_short)wgport))
-			ss_perror(sci_idx, retval, "while suppressing");
-	}
-
+	if (retval = (unsub ? ZUnsubscribeTo(&sub2,1,(u_short)wgport) :
+		       ZSubscribeToSansDefaults(&sub2,1,(u_short)wgport)))
+		ss_perror(sci_idx,retval,
+			  unsub ? "while unsubscribing" :
+			  "while subscribing");
 	return;
 }
 
 void
-del_file(fn,galaxy,wgport,subs,mode)
-     char *fn;
-     char *galaxy;
-     short wgport;
-     ZSubscription_t *subs;
-     int mode;
+del_file(wgport,subs,unsub)
+short wgport;
+register ZSubscription_t *subs;
+int unsub;
 {
 	ZSubscription_t sub2;
 	int retval;
 	
-	retval = purge_subs(fn, subs, mode);
+	retval = purge_subs(subs, unsub ? UNSUBONLY : SUBONLY);
 	if (retval == ERR)
 		return;
 	if (retval == NOT_REMOVED)
 		fprintf(stderr,
 			"Couldn't find %sclass %s instance %s recipient %s in\n\tfile %s\n",
-			((mode == UNSUB) ? "un-subscription " : 
-			 ((mode == PUNT) ? "suppression " :
-			  "")),
+			unsub ? "un-subscription " : "",
 			subs->zsub_class, subs->zsub_classinst,
 			subs->zsub_recipient, subsname);
 	fix_macros(subs,&sub2,1);
-	if (mode == PUNT) {
-		if (retval = xpunt(sub2.zsub_class, sub2.zsub_classinst,
-				    sub2.zsub_recipient, UNPUNT))
-			ss_perror(sci_idx,retval,"while unsuppressing");
-	} else if ((retval = ZUnsubscribeTo(galaxy, &sub2,1,(u_short)wgport)) !=
-		   ZERR_NONE) {
+	if ((retval = ZUnsubscribeTo(&sub2,1,(u_short)wgport)) !=
+	    ZERR_NONE)
 		ss_perror(sci_idx,retval,"while unsubscribing");
-	}
+	return;
 }
 
 int
-purge_subs(fn, subs, mode)
-     char *fn;
-     register ZSubscription_t *subs;
-     int mode;
+purge_subs(subs,which)
+register ZSubscription_t *subs;
+int which;
 {
 	FILE *fp,*fpout;
 	char errbuf[BUFSIZ],subline[BUFSIZ];
 	char backup[BUFSIZ],ourline[BUFSIZ];
 	int delflag = NOT_REMOVED;
-	int purge;
+	int keep;
 
-	switch (mode) {
-	case SUB:
-	case UNSUB:
-	case PUNT:
+	switch (which) {
+	case SUBONLY:
+	case UNSUBONLY:
 	case ALL:
 		break;
 	default:
@@ -752,16 +607,12 @@ purge_subs(fn, subs, mode)
 		       subs->zsub_classinst,
 		       subs->zsub_recipient);
 
-	if (!(fp = fopen(fn,"r"))) {
-		if (errno == ENOENT)
-			/* if the filw doesn't exist, then the sub
-			   is clearly purged */
-			return(delflag);
-		(void) sprintf(errbuf,"while opening %s for read", fn);
+	if (!(fp = fopen(subsname,"r"))) {
+		(void) sprintf(errbuf,"while opening %s for read",subsname);
 		ss_perror(sci_idx,errno,errbuf);
 		return(ERR);
 	} 
-	(void) strcpy(backup, fn);
+	(void) strcpy(backup, subsname);
 	(void) strcat(backup, ".temp");
 	(void) unlink(backup);
 	if (!(fpout = fopen(backup,"w"))) {
@@ -775,34 +626,28 @@ purge_subs(fn, subs, mode)
 			break;
 		if (*subline)
 			subline[strlen(subline)-1] = '\0'; /* nuke newline */
-		switch (mode) {
-		case SUB:
-			purge = (strcmp(subline,ourline) == 0);
+		switch (which) {
+		case SUBONLY:
+			keep = strcmp(subline,ourline);
 			break;
-		case UNSUB:
-			purge = (*subline == '!' &&
-				 (strcmp(subline+1,ourline) == 0));
-			break;
-		case PUNT:
-			purge = (*subline == '-' &&
-				 (strcmp(subline+1,ourline) == 0));
+		case UNSUBONLY:
+			keep = (*subline != '!' || strcmp(subline+1,ourline));
 			break;
 		case ALL:
-			purge = ((strcmp(subline,ourline) == 0) ||
-				 (((*subline == '!') || (*subline == '-')) &&
-				  (strcmp(subline+1, ourline) == 0)));
+			keep = (strcmp(subline,ourline) &&
+				(*subline != '!' || strcmp(subline+1,
+							   ourline)));
 			break;
 		}
-		if (purge) {
-			delflag = REMOVED;
-		} else {
+		if (keep) {
 			fputs(subline, fpout);
 			if (ferror(fpout) || (fputc('\n', fpout) == EOF)) {
 				(void) sprintf(errbuf, "while writing to %s",
 					       backup);
 				ss_perror(sci_idx, errno, errbuf);
 			}
-		}
+		} else
+			delflag = REMOVED;
 	}
 	(void) fclose(fp);		/* open read-only, ignore errs */
 	if (fclose(fpout) == EOF) {
@@ -810,9 +655,9 @@ purge_subs(fn, subs, mode)
 		ss_perror(sci_idx, errno, errbuf);
 		return(ERR);
 	}
-	if (rename(backup, fn) == -1) {
+	if (rename(backup,subsname) == -1) {
 		(void) sprintf(errbuf,"while renaming %s to %s\n",
-			       backup, fn);
+			       backup,subsname);
 		ss_perror(sci_idx,errno,errbuf);
 		return(ERR);
 	}
@@ -824,78 +669,177 @@ load_subs(argc,argv)
 	int argc;
 	char *argv[];
 {
-	int type, cnt, i;
-	char *file;
-	char *arggalaxy, *galaxy;
-	Code_t code;
+	ZSubscription_t subs[SUBSATONCE],subs2[SUBSATONCE],unsubs[SUBSATONCE];
+	FILE *fp;
+	int ind,unind,lineno,i,retval,type;
+	short wgport;
+	char *comma,*comma2,*file,subline[BUFSIZ];
 
-	if (argc > 3) {
-		fprintf(stderr,"Usage: %s [file [galaxy]]\n",argv[0]);
+	if (argc > 2) {
+		fprintf(stderr,"Usage: %s [file]\n",argv[0]);
 		return;
 	}
 
 	if (*argv[0] == 'u')
 		type = UNSUB;
-	else if (!strcmp(argv[0],"list") || !strcmp(argv[0],"ls"))
-		type = LIST;
 	else
-		type = SUB;
+		if (!strcmp(argv[0],"list") || !strcmp(argv[0],"ls"))
+			type = LIST;
+		else
+			type = SUB;
 
-	file = (argc > 1)?argv[1]:subsname;
-	arggalaxy = (argc > 2)?argv[2]:NULL;
+	if (type != LIST) 
+		if ((wgport = ZGetWGPort()) == -1) {
+			ss_perror(sci_idx,errno,
+				  "while finding WindowGram port");
+			return;
+		} 
 
-	if (arggalaxy) {
-	    if (code = ZGetGalaxyCount(&cnt)) {
-		ss_perror(sci_idx, code, "while getting galaxy count");
-		return;
-	    }
-
-	    for (i=0; i<cnt; i++) {
-		if (code = ZGetGalaxyName(i, &galaxy)) {
-		    ss_perror(sci_idx, code, "while getting galaxy name");
-		    return;
-		}
-
-		if (strcasecmp(galaxy, arggalaxy) == 0)
-		    break;
-	    }
-
-	    if (i == cnt) {
-		ss_perror(sci_idx, 0,
-			  "unknown galaxy specified while loading subscription file");
-		return;
-	    }
-	} else {
-	    galaxy = NULL;
-	}
-
-	if (code = load_sub_file(type, file, galaxy))
-	    ss_perror(sci_idx, code,
-		      "while loading subscription file");
-
-}
-
-void
-loadall(argc,argv)
-	int argc;
-	char *argv[];
-{	
-    int retval;
-    char *galaxy;
-    int type, cnt, i;
-    char fn[MAXPATHLEN];
+	file = (argc == 1) ? subsname : argv[1];
 	
-    if (argc > 1) {
-	fprintf(stderr,"Usage: %s\n",argv[0]);
+	fp = fopen(file,"r");
+
+	if (fp == NULL) {
+		ss_perror(sci_idx,errno,
+			  "while loading subscription file");
+		return;
+	}
+	
+	ind = unind = 0;
+	lineno = 1;
+	
+	for (;;lineno++) {
+		if (!fgets(subline,sizeof subline,fp))
+			break;
+		if (*subline == '#' || !*subline)
+			continue;
+		subline[strlen(subline)-1] = '\0'; /* nuke newline */
+		comma = strchr(subline,',');
+		if (comma)
+			comma2 = strchr(comma+1,',');
+		else
+			comma2 = 0;
+		if (!comma || !comma2) {
+			fprintf(stderr,
+				"Malformed subscription at line %d of %s:\n%s\n",
+				lineno,file,subline);
+			continue;
+		}
+		*comma = '\0';
+		*comma2 = '\0';
+		if (type == LIST) {
+			if (*subline == '!') 
+				printf("(Un-subscription) Class %s instance %s recipient %s\n",
+				       subline+1, comma+1, comma2+1);
+			else
+				printf("Class %s instance %s recipient %s\n",
+				       subline, comma+1, comma2+1);
+			continue;
+		}
+		if (*subline == '!') {	/* an un-subscription */
+			/* if we are explicitly un-subscribing to
+			   the contents of a subscription file, ignore
+			   any un-subscriptions in that file */
+			if (type == UNSUB)
+				continue;
+			unsubs[unind].zsub_class =
+			    (char *)malloc((unsigned)(strlen(subline)));
+			/* XXX check malloc return */
+			/* skip the leading '!' */
+			(void) strcpy(unsubs[unind].zsub_class,subline+1);
+			unsubs[unind].zsub_classinst =
+			    (char *)malloc((unsigned)(strlen(comma+1)+1));
+			/* XXX check malloc return */
+			(void) strcpy(unsubs[unind].zsub_classinst,comma+1);
+			unsubs[unind].zsub_recipient =
+			    (char *)malloc((unsigned)(strlen(comma2+1)+1));
+			/* XXX check malloc return */
+			(void) strcpy(unsubs[unind].zsub_recipient,comma2+1);
+			unind++;
+		} else {
+			subs[ind].zsub_class =
+			    (char *)malloc((unsigned)(strlen(subline)+1));
+			/* XXX check malloc return */
+			(void) strcpy(subs[ind].zsub_class,subline);
+			subs[ind].zsub_classinst =
+			    (char *)malloc((unsigned)(strlen(comma+1)+1));
+			/* XXX check malloc return */
+			(void) strcpy(subs[ind].zsub_classinst,comma+1);
+			subs[ind].zsub_recipient =
+			    (char *)malloc((unsigned)(strlen(comma2+1)+1));
+			/* XXX check malloc return */
+			(void) strcpy(subs[ind].zsub_recipient,comma2+1);
+			ind++;
+		}
+		if (ind == SUBSATONCE) {
+			fix_macros(subs,subs2,ind);
+			if ((retval = (type == SUB)?
+			     ZSubscribeTo(subs2,ind,(u_short)wgport):
+			     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) !=
+			    ZERR_NONE) {
+				ss_perror(sci_idx,retval,(type == SUB)?
+					  "while subscribing":
+					  "while unsubscribing");
+				goto cleanup;
+			}
+			for (i=0;i<ind;i++) {
+				free(subs[i].zsub_class);
+				free(subs[i].zsub_classinst);
+				free(subs[i].zsub_recipient);
+			} 
+			ind = 0;
+		}
+		if (unind == SUBSATONCE) {
+			fix_macros(unsubs,subs2,unind);
+			if ((retval = ZUnsubscribeTo(subs2,unind,(u_short)wgport)) != ZERR_NONE) {
+				ss_perror(sci_idx,retval,
+					  "while unsubscribing to un-subscriptions");
+				goto cleanup;
+			}
+			for (i=0;i<unind;i++) {
+				free(unsubs[i].zsub_class);
+				free(unsubs[i].zsub_classinst);
+				free(unsubs[i].zsub_recipient);
+			} 
+			unind = 0;
+		}
+	}
+	
+	if (type != LIST) {
+		/* even if we have no subscriptions, be sure to send
+		   an empty packet to trigger the default subscriptions */
+		fix_macros(subs,subs2,ind);
+		if ((retval = (type == SUB)?ZSubscribeTo(subs2,ind,(u_short)wgport):
+		     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) != ZERR_NONE) {
+			ss_perror(sci_idx,retval,(type == SUB)?
+				  "while subscribing":
+				  "while unsubscribing");
+			goto cleanup;
+		}
+		if (unind) {
+			fix_macros(unsubs,subs2,unind);
+			if ((retval =
+			     ZUnsubscribeTo(subs2,unind,(u_short)wgport)) != ZERR_NONE) {
+				ss_perror(sci_idx,retval,
+					  "while unsubscribing to un-subscriptions");
+				goto cleanup;
+			}
+		}
+	}
+cleanup:
+	for (i=0;i<ind;i++) {
+	  free(subs[i].zsub_class);
+	  free(subs[i].zsub_classinst);
+	  free(subs[i].zsub_recipient);
+	} 
+	for (i=0;i<unind;i++) {
+	  free(unsubs[i].zsub_class);
+	  free(unsubs[i].zsub_classinst);
+	  free(unsubs[i].zsub_recipient);
+	} 
+
+	(void) fclose(fp);	/* ignore errs--file is read-only */
 	return;
-    }
-
-    if (!strcmp(argv[0],"list") || !strcmp(argv[0],"ls"))
-	type = LIST;
-    else
-	type = SUB;
-
-    load_all_sub_files(type, subsname);
 }
 
 void
@@ -908,7 +852,7 @@ current(argc,argv)
 	ZSubscription_t subs;
 	int i,nsubs,retval,save,one,defs;
 	short wgport;
-	char *galaxy, *file, backup[BUFSIZ];
+	char *file,backup[BUFSIZ];
 	
 	save = 0;
 	defs = 0;
@@ -918,22 +862,9 @@ current(argc,argv)
 	else if (!strcmp(argv[0], "defaults") || !strcmp(argv[0], "defs"))
 		defs = 1;
 
-	if (save) {
-		if (argc > 3) {
-			fprintf(stderr,"Usage: %s [filename [galaxy]]\n",
-				argv[0]);
-			return;
-		} else {
-			file = (argc > 1)?argv[1]:subsname;
-			galaxy = (argc > 2)?argv[2]:NULL;
-		}
-	} else {
-		if (argc > 2) {
-			fprintf(stderr,"Usage: %s [galaxy]\n",argv[0]);
-			return;
-		} else {
-			galaxy = (argc > 1)?argv[1]:NULL;
-		}
+	if (argc != 1 && !(save && argc == 2)) {
+		fprintf(stderr,"Usage: %s%s\n",argv[0],save?" [filename]":"");
+		return;
 	}
 
 	if (!defs)
@@ -944,9 +875,9 @@ current(argc,argv)
 		} 
 
 	if (defs)
-		retval = ZRetrieveDefaultSubscriptions(galaxy, &nsubs);
+		retval = ZRetrieveDefaultSubscriptions(&nsubs);
 	else
-		retval = ZRetrieveSubscriptions(galaxy,(u_short)wgport,&nsubs);
+		retval = ZRetrieveSubscriptions((u_short)wgport,&nsubs);
 
 	if (retval == ZERR_TOOMANYSUBS) {
 		fprintf(stderr,"Too many subscriptions -- some have not been returned.\n");
@@ -962,6 +893,7 @@ current(argc,argv)
 		}
 
 	if (save) {
+		file = (argc == 1)?subsname:argv[1];
 		(void) strcpy(backup,file);
 		(void) strcat(backup,".temp");
 		if (!(fp = fopen(backup,"w"))) {
@@ -1005,4 +937,60 @@ current(argc,argv)
 			(void) unlink(backup);
 		}
 	}
+}
+
+int
+make_exist(filename)
+	char *filename;
+{
+	char errbuf[BUFSIZ];
+	FILE *fpout;
+	
+	if (!access(filename,F_OK))
+		return (0);
+
+	if (!(fpout = fopen(filename,"w"))) {
+		(void) sprintf(errbuf,"while opening %s for write",filename);
+		ss_perror(sci_idx,errno,errbuf);
+		return (1);
+	}
+
+	if (fclose(fpout) == EOF) {
+		(void) sprintf(errbuf, "while closing %s", filename);
+		ss_perror(sci_idx, errno, errbuf);
+		return(1);
+	}
+	return (0);
+}
+
+void
+fix_macros(subs,subs2,num)
+	ZSubscription_t *subs,*subs2;
+	int num;
+{
+	int i;
+
+	for (i=0;i<num;i++) {
+		subs2[i] = subs[i];
+		fix_macros2(subs[i].zsub_class,&subs2[i].zsub_class);
+		fix_macros2(subs[i].zsub_classinst,&subs2[i].zsub_classinst);
+		fix_macros2(subs[i].zsub_recipient,&subs2[i].zsub_recipient);
+	}
+}
+
+void
+fix_macros2(src,dest)
+	register char *src;
+	char **dest;
+{
+	if (!strcmp(src,TOKEN_HOSTNAME)) {
+		*dest = ourhost;
+		return;
+	}
+	if (!strcmp(src,TOKEN_CANONNAME)) {
+		*dest = ourhostcanon;
+		return;
+	}
+	if (!strcmp(src,TOKEN_ME))
+		*dest = ZGetSender();
 }

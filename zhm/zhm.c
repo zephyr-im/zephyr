@@ -10,73 +10,53 @@
  *      "mit-copyright.h". 
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <sys/param.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
 #include "zhm.h"
 
 static const char rcsid_hm_c[] = "$Id$";
+
+#ifdef HAVE_HESIOD
+int use_hesiod = 0;
+#endif
 
 #ifdef macII
 #define srandom srand48
 #endif
 
-#ifdef _PATH_VARRUN
-#define PIDDIR _PATH_VARRUN
-#else
-#define PIDDIR "/etc/"
-#endif
+#define PIDDIR "/var/athena/"
 
-
-int hmdebug = 0, noflushflag = 0;
-time_t starttime;
+int hmdebug, rebootflag, noflushflag, errflg, dieflag, inetd, oldpid, nofork;
+int no_server = 1, nservchang, nserv, nclt;
+int booting = 1, timeout_type, deactivated = 1;
+long starttime;
 u_short cli_port;
-struct sockaddr_in cli_sin;
+struct sockaddr_in cli_sin, serv_sin, from;
+int numserv;
+char **serv_list = NULL;
+char prim_serv[MAXHOSTNAMELEN], cur_serv[MAXHOSTNAMELEN];
+char *zcluster;
+int deactivating = 0;
+int terminating = 0;
+struct hostent *hp;
+char hostname[MAXHOSTNAMELEN], loopback[4];
 char PidFile[128];
 
-char *conffile = NULL;
-char *confline = NULL;
-galaxy_info *galaxy_list = NULL;
-int ngalaxies = 0;
-
-volatile int deactivating = 0;
-volatile int terminating = 0;
-
-static RETSIGTYPE deactivate __P(());
-static RETSIGTYPE terminate __P(());
-static void init_hm __P((int, int));
-static void parse_conf __P((char *, char *));
+static RETSIGTYPE deactivate __P((void));
+static RETSIGTYPE terminate __P((void));
+static void choose_server __P((void));
+static void init_hm __P((void));
 static void detach __P((void));
 static void send_stats __P((ZNotice_t *, struct sockaddr_in *));
 static char *strsave __P((const char *));
 extern int optind;
-extern char *optarg;
 
-static RETSIGTYPE deactivate(int signo)
+static RETSIGTYPE deactivate()
 {
     deactivating = 1;
 }
 
-static RETSIGTYPE terminate(int signo)
+static RETSIGTYPE terminate()
 {
     terminating = 1;
-}
-
-static void die_gracefully()
-{
-    int i;
-
-    syslog(LOG_INFO, "Terminate signal caught...");
-
-    for (i=0; i<ngalaxies; i++)
-	galaxy_flush(&galaxy_list[i]);
-
-    unlink(PidFile);
-    closelog();
-    exit(0);
 }
 
 main(argc, argv)
@@ -86,15 +66,17 @@ char *argv[];
     ZPacket_t packet;
     Code_t ret;
     int opt, pak_len, i, j = 0, fd, count;
-    int dieflag = 0, rebootflag = 0, inetd = 0, nofork = 0, errflg = 0;
     fd_set readers;
     struct timeval tv;
-    struct hostent *hp;
-    struct sockaddr_in from;
 
     sprintf(PidFile, "%szhm.pid", PIDDIR);
 
-    while ((opt = getopt(argc, argv, "drhinc:f")) != EOF)
+    if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
+	printf("Can't find my hostname?!\n");
+	exit(-1);
+    }
+    prim_serv[0] = '\0';
+    while ((opt = getopt(argc, argv, "drhinf")) != EOF)
 	switch(opt) {
 	  case 'd':
 	    hmdebug = 1;
@@ -116,9 +98,6 @@ char *argv[];
 	  case 'n':
 	    nofork = 1;
 	    break;
-	  case 'c':
-	    conffile = optarg;
-	    break;
 	  case 'f':
 	    noflushflag = 1;
 	    break;
@@ -127,56 +106,61 @@ char *argv[];
 	    errflg++;
 	    break;
 	}
-
-    /* Override server argument? */
-    if (optind < argc) {
-	if (conffile) {
-	    errflg++;
-	} else {
-	    int len;
-	    static const char lg[] = "local-galaxy hostlist";
-
-	    len = sizeof(lg)+1;
-	    for (i=optind; i < argc; i++)
-		len += strlen(argv[i])+1;
-
-	    if ((confline = (char *) malloc(len)) == NULL) {
-		fprintf(stderr, "Out of memory constructing default galaxy");
-		exit(1);
-	    }
-	    strcpy(confline, lg);
-	    for (i=optind; i < argc; i++) {
-		strcat(confline, " ");
-		strcat(confline, argv[i]);
-	    }
-	}
-    }
-
     if (errflg) {
-	fprintf(stderr, "Usage: %s [-d] [-h] [-r] [-n] [-f] [server... | -c conffile ]\n", argv[0]);
+	fprintf(stderr, "Usage: %s [-d] [-h] [-r] [-n] [-f] [server]\n", 
+		argv[0]);	
 	exit(2);
     }
 
-    ZSetServerState(1);		/* Aargh!!! */
-    if ((ret = ZInitialize()) != ZERR_NONE) {
-	Zperr(ret);
-	com_err("hm", ret, "initializing");
-	closelog();
-	exit(-1);
+    numserv = 0;
+
+    /* Override server argument? */
+    if (optind < argc) {
+	if ((hp = gethostbyname(argv[optind++])) == NULL) {
+	    printf("Unknown server name: %s\n", argv[optind-1]);
+	} else {
+	    strncpy(prim_serv, hp->h_name, sizeof(prim_serv));
+	    prim_serv[sizeof(prim_serv) - 1] = '\0';
+	}
+
+	/* argc-optind is the # of other servers on the command line */
+	serv_list = (char **) malloc((argc - optind + 2) * sizeof(char *));
+	if (serv_list == NULL) {
+	    printf("Out of memory.\n");
+	    exit(-5);
+	}
+	serv_list[numserv++] = prim_serv;
+	for (; optind < argc; optind++) {
+	    if ((hp = gethostbyname(argv[optind])) == NULL) {
+		printf("Unknown server name '%s', ignoring\n", argv[optind]);
+		continue;
+	    }
+	     serv_list[numserv++] = strsave(hp->h_name);
+	}
+	serv_list[numserv] = NULL;
     }
+#ifdef HAVE_HESIOD
+    else
+	use_hesiod = 1;
+#endif
 
-    parse_conf(conffile, confline);
+    choose_server();
+    if (*prim_serv == '\0') {
+	printf("No valid primary server found, exiting.\n");
+	exit(ZERR_SERVNAK);
+    }
+    init_hm();
 
-    init_hm(inetd, nofork);
-
-    for (;;) {
+    DPR2("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
+    DPR2("zephyr client port: %u\n", ntohs(cli_port));
+  
+    /* Main loop */
+    for ever {
 	/* Wait for incoming packets or queue timeouts. */
 	DPR("Waiting for a packet...");
-
 	fd = ZGetFD();
 	FD_ZERO(&readers);
 	FD_SET(fd, &readers);
-
 	count = select(fd + 1, &readers, NULL, NULL, timer_timeout(&tv));
 	if (count == -1 && errno != EINTR) {
 	    syslog(LOG_CRIT, "select() failed: %m");
@@ -191,203 +175,177 @@ char *argv[];
 	    if (dieflag) {
 		die_gracefully();
 	    } else {
-		for (i=0; i<ngalaxies; i++)
-		    galaxy_reset(&galaxy_list[i]);
+		choose_server();
+		send_flush_notice(HM_FLUSH);
+		deactivated = 1;
 	    }
 	}
 
 	timer_process();
 
-	if (count == 0)
-	    continue;
-
-	if ((ret = ZReceivePacket(packet, &pak_len, &from)) != ZERR_NONE) {
-	    if (ret != EINTR) {
+	if (count > 0) {
+	    ret = ZReceivePacket(packet, &pak_len, &from);
+	    if ((ret != ZERR_NONE) && (ret != EINTR)){
 		Zperr(ret);
 		com_err("hm", ret, "receiving notice");
+	    } else if (ret != EINTR) {
+		/* Where did it come from? */
+		if ((ret = ZParseNotice(packet, pak_len, &notice))
+		    != ZERR_NONE) {
+		    Zperr(ret);
+		    com_err("hm", ret, "parsing notice");
+		} else {
+		    DPR("Got a packet.\n");
+		    DPR("notice:\n");
+		    DPR2("\tz_kind: %d\n", notice.z_kind);
+		    DPR2("\tz_port: %u\n", ntohs(notice.z_port));
+		    DPR2("\tz_class: %s\n", notice.z_class);
+		    DPR2("\tz_class_inst: %s\n", notice.z_class_inst);
+		    DPR2("\tz_opcode: %s\n", notice.z_opcode);
+		    DPR2("\tz_sender: %s\n", notice.z_sender);
+		    DPR2("\tz_recip: %s\n", notice.z_recipient);
+		    DPR2("\tz_def_format: %s\n", notice.z_default_format);
+		    DPR2("\tz_message: %s\n", notice.z_message);
+		    if (memcmp(loopback, &from.sin_addr, 4) &&
+			((notice.z_kind == SERVACK) ||
+			 (notice.z_kind == SERVNAK) ||
+			 (notice.z_kind == HMCTL))) {
+			server_manager(&notice);
+		    } else {
+			if (!memcmp(loopback, &from.sin_addr, 4) &&
+			    ((notice.z_kind == UNSAFE) ||
+			     (notice.z_kind == UNACKED) ||
+			     (notice.z_kind == ACKED) ||
+			     (notice.z_kind == HMCTL))) {
+			    /* Client program... */
+			    if (deactivated) {
+				send_boot_notice(HM_BOOT);
+				deactivated = 0;
+			    }
+			    transmission_tower(&notice, packet, pak_len);
+			    DPR2("Pending = %d\n", ZPending());
+			} else {
+			    if (notice.z_kind == STAT) {
+				send_stats(&notice, &from);
+			    } else {
+				syslog(LOG_INFO,
+				       "Unknown notice type: %d",
+				       notice.z_kind);
+			    }
+			}	
+		    }
+		}
 	    }
-	    continue;
-	}
-
-	/* Where did it come from? */
-	if ((ret = ZParseNotice(packet, pak_len, &notice)) != ZERR_NONE) {
-	    Zperr(ret);
-	    com_err("hm", ret, "parsing notice");
-
-	    continue;
-	}
-
-	DPR("Got a packet.\n");
-	DPR("notice:\n");
-	DPR2("\tz_kind: %d\n", notice.z_kind);
-	DPR2("\tz_port: %u\n", ntohs(notice.z_port));
-	DPR2("\tz_class: %s\n", notice.z_class);
-	DPR2("\tz_class_inst: %s\n", notice.z_class_inst);
-	DPR2("\tz_opcode: %s\n", notice.z_opcode);
-	DPR2("\tz_sender: %s\n", notice.z_sender);
-	DPR2("\tz_recip: %s\n", notice.z_recipient);
-	DPR2("\tz_def_format: %s\n", notice.z_default_format);
-	DPR2("\tz_message: %s\n", notice.z_message);
-
-	if ((from.sin_addr.s_addr != htonl(INADDR_LOOPBACK)) &&
-	    ((notice.z_kind == SERVACK) ||
-	     (notice.z_kind == SERVNAK) ||
-	     (notice.z_kind == HMCTL))) {
-	    server_manager(&notice, &from);
-	} else if ((from.sin_addr.s_addr == htonl(INADDR_LOOPBACK)) &&
-		   ((notice.z_kind == UNSAFE) ||
-		    (notice.z_kind == UNACKED) ||
-		    (notice.z_kind == ACKED) ||
-		    (notice.z_kind == HMCTL))) {
-	    transmission_tower(&notice, &from, packet, pak_len);
-	    DPR2("Pending = %d\n", ZPending());
-	} else if (notice.z_kind == STAT) {
-	    send_stats(&notice, &from);
-	} else {
-	    syslog(LOG_INFO, "Unknown notice type: %d",
-		   notice.z_kind);
 	}
     }
 }
 
-static void parse_conf(conffile, confline)
-     char *conffile;
-     char *confline;
+static void choose_server()
 {
-    struct servent *sp;
-    int zsrvport;
-    char filename[MAXPATHLEN];
-    FILE *file;
-    int lineno;
-    char buf[1024];
-    Code_t code;
-    int i;
+    int i = 0;
+    char **clust_info, **cpp;
 
-    /* this isn't a wonderful place to put this, but the alternatives
-       don't seem any better */
+#ifdef HAVE_HESIOD
+    if (use_hesiod) {
 
-    sp = getservbyname(SERVER_SVCNAME, "udp");
-    zsrvport = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
-
-    if (confline) {
-	if ((galaxy_list = (galaxy_info *) malloc(sizeof(galaxy_info))) == NULL) {
-	    fprintf(stderr, "Out of memory parsing command line %s",
-		    filename);
-	    exit(1);
-	}
-
-	if (code = Z_ParseGalaxyConfig(confline,
-				      &galaxy_list[ngalaxies].galaxy_config)) {
-	    fprintf(stderr, "Error in command line: %s", error_message(code));
-	    exit(1);
-	}
-
-	if (galaxy_list[ngalaxies].galaxy_config.galaxy == NULL) {
-	    fprintf(stderr,
-		    "the command line did not contain any valid galaxies.");
-	    exit(1);
-	}
-
-	ngalaxies++;
-    } else {
-	if (conffile == NULL)
-	    sprintf(filename, "%s/zephyr/zhm.conf", SYSCONFDIR);
-	else
-	    strcpy(filename, conffile);
-
-	if ((file = fopen(filename, "r")) == NULL) {
-#ifdef ZEPHYR_USES_HESIOD
-	    if ((galaxy_list = (galaxy_info *) malloc(sizeof(galaxy_info)))
-		== NULL) {
-		fprintf(stderr, "Out of memory parsing command line %s",
-			filename);
-		exit(1);
-	    }
-
-	    if (code = Z_ParseGalaxyConfig("local-galaxy hesiod zephyr",
-					  &galaxy_list[ngalaxies].galaxy_config)) {
-		fprintf(stderr, "Internal error parsing hesiod default");
-		exit(1);
-	    }
-
-	    if (galaxy_list[ngalaxies].galaxy_config.galaxy == NULL) {
-		fprintf(stderr, "Internal error using hesiod default");
-		exit(1);
-	    }
-
-	    ngalaxies++;
-#else
-	    fprintf(stderr, "Error opening configuration file %s: %s\n",
-		    filename, strerror(errno));
-	    exit(1);
-#endif
+	/* Free up any previously used resources */
+	if (prim_serv[0]) 
+	    i = 1;
+	while (i < numserv)
+	    free(serv_list[i++]);
+	if (serv_list)
+	    free(serv_list);
+	
+	numserv = 0;
+	prim_serv[0] = '\0';
+	
+	if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
+	    zcluster = NULL;
 	} else {
-	    for (lineno = 1; ; lineno++) {
-		if (fgets(buf, sizeof(buf), file) == NULL) {
-		    if (ferror(file)) {
-			fprintf(stderr,
-				"Error reading configuration file %s: %s",
-				filename, strerror(errno));
-			exit(1);
+	    for (cpp = clust_info; *cpp; cpp++) {
+		/* Remove the following check once we have changed over to
+		 * new Hesiod format (i.e. ZCLUSTER.sloc lookup, no primary
+		 * server
+		 */
+		if (!strncasecmp("ZEPHYR", *cpp, 6)) {
+		    register char *c;
+		
+		    if ((c = strchr(*cpp, ' ')) == 0) {
+			printf("Hesiod error getting primary server info.\n");
+		    } else {
+			strncpy(prim_serv, c+1, sizeof(prim_serv));
+			prim_serv[sizeof(prim_serv) - 1] = '\0';
 		    }
 		    break;
 		}
-
-		if (galaxy_list) {
-		    galaxy_list = (galaxy_info *)
-			realloc(galaxy_list, sizeof(galaxy_info)*(ngalaxies+1));
-		} else {
-		    galaxy_list = (galaxy_info *)
-			malloc(sizeof(galaxy_info));
+		if (!strncasecmp("ZCLUSTER", *cpp, 9)) {
+		    register char *c;
+		
+		    if ((c = strchr(*cpp, ' ')) == 0) {
+			printf("Hesiod error getting zcluster info.\n");
+		    } else {
+			if ((zcluster = malloc((unsigned)(strlen(c+1)+1)))
+			    != NULL) {
+			    strcpy(zcluster, c+1);
+			} else {
+			    printf("Out of memory.\n");
+			    exit(-5);
+			}
+		    }
+		    break;
 		}
+	    }
+	    for (cpp = clust_info; *cpp; cpp++)
+		free(*cpp);
+	}
 
-		if (galaxy_list == NULL) {
-		    fprintf(stderr,
-			    "Out of memory reading configuration file %s",
-			    filename);
-		    exit(1);
-		}
-
-		if (code = Z_ParseGalaxyConfig(buf,
-					      &galaxy_list[ngalaxies].galaxy_config)) {
-		    fprintf(stderr,
-			    "Error in configuration file %s, line %d: %s",
-			    filename, lineno, error_message(code));
-		    exit(1);
-		}
-
-		if (galaxy_list[ngalaxies].galaxy_config.galaxy)
-		    ngalaxies++;
+	if (zcluster == NULL) {
+	    if ((zcluster = malloc((unsigned)(strlen("zephyr")+1))) != NULL)
+		strcpy(zcluster, "zephyr");
+	    else {
+		printf("Out of memory.\n");
+		exit(-5);
 	    }
 	}
-
-	if (ngalaxies == 0) {
-	    fprintf(stderr,
-		    "Configuration file %s did not contain any valid galaxies.");
-	    exit(1);
+	while ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
+	    syslog(LOG_ERR, "No servers or no hesiod");
+	    /* wait a bit, and try again */
+	    sleep(30);
 	}
+	cpp = (char **) malloc(2 * sizeof(char *));
+	if (cpp == NULL) {
+	    printf("Out of memory.\n");
+	    exit(-5);
+	}
+	if (prim_serv[0])
+	    cpp[numserv++] = prim_serv;
+	for (i = 0; serv_list[i]; i++) {
+	    /* copy in non-duplicates */
+	    /* assume the names returned in the sloc are full domain names */
+	    if (!prim_serv[0] || strcasecmp(prim_serv, serv_list[i])) {
+		cpp = (char **) realloc(cpp, (numserv+2) * sizeof(char *));
+		if (cpp == NULL) {
+		    printf("Out of memory.\n");
+		    exit(-5);
+		}
+		cpp[numserv++] = strsave(serv_list[i]);
+	    }
+	}
+	for (i = 0; serv_list[i]; i++)
+	    free(serv_list[i]);
+	cpp[numserv] = NULL;
+	serv_list = cpp;
     }
-
-    for (i=0; i<ngalaxies; i++) {
-	galaxy_list[i].current_server = NO_SERVER;
-#if 0
-	galaxy_list[i].sin.sin_len = sizeof(struct in_addr);
 #endif
-	galaxy_list[i].sin.sin_family = AF_INET;
-	galaxy_list[i].sin.sin_port = zsrvport;
-	galaxy_list[i].state = NEED_SERVER;
-	galaxy_list[i].nchange = 0;
-	galaxy_list[i].nsrvpkts = 0;
-	galaxy_list[i].ncltpkts = 0;
-	galaxy_list[i].queue = NULL;
-	init_galaxy_queue(&galaxy_list[i]);
-	galaxy_list[i].boot_timer = NULL;
+    
+    if (!prim_serv[0] && numserv) {
+	srandom(time(NULL));
+	strncpy(prim_serv, serv_list[random() % numserv], sizeof(prim_serv));
+	prim_serv[sizeof(prim_serv) - 1] = '\0';
     }
 }
 
-static void init_hm(inetd, nofork)
-     int inetd;
-     int nofork;
+static void init_hm()
 {
      struct servent *sp;
      Code_t ret;
@@ -395,12 +353,29 @@ static void init_hm(inetd, nofork)
 #ifdef _POSIX_VERSION
      struct sigaction sa;
 #endif
-     struct hostent *hp;
-     int i;
 
      starttime = time((time_t *)0);
      OPENLOG("hm", LOG_PID, LOG_DAEMON);
   
+     ZSetServerState(1);	/* Aargh!!! */
+     if ((ret = ZInitialize()) != ZERR_NONE) {
+	 Zperr(ret);
+	 com_err("hm", ret, "initializing");
+	 closelog();
+	 exit(-1);
+     }
+     init_queue();
+
+     if (*prim_serv == '\0') {
+	 strncpy(prim_serv, *serv_list, sizeof(prim_serv));
+	 prim_serv[sizeof(prim_serv) - 1] = '\0';
+     }
+  
+     loopback[0] = 127;
+     loopback[1] = 0;
+     loopback[2] = 0;
+     loopback[3] = 1;
+      
      if (inetd) {
 	 ZSetFD(0);		/* fd 0 is on the socket, thanks to inetd */
      } else {
@@ -414,9 +389,12 @@ static void init_hm(inetd, nofork)
 	     exit(ret);
 	 }
      }
-
      cli_sin = ZGetDestAddr();
 
+     sp = getservbyname(SERVER_SVCNAME, "udp");
+     memset(&serv_sin, 0, sizeof(struct sockaddr_in));
+     serv_sin.sin_port = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
+      
 #ifndef DEBUG
      if (!inetd && !nofork)
 	 detach();
@@ -433,10 +411,24 @@ static void init_hm(inetd, nofork)
 	  syslog(LOG_INFO, "Debugging on.");
      }
 
-     /* Initiate communication with each galaxy */
+     /* Set up communications with server */
+     /* target is SERVER_SVCNAME port on server machine */
 
-     for (i=0; i<ngalaxies; i++)
-	 galaxy_new_server(&galaxy_list[i], NULL);
+     serv_sin.sin_family = AF_INET;
+  
+     /* who to talk to */
+     if ((hp = gethostbyname(prim_serv)) == NULL) {
+	  DPR("gethostbyname failed\n");
+	  find_next_server(NULL);
+     } else {
+	  DPR2("Server = %s\n", prim_serv);
+	  strncpy(cur_serv, prim_serv, sizeof(cur_serv));
+	  cur_serv[sizeof(cur_serv) - 1] = '\0';	
+	  memcpy(&serv_sin.sin_addr, hp->h_addr, 4);
+     }
+
+     send_boot_notice(HM_BOOT);
+     deactivated = 0;
 
 #ifdef _POSIX_VERSION
      sigemptyset(&sa.sa_mask);
@@ -498,8 +490,8 @@ static void send_stats(notice, sin)
      ZNotice_t newnotice;
      Code_t ret;
      char *bfr;
-     char **list;
-     int len, i, j, nitems;
+     char *list[20];
+     int len, i, nitems = 10;
      unsigned long size;
 
      newnotice = *notice;
@@ -510,149 +502,87 @@ static void send_stats(notice, sin)
      }
      newnotice.z_kind = HMACK;
 
-#define NSTATS 12
-
-     nitems = NSTATS*ngalaxies;
-
-     list = (char **) malloc(sizeof(char *)*nitems);
-     if (list == NULL) {
-	 printf("Out of memory.\n");
-	 exit(5);
+     list[0] = (char *) malloc(MAXHOSTNAMELEN);
+     if (list[0] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
      }
-
-     for (i=0; i<ngalaxies; i++) {
-	list[i*NSTATS] = (char *) malloc(MAXHOSTNAMELEN);
-	if (list[i*NSTATS] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	if (galaxy_list[i].current_server == NO_SERVER)
-	    strcpy(list[i*NSTATS+0], "NO_SERVER");
-	else if (galaxy_list[i].current_server == EXCEPTION_SERVER)
-	    strcpy(list[i*NSTATS+0], inet_ntoa(galaxy_list[i].sin.sin_addr));
-	else
-	    strcpy(list[i*NSTATS+0],
-		   galaxy_list[i].galaxy_config.server_list[galaxy_list[i].current_server].name);
-	list[i*NSTATS+1] = (char *) malloc(64);
-	if (list[i*NSTATS+1] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	sprintf(list[i*NSTATS+1], "%d", galaxy_queue_len(&galaxy_list[i]));
-	list[i*NSTATS+2] = (char *) malloc(64);
-	if (list[i*NSTATS+2] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	sprintf(list[i*NSTATS+2], "%d", galaxy_list[i].ncltpkts);
-	list[i*NSTATS+3] = (char *) malloc(64);
-	if (list[i*NSTATS+3] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	sprintf(list[i*NSTATS+3], "%d", galaxy_list[i].nsrvpkts);
-	list[i*NSTATS+4] = (char *) malloc(64);
-	if (list[i*NSTATS+4] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	sprintf(list[i*NSTATS+4], "%d", galaxy_list[i].nchange);
-	list[i*NSTATS+5] = (char *) malloc(64);
-	if (list[i*NSTATS+5] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	strcpy(list[i*NSTATS+5], rcsid_hm_c);
-	list[i*NSTATS+6] = (char *) malloc(64);
-	if (list[i*NSTATS+6] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	switch (galaxy_list[i].state) {
-	case NEED_SERVER:
-	    sprintf(list[i*NSTATS+6], "yes (need server)");
-	    break;
-	case DEAD_SERVER:
-	    sprintf(list[i*NSTATS+6], "yes (dead server)");
-	    break;
-	case BOOTING:
-	    sprintf(list[i*NSTATS+6], "yes (booting)");
-	    break;
-	case ATTACHING:
-	    sprintf(list[i*NSTATS+6], "yes (attaching)");
-	    break;
-	case ATTACHED:
-	    sprintf(list[i*NSTATS+6], "no (attached)");
-	    break;
-	default:
-	    sprintf(list[i*NSTATS+6], "weird value %x", galaxy_list[i].state);
-	    break;
-	}
-	list[i*NSTATS+7] = (char *) malloc(64);
-	if (list[i*NSTATS+7] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	sprintf(list[i*NSTATS+7], "%ld", (long) (time((time_t *)0) - starttime));
+     strcpy(list[0], cur_serv);
+     list[1] = (char *) malloc(64);
+     if (list[1] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     sprintf(list[1], "%d", queue_len());
+     list[2] = (char *) malloc(64);
+     if (list[2] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     sprintf(list[2], "%d", nclt);
+     list[3] = (char *) malloc(64);
+     if (list[3] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     sprintf(list[3], "%d", nserv);
+     list[4] = (char *) malloc(64);
+     if (list[4] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     sprintf(list[4], "%d", nservchang);
+     list[5] = (char *) malloc(64);
+     if (list[5] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     strncpy(list[5], rcsid_hm_c, 64);
+     list[5][63] = '\0';
+     
+     list[6] = (char *) malloc(64);
+     if (list[6] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     if (no_server)
+	  sprintf(list[6], "yes");
+     else
+	  sprintf(list[6], "no");
+     list[7] = (char *) malloc(64);
+     if (list[7] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     sprintf(list[7], "%ld", time((time_t *)0) - starttime);
 #ifdef adjust_size
-	size = (unsigned long)sbrk(0);
-	adjust_size (size);
+     size = (unsigned long)sbrk(0);
+     adjust_size (size);
 #else
-	size = -1;
+     size = -1;
 #endif
-	list[i*NSTATS+8] = (char *)malloc(64);
-	if (list[i*NSTATS+8] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	sprintf(list[i*NSTATS+8], "%ld", size);
-	list[i*NSTATS+9] = (char *)malloc(32);
-	if (list[i*NSTATS+9] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	strcpy(list[i*NSTATS+9], MACHINE_TYPE);
-	list[i*NSTATS+10] = (char *)malloc(64);
-	if (list[i*NSTATS+10] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	strcpy(list[i*NSTATS+10], galaxy_list[i].galaxy_config.galaxy);
-
-	len = strlen(galaxy_list[i].galaxy_config.galaxy)+1;
-	len += strlen("hostlist ");
-	for (j=0; j<galaxy_list[i].galaxy_config.nservers; j++)
-	   len += 1+strlen(galaxy_list[i].galaxy_config.server_list[j].name);
-	len++;
-
-	list[i*NSTATS+11] = (char *) malloc(len);
-	if (list[i*NSTATS+11] == NULL) {
-	    printf("Out of memory.\n");
-	    exit(5);
-	}
-	strcpy(list[i*NSTATS+11], galaxy_list[i].galaxy_config.galaxy);
-	strcat(list[i*NSTATS+11], " hostlist");
-	for (j=0; j<galaxy_list[i].galaxy_config.nservers; j++) {
-	   strcat(list[i*NSTATS+11], " ");
-	   strcat(list[i*NSTATS+11],
-		  galaxy_list[i].galaxy_config.server_list[j].name);
-	}
+     list[8] = (char *)malloc(64);
+     if (list[8] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
      }
+     sprintf(list[8], "%ld", size);
+     list[9] = (char *)malloc(32);
+     if (list[9] == NULL) {
+       printf("Out of memory.\n");
+       exit(-5);
+     }
+     strncpy(list[9], MACHINE_TYPE, 32);
+     list[9][31] = '\0';
 
      /* Since ZFormatRaw* won't change the version number on notices,
 	we need to set the version number explicitly.  This code is taken
 	from Zinternal.c, function Z_FormatHeader */
      if (!*version)
 	     sprintf(version, "%s%d.%d", ZVERSIONHDR, ZVERSIONMAJOR,
-		     ZVERSIONMINOR_NOGALAXY);
+		     ZVERSIONMINOR);
      newnotice.z_version = version;
 
-#if 1
-     if ((ret = ZSendRawList(&newnotice, list, nitems)) != ZERR_NONE) {
-	 Zperr(ret);
-	 com_err("hm", ret, "sending stat notice");
-     }
-#else
      if ((ret = ZFormatRawNoticeList(&newnotice, list, nitems, &bfr,
 				     &len)) != ZERR_NONE) {
 	 syslog(LOG_INFO, "Couldn't format stats packet");
@@ -663,10 +593,17 @@ static void send_stats(notice, sin)
 	 }
      }
      free(bfr);
-#endif
      for(i=0;i<nitems;i++)
 	  free(list[i]);
-     free(list);
+}
+
+void die_gracefully()
+{
+     syslog(LOG_INFO, "Terminate signal caught...");
+     send_flush_notice(HM_FLUSH);
+     unlink(PidFile);
+     closelog();
+     exit(0);
 }
 
 static char *strsave(sp)

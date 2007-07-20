@@ -21,5 +21,7 @@ Code_t ZSetDestAddr(addr)
 {
 	__HM_addr = *addr;
 
+	__HM_set = 1;
+	
 	return (ZERR_NONE);
 }

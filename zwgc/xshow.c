@@ -134,7 +134,7 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
     x_gram *gram;
     int strindex = 0;
 
-    int line, block;
+    int line, block=0;
     int maxwidth=0, chars=0, maxascent, maxdescent;
     int ssize,  lsize,csize, rsize, width;
     int i, ascent, descent;
@@ -156,8 +156,7 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
 	
 	/* add up sizes for each block, get max ascent and descent */
 	
-	for (i=0, block=lines[line].startblock; i<lines[line].numblock;
-	     i++,block++) {
+	for (i=0; i<lines[line].numblock; i++,block++) {
 	    chars += auxblocks[block].len;
 	    ssize = XTextWidth(auxblocks[block].font, auxblocks[block].str,
 			       auxblocks[block].len);
@@ -165,19 +164,19 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
 	    ascent = auxblocks[block].font->ascent;
 	    descent = auxblocks[block].font->descent;
 	    if (ascent>maxascent)
-		maxascent = ascent;
+	      maxascent = ascent;
 	    if (descent>maxdescent)
-		maxdescent = descent;
+	      maxdescent = descent;
 	    switch (auxblocks[block].align) {
-	    case LEFTALIGN:
+	      case LEFTALIGN:
 		lsize += ssize;
 		break;
-
-	    case CENTERALIGN:
+		
+	      case CENTERALIGN:
 		csize += ssize;
 		break;
-
-	    case RIGHTALIGN:
+		
+	      case RIGHTALIGN:
 		rsize += ssize;
 		break;
 	    }
@@ -247,6 +246,7 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
     /* set x1,y1,x2,y2 of each block also. */
 
     gram->text = (char *)malloc(chars);
+    block = 0;
 
     for (line=0; line<numlines; line++) {
 	lofs = internal_border_width;
@@ -257,8 +257,7 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
 	yend = yofs+lines[line].descent+1;   /* +1 because lines look scrunched
 						without it. */
 
-	for (i=0, block=lines[line].startblock; i<lines[line].numblock;
-	     i++,block++) {
+	for (i=0; i<lines[line].numblock; i++,block++) {
 	    blocks[block].fid = auxblocks[block].font->fid;
 	    switch (auxblocks[block].align) {
 	      case LEFTALIGN:
@@ -292,20 +291,8 @@ void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
 	    strindex += blocks[block].strlen;
 	}
 
-	blocks[block].fid = block?blocks[block-1].fid:auxblocks[0].font->fid;
-	blocks[block].x = maxwidth + internal_border_width;
-	blocks[block].x1 = (lines[line].rsize?rofs:
-			   (lines[line].csize?cofs:
-			    lofs));
-	blocks[block].x2 = maxwidth + internal_border_width*2;
-	blocks[block].y = yofs;
-	blocks[block].y1 = ystart;
-	blocks[block].y2 = yend;
-	blocks[block].strindex = 0;
-	blocks[block].strlen = -1; /* magic value indicates newline */
-	block++;
-
 	yofs = yend;
+
     }
 
     if ((geometry = var_get_variable("X_geometry")),(geometry[0]=='\0')) 
@@ -387,8 +374,8 @@ void xshow(dpy, desc, numstr, numnl)
 
     lines = (xlinedesc *)malloc(sizeof(xlinedesc)*(numnl+1));
 
-    blocks = (xblock *)malloc(sizeof(xblock)*(numstr+numnl+1));
-    auxblocks = (xauxblock *)malloc(sizeof(xauxblock)*(numstr+numnl+1));
+    blocks = (xblock *)malloc(sizeof(xblock)*numstr);
+    auxblocks = (xauxblock *)malloc(sizeof(xauxblock)*numstr);
 
     curmode.bold = 0;
     curmode.italic = 0;
@@ -517,24 +504,12 @@ void xshow(dpy, desc, numstr, numnl)
 	    break;
 
 	  case DT_NL:
-	    font = MODE_TO_FONT(dpy,style,&curmode);
-
-	    auxblocks[nextblock].len = -1;
-	    auxblocks[nextblock].font = font;
-	    if (curmode.expcolor)
-	       blocks[nextblock].fgcolor = curmode.color;
-	    else
-	       blocks[nextblock].fgcolor =
-		 x_string_to_color(mode_to_colorname(dpy,style,&curmode),
-				   default_fgcolor);
-	    nextblock++;
-
 	    lines[line].startblock = linestart;
-	    lines[line].numblock = (nextblock-linestart)-1;
+	    lines[line].numblock = nextblock-linestart;
+	    font = MODE_TO_FONT(dpy,style,&curmode);
 	    lines[line].ascent = font->ascent;
 	    lines[line].descent = font->descent;
 	    line++;
-
 	    linestart = nextblock;
 	    break;
 	}
@@ -543,19 +518,9 @@ void xshow(dpy, desc, numstr, numnl)
     /* case DT_EOF:    will drop through to here. */
 
     if (linestart != nextblock) {
-       font = MODE_TO_FONT(dpy,style,&curmode);
-       auxblocks[nextblock].len = -1;
-       auxblocks[nextblock].font = font;
-       if (curmode.expcolor)
-	  blocks[nextblock].fgcolor = curmode.color;
-       else
-	  blocks[nextblock].fgcolor =
-	     x_string_to_color(mode_to_colorname(dpy,style,&curmode),
-			       default_fgcolor);
-       nextblock++;
-
        lines[line].startblock = linestart;
-       lines[line].numblock = (nextblock-linestart)-1;
+       lines[line].numblock = nextblock-linestart;
+       font = MODE_TO_FONT(dpy,style,&curmode);
        lines[line].ascent = 0;
        lines[line].descent = 0;
        line++;

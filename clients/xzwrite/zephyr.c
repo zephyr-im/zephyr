@@ -74,23 +74,22 @@ int zeph_locateable(user)
      int   n;
 
      if (strchr(user, '@') == NULL)
-	  sprintf(buf, "%s@%s", user, ZGetRhs(NULL));
-     ZLocateUser(NULL, buf, &n, ZAUTH);
+	  sprintf(buf, "%s@%s", user, ZGetRealm());
+     ZLocateUser(buf, &n, ZAUTH);
      return (!! n);
 }
 
-/* XXX This will break on intergalactic zephyr, since all these subs
- * are done in the default galaxy. */
+/* XXX This will break on interrealm zephyr */
 void zeph_subto_logins(users, num)
    char **users;
    int num;
 {
      ZSubscription_t	*sublist;
-     char		*name, *rhs;
+     char		*name, *realm;
      int        	rlen, c = 0;
 
-     rhs = ZGetRhs(NULL);
-     rlen = strlen(rhs);
+     realm = ZGetRealm();
+     rlen = strlen(realm);
      sublist = (ZSubscription_t *) Malloc(num*sizeof(ZSubscription_t),
 					  "while subscribing to logins", NULL);
 
@@ -103,12 +102,12 @@ void zeph_subto_logins(users, num)
 	  if (strchr(users[c], '@'))
 	       sprintf(name, "%s", users[c]);
 	  else
-	       sprintf(name, "%s@%s", users[c], rhs);
+	       sprintf(name, "%s@%s", users[c], realm);
 	  sublist[c].zsub_classinst = name;
 	  c += 1;
      }
 
-     ZSubscribeToSansDefaults(NULL, sublist, c, (unsigned short) 0);
+     ZSubscribeToSansDefaults(sublist, c, (unsigned short) 0);
      for(; c; --c)
 	  free(sublist[c-1].zsub_classinst);
      free(sublist);
@@ -122,7 +121,7 @@ void zeph_subto_replies()
      sub.zsub_classinst = "*";
      sub.zsub_recipient = ZGetSender();
 
-     ZSubscribeToSansDefaults(NULL, &sub, 1, (unsigned short) 0);
+     ZSubscribeToSansDefaults(&sub, 1, (unsigned short) 0);
 }
 
 int zeph_send_message(dest, msg)

@@ -18,18 +18,6 @@ static char rcsid_ZInitialize_c[] =
 #include <internal.h>
 
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <sys/ioctl.h>
-#include <config.h>
-#ifdef HAVE_SYS_SOCKIO_H
-#include <sys/sockio.h>
-#endif
-#ifdef HAVE_IFADDRS_H
-#include <ifaddrs.h>
-#endif
-#ifdef HAVE_NET_IF_H
-#include <net/if.h>
-#endif
 #ifdef HAVE_KRB4
 #include <krb_err.h>
 #endif
@@ -42,15 +30,17 @@ Code_t ZInitialize()
 {
     struct servent *hmserv;
     struct hostent *hostent;
-    char hostname[MAXHOSTNAMELEN], *def;
+    char addr[4], hostname[MAXHOSTNAMELEN];
+    struct in_addr servaddr;
     struct sockaddr_in sin;
     int s, sinsize = sizeof(sin);
     Code_t code;
     ZNotice_t notice;
-    char *mp;
-    int i;
 #ifdef HAVE_KRB4
-    char *krealm;
+    char *krealm = NULL;
+    int krbval;
+    char d1[ANAME_SZ], d2[INST_SZ];
+
     initialize_krb_error_table();
 #endif
 
@@ -59,13 +49,19 @@ Code_t ZInitialize()
     (void) memset((char *)&__HM_addr, 0, sizeof(__HM_addr));
 
     __HM_addr.sin_family = AF_INET;
-#ifdef HAVE_SA_LEN
-    __HM_addr.sin_len = sizeof (struct sockaddr_in);
-#endif
-    __HM_addr.sin_addr.s_addr = htonl (0x7f000001L);
+
+    /* Set up local loopback address for HostManager */
+    addr[0] = 127;
+    addr[1] = 0;
+    addr[2] = 0;
+    addr[3] = 1;
 
     hmserv = (struct servent *)getservbyname(HM_SVCNAME, "udp");
     __HM_addr.sin_port = (hmserv) ? hmserv->s_port : HM_SVC_FALLBACK;
+
+    (void) memcpy((char *)&__HM_addr.sin_addr, addr, 4);
+
+    __HM_set = 0;
 
     /* Initialize the input queue */
     __Q_Tail = NULL;
@@ -75,6 +71,7 @@ Code_t ZInitialize()
        code will fall back to something which might not be "right",
        but this is is ok, since none of the servers call krb_rd_req. */
 
+    servaddr.s_addr = INADDR_NONE;
     if (! __Zephyr_server) {
        if ((code = ZOpenPort(NULL)) != ZERR_NONE)
 	  return(code);
@@ -88,94 +85,62 @@ Code_t ZInitialize()
 	  If this code ever support a multiplexing zhm, this will have to
 	  be made smarter, and probably per-message */
 
-       for (i=0, mp = notice.z_message;
-	    mp<notice.z_message+notice.z_message_len;
-	    i++, mp += strlen(mp)+1)
-	   ;
-
-       /* if this is an old zhm, i will be 10, and __ngalaxies will be 0 */
-
-       __ngalaxies = i/12;	/* XXX should be a defined constant */
-
-       if (__ngalaxies == 0) {
-	   char galaxy_config[1024];
-
-	   __ngalaxies = 1;
-	   __galaxy_list = (Z_GalaxyList *) malloc(sizeof(Z_GalaxyList)*1);
-
-	   /* we're talking to an old zhm.  Use the one server name we get
-	      to figure out the krealm.  ZReceiveNotice() knows this case,
-	      and will always assume the current/only galaxy. */
-
-	   strcpy(galaxy_config, "local-galaxy hostlist ");
-	   strcat(galaxy_config, notice.z_message);
-
-	   if ((code =
-		Z_ParseGalaxyConfig(galaxy_config,
-				    &__galaxy_list[0].galaxy_config))
-	       != ZERR_NONE) {
-	       __ngalaxies = 0;
-	       free(__galaxy_list);
-	       return(code);
-	   }
-
 #ifdef HAVE_KRB4
-	   krealm = krb_realmofhost(__galaxy_list[0].galaxy_config.server_list[0].name);
-	   if (!krealm)
-	       krealm = "";
-
-	   strcpy(__galaxy_list[0].krealm, krealm);
-		  
-	   __galaxy_list[0].last_authent_time = 0;
+       krealm = krb_realmofhost(notice.z_message);
 #endif
-       } else {
-	   __galaxy_list = (Z_GalaxyList *) malloc(sizeof(Z_GalaxyList)*__ngalaxies);
-	   for (i=0, mp = notice.z_message;
-		mp<notice.z_message+notice.z_message_len;
-		i++, mp += strlen(mp)+1) {
-	       if (i%12 == 11) {
-		   if ((code =
-			Z_ParseGalaxyConfig(mp,
-					    &__galaxy_list[i/12].galaxy_config))
-		       != ZERR_NONE) {
-		       __ngalaxies = i/12;
-		       for (i=0; i<__ngalaxies; i++)
-			   Z_FreeGalaxyConfig(&__galaxy_list[i].galaxy_config);
-		       free(__galaxy_list);
-		       return(code);
-		   }
-
-#ifdef HAVE_KRB4
-		   krealm = krb_realmofhost(__galaxy_list[i/12].galaxy_config.server_list[0].name);
-		   if (!krealm)
-		       krealm = "";
-
-		   strcpy(__galaxy_list[i/12].krealm, krealm);
-
-		   __galaxy_list[i/12].last_authent_time = 0;
-#endif
-	       }
-	   }
-       }
+       hostent = gethostbyname(notice.z_message);
+       if (hostent && hostent->h_addrtype == AF_INET)
+	   memcpy(&servaddr, hostent->h_addr, sizeof(servaddr));
 
        ZFreeNotice(&notice);
-
-       __default_galaxy = 0;
-
-       if (def = ZGetVariable("defaultgalaxy")) {
-	   for (i=0; i<__ngalaxies; i++) {
-	       if (strcasecmp(__galaxy_list[i].galaxy_config.galaxy,
-			      def) == 0) {
-		   __default_galaxy = i;
-		   break;
-	       }
-	   }
-       }
-    } else {
-	__galaxy_list = 0;
-	__ngalaxies = 0;
-	__default_galaxy = 0;
     }
+
+#ifdef HAVE_KRB4
+    if (krealm) {
+	strcpy(__Zephyr_realm, krealm);
+    } else if ((krb_get_tf_fullname(TKT_FILE, d1, d2, __Zephyr_realm)
+		!= KSUCCESS) &&
+	       ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)) {
+	return (krbval);
+    }
+#else
+    strcpy(__Zephyr_realm, "local-realm");
+#endif
+
+    __My_addr.s_addr = INADDR_NONE;
+    if (servaddr.s_addr != INADDR_NONE) {
+	/* Try to get the local interface address by connecting a UDP
+	 * socket to the server address and getting the local address.
+	 * Some broken operating systems (e.g. Solaris 2.0-2.5) yield
+	 * INADDR_ANY (zero), so we have to check for that. */
+	s = socket(AF_INET, SOCK_DGRAM, 0);
+	if (s != -1) {
+	    memset(&sin, 0, sizeof(sin));
+	    sin.sin_family = AF_INET;
+	    memcpy(&sin.sin_addr, &servaddr, sizeof(servaddr));
+	    sin.sin_port = HM_SRV_SVC_FALLBACK;
+	    if (connect(s, (struct sockaddr *) &sin, sizeof(sin)) == 0
+		&& getsockname(s, (struct sockaddr *) &sin, &sinsize) == 0
+		&& sin.sin_addr.s_addr != 0)
+		memcpy(&__My_addr, &sin.sin_addr, sizeof(__My_addr));
+	    close(s);
+	}
+    }
+    if (__My_addr.s_addr == INADDR_NONE) {
+	/* We couldn't figure out the local interface address by the
+	 * above method.  Try by resolving the local hostname.  (This
+	 * is a pretty broken thing to do, and unfortunately what we
+	 * always do on server machines.) */
+	if (gethostname(hostname, sizeof(hostname)) == 0) {
+	    hostent = gethostbyname(hostname);
+	    if (hostent && hostent->h_addrtype == AF_INET)
+		memcpy(&__My_addr, hostent->h_addr, sizeof(__My_addr));
+	}
+    }
+    /* If the above methods failed, zero out __My_addr so things will
+     * sort of kind of work. */
+    if (__My_addr.s_addr == INADDR_NONE)
+	__My_addr.s_addr = 0;
 
     /* Get the sender so we can cache it */
     (void) ZGetSender();

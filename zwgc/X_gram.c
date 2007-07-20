@@ -25,6 +25,7 @@ static const char rcsid_X_gram_c[] = "$Id$";
 #include "xmark.h"
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
+#include <X11/Xatom.h>
 #include "zwgc.h"
 #include "X_driver.h"
 #include "X_fonts.h"
@@ -48,7 +49,7 @@ int internal_border_width = 2;
 unsigned long default_fgcolor;
 unsigned long default_bgcolor;
 unsigned long default_bordercolor;
-long ttl = 0;
+long ttl = 500;
 static int reset_saver;
 static int border_width = 1;
 static int cursor_code = XC_sailboat;
@@ -62,6 +63,10 @@ static Window group_leader; /* In order to have transient windows,
 static XClassHint classhint;
 static XSetWindowAttributes xattributes;
 static unsigned long xattributes_mask;
+static int set_all_desktops = True;
+static Atom net_wm_desktop = None;
+static Atom net_wm_window_type = None;
+static Atom net_wm_window_type_utility = None;
 
 /* ICCCM note:
  *
@@ -95,7 +100,7 @@ void x_set_icccm_hints(dpy,w,name,icon_name,psizehints,pwmhints,main_window)
 {
    XStoreName(dpy,w,name);
    XSetIconName(dpy,w,icon_name);
-   XSetNormalHints(dpy,w,psizehints);
+   XSetWMNormalHints(dpy,w,psizehints);
    XSetWMHints(dpy,w,pwmhints);
    XSetClassHint(dpy,w,&classhint);
    /* in order for some wm's to iconify, the window shouldn't be transient.
@@ -218,6 +223,14 @@ void x_gram_init(dpy)
 			      |LeaveWindowMask|Button1MotionMask
 			      |Button3MotionMask|StructureNotifyMask);
     xattributes_mask = (CWBackPixel|CWBorderPixel|CWEventMask|CWCursor);
+
+    set_all_desktops = get_bool_resource("allDesktops", "AllDesktops", True);
+    net_wm_desktop = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
+    net_wm_window_type = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+    net_wm_window_type_utility = XInternAtom(dpy,
+					     "_NET_WM_WINDOW_TYPE_UTILITY",
+					     False);
+
     temp = get_string_resource ("backingStore", "BackingStore");
     if (!temp)
 	return;
@@ -248,6 +261,24 @@ void x_gram_init(dpy)
     }
 }
 
+int x_calc_gravity(xalign, yalign)
+     int xalign, yalign;
+{
+    if (yalign > 0) {					/* North */
+	return (xalign > 0)  ? NorthWestGravity
+	     : (xalign == 0) ? NorthGravity
+	     :                 NorthEastGravity;
+    } else if (yalign == 0) {				/* Center */
+	return (xalign > 0)  ? WestGravity
+	     : (xalign == 0) ? CenterGravity
+	     :                 EastGravity;
+    } else {						/* South */
+	return (xalign > 0)  ? SouthWestGravity
+	     : (xalign == 0) ? SouthGravity
+	     :                 SouthEastGravity;
+    }
+}
+
 void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
 		   beepcount)
      Display *dpy;
@@ -261,6 +292,7 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     XSizeHints sizehints;
     XWMHints wmhints;
     XSetWindowAttributes attributes;
+    unsigned long all_desktops = 0xFFFFFFFF;
     extern void x_get_input();
 
     /*
@@ -295,9 +327,10 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     sizehints.y = ypos;
     sizehints.width = xsize;
     sizehints.height = ysize;
-    sizehints.flags = USPosition|USSize;
+    sizehints.win_gravity = x_calc_gravity(xalign, yalign);
+    sizehints.flags = USPosition|USSize|PWinGravity;
 
-    wmhints.input = True;
+    wmhints.input = False;
     wmhints.initial_state = NormalState;
     if (set_transient) {
        wmhints.window_group = group_leader;
@@ -311,6 +344,13 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
        x_set_icccm_hints(dpy,w,title_name,icon_name,&sizehints,&wmhints,0);
     }
        
+    if (net_wm_window_type != None && net_wm_window_type_utility != None)
+	XChangeProperty(dpy, w, net_wm_window_type, XA_ATOM, 32,
+			PropModeReplace,
+			(unsigned char *) &net_wm_window_type_utility, 1);
+    if (set_all_desktops && net_wm_desktop != None)
+	XChangeProperty(dpy, w, net_wm_desktop, XA_CARDINAL, 32,
+			PropModeReplace, (unsigned char *) &all_desktops, 1);
 
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
 
@@ -327,6 +367,11 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
        
        winchanges.sibling=bottom_gram->w;
        winchanges.stack_mode=Below;
+       /* Metacity may use border_width even if it's not specified in
+	* the value mask, so we must initialize it.  See:
+	* http://bugzilla.gnome.org/show_bug.cgi?id=305257 */
+       winchanges.border_width=border_width;
+
        begin_xerror_trap (dpy);
        XReconfigureWMWindow (dpy, w, DefaultScreen (dpy),
 			     CWSibling|CWStackMode, &winchanges);
@@ -434,9 +479,8 @@ void x_gram_draw(dpy, w, gram, region)
    XChangeGC(dpy,gc,GCFunction,&gcvals);
 
    for (i=0,xb=gram->blocks ; i<gram->numblocks ; i++,xb++) {
-      if ((xb->strlen > 0) &&
-	  (XRectInRegion(region,xb->x1,xb->y1,xb->x2-xb->x1,
-			 xb->y2-xb->y1) != RectangleOut)) {
+      if (XRectInRegion(region,xb->x1,xb->y1,xb->x2-xb->x1,
+			xb->y2-xb->y1) != RectangleOut) {
 	 SetFG(gram->bgcolor^xb->fgcolor);
 	 text.chars=gram->text+xb->strindex;
 	 text.nchars=xb->strlen;

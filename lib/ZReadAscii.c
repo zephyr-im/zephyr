@@ -17,6 +17,21 @@ static char rcsid_ZReadAscii_c[] = "$Id$";
 #include <internal.h>
 #include <assert.h>
 
+#if 0
+static __inline__
+int
+Z_cnvt_xtoi (char c)
+{
+    c -= '0';
+    if (c < 10)
+	return c;
+    c -= 'A'-'9'-1;
+    if (c < 16)
+	return c;
+    return -1;
+}
+#endif
+
 #define Z_cnvt_xtoi(c)  ((temp=(c)-'0'),(temp<10)?temp:((temp-='A'-'9'-1),(temp<16)?temp:-1))
 
 Code_t ZReadAscii(ptr, len, field, num)
@@ -31,17 +46,16 @@ Code_t ZReadAscii(ptr, len, field, num)
     register unsigned int temp;
 
     for (i=0;i<num;i++) {
-	if (*ptr == ' ') {
+	if (len >= 1 && *ptr == ' ') {
 	    ptr++;
-	    if (--len < 0)
-		return ZERR_BADFIELD;
-	} 
-	if (ptr[0] == '0' && ptr[1] == 'x') {
+	    len--;
+	}
+	if (len >= 2 && ptr[0] == '0' && ptr[1] == 'x') {
 	    ptr += 2;
 	    len -= 2;
-	    if (len < 0)
-		return ZERR_BADFIELD;
-	} 
+	}
+	if (len < 2)
+	    return ZERR_BADFIELD;
 	c1 = Z_cnvt_xtoi(ptr[0]);
 	if (c1 < 0)
 		return ZERR_BADFIELD;
@@ -52,8 +66,6 @@ Code_t ZReadAscii(ptr, len, field, num)
 	field[i] = hexbyte;
 	ptr += 2;
 	len -= 2;
-	if (len < 0)
-	    return ZERR_BADFIELD;
     }
 
     return *ptr ? ZERR_BADFIELD : ZERR_NONE;

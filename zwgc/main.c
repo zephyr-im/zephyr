@@ -126,7 +126,6 @@ static void fake_startup_packet()
     notice.z_port = 0;
     notice.z_kind = ACKED;
     notice.z_auth = ZAUTH_YES;
-    notice.z_dest_galaxy = ZGetDefaultGalaxy();
     sprintf(msgbuf,"Zwgc mark II version %s now running...",
 	    zwgc_version_string);
     notice.z_message = msgbuf;
@@ -462,6 +461,12 @@ static RETSIGTYPE signal_child()
   errno = old_errno;
 }
 
+/* rewrite the wgfile in case it has gone away */
+static RETSIGTYPE signal_usr1()
+{
+    write_wgfile();
+}
+
 static void setup_signals(dofork)
      int dofork;
 {
@@ -494,6 +499,9 @@ static void setup_signals(dofork)
     sa.sa_handler = signal_child;
     sigaction(SIGCHLD, &sa, (struct sigaction *)0);
 
+    sa.sa_handler = signal_usr1;
+    sigaction(SIGUSR1, &sa, (struct sigaction *)0);
+
 #else /* !POSIX */
     if (dofork) {
 	/* Ignore keyboard signals if forking.  Bad things will happen. */
@@ -511,6 +519,7 @@ static void setup_signals(dofork)
     signal(SIGHUP, signal_exit);
     signal(SIGCHLD, signal_child);
     signal(SIGPIPE, SIG_IGN);		/* so that Xlib gets an error */
+    signal(SIGUSR1, signal_usr1);
 #endif
 }
 

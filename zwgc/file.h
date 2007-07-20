@@ -19,7 +19,6 @@
 
 #include <stdio.h>
 
-extern char *get_home_directory();
 extern FILE *locate_file();
 
 #endif

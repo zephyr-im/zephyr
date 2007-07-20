@@ -53,7 +53,6 @@ static const char rcsid_main_c[] =
 #define	EVER		(;;)		/* don't stop looping */
 
 static int do_net_setup __P((void));
-static int read_galaxy_list __P((void));
 static int initialize __P((void));
 static void usage __P((void));
 static void do_reset __P((void));
@@ -89,22 +88,19 @@ Unacked *nacklist = NULL;		/* list of packets waiting for ack's */
 unsigned short hm_port;			/* host manager receiver port */
 unsigned short hm_srv_port;		/* host manager server sending port */
 
-galaxy_info *galaxy_list;
-int ngalaxies;
-
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 
-char acl_dir[MAXPATHLEN];
-char subs_file[MAXPATHLEN];
-char galaxy_file[MAXPATHLEN];
-char localconf_file[MAXPATHLEN];
-
-#ifdef HAVE_KRB4
-char srvtab_file[MAXPATHLEN];
-char my_krealm[REALM_SZ];
-static char tkt_file[MAXPATHLEN];
+#ifndef HAVE_HESIOD
+char list_file[128];
 #endif
+#ifdef HAVE_KRB4
+char srvtab_file[128];
+char my_realm[REALM_SZ];
+static char tkt_file[128];
+#endif
+char acl_dir[128];
+char subs_file[128];
 
 int zdebug;
 #ifdef DEBUG_MALLOC
@@ -143,22 +139,22 @@ main(argc, argv)
     extern char *optarg;
     extern int optind;
 
-    sprintf(acl_dir, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_ACL_DIR);
-    sprintf(subs_file, "%s/zephyr/%s", SYSCONFDIR, DEFAULT_SUBS_FILE);
-    sprintf(galaxy_file, "%s/zephyr/%s", SYSCONFDIR, GALAXY_FILE);
-    sprintf(localconf_file, "%s/zephyr/%s", SYSCONFDIR, LOCALCONF_FILE);
-
+#ifndef HAVE_HESIOD
+    sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, SERVER_LIST_FILE);
+#endif
 #ifdef HAVE_KRB4
     sprintf(srvtab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_SRVTAB);
     sprintf(tkt_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_TKFILE);
 #endif
+    sprintf(acl_dir, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_ACL_DIR);
+    sprintf(subs_file, "%s/zephyr/%s", SYSCONFDIR, DEFAULT_SUBS_FILE);
 
     /* set name */
     programname = strrchr(argv[0],'/');
     programname = (programname) ? programname + 1 : argv[0];
 
     /* process arguments */
-    while ((optchar = getopt(argc, argv, "dsnv:f:g:")) != EOF) {
+    while ((optchar = getopt(argc, argv, "dsnv:f:k:")) != EOF) {
 	switch(optchar) {
 	  case 'd':
 	    zdebug = 1;
@@ -171,15 +167,17 @@ main(argc, argv)
 	  case 'n':
 	    nofork = 1;
 	    break;
+	  case 'k':
+#ifdef HAVE_KRB4
+	    strncpy(my_realm, optarg, REALM_SZ);
+#endif
+	    break;
 	  case 'v':
 	    bdump_version = optarg;
 	    break;
 	  case 'f':
 	    init_from_dump = 0;
 	    dumpfile = optarg;
-	    break;
-	  case 'g':
-	    strcpy(my_galaxy, optarg);
 	    break;
 	  case '?':
 	  default:
@@ -201,18 +199,13 @@ main(argc, argv)
 		srvtab_file);
 	exit(1);
     }
-
-    /* look up our local kerberos realm now */
-
-    {
-	int retval = krb_get_lrealm(my_krealm, 1);
-	if (retval != KSUCCESS) {
-	    syslog(LOG_ERR, "get_tgt: krb_get_lrealm: %s",
-		   krb_get_err_text(retval));
-	    return(1);
+    /* Use local realm if not specified on command line. */
+    if (!*my_realm) {
+	if (krb_get_lrealm(my_realm, 1) != KSUCCESS) {
+	    fputs("Couldn't get local Kerberos realm; exiting.\n", stderr);
+	    exit(1);
 	}
     }
-
 #endif /* HAVE_KRB4 */
 
 #ifndef DEBUG
@@ -383,8 +376,6 @@ initialize()
     if (do_net_setup())
 	return(1);
 
-    read_galaxy_list();
-
     server_init();
 
 #ifdef HAVE_KRB4
@@ -394,6 +385,11 @@ initialize()
     
     ZSetServerState(1);
     ZInitialize();		/* set up the library */
+#ifdef HAVE_KRB4
+    /* Override what Zinitialize set for ZGetRealm() */
+    if (*my_realm) 
+      strcpy(__Zephyr_realm, my_realm);
+#endif
     init_zsrv_err_tbl();	/* set up err table */
 
     ZSetFD(srv_socket);		/* set up the socket as the input fildes */
@@ -475,69 +471,6 @@ do_net_setup()
     return 0;
 }    
 
-static int read_galaxy_list()
-{
-    FILE *file;
-    char buf[1024];
-    int lineno;
-    Code_t code;
-
-    if ((file = fopen(galaxy_file, "r")) == NULL) {
-	fprintf(stderr, "Error opening configuration file %s: %s\n", 
-		galaxy_file, strerror(errno));
-	exit(1);
-    }
-
-    galaxy_list = 0;
-    ngalaxies = 0;
-
-    for (lineno = 1; ; lineno++) {
-	if (fgets(buf, sizeof(buf), file) == NULL) {
-	    if (ferror(file)) {
-		fprintf(stderr,
-			"Error reading configuration file %s: %s",
-			galaxy_file, strerror(errno));
-		exit(1);
-	    }
-	    break;
-	}
-
-	if (galaxy_list) {
-	    galaxy_list = (galaxy_info *)
-		realloc(galaxy_list, sizeof(galaxy_info)*(ngalaxies+1));
-	} else {
-	    galaxy_list = (galaxy_info *)
-		malloc(sizeof(galaxy_info));
-	}
-
-	if (galaxy_list == NULL) {
-	    fprintf(stderr,
-		    "Out of memory reading configuration file %s",
-		    galaxy_file);
-	    exit(1);
-	}
-
-	if (code = Z_ParseGalaxyConfig(buf,
-				       &galaxy_list[ngalaxies].galaxy_config)) {
-	    fprintf(stderr,
-		    "Error in configuration file %s, line %d: %s",
-		    galaxy_file, lineno, error_message(code));
-	    exit(1);
-	}
-
-	if (galaxy_list[ngalaxies].galaxy_config.galaxy)
-	    ngalaxies++;
-    }
-
-
-    if (ngalaxies == 0) {
-	fprintf(stderr,
-		"Configuration file %s did not contain any valid galaxies.");
-	exit(1);
-    }
-
-    return(0);
-}
 
 /*
  * print out a usage message.
@@ -547,10 +480,10 @@ static void
 usage()
 {
 #ifdef DEBUG
-	fprintf(stderr, "Usage: %s [-d] [-s] [-n] [-g galaxy] [-f dumpfile]\n",
+	fprintf(stderr, "Usage: %s [-d] [-s] [-n] [-k realm] [-f dumpfile]\n",
 		programname);
 #else
-	fprintf(stderr, "Usage: %s [-d] [-n] [-g galaxy] [-f dumpfile]\n",
+	fprintf(stderr, "Usage: %s [-d] [-n] [-k realm] [-f dumpfile]\n",
 		programname);
 #endif /* DEBUG */
 	exit(2);
@@ -621,7 +554,7 @@ sig_dump_strings(sig)
 
 static void dump_strings()
 {
-    char filename[MAXPATHLEN];
+    char filename[128];
 
     FILE *fp;
     int oerrno = errno;
@@ -658,7 +591,7 @@ static void dump_db()
     FILE *fp;
     int oerrno = errno;
     int pid;
-    char filename[MAXPATHLEN];
+    char filename[128];
 
     pid = (fork_for_dump) ? fork() : -1;
     if (pid > 0) {
@@ -762,7 +695,6 @@ do_reset()
 #endif
 
     /* reset various things in the server's state */
-    read_galaxy_list();
     subscr_reset();
     server_reset();
     access_reinit();

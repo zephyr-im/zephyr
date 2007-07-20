@@ -63,10 +63,11 @@ match "message"
     set type = "Instance "+$instance
   endif
 
-  fields signature body
-  if ($body == "") then
-    set body = $signature
+  if ($number_of_fields == "1") then
+    fields body
     set signature = ""
+  else
+    fields signature body
   endif
   if ($signature =~ "^[Ff]rom: .*") then
     set dummy = lany($signature,"From: ")

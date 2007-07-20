@@ -29,7 +29,7 @@ static const char rcsid_zwrite_c[] = "$Id$";
 #define MAXRECIPS 100
 
 int nrecips, msgarg, verbose, quiet, nodot, cc;
-char *whoami, *inst, *class, *opcode, *rhs, *galaxy, *recips[MAXRECIPS];
+char *whoami, *inst, *class, *opcode, *realm, *recips[MAXRECIPS];
 Z_AuthProc auth;
 void un_tabify();
 
@@ -174,13 +174,7 @@ main(argc, argv)
 	    if (arg == argc-1)
 		usage(whoami);
 	    arg++;
-	    rhs = argv[arg];
-	    break;
-	case 'G':
-	    if (arg == argc-1)
-		usage(whoami);
-	    arg++;
-	    galaxy = argv[arg];
+	    realm = argv[arg];
 	    break;
 	case 'C':
 	    cc = 1;
@@ -230,7 +224,6 @@ main(argc, argv)
     notice.z_sender = 0;
     notice.z_message_len = 0;
     notice.z_recipient = "";
-    notice.z_dest_galaxy = galaxy;
     if (format)
 	    notice.z_default_format = format;
     else if (filsys == 1)
@@ -350,15 +343,15 @@ send_off(notice, real)
     int real;
 {
     int i, success, retval;
-    char bfr[BUFSIZ], rhs_recip[BUFSIZ], dest[3 * BUFSIZ], *cp;
+    char bfr[BUFSIZ], realm_recip[BUFSIZ], dest[3 * BUFSIZ], *cp;
     ZNotice_t retnotice;
 
     success = 0;
 	
-    for (i=0;i<nrecips || !nrecips;i++) {
-	if (rhs) {
-	    sprintf(rhs_recip, "%s@%s", (nrecips) ? recips[i] : "", rhs);
-	    notice->z_recipient = rhs_recip;
+    for (i=0;i<nrecips || i==0;i++) {
+	if (realm) {
+	    sprintf(realm_recip, "%s@%s", (nrecips) ? recips[i] : "", realm);
+	    notice->z_recipient = realm_recip;
 	} else {
 	    notice->z_recipient = (nrecips) ? recips[i] : "";
 	}
@@ -446,8 +439,6 @@ send_off(notice, real)
 	else
 	    printf("Internal failure - illegal message field in server response\n");
 	ZFreeNotice(&retnotice);
-	if (!nrecips)
-	    break;
     }
     if (!success)
 	exit(1);
@@ -459,9 +450,8 @@ usage(s)
 {
     fprintf(stderr,
 	    "Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l]\n\
-\t[-c class] [-i inst] [-O opcode] [-f fsname] [-s signature] \n\
-\t[-G galaxy] [-C]\n\
-\t[user ...] [-F format] [-r rhs] [-m message]\n", s);
+\t[-c class] [-i inst] [-O opcode] [-f fsname] [-s signature] [-C]\n\
+\t[user ...] [-F format] [-r realm] [-m message]\n", s);
     fprintf(stderr,"\t-f and -c are mutually exclusive\n\
 \t-f and -i are mutually exclusive\n\
 \trecipients must be specified unless -c or -f specifies a class\n\

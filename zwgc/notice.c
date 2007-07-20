@@ -253,7 +253,7 @@ char *decode_notice(notice, hostname)
      ZNotice_t *notice;
      char *hostname;
 {
-    char *notice_rhs, *galaxy_rhs;
+    char *temp;
     string time, notyear, year, date_string, time_string;
 
     /*
@@ -269,22 +269,18 @@ char *decode_notice(notice, hostname)
     var_set_variable("recipient",
 		     (notice->z_recipient[0] ? notice->z_recipient : "*"));
     var_set_variable("fullsender", notice->z_sender);
-    var_set_variable("destgalaxy", notice->z_dest_galaxy);
     var_set_variable_to_number("port", (int)notice->z_port);
     var_set_variable_then_free_value("kind", z_kind_to_ascii(notice->z_kind));
     var_set_variable_then_free_value("auth", z_auth_to_ascii(notice->z_auth));
 
     /*
-     * Set $sender to the name of the notice sender except first strip
-     * off the rhs if it is the rhs of the zephyr server which
-     * delivered the message.  */
-    if ((notice_rhs = strchr(notice->z_sender,'@')) &&
-	(galaxy_rhs = ZGetRhs(notice->z_dest_galaxy)) &&
-	string_Eq(notice_rhs+1, galaxy_rhs))
+     * Set $sender to the name of the notice sender except first strip off the
+     * realm name if it is the local realm:
+     */
+    if ( (temp=strchr(notice->z_sender,'@')) && string_Eq(temp+1, ZGetRealm()) )
       var_set_variable_then_free_value("sender",
 				string_CreateFromData(notice->z_sender,
-						      (notice_rhs-
-						       notice->z_sender)));
+						      temp-notice->z_sender));
     else
       var_set_variable("sender", notice->z_sender);
     

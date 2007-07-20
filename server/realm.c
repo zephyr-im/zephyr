@@ -25,6 +25,9 @@ int nrealms = 0;                /* number of other realms */
  * Code_t realm_send_realms()
  * loops through all realms for a brain dump
  *
+ * int realm_bound_for_realm(char *realm, char *recip)
+ * figures out if recip is in realm, expanding recip's realm
+ *
  * int realm_sender_in_realm(char *realm, char *sender)
  * figures out if sender is in realm
  * 
@@ -96,16 +99,20 @@ char *realmname;
     int a;
 
     /* First, look for an exact match (case insensitive) */
-    if (!strcasecmp(my_galaxy, realmname))
-	return(my_galaxy);
+#ifdef HAVE_KRB4
+    if (!strcasecmp(ZGetRealm(), realmname))
+	return(ZGetRealm());
+#endif
 
     for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
       if (!strcasecmp(realm->name, realmname))
 	return(realm->name);
 
     /* No exact match. See if there's a partial match */
-    if (!strncasecmp(my_galaxy, realmname, strlen(realmname)))
-	return(my_galaxy);
+#ifdef HAVE_KRB4
+    if (!strncasecmp(ZGetRealm(), realmname, strlen(realmname)))
+	return(ZGetRealm());
+#endif
 
     for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
 	if (!strncasecmp(realm->name, realmname, strlen(realmname)))
@@ -140,6 +147,91 @@ kill_realm_pids()
     return;
 }
 
+Realmname *
+get_realm_lists(file)
+    char *file;
+{
+    Realmname *rlm_list, *rlm;
+    int ii, nused, ntotal;
+    FILE *fp;
+    char buf[REALM_SZ + MAXHOSTNAMELEN + 1]; /* one for newline */
+    char realm[REALM_SZ], server[MAXHOSTNAMELEN + 1];
+  
+    nused = 0;
+    if (!(fp = fopen(file, "r")))
+	return((Realmname *)0);
+  
+    /* start with 16, realloc if necessary */
+    ntotal = 16;
+    rlm_list = (Realmname *)malloc(ntotal * sizeof(Realmname));
+    if (!rlm_list) {
+	syslog(LOG_CRIT, "get_realm_lists malloc");
+	abort();
+    }
+
+    while (fgets(buf, REALM_SZ + MAXHOSTNAMELEN + 1, fp)) {
+	if (sscanf(buf, "%s %s", realm, server) != 2) {
+	    syslog(LOG_CRIT, "bad format in %s", file);
+	    abort();
+	}
+	for (ii = 0; ii < nused; ii++) {
+	    /* look for this realm */
+	    if (!strcmp(rlm_list[ii].name, realm))
+		break;
+	}
+	if (ii < nused) {
+	    rlm = &rlm_list[ii];
+	    if (rlm->nused +1 >= rlm->nservers) {
+		/* make more space */
+		rlm->servers = (char **)realloc((char *)rlm->servers, 
+						(unsigned)rlm->nservers * 2 * 
+						sizeof(char *));
+		if (!rlm->servers) {
+		    syslog(LOG_CRIT, "get_realm_lists realloc");
+		    abort();
+		}
+		rlm->nservers *= 2;
+	    }
+	    rlm->servers[rlm->nused++] = strsave(server);
+	} else {
+	    /* new realm */
+	    if (nused + 1 >= ntotal) {
+		/* make more space */
+		rlm_list = (Realmname *)realloc((char *)rlm_list,
+						(unsigned)ntotal * 2 * 
+						sizeof(Realmname));
+		if (!rlm_list) {
+		    syslog(LOG_CRIT, "get_realm_lists realloc");
+		    abort();
+		}
+		ntotal *= 2;
+	    }
+	    rlm = &rlm_list[nused++];
+	    strcpy(rlm->name, realm);
+	    rlm->nused = 0;
+	    rlm->nservers = 16;
+	    rlm->servers = (char **)malloc(rlm->nservers * sizeof(char *));
+	    if (!rlm->servers) {
+		syslog(LOG_CRIT, "get_realm_lists malloc");
+		abort();
+	    }
+	    rlm->servers[rlm->nused++] = strsave(server);
+	}
+    }
+    if (nused + 1 >= ntotal) {
+	rlm_list = (Realmname *)realloc((char *)rlm_list,
+					(unsigned)(ntotal + 1) * 
+					sizeof(Realmname));
+	if (!rlm_list) {
+	    syslog(LOG_CRIT, "get_realm_lists realloc");
+	    abort();
+	}
+    }
+    *rlm_list[nused].name = '\0';
+  
+    return(rlm_list);
+}
+
 Code_t 
 realm_send_realms()
 {
@@ -151,20 +243,40 @@ realm_send_realms()
 }
 
 int
+realm_bound_for_realm(realm, recip)
+     char *realm;
+     char *recip;
+{
+    char *rlm = NULL;
+    int remote = strcmp(ZGetRealm(), realm);
+    
+    if (recip)
+      rlm = strchr(recip, '@');
+    
+    if (!rlm && !remote) 
+	return 1;
+
+    if (rlm && strcmp(realm_expand_realm(rlm + 1), realm) == 0)
+	return 1;
+
+    return 0;
+}
+
+int
 realm_sender_in_realm(realm, sender)
      char *realm;
      char *sender;
 {
-    char *senderrealm = NULL;
-    int local = (strcmp(my_galaxy, realm) == 0);
+    char *rlm = NULL;
+    int remote = strcmp(ZGetRealm(), realm);
 
     if (sender)
-	senderrealm = strrchr(sender, '@');
+	rlm = strchr(sender, '@');
 
-    if (!senderrealm && local)
+    if (!rlm && !remote)
 	return 1;
 
-    if (senderrealm && strcmp(senderrealm + 1, realm) == 0)
+    if (rlm && strcmp((rlm + 1), realm) == 0)
 	return 1;
 
     return 0;
@@ -177,7 +289,7 @@ sender_in_realm(notice)
 
   realm = strchr(notice->z_sender, '@');
 
-  if (!realm || !strcmp(realm + 1, my_galaxy))
+  if (!realm || !strcmp(realm + 1, ZGetRealm()))
     return 1;
 
   return 0;
@@ -349,7 +461,7 @@ realm_dispatch(notice, auth, who, server)
             sprintf(rlm_recipient, "@%s", realm->name);
             notice->z_recipient = rlm_recipient;
 
-            sendit(notice, 1, who, 0, 0);
+            sendit(notice, 1, who, 0);
 	}
     } else if (class_is_ulocate(notice_class)) {
 	status = realm_ulocate_dispatch(notice, auth, who, server, realm);
@@ -359,16 +471,16 @@ realm_dispatch(notice, auth, who, server)
 	    sprintf(rlm_recipient, "@%s", realm->name);
 	    notice->z_recipient = rlm_recipient;
 	    external = 0;
-	} else if ((*notice->z_recipient == '@') &&
-		   (strcmp(realm_expand_realm(notice->z_recipient+1),
-			   my_galaxy) == 0)) {
+	} else if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient)
+		   && *notice->z_recipient == '@') 
+	{
 	    /* we're responsible for getting this message out */
 	    external = 1;
 	    notice->z_recipient = "";
 	}
           
 	/* otherwise, send to local subscribers */
-	sendit(notice, auth, who, external, external);
+	sendit(notice, auth, who, external);
     }
         
     return(status);
@@ -378,11 +490,23 @@ void
 realm_init()
 {
     Client *client;
+    Realmname *rlmnames;
     Realm *rlm;
-    int ii, jj;
+    int ii, jj, found;
+    struct in_addr *addresses;
+    struct hostent *hp;
+    char list_file[128];
     char rlmprinc[ANAME_SZ+INST_SZ+REALM_SZ+3];
 
-    nrealms = ngalaxies-1;
+    sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, REALM_LIST_FILE);
+    rlmnames = get_realm_lists(list_file);
+    if (!rlmnames) {
+	zdbug((LOG_DEBUG, "No other realms"));
+	nrealms = 0;
+	return;
+    }
+    
+    for (nrealms = 0; *rlmnames[nrealms].name; nrealms++);
     
     otherrealms = (Realm *)malloc(nrealms * sizeof(Realm));
     if (!otherrealms) {
@@ -390,18 +514,32 @@ realm_init()
 	abort();
     }
 
-    /* copy necessary state from galaxy_list. */
-
-    rlm = otherrealms;
-    for (ii = 0; ii < ngalaxies; ii++) {
-	// skip the local galaxy
-	if (strcmp(galaxy_list[ii].galaxy_config.galaxy, my_galaxy) == 0)
-	    continue;
-
-	strcpy(rlm->name, galaxy_list[ii].galaxy_config.galaxy);
+    for (ii = 0; ii < nrealms; ii++) {
+	rlm = &otherrealms[ii];
+	strcpy(rlm->name, rlmnames[ii].name);
 	
-	rlm->count = galaxy_list[ii].galaxy_config.nservers;
-	rlm->addrs = (struct sockaddr_in *)malloc(rlm->count * 
+	addresses = (struct in_addr *)malloc(rlmnames[ii].nused * 
+					     sizeof(struct in_addr));
+	if (!addresses) {
+	    syslog(LOG_CRIT, "malloc failed in realm_init");
+	    abort();
+	}
+	/* convert names to addresses */
+	found = 0;
+	for (jj = 0; jj < rlmnames[ii].nused; jj++) {
+	    hp = gethostbyname(rlmnames[ii].servers[jj]);
+	    if (hp) {
+		memmove((caddr_t) &addresses[found], (caddr_t)hp->h_addr, 
+			sizeof(struct in_addr));
+		found++;
+	    } else
+		syslog(LOG_WARNING, "hostname failed, %s", 
+		       rlmnames[ii].servers[jj]);
+	    /* free the hostname */
+	    free(rlmnames[ii].servers[jj]);
+	}
+	rlm->count = found;
+	rlm->addrs = (struct sockaddr_in *)malloc(found * 
 						  sizeof (struct sockaddr_in));
 	if (!rlm->addrs) {
 	    syslog(LOG_CRIT, "malloc failed in realm_init");
@@ -411,8 +549,7 @@ realm_init()
 	    rlm->addrs[jj].sin_family = AF_INET;
 	    /* use the server port */
 	    rlm->addrs[jj].sin_port = srv_addr.sin_port;
-	    rlm->addrs[jj].sin_addr =
-		galaxy_list[ii].galaxy_config.server_list[jj].addr;
+	    rlm->addrs[jj].sin_addr = addresses[jj];
 	}
 	client = (Client *) malloc(sizeof(Client));
 	if (!client) {
@@ -442,9 +579,10 @@ realm_init()
 	/* Assume the best */
 	rlm->state = REALM_TARDY;
 	rlm->have_tkt = 1;
-
-	rlm++;
+	free(rlmnames[ii].servers);
+	free(addresses);
     }
+    free(rlmnames);
 }
 
 void
@@ -481,14 +619,12 @@ realm_deathgram(server)
 	zdbug((LOG_DEBUG, "rlm_deathgram: suggesting %s to %s", 
 	       (server) ? server->addr_str : "nothing", realm->name));
 
-#ifdef HAVE_KRB4
 	if (!ticket_lookup(realm->name))
 	    if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "rlm_deathgram failed: %s", 
 		       error_message(retval));
 		return;
 	    }
-#endif
 
 	if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH)) 
 	    != ZERR_NONE) 
@@ -516,36 +652,6 @@ realm_wakeup()
     Realm *realm;
     char rlm_recipient[REALM_SZ + 1];
     
-#ifdef HAVE_KRB4
-    char galaxy_config[1024];
-    Code_t code;
-
-    /* XXX the library won't initialize from zhm, because there might
-       not be one.  We're about to call ZFormatNotice, which will call
-       ZMakeAuthentication(), which will fail because there is no
-       library galaxy list.  So, we create a single galaxy entry with
-       the local realm. */
-
-    __ngalaxies = 1;
-    __galaxy_list = (Z_GalaxyList *) malloc(sizeof(Z_GalaxyList)*1);
-
-    strcpy(galaxy_config, "local-galaxy hostlist localhost");
-
-    if ((code =
-	 Z_ParseGalaxyConfig(galaxy_config,
-			     &__galaxy_list[0].galaxy_config))
-	!= ZERR_NONE) {
-	syslog(LOG_ERR, "rlm_wakeup galaxy init: impossible error");
-	__ngalaxies = 0;
-	free(__galaxy_list);
-	return;
-    }
-
-    strcpy(__galaxy_list[0].krealm, my_krealm);
-		  
-    __galaxy_list[0].last_authent_time = 0;
-#endif
-
     for (jj = 1; jj < nservers; jj++) {    /* skip limbo server */
 	if (jj != me_server_idx && otherservers[jj].state == SERV_UP)
 	    found++;
@@ -577,14 +683,12 @@ realm_wakeup()
 	    snotice.z_message = NULL;
 	    snotice.z_message_len = 0;
 
-#ifdef HAVE_KRB4
 	    if (!ticket_lookup(realm->name))
 		if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
 		    syslog(LOG_WARNING, "rlm_wakeup failed: %s", 
 			   error_message(retval));
 		    continue;
 		}
-#endif
 
 	    if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH)) 
 		!= ZERR_NONE) 
@@ -1010,7 +1114,6 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
     CREDENTIALS cred;
     KTEXT_ST authent;
     ZNotice_t partnotice, newnotice;
-    struct in_addr my_addr;
 
     offset = 0;
 
@@ -1059,8 +1162,8 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
     
     buffer_len = sizeof(ZPacket_t);
     
-    retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen,
-			       NULL, NULL, &ptr, NULL);
+    retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen, &ptr, 
+			       NULL);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
 	free(buffer);
@@ -1076,7 +1179,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 #endif
 
     retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen, 
-			       NULL, NULL, NULL, NULL);
+			       NULL, NULL);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
 	free(buffer);
@@ -1120,8 +1223,6 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 
 	fragsize = Z_MAXPKTLEN-hdrlen-Z_FRAGFUDGE;
 
-	Z_SourceAddr(&realm->addrs[realm->idx].sin_addr, &my_addr);
-
 	while (offset < notice->z_message_len || !notice->z_message_len) {
 	    (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
 	    partnotice.z_multinotice = multi;
@@ -1132,8 +1233,8 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 						   partnotice.z_uid.tv.tv_sec);
 		partnotice.z_uid.tv.tv_usec = 
 		    htonl((u_long) partnotice.z_uid.tv.tv_usec);
-		(void) memcpy((char *)&partnotice.z_uid.zuid_addr, &my_addr, 
-			      sizeof(my_addr));
+		(void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr, 
+			      sizeof(__My_addr));
 	    }
 	    message_len = min(notice->z_message_len-offset, fragsize);
 	    partnotice.z_message = notice->z_message+offset;
@@ -1151,7 +1252,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 	    }
 	    
 	    retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
-				       &hdrlen, &ptr, NULL, NULL, NULL);
+				       &hdrlen, &ptr, NULL);
 	    if (retval != ZERR_NONE) {
 		syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", 
 		       error_message(retval));
@@ -1168,7 +1269,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 #endif
 
 	    retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
-				       &hdrlen, NULL, NULL, NULL, NULL);
+				       &hdrlen, NULL, NULL);
 	    if (retval != ZERR_NONE) {
 		syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", 
 		       error_message(retval));

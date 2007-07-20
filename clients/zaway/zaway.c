@@ -49,15 +49,13 @@ int main(argc,argv)
 	struct passwd *pw;
 	register char *ptr;
 	char awayfile[BUFSIZ],*msg[2],*envptr;
-	int optchar, watch_location, cmdline_file = 0;
+	int optchar, watch_location;
 	char *cmdline_msg;
 	int nlocs;
 	char *find_message();
 #ifdef _POSIX_VERSION
 	struct sigaction sa;
 #endif
-	int i, cnt;
-	char *galaxy;
 	
 	if ((retval = ZInitialize()) != ZERR_NONE) {
 		com_err(argv[0],retval,"while initializing");
@@ -99,22 +97,9 @@ int main(argc,argv)
 		}
 	}
 
-	/* process or reject extra (filename) arguments */
-	if (argc > optind) {
-		if (cmdline_msg) {
-			fprintf(stderr, "%s: Too many arguments - can't mix -m and filename\n", argv[0]);
-			return 1;
-		} else if (argc > optind + 1) {
-			fprintf(stderr, "%s: Too many arguments - only one filename\n", argv[0]);
-			return 1;
-		} else {
-			(void) strcpy(awayfile,argv[optind]);
-			cmdline_file = 1;
-		}
-	}
-
-	/* after all that, construct the filename only if we'll need it */
-	if (!cmdline_msg && !cmdline_file) {
+	if (argc > optind)
+		(void) strcpy(awayfile,argv[optind]);
+	else {
 		envptr = getenv("HOME");
 		if (envptr)
 			(void) sprintf(awayfile,"%s/.away",envptr);
@@ -127,15 +112,11 @@ int main(argc,argv)
 		} 
 	}
 
-	if (cmdline_msg) {
-		fp = NULL;
-	} else {
-		fp = fopen(awayfile,"r");
-		if (!fp && argc > optind) {
-			fprintf(stderr,"File %s not found!\n",awayfile);
-			exit(1);
-		}
-	}
+	fp = fopen(awayfile,"r");
+	if (!fp && argc > optind) {
+		fprintf(stderr,"File %s not found!\n",awayfile);
+		exit(1);
+	} 
 #ifdef _POSIX_VERSION
 	(void) sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
@@ -148,27 +129,9 @@ int main(argc,argv)
 	(void) signal(SIGTERM, cleanup);
 	(void) signal(SIGHUP, cleanup);
 #endif
-	
-	if (retval = ZGetGalaxyCount(&cnt)) {
-		com_err(argv[0], retval, "while getting galaxy count");
-	    return;
-	}
-
-	for (i=0; i<cnt; i++) {
-		if (retval = ZGetGalaxyName(i, &galaxy)) {
-			com_err(argv[0], retval, "while getting galaxy name");
-			return;
-		}
-
-		if (((retval = ZSubscribeTo(galaxy, &sub,1,port))
-		     != ZERR_NONE)
-#ifdef HAVE_KRB4
-		    && (retval != KRBET_AD_NOTGT)
-#endif
-		    ) {
-			com_err(argv[0],retval,"while subscribing");
-			exit(1);
-		}
+	if ((retval = ZSubscribeToSansDefaults(&sub,1,port)) != ZERR_NONE) {
+		com_err(argv[0],retval,"while subscribing");
+		exit(1);
 	}
 
 	for (;;) {
@@ -180,23 +143,14 @@ int main(argc,argv)
 
 		if (strcmp(notice.z_sender,ZGetSender()) == 0 ||
 		    strcmp(notice.z_opcode,"PING") == 0 ||
+		    strcmp(notice.z_opcode,"AUTO") == 0 ||
 		    strcmp(notice.z_message,"Automated reply:") == 0) {
 		     ZFreeNotice(&notice);
 		     continue;
 		}
 
 		if (watch_location) {
-			char *defgalaxy;
-
-			if ((retval = ZGetGalaxyName(0, &defgalaxy))
-			    != ZERR_NONE) {
-				com_err(argv[0],retval,
-					"while getting default galaxy");
-				continue;
-			}
-
-			if ((retval = ZLocateUser(defgalaxy, ZGetSender(),
-						  &nlocs, ZNOAUTH))
+			if ((retval = ZLocateUser(ZGetSender(), &nlocs, ZNOAUTH))
 			    != ZERR_NONE) {
 				com_err(argv[0],retval,"while locating self");
 				continue;
@@ -211,7 +165,7 @@ int main(argc,argv)
 		}
 
 		if (cmdline_msg) {
-			ptr = malloc(strlen(cmdline_msg) + 1);
+			ptr = malloc(strlen(cmdline_msg)+1);
 			if (!ptr) {
 				com_err(argv[0],ENOMEM,"while getting cmdline message");
 				exit(1);
@@ -225,7 +179,7 @@ int main(argc,argv)
 			}
 		}
 		else {
-			ptr = malloc(sizeof(DEFAULT_MSG));
+			ptr = malloc(sizeof(DEFAULT_MSG)+1);
 			if (!ptr) {
 				com_err(argv[0],ENOMEM,"while getting default message");
 				exit(1);
@@ -301,19 +255,6 @@ char *find_message(notice,fp)
 
 RETSIGTYPE cleanup()
 {
-	int i, cnt;
-	char *galaxy;
-
-	if (ZGetGalaxyCount(&cnt))
-		exit(1);
-
-	for (i=0; i<cnt; i++) {
-		if (ZGetGalaxyName(i, &galaxy))
-			continue;
-
-		if (ZCancelSubscriptions(galaxy, port))
-			continue;
-	}
-	
-	exit(1);
+    ZCancelSubscriptions(port);
+    exit(1);
 }

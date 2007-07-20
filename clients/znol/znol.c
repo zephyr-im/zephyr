@@ -32,7 +32,7 @@ main(argc,argv)
 	ZLocations_t locations;
 	FILE *fp;
 	struct passwd *pwd;
-	char anyonename[BUFSIZ],name[BUFSIZ],cleanname[BUFSIZ],galaxyname[BUFSIZ],*envptr;
+	char anyonename[BUFSIZ],name[BUFSIZ],cleanname[BUFSIZ],*envptr;
 	char *comment_ptr;
 	int onoff = ON,quiet = 0,justlist = 0,useronly = 0, filenamed = 0;
 	int retval,arg,ind,one,numlocs,i;
@@ -77,14 +77,6 @@ main(argc,argv)
 					goto usage;
 				}
 				(void) strcpy(cleanname,argv[++arg]);
-				useronly = 1;
-				break;
-			case 'G':
-				if (arg == argc-1) {
-					fprintf(stderr,"No galaxy name specified\n");
-					goto usage;
-				}
-				(void) strcpy(galaxyname,argv[++arg]);
 				useronly = 1;
 				break;
 			default:
@@ -162,7 +154,7 @@ main(argc,argv)
 		if (!strchr(name,'@')) {
 			cp = name + strlen(name);
 			*cp++ = '@';
-			(void) strcpy(cp, ZGetRhs(galaxyname));
+			(void) strcpy(cp,ZGetRealm());
 		}
 		if ((subs[ind].zsub_classinst = malloc((unsigned)(strlen(name)+1))) == NULL) {
 			fprintf (stderr, "znol: out of memory");
@@ -172,7 +164,7 @@ main(argc,argv)
 		subs[ind++].zsub_recipient = "";
 
 		if (!quiet && onoff == ON) {
-			if ((retval = ZLocateUser(galaxyname,name,&numlocs,ZAUTH))
+			if ((retval = ZLocateUser(name,&numlocs,ZAUTH))
 			    != ZERR_NONE) {
 				com_err(argv[0],retval,"locating user");
 				exit(1);
@@ -202,9 +194,9 @@ main(argc,argv)
 		if (ind == SUBSATONCE) {
 			if (!justlist)
 				if ((retval = (onoff==ON)?
-				     ZSubscribeToSansDefaults(galaxyname,subs,ind,
+				     ZSubscribeToSansDefaults(subs,ind,
 							      (u_short)wgport):
-				     ZUnsubscribeTo(galaxyname,subs,ind,(u_short)wgport)) !=
+				     ZUnsubscribeTo(subs,ind,(u_short)wgport)) !=
 				    ZERR_NONE) {
 					com_err(argv[0],retval,(onoff==ON)?
 						"subscribing":
@@ -219,8 +211,8 @@ main(argc,argv)
 
 	if (ind && !justlist)
 		if ((retval = (onoff==ON)?
-		     ZSubscribeToSansDefaults(galaxyname,subs,ind,(u_short)wgport):
-		     ZUnsubscribeTo(galaxyname,subs,ind,(u_short)wgport)) !=
+		     ZSubscribeToSansDefaults(subs,ind,(u_short)wgport):
+		     ZUnsubscribeTo(subs,ind,(u_short)wgport)) !=
 		    ZERR_NONE) {
 			com_err(argv[0],retval,(onoff==ON)?
 				"subscribing":
