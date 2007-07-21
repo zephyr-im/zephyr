@@ -32,8 +32,8 @@ endif
 autotools:
 	chmod u+x config.sub
 	chmod u+x config.guess
-	OLDDATESUB=`config.sub -t | tr -d -` ;\
-	OLDDATEGUESS=`config.guess -t | tr -d -` ;\
+	OLDDATESUB=`./config.sub -t | tr -d -` ;\
+	OLDDATEGUESS=`./config.guess -t | tr -d -` ;\
 	NEWDATESUB=`/usr/share/misc/config.sub -t | tr -d -` ;\
 	NEWDATEGUESS=`/usr/share/misc/config.guess -t | tr -d -` ;\
 	if [ $$OLDDATESUB -lt $$NEWDATESUB -o \
@@ -102,10 +102,6 @@ install: build
 	# Add here commands to install the package into debian/tmp.
 	cd no-krb&&$(MAKE) install DESTDIR=`pwd`/../debian/tmp
 	cd krb&&$(MAKE)  DESTDIR=`pwd`/../debian/tmp-krb install
-	mv debian/tmp/usr/lib/libzephyr.so debian/tmp/usr/lib/libzephyr.so.$(SONAME)
-	ln -s libzephyr.so.$(SONAME) debian/tmp/usr/lib/libzephyr.so
-		mv debian/tmp-krb/usr/lib/libzephyr.so debian/tmp-krb/usr/lib/libzephyr.so.$(SONAME)
-	ln -s libzephyr.so.$(SONAME) debian/tmp-krb/usr/lib/libzephyr.so
 	mkdir -p debian/tmp/etc/zephyr/acl
 	set -x; for i in debian/acl/*; do install -c -m 644 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
 	install -c -m 644 debian/zephyr.vars debian/tmp/etc/zephyr

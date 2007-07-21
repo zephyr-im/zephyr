@@ -45,9 +45,8 @@ case "$1" in
 	#	just the same as "restart".
 	#
 	echo -n "Restarting $DESC: "
-	start-stop-daemon --oknodo --stop --quiet --pidfile \
+	start-stop-daemon --oknodo --stop --retry 5 --quiet --pidfile \
 		/var/run/$NAME.pid --exec $DAEMON
-	sleep 1
 	start-stop-daemon --start --quiet --pidfile \
 		/var/run/$NAME.pid --exec $DAEMON -- -N $zhm_args
 	echo "$NAME."

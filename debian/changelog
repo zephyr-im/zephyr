@@ -1,8 +1,11 @@
 zephyr (2.1.20070719.SNAPSHOT-1) unstable; urgency=low
 
-  * 
+  * new upstream, Closes: #433603
+  * byteswap port number for display in zwgc, Closes: #243101
+  * stick newline after errant error message, Closes: #242839
+  * wait for zhm to die when restarting. Closes: #41419
 
- --
+ -- Karl Ramm <kcr@debian.org>  Fri, 20 Jul 2007 13:23:48 -0400
 
 zephyr (2.1.20010518.SNAPSHOT-18) unstable; urgency=low
 
