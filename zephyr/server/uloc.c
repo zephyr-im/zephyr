@@ -445,6 +445,7 @@ uloc_send_locations()
 	  default:
 	    syslog(LOG_ERR,"broken location state %s/%d",
 		   loc->user->string, (int) loc->exposure);
+	    exposure_level = EXPOSE_OPSTAFF;
 	    break;
 	}
 	retval = bdump_send_list_tcp(ACKED, &loc->addr, LOGIN_CLASS,

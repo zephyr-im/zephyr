@@ -282,7 +282,7 @@ realm_sender_in_realm(realm, sender)
     return 0;
 }
 
-sender_in_realm(notice)
+int sender_in_realm(notice)
     ZNotice_t *notice;
 {
   char *realm;
@@ -557,8 +557,12 @@ realm_init()
 	    abort();
 	}
 	memset(&client->addr, 0, sizeof(struct sockaddr_in));
+#ifdef HAVE_KRB5
+        client->session_keyblock = NULL;
+#else
 #ifdef HAVE_KRB4
 	memset(&client->session_key, 0, sizeof(client->session_key));
+#endif
 #endif
 	sprintf(rlmprinc, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE, 
 		rlm->name);
@@ -1170,7 +1174,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 	    if (sscanf(notice->z_multinotice, "%d/%d", &origoffset, 
 		       &origlen) != 2) {
 		syslog(LOG_WARNING, "rlm_sendit_auth frag: parse failed");
-		return;
+		return ZERR_BADFIELD;
 	    }
 
 #if 0
@@ -1205,7 +1209,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 	    buffer = (char *) malloc(sizeof(ZPacket_t));
 	    if (!buffer) {
 		syslog(LOG_ERR, "realm_sendit_auth malloc");
-		return;                 /* DON'T put on nack list */
+		return ENOMEM;                 /* DON'T put on nack list */
 	    }
 
 	    buffer_len = sizeof(ZPacket_t);
@@ -1405,6 +1409,7 @@ ticket_retrieve(realm)
 	}
     } else {
 	syslog(LOG_ERR, "tkt_rtrv: don't have ticket, but have no child");
+        result = KRB5KRB_AP_ERR_TKT_EXPIRED;
     }
  
     pid = fork();
@@ -1480,7 +1485,7 @@ ticket_retrieve(realm)
     } else {
 	realm->child_pid = pid;
 	realm->have_tkt = 0;
-	
+
 	syslog(LOG_WARNING, "tkt_rtrv: %s: %d", realm->name,
 	       result);
 	return (result);

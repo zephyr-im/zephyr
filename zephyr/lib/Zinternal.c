@@ -109,6 +109,8 @@ void *__Z_debug_print_closure;
 
 static int Z_AddField __P((char **ptr, char *field, char *end));
 static int find_or_insert_uid __P((ZUnique_Id_t *uid, ZNotice_Kind_t kind));
+static Code_t Z_ZcodeFormatRawHeader __P((ZNotice_t *, char *, int, int *, char **, 
+                                 int *, char **, char **, int cksumtype));
 
 /* Find or insert uid in the old uids buffer.  The buffer is a sorted
  * circular queue.  We make the assumption that most packets arrive in
@@ -694,6 +696,7 @@ Code_t Z_NewFormatHeader(notice, buffer, buffer_len, len, cert_routine)
     Code_t retval;
     static char version[BUFSIZ]; /* default init should be all \0 */
     struct sockaddr_in name;
+    struct timeval tv;
     int namelen = sizeof(name);
 
     if (!notice->z_sender)
@@ -713,9 +716,9 @@ Code_t Z_NewFormatHeader(notice, buffer, buffer_len, len, cert_routine)
 
     notice->z_multinotice = "";
     
-    (void) gettimeofday(&notice->z_uid.tv, (struct timezone *)0);
-    notice->z_uid.tv.tv_sec = htonl((u_long) notice->z_uid.tv.tv_sec);
-    notice->z_uid.tv.tv_usec = htonl((u_long) notice->z_uid.tv.tv_usec);
+    (void) gettimeofday(&tv, (struct timezone *)0);
+    notice->z_uid.tv.tv_sec = htonl((u_long) tv.tv_sec);
+    notice->z_uid.tv.tv_usec = htonl((u_long) tv.tv_usec);
     
     (void) memcpy(&notice->z_uid.zuid_addr, &__My_addr, sizeof(__My_addr));
 
@@ -795,7 +798,7 @@ Code_t Z_AsciiFormatRawHeader(notice, buffer, buffer_len, hdr_len,
 				 cksum_start, cksum_len, cstart, cend, 1));
 }
 
-Code_t Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_start,
+static Code_t Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_start,
 			      cksum_len, cstart, cend, cksumstyle)
     ZNotice_t *notice;
     char *buffer;
@@ -1296,7 +1299,9 @@ void ZSetDebug(proc, arg)
 #endif /* Z_DEBUG */
 
 #ifdef HAVE_KRB5
-Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, krb5_cksumtype cksumtype, char **asn1_data, int *asn1_len) {
+Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, 
+                  krb5_cksumtype cksumtype, 
+                  char **asn1_data, int *asn1_len) {
     krb5_error_code result;
     char *data;
     int len;
@@ -1320,7 +1325,8 @@ Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, krb5_cksumtype c
     len = checksum.length;
 #else
     /* Create the checksum -- heimdal crypto API */
-    result = krb5_crypto_init(Z_krb5_ctx, keyblock, enctype, &cryptctx);
+    result = krb5_crypto_init(Z_krb5_ctx, keyblock, keyblock->keytype, 
+                              &cryptctx);
     if (result)
 	return result;
 
@@ -1354,7 +1360,71 @@ Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, krb5_cksumtype c
 }
 
 Code_t
-Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, krb5_cksumtype *cksumtype) {
+Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice, 
+                      char *buffer, char *cksum_start, int cksum_len, 
+                      char *cstart, char *cend, int buffer_len, 
+                      int *length_adjust)
+{
+     int plain_len;   /* length of part not to be checksummed */
+     int cksum0_len;  /* length of part before checksum */
+     int cksum1_len;  /* length of part after checksum */
+     krb5_data cksumbuf;
+     krb5_data cksum;
+     char *key_data;
+     int key_len;
+     krb5_enctype enctype;
+     krb5_cksumtype cksumtype;
+     Code_t result;
+     
+     key_data = Z_keydata(keyblock);
+     key_len = Z_keylen(keyblock);
+     result = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
+     if (result)
+          return (ZAUTH_FAILED);
+     
+     /* Assemble the things to be checksummed */
+     plain_len  = cksum_start - buffer;
+     cksum0_len = cstart - cksum_start;
+     cksum1_len = (cksum_start + cksum_len) - cend;
+     memset(&cksumbuf, 0, sizeof(cksumbuf));
+     cksumbuf.length = cksum0_len + cksum1_len + notice->z_message_len;
+     cksumbuf.data = malloc(cksumbuf.length);
+     if (!cksumbuf.data)
+          return ENOMEM;
+     memcpy(cksumbuf.data, cksum_start, cksum0_len);
+     memcpy(cksumbuf.data + cksum0_len, cend, cksum1_len);
+     memcpy(cksumbuf.data + cksum0_len + cksum1_len,
+            notice->z_message, notice->z_message_len);
+     /* compute the checksum */
+     result = Z_Checksum(&cksumbuf, keyblock, cksumtype, 
+                        (char **)&cksum.data, &cksum.length);
+     if (result) {
+          free(cksumbuf.data);
+          return result;
+     }
+     
+     /*
+      * OK....  we can zcode to a space starting at 'cstart',
+      * with a length of buffer_len - (plain_len + cksum_len).
+      * Then we tack on the end part, which is located at
+      * cksumbuf.data + cksum0_len and has length cksum1_len
+      */
+     
+     result = ZMakeZcode(cstart, buffer_len - (plain_len + cksum_len),
+                         cksum.data, cksum.length);
+     free(cksum.data);
+     if (!result) {
+          int zcode_len = strlen(cstart) + 1;
+          memcpy(cstart + zcode_len, cksumbuf.data + cksum0_len, cksum1_len);
+          *length_adjust = zcode_len - cksum_len + (cksum0_len + cksum1_len);
+     }
+     free(cksumbuf.data);
+     return result;
+}
+
+Code_t
+Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, 
+                  krb5_cksumtype *cksumtype) {
 #if HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
     *enctype  = keyblock->enctype; 
     return Z_krb5_lookup_cksumtype(*enctype, cksumtype); 
@@ -1362,6 +1432,7 @@ Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, krb5_cksumtype
     unsigned int len; 
     ENCTYPE *val; 
     int i = 0; 
+    Code_t result;
  
     result = krb5_keytype_to_enctypes(Z_krb5_ctx, keyblock->keytype, 
 				      &len, &val); 
@@ -1386,7 +1457,9 @@ Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, krb5_cksumtype
 #ifdef HAVE_KRB5
 /* returns 0 if invalid or losing, 1 if valid, *sigh* */
 int
-Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, krb5_cksumtype cksumtype, char *asn1_data, int asn1_len) {
+Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, 
+                    krb5_cksumtype cksumtype, char *asn1_data, 
+                    int asn1_len) {
     krb5_error_code result;
 #if HAVE_KRB5_C_MAKE_CHECKSUM
     krb5_checksum checksum;
@@ -1415,14 +1488,14 @@ Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, krb5_cksumtype
     checksum.checksum.data = asn1_data;
     checksum.cksumtype = cksumtype;
 
-    result = krb5_crypto_init(Z_krb5_ctx, keyblock, enctype, &cryptctx);
+    result = krb5_crypto_init(Z_krb5_ctx, keyblock, keyblock->keytype, &cryptctx);
     if (result)
 	return result;
     
     /* HOLDING: cryptctx */
     result = krb5_verify_checksum(Z_krb5_ctx, cryptctx,
 				  Z_KEYUSAGE_SRV_CKSUM,
-				  cksumbuf.data, cksumbuf.length,
+				  cksumbuf->data, cksumbuf->length,
 				  &checksum);
     krb5_crypto_destroy(Z_krb5_ctx, cryptctx);
     if (result)

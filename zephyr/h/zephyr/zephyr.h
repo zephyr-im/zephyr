@@ -156,6 +156,7 @@ Code_t ZParseNotice ZP((char*, int, ZNotice_t *));
 Code_t ZReadAscii ZP((char*, int, unsigned char*, int));
 Code_t ZReadAscii32 ZP((char *, int, unsigned long *));
 Code_t ZReadAscii16 ZP((char *, int, unsigned short *));
+Code_t ZReadZcode ZP((unsigned char*, unsigned char*, int, int *));
 Code_t ZSendPacket ZP((char*, int, int));
 Code_t ZSendList ZP((ZNotice_t*, char *[], int, Z_AuthProc));
 Code_t ZSrvSendList ZP((ZNotice_t*, char*[], int, Z_AuthProc, Code_t (*)()));
@@ -179,6 +180,8 @@ Code_t ZSrvSendRawList ZP((ZNotice_t*, char*[], int,
 Code_t ZMakeAscii ZP((char*, int, unsigned char*, int));
 Code_t ZMakeAscii32 ZP((char *, int, unsigned long));
 Code_t ZMakeAscii16 ZP((char *, int, unsigned int));
+Code_t ZMakeZcode ZP((char*, int, unsigned char*, int));
+Code_t ZMakeZcode32 ZP((char *, int, unsigned long));
 Code_t ZReceivePacket ZP((ZPacket_t, int*, struct sockaddr_in*));
 Code_t ZCheckAuthentication ZP((ZNotice_t*, struct sockaddr_in*));
 Code_t ZCheckZcodeAuthentication ZP((ZNotice_t*, struct sockaddr_in*));

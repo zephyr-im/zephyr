@@ -113,6 +113,14 @@ Code_t Z_WaitForNotice __P((ZNotice_t *notice,
 			    int (*pred) __P((ZNotice_t *, void *)), void *arg,
 			    int timeout));
 
+
+Code_t Z_NewFormatHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
+Code_t Z_NewFormatAuthHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
+Code_t Z_NewFormatRawHeader __P((ZNotice_t *, char *, int, int *, char **, 
+                                 int *, char **, char **));
+Code_t Z_AsciiFormatRawHeader __P((ZNotice_t *, char *, int, int *, char **, 
+                                 int *, char **, char **));
+
 void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz);
 
 #ifdef HAVE_KRB5
@@ -121,7 +129,11 @@ int ZGetCredsRealm(krb5_creds **creds_out, char *realm);
 Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, krb5_cksumtype cksumtype, char **asn1_data, int *asn1_len);
 Code_t Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, krb5_cksumtype *cksumtype);
 int Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, krb5_cksumtype cksumtype, char *asn1_data, int asn1_len);
-
+Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice, 
+                             char *buffer,
+                             char *cksum_start, int cksum_len, 
+                             char *cstart, char *cend, int buffer_len,
+                             int *length_ajdust);
 #endif
 
 #ifdef HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE

@@ -22,27 +22,6 @@ static const char rcsid_kstuff_c[] = "$Id$";
 
 #ifdef HAVE_KRB4
 
-/* Keep a hash table mapping tickets to session keys, so we can do a fast
- * check of the cryptographic checksum without doing and DES decryptions.
- * Also remember the expiry time of the ticket, so that we can sweep the
- * table periodically. */
-
-#define HASHTAB_SIZE 4091
-
-typedef struct hash_entry Hash_entry;
-
-/* The ticket comes at the end, in a variable-length array. */
-struct hash_entry {
-    C_Block session_key;
-    time_t expires;
-    char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
-    Hash_entry *next;
-    int ticket_len;
-    unsigned char ticket[1];
-};
-
-Hash_entry *hashtab[HASHTAB_SIZE];
-
 static ZChecksum_t compute_checksum __P((ZNotice_t *, C_Block));
 static ZChecksum_t compute_rlm_checksum __P((ZNotice_t *, C_Block));
 
@@ -110,6 +89,10 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
  * get the ticket and write it to the file descriptor
  */
 
+#if !defined(krb_err_base) && defined(ERROR_TABLE_BASE_krb)
+#define krb_err_base ERROR_TABLE_BASE_krb
+#endif
+
 Code_t
 SendKerberosData(fd, ticket, service, host)
      int fd;		/* file descriptor to write onto */
@@ -138,6 +121,59 @@ SendKerberosData(fd, ticket, service, host)
 }
 
 #endif /* HAVE_KRB4 */
+
+#ifdef HAVE_KRB5
+Code_t
+GetKrb5Data(int fd, krb5_data *data) {
+    char p[20];
+    int i;
+    unsigned char *dst;
+    Code_t retval;
+
+    for (i=0; i<20; i++) {
+	if (read(fd, &p[i], 1) != 1) {
+	    syslog(LOG_WARNING,"bad read reply len");
+	    return(KFAILURE);
+	}
+	if (p[i] == ' ') {
+	    p[i] = '\0';
+	    break;
+	}
+    }
+    if (i == 20 || strncmp(p, "V5-", 3) || !atoi(p+3)) {
+        syslog(LOG_WARNING,"bad reply len");
+        return ZSRV_PKSHORT;
+    }
+    data->length = atoi(p+3);
+    data->data = malloc(data->length);
+    if (! data->data) {
+       data->length = 0;
+       return errno;
+    }
+    dst=data->data;
+    for (i=0; i < data->length; i++) {
+	if (read(fd, dst++, 1) != 1) {
+            free(data->data);
+            memset((char *)data, 0, sizeof(krb5_data));
+            syslog(LOG_WARNING,"bad read reply string");
+            return ZSRV_PKSHORT;
+        }
+    }
+    return 0;
+}
+Code_t
+SendKrb5Data(int fd, krb5_data *data) {
+    char p[32];
+    int written, size_to_write;
+    sprintf(p, "V5-%d", data->length);
+    size_to_write = strlen (p);
+    if (size_to_write != (written = write(fd, p, size_to_write)) ||
+        data->length != (written = write(fd, data->data, data->length))) {
+        return (written < 0) ? errno : ZSRV_PKSHORT; 
+    }    
+    return 0;
+}
+#endif
 
 Code_t
 ZCheckRealmAuthentication(notice, from, realm)
@@ -238,7 +274,7 @@ ZCheckRealmAuthentication(notice, from, realm)
     
     if (tkt == 0 || !Z_tktprincp(tkt)) {
 	if (tkt)
-	    krb5_free_tickets(Z_krb5_ctx, tkt);
+	    krb5_free_ticket(Z_krb5_ctx, tkt);
 	free(authbuf);
 	krb5_auth_con_free(Z_krb5_ctx, authctx);
 	return ZAUTH_FAILED;
@@ -746,7 +782,7 @@ ZCheckAuthentication4(notice, from)
     result = krb_rd_req(&authent, SERVER_SERVICE, instance,
 			from->sin_addr.s_addr, &dat, srvtab_file);
     if (result == RD_AP_OK) {
-	ZSetSessionDES(dat.session);
+	ZSetSessionDES(&dat.session);
 	sprintf(srcprincipal, "%s%s%s@%s", dat.pname, dat.pinst[0] ? "." : "",
 		dat.pinst, dat.prealm);
 	if (strcmp(srcprincipal, notice->z_sender))
@@ -810,34 +846,19 @@ static ZChecksum_t compute_rlm_checksum(notice, session_key)
 #endif
 }
 
-void sweep_ticket_hash_table(arg)
-    void *arg;
-{
-    int i;
-    Hash_entry **ptr, *entry;
-
-    for (i = 0; i < HASHTAB_SIZE; i++) {
-	ptr = &hashtab[i];
-	while (*ptr) {
-	    entry = *ptr;
-	    if (entry->expires < NOW) {
-		*ptr = entry->next;
-		free(entry);
-	    } else {
-		ptr = &(*ptr)->next;
-	    }
-	}
-    }
-    timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
-}
-
 #ifdef HAVE_KRB5
 void
 ZSetSession(krb5_keyblock *keyblock) {
-#if 0
+#if 1
     krb5_error_code result;
 
-    result = krb5_copy_keyblock_contents(Z_krb5_ctx, keyblock, __Zephyr_session_keyblock);
+    if (__Zephyr_keyblock) {
+         krb5_free_keyblock_contents(Z_krb5_ctx, __Zephyr_keyblock);
+         result = krb5_copy_keyblock_contents(Z_krb5_ctx, keyblock, __Zephyr_keyblock);
+    } else {
+         result = krb5_copy_keyblock(Z_krb5_ctx, keyblock, &__Zephyr_keyblock);
+    }
+    
     if (result) /*XXX we're out of memory? */
 	;
 #else
@@ -848,7 +869,43 @@ ZSetSession(krb5_keyblock *keyblock) {
 #ifdef HAVE_KRB4
 void
 ZSetSessionDES(C_Block *key) {
+#ifdef HAVE_KRB5
+     Code_t result;
+#ifdef HAVE_KRB5_INIT_KEYBLOCK
+     if (__Zephyr_keyblock) {
+          krb5_free_keyblock(__Zephyr_keyblock);
+          __Zephyr_keyblock=NULL;
+     }
+     result = krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC, 
+                                 sizeof(C_Block)
+                                 &__Zephyr_keyblock);
+     if (result) /*XXX we're out of memory? */
+	return;
+
+     memcpy(Z_keydata(__Zephyr_keyblock), key, sizeof(C_Block));
+#else
+     krb5_keyblock *tmp, tmp_ss;
+     tmp = &tmp_ss;
+     Z_keylen(tmp)=sizeof(C_Block);
+     Z_keydata(tmp)=key;
+#if HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
+     tmp->enctype = ENCTYPE_DES_CBC_CRC;
+#else
+     tmp->keytype = KEYTYPE_DES;
+#endif
+    if (__Zephyr_keyblock) {
+         krb5_free_keyblock_contents(Z_krb5_ctx, __Zephyr_keyblock);
+         result = krb5_copy_keyblock_contents(Z_krb5_ctx, tmp, 
+                                              __Zephyr_keyblock);
+    } else {
+         result = krb5_copy_keyblock(Z_krb5_ctx, tmp, &__Zephyr_keyblock);
+    }
+     if (result) /*XXX we're out of memory? */
+          ;
+#endif
+#else
     memcpy(__Zephyr_session, key, sizeof(C_Block));
+#endif
 }
 #endif
 

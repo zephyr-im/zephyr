@@ -126,10 +126,11 @@ char *bdump_version = "1.2";
 
 #ifdef HAVE_KRB5
 krb5_ccache Z_krb5_ccache;
-#endif
-
+krb5_keyblock *__Zephyr_keyblock;
+#else
 #ifdef HAVE_KRB4
 C_Block __Zephyr_session;
+#endif
 #endif
 
 int
@@ -309,9 +310,6 @@ main(argc, argv)
     /* Reinitialize t_local now that initialization is done. */
     gettimeofday(&t_local, NULL);
     uptime = NOW;
-#ifdef HAVE_KRB4
-    timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
-#endif
 
     realm_wakeup();
 #ifdef DEBUG_MALLOC

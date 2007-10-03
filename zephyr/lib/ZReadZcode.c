@@ -18,6 +18,7 @@ static char rcsid_ZReadZcode_c[] = "$Id$";
 #include <assert.h>
 
 
+#if 0
 Code_t
 ZReadAsciiOrZcode(char *buf, int buflen, unsigned char *data, int datalen)
 {
@@ -33,6 +34,7 @@ Code_t ZReadZcode32(ptr, value_ptr)
 {
     abort();
 }
+#endif
 
 Code_t ZReadZcode(ptr, field, max, len)
     unsigned char *ptr;
