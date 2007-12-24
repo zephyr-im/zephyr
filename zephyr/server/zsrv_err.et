@@ -1,0 +1,43 @@
+#	Copyright (c) 1987,1988 Massachusetts Institute of Technology
+#
+#	For copying and distribution information, see the file
+#	"mit-copyright.h".
+#
+#	$Id$
+	et	zsrv
+
+ec ZSRV_BADASSOC,
+	"Client not associated with class"
+ec ZSRV_NOCLT,
+	"No such client"
+ec ZSRV_NOSUB,
+	"No such subscription"
+ec ZSRV_NOCLASS,
+	"Class unkown"
+ec ZSRV_CLASSXISTS,
+	"Class already registered"
+ec ZSRV_CLASSRESTRICTED,
+	"Class already restricted"
+ec ZSRV_HNOTFOUND,
+	"Host manager unknown"
+ec ZSRV_WRONGSRV,
+	"Host not on this server"
+ec ZSRV_PKSHORT,
+	"Pkt length too short"
+ec ZSRV_BUFSHORT,
+	"Buffer too short"	
+ec ZSRV_LEN,
+	"Read/Write length wrong"
+ec ZSRV_UNKNOWNOPCODE,
+	"Unknown opcode"
+ec ZSRV_REQUEUE,
+	"Requeue for later processing"
+ec ZSRV_RCSID,
+	"$Id$"
+ec ZSRV_BADSUBPORT,
+	"Illegal port specified in subscription"
+ec ZSRV_NORLM,
+	"No such realm"
+ec ZSRV_EMPTYCLASS,
+	"Class is now empty"
+	end

@@ -1,0 +1,11 @@
+# The patch version specified in this file is generally overridden by
+# environment variables ("release" on rhlinux, "ATHENA_PATCH_VERSION"
+# on other platforms).  This file should only be updated in the source
+# tree for major and minor version updates, not patch releases, to
+# avoid having lots of revisions.
+
+# This file is sourced by the Bourne shell.
+
+major=9
+minor=4
+patch=0

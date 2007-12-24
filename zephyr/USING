@@ -1,0 +1,77 @@
+This file explains how to use an existing Zephyr service once you've
+built and installed the Zephyr 2.0 distribution.  To learn how to
+build and install Zephyr, read the file INSTALL.  To learn how to set
+up Zephyr service at a site, read the file OPERATING.
+
+First, before you can do anything else, your client machine must be
+running zhm from the local system binary directory (/etc/athena/zephyr
+if you built Zephyr with --enable-athena, /usr/local/sbin/zephyr if
+you installed Zephyr in /usr/local and didn't use --enable-athena).
+Only one copy of zhm can be running on a given machine, and it can be
+started by any user.  If you're using a machine you don't administer,
+you may want to check if the machine is configured to start up zhm
+automatically at boot time.
+
+Once you have zhm running, you can start receiving zephyrgrams by
+running the command:
+
+	zwgc
+
+"zwgc" stands for "Zephyr WindowGram Client".  If you built Zephyr
+with X support and are using an X display, you will receive messages
+as windows on your screen (click on them to get rid of them);
+otherwise, you will receive messages in your terminal as text.  Read
+the man page on zwgc to find out how to configure it using the
+.zwgc.desc file in your home directory.
+
+You can send messages to another user with:
+
+	zwrite username
+
+To write to groups of users, you must agree on a "class" and/or
+"instance" to write to (this will be explained in greater detail
+below).  At MIT, most users communicate in private groups via classes.
+Suppose a bunch of people wanted to communicate on a class "newclass".
+They would all subscribe to the class with the command:
+
+	zctl add newclass \* \*
+
+and send messages with:
+
+	zwrite -c newclass
+
+The "zctl add" command adds the subscription to the .zephyr.subs file
+in your home directory, so that you will automatically be subscribed
+to the class the next time you run zwgc.  If you just want to
+subscribe without adding the subscription to your .zephyr.subs file,
+use "zctl sub" instead of "zctl add".
+
+Now for a bit more explanation about what classes and instances are:
+every Zephyr message is send to a class, an instance, and a recipient,
+commonly written as <class,instance,recipient>.  The default class is
+"MESSAGE"; the default instance is "PERSONAL".  When you use "zwrite
+username", you are sending a message to <MESSAGE,PERSONAL,username>.
+If you don't specify a username on the zwrite command line, you will
+be sending to the recipient "*", so when you use "zwrite -c newclass",
+you are sending a message to <newclass,PERSONAL,username>.
+
+Similarly, every time you request a subscription, you are subscribing
+to a class, an instance, and a recipient.  The recipient must be
+either "*" or your username.  The instance can be any string; however,
+if you subscribe to instance "*", you will receive messages to any
+instance as long as the class and recipient also match.  The class can
+be any string; "*" has no special meaning for class names.  When you
+start zwgc, you are automatically subscribed to
+<MESSAGE,PERSONAL,yourusername> and <MESSAGE,URGENT,yourusername> even
+if you don't explicitly request those subscriptions.
+
+As an example of how you might use these features, at MIT we have
+several frequently-used instances of class MESSAGE, called
+"white-magic", "help", "weather", "tmbg" and so forth.  These are
+commonly known as "public" instances because they are not intended to
+exclude anyone.  Users can subscribe to individual instances using
+"zctl add message help \*", or they can subscribe to all of them at
+once using "zctl add message \* \*".  (If users do this, they can tell
+zwgc to filter out messages from certain instances; see the man page
+for zwgc.)  If users want to have semi-private group conversations,
+they use separate classes, as described earlier.

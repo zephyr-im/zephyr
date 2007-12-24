@@ -1,0 +1,78 @@
+# Galician translation of zephyr's debconf templates
+# This file is distributed under the same license as the zephyr package.
+# Jacobo Tarrio <jtarrio@debian.org>, 2007.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: zephyr\n"
+"Report-Msgid-Bugs-To: kcr@debian.org\n"
+"POT-Creation-Date: 2007-07-19 04:11-0400\n"
+"PO-Revision-Date: 2007-02-28 10:30+0100\n"
+"Last-Translator: Jacobo Tarrio <jtarrio@debian.org>\n"
+"Language-Team: Galician <proxecto@trasno.net>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+msgid "Zephyr servers:"
+msgstr "Servidores zephyr:"
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:1001
+#, fuzzy
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(note that this can be a subset of what you're telling the servers) If you "
+"are using hesiod to advertise your zephyr servers, leave this blank."
+msgstr ""
+"Escriba os nomes completos dos seus servidores zephyr, separados por "
+"espazos. (Teña en conta que isto pode ser un subconxunto do que lles conta "
+"aos servidores)"
+
+#. Type: string
+#. Description
+#: ../zephyr-server.templates:1001
+msgid ""
+"Please type the full names of your zephyr servers, separated by spaces. "
+"(Note that this can be a superset of that you're telling the clients.)"
+msgstr ""
+"Escriba os nomes completos dos seus servidores zephyr, separados por "
+"espazos. (Teña en conta que pode ser un superconxunto do que lles di aos "
+"clientes)."
+
+#~ msgid "for internal use"
+#~ msgstr "para uso interno"
+
+#~ msgid ""
+#~ "We want to try and capture user changes when they edit a config file "
+#~ "manually.  To do this we look at the file in the config script. However, "
+#~ "in the case of preconfigure, the config script is run twice before the "
+#~ "postinst is run.  Thus we may read the wrong value before the edited "
+#~ "value is written out in postinst. If this is false we skip reading config "
+#~ "files until postinst runs."
+#~ msgstr ""
+#~ "Preténdes capturar os cambios que fan os usuarios cando modifican "
+#~ "manualmente un ficheiro de configuración. Para facelo consúltase o "
+#~ "ficheiro no script de configuración. Nembargantes, no caso da "
+#~ "preconfiguración, o script de configuración execútase dúas veces antes de "
+#~ "executar o script de post-instalación. Polo tanto, pódese ler o valor "
+#~ "incorrecto antes de que se grave o valor editado na post-instalación. Se "
+#~ "isto é falso omítese a lectura de ficheiros de configuración ata que se "
+#~ "execute o script de post-instalación."
+
+#~ msgid "You have no zephyr servers specified for the client"
+#~ msgstr "Non especificou servidores zephyr para o cliente"
+
+#~ msgid ""
+#~ "The zephyr-clients package for whatever reason does not have any zephyr "
+#~ "servers configured.  Please edit the file /etc/default/zephyr-clients and "
+#~ "add the names of your zephyr servers, separated by spaces to the zhm_args "
+#~ "variable."
+#~ msgstr ""
+#~ "Por algún motivo, o paquete zephyr-clients non ten configurado ningún "
+#~ "servidor zephyr. Edite o ficheiro /etc/default/zephyr-clients e engada os "
+#~ "nomes dos servidores zephyr, separados por espazos, á variable zhm_args."
