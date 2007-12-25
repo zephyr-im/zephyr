@@ -84,8 +84,12 @@ client_register(notice, host, client_p, wantdefaults)
 	if (!client)
 	    return ENOMEM;
 	memset(&client->addr, 0, sizeof(struct sockaddr_in));
-#ifdef KERBEROS
+#ifdef HAVE_KRB5
+        client->session_keyblock = NULL;
+#else
+#ifdef HAVE_KRB4
 	memset(&client->session_key, 0, sizeof(client->session_key));
+#endif
 #endif
 	client->last_send = 0;
 	client->last_ack = NOW;
@@ -122,6 +126,10 @@ client_deregister(client, flush)
     nack_release(client);
     subscr_cancel_client(client);
     free_string(client->principal);
+#ifdef HAVE_KRB5
+    if (client->session_keyblock)
+         krb5_free_keyblock(Z_krb5_ctx, client->session_keyblock);
+#endif
     if (flush)
 	uloc_flush_client(&client->addr);
     free(client);

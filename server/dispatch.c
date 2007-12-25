@@ -14,6 +14,7 @@
 #include <zephyr/mit-copyright.h>
 #include "zserver.h"
 #include <sys/socket.h>
+#include <com_err.h>
 
 #ifndef lint
 #ifndef SABER
@@ -134,7 +135,7 @@ handle_packet()
     int authentic;		/* authentic flag */
     Pending *pending;		/* pending packet */
     int from_server;		/* packet is from another server */
-    Realm *realm;		/* foreign realm ptr */
+    ZRealm *realm;		/* foreign realm ptr */
 #ifdef DEBUG
     static int first_time = 1;
 #endif
@@ -201,8 +202,8 @@ handle_packet()
         } else {
           if (realm = realm_which_realm(&input_sin)) {
             authentic = ZCheckRealmAuthentication(&new_notice,
-                                                  &input_sin,
-                                                  realm->name);
+						       &input_sin,
+						       realm->name);
           } else 
 	    authentic = ZCheckAuthentication(&new_notice, &input_sin);
 	}
@@ -223,6 +224,7 @@ handle_packet()
 	}
     }
 
+#if 0
     if (whoisit.sin_port != hm_port && whoisit.sin_port != hm_srv_port &&
 	strcasecmp(new_notice.z_class, ZEPHYR_ADMIN_CLASS) != 0 &&
 	whoisit.sin_port != srv_addr.sin_port &&
@@ -231,6 +233,7 @@ handle_packet()
 	       ntohs(whoisit.sin_port));
 	return;
     }
+#endif
 
     message_notices.val++;
     dispatch(&new_notice, authentic, &whoisit, from_server);
@@ -251,7 +254,7 @@ dispatch(notice, auth, who, from_server)
     String *notice_class;
     struct sockaddr_in who2;
     int authflag;
-    Realm *realm;
+    ZRealm *realm;
     char *cp;
 #ifdef DEBUG
     char dbg_buf[BUFSIZ];
@@ -353,7 +356,7 @@ sendit(notice, auth, who, external)
 
     class = make_string(notice->z_class, 1);
     if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient)) {
-      Realm *rlm;
+      ZRealm *rlm;
 
       acl = class_get_acl(class);
       if (acl != NULL) {
@@ -586,6 +589,7 @@ xmit_frag(notice, buf, len, waitforack)
     return(ZERR_NONE);
 }
 
+
 /*
  * Send the notice to the client.  After transmitting, put it onto the
  * not ack'ed list.
@@ -619,14 +623,23 @@ xmit(notice, dest, auth, client)
 				   we are distributing authentic and
 				   we have a pointer to auth info
 				   */
-#ifdef HAVE_KRB4
-	retval = ZFormatAuthenticNotice(notice, noticepack, packlen, &packlen,
-					client->session_key);
-	if (retval != ZERR_NONE) {
-	    syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
-	    free(noticepack);
-	    return;
-	}
+#ifdef HAVE_KRB5
+         retval = ZFormatAuthenticNoticeV5(notice, noticepack, packlen,
+                                           &packlen, client->session_keyblock);
+         if (retval != ZERR_NONE) {
+              syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
+              free(noticepack);
+              return;
+         }
+#else
+#if defined(HAVE_KRB4)
+         retval = ZFormatAuthenticNotice(notice, noticepack, packlen,
+                                           &packlen, client->session_key);
+         if (retval != ZERR_NONE) {
+              syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
+              free(noticepack);
+              return;
+         }
 #else /* !HAVE_KRB4 */
 	notice->z_auth = 1;
 	retval = ZFormatSmallRawNotice(notice, noticepack, &packlen);
@@ -636,6 +649,7 @@ xmit(notice, dest, auth, client)
 	    return;
 	}
 #endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB5 */
     } else {
 	notice->z_auth = 0;
 	notice->z_authent_len = 0;
@@ -1095,7 +1109,7 @@ control_dispatch(notice, auth, who, server)
     Client *client;
     Code_t retval;
     int wantdefs;
-    Realm *realm;
+    ZRealm *realm;
     struct sockaddr_in newwho;
 
     /*
@@ -1163,9 +1177,27 @@ control_dispatch(notice, auth, who, server)
 		clt_ack(notice, who, AUTH_FAILED);
 	    return ZERR_NONE;
 	}
+#ifdef HAVE_KRB5
+        if (client->session_keyblock) {
+             krb5_free_keyblock_contents(Z_krb5_ctx, client->session_keyblock);
+             retval = krb5_copy_keyblock_contents(Z_krb5_ctx, ZGetSession(),
+                                         client->session_keyblock);
+        } else {
+             retval = krb5_copy_keyblock(Z_krb5_ctx, ZGetSession(), 
+                                &client->session_keyblock);
+        }
+        if (retval) {
+             syslog(LOG_WARNING, "keyblock copy failed in subscr: %s",
+                    error_message(retval));
+             if (server == me_server)
+                  nack(notice, who);
+             return ZERR_NONE;
+        }
+#else
 #ifdef HAVE_KRB4
 	/* in case it's changed */
 	memcpy(client->session_key, ZGetSession(), sizeof(C_Block));
+#endif
 #endif
 	retval = subscr_subscribe(client, notice, server);
 	if (retval != ZERR_NONE) {
