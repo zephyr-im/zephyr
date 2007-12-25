@@ -140,10 +140,12 @@ Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice,
 #define Z_keydata(keyblock)	((keyblock)->contents)
 #define Z_keylen(keyblock)	((keyblock)->length)
 #define Z_credskey(creds)	(&(creds)->keyblock)
+#define Z_enctype(keyblock)	((keyblock)->enctype)
 #else
 #define Z_keydata(keyblock)	((keyblock)->keyvalue.data)
 #define Z_keylen(keyblock)	((keyblock)->keyvalue.length)
 #define Z_credskey(creds)	(&(creds)->session)
+#define Z_enctype(keyblock)	((keyblock)->keytype)
 #endif
 
 #ifdef HAVE_KRB5_TICKET_ENC_PART2

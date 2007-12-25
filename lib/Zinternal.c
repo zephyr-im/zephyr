@@ -69,14 +69,14 @@ static struct cksum_map_s {
 
   /* source lost in history (an expired internet-draft) */
   { 5 /* des3-cbc-md5 */,             9  /* rsa-md5-des3 */ },
-  { 7 /* des3-cbc-sha1 */,            12 /* hmac-sha1-des3 */ },
+  { 7 /* des3-cbc-sha1 */,            13 /* hmac-sha1-des3 */ },
 
   /* per draft-ietf-krb-wg-crypto-02.txt */
   { 16 /* des3-cbc-sha1-kd */,        12 /* hmac-sha1-des3-kd */ },
 
   /* per draft-raeburn-krb-rijndael-krb-02.txt */
-  { 17 /* aes128-cts-hmac-sha1-96 */, 10 /* hmac-sha1-96-aes128 */ },
-  { 18 /* aes256-cts-hmac-sha1-96 */, 11 /* hmac-sha1-96-aes256 */ },
+  { 17 /* aes128-cts-hmac-sha1-96 */, 15 /* hmac-sha1-96-aes128 */ },
+  { 18 /* aes256-cts-hmac-sha1-96 */, 16 /* hmac-sha1-96-aes256 */ },
 
   /* per draft-brezak-win2k-krb-rc4-hmac-04.txt */
   { 23 /* rc4-hmac */,                -138 /* hmac-md5 */ },
@@ -1425,32 +1425,8 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice,
 Code_t
 Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, 
                   krb5_cksumtype *cksumtype) {
-#if HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
-    *enctype  = keyblock->enctype; 
+    *enctype  = Z_enctype(keyblock); 
     return Z_krb5_lookup_cksumtype(*enctype, cksumtype); 
-#else 
-    unsigned int len; 
-    ENCTYPE *val; 
-    int i = 0; 
-    Code_t result;
- 
-    result = krb5_keytype_to_enctypes(Z_krb5_ctx, keyblock->keytype, 
-				      &len, &val); 
-    if (result)
-      return result;
-    
-    do { 
-      if (i == len) break;
-      result = Z_krb5_lookup_cksumtype(val[i], cksumtype); 
-      i++;
-    } while (result != 0); 
-    
-    if (result)
-      return result;
-
-    *enctype = val[i-1]; 
-#endif
-    return 0;
 }
 #endif
 
