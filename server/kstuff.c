@@ -165,7 +165,7 @@ Code_t
 SendKrb5Data(int fd, krb5_data *data) {
     char p[32];
     int written, size_to_write;
-    sprintf(p, "V5-%d", data->length);
+    sprintf(p, "V5-%d ", data->length);
     size_to_write = strlen (p);
     if (size_to_write != (written = write(fd, p, size_to_write)) ||
         data->length != (written = write(fd, data->data, data->length))) {
@@ -409,7 +409,7 @@ ZCheckRealmAuthentication(notice, from, realm)
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
-        return ZAUTH_NO; 
+        return ZAUTH_FAILED; 
     } 
     /* HOLDING: authctx, authenticator, cksumbuf.data */ 
  
@@ -694,7 +694,7 @@ ZCheckAuthentication(notice, from)
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
-        return ZAUTH_NO; 
+        return ZAUTH_FAILED; 
     } 
     /* HOLDING: authctx, authenticator, cksumbuf.data */ 
  
@@ -847,6 +847,46 @@ static ZChecksum_t compute_rlm_checksum(notice, session_key)
 }
 
 #ifdef HAVE_KRB5
+krb5_error_code 
+Z_krb5_init_keyblock(krb5_context context,
+	krb5_enctype type,
+	size_t size,
+	krb5_keyblock **key)
+{
+#ifdef HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
+	return krb5_init_keyblock(context, type, size, key);
+#else
+	krb5_error_code ret;
+	krb5_keyblock *tmp, tmp_ss;
+	tmp = &tmp_ss;
+
+	*key = NULL;
+	Z_enctype(tmp) = type;
+	Z_keylen(tmp) = size;
+	Z_keydata(tmp) = malloc(size);
+	if (!Z_keydata(tmp))
+		return ENOMEM;
+	ret =  krb5_copy_keyblock(context, tmp, key);
+	free(Z_keydata(tmp));
+	return ret;
+#endif
+}
+
+#if 0
+void ZLogKey(char *label, krb5_keyblock *keyblock) {
+   char *p, *buf;
+   unsigned char *k;
+   int i;
+   buf = malloc(5 *Z_keylen(keyblock)+1);
+
+   k=Z_keydata(keyblock);
+   for (i=0,p=buf; i < Z_keylen(keyblock); i++,p+=strlen(p))
+       sprintf(p, " 0x%02x", k[i]);
+   syslog(LOG_ERR, "key %s is type %d, %d bytes, %s", label, Z_enctype(keyblock), Z_keylen(keyblock), buf);
+   free(buf);
+}
+#endif
+
 void
 ZSetSession(krb5_keyblock *keyblock) {
 #if 1
@@ -871,38 +911,17 @@ void
 ZSetSessionDES(C_Block *key) {
 #ifdef HAVE_KRB5
      Code_t result;
-#ifdef HAVE_KRB5_INIT_KEYBLOCK
      if (__Zephyr_keyblock) {
-          krb5_free_keyblock(__Zephyr_keyblock);
+          krb5_free_keyblock(Z_krb5_ctx, __Zephyr_keyblock);
           __Zephyr_keyblock=NULL;
      }
-     result = krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC, 
-                                 sizeof(C_Block)
+     result = Z_krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC, 
+                                 sizeof(C_Block),
                                  &__Zephyr_keyblock);
      if (result) /*XXX we're out of memory? */
 	return;
 
      memcpy(Z_keydata(__Zephyr_keyblock), key, sizeof(C_Block));
-#else
-     krb5_keyblock *tmp, tmp_ss;
-     tmp = &tmp_ss;
-     Z_keylen(tmp)=sizeof(C_Block);
-     Z_keydata(tmp)=key;
-#if HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
-     tmp->enctype = ENCTYPE_DES_CBC_CRC;
-#else
-     tmp->keytype = KEYTYPE_DES;
-#endif
-    if (__Zephyr_keyblock) {
-         krb5_free_keyblock_contents(Z_krb5_ctx, __Zephyr_keyblock);
-         result = krb5_copy_keyblock_contents(Z_krb5_ctx, tmp, 
-                                              __Zephyr_keyblock);
-    } else {
-         result = krb5_copy_keyblock(Z_krb5_ctx, tmp, &__Zephyr_keyblock);
-    }
-     if (result) /*XXX we're out of memory? */
-          ;
-#endif
 #else
     memcpy(__Zephyr_session, key, sizeof(C_Block));
 #endif
