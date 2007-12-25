@@ -3,17 +3,17 @@
 
 Unacked *rlm_nacklist = NULL;   /* not acked list for realm-realm
                                    packets */
-Realm *otherrealms;             /* points to an array of the known
+ZRealm *otherrealms;             /* points to an array of the known
                                    servers */
 int nrealms = 0;                /* number of other realms */
 
 /*
  * External Routines:
  *
- * Realm *realm_which_realm(struct sockaddr_in *who)
+ * ZRealm *realm_which_realm(struct sockaddr_in *who)
  * figures out if this packet came from another realm's server
  *
- * Realm *realm_get_realm_by_pid(int pid)
+ * ZRealm *realm_get_realm_by_pid(int pid)
  * figures out which realm a child handler was for
  *
  * void kill_realm_pids()
@@ -31,7 +31,7 @@ int nrealms = 0;                /* number of other realms */
  * int realm_sender_in_realm(char *realm, char *sender)
  * figures out if sender is in realm
  * 
- * Realm *realm_get_realm_by_name(char *name)
+ * ZRealm *realm_get_realm_by_name(char *name)
  * finds a realm struct from the realm array by name, tries expansion
  *
  * Code_t realm_dispatch(ZNotice_t *notice, int auth, struct sockaddr_in *who,
@@ -49,35 +49,34 @@ int nrealms = 0;                /* number of other realms */
  *
  * Code_t realm_control_dispatch(ZNotice_t *notice, int auth,
  *                               struct sockaddr_in *who, Server *server,
- *				 Realm *realm)
+ *				 ZRealm *realm)
  * dispatches a foreign realm control message
  *
  * void realm_handoff(ZNotice_t *notice, int auth, struct sockaddr_in *who,
- *                    Realm *realm, int ack_to_sender)
+ *                    ZRealm *realm, int ack_to_sender)
  * hands off a message to another realm
  *
  * void realm_dump_realms(File *fp)
  * do a database dump of foreign realm info
  *
  */
-static void realm_sendit __P((ZNotice_t *notice, struct sockaddr_in *who, int auth, Realm *realm, int ack_to_sender));
-static void realm_sendit_auth __P((ZNotice_t *notice, struct sockaddr_in *who, int auth, Realm *realm, int ack_to_sender));
+static void realm_sendit __P((ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender));
+static Code_t realm_sendit_auth __P((ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender));
 static void rlm_ack __P((ZNotice_t *notice, Unacked *nacked));
 static void rlm_nack_cancel __P((ZNotice_t *notice, struct sockaddr_in *who));
 static void rlm_new_ticket __P(());
 static void rlm_rexmit __P((void *arg));
-static Code_t realm_ulocate_dispatch __P((ZNotice_t *notice,int auth,struct sockaddr_in *who,Server *server,Realm *realm));
-static Code_t realm_new_server __P((struct sockaddr_in *, ZNotice_t *, Realm *));
-static Code_t realm_set_server __P((struct sockaddr_in *, Realm *));
+static Code_t realm_ulocate_dispatch __P((ZNotice_t *notice,int auth,struct sockaddr_in *who,Server *server,ZRealm *realm));
+static Code_t realm_new_server __P((struct sockaddr_in *, ZNotice_t *, ZRealm *));
+static Code_t realm_set_server __P((struct sockaddr_in *, ZRealm *));
 #ifdef HAVE_KRB4
-static Code_t ticket_retrieve __P((Realm *realm));
+static Code_t ticket_retrieve __P((ZRealm *realm));
 static int ticket_lookup __P((char *realm));
-static int ticket_expired __P((CREDENTIALS *cred));
 #endif
 
 static int
 realm_get_idx_by_addr(realm, who) 
-    Realm *realm;
+    ZRealm *realm;
     struct sockaddr_in *who;
 {
     struct sockaddr_in *addr;
@@ -95,7 +94,7 @@ char *
 realm_expand_realm(realmname)
 char *realmname;
 {
-    Realm *realm;
+    ZRealm *realm;
     int a;
 
     /* First, look for an exact match (case insensitive) */
@@ -120,11 +119,11 @@ char *realmname;
     return(realmname);
 }
 
-Realm *
+ZRealm *
 realm_get_realm_by_pid(pid)
      int pid;
 {
-    Realm *realm;
+    ZRealm *realm;
     int a;
 
     for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
@@ -137,7 +136,7 @@ realm_get_realm_by_pid(pid)
 void
 kill_realm_pids()
 {
-    Realm *realm;
+    ZRealm *realm;
     int a;
 
     for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
@@ -147,11 +146,11 @@ kill_realm_pids()
     return;
 }
 
-Realmname *
+ZRealmname *
 get_realm_lists(file)
     char *file;
 {
-    Realmname *rlm_list, *rlm;
+    ZRealmname *rlm_list, *rlm;
     int ii, nused, ntotal;
     FILE *fp;
     char buf[REALM_SZ + MAXHOSTNAMELEN + 1]; /* one for newline */
@@ -159,11 +158,11 @@ get_realm_lists(file)
   
     nused = 0;
     if (!(fp = fopen(file, "r")))
-	return((Realmname *)0);
+	return((ZRealmname *)0);
   
     /* start with 16, realloc if necessary */
     ntotal = 16;
-    rlm_list = (Realmname *)malloc(ntotal * sizeof(Realmname));
+    rlm_list = (ZRealmname *)malloc(ntotal * sizeof(ZRealmname));
     if (!rlm_list) {
 	syslog(LOG_CRIT, "get_realm_lists malloc");
 	abort();
@@ -197,9 +196,9 @@ get_realm_lists(file)
 	    /* new realm */
 	    if (nused + 1 >= ntotal) {
 		/* make more space */
-		rlm_list = (Realmname *)realloc((char *)rlm_list,
+		rlm_list = (ZRealmname *)realloc((char *)rlm_list,
 						(unsigned)ntotal * 2 * 
-						sizeof(Realmname));
+						sizeof(ZRealmname));
 		if (!rlm_list) {
 		    syslog(LOG_CRIT, "get_realm_lists realloc");
 		    abort();
@@ -219,9 +218,9 @@ get_realm_lists(file)
 	}
     }
     if (nused + 1 >= ntotal) {
-	rlm_list = (Realmname *)realloc((char *)rlm_list,
+	rlm_list = (ZRealmname *)realloc((char *)rlm_list,
 					(unsigned)(ntotal + 1) * 
-					sizeof(Realmname));
+					sizeof(ZRealmname));
 	if (!rlm_list) {
 	    syslog(LOG_CRIT, "get_realm_lists realloc");
 	    abort();
@@ -229,6 +228,7 @@ get_realm_lists(file)
     }
     *rlm_list[nused].name = '\0';
   
+    fclose(fp);
     return(rlm_list);
 }
 
@@ -282,7 +282,7 @@ realm_sender_in_realm(realm, sender)
     return 0;
 }
 
-sender_in_realm(notice)
+int sender_in_realm(notice)
     ZNotice_t *notice;
 {
   char *realm;
@@ -295,11 +295,11 @@ sender_in_realm(notice)
   return 0;
 }
 
-Realm *
+ZRealm *
 realm_which_realm(who)
     struct sockaddr_in *who;
 {
-    Realm *realm;
+    ZRealm *realm;
     struct sockaddr_in *addr;
     int a, b;
 
@@ -316,12 +316,12 @@ realm_which_realm(who)
     return 0;
 }
 
-Realm *
+ZRealm *
 realm_get_realm_by_name(name)
     char *name;
 {
     int a;
-    Realm *realm;
+    ZRealm *realm;
 
     /* First, look for an exact match (case insensitive) */
     for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
@@ -341,7 +341,7 @@ rlm_nack_cancel(notice, who)
     register ZNotice_t *notice;
     struct sockaddr_in *who;
 {
-    register Realm *which = realm_which_realm(who);
+    register ZRealm *which = realm_which_realm(who);
     register Unacked *nacked, *next;
     ZPacket_t retval;
   
@@ -424,7 +424,7 @@ realm_dispatch(notice, auth, who, server)
     struct sockaddr_in *who;
     Server *server;
 {
-    Realm *realm;
+    ZRealm *realm;
     struct sockaddr_in newwho;
     Code_t status = ZERR_NONE;
     char rlm_recipient[REALM_SZ + 1];
@@ -490,8 +490,8 @@ void
 realm_init()
 {
     Client *client;
-    Realmname *rlmnames;
-    Realm *rlm;
+    ZRealmname *rlmnames;
+    ZRealm *rlm;
     int ii, jj, found;
     struct in_addr *addresses;
     struct hostent *hp;
@@ -508,7 +508,7 @@ realm_init()
     
     for (nrealms = 0; *rlmnames[nrealms].name; nrealms++);
     
-    otherrealms = (Realm *)malloc(nrealms * sizeof(Realm));
+    otherrealms = (ZRealm *)malloc(nrealms * sizeof(ZRealm));
     if (!otherrealms) {
 	syslog(LOG_CRIT, "malloc failed in realm_init");
 	abort();
@@ -557,8 +557,12 @@ realm_init()
 	    abort();
 	}
 	memset(&client->addr, 0, sizeof(struct sockaddr_in));
+#ifdef HAVE_KRB5
+        client->session_keyblock = NULL;
+#else
 #ifdef HAVE_KRB4
 	memset(&client->session_key, 0, sizeof(client->session_key));
+#endif
 #endif
 	sprintf(rlmprinc, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE, 
 		rlm->name);
@@ -589,7 +593,7 @@ void
 realm_deathgram(server)
     Server *server;
 {
-    Realm *realm;
+    ZRealm *realm;
     char rlm_recipient[REALM_SZ + 1];
     int jj = 0;
 
@@ -628,7 +632,7 @@ realm_deathgram(server)
 	    }
 #endif
 
-	if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH)) 
+	if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZCAUTH)) 
 	    != ZERR_NONE) 
 	{
 	    syslog(LOG_WARNING, "rlm_deathgram format: %s",
@@ -651,7 +655,7 @@ void
 realm_wakeup()
 {
     int jj, found = 0;
-    Realm *realm;
+    ZRealm *realm;
     char rlm_recipient[REALM_SZ + 1];
     
     for (jj = 1; jj < nservers; jj++) {    /* skip limbo server */
@@ -721,7 +725,7 @@ realm_ulocate_dispatch(notice, auth, who, server, realm)
     int auth;
     struct sockaddr_in *who;
     Server *server;
-    Realm *realm;
+    ZRealm *realm;
 {
     register char *opcode = notice->z_opcode;
     Code_t status;
@@ -761,7 +765,7 @@ realm_control_dispatch(notice, auth, who, server, realm)
     int auth;
     struct sockaddr_in *who;
     Server *server;
-    Realm *realm;
+    ZRealm *realm;
 {
     register char *opcode = notice->z_opcode;
     Code_t status;
@@ -841,12 +845,12 @@ static Code_t
 realm_new_server(sin, notice, realm)
     struct sockaddr_in *sin;
     ZNotice_t *notice;
-    Realm *realm;
+    ZRealm *realm;
 {
     struct hostent *hp;
     char suggested_server[MAXHOSTNAMELEN];
     unsigned long addr;
-    Realm *rlm;
+    ZRealm *rlm;
     struct sockaddr_in sinaddr;
     int srvidx;
 
@@ -877,9 +881,9 @@ realm_new_server(sin, notice, realm)
 static Code_t
 realm_set_server(sin, realm)
     struct sockaddr_in *sin;
-    Realm *realm;
+    ZRealm *realm;
 {
-    Realm *rlm;
+    ZRealm *rlm;
 
     rlm = realm_which_realm(sin);
     /* Not exactly */
@@ -894,7 +898,7 @@ realm_handoff(notice, auth, who, realm, ack_to_sender)
     ZNotice_t *notice;
     int auth;
     struct sockaddr_in *who;
-    Realm *realm;
+    ZRealm *realm;
     int ack_to_sender;
 {
 #ifdef HAVE_KRB4
@@ -917,7 +921,7 @@ realm_handoff(notice, auth, who, realm, ack_to_sender)
     
     zdbug((LOG_DEBUG, "realm_sendit to realm %s auth %d", realm->name, auth)); 
     /* valid ticket available now, send the message */
-    realm_sendit_auth(notice, who, auth, realm, ack_to_sender);
+    retval = realm_sendit_auth(notice, who, auth, realm, ack_to_sender);
 #else /* HAVE_KRB4 */
     realm_sendit(notice, who, auth, realm, ack_to_sender);
 #endif /* HAVE_KRB4 */
@@ -928,7 +932,7 @@ realm_sendit(notice, who, auth, realm, ack_to_sender)
     ZNotice_t *notice;
     struct sockaddr_in *who;
     int auth;
-    Realm *realm;
+    ZRealm *realm;
     int ack_to_sender;
 {
     caddr_t pack;
@@ -1009,7 +1013,7 @@ rlm_rexmit(arg)
 {
     Unacked *nackpacket = (Unacked *) arg;
     Code_t retval;
-    register Realm *realm;
+    register ZRealm *realm;
     int new_srv_idx;
 
     zdbug((LOG_DEBUG,"rlm_rexmit"));
@@ -1100,12 +1104,12 @@ realm_dump_realms(fp)
 }
 
 #ifdef HAVE_KRB4
-static void
+static Code_t
 realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
     ZNotice_t *notice;
     int auth;
     struct sockaddr_in *who;
-    Realm *realm;
+    ZRealm *realm;
     int ack_to_sender;
 {
     char *buffer, *ptr;
@@ -1115,33 +1119,27 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
     Code_t retval;
     Unacked *nacked;
     char buf[1024], multi[64];
-    CREDENTIALS cred;
-    KTEXT_ST authent;
     ZNotice_t partnotice, newnotice;
 
     offset = 0;
 
-    /* build an authent. first, make sure we have the ticket available */
-    retval = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, realm->name, &cred);
-    if (retval != GC_OK) {
-	syslog(LOG_WARNING, "rlm_sendit_auth get_cred: %s",
-	       error_message(retval+krb_err_base));
-	return;
+    buffer = (char *) malloc(sizeof(ZPacket_t));
+    if (!buffer) {
+        syslog(LOG_ERR, "realm_sendit_auth malloc");
+        return ENOMEM;                 /* DON'T put on nack list */
     }
 
-    retval = krb_mk_req(&authent, SERVER_SERVICE, SERVER_INSTANCE, 
-			realm->name, 1);
-    if (retval != MK_AP_OK) {
-	syslog(LOG_WARNING, "rlm_sendit_auth mk_req: %s",
-	       error_message(retval+krb_err_base));
-	return;
-    }
+    buffer_len = sizeof(ZPacket_t);
 
-    retval = ZMakeAscii(buf, sizeof(buf), authent.dat, authent.length);
+    newnotice = *notice;
+
+    hdrlen = 0;
+    retval = ZMakeZcodeRealmAuthentication(&newnotice, buffer, buffer_len,
+					   &hdrlen, realm->name);
     if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "rlm_sendit_auth mk_ascii: %s",
+	syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s", 
 	       error_message(retval));
-	return;
+	return (retval);
     }
 
     /* set the dest addr */
@@ -1149,45 +1147,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s", 
 	       error_message(retval));
-	return;
-    }
-
-    /* now format the notice, refragmenting if needed */
-    newnotice = *notice;
-    newnotice.z_auth = 1;
-    newnotice.z_ascii_authent = buf;
-    newnotice.z_authent_len = authent.length;
-    
-    buffer = (char *) malloc(sizeof(ZPacket_t));
-    if (!buffer) {
-	syslog(LOG_ERR, "realm_sendit_auth malloc");
-	return;                 /* DON'T put on nack list */
-    }
-    
-    buffer_len = sizeof(ZPacket_t);
-    
-    retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen, &ptr, 
-			       NULL);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
-	free(buffer);
-	return;
-    }
-
-#ifdef NOENCRYPTION
-    newnotice.z_checksum = 0;
-#else
-    newnotice.z_checksum =
-	(ZChecksum_t)des_quad_cksum(buffer, NULL, ptr - buffer, 0, 
-				    cred.session);
-#endif
-
-    retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len, &hdrlen, 
-			       NULL, NULL);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", error_message(retval));
-	free(buffer);
-	return;
+	return (retval);
     }
   
     /* This is not terribly pretty, but it does do its job. 
@@ -1199,16 +1159,13 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
      * but only the server uses it.
      */ 
 
-    if ((newnotice.z_message_len+hdrlen > buffer_len) || 
-	(newnotice.z_message_len+hdrlen > Z_MAXPKTLEN)) {
-	/* Deallocate buffer, use a local one */
-	free(buffer);
-    
-	partnotice = *notice;
+    if ((notice->z_message_len+hdrlen > buffer_len) || 
+	(notice->z_message_len+hdrlen > Z_MAXPKTLEN)) {
 
-	partnotice.z_auth = 1;
-	partnotice.z_ascii_authent = buf;
-	partnotice.z_authent_len = authent.length;
+	/* Reallocate buffers inside the refragmenter */
+	free(buffer);
+
+	partnotice = *notice;
 
 	origoffset = 0;
 	origlen = notice->z_message_len;
@@ -1217,7 +1174,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 	    if (sscanf(notice->z_multinotice, "%d/%d", &origoffset, 
 		       &origlen) != 2) {
 		syslog(LOG_WARNING, "rlm_sendit_auth frag: parse failed");
-		return;
+		return ZERR_BADFIELD;
 	    }
 
 #if 0
@@ -1252,33 +1209,19 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 	    buffer = (char *) malloc(sizeof(ZPacket_t));
 	    if (!buffer) {
 		syslog(LOG_ERR, "realm_sendit_auth malloc");
-		return;                 /* DON'T put on nack list */
+		return ENOMEM;                 /* DON'T put on nack list */
 	    }
+
+	    buffer_len = sizeof(ZPacket_t);
 	    
-	    retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
-				       &hdrlen, &ptr, NULL);
+	    retval = ZMakeZcodeRealmAuthentication(&partnotice, buffer, 
+						   buffer_len, &hdrlen, 
+						   realm->name);
 	    if (retval != ZERR_NONE) {
-		syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", 
+		syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s", 
 		       error_message(retval));
 		free(buffer);
-		return;
-	    }
-
-#ifdef NOENCRYPTION
-	    partnotice.z_checksum = 0;
-#else
-	    partnotice.z_checksum =
-		(ZChecksum_t)des_quad_cksum(buffer, NULL, ptr - buffer, 0, 
-					    cred.session);
-#endif
-
-	    retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
-				       &hdrlen, NULL, NULL);
-	    if (retval != ZERR_NONE) {
-		syslog(LOG_WARNING, "rlm_sendit_auth raw: %s", 
-		       error_message(retval));
-		free(buffer);
-		return;
+		return (retval);
 	    }
 
 	    ptr = buffer+hdrlen;
@@ -1292,14 +1235,14 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 		syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s", 
 		       error_message(retval));
 		free(buffer);
-		return;
+		return(retval);
 	    }
 
 	    if (!(nacked = (Unacked *)malloc(sizeof(Unacked)))) {
 		/* no space: just punt */
 		syslog(LOG_ERR, "rlm_sendit_auth nack malloc");
 		free(buffer);
-		return;
+		return ENOMEM;
 	    }
 
 	    nacked->rexmits = 0;
@@ -1326,35 +1269,30 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 	    if (!notice->z_message_len)
 		break;
 	}
-#if 0
-	zdbug((LOG_DEBUG, "rlm_sendit_auth frag message sent"));
-#endif
-    } else {
+    }
+    else {
 	/* This is easy, no further fragmentation needed */
 	ptr = buffer+hdrlen;
 
 	(void) memcpy(ptr, newnotice.z_message, newnotice.z_message_len);
 
-	buffer_len = hdrlen+newnotice.z_message_len;
+        buffer_len = hdrlen+newnotice.z_message_len;
     
 	/* now send */
 	if ((retval = ZSendPacket(buffer, buffer_len, 0)) != ZERR_NONE) {
 	    syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s", 
 		   error_message(retval));
 	    free(buffer);
-	    return;
+	    return(retval);
 	}
 
-#if 0
-	zdbug((LOG_DEBUG, "rlm_sendit_auth message sent"));
-#endif
 	/* now we've sent it, mark it as not ack'ed */
     
 	if (!(nacked = (Unacked *)malloc(sizeof(Unacked)))) {
 	    /* no space: just punt */
 	    syslog(LOG_ERR, "rlm_sendit_auth nack malloc");
 	    free(buffer);
-	    return;
+	    return 0;
 	}
 
 	nacked->rexmits = 0;
@@ -1375,61 +1313,103 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 	/* chain in */
 	LIST_INSERT(&rlm_nacklist, nacked);
     }
-    return;
-}
-
-static int
-ticket_expired(cred)
-CREDENTIALS *cred;
-{
-#ifdef HAVE_KRB_LIFE_TO_TIME
-    return (krb_life_to_time(cred->issue_date, cred->lifetime) < NOW);
-#else /* HAVE_KRB_LIFE_TO_TIME */
-    return (cred->issue_date + cred->lifetime*5*60 < NOW);
-#endif /* HAVE_KRB_LIFE_TO_TIME */
+    return 0;
 }
 
 static int
 ticket_lookup(realm)
 char *realm;
 {
-    CREDENTIALS cred;
-    KTEXT_ST authent;
-    int retval;
+    krb5_error_code result;
+    krb5_timestamp sec;
+    krb5_ccache ccache; 
+    krb5_creds creds_in, *creds; 
 
-    retval = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, realm, &cred);
-    if (retval == GC_OK && !ticket_expired(&cred))
-	/* good ticket */
-	return(1);
+    result = krb5_cc_default(Z_krb5_ctx, &ccache); 
+    if (result) 
+      return 0;
+
+    memset(&creds_in, 0, sizeof(creds_in)); 
+ 
+    result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client); 
+    if (result) {
+      krb5_cc_close(Z_krb5_ctx, ccache);
+      return 0;
+    }
+
+    result = krb5_build_principal(Z_krb5_ctx, &creds_in.server, 
+                                  strlen(realm), 
+                                  realm, 
+                                  SERVER_KRB5_SERVICE, SERVER_INSTANCE, 0); 
+    if (result) {
+      krb5_cc_close(Z_krb5_ctx, ccache);
+      return 0;
+    }
+
+    result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache, 
+                                  &creds_in, &creds); 
+    krb5_cc_close(Z_krb5_ctx, ccache);
+    /* good ticket? */
+
+    krb5_timeofday (Z_krb5_ctx, &sec);
+    krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */ 
+    if ((result == 0) && (sec < creds->times.endtime)) {
+      krb5_free_creds(Z_krb5_ctx, creds);
+      return (1);
+    }
+    if (!result) krb5_free_creds(Z_krb5_ctx, creds);
 
     return (0);
 }
 
 static Code_t
 ticket_retrieve(realm)
-    Realm *realm;
+    ZRealm *realm;
 {
-    int pid, retval = 0;
-    KTEXT_ST authent;
+    int pid;
+    krb5_ccache ccache;
+    krb5_error_code result; 
+    krb5_auth_context authctx; 
+    krb5_creds creds_in, *creds; 
     
     get_tgt();
 
     if (realm->child_pid) 
 	/* Right idea. Basically, we haven't gotten it yet */
-	return KRBET_KDC_AUTH_EXP;
-
-    /* For Putrify */
-    memset(&authent.dat,0,MAX_KTXT_LEN);
-    authent.mbz=0;
+	return KRB5KRB_AP_ERR_TKT_EXPIRED;
 
     if (realm->have_tkt) {
-	retval = krb_mk_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
-			    realm->name, 0);
-	if (retval == KSUCCESS) {
-	    return retval;
+	/* Get a pointer to the default ccache. We don't need to free this. */ 
+	result = krb5_cc_default(Z_krb5_ctx, &ccache); 
+
+	/* GRRR.  There's no allocator or constructor for krb5_creds */ 
+	/* GRRR.  It would be nice if this API were documented at all */ 
+	memset(&creds_in, 0, sizeof(creds_in)); 
+ 
+	if (!result) 
+	    result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client); 
+	/* construct the service principal */ 
+	if (!result)  
+	    result = krb5_build_principal(Z_krb5_ctx, &creds_in.server, 
+					  strlen(realm->name), realm->name, 
+					  SERVER_KRB5_SERVICE, SERVER_INSTANCE, 
+					  0); 
+
+	/* HOLDING: creds_in.server */ 
+     
+	/* look up or get the credentials we need */ 
+	if (!result) 
+	    result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache, 
+					  &creds_in, &creds); 
+	krb5_cc_close(Z_krb5_ctx, ccache);
+	krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */ 
+	if (!result) {
+	    krb5_free_creds(Z_krb5_ctx, creds); 
+	    return 0; 
 	}
     } else {
 	syslog(LOG_ERR, "tkt_rtrv: don't have ticket, but have no child");
+        result = KRB5KRB_AP_ERR_TKT_EXPIRED;
     }
  
     pid = fork();
@@ -1467,11 +1447,37 @@ ticket_retrieve(realm)
 #endif
 #endif
 
+	syslog(LOG_INFO, "tkt_rtrv running for %s", realm->name);
 	while (1) {
-	    retval = krb_mk_req(&authent, SERVER_SERVICE, SERVER_INSTANCE,
-				realm->name, 0);
-	    if (retval == KSUCCESS)
+	    /* Get a pointer to the default ccache. We don't need to free this. */ 
+	    result = krb5_cc_default(Z_krb5_ctx, &ccache); 
+
+	    /* GRRR.  There's no allocator or constructor for krb5_creds */ 
+	    /* GRRR.  It would be nice if this API were documented at all */ 
+	    memset(&creds_in, 0, sizeof(creds_in)); 
+ 
+	    if (!result) 
+		result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client); 
+	    /* construct the service principal */ 
+	    if (!result)  
+		result = krb5_build_principal(Z_krb5_ctx, &creds_in.server, 
+					      strlen(realm->name), realm->name, 
+					      SERVER_KRB5_SERVICE, SERVER_INSTANCE, 
+					      0); 
+
+	    /* HOLDING: creds_in.server */ 
+	    
+	    /* look up or get the credentials we need */ 
+	    if (!result) 
+		result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache, 
+					      &creds_in, &creds); 
+	    krb5_cc_close(Z_krb5_ctx, ccache);
+	    krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */ 
+	    if (!result) {
+		krb5_free_creds(Z_krb5_ctx, creds); 
+		syslog(LOG_INFO, "tkt_rtrv succeeded for %s", realm->name);
 		exit(0);
+	    }
       
 	    /* Sleep a little while before retrying */
 	    sleep(30);
@@ -1479,10 +1485,10 @@ ticket_retrieve(realm)
     } else {
 	realm->child_pid = pid;
 	realm->have_tkt = 0;
-	
-	syslog(LOG_WARNING, "tkt_rtrv: %s: %s", realm->name,
-	       krb_err_txt[retval]);
-	return (retval+krb_err_base);
+
+	syslog(LOG_WARNING, "tkt_rtrv: %s: %d", realm->name,
+	       result);
+	return (result);
     }
 }
 #endif /* HAVE_KRB4 */

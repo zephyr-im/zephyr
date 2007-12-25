@@ -880,7 +880,7 @@ send_stats(who)
     char **responses;
     int num_resp;
     char *vers, *pkts, *upt;
-    Realm *realm;
+    ZRealm *realm;
 
     int extrafields = 0;
 #define	NUM_FIXED 3			/* 3 fixed fields, plus server info */
@@ -1381,7 +1381,11 @@ server_forward(notice, auth, who)
 	    syslog(LOG_CRIT, "srv_fwd malloc");
 	    abort();
 	}
-	retval = ZFormatSmallRawNotice(notice, pack, &packlen);
+	if (realm_which_realm(who)) {
+	  retval = ZNewFormatSmallRawNotice(notice, pack, &packlen);
+	} else {
+	  retval = ZFormatSmallRawNotice(notice, pack, &packlen);
+	}
 	if (retval != ZERR_NONE) {
 	    syslog(LOG_WARNING, "srv_fwd format: %s", error_message(retval));
 	    continue;

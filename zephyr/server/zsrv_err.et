@@ -13,7 +13,7 @@ ec ZSRV_NOCLT,
 ec ZSRV_NOSUB,
 	"No such subscription"
 ec ZSRV_NOCLASS,
-	"Class unkown"
+	"Class unknown"
 ec ZSRV_CLASSXISTS,
 	"Class already registered"
 ec ZSRV_CLASSRESTRICTED,
