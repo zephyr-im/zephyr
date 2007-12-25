@@ -240,6 +240,7 @@ realm_send_realms()
 	if (retval = (subscr_send_realm_subs(&otherrealms[cnt])) != ZERR_NONE)
 	    return(retval);
     }
+    return ZERR_NONE;
 }
 
 int
@@ -1137,7 +1138,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
     retval = ZMakeZcodeRealmAuthentication(&newnotice, buffer, buffer_len,
 					   &hdrlen, realm->name);
     if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s", 
+	syslog(LOG_WARNING, "rlm_sendit_auth make zcksum: %s", 
 	       error_message(retval));
 	return (retval);
     }
