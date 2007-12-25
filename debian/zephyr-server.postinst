@@ -30,7 +30,7 @@ case "$1" in
 
 	db_set zephyr-server/read_conf true
 
-	db_get zephyr-server/servers
+	db_get zephyr-server/servers || true
 	: > /etc/zephyr/server.list
 	for i in $RET
 	do
