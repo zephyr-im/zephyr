@@ -125,6 +125,9 @@ static Timer *bdump_timer;
 static int live_socket = -1;
 static FILE *input, *output;
 static struct sockaddr_in bdump_sin;
+#ifdef HAVE_KRB5
+static krb5_auth_context bdump_ac;
+#endif
 #ifdef notdef
 static int cancel_outgoing_dump;
 #endif
@@ -317,7 +320,6 @@ bdump_send()
     /* Now begin the brain dump. */
 #ifdef HAVE_KRB5
     { /* "server" side */
-	krb5_auth_context actx;
 	krb5_principal principal;
 	krb5_data data;
 	krb5_ap_rep_enc_part *rep;
@@ -341,9 +343,24 @@ bdump_send()
 	}
 	
 
-	retval = krb5_auth_con_init(Z_krb5_ctx, &actx);
+	retval = krb5_auth_con_init(Z_krb5_ctx, &bdump_ac);
 	if (retval) {
 	    syslog(LOG_ERR, "bdump_send: krb5_auth_con_init: %s", error_message(retval));
+	    cleanup(server);
+	    return;
+	}
+
+	retval = krb5_auth_con_setflags(Z_krb5_ctx, bdump_ac, KRB5_AUTH_CONTEXT_DO_SEQUENCE);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_send: krb5_auth_con_setflags: %s", error_message(retval));
+	    cleanup(server);
+	    return;
+	}
+
+	retval = krb5_auth_con_genaddrs(Z_krb5_ctx, bdump_ac, live_socket,
+                                       KRB5_AUTH_CONTEXT_GENERATE_LOCAL_FULL_ADDR|KRB5_AUTH_CONTEXT_GENERATE_REMOTE_FULL_ADDR);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_send: krb5_auth_con_genaddrs: %s", error_message(retval));
 	    cleanup(server);
 	    return;
 	}
@@ -355,7 +372,6 @@ bdump_send()
 	if (retval) {
 	     syslog(LOG_ERR, "bdump_send: cannot get auth response: %s",
 	            error_message(retval)); 
-	     krb5_auth_con_free(Z_krb5_ctx, actx);
 	     cleanup(server);
 	     return;
 	}
@@ -366,13 +382,12 @@ bdump_send()
 	if (retval) {
 	    syslog(LOG_ERR, "bdump_send: cannot resolve keytab: %s", 
 		   error_message(retval));
-	    krb5_auth_con_free(Z_krb5_ctx, actx);
 	    krb5_kt_close(Z_krb5_ctx, kt);
 	    cleanup(server);
 	    return;
 	}
 
-	retval = krb5_rd_req(Z_krb5_ctx, &actx, &data, principal, kt, NULL, NULL);
+	retval = krb5_rd_req(Z_krb5_ctx, &bdump_ac, &data, principal, kt, NULL, NULL);
 	krb5_free_principal(Z_krb5_ctx, principal);
 	krb5_kt_close(Z_krb5_ctx, kt);
 	free(data.data);
@@ -380,7 +395,6 @@ bdump_send()
 	if (retval) {
 	     syslog(LOG_ERR, "bdump_send: mutual authentication failed: %s",
 	            error_message(retval));
-	     krb5_auth_con_free(Z_krb5_ctx, actx);
 	     cleanup(server);
 	     return;
 	}
@@ -388,10 +402,9 @@ bdump_send()
 	/* Now send back our auth packet */
 
 	memset((char *)&data, 0, sizeof(krb5_data));
-	retval = krb5_mk_rep(Z_krb5_ctx, actx, &data);
+	retval = krb5_mk_rep(Z_krb5_ctx, bdump_ac, &data);
 	if (retval) {
 	    syslog(LOG_ERR, "bdump_send: krb5_mk_rep: %s", error_message(retval));
-	    krb5_auth_con_free(Z_krb5_ctx, actx);
 	    cleanup(server);
 	    return;
 	}
@@ -400,7 +413,6 @@ bdump_send()
 	     syslog(LOG_ERR, "bdump_send: cannot send authenticator: %s",
 	            error_message(retval));
 	     krb5_free_data_contents(Z_krb5_ctx, &data);
-	     krb5_auth_con_free(Z_krb5_ctx, actx);
 	     cleanup(server);
 	     return;
 	}    
@@ -592,7 +604,6 @@ bdump_get_v12 (notice, auth, who, server)
 	return;
     }
     { /* "client" side */
-	krb5_auth_context actx;
 	krb5_creds creds;
 	krb5_creds *credsp;
 	krb5_principal principal;
@@ -638,7 +649,7 @@ bdump_get_v12 (notice, auth, who, server)
 	    return;
 	}
 
-	retval = krb5_auth_con_init(Z_krb5_ctx, &actx);
+	retval = krb5_auth_con_init(Z_krb5_ctx, &bdump_ac);
 	if (retval) {
 	    syslog(LOG_ERR, "bdump_get: krb5_auth_con_init: %s", error_message(retval));
 	    krb5_free_creds(Z_krb5_ctx, credsp);
@@ -646,12 +657,28 @@ bdump_get_v12 (notice, auth, who, server)
 	    return;
 	}
 
+	retval = krb5_auth_con_setflags(Z_krb5_ctx, bdump_ac, KRB5_AUTH_CONTEXT_DO_SEQUENCE);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_get: krb5_auth_con_setflags: %s", error_message(retval));
+	    krb5_free_creds(Z_krb5_ctx, credsp);
+	    cleanup(server);
+	    return;
+	}
+
+	retval = krb5_auth_con_genaddrs(Z_krb5_ctx, bdump_ac, live_socket,
+		KRB5_AUTH_CONTEXT_GENERATE_LOCAL_FULL_ADDR|KRB5_AUTH_CONTEXT_GENERATE_REMOTE_FULL_ADDR);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_get: krb5_auth_con_genaddrs: %s", error_message(retval));
+	    krb5_free_creds(Z_krb5_ctx, credsp);
+	    cleanup(server);
+	    return;
+	}
+
 	memset((char *)&data, 0, sizeof(krb5_data));
-	retval = krb5_mk_req_extended(Z_krb5_ctx, &actx, AP_OPTS_MUTUAL_REQUIRED|AP_OPTS_USE_SUBKEY,
+	retval = krb5_mk_req_extended(Z_krb5_ctx, &bdump_ac, AP_OPTS_MUTUAL_REQUIRED|AP_OPTS_USE_SUBKEY,
 				 NULL, credsp, &data);
 	if (retval) {
 	    syslog(LOG_ERR, "bdump_get: krb5_mk_req_ext: %s", error_message(retval));
-	    krb5_auth_con_free(Z_krb5_ctx, actx);
 	    krb5_free_creds(Z_krb5_ctx, credsp);
 	    cleanup(server);
 	    return;
@@ -662,7 +689,6 @@ bdump_get_v12 (notice, auth, who, server)
              syslog(LOG_ERR, "bdump_get: cannot send authenticator: %s",
                     error_message(retval));
              krb5_free_data_contents(Z_krb5_ctx, &data);
-             krb5_auth_con_free(Z_krb5_ctx, actx);
              cleanup(server);
              return;
         }    
@@ -672,17 +698,15 @@ bdump_get_v12 (notice, auth, who, server)
         if (retval) {
              syslog(LOG_ERR, "bdump_get: cannot get auth response: %s",
                     error_message(retval));
-             krb5_auth_con_free(Z_krb5_ctx, actx);
              cleanup(server);
              return;
         }    
-        retval = krb5_rd_rep(Z_krb5_ctx, actx, &data, &rep);
+        retval = krb5_rd_rep(Z_krb5_ctx, bdump_ac, &data, &rep);
         free(data.data);
         memset((char *)&data, 0, sizeof(krb5_data));
         if (retval) {
              syslog(LOG_ERR, "bdump_get: mutual authentication failed: %s",
                     error_message(retval));
-             krb5_auth_con_free(Z_krb5_ctx, actx);
              cleanup(server);
              return;
         }    
@@ -845,7 +869,30 @@ bdump_send_list_tcp(kind, addr, class_name, inst, opcode, sender, recip, lyst,
     retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen, ZNOAUTH);
     if (retval != ZERR_NONE)
 	return retval;
-	
+
+#ifdef HAVE_KRB5
+    if (bdump_ac) {
+        krb5_data indata, outmsg;
+        indata.length=packlen;
+        indata.data=pack;
+        memset(&outmsg, 0, sizeof(krb5_data));
+        retval = krb5_mk_priv(Z_krb5_ctx, bdump_ac, &indata, &outmsg, NULL);
+        if (retval != ZERR_NONE)
+	    return retval;
+        if (outmsg.length > Z_MAXPKTLEN) {
+	    syslog(LOG_ERR, "bsl: encrypted packet is too large");
+            return ZERR_PKTLEN;
+        }
+        packlen = outmsg.length;
+        free(pack);
+        pack=malloc(packlen);
+        if (!pack)
+	    return ENOMEM;
+        memcpy(pack, outmsg.data, packlen);
+        krb5_free_data_contents(Z_krb5_ctx, &outmsg);
+    }
+#endif
+
     length = htons((u_short) packlen);
  
     count = net_write(output, (char *) &length, sizeof(length));
@@ -890,6 +937,11 @@ shutdown_file_pointers() {
     if (live_socket >= 0) {
 	close(live_socket);
 	live_socket = -1;
+#ifdef HAVE_KRB5
+	if (bdump_ac)
+		krb5_auth_con_free(Z_krb5_ctx, bdump_ac);
+	bdump_ac = NULL;
+#endif
     }
 }
 
@@ -1091,6 +1143,23 @@ bdump_recv_loop(server)
 	    syslog(LOG_ERR, "brl get pkt: %s", error_message(retval));
 	    return retval;
 	}
+
+#if HAVE_KRB5
+	if (bdump_ac) {
+	    krb5_data in, out;
+	    in.length = len;
+	    in.data = packet;
+	    memset(&out, 0, sizeof(krb5_data));
+	    retval = krb5_rd_priv(Z_krb5_ctx, bdump_ac, &in, &out, NULL);
+	    if (retval != ZERR_NONE) {
+	        syslog(LOG_ERR, "brl krb5 rd priv: %s", error_message(retval));
+	        return retval;
+	    }
+	    memcpy(packet, out.data, out.length);
+	    len = out.length;
+	    krb5_free_data_contents(Z_krb5_ctx, &out);
+	}
+#endif
 
 	retval = ZParseNotice(packet, len, &notice);
 	if (retval != ZERR_NONE) {
@@ -1366,6 +1435,29 @@ send_normal_tcp(kind, port, class_name, inst, opcode, sender, recip,
 	return retval;
     }
  
+#ifdef HAVE_KRB5
+    if (bdump_ac) {
+        krb5_data indata, outmsg;
+        indata.length=packlen;
+        indata.data=pack;
+        memset(&outmsg, 0, sizeof(krb5_data));
+        retval = krb5_mk_priv(Z_krb5_ctx, bdump_ac, &indata, &outmsg, NULL);
+        if (retval != ZERR_NONE)
+	    return retval;
+        if (outmsg.length > Z_MAXPKTLEN) {
+	    syslog(LOG_ERR, "sn: encrypted packet is too large");
+            return ZERR_PKTLEN;
+        }
+        packlen = outmsg.length;
+        free(pack);
+        pack=malloc(packlen);
+        if (!pack)
+	    return ENOMEM;
+        memcpy(pack, outmsg.data, packlen);
+        krb5_free_data_contents(Z_krb5_ctx, &outmsg);
+    }
+#endif
+
     length = htons((u_short) packlen);
  
     count = net_write(output, (char *) &length, sizeof(length));
