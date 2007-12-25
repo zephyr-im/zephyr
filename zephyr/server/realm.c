@@ -623,7 +623,7 @@ realm_deathgram(server)
 	zdbug((LOG_DEBUG, "rlm_deathgram: suggesting %s to %s", 
 	       (server) ? server->addr_str : "nothing", realm->name));
 
-#ifdef HAVE_KRB4
+#ifdef HAVE_KRB5
 	if (!ticket_lookup(realm->name))
 	    if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
 		syslog(LOG_WARNING, "rlm_deathgram failed: %s", 
@@ -689,7 +689,7 @@ realm_wakeup()
 	    snotice.z_message = NULL;
 	    snotice.z_message_len = 0;
 
-#ifdef HAVE_KRB4
+#ifdef HAVE_KRB5
 	    if (!ticket_lookup(realm->name))
 		if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
 		    syslog(LOG_WARNING, "rlm_wakeup failed: %s", 
@@ -901,7 +901,7 @@ realm_handoff(notice, auth, who, realm, ack_to_sender)
     ZRealm *realm;
     int ack_to_sender;
 {
-#ifdef HAVE_KRB4
+#ifdef HAVE_KRB5h
     Code_t retval;
 
     if (!auth) {
@@ -1103,7 +1103,7 @@ realm_dump_realms(fp)
     }
 }
 
-#ifdef HAVE_KRB4
+#ifdef HAVE_KRB5
 static Code_t
 realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
     ZNotice_t *notice;
@@ -1491,5 +1491,5 @@ ticket_retrieve(realm)
 	return (result);
     }
 }
-#endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB5 */
 
