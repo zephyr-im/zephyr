@@ -156,9 +156,9 @@ bdump_offer(who)
 #if 1
     zdbug((LOG_DEBUG, "bdump_offer"));
 #endif
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     /* 
-     * when using HAVE_KRB4 server-server authentication, we can
+     * when using kerberos server-server authentication, we can
      * use any random local address 
      */
     bdump_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -375,7 +375,6 @@ bdump_send()
 	     cleanup(server);
 	     return;
 	}
-
 
 	/* resolve keytab */
 	retval = krb5_kt_resolve(Z_krb5_ctx, keytab_file, &kt);
