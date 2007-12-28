@@ -24,19 +24,21 @@ set -e
 
 case "$1" in
     configure)
+	if test ! -f /etc/zephyr/server.list; then
+	    # if there's a server.list file, don't mess with it
+	    . /usr/share/debconf/confmodule
 
-	. /usr/share/debconf/confmodule
-	db_version 2.0
-
-	db_set zephyr-server/read_conf true
-
-	db_get zephyr-server/servers || true
-	: > /etc/zephyr/server.list
-	for i in $RET
-	do
+	    db_version 2.0
+	    
+	    db_set zephyr-server/read_conf true
+	    
+	    db_get zephyr-server/servers || true
+	    : > /etc/zephyr/server.list
+	    for i in $RET
+	    do
 		echo $i >> /etc/zephyr/server.list
-	done
-
+	    done
+	fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
