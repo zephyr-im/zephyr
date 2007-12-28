@@ -902,7 +902,7 @@ realm_handoff(notice, auth, who, realm, ack_to_sender)
     ZRealm *realm;
     int ack_to_sender;
 {
-#ifdef HAVE_KRB5h
+#ifdef HAVE_KRB5
     Code_t retval;
 
     if (!auth) {
