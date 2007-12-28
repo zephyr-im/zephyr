@@ -125,6 +125,16 @@ struct in_addr my_addr;
 char *bdump_version = "1.2";
 
 #ifdef HAVE_KRB5
+int bdump_auth_proto = 5;
+#else /* HAVE_KRB5 */
+#ifdef HAVE_KRB4
+int bdump_auth_proto = 4;
+#else /* HAVE_KRB4 */
+int bdump_auth_proto = 0;
+#endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB5 */
+
+#ifdef HAVE_KRB5
 krb5_ccache Z_krb5_ccache;
 krb5_keyblock *__Zephyr_keyblock;
 #else
@@ -167,7 +177,7 @@ main(argc, argv)
     programname = (programname) ? programname + 1 : argv[0];
 
     /* process arguments */
-    while ((optchar = getopt(argc, argv, "dsnv:f:k:")) != EOF) {
+    while ((optchar = getopt(argc, argv, "dsnv4:f:k:")) != EOF) {
 	switch(optchar) {
 	  case 'd':
 	    zdebug = 1;
@@ -191,6 +201,9 @@ main(argc, argv)
 	  case 'f':
 	    init_from_dump = 0;
 	    dumpfile = optarg;
+	    break;
+	case '4':
+	    bdump_auth_proto = 4;
 	    break;
 	  case '?':
 	  default:
