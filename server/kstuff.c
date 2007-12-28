@@ -122,6 +122,68 @@ SendKerberosData(fd, ticket, service, host)
 
 #endif /* HAVE_KRB4 */
 
+#if defined(HAVE_KRB5) || defined(HAVE_KRB4)
+Code_t
+ReadKerberosData(int fd, int *size, char **data, int *proto) {
+    char p[20];
+    int i;
+    unsigned char *dst;
+    Code_t retval;
+    int len = 0;
+
+    for (i=0; i<20; i++) {
+	if (read(fd, &p[i], 1) != 1) {
+	    p[i] = 0;
+	    syslog(LOG_WARNING,"ReadKerberosData: bad read reply len @%d (got \"%s\"", i, p);
+	    return(KFAILURE);
+	}
+	if (p[i] == ' ') {
+	    p[i] = '\0';
+	    break;
+	}
+    }
+
+    if (i == 20) {
+	syslog(LOG_WARNING, "ReadKerberosData: read reply len exceeds buffer");
+	    return KFAILURE;
+    }
+
+    if (!strncmp(p, "V5-", 3) && (len = atoi(p+3)) > 0)
+	*proto = 5;
+    else if ((len = atoi(p)) > 0)
+	*proto = 4;
+
+    if (*proto < 4 | *proto > 5) {
+	syslog(LOG_WARNING, "ReadKerberosData: error parsing authenticator length (\"%s\")", p);
+	return KFAILURE;
+    }
+
+    if (len <= 0) {
+	syslog(LOG_WARNING, "ReadKerberosData: read reply len = %d", len);
+	return KFAILURE;
+    }
+
+    *data = malloc(len);
+    if (! *data) {
+	syslog(LOG_WARNING, "ReadKerberosData: failure allocating %d bytes: %m", len);
+	return errno;
+    }
+    
+    dst=*data;
+    for (i=0; i < len; i++) {
+	if (read(fd, dst++, 1) != 1) {
+            free(*data);
+	    *data = NULL;
+	    *size = 0;
+            syslog(LOG_WARNING,"ReadKerberosData: bad read reply string");
+            return ZSRV_PKSHORT;
+        }
+    }
+    *size = len;
+    return 0;
+}
+#endif
+
 #ifdef HAVE_KRB5
 Code_t
 GetKrb5Data(int fd, krb5_data *data) {
@@ -162,6 +224,7 @@ GetKrb5Data(int fd, krb5_data *data) {
     }
     return 0;
 }
+
 Code_t
 SendKrb5Data(int fd, krb5_data *data) {
     char p[32];
