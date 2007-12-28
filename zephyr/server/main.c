@@ -177,7 +177,7 @@ main(argc, argv)
     programname = (programname) ? programname + 1 : argv[0];
 
     /* process arguments */
-    while ((optchar = getopt(argc, argv, "dsnv4:f:k:")) != EOF) {
+    while ((optchar = getopt(argc, argv, "dsnv4f:k:")) != EOF) {
 	switch(optchar) {
 	  case 'd':
 	    zdebug = 1;
