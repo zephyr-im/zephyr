@@ -44,7 +44,7 @@ char *ZGetSender()
     if (!result) {
       result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &principal);
       if (!result) {
-#if 0
+#if 1
 	krb5_unparse_name(Z_krb5_ctx, principal, &prname);
 	sender = strdup(prname);
 #else
