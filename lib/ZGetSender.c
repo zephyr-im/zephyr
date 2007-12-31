@@ -44,17 +44,10 @@ char *ZGetSender()
     if (!result) {
       result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &principal);
       if (!result) {
-#if 1
 	krb5_unparse_name(Z_krb5_ctx, principal, &prname);
 	sender = strdup(prname);
-#else
-	krb5_524_conv_principal(Z_krb5_ctx, principal, pname, pinst, prealm);
-        sender = malloc(ANAME_SZ+INST_SZ+REALM_SZ+3);
-	if (sender)
-	  (void) sprintf(sender, "%s%s%s@%s", pname, (pinst[0]?".":""),
-			 pinst, prealm);
-#endif
 	krb5_free_principal(Z_krb5_ctx, principal);
+	return sender;
       }
       krb5_cc_close(Z_krb5_ctx, ccache);
     } 
