@@ -40,7 +40,6 @@ AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/file.h sys/utsname.h)
 AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h krb5_err.h)
 
 if test "$no_x" != "yes"; then
-	XCLIENTS=xzwrite
 	ZWGC_LIBX11=-lX11
 fi
 AC_SUBST(XCLIENTS)
@@ -156,10 +155,9 @@ fi
 AC_MSG_RESULT($ac_cv_have_krb5_creds_keyblock_enctype)
 
 AC_CONFIG_HEADER(h/config.h)
-AC_OUTPUT(Makefile clients/Makefile clients/xzwrite/Makefile
-	  clients/zaway/Makefile clients/zctl/Makefile
-	  clients/zleave/Makefile clients/zlocate/Makefile
-	  clients/zmailnotify/Makefile clients/znol/Makefile
-	  clients/zpopnotify/Makefile clients/zshutdown_notify/Makefile
-	  clients/zstat/Makefile clients/zwrite/Makefile lib/Makefile
-	  libdyn/Makefile server/Makefile zhm/Makefile zwgc/Makefile)
+AC_OUTPUT(Makefile clients/Makefile clients/zaway/Makefile
+          clients/zctl/Makefile clients/zleave/Makefile
+          clients/zlocate/Makefile clients/znol/Makefile
+          clients/zshutdown_notify/Makefile clients/zstat/Makefile
+          clients/zwrite/Makefile lib/Makefile libdyn/Makefile
+          server/Makefile zhm/Makefile zwgc/Makefile)
