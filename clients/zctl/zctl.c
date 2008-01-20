@@ -40,7 +40,6 @@ static const char *rcsid_zctl_c = "$Id$";
 #define	ERR		(-1)
 #define	NOT_REMOVED	0
 #define	REMOVED		1
-int purge_subs();
 
 int sci_idx;
 char subsname[BUFSIZ];
@@ -48,11 +47,15 @@ char ourhost[MAXHOSTNAMELEN],ourhostcanon[MAXHOSTNAMELEN];
 
 extern ss_request_table zctl_cmds;
 
-void add_file(), del_file(), fix_macros(), fix_macros2();
+int purge_subs(register ZSubscription_t *, int);
+void add_file(short, ZSubscription_t *, int);
+void del_file(short, ZSubscription_t *, int);
+void fix_macros(ZSubscription_t *, ZSubscription_t *, int);
+void fix_macros2(char *, char **);
 
-main(argc,argv)
-	int argc;
-	char *argv[];
+int
+main(int argc,
+     char *argv[])
 {
 	struct passwd *pwd;
 	struct hostent *hent;
@@ -146,9 +149,8 @@ main(argc,argv)
 }
 
 void
-set_file(argc,argv)
-	int argc;
-	char *argv[];
+set_file(int argc,
+	 char *argv[])
 {
 	if (argc > 2) {
 		fprintf(stderr,"Usage: %s filename\n",argv[0]);
@@ -162,9 +164,8 @@ set_file(argc,argv)
 }
 
 void
-flush_locations(argc,argv)
-	int argc;
-	char *argv[];
+flush_locations(int argc,
+		char *argv[])
 {
 	int retval;
 	
@@ -178,9 +179,8 @@ flush_locations(argc,argv)
 }
 
 void
-wgc_control(argc,argv)
-	int argc;
-	register char **argv;
+wgc_control(int argc,
+	    char *argv[])
 {
 	int retval;
 	short newport;
@@ -239,9 +239,8 @@ wgc_control(argc,argv)
 } 
 
 void
-hm_control(argc,argv)
-	int argc;
-	char *argv[];
+hm_control(int argc,
+	   char *argv[])
 {
 	int retval;
 	ZNotice_t notice;
@@ -276,9 +275,8 @@ hm_control(argc,argv)
 } 
 
 void
-show_var(argc,argv)
-	int argc;
-	char *argv[];
+show_var(int argc,
+	 char *argv[])
 {
 	int i;
 	char *value;
@@ -298,9 +296,7 @@ show_var(argc,argv)
 }
 
 void
-set_var(argc,argv)
-	int argc;
-	register char **argv;
+set_var(int argc, char *argv[])
 {
 	int retval,setting_exp,i;
 	char *exp_level,*newargv[1];
@@ -378,9 +374,8 @@ set_var(argc,argv)
 }
 
 void
-do_hide(argc,argv)
-	int argc;
-	char *argv[];
+do_hide(int argc,
+	char *argv[])
 {
 	char *exp_level = NULL;
 	Code_t retval;
@@ -399,9 +394,8 @@ do_hide(argc,argv)
 }
 
 void
-unset_var(argc,argv)
-	int argc;
-	char *argv[];
+unset_var(int argc,
+	  char *argv[])
 {
 	int retval,i;
 	
@@ -418,9 +412,8 @@ unset_var(argc,argv)
 }
 
 void
-cancel_subs(argc,argv)
-	int argc;
-	char *argv[];
+cancel_subs(int argc,
+	    char *argv[])
 {
 	int retval;
 	short wgport;
@@ -439,9 +432,8 @@ cancel_subs(argc,argv)
 }
 
 void
-subscribe(argc,argv)
-	int argc;
-	char *argv[];
+subscribe(int argc,
+	  char *argv[])
 {
 	int retval;
 	short wgport;
@@ -472,9 +464,8 @@ subscribe(argc,argv)
 } 
 
 void
-sub_file(argc,argv)
-	int argc;
-	char *argv[];
+sub_file(int argc,
+	 char *argv[])
 {
 	ZSubscription_t sub;
 	short wgport;
@@ -523,10 +514,9 @@ sub_file(argc,argv)
 }
 
 void
-add_file(wgport,subs,unsub)
-short wgport;
-ZSubscription_t *subs;
-int unsub;
+add_file(short wgport,
+	 ZSubscription_t *subs,
+	 int unsub)
 {
 	FILE *fp;
 	char errbuf[BUFSIZ];
@@ -557,10 +547,9 @@ int unsub;
 }
 
 void
-del_file(wgport,subs,unsub)
-short wgport;
-register ZSubscription_t *subs;
-int unsub;
+del_file(short wgport,
+	 register ZSubscription_t *subs,
+	 int unsub)
 {
 	ZSubscription_t sub2;
 	int retval;
@@ -582,9 +571,8 @@ int unsub;
 }
 
 int
-purge_subs(subs,which)
-register ZSubscription_t *subs;
-int which;
+purge_subs(register ZSubscription_t *subs,
+	   int which)
 {
 	FILE *fp,*fpout;
 	char errbuf[BUFSIZ],subline[BUFSIZ];
@@ -665,9 +653,8 @@ int which;
 }
 
 void
-load_subs(argc,argv)
-	int argc;
-	char *argv[];
+load_subs(int argc,
+	  char *argv[])
 {
 	ZSubscription_t subs[SUBSATONCE],subs2[SUBSATONCE],unsubs[SUBSATONCE];
 	FILE *fp;
@@ -843,9 +830,8 @@ cleanup:
 }
 
 void
-current(argc,argv)
-	int argc;
-	char *argv[];
+current(int argc,
+	char *argv[])
 {
 	FILE *fp;
 	char errbuf[BUFSIZ];
@@ -940,8 +926,7 @@ current(argc,argv)
 }
 
 int
-make_exist(filename)
-	char *filename;
+make_exist(char *filename)
 {
 	char errbuf[BUFSIZ];
 	FILE *fpout;
@@ -964,9 +949,9 @@ make_exist(filename)
 }
 
 void
-fix_macros(subs,subs2,num)
-	ZSubscription_t *subs,*subs2;
-	int num;
+fix_macros(ZSubscription_t *subs,
+	   ZSubscription_t *subs2,
+	   int num)
 {
 	int i;
 
@@ -979,9 +964,7 @@ fix_macros(subs,subs2,num)
 }
 
 void
-fix_macros2(src,dest)
-	register char *src;
-	char **dest;
+fix_macros2(char *src, char **dest)
 {
 	if (!strcmp(src,TOKEN_HOSTNAME)) {
 		*dest = ourhost;

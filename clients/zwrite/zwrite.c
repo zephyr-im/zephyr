@@ -31,14 +31,15 @@ static const char rcsid_zwrite_c[] = "$Id$";
 int nrecips, msgarg, verbose, quiet, nodot, cc;
 char *whoami, *inst, *class, *opcode, *realm, *recips[MAXRECIPS];
 Z_AuthProc auth;
-void un_tabify();
+void un_tabify(char **, int *);
 
-char *fix_filsrv_inst();
-void usage(), send_off();
+char *fix_filsrv_inst(char *);
+void usage(char *);
+void send_off(ZNotice_t *, int);
 
-main(argc, argv)
-    int argc;
-    char *argv[];
+int
+main(int argc,
+     char *argv[])
 {
     int retval, arg, nocheck, nchars, msgsize, filsys, tabexpand;
     char *message, *signature = NULL, *format = NULL;
@@ -338,9 +339,8 @@ main(argc, argv)
 }
 
 void
-send_off(notice, real)
-    ZNotice_t *notice;
-    int real;
+send_off(ZNotice_t *notice,
+	 int real)
 {
     int i, success, retval;
     char bfr[BUFSIZ], realm_recip[BUFSIZ], dest[3 * BUFSIZ], *cp;
@@ -445,8 +445,7 @@ send_off(notice, real)
 } 
 
 void
-usage(s)
-    char *s;
+usage(char *s)
 {
     fprintf(stderr,
 	    "Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l]\n\
@@ -466,8 +465,8 @@ usage(s)
   name returned by gethostbyname(hostname)
  */
 
-char *fix_filsrv_inst(str)
-char *str;
+char *
+fix_filsrv_inst(char *str)
 {
 	static char fsinst[BUFSIZ];
 	char *ptr;
@@ -500,9 +499,8 @@ char *str;
 #endif /* ! TABSTOP */
 
 void
-un_tabify(bufp, sizep)
-char **bufp;
-register int *sizep;
+un_tabify(char **bufp,
+	  int *sizep)
 {
     register char *cp, *cp2;
     char *cp3;

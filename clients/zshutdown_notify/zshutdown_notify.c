@@ -41,9 +41,9 @@ static const char *rcsid_zshutdown_notify_c =
 static char warning[] = "Please detach any filesystems you may have\nattached from this host by typing detach -host %s";
 
 /*ARGSUSED*/
-main(argc,argv)
-    int argc;
-    char *argv[];
+int
+main(int argc,
+     char *argv[])
 {
     ZNotice_t notice;
     struct hostent *hp;
@@ -57,7 +57,6 @@ main(argc,argv)
     char rlm[REALM_SZ];
     char hn2[MAXHOSTNAMELEN];
     char *cp;
-    extern char *krb_get_phost();
 #endif
 
     if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
