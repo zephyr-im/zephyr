@@ -14,8 +14,8 @@
 
 #include "dynP.h"
 
-int DynSize(obj)
-   DynObject obj;
+int
+DynSize(DynObject obj)
 {
      if (obj->debug)
 	  fprintf(stderr, "dyn: size: returning size %d.\n", obj->num_el);

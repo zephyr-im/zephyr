@@ -21,9 +21,9 @@ static char insert1[] = "This will be put at the beginning.";
 static char insert2[] = "(parenthetical remark!) ";
 static char insert3[] = "  This follows the random string.";
 
-int main(argc, argv)
-   int	argc;
-   char	**argv;
+int
+main(int argc,
+     char **argv)
 {
      DynObject	obj;
      int	i, s;
