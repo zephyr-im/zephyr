@@ -18,9 +18,9 @@ static char rcsid_ZGetSubscriptions_c[] = "$Id$";
 
 #define min(a,b) ((a)<(b)?(a):(b))
 	
-Code_t ZGetSubscriptions(subscription, numsubs)
-    ZSubscription_t *subscription;
-    int *numsubs;
+Code_t
+ZGetSubscriptions(ZSubscription_t *subscription,
+		  int *numsubs)
 {
     int i;
 	

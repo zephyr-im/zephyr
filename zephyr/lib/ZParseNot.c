@@ -18,8 +18,9 @@ static char rcsid_ZParseNotice_c[] =
 #include <internal.h>
 
 /* Skip to the next NUL-terminated field in the packet. */
-static char *next_field(ptr, end)
-    char *ptr, *end;
+static char *
+next_field(char *ptr,
+	   char *end)
 {
     while (ptr < end && *ptr != '\0')
 	ptr++;
@@ -28,10 +29,10 @@ static char *next_field(ptr, end)
     return (ptr);
 }
 
-Code_t ZParseNotice(buffer, len, notice)
-    char *buffer;
-    int len;
-    ZNotice_t *notice;
+Code_t
+ZParseNotice(char *buffer,
+	     int len,
+	     ZNotice_t *notice)
 {
     char *ptr, *end;
     unsigned long temp;

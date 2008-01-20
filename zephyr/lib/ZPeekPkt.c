@@ -16,10 +16,10 @@ static char rcsid_ZPeekPacket_c[] = "$Id$";
 
 #include <internal.h>
 
-Code_t ZPeekPacket(buffer, ret_len, from)
-    char **buffer;
-    int *ret_len;
-    struct sockaddr_in *from;
+Code_t
+ZPeekPacket(char **buffer,
+	    int *ret_len,
+	    struct sockaddr_in *from)
 {
     Code_t retval;
     struct _Z_InputQ *nextq;

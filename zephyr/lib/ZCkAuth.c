@@ -29,9 +29,9 @@ static char rcsid_ZCheckAuthentication_c[] =
    When not using Kerberos, return true if the notice claims to be authentic.
    Only used by clients; the server uses its own routine.
  */
-Code_t ZCheckAuthentication(notice, from)
-    ZNotice_t *notice;
-    struct sockaddr_in *from;
+Code_t
+ZCheckAuthentication(ZNotice_t *notice,
+		     struct sockaddr_in *from)
 {
 #if 0
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)

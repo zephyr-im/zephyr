@@ -16,19 +16,17 @@ static char rcsid_ZSendRawList_c[] = "$Id$";
 
 #include <internal.h>
 
-Code_t ZSendRawList(notice, list, nitems)
-    ZNotice_t *notice;
-    char *list[];
-    int nitems;
+Code_t ZSendRawList(ZNotice_t *notice,
+		    char *list[],
+		    int nitems)
 {
     return(ZSrvSendRawList(notice, list, nitems, Z_XmitFragment));
 }
 
-Code_t ZSrvSendRawList(notice, list, nitems, send_routine)
-    ZNotice_t *notice;
-    char *list[];
-    int nitems;
-    Code_t (*send_routine)();
+Code_t ZSrvSendRawList(ZNotice_t *notice,
+		       char *list[],
+		       int nitems,
+		       Code_t (*send_routine)(ZNotice_t *, char *, int, int))
 {
     Code_t retval;
     ZNotice_t newnotice;

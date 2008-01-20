@@ -34,11 +34,11 @@ Z_cnvt_xtoi (char c)
 
 #define Z_cnvt_xtoi(c)  ((temp=(c)-'0'),(temp<10)?temp:((temp-='A'-'9'-1),(temp<16)?temp:-1))
 
-Code_t ZReadAscii(ptr, len, field, num)
-    char *ptr;
-    int len;
-    unsigned char *field;
-    int num;
+Code_t
+ZReadAscii(char *ptr,
+	   int len,
+	   unsigned char *field,
+	   int num)
 {
     int i;
     unsigned int hexbyte;
@@ -71,10 +71,10 @@ Code_t ZReadAscii(ptr, len, field, num)
     return *ptr ? ZERR_BADFIELD : ZERR_NONE;
 }
 
-Code_t ZReadAscii32(ptr, len, value_ptr)
-    char *ptr;
-    int len;
-    unsigned long *value_ptr;
+Code_t
+ZReadAscii32(char *ptr,
+	     int len,
+	     unsigned long *value_ptr)
 {
     unsigned char buf[4];
     Code_t retval;
@@ -86,10 +86,10 @@ Code_t ZReadAscii32(ptr, len, value_ptr)
     return ZERR_NONE;
 }
 
-Code_t ZReadAscii16(ptr, len, value_ptr)
-    char *ptr;
-    int len;
-    unsigned short *value_ptr;
+Code_t
+ZReadAscii16(char *ptr,
+	     int len,
+	     unsigned short *value_ptr)
 {
     unsigned char buf[2];
     Code_t retval;

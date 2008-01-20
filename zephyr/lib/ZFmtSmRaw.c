@@ -16,10 +16,10 @@ static char rcsid_ZFormatRawNotice_c[] = "$Id$";
 
 #include <internal.h>
 
-Code_t ZFormatSmallRawNotice(notice, buffer, ret_len)
-    ZNotice_t *notice;
-    ZPacket_t buffer;
-    int *ret_len;
+Code_t
+ZFormatSmallRawNotice(ZNotice_t *notice,
+		      ZPacket_t buffer,
+		      int *ret_len)
 {
     Code_t retval;
     int hdrlen;
@@ -38,10 +38,10 @@ Code_t ZFormatSmallRawNotice(notice, buffer, ret_len)
     return (ZERR_NONE);
 }
 
-Code_t ZNewFormatSmallRawNotice(notice, buffer, ret_len)
-     ZNotice_t *notice;
-     ZPacket_t buffer;
-     int *ret_len;
+Code_t
+ZNewFormatSmallRawNotice(ZNotice_t *notice,
+			 ZPacket_t buffer,
+			 int *ret_len)
 {
   Code_t retval;
   int hdrlen;

@@ -20,7 +20,10 @@ static char rcsid_ZReadZcode_c[] = "$Id$";
 
 #if 0
 Code_t
-ZReadAsciiOrZcode(char *buf, int buflen, unsigned char *data, int datalen)
+ZReadAsciiOrZcode(char *buf,
+		  int buflen,
+		  unsigned char *data,
+		  int datalen)
 {
     if (buf[0] == 'Z')
         return ZReadZcode(buf, buflen, data, datalen);
@@ -28,19 +31,19 @@ ZReadAsciiOrZcode(char *buf, int buflen, unsigned char *data, int datalen)
         return ZReadAscii(buf, buflen, data, datalen);
 }
 
-Code_t ZReadZcode32(ptr, value_ptr)
-    unsigned char *ptr;
-    unsigned long *value_ptr;
+Code_t
+ZReadZcode32(unsigned char *ptr,
+	     unsigned long *value_ptr)
 {
     abort();
 }
 #endif
 
-Code_t ZReadZcode(ptr, field, max, len)
-    unsigned char *ptr;
-    unsigned char *field;
-    int max;
-    int *len;
+Code_t
+ZReadZcode(unsigned char *ptr,
+	   unsigned char *field,
+	   int max,
+	   int *len)
 {
     int n = 0;
 
