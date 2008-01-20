@@ -17,10 +17,10 @@
 static const char rcsid_ZMakeZcode_c[] = "$Id$";
 #endif
 
-Code_t ZMakeZcode32(ptr, len, val)
-    char *ptr;
-    int len;
-    unsigned long val;
+Code_t
+ZMakeZcode32(char *ptr,
+	     int len,
+	     unsigned long val)
 {
     unsigned char buf[4];
     buf[0] = (val >> 24) & 0xff;
@@ -30,11 +30,11 @@ Code_t ZMakeZcode32(ptr, len, val)
     return ZMakeZcode(ptr, len, buf, 4);
 }
 
-Code_t ZMakeZcode(ptr, len, field, num)
-    register char *ptr;
-    int len;
-    unsigned char *field;
-    int num;
+Code_t
+ZMakeZcode(register char *ptr,
+	   int len,
+	   unsigned char *field,
+	   int num)
 {
     int i;
 

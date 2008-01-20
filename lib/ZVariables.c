@@ -20,15 +20,14 @@ static char rcsid_ZVariables_c[] = "$Id$";
 #include <ctype.h>
 #include <pwd.h>
 
-static int get_localvarfile __P((char *bfr));
-static char *get_varval __P((char *fn, char *val));
-static int varline __P((char *bfr, char *var));
+static int get_localvarfile(char *bfr);
+static char *get_varval(char *fn, char *val);
+static int varline(char *bfr, char *var);
 
-char *ZGetVariable(var)
-    char *var;
+char *
+ZGetVariable(char *var)
 {
     char varfile[128], *ret;
-    char *get_varval();
 
     if (get_localvarfile(varfile))
 	return ((char *)0);
@@ -40,9 +39,8 @@ char *ZGetVariable(var)
     return (get_varval(varfile, var));
 }
 
-Code_t ZSetVariable(var, value)
-    char *var;
-    char *value;
+Code_t
+ZSetVariable(char *var, char *value)
 {
     int written;
     FILE *fpin, *fpout;
@@ -80,8 +78,8 @@ Code_t ZSetVariable(var, value)
     return (ZERR_NONE);
 }	
 
-Code_t ZUnsetVariable(var)
-    char *var;
+Code_t
+ZUnsetVariable(char *var)
 {
     FILE *fpin, *fpout;
     char varfile[128], varfilebackup[128], varbfr[512];
@@ -110,8 +108,8 @@ Code_t ZUnsetVariable(var)
     return (ZERR_NONE);
 }	
 
-static int get_localvarfile(bfr)
-    char *bfr;
+static int
+get_localvarfile(char *bfr)
 {
     char *envptr;
     struct passwd *pwd;
@@ -137,9 +135,8 @@ static int get_localvarfile(bfr)
     return (0);
 } 
 	
-static char *get_varval(fn, var)
-    char *fn;
-    char *var;
+static char *
+get_varval(char *fn, char *var)
 {
     FILE *fp;
     static char varbfr[512];
@@ -163,9 +160,8 @@ static char *get_varval(fn, var)
 
 /* If the variable in the line bfr[] is the same as var, return index to
    the variable value, else return 0. */
-static int varline(bfr, var)
-    char *bfr;
-    char *var;
+static int
+varline(char *bfr, char *var)
 {
     register char *cp;
 	

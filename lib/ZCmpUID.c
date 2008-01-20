@@ -16,8 +16,9 @@ static char rcsid_ZCompareUID_c[] = "$Id$";
 
 #include <internal.h>
 
-int ZCompareUID(uid1, uid2)
-    ZUnique_Id_t *uid1, *uid2;
+int
+ZCompareUID(ZUnique_Id_t *uid1,
+	    ZUnique_Id_t *uid2)
 {
     return (!memcmp((char *)uid1, (char *)uid2, sizeof (*uid1)));
 }

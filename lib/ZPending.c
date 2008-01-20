@@ -16,7 +16,8 @@ static char rcsid_ZPending_c[] = "$Id$";
 
 #include <internal.h>
 
-int ZPending()
+int
+ZPending(void)
 {
 	int retval;
 	

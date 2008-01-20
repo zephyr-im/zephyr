@@ -16,8 +16,8 @@ static char rcsid_ZFreeNotice_c[] = "$Id$";
 
 #include <internal.h>
 
-Code_t ZFreeNotice(notice)
-    ZNotice_t *notice;
+Code_t
+ZFreeNotice(ZNotice_t *notice)
 {
     free(notice->z_packet);
     return 0;

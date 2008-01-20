@@ -18,16 +18,12 @@ static const char rcsid_ZRetrieveSubscriptions_c[] =
     "$Id$";
 #endif
 
-static Code_t Z_RetSubs ();
+static Code_t Z_RetSubs (register ZNotice_t *, int *, Z_AuthProc);
 
 /* Need STDC definition when possible for unsigned short argument. */
-#ifdef __STDC__
-Code_t ZRetrieveSubscriptions(unsigned short port, int *nsubs)
-#else
-Code_t ZRetrieveSubscriptions(port,nsubs)
-	unsigned short port;
-	int *nsubs;
-#endif
+Code_t
+ZRetrieveSubscriptions(unsigned short port,
+		       int *nsubs)
 {
 	int retval;
 	ZNotice_t notice;
@@ -48,8 +44,8 @@ Code_t ZRetrieveSubscriptions(port,nsubs)
 	return(Z_RetSubs(&notice, nsubs, ZAUTH));
 }
 
-Code_t ZRetrieveDefaultSubscriptions(nsubs)
-	int *nsubs;
+Code_t
+ZRetrieveDefaultSubscriptions(int *nsubs)
 {
 	ZNotice_t notice;
 
@@ -62,10 +58,10 @@ Code_t ZRetrieveDefaultSubscriptions(nsubs)
 
 }
 
-static Code_t Z_RetSubs(notice, nsubs, auth_routine)
-	register ZNotice_t *notice;
-	int *nsubs;
-	Z_AuthProc auth_routine;
+static Code_t
+Z_RetSubs(register ZNotice_t *notice,
+	  int *nsubs,
+	  Z_AuthProc auth_routine)
 {
 	register int i;
 	int retval,nrecv,gimmeack;

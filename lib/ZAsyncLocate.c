@@ -16,11 +16,11 @@
 static const char rcsid_ZAsyncLocate_c[] = "$Id$";
 #endif
 
-Code_t ZRequestLocations(user, zald, kind, auth)
-     char *user;
-     register ZAsyncLocateData_t *zald;
-     ZNotice_Kind_t kind;	/* UNSAFE, UNACKED, or ACKED */
-     Z_AuthProc auth;
+Code_t
+ZRequestLocations(char *user,
+		  register ZAsyncLocateData_t *zald,
+		  ZNotice_Kind_t kind,                /* UNSAFE, UNACKED, or ACKED */
+		  Z_AuthProc auth)
 {
     int retval;
     ZNotice_t notice;
@@ -57,11 +57,11 @@ Code_t ZRequestLocations(user, zald, kind, auth)
     return(ZERR_NONE);
 }
 
-Code_t ZParseLocations(notice,zald,nlocs,user)
-     register ZNotice_t *notice;
-     register ZAsyncLocateData_t *zald;
-     int *nlocs;
-     char **user;
+Code_t
+ZParseLocations(register ZNotice_t *notice,
+		register ZAsyncLocateData_t *zald,
+		int *nlocs,
+		char **user)
 {
     char *ptr, *end;
     int i;
@@ -149,16 +149,16 @@ Code_t ZParseLocations(notice,zald,nlocs,user)
     return (ZERR_NONE);
 }
 
-int ZCompareALDPred(notice, zald)
-     ZNotice_t *notice;
-     void *zald;
+int
+ZCompareALDPred(ZNotice_t *notice,
+		void *zald)
 {
     return(ZCompareUID(&(notice->z_multiuid),
 		       &(((ZAsyncLocateData_t *) zald)->uid)));
 }
 
-void ZFreeALD(zald)
-     register ZAsyncLocateData_t *zald;
+void
+ZFreeALD(register ZAsyncLocateData_t *zald)
 {
    if (!zald) return;
 

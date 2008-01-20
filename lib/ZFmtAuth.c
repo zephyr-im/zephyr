@@ -17,12 +17,12 @@ static char rcsid_ZFormatAuthenticNotice_c[] = "$Id$";
 #include <internal.h>
 
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
-Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
-    ZNotice_t *notice;
-    register char *buffer;
-    register int buffer_len;
-    int *len;
-    C_Block session;
+Code_t
+ZFormatAuthenticNotice(ZNotice_t *notice,
+		       register char *buffer,
+		       register int buffer_len,
+		       int *len,
+		       C_Block session)
 {
     ZNotice_t newnotice;
     char *ptr;
@@ -64,12 +64,12 @@ Code_t ZFormatAuthenticNotice(notice, buffer, buffer_len, len, session)
 #endif
 
 #ifdef HAVE_KRB5
-Code_t ZFormatAuthenticNoticeV5(notice, buffer, buffer_len, len, keyblock)
-    ZNotice_t *notice;
-    register char *buffer;
-    register int buffer_len;
-    int *len;
-    krb5_keyblock *keyblock;
+Code_t
+ZFormatAuthenticNoticeV5(ZNotice_t *notice,
+			 register char *buffer,
+			 register int buffer_len,
+			 int *len,
+			 krb5_keyblock *keyblock)
 {
     ZNotice_t newnotice;
     char *ptr;
