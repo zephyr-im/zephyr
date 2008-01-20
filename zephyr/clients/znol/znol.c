@@ -23,9 +23,9 @@ static const char rcsid_znol_c[] = "$Id$";
 #define ON 1
 #define OFF 0
 
-main(argc,argv)
-	int argc;
-	register char *argv[];
+int
+main(int argc,
+     char *argv[])
 {
 	register char *cp;
 	ZSubscription_t subs[SUBSATONCE];

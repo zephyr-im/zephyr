@@ -21,21 +21,23 @@ static const char rcsid_zlocate_c[] = "$Id$";
 int numusers=0, numleft=0, parallel=0, oneline=0;
 char *whoami;
 
-RETSIGTYPE timeout(sig)
+RETSIGTYPE
+timeout(int sig)
 {
   fprintf (stderr, "%s: no response from server\n", whoami);
   exit(1);
 }
 
-void usage()
+void
+usage(void)
 {
    printf("Usage: %s [ -a | -d ] [ -p ] [ -1 ] user ... \n",whoami);
    exit(1);
 }
 
-void print_locs(user,nlocs)
-     char *user;
-     int nlocs;
+void
+print_locs(char *user,
+	   int nlocs)
 {
    int one = 1, retval;
    ZLocations_t locations;
@@ -65,9 +67,9 @@ void print_locs(user,nlocs)
 }
 
 /*ARGSUSED*/
-main(argc,argv)
-	int argc;
-	char *argv[];
+int
+main(int argc,
+     char *argv[])
 {
     char user[BUFSIZ],*whichuser;
     ZAsyncLocateData_t ald;
