@@ -12,10 +12,12 @@
 
 #include "dynP.h"
 
-int DynInsert(obj, idx, els, num)
-   DynObject obj;
-   DynPtr els;
-   int idx, num;
+int
+DynInsert(DynObject obj,
+	  int idx,
+	  DynPtr els,
+	  int num)
+     
 {
      int ret;
      

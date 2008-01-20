@@ -18,9 +18,9 @@
  * Checkers!  Get away from that "hard disk erase" button!
  *    (Stupid dog.  He almost did it to me again ...)
  */                                 
-int DynDelete(obj, idx)
-   DynObject obj;
-   int idx;
+int
+DynDelete(DynObject obj,
+	  int idx)
 {
      if (idx < 0) {
 	  if (obj->debug)

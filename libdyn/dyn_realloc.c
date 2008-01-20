@@ -18,9 +18,9 @@
  * Ideally, this function should not be called from outside the
  * library.  However, nothing will break if it is.
  */
-int _DynRealloc(obj, num_incs)
-   DynObject obj;
-   int num_incs;
+int
+_DynRealloc(DynObject obj,
+	    int num_incs)
 {
      DynPtr temp;
      int new_size_in_bytes;
