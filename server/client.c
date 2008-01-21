@@ -68,10 +68,8 @@ client_register(ZNotice_t *notice,
 
     /* chain the client's host onto this server's host list */
 
-#if 1
     zdbug((LOG_DEBUG, "client_register: adding %s at %s/%d",
 	   notice->z_sender, inet_ntoa(*host), ntohs(notice->z_port)));
-#endif
 
     if (!notice->z_port)
 	return ZSRV_BADSUBPORT;
