@@ -852,7 +852,7 @@ subscr_send_subs(Client *client)
 	    syslog(LOG_WARNING, "subscr_send_subs: cannot allocate memory for DES keyblock: %m");
 	    return errno;
 	}
-	des_ecb_encrypt(Z_keydata(client->session_keyblock), bufp, serv_ksched.s, DES_ENCRYPT);
+	des_ecb_encrypt((C_Block *)Z_keydata(client->session_keyblock), (C_Block *)bufp, serv_ksched.s, DES_ENCRYPT);
 	retval = ZMakeAscii(buf, sizeof(buf), bufp, Z_keylen(client->session_keyblock));
     } else {
 #endif

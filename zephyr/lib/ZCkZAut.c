@@ -121,7 +121,7 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
             ZChecksum_t our_checksum;
 
             our_checksum = des_quad_cksum((unsigned char *)cksum0_base, NULL, cksum0_len, 0,
-                                          key_data);
+                                          (C_Block *)key_data);
             if (our_checksum == notice->z_checksum) {
                 krb5_free_creds(Z_krb5_ctx, creds);
                 return ZAUTH_YES;
