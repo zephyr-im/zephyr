@@ -73,33 +73,32 @@ Sched	serv_ksched;
 #ifdef OLD_COMPAT
 #define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
 #define	OLD_CLIENT_INCOMPSUBS	"INCOMP"
-static void old_compat_subscr_sendlist __P((ZNotice_t *notice, int auth,
-					  struct sockaddr_in *who));
+static void old_compat_subscr_sendlist(ZNotice_t *notice, int auth,
+				       struct sockaddr_in *who);
 extern int old_compat_count_subscr;	/* counter of old use */
 #endif /* OLD_COMPAT */
 #ifdef NEW_COMPAT
 #define NEW_OLD_ZEPHYR_VERSION	"ZEPH0.1"
-static void new_old_compat_subscr_sendlist __P((ZNotice_t *notice, int auth,
-					      struct sockaddr_in *who)); 
+static void new_old_compat_subscr_sendlist(ZNotice_t *notice, int auth,
+					   struct sockaddr_in *who); 
 extern int new_compat_count_subscr;	/* counter of old use */
 #endif /* NEW_COMPAT */
 
-extern char *re_comp(), *re_conv();
-static Code_t add_subscriptions __P((Client *who, Destlist *subs_queue,
-				   ZNotice_t *notice, Server *server));
-static Destlist *extract_subscriptions __P((ZNotice_t *notice));
-static void free_subscriptions __P((Destlist *subs));
-static void free_subscription __P((Destlist *sub));
-static char **subscr_marshal_subs __P((ZNotice_t *notice, int auth,
-				     struct sockaddr_in *who,
-				     int *found));
-static Destlist *subscr_copy_def_subs __P((char *person));
-static Code_t subscr_realm_sendit __P((Client *who, Destlist *subs,
-				       ZNotice_t *notice, ZRealm *realm));
-static void subscr_unsub_realms __P((Destlist *newsubs));
-static void subscr_unsub_sendit __P((Client *who, Destlist *subs, 
-				     ZRealm *realm));
-static int cl_match  __P((Destlist*, Client *));
+static Code_t add_subscriptions(Client *who, Destlist *subs_queue,
+				ZNotice_t *notice, Server *server);
+static Destlist *extract_subscriptions(ZNotice_t *notice);
+static void free_subscriptions(Destlist *subs);
+static void free_subscription(Destlist *sub);
+static char **subscr_marshal_subs(ZNotice_t *notice, int auth,
+				  struct sockaddr_in *who,
+				  int *found);
+static Destlist *subscr_copy_def_subs(char *person);
+static Code_t subscr_realm_sendit(Client *who, Destlist *subs,
+				  ZNotice_t *notice, ZRealm *realm);
+static void subscr_unsub_realms(Destlist *newsubs);
+static void subscr_unsub_sendit(Client *who, Destlist *subs, 
+				ZRealm *realm);
+static int cl_match (Destlist*, Client *);
 
 static int defaults_read = 0;		/* set to 1 if the default subs
 					   are in memory */
@@ -118,10 +117,9 @@ String *empty;
  */
 
 Code_t
-subscr_subscribe(who, notice, server)
-    Client *who;
-    ZNotice_t *notice;
-    Server *server;
+subscr_subscribe(Client *who,
+		 ZNotice_t *notice,
+		 Server *server)
 {
     Destlist *subs;
 
@@ -130,11 +128,10 @@ subscr_subscribe(who, notice, server)
 }
 
 static Code_t
-add_subscriptions(who, subs, notice, server)
-    Client *who;
-    Destlist *subs;
-    ZNotice_t *notice;
-    Server *server;
+add_subscriptions(Client *who,
+		  Destlist *subs,
+		  ZNotice_t *notice,
+		  Server *server)
 {
     Destlist *next;
     Code_t retval;
@@ -222,8 +219,7 @@ add_subscriptions(who, subs, notice, server)
  */
 
 Code_t
-subscr_def_subs(who)
-    Client *who;
+subscr_def_subs(Client *who)
 {
     Destlist *subs;
 
@@ -232,7 +228,7 @@ subscr_def_subs(who)
 }
 
 void
-subscr_reset()
+subscr_reset(void)
 {
 #if 0
     zdbug((LOG_DEBUG, "subscr_reset()"));
@@ -243,8 +239,7 @@ subscr_reset()
 }
 
 static Destlist *
-subscr_copy_def_subs(person)
-    char *person;
+subscr_copy_def_subs(char *person)
 {
     int retval, fd;
     struct stat statbuf;
@@ -325,9 +320,8 @@ subscr_copy_def_subs(person)
  */
 
 Code_t
-subscr_cancel(sin, notice)
-    struct sockaddr_in *sin;
-    ZNotice_t *notice;
+subscr_cancel(struct sockaddr_in *sin,
+	      ZNotice_t *notice)
 {
     ZRealm *realm;
     Client *who;
@@ -389,10 +383,9 @@ subscr_cancel(sin, notice)
 }
 
 Code_t
-subscr_realm_cancel(sin, notice, realm)
-    struct sockaddr_in *sin;
-    ZNotice_t *notice;
-    ZRealm *realm;
+subscr_realm_cancel(struct sockaddr_in *sin,
+		    ZNotice_t *notice,
+		    ZRealm *realm)
 {
     Client *who;
     Destlist *cancel_subs, *subs, *client_subs, *next, *next2;
@@ -443,8 +436,7 @@ subscr_realm_cancel(sin, notice, realm)
  */
 
 void
-subscr_cancel_client(client)
-    Client *client;
+subscr_cancel_client(Client *client)
 {
     Destlist *subs, *next;
     Code_t retval;
@@ -481,10 +473,9 @@ subscr_cancel_client(client)
  */
 
 void
-subscr_sendlist(notice, auth, who)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
+subscr_sendlist(ZNotice_t *notice,
+		int auth,
+		struct sockaddr_in *who)
 {
     char **answer;
     int found;
@@ -535,11 +526,10 @@ subscr_sendlist(notice, auth, who)
 }
 
 static char **
-subscr_marshal_subs(notice, auth, who, found)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    int *found;
+subscr_marshal_subs(ZNotice_t *notice,
+		    int auth,
+		    struct sockaddr_in *who,
+		    int *found)
 {
     char **answer = NULL;
     unsigned short temp;
@@ -833,8 +823,7 @@ old_compat_subscr_sendlist(notice, auth, who)
 
 /*ARGSUSED*/
 Code_t
-subscr_send_subs(client)
-    Client *client;
+subscr_send_subs(Client *client)
 {
     int i = 0;
     Destlist *subs;
@@ -972,8 +961,7 @@ free_subscription(Destlist *sub)
 }
 
 static void
-free_subscriptions(subs)
-    Destlist *subs;
+free_subscriptions(Destlist *subs)
 {
     Destlist *next;
 
@@ -996,8 +984,7 @@ free_subscriptions(subs)
  */
 
 static Destlist *
-extract_subscriptions(notice)
-    ZNotice_t *notice;
+extract_subscriptions(ZNotice_t *notice)
 {
     Destlist *subs = NULL, *sub;
     char *recip, *class_name, *classinst;
@@ -1045,9 +1032,8 @@ extract_subscriptions(notice)
  */
 
 void
-subscr_dump_subs(fp, subs)
-    FILE *fp;
-    Destlist *subs;
+subscr_dump_subs(FILE *fp,
+		 Destlist *subs)
 {
     char *p;
 
@@ -1075,11 +1061,10 @@ subscr_dump_subs(fp, subs)
 /* As it exists, this function expects to take only the first sub from the 
  * Destlist. At some point, it and the calling code should be replaced */
 static Code_t
-subscr_realm_sendit(who, subs, notice, realm)
-    Client *who;
-    Destlist *subs;
-    ZNotice_t *notice;
-    ZRealm *realm;
+subscr_realm_sendit(Client *who,
+		    Destlist *subs,
+		    ZNotice_t *notice,
+		    ZRealm *realm)
 {
   ZNotice_t snotice;
   char *pack;
@@ -1162,10 +1147,9 @@ subscr_realm_sendit(who, subs, notice, realm)
 
 /* Called from subscr_realm and subscr_foreign_user */
 static Code_t
-subscr_add_raw(client, realm, newsubs)
-    Client *client;
-    ZRealm *realm;
-    Destlist *newsubs;
+subscr_add_raw(Client *client,
+	       ZRealm *realm,
+	       Destlist *newsubs)
 {
   Destlist *subs, *subs2, *subs3, **head;
   Code_t retval;
@@ -1221,9 +1205,8 @@ subscr_add_raw(client, realm, newsubs)
 
 /* Called from bdump_recv_loop to decapsulate realm subs */
 Code_t
-subscr_realm(realm, notice)
-    ZRealm *realm;
-    ZNotice_t *notice;
+subscr_realm(ZRealm *realm,
+	     ZNotice_t *notice)
 {
         Destlist  *newsubs;
 
@@ -1239,10 +1222,9 @@ subscr_realm(realm, notice)
 
 /* Like realm_sendit, this only takes one item from subs */
 static void
-subscr_unsub_sendit(who, subs, realm)
-    Client *who;
-    Destlist *subs;
-    ZRealm *realm;
+subscr_unsub_sendit(Client *who,
+		    Destlist *subs,
+		    ZRealm *realm)
 {
   ZNotice_t unotice;
   Code_t retval;
@@ -1306,8 +1288,7 @@ subscr_unsub_sendit(who, subs, realm)
 
 /* Called from bump_send_loop by way of realm_send_realms */
 Code_t
-subscr_send_realm_subs(realm)
-    ZRealm *realm;
+subscr_send_realm_subs(ZRealm *realm)
 {
   int i = 0;
   Destlist *subs, *next;
@@ -1373,8 +1354,7 @@ subscr_send_realm_subs(realm)
 }
 
 Code_t
-subscr_realm_subs(realm)
-    ZRealm *realm;
+subscr_realm_subs(ZRealm *realm)
 {
   int i = 0;
   Destlist *subs, *next;
@@ -1459,12 +1439,11 @@ subscr_realm_subs(realm)
 
 /* Called from subscr_foreign_user for REALM_REQ_SUBSCRIBE */
 static Code_t
-subscr_check_foreign_subs(notice, who, server, realm, newsubs)
-    ZNotice_t *notice;
-    struct sockaddr_in *who;
-    Server *server;
-    ZRealm *realm;
-    Destlist *newsubs;
+subscr_check_foreign_subs(ZNotice_t *notice,
+			  struct sockaddr_in *who,
+			  Server *server,
+			  ZRealm *realm,
+			  Destlist *newsubs)
 {
     Destlist *subs, *subs2, *next;
     Acl *acl;
@@ -1594,11 +1573,10 @@ subscr_check_foreign_subs(notice, who, server, realm, newsubs)
 }
 
 /* Called from realm_control_dispatch for REALM_REQ/ADD_SUBSCRIBE */
-Code_t subscr_foreign_user(notice, who, server, realm)
-    ZNotice_t *notice;
-    struct sockaddr_in *who;
-    Server *server;
-    ZRealm *realm;
+Code_t subscr_foreign_user(ZNotice_t *notice,
+			   struct sockaddr_in *who,
+			   Server *server,
+			   ZRealm *realm)
 {
   Destlist *newsubs, *temp;
   Acl *acl;

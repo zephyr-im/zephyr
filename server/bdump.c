@@ -81,27 +81,27 @@ return 0;
 #endif
 
 
-static void close_bdump __P((void* arg));
-static Code_t bdump_send_loop __P((Server *server)),
-bdump_ask_for __P((char *inst)),
-bdump_recv_loop __P((Server *server));
-static void bdump_get_v12 __P((ZNotice_t *, int, struct sockaddr_in *,
-			       Server *));
-static Code_t get_packet __P((void *packet, int len, int *retlen));
-static Code_t extract_sin __P((ZNotice_t *notice, struct sockaddr_in *target));
-static Code_t send_done __P((void));
-static Code_t send_list __P((ZNotice_Kind_t kind, int port, char *class_name,
+static void close_bdump(void* arg);
+static Code_t bdump_send_loop(Server *server);
+static Code_t bdump_ask_for(char *inst);
+static Code_t bdump_recv_loop(Server *server);
+static void bdump_get_v12(ZNotice_t *, int, struct sockaddr_in *,
+			       Server *);
+static Code_t get_packet(void *packet, int len, int *retlen);
+static Code_t extract_sin(ZNotice_t *notice, struct sockaddr_in *target);
+static Code_t send_done(void);
+static Code_t send_list(ZNotice_Kind_t kind, int port, char *class_name,
 			     char *inst, char *opcode, char *sender,
-			     char *recip, char **lyst, int num));
-static Code_t send_normal_tcp __P((ZNotice_Kind_t kind, int port,
+			     char *recip, char **lyst, int num);
+static Code_t send_normal_tcp(ZNotice_Kind_t kind, int port,
 				   char *class_name,
 				   char *inst, char *opcode, char *sender,
-				   char *recip, char *message, int len));
-static int net_read __P((FILE *f, char *buf, int len));
-static int net_write __P((FILE *f, char *buf, int len));
-static int setup_file_pointers __P((void));
-static void shutdown_file_pointers __P((void));
-static void cleanup __P((Server *server));
+				   char *recip, char *message, int len);
+static int net_read(FILE *f, char *buf, int len);
+static int net_write(FILE *f, char *buf, int len);
+static int setup_file_pointers(void);
+static void shutdown_file_pointers(void);
+static void cleanup(Server *server);
 
 #ifdef HAVE_KRB5
 static long ticket5_time;
@@ -146,8 +146,7 @@ extern int bdump_auth_proto;
  */
 
 void
-bdump_offer(who)
-    struct sockaddr_in *who;
+bdump_offer(struct sockaddr_in *who)
 {
     Code_t retval;
     char buf[512], *addr, *lyst[2];
@@ -248,7 +247,7 @@ bdump_offer(who)
  */
 
 void
-bdump_send()
+bdump_send(void)
 {
     struct sockaddr_in from;
     Server *server;
@@ -539,11 +538,10 @@ bdump_send()
 
 /*ARGSUSED*/
 static void
-bdump_get_v12 (notice, auth, who, server)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    Server *server;
+bdump_get_v12 (ZNotice_t *notice,
+	       int auth,
+	       struct sockaddr_in *who,
+	       Server *server)
 {
     struct sockaddr_in from;
     Code_t retval;
@@ -828,13 +826,12 @@ bdump_get_v12 (notice, auth, who, server)
 }
 
 void
-bdump_get(notice, auth, who, server)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    Server *server;
+bdump_get(ZNotice_t *notice,
+	  int auth,
+	  struct sockaddr_in *who,
+	  Server *server)
 {
-    void (*proc) __P((ZNotice_t *, int, struct sockaddr_in *, Server *));
+    void (*proc)(ZNotice_t *, int, struct sockaddr_in *, Server *);
 
     proc = NULL;
 
@@ -862,12 +859,15 @@ bdump_get(notice, auth, who, server)
  */
 
 Code_t
-bdump_send_list_tcp(kind, addr, class_name, inst, opcode, sender, recip, lyst,
-		    num)
-    ZNotice_Kind_t kind;
-    struct sockaddr_in *addr;
-    int num;
-    char *class_name, *inst, *opcode, *sender, *recip, **lyst;
+bdump_send_list_tcp(ZNotice_Kind_t kind,
+		    struct sockaddr_in *addr,
+		    char *class_name,
+		    char *inst,
+		    char *opcode,
+		    char *sender,
+		    char *recip,
+		    char **lyst,
+		    int num)
 {
     ZNotice_t notice;
     char *pack, addrbuf[100];
@@ -953,7 +953,8 @@ bdump_send_list_tcp(kind, addr, class_name, inst, opcode, sender, recip, lyst,
 }
 
 static void
-shutdown_file_pointers() {
+shutdown_file_pointers(void)
+{
     if (input) {
 	fclose(input);
 	input = 0;
@@ -974,8 +975,7 @@ shutdown_file_pointers() {
 }
 
 static void
-cleanup(server)
-    Server *server;
+cleanup(Server *server)
 {
 #ifdef _POSIX_VERSION
     struct sigaction action;
@@ -1004,7 +1004,7 @@ cleanup(server)
 
 #ifdef HAVE_KRB4
 int
-get_tgt()
+get_tgt(void)
 {
     /* MIT Kerberos 4 get_svc_in_tkt() requires instance to be writable and
      * at least INST_SZ bytes long. */
@@ -1106,8 +1106,7 @@ get_tgt()
  
 /*ARGSUSED*/
 static void
-close_bdump(arg)
-    void * arg;
+close_bdump(void *arg)
 {
     if (bdump_socket >= 0) {
 	FD_CLR(bdump_socket, &interesting);
@@ -1130,8 +1129,7 @@ close_bdump(arg)
  */
  
 static Code_t
-bdump_recv_loop(server)
-    Server *server;
+bdump_recv_loop(Server *server)
 {
     ZNotice_t notice;
     ZPacket_t packet;
@@ -1347,8 +1345,7 @@ bdump_recv_loop(server)
  */
 
 static Code_t
-bdump_send_loop(server)
-    Server *server;
+bdump_send_loop(Server *server)
 {
     Code_t retval;
 
@@ -1373,7 +1370,7 @@ bdump_send_loop(server)
  */
 
 static Code_t
-send_done()
+send_done(void)
 {
     Code_t retval;
  
@@ -1391,10 +1388,15 @@ send_done()
  */
 
 static Code_t
-send_list(kind, port, class_name, inst, opcode, sender, recip, lyst, num)
-    ZNotice_Kind_t kind;
-    int port, num;
-    char *class_name, *inst, *opcode, *sender, *recip, **lyst;
+send_list(ZNotice_Kind_t kind,
+	  int port,
+	  char *class_name,
+	  char *inst,
+	  char *opcode,
+	  char *sender,
+	  char *recip,
+	  char **lyst,
+	  int num)
 {
     ZNotice_t notice;
     char *pack;
@@ -1431,11 +1433,15 @@ send_list(kind, port, class_name, inst, opcode, sender, recip, lyst, num)
  */
 
 static Code_t
-send_normal_tcp(kind, port, class_name, inst, opcode, sender, recip,
-		message, len)
-    ZNotice_Kind_t kind;
-    int port, len;
-    char *class_name, *inst, *opcode, *sender, *recip, *message;
+send_normal_tcp(ZNotice_Kind_t kind,
+		int port,
+		char *class_name,
+		char *inst,
+		char *opcode,
+		char *sender,
+		char *recip,
+		char *message,
+		int len)
 {
     ZNotice_t notice;
     char *pack;
@@ -1522,10 +1528,7 @@ send_normal_tcp(kind, port, class_name, inst, opcode, sender, recip,
  */
 
 static Code_t
-get_packet(packet, len, retlen)
-    void *packet;
-    int len;
-    int *retlen;
+get_packet(void *packet, int len, int *retlen)
 {
     u_short length;
     int result;
@@ -1558,9 +1561,7 @@ get_packet(packet, len, retlen)
 }
 
 static Code_t
-extract_sin(notice, target)
-    ZNotice_t *notice;
-    struct sockaddr_in *target;
+extract_sin(ZNotice_t *notice, struct sockaddr_in *target)
 {
     char *cp = notice->z_message;
     char *buf;
@@ -1587,10 +1588,7 @@ extract_sin(notice, target)
 }
 
 static int
-net_read(f, buf, len)
-    FILE *f;
-    char *buf;
-    int len;
+net_read(FILE *f, char *buf, int len)
 {
     int cc, len2 = 0;
  
@@ -1614,10 +1612,7 @@ net_read(f, buf, len)
 }
 
 static int
-net_write(f, buf, len)
-    FILE *f;
-    char *buf;
-    int len;
+net_write(FILE *f, char *buf, int len)
 {
     int cc;
     int wrlen = len;
@@ -1632,7 +1627,7 @@ net_write(f, buf, len)
 }
 
 static int
-setup_file_pointers ()
+setup_file_pointers (void)
 {
     int fd;
 

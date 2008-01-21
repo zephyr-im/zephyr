@@ -59,11 +59,10 @@ static Client *client_bucket[HASHSIZE];
 				htons((unsigned short) (port))) % HASHSIZE)
 
 Code_t
-client_register(notice, host, client_p, wantdefaults)
-    ZNotice_t *notice;
-    struct in_addr *host;
-    Client **client_p;
-    int wantdefaults;
+client_register(ZNotice_t *notice,
+		struct in_addr *host,
+		Client **client_p,
+		int wantdefaults)
 {
     Client *client;
     Code_t retval;
@@ -118,9 +117,8 @@ client_register(notice, host, client_p, wantdefaults)
  */
 
 void
-client_deregister(client, flush)
-    Client *client;
-    int flush;
+client_deregister(Client *client,
+		  int flush)
 {
     LIST_DELETE(client);
     nack_release(client);
@@ -136,8 +134,7 @@ client_deregister(client, flush)
 }
 
 void
-client_flush_host(host)
-    struct in_addr *host;
+client_flush_host(struct in_addr *host)
 {
     int i;
     Client *client, *next;
@@ -153,7 +150,7 @@ client_flush_host(host)
 }
 
 Code_t
-client_send_clients()
+client_send_clients(void)
 {
     int i;
     Client *client;
@@ -186,8 +183,7 @@ client_send_clients()
  */
 
 void
-client_dump_clients(fp)
-    FILE *fp;
+client_dump_clients(FILE *fp)
 {
     Client *client;
     int i;
@@ -206,9 +202,8 @@ client_dump_clients(fp)
  */
 
 Client *
-client_find(host, port)
-    struct in_addr *host;
-    unsigned int port;
+client_find(struct in_addr *host,
+	    unsigned int port)
 {
     Client *client;
     long hashval;

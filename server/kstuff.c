@@ -33,12 +33,11 @@ static ZChecksum_t compute_rlm_checksum __P((ZNotice_t *, C_Block));
  * the value of rd_ap_req() applied to the ticket.
  */
 int
-GetKerberosData(fd, haddr, kdata, service, srvtab)
-     int fd; /* file descr. to read from */
-     struct in_addr haddr; /* address of foreign host on fd */
-     AUTH_DAT *kdata;	/* kerberos data (returned) */
-     char *service; /* service principal desired */
-     char *srvtab; /* file to get keys from */
+GetKerberosData(int fd, /* file descr. to read from */
+		struct in_addr haddr, /* address of foreign host on fd */
+		AUTH_DAT *kdata,	/* kerberos data (returned) */
+		char *service, /* service principal desired */
+		char *srvtab) /* file to get keys from */
 {
     char p[20];
     KTEXT_ST ticket;		/* will get Kerberos ticket from client */
@@ -94,11 +93,11 @@ GetKerberosData(fd, haddr, kdata, service, srvtab)
 #endif
 
 Code_t
-SendKerberosData(fd, ticket, service, host)
-     int fd;		/* file descriptor to write onto */
-     KTEXT ticket;	/* where to put ticket (return) */
-     char *service;	/* service name, foreign host */
-     char *host;
+SendKerberosData(int fd,	/* file descriptor to write onto */
+		 KTEXT ticket,	/* where to put ticket (return) */
+		 char *service,	/* service name, foreign host */
+		 char *host)
+		 
 {
     int rem;
     char p[32];
@@ -240,10 +239,9 @@ SendKrb5Data(int fd, krb5_data *data) {
 #endif
 
 Code_t
-ZCheckRealmAuthentication(notice, from, realm)
-    ZNotice_t *notice;
-    struct sockaddr_in *from;
-    char *realm;
+ZCheckRealmAuthentication(ZNotice_t *notice,
+			  struct sockaddr_in *from,
+			  char *realm)
 {       
 #ifdef HAVE_KRB5
     char *authbuf;
@@ -524,9 +522,8 @@ ZCheckRealmAuthentication(notice, from, realm)
 }
 
 Code_t
-ZCheckAuthentication(notice, from)
-    ZNotice_t *notice;
-    struct sockaddr_in *from;
+ZCheckAuthentication(ZNotice_t *notice,
+		     struct sockaddr_in *from)
 {       
 #ifdef HAVE_KRB5
     char *authbuf;
@@ -811,9 +808,8 @@ ZCheckAuthentication(notice, from)
 #undef KRB5AUTHENT
 
 Code_t
-ZCheckAuthentication4(notice, from)
-    ZNotice_t *notice;
-    struct sockaddr_in *from;
+ZCheckAuthentication4(ZNotice_t *notice,
+		      struct sockaddr_in *from)
 {	
 #ifdef HAVE_KRB4
     int result;
@@ -873,9 +869,9 @@ ZCheckAuthentication4(notice, from)
 
 
 #ifdef HAVE_KRB4
-static ZChecksum_t compute_checksum(notice, session_key)
-    ZNotice_t *notice;
-    C_Block session_key;
+static ZChecksum_t
+compute_checksum(ZNotice_t *notice,
+		 C_Block session_key)
 {
 #ifdef NOENCRYPTION
     return 0;
@@ -893,9 +889,8 @@ static ZChecksum_t compute_checksum(notice, session_key)
 #endif
 }
 
-static ZChecksum_t compute_rlm_checksum(notice, session_key)
-    ZNotice_t *notice;
-    C_Block session_key;
+static ZChecksum_t compute_rlm_checksum(ZNotice_t *notice,
+					C_Block session_key)
 {
 #ifdef NOENCRYPTION
     return 0;
