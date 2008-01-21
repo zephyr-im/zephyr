@@ -42,27 +42,30 @@ struct hostent *hp;
 char hostname[MAXHOSTNAMELEN], loopback[4];
 char PidFile[128];
 
-static RETSIGTYPE deactivate __P((void));
-static RETSIGTYPE terminate __P((void));
-static void choose_server __P((void));
-static void init_hm __P((void));
-static void detach __P((void));
-static void send_stats __P((ZNotice_t *, struct sockaddr_in *));
-static char *strsave __P((const char *));
+static RETSIGTYPE deactivate(int);
+static RETSIGTYPE terminate(int);
+static void choose_server(void);
+static void init_hm(void);
+static void detach(void);
+static void send_stats(ZNotice_t *, struct sockaddr_in *);
+static char *strsave(const char *);
 extern int optind;
 
-static RETSIGTYPE deactivate()
+static RETSIGTYPE
+deactivate(int ignored)
 {
     deactivating = 1;
 }
 
-static RETSIGTYPE terminate()
+static RETSIGTYPE
+terminate(int ignored)
 {
     terminating = 1;
 }
 
-main(argc, argv)
-char *argv[];
+int
+main(int argc,
+     char *argv[])
 {
     ZNotice_t notice;
     ZPacket_t packet;
@@ -246,7 +249,8 @@ char *argv[];
     }
 }
 
-static void choose_server()
+static void
+choose_server(void)
 {
     int i = 0;
     char **clust_info, **cpp;
@@ -353,7 +357,8 @@ static void choose_server()
     }
 }
 
-static void init_hm()
+static void
+init_hm(void)
 {
      struct servent *sp;
      Code_t ret;
@@ -454,7 +459,8 @@ static void init_hm()
 #endif
 }
 
-static void detach()
+static void
+detach(void)
 {
      /* detach from terminal and fork. */
      register int i, x = ZGetFD();
@@ -494,9 +500,9 @@ static void detach()
 
 static char version[BUFSIZ];
 
-static void send_stats(notice, sin)
-     ZNotice_t *notice;
-     struct sockaddr_in *sin;
+static void
+send_stats(ZNotice_t *notice,
+	   struct sockaddr_in *sin)
 {
      ZNotice_t newnotice;
      Code_t ret;
@@ -608,7 +614,8 @@ static void send_stats(notice, sin)
 	  free(list[i]);
 }
 
-void die_gracefully()
+void
+die_gracefully(void)
 {
      syslog(LOG_INFO, "Terminate signal caught...");
      unlink(PidFile);
@@ -616,14 +623,13 @@ void die_gracefully()
      exit(0);
 }
 
-static char *strsave(sp)
-    const char *sp;
+static char *
+strsave(const char *sp)
 {
     register char *ret;
 
-    if((ret = malloc((unsigned) strlen(sp)+1)) == NULL) {
+    if((ret = strdup(sp)) == NULL) {
 	    abort();
     }
-    strcpy(ret,sp);
     return(ret);
 }
