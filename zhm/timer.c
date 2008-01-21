@@ -115,13 +115,13 @@ static Timer **heap;
 static int num_timers = 0;
 static int heap_size = 0;
 
-static void timer_botch __P((void*));
-static Timer *add_timer __P((Timer *));
+static void timer_botch (void*);
+static Timer *add_timer (Timer *);
 
-Timer *timer_set_rel(time_rel, proc, arg)
-    long time_rel;
-    void (*proc) __P((void *));
-    void *arg;
+Timer *
+timer_set_rel(long time_rel,
+	      void (*proc)(void *),
+	      void *arg)
 {
     Timer *new_t;
 
@@ -135,8 +135,7 @@ Timer *timer_set_rel(time_rel, proc, arg)
 }
 
 void
-timer_reset(tmr)
-    Timer *tmr;
+timer_reset(Timer *tmr)
 {
     int pos, min;
 
@@ -177,8 +176,7 @@ timer_reset(tmr)
 #define set_timeval(t,s) ((t).tv_sec=(s),(t).tv_usec=0,(t))
 
 static Timer *
-add_timer(new)
-    Timer *new;
+add_timer(Timer *new)
 {
     int pos;
 
@@ -208,7 +206,7 @@ add_timer(new)
 }
 
 void
-timer_process()
+timer_process(void)
 {
     Timer *t;
     timer_proc func;
@@ -232,8 +230,7 @@ timer_process()
 }
 
 struct timeval *
-timer_timeout(tvbuf)
-    struct timeval *tvbuf;
+timer_timeout(struct timeval *tvbuf)
 {
     if (num_timers > 0) {
 	tvbuf->tv_sec = heap[0]->abstime - time(NULL);
@@ -247,8 +244,7 @@ timer_timeout(tvbuf)
 }
 
 static void
-timer_botch(arg)
-    void *arg;
+timer_botch(void *arg)
 {
     syslog(LOG_CRIT, "timer botch\n");
     abort();

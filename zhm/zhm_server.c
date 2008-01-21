@@ -33,15 +33,16 @@ extern int deactivated, rebootflag;
 extern int numserv;
 extern char **serv_list;
 extern char cur_serv[], prim_serv[];
-extern void die_gracefully();
+extern void die_gracefully(void);
 
-void hm_control(), send_back(), new_server();
+void hm_control(ZNotice_t *);
+void send_back(ZNotice_t *);
+void new_server(char *);
 
 /* Argument is whether we are actually booting, or just attaching
  * after a server switch */
 void
-send_boot_notice(op)
-char *op;
+send_boot_notice(char *op)
 {
      ZNotice_t notice;
      Code_t ret;
@@ -72,8 +73,7 @@ char *op;
 
 /* Argument is whether we are detaching or really going down */
 void
-send_flush_notice(op)
-char *op;
+send_flush_notice(char *op)
 {
      ZNotice_t notice;
      Code_t ret;
@@ -102,8 +102,7 @@ char *op;
 }
 
 void
-find_next_server(sugg_serv)
-char *sugg_serv;
+find_next_server(char *sugg_serv)
 {
      struct hostent *hp;
      int done = 0;
@@ -176,8 +175,7 @@ char *sugg_serv;
 }
 
 void
-server_manager(notice)
-ZNotice_t *notice;
+server_manager(ZNotice_t *notice)
 {
     if (memcmp((char *)&serv_sin.sin_addr, (char *)&from.sin_addr, 4) ||
 	(serv_sin.sin_port != from.sin_port)) {
@@ -208,8 +206,7 @@ ZNotice_t *notice;
 }
 
 void
-hm_control(notice)
-ZNotice_t *notice;
+hm_control(ZNotice_t *notice)
 {
     Code_t ret;
     struct hostent *hp;
@@ -251,8 +248,7 @@ ZNotice_t *notice;
 }
 
 void
-send_back(notice)
-ZNotice_t *notice;
+send_back(ZNotice_t *notice)
 {
     ZNotice_Kind_t kind;
     struct sockaddr_in repl;
@@ -290,8 +286,7 @@ ZNotice_t *notice;
 }
 
 void
-new_server(sugg_serv)
-char *sugg_serv;
+new_server(char *sugg_serv)
 {
     no_server = 1;
     syslog (LOG_INFO, "Server went down, finding new server.");
@@ -306,8 +301,8 @@ char *sugg_serv;
     disable_queue_retransmits();
 }
 
-static void boot_timeout(arg)
-void *arg;
+static void
+boot_timeout(void *arg)
 {
     serv_timeouts++;
     new_server(NULL);
