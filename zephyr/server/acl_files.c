@@ -198,7 +198,7 @@ static int acl_commit(acl_file, f)
 /* Closes f */
 static int acl_abort(acl_file, f)
     char *acl_file;
-    FILE *f;     
+    FILE *f;
 {
 #ifdef WRITE_ACL
     char new[LINESIZE];
