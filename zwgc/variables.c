@@ -113,7 +113,8 @@ var_get_variable(string name)
     static string last_get_field_call_result = NULL;
 
     if (is_number_variable(name)) {
-	if (result = string_dictionary_Fetch(number_variable_dict, name))
+	result = string_dictionary_Fetch(number_variable_dict, name);
+	if (result)
 	  return(result);
 
 	/*

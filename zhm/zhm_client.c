@@ -14,12 +14,15 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_hm_client_c[] = "$Id$";
+static const char rcsid_hm_client_c[] = "$Id$";
 #endif /* SABER */
 #endif /* lint */
 
 extern int no_server, nclt, deactivated, noflushflag;
 extern struct sockaddr_in cli_sin, serv_sin, from;
+
+extern void send_flush_notice(char *);
+extern void new_server(char *sugg_serv);
 
 void transmission_tower(ZNotice_t *notice,
 			char *packet,

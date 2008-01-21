@@ -102,8 +102,6 @@ static void login_sendit __P((ZNotice_t *notice, int auth,
 static char **ulogin_marshal_locs __P((ZNotice_t *notice, int *found,
 				       int auth));
 
-static int ul_equiv __P((Location *l1, Location *l2));
-
 static void free_loc __P((Location *loc));
 static void ulogin_locate_forward __P((ZNotice_t *notice,
 				       struct sockaddr_in *who, ZRealm *realm));
@@ -664,16 +662,6 @@ ulogin_find_user(char *user)
 	i--;
     free_string(str);
     return &locations[i];
-}
-
-static int
-ul_equiv(Location *l1, Location *l2)
-{
-    if (l1->machine != l2->machine)
-	return 0;
-    if (l1->tty != l2->tty)
-	return 0;
-    return 1;
 }
 
 /*

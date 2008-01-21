@@ -54,19 +54,6 @@ Code_t ZFormatAuthenticNotice(ZNotice_t*, char*, int, int*, C_Block);
 #define KRB_INT32 ZEPHYR_INT32
 #endif
 
-/* These macros are for insertion into and deletion from a singly-linked list
- * with back pointers to the previous element's next pointer.  In order to
- * make these macros act like expressions, they use the comma operator for
- * sequenced evaluations of assignment, and "a && b" for "evaluate assignment
- * b if expression a is true". */
-#define LIST_INSERT(head, elem) \
-	((elem)->next = *(head), \
-	 (*head) && ((*(head))->prev_p = &(elem)->next), \
-	 (*head) = (elem), (elem)->prev_p = (head))
-#define LIST_DELETE(elem) \
-	(*(elem)->prev_p = (elem)->next, \
-	 (elem)->next && ((elem)->next->prev_p = (elem)->prev_p))
-
 /* Current time as cached by main(); use instead of time(). */
 #define NOW t_local.tv_sec
 
@@ -217,7 +204,39 @@ struct _Statistic {
 };
 
 /* Function declarations */
+
+/* These macros instantiate inline functions that do the work of the formder
+   LIST_INSERT and LIST_DELETE functions, which unfortunately triggered gcc's
+   pedanticism.  The comment before the *former* macros was: */
+/* These macros are for insertion into and deletion from a singly-linked list
+ * with back pointers to the previous element's next pointer.  In order to
+ * make these macros act like expressions, they use the comma operator for
+ * sequenced evaluations of assignment, and "a && b" for "evaluate assignment
+ * b if expression a is true". */
+
+#define MAKE_LIST_INSERT(type) inline static void type##_insert(type **head, type *elem) \
+    {\
+	(elem)->next = *(head);					\
+	if(*head) (*(head))->prev_p = &(elem)->next;		\
+	(*head) = (elem);					\
+	(elem)->prev_p = (head);				\
+    }
 	
+#define MAKE_LIST_DELETE(type) inline static void type##_delete(type *elem) \
+    {\
+	*(elem)->prev_p = (elem)->next;				\
+	if((elem)->next) (elem)->next->prev_p = (elem)->prev_p;	\
+    }
+
+MAKE_LIST_INSERT(Destlist);
+MAKE_LIST_DELETE(Destlist);
+MAKE_LIST_INSERT(Client);	
+MAKE_LIST_DELETE(Client);	
+MAKE_LIST_INSERT(Triplet);	
+MAKE_LIST_DELETE(Triplet);	
+MAKE_LIST_INSERT(Unacked);
+MAKE_LIST_DELETE(Unacked);
+
 /* found in bdump.c */
 void bdump_get(ZNotice_t *notice, int auth, struct sockaddr_in *who,
 		    Server *server);
@@ -277,23 +296,14 @@ void hostm_shutdown(void);
 /* found in kstuff.c */
 #ifdef HAVE_KRB4
 int GetKerberosData (int, struct in_addr, AUTH_DAT *, char *, char *);
+Code_t ReadKerberosData(int, int *, char **, int *);
 Code_t SendKerberosData (int, KTEXT, char *, char *);
+Code_t SendKrb5Data(int, krb5_data *);
+Code_t GetKrb5Data(int, krb5_data *);
 void sweep_ticket_hash_table(void *);
+Code_t ZCheckRealmAuthentication(ZNotice_t *, struct sockaddr_in *, char *);
 #endif
-
-/* found in kopt.c */
-#ifdef HAVE_KRB4
-#ifndef NOENCRYPTION
-Sched *check_key_sched_cache(des_cblock key);
-void add_to_key_sched_cache(des_cblock key, Sched *sched);
-/*int krb_set_key(void *key, int cvt);*/
-/* int krb_rd_req(KTEXT authent, char *service, char *instance,
-		    unsigned KRB_INT32 from_addr, AUTH_DAT *ad, char *fn); */
-int krb_find_ticket(KTEXT authent, KTEXT ticket);
-int krb_get_lrealm(char *r, int n);
-#endif
-#endif
-
+    
 /* found in server.c */
 void server_timo(void *which);
 void server_dump_servers(FILE *fp);
@@ -324,6 +334,9 @@ void subscr_sendlist(ZNotice_t *notice, int auth,
 void subscr_dump_subs(FILE *fp, Destlist *subs);
 void subscr_reset(void);
 Code_t subscr_def_subs(Client *who);
+Code_t subscr_realm(ZRealm *, ZNotice_t *);
+Code_t subscr_send_realm_subs(ZRealm *);
+Code_t subscr_realm_cancel(struct sockaddr_in *, ZNotice_t *, ZRealm *);
 
 /* found in uloc.c */
 void uloc_hflush(struct in_addr *addr);
@@ -334,6 +347,8 @@ Code_t ulogin_dispatch(ZNotice_t *notice, int auth,
 Code_t ulocate_dispatch(ZNotice_t *notice, int auth,
 			     struct sockaddr_in *who, Server *server);
 Code_t uloc_send_locations(void);
+void ulogin_relay_locate(ZNotice_t *, struct sockaddr_in *);
+void ulogin_realm_locate(ZNotice_t *, struct sockaddr_in *, ZRealm *);
 
 /* found in realm.c */
 int realm_sender_in_realm(char *realm, char *sender);
@@ -350,9 +365,17 @@ Code_t realm_control_dispatch(ZNotice_t *, int, struct sockaddr_in *,
 				   Server *, ZRealm *);
 void realm_shutdown(void);
 void realm_deathgram(Server *);
+Code_t realm_send_realms(void);
+Code_t realm_dispatch(ZNotice_t *, int, struct sockaddr_in *, Server *);
+void realm_wakeup(void);
+void kill_realm_pids(void);
+void realm_dump_realms(FILE *);
 
 /* found in version.c */
 char *get_version(void);
+
+/* found in access.c */
+int access_check(char *, Acl *, Access);
 
 /* global identifiers */
 

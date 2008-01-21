@@ -22,8 +22,9 @@ static const char rcsid_kstuff_c[] = "$Id$";
 
 #ifdef HAVE_KRB4
 
-static ZChecksum_t compute_checksum __P((ZNotice_t *, C_Block));
-static ZChecksum_t compute_rlm_checksum __P((ZNotice_t *, C_Block));
+static ZChecksum_t compute_checksum(ZNotice_t *, C_Block);
+static ZChecksum_t compute_rlm_checksum(ZNotice_t *, C_Block);
+static Code_t ZCheckAuthentication4(ZNotice_t *notice, struct sockaddr_in *from);
 
 /*
  * GetKerberosData
@@ -126,8 +127,7 @@ Code_t
 ReadKerberosData(int fd, int *size, char **data, int *proto) {
     char p[20];
     int i;
-    unsigned char *dst;
-    Code_t retval;
+    char *dst;
     int len = 0;
 
     for (i=0; i<20; i++) {
@@ -152,7 +152,7 @@ ReadKerberosData(int fd, int *size, char **data, int *proto) {
     else if ((len = atoi(p)) > 0)
 	*proto = 4;
 
-    if (*proto < 4 | *proto > 5) {
+    if ((*proto < 4) | (*proto > 5)) {
 	syslog(LOG_WARNING, "ReadKerberosData: error parsing authenticator length (\"%s\")", p);
 	return KFAILURE;
     }
@@ -188,8 +188,7 @@ Code_t
 GetKrb5Data(int fd, krb5_data *data) {
     char p[20];
     int i;
-    unsigned char *dst;
-    Code_t retval;
+    char *dst;
 
     for (i=0; i<20; i++) {
 	if (read(fd, &p[i], 1) != 1) {
@@ -260,8 +259,9 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
     krb5_data cksumbuf;
     int valid;
     char *cksum0_base, *cksum1_base, *cksum2_base; 
-    char *svcinst, *x, *y; 
-    char *asn1_data, *key_data; 
+    char *x; 
+    unsigned char *asn1_data;
+    unsigned char *key_data; 
     int asn1_len, key_len, cksum0_len, cksum1_len, cksum2_len; 
 #ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
     krb5_authenticator *authenticator;
@@ -280,11 +280,11 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
         return ZAUTH_FAILED;
 
     len = strlen(notice->z_ascii_authent)+1;
-    authbuf=malloc(len);
+    authbuf = malloc(len);
 
     /* Read in the authentication data. */
-    if (ZReadZcode(notice->z_ascii_authent, 
-                   authbuf,
+    if (ZReadZcode((unsigned char *)notice->z_ascii_authent, 
+                   (unsigned char *)authbuf,
                    len, &len) == ZERR_BADFIELD) {
         return ZAUTH_FAILED;
     }
@@ -492,7 +492,7 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
         return ZAUTH_FAILED; 
     } 
     /* HOLDING: authctx, authenticator, cksumbuf.data, asn1_data */ 
-    result = ZReadZcode(notice->z_ascii_checksum, 
+    result = ZReadZcode((unsigned char *)notice->z_ascii_checksum, 
                         asn1_data, asn1_len, &asn1_len); 
     if (result != ZERR_NONE) { 
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
@@ -526,7 +526,7 @@ ZCheckAuthentication(ZNotice_t *notice,
 		     struct sockaddr_in *from)
 {       
 #ifdef HAVE_KRB5
-    char *authbuf;
+    unsigned char *authbuf;
     krb5_principal princ;
     krb5_data packet;
     krb5_ticket *tkt;
@@ -541,8 +541,8 @@ ZCheckAuthentication(ZNotice_t *notice,
     krb5_data cksumbuf;
     int valid;
     char *cksum0_base, *cksum1_base, *cksum2_base; 
-    char *svcinst, *x, *y; 
-    char *asn1_data, *key_data; 
+    char *x; 
+    unsigned char *asn1_data, *key_data; 
     int asn1_len, key_len, cksum0_len, cksum1_len, cksum2_len; 
 #ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
     krb5_authenticator *authenticator;
@@ -566,17 +566,17 @@ ZCheckAuthentication(ZNotice_t *notice,
 #endif
     
     len = strlen(notice->z_ascii_authent)+1;
-    authbuf=malloc(len);
+    authbuf = malloc(len);
 
     /* Read in the authentication data. */
-    if (ZReadZcode(notice->z_ascii_authent, 
+    if (ZReadZcode((unsigned char *)notice->z_ascii_authent, 
                    authbuf,
                    len, &len) == ZERR_BADFIELD) {
         return ZAUTH_FAILED;
     }
 
     packet.length = len;
-    packet.data = authbuf;
+    packet.data = (char *)authbuf;
 
     result = krb5_kt_resolve(Z_krb5_ctx, 
                         keytab_file, &keytabid);
@@ -776,7 +776,7 @@ ZCheckAuthentication(ZNotice_t *notice,
         return ZAUTH_FAILED; 
     } 
     /* HOLDING: authctx, authenticator, cksumbuf.data, asn1_data */ 
-    result = ZReadZcode(notice->z_ascii_checksum, 
+    result = ZReadZcode((unsigned char *)notice->z_ascii_checksum, 
                         asn1_data, asn1_len, &asn1_len); 
     if (result != ZERR_NONE) { 
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
@@ -807,17 +807,16 @@ ZCheckAuthentication(ZNotice_t *notice,
 
 #undef KRB5AUTHENT
 
-Code_t
+static Code_t
 ZCheckAuthentication4(ZNotice_t *notice,
 		      struct sockaddr_in *from)
 {	
 #ifdef HAVE_KRB4
     int result;
     char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
-    KTEXT_ST authent, ticket;
+    KTEXT_ST authent;
     AUTH_DAT dat;
     ZChecksum_t checksum;
-    C_Block session_key;
     char instance[INST_SZ+1];
 
     if (!notice->z_auth)
@@ -881,9 +880,9 @@ compute_checksum(ZNotice_t *notice,
 
     cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
     cend = cstart + strlen(cstart) + 1;
-    checksum = des_quad_cksum(hstart, NULL, cstart - hstart, 0, session_key);
-    checksum ^= des_quad_cksum(cend, NULL, hend - cend, 0, session_key);
-    checksum ^= des_quad_cksum(notice->z_message, NULL, notice->z_message_len,
+    checksum = des_quad_cksum((unsigned char *)hstart, NULL, cstart - hstart, 0, session_key);
+    checksum ^= des_quad_cksum((unsigned char *)cend, NULL, hend - cend, 0, session_key);
+    checksum ^= des_quad_cksum((unsigned char *)notice->z_message, NULL, notice->z_message_len,
 			       0, session_key);
     return checksum;
 #endif
@@ -896,11 +895,11 @@ static ZChecksum_t compute_rlm_checksum(ZNotice_t *notice,
     return 0;
 #else
     ZChecksum_t checksum;
-    char *cstart, *cend, *hstart = notice->z_packet, *hend = notice->z_message;
+    char *cstart, *cend, *hstart = notice->z_packet;
 
     cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
     cend = cstart + strlen(cstart) + 1;
-    checksum = des_quad_cksum(hstart, NULL, cstart - hstart, 0, session_key);
+    checksum = des_quad_cksum((unsigned char *)hstart, NULL, cstart - hstart, 0, session_key);
     return checksum;
 #endif
 }

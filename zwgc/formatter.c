@@ -176,7 +176,7 @@ static int
 not_contains(string str,
 	     const character_class set)
 {
-   while (*str && ! set[*str]) str++;
+   while (*str && ! set[(int)*str]) str++;
    return (! *str);
 }
 
@@ -223,6 +223,7 @@ otherside(char opener)
 #ifdef DEBUG
    abort();
 #endif
+   return 0;
 }
 
 /* the char * that str points to is free'd by this function.
@@ -328,7 +329,7 @@ protect(string str)
 	 temp[templen-2] = *str++;
 	 char_stack_pop(chs);
 	 temp[templen-1] = '\0';
-      } else if (len = pure_text_length(str,tos)) {
+      } else if ((len = pure_text_length(str,tos))) {
 	 if (tos) {
 	    /* if the block is text in an environment, just copy it */
 
@@ -509,8 +510,8 @@ disp_get_cmds(char *str,
 	 terminator = char_stack_top(terminators);
 	 char_stack_pop(terminators);
 	 curstr++;
-      } else if (len=text_length(curstr,terminator)) { /* if there is a text
-							  block here */
+      } else if ((len=text_length(curstr, terminator))) { /* if there is a text
+							     block here */
 	 here->code=DT_STR;
 	 here->str=curstr;
 	 here->len=len;

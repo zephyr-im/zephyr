@@ -17,7 +17,7 @@
 #include <pwd.h>
 #include <netdb.h>
 #ifndef lint
-static const char *rcsid_zctl_c = "$Id$";
+static const char rcsid_zctl_c[] = "$Id$";
 #endif
 
 #define SUBSATONCE 7
@@ -52,6 +52,7 @@ void add_file(short, ZSubscription_t *, int);
 void del_file(short, ZSubscription_t *, int);
 void fix_macros(ZSubscription_t *, ZSubscription_t *, int);
 void fix_macros2(char *, char **);
+int make_exist(char *);
 
 int
 main(int argc,
@@ -538,8 +539,10 @@ add_file(short wgport,
 		return;
 	}
 	fix_macros(subs,&sub2,1);
-	if (retval = (unsub ? ZUnsubscribeTo(&sub2,1,(u_short)wgport) :
-		       ZSubscribeToSansDefaults(&sub2,1,(u_short)wgport)))
+	retval = (unsub
+		  ? ZUnsubscribeTo(&sub2,1,(u_short)wgport)
+		  : ZSubscribeToSansDefaults(&sub2,1,(u_short)wgport));
+	if (retval)
 		ss_perror(sci_idx,retval,
 			  unsub ? "while unsubscribing" :
 			  "while subscribing");

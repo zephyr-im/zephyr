@@ -12,7 +12,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_subscriptions_c[] = "$Id$";
+static const char rcsid_subscriptions_c[] = "$Id$";
 #endif
 
 /****************************************************************************/
@@ -271,8 +271,9 @@ load_subscriptions_from_file(FILE *file)
 	    /* Parse line */
 	    /* <<<>>>
 	     * The below does NOT work is the recipient field  is "":
-	     */ 
-	    if (temp = strchr(line, '#'))
+	     */
+	    temp = strchr(line, '#');
+	    if (temp)
 	      *temp = '\0';
 	    for (temp=line; *temp && *temp==' '; temp++) ;
 	    if (!*temp || *temp=='\n')

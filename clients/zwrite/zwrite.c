@@ -61,20 +61,23 @@ main(int argc,
     verbose = quiet = msgarg = nrecips = nocheck = filsys = nodot = 0;
     tabexpand = 1;
 
-    if (class = ZGetVariable("zwrite-class")) {
+    class = ZGetVariable("zwrite-class");
+    if (class) {
 	(void) strcpy(classbfr, class);
 	class = classbfr;
     }
     else
 	class = DEFAULT_CLASS;
-    if (inst = ZGetVariable("zwrite-inst")) {
+    inst = ZGetVariable("zwrite-inst");
+    if (inst) {
 	(void) strcpy(instbfr, inst);
 	inst = instbfr;
     }
     else
 	inst = DEFAULT_INSTANCE;
 
-    if (opcode = ZGetVariable("zwrite-opcode"))
+    opcode = ZGetVariable("zwrite-opcode");
+    if (opcode)
       opcode = strcpy(opbfr, opcode);
     else
       opcode = DEFAULT_OPCODE;
@@ -243,11 +246,12 @@ main(int argc,
     if (!nocheck && nrecips)
 	send_off(&notice, 0);
 	
-    if (!msgarg && isatty(0))
+    if (!msgarg && isatty(0)) {
 	if (nodot)
 	    printf("Type your message now.  End with the end-of-file character.\n");
 	else
 	    printf("Type your message now.  End with control-D or a dot on a line by itself.\n");
+    }
 	
     message = NULL;
     msgsize = 0;
@@ -314,7 +318,7 @@ main(int argc,
 	    message = realloc(message, (unsigned)(msgsize+1));
 	}
 	else {	/* Use read so you can send binary messages... */
-	    while (nchars = read(fileno(stdin), bfr, sizeof bfr)) {
+	    while ((nchars = read(fileno(stdin), bfr, sizeof bfr))) {
 		if (nchars == -1) {
 		    fprintf(stderr, "Read error from stdin!  Can't continue!\n");
 		    exit(1);
@@ -343,7 +347,7 @@ send_off(ZNotice_t *notice,
 	 int real)
 {
     int i, success, retval;
-    char bfr[BUFSIZ], realm_recip[BUFSIZ], dest[3 * BUFSIZ], *cp;
+    char bfr[BUFSIZ], realm_recip[BUFSIZ], dest[3 * BUFSIZ];
     ZNotice_t retnotice;
 
     success = 0;

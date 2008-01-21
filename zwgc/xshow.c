@@ -38,7 +38,6 @@ static const char rcsid_xshow_c[] = "$Id$";
 #define max(a,b)   ((a)>(b)?(a):(b))
 
 XContext desc_context;
-static pointer_dictionary colorname_dict = NULL;
 
 extern int internal_border_width;
 extern unsigned long default_bgcolor;

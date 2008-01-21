@@ -49,6 +49,11 @@ static void init_hm(void);
 static void detach(void);
 static void send_stats(ZNotice_t *, struct sockaddr_in *);
 static char *strsave(const char *);
+
+extern void send_flush_notice(char *);
+extern void server_manager(ZNotice_t *);
+extern void send_boot_notice(char *);
+extern void find_next_server(char *);
 extern int optind;
 
 static RETSIGTYPE
@@ -70,7 +75,7 @@ main(int argc,
     ZNotice_t notice;
     ZPacket_t packet;
     Code_t ret;
-    int opt, pak_len, i, j = 0, fd, count;
+    int opt, pak_len, fd, count;
     fd_set readers;
     struct timeval tv;
 
@@ -465,8 +470,9 @@ detach(void)
      /* detach from terminal and fork. */
      register int i, x = ZGetFD();
      register long size;
-  
-     if (i = fork()) {
+
+     i = fork();
+     if (i) {
 	  if (i < 0)
 	       perror("fork");
 	  exit(0);

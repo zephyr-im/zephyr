@@ -65,7 +65,6 @@ client_register(ZNotice_t *notice,
 		int wantdefaults)
 {
     Client *client;
-    Code_t retval;
 
     /* chain the client's host onto this server's host list */
 
@@ -98,8 +97,8 @@ client_register(ZNotice_t *notice,
 	client->subs = NULL;
 	client->realm = NULL;
 	client->principal = make_string(notice->z_sender, 0);
-	LIST_INSERT(&client_bucket[INET_HASH(&client->addr.sin_addr,
-					     notice->z_port)], client);
+	Client_insert(&client_bucket[INET_HASH(&client->addr.sin_addr,
+					       notice->z_port)], client);
     }
 
     /* Add default subscriptions only if this is not resulting from a brain
@@ -120,7 +119,7 @@ void
 client_deregister(Client *client,
 		  int flush)
 {
-    LIST_DELETE(client);
+    Client_delete(client);
     nack_release(client);
     subscr_cancel_client(client);
     free_string(client->principal);

@@ -43,7 +43,8 @@ char *get_home_directory(void)
     char *result;
     struct passwd *passwd_entry;
 
-    if (result = getenv("HOME"))
+    result = getenv("HOME");
+    if (result)
       return(result);
 
     if (!(passwd_entry = getpwuid(getuid())))
@@ -80,7 +81,8 @@ FILE *locate_file(char *override_filename,
     }
 
     if (home_dir_filename) {
-	if (filename = get_home_directory()) {
+	filename = get_home_directory();
+	if (filename) {
 	    filename = string_Concat(filename, "/");
 	    filename = string_Concat2(filename, home_dir_filename);
 	    result = fopen(filename, "r");

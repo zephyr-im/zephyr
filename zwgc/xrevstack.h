@@ -15,7 +15,7 @@
 #define _XREVSTACK_H_
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xrevstack_h[] = "$Id$";
+static const char rcsid_xrevstack_h[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>

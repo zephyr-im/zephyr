@@ -471,7 +471,7 @@ server_timo(void *arg)
 	auth = 0;
 	break;
       default:
-	syslog(LOG_ERR,"Bad server state, server 0x%x\n",which);
+	syslog(LOG_ERR,"Bad server state, server 0x%x\n", (int)which);
 	abort();
     }
     /* now he's either TARDY, STARTING, or DEAD
@@ -880,9 +880,9 @@ send_stats(struct sockaddr_in *who)
 					   do it this way. */
     vers = get_version();
 
-    sprintf(buf, "%d pkts", npackets);
+    sprintf(buf, "%lu pkts", npackets);
     pkts = strsave(buf);
-    sprintf(buf, "%d seconds operational",NOW - uptime);
+    sprintf(buf, "%ld seconds operational",NOW - uptime);
     upt = strsave(buf);
 
 #ifdef OLD_COMPAT
@@ -1317,7 +1317,6 @@ send_msg_list(struct sockaddr_in *who,
     char *pack;
     int packlen;
     Code_t retval;
-    Unacked *nacked;
 
     memset (&notice, 0, sizeof(notice));
 
@@ -1438,7 +1437,7 @@ server_forw_reliable(Server *server,
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], srv_rexmit, nacked);
     hashval = SRV_NACKTAB_HASHVAL(nacked->dest.srv_idx, nacked->uid);
-    LIST_INSERT(&srv_nacktab[hashval], nacked);
+    Unacked_insert(&srv_nacktab[hashval], nacked);
 }
 
 /*
@@ -1490,7 +1489,7 @@ srv_nack_cancel(ZNotice_t *notice,
 	    && ZCompareUID(&nacked->uid, &notice->z_uid)) {
 	    timer_reset(nacked->timer);
 	    free(nacked->packet);
-	    LIST_DELETE(nacked);
+	    Unacked_delete(nacked);
 	    free(nacked);
 	    return;
 	}
@@ -1520,7 +1519,7 @@ srv_rexmit(void *arg)
 #if 0
 	zdbug((LOG_DEBUG, "cancelling send to dead server"));
 #endif
-	LIST_DELETE(packet);
+	Unacked_delete(packet);
 	free(packet->packet);
 	srv_nack_release(&otherservers[packet->dest.srv_idx]);
 	free(packet);
@@ -1559,7 +1558,7 @@ srv_nack_release(Server *server)
 	    next = nacked->next;
 	    if (nacked->dest.srv_idx == server - otherservers) {
 		timer_reset(nacked->timer);
-		LIST_DELETE(nacked);
+		Unacked_delete(nacked);
 		free(nacked->packet);
 		free(nacked);
 	    }
