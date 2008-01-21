@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZReadAscii_c[] = "$Id$";
+static const char rcsid_ZReadAscii_c[] = "$Id$";
 #endif /* lint */
 
 #include <internal.h>

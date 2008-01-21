@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZFormatAuthenticNotice_c[] = "$Id$";
+static const char rcsid_ZFormatAuthenticNotice_c[] = "$Id$";
 #endif
 
 #include <internal.h>
@@ -19,8 +19,8 @@ static char rcsid_ZFormatAuthenticNotice_c[] = "$Id$";
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
 Code_t
 ZFormatAuthenticNotice(ZNotice_t *notice,
-		       register char *buffer,
-		       register int buffer_len,
+		       char *buffer,
+		       int buffer_len,
 		       int *len,
 		       C_Block session)
 {
@@ -41,7 +41,7 @@ ZFormatAuthenticNotice(ZNotice_t *notice,
     newnotice.z_checksum = 0;
 #else
     newnotice.z_checksum =
-	(ZChecksum_t)des_quad_cksum(buffer, NULL, ptr - buffer, 0, session);
+	(ZChecksum_t)des_quad_cksum((unsigned char *)buffer, NULL, ptr - buffer, 0, session);
 #endif
     if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len,
 				    &hdrlen, NULL, NULL)) != ZERR_NONE)
@@ -76,8 +76,6 @@ ZFormatAuthenticNoticeV5(ZNotice_t *notice,
     int retval, hdrlen, hdr_adj;
     krb5_enctype enctype;
     krb5_cksumtype cksumtype;
-    int valid;
-    char *svcinst, *x, *y;
     int key_len;
     char *cksum_start, *cstart, *cend;
     int cksum_len;

@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZGetSubscriptions_c[] = "$Id$";
+static const char rcsid_ZGetSubscriptions_c[] = "$Id$";
 #endif
 
 #include <internal.h>

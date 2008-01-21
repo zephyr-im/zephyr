@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZSendPacket_c[] =
+static const char rcsid_ZSendPacket_c[] =
     "$Zephyr: /mit/zephyr/src/lib/RCS/ZSendPacket.c,v 1.29 91/03/21 11:57:08 raeburn Exp $";
 #endif
 
