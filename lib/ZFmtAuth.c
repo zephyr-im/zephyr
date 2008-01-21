@@ -41,7 +41,7 @@ ZFormatAuthenticNotice(ZNotice_t *notice,
     newnotice.z_checksum = 0;
 #else
     newnotice.z_checksum =
-	(ZChecksum_t)des_quad_cksum((unsigned char *)buffer, NULL, ptr - buffer, 0, session);
+	(ZChecksum_t)des_quad_cksum((unsigned char *)buffer, NULL, ptr - buffer, 0, (C_Block *)session);
 #endif
     if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len,
 				    &hdrlen, NULL, NULL)) != ZERR_NONE)

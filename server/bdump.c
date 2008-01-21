@@ -1258,7 +1258,7 @@ bdump_recv_loop(Server *server)
 			syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
 			       error_message(retval), cp);
 		    } else {
-			des_ecb_encrypt(cblock, Z_keydata(client->session_keyblock),
+			des_ecb_encrypt((C_Block *)cblock, (C_Block *)Z_keydata(client->session_keyblock),
 					serv_ksched.s, DES_DECRYPT);
 		    }
 		} else if (*cp == 'Z') { /* Zcode! Long live the new flesh! */

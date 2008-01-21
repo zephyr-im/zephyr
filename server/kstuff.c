@@ -880,10 +880,10 @@ compute_checksum(ZNotice_t *notice,
 
     cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
     cend = cstart + strlen(cstart) + 1;
-    checksum = des_quad_cksum((unsigned char *)hstart, NULL, cstart - hstart, 0, session_key);
-    checksum ^= des_quad_cksum((unsigned char *)cend, NULL, hend - cend, 0, session_key);
+    checksum = des_quad_cksum((unsigned char *)hstart, NULL, cstart - hstart, 0, (C_Block *)session_key);
+    checksum ^= des_quad_cksum((unsigned char *)cend, NULL, hend - cend, 0, (C_Block *)session_key);
     checksum ^= des_quad_cksum((unsigned char *)notice->z_message, NULL, notice->z_message_len,
-			       0, session_key);
+			       0, (C_Block *)session_key);
     return checksum;
 #endif
 }
@@ -899,7 +899,7 @@ static ZChecksum_t compute_rlm_checksum(ZNotice_t *notice,
 
     cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
     cend = cstart + strlen(cstart) + 1;
-    checksum = des_quad_cksum((unsigned char *)hstart, NULL, cstart - hstart, 0, session_key);
+    checksum = des_quad_cksum((unsigned char *)hstart, NULL, cstart - hstart, 0, (C_Block *)session_key);
     return checksum;
 #endif
 }
