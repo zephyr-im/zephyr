@@ -150,9 +150,7 @@ handle_packet(void)
 
     if (otherservers[me_server_idx].queue) {
 	/* something here for me; take care of it */
-#if 1
 	zdbug((LOG_DEBUG, "internal queue process"));
-#endif
 
 	pending = server_dequeue(me_server);
 
@@ -268,16 +266,6 @@ dispatch(ZNotice_t *notice,
 	       inet_ntoa(who->sin_addr));
 	return;
     }
-#if 0
-    if (zdebug) {
-	syslog(LOG_DEBUG,
-		"disp:%s '%s' '%s' '%s' notice to '%s' from '%s' %s/%d/%d",
-		ZNoticeKinds[(int) notice->z_kind], notice->z_class,
-		notice->z_class_inst, notice->z_opcode, notice->z_recipient,
-		notice->z_sender, inet_ntoa(who->sin_addr),
-		ntohs(who->sin_port), ntohs(notice->z_port));
-    }
-#endif
 
     if (notice->z_kind == CLIENTACK) {
 	nack_cancel(notice, who);
@@ -602,10 +590,6 @@ xmit(ZNotice_t *notice,
     int packlen, sendfail = 0;
     Code_t retval;
 
-#if 0
-    zdbug((LOG_DEBUG,"xmit"));
-#endif
-
     noticepack = (char *) malloc(sizeof(ZPacket_t));
     if (!noticepack) {
 	syslog(LOG_ERR, "xmit malloc");
@@ -754,10 +738,6 @@ xmit(ZNotice_t *notice,
 	    return;			/* DON'T put on nack list */
 	}
     }
-#if 0
-    zdbug((LOG_DEBUG," to %s/%d", inet_ntoa(dest->sin_addr),
-	   ntohs(dest->sin_port)));
-#endif
     retval = ZSetDestAddr(dest);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "xmit set addr: %s", error_message(retval));
@@ -807,11 +787,9 @@ rexmit(void *arg)
     Unacked *nacked = (Unacked *) arg;
     int retval;
 
-#if 1
     syslog(LOG_DEBUG, "rexmit %s/%d #%d time %d",
 	   inet_ntoa(nacked->dest.addr.sin_addr),
 	   ntohs(nacked->dest.addr.sin_port), nacked->rexmits + 1, (int)NOW);
-#endif
 
     nacked->rexmits++;
     if (rexmit_times[nacked->rexmits] == -1) {
@@ -839,10 +817,6 @@ rexmit(void *arg)
     }
 
     /* retransmit the packet */
-#if 0
-    zdbug((LOG_DEBUG," to %s/%d", inet_ntoa(nacked->dest.addr.sin_addr),
-	   ntohs(nacked->dest.addr.sin_port)));
-#endif
     retval = ZSetDestAddr(&nacked->dest.addr);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "rexmit set addr: %s", error_message(retval));
@@ -879,9 +853,7 @@ clt_ack(ZNotice_t *notice,
     Code_t retval;
 
     if (bdumping) {		/* don't ack while dumping */
-#if 1
 	zdbug((LOG_DEBUG,"bdumping, no ack"));
-#endif
 	return;
     }
 
@@ -910,12 +882,6 @@ clt_ack(ZNotice_t *notice,
       default:
 	abort ();
     }
-
-#if 0
-    zdbug((LOG_DEBUG,"clt_ack type %s for %d to %s/%d", sent_name,
-	   ntohs(notice->z_port), inet_ntoa(who->sin_addr),
-	   ntohs(who->sin_port)));
-#endif
 
     acknotice.z_multinotice = "";
 
@@ -969,11 +935,6 @@ nack_cancel(ZNotice_t *notice,
     int hashval;
 
     /* search the not-yet-acked table for this packet, and flush it. */
-#if 0
-    zdbug((LOG_DEBUG, "nack_cancel: %s:%08X,%08X",
-	   inet_ntoa(notice->z_uid.zuid_addr),
-	   notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
-#endif
     hashval = NACKTAB_HASHVAL(*who, notice->z_uid);
     for (nacked = nacktab[hashval]; nacked; nacked = nacked->next) {
 	if (nacked->dest.addr.sin_addr.s_addr == who->sin_addr.s_addr
@@ -989,11 +950,9 @@ nack_cancel(ZNotice_t *notice,
 	}
     }
 
-#if 1
     zdbug((LOG_DEBUG,"nack_cancel: nack not found %s:%08X,%08X",
 	   inet_ntoa (notice->z_uid.zuid_addr),
 	   notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
-#endif
 }
 
 /* for compatibility when sending subscription information to old clients */
@@ -1012,17 +971,10 @@ hostm_dispatch(ZNotice_t *notice,
     char *opcode = notice->z_opcode;
     int i, add = 0, remove = 0;
 
-#if 0
-    zdbug((LOG_DEBUG,"hm_disp"));
-#endif
-
     if (notice->z_kind == HMACK) {
 	/* Ignore. */
 	;
     } else if (notice->z_kind != HMCTL) {
-#if 0
-	zdbug((LOG_DEBUG, "bogus HM packet"));
-#endif
 	clt_ack(notice, who, AUTH_FAILED);
     } else if (strcmp(opcode, HM_FLUSH) == 0) {
 	client_flush_host(&who->sin_addr);
@@ -1134,9 +1086,6 @@ control_dispatch(ZNotice_t *notice,
 	subscr_sendlist(notice, auth, who);
 	return ZERR_NONE;
     } else if (!auth) {
-#if 0
-	zdbug((LOG_DEBUG,"unauth ctrl_disp"));
-#endif
 	if (server == me_server)
 	    clt_ack(notice, who, AUTH_FAILED);
 	return ZERR_NONE;
@@ -1202,19 +1151,6 @@ control_dispatch(ZNotice_t *notice,
 		    clt_ack(notice, who, AUTH_FAILED);
 		return ZERR_NONE;
 	    }
-#if 0
-	    if (zdebug) {
-		if (server == me_server) {
-		    syslog(LOG_DEBUG, "subscription cancel for %s/%d\n",
-			   inet_ntoa(who->sin_addr), ntohs(who->sin_port));
-		} else {
-		    syslog(LOG_DEBUG,
-			   "subscription cancel for %s/%d from %s\n",
-			   inet_ntoa(who->sin_addr), ntohs(who->sin_port),
-			   server->addr_str);
-		}
-	    }
-#endif
 	    subscr_cancel(who, notice);
 	} else {
 	    nack(notice, who);
@@ -1224,9 +1160,6 @@ control_dispatch(ZNotice_t *notice,
 	/* canceling subscriptions implies I can punt info about this client */
 	client = client_find(&who->sin_addr, notice->z_port);
 	if (client == NULL) {
-#if 0
-	    zdbug((LOG_DEBUG,"can_sub not found client"));
-#endif
 	    if (server == me_server)
 		nack(notice, who);
 	    return ZERR_NONE;
@@ -1238,10 +1171,6 @@ control_dispatch(ZNotice_t *notice,
 	    return ZERR_NONE;
 	}
 	/* don't flush locations here, let him do it explicitly */
-#if 0
-	zdbug((LOG_DEBUG, "cancelsub clt_dereg %s/%d",
-	       inet_ntoa(who->sin_addr), ntohs(who->sin_port)));
-#endif
 	client_deregister(client, 0);
     } else {
 	syslog(LOG_WARNING, "unknown ctl opcode %s", opcode); 

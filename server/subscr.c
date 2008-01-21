@@ -143,10 +143,6 @@ add_subscriptions(Client *who,
     /* Loop over the new subscriptions. */
     for (; subs; subs = next) {
 	next = subs->next;
-#if 0
-	zdbug ((LOG_DEBUG, "subscr: %s/%s/%s", subs->dest.classname->string,
-		subs->dest.inst->string, subs->dest.recip->string));
-#endif
 	/* check the recipient for a realm which isn't ours */
 	realm = NULL;
 	if (subs->dest.recip->string[0] == '@' &&
@@ -226,9 +222,6 @@ subscr_def_subs(Client *who)
 void
 subscr_reset(void)
 {
-#if 0
-    zdbug((LOG_DEBUG, "subscr_reset()"));
-#endif
     free(default_notice.z_message);
     default_notice.z_message = NULL;
     defaults_read = 0;
@@ -243,9 +236,6 @@ subscr_copy_def_subs(char *person)
     Destlist *subs, *sub;
 
     if (!defaults_read) {
-#if 0
-	zdbug((LOG_DEBUG, "reading default subscription file"));
-#endif
 	fd = open(subs_file, O_RDONLY, 0666);
 	if (fd < 0) {
 	    syslog(LOG_ERR, "can't open %s:%m", subs_file);
@@ -325,9 +315,6 @@ subscr_cancel(struct sockaddr_in *sin,
     Code_t retval;
     int found = 0;
 
-#if 0
-    zdbug((LOG_DEBUG,"subscr_cancel"));
-#endif
     who = client_find(&sin->sin_addr, notice->z_port);
     if (!who)
 	return ZSRV_NOCLT;
@@ -365,14 +352,8 @@ subscr_cancel(struct sockaddr_in *sin,
     free_subscriptions(cancel_subs);
 
     if (found) {
-#if 0
-	zdbug((LOG_DEBUG, "found & removed"));
-#endif
 	return ZERR_NONE;
     } else {
-#if 0
-	zdbug((LOG_DEBUG, "not found"));
-#endif
 	return ZSRV_NOSUB;
     }
 }
@@ -413,14 +394,8 @@ subscr_realm_cancel(struct sockaddr_in *sin,
     free_subscriptions(cancel_subs);
 
     if (found) {
-#if 0
-        zdbug((LOG_DEBUG, "found & removed"));
-#endif
         return ZERR_NONE;
     } else {
-#if 0
-        zdbug((LOG_DEBUG, "not found"));
-#endif
         return ZSRV_NOSUB;
     }
 }
@@ -436,18 +411,11 @@ subscr_cancel_client(Client *client)
     Code_t retval;
     ZRealm *realm;
 
-#if 0
-    zdbug((LOG_DEBUG,"subscr_cancel_client %s",
-	   inet_ntoa(client->addr.sin_addr)));
-#endif
     if (!client->subs)
 	return;
 
     for (subs = client->subs; subs; subs = next) {
 	next = subs->next;
-#if 0
-	zdbug((LOG_DEBUG,"sub_can %s", subs->dest.classname->string));
-#endif
 	retval = triplet_deregister(client, &subs->dest, NULL);
 	if (retval == ZSRV_EMPTYCLASS &&
 	    subs->dest.recip->string[0] == '@') {
@@ -533,9 +501,6 @@ subscr_marshal_subs(ZNotice_t *notice,
     int i;
     int defsubs = 0;
 
-#if 0
-    zdbug((LOG_DEBUG, "subscr_marshal"));
-#endif
     *found = 0;
     
     /* Note that the following code is an incredible crock! */
@@ -565,9 +530,6 @@ subscr_marshal_subs(ZNotice_t *notice,
 	if (client)
 	    subs = client->subs;
     } else if (strcmp(notice->z_opcode, CLIENT_GIMMEDEFS) == 0) {
-#if 0
-	zdbug((LOG_DEBUG, "gimmedefs"));
-#endif
 	/* subscr_copy_def_subs allocates new pointer rings, so
 	   it must be freed when finished.
 	   the string areas pointed to are static, however.*/
@@ -670,9 +632,6 @@ new_old_compat_subscr_sendlist(notice, auth, who)
     /* send 5 at a time until we are finished */
     count = found?((found-1) / 5 + 1):1;	/* total # to be sent */
     i = 0;					/* pkt # counter */
-#if 0
-    zdbug((LOG_DEBUG,"Found %d subscriptions for %d packets", found, count));
-#endif
     initfound = found;
     zerofound = (found == 0);
     while (found > 0 || zerofound) {
@@ -703,9 +662,6 @@ new_old_compat_subscr_sendlist(notice, auth, who)
 	found -= 5;
 	zerofound = 0;
     }
-#if 0
-    zdbug((LOG_DEBUG,"subscr_sendlist acked"));
-#endif
     if (answer)
 	free(answer);
 }
@@ -800,9 +756,6 @@ old_compat_subscr_sendlist(notice, auth, who)
 	    free(answer);
 	return;
     }
-#if 0
-    zdbug((LOG_DEBUG,"subscr_sendlist acked"));
-#endif
     if (answer)
 	free(answer);
 }
@@ -835,9 +788,6 @@ subscr_send_subs(Client *client)
     int num = 0;
     Code_t retval;
 
-#if 0
-    zdbug((LOG_DEBUG, "send_subs"));
-#endif
     sprintf(buf2, "%d",ntohs(client->addr.sin_port));
 
     list[num++] = buf2;
@@ -878,14 +828,8 @@ subscr_send_subs(Client *client)
 
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     if (retval != ZERR_NONE) {
-#if 0
-	zdbug((LOG_DEBUG,"zmakeascii failed: %s", error_message(retval)));
-#endif
     } else {
 	list[num++] = buf;
-#if 0
-	zdbug((LOG_DEBUG, "cblock %s", buf));
-#endif
     }		
 #endif /* HAVE_KRB4 || HAVE_KRB5*/
     retval = bdump_send_list_tcp(SERVACK, &client->addr, ZEPHYR_ADMIN_CLASS,
@@ -989,10 +933,6 @@ extract_subscriptions(ZNotice_t *notice)
 	classinst = cp;
 	ADVANCE(2);
 	recip = cp;
-#if 0
-	zdbug((LOG_DEBUG, "ext_sub: CLS %s INST %s RCPT %s",
-	       class_name, classinst, cp));
-#endif
 	cp += (strlen(cp) + 1);
 	if (cp > notice->z_message + notice->z_message_len) {
 	    syslog(LOG_WARNING, "malformed sub 3");
@@ -1062,11 +1002,6 @@ subscr_realm_sendit(Client *who,
   char addr[16];          /* xxx.xxx.xxx.xxx max */
   char port[16];
   
-#if 0
-  zdbug((LOG_DEBUG, "subscr_rlm_sendit"));
-#endif
-
-
   if ((text=(char **)malloc((NUM_FIELDS + 2)*sizeof(char *))) == (char **)0) {
       syslog(LOG_ERR, "subscr_rlm_sendit malloc");
       return(ENOMEM);
@@ -1123,9 +1058,6 @@ subscr_realm_sendit(Client *who,
     return(ZERR_NONE);
   }
   
-#if 0
-  zdbug((LOG_DEBUG,"subscr_rlm_sendit len: %d", snotice.z_message_len));
-#endif
   realm_handoff(&snotice, 1, &(who->addr), realm, 0);
   free(pack);
   
@@ -1141,9 +1073,6 @@ subscr_add_raw(Client *client,
   Destlist *subs, *subs2, **head;
   Code_t retval;
 
-#if 0
-  zdbug((LOG_DEBUG, "subscr_add_raw"));
-#endif
   head = (realm) ? &realm->subs : &client->subs;
 
   /* Loop over the new subscriptions. */
@@ -1175,11 +1104,9 @@ subscr_add_raw(Client *client,
 	    sub->dest.classname = make_string(subs->dest.classname->string, 0);
 	    sub->dest.inst = make_string(subs->dest.inst->string, 0);
 	    sub->dest.recip = make_string(subs->dest.recip->string, 0);
-#if 1
 	    zdbug ((LOG_DEBUG, "subscr: add %s/%s/%s in %s",
 		    sub->dest.classname->string, sub->dest.inst->string, 
 		    sub->dest.recip->string, remrealm->name));
-#endif
 	    Destlist_insert(&remrealm->remsubs, sub);
 	  }
 	}
@@ -1223,11 +1150,9 @@ subscr_unsub_sendit(Client *who,
   for (subsp = realm->remsubs; subsp; subsp = subsn) {
     subsn = subsp->next;
     if (ZDest_eq(&subs->dest, &subsp->dest)) {
-#if 1
       zdbug ((LOG_DEBUG, "subscr: del %s/%s/%s in %s",
 	      subsp->dest.classname->string, subsp->dest.inst->string, 
 	      subsp->dest.recip->string, realm->name));
-#endif
       Destlist_delete(subsp);
       free_subscription(subsp);
       break;
@@ -1282,10 +1207,6 @@ subscr_send_realm_subs(ZRealm *realm)
   char *list[7 * NUM_FIELDS];
   int num = 0;
   Code_t retval;
-
-#if 0
-  zdbug((LOG_DEBUG, "send_realm_subs"));
-#endif
 
   strcpy(buf, realm->name);
   list[num++] = buf;
@@ -1351,10 +1272,6 @@ subscr_realm_subs(ZRealm *realm)
   int packlen;
   Client **clientp;
   char port[16];
-
-#if 0
-  zdbug((LOG_DEBUG, "realm_subs"));
-#endif
 
   if (!realm->remsubs)
     return ZERR_NONE;
@@ -1570,10 +1487,6 @@ Code_t subscr_foreign_user(ZNotice_t *notice,
   char *cp, *tp0, *tp1;
   char rlm_recipient[REALM_SZ + 1];
   
-#if 0
-  zdbug((LOG_DEBUG, "subscr_foreign_user"));
-#endif
-  
   tp0 = cp = notice->z_message;
   
   newwho.sin_addr.s_addr = inet_addr(cp);
@@ -1627,9 +1540,6 @@ Code_t subscr_foreign_user(ZNotice_t *notice,
     /* translate the recipient to represent the foreign realm */
     sprintf(rlm_recipient, "@%s", realm->name);
     for (temp = newsubs; temp; temp = temp->next) {
-#if 0
-      syslog(LOG_DEBUG, "in foreign_user: class is %s", temp->dest.classname->string);
-#endif      
         temp->dest.recip = make_string(rlm_recipient, 0);
     }
     

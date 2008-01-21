@@ -177,9 +177,6 @@ server_init(void)
 	    otherservers[i].timer = NULL;
 	    otherservers[i].queue = NULL;
 	    otherservers[i].dumping = 0;
-#if 0
-	    zdbug((LOG_DEBUG,"found myself"));
-#endif
 	}
     }
 
@@ -239,9 +236,6 @@ server_reset(void)
     int *ok_list_new, *ok_list_old;
     int num_ok, new_num;
 
-#if 0
-    zdbug((LOG_DEBUG, "server_reset"));
-#endif
 #ifdef DEBUG
     if (zalone) {
 	syslog(LOG_INFO, "server_reset while alone, punt");
@@ -397,18 +391,11 @@ server_reset(void)
 	if (i != me_server_idx && !otherservers[i].timer) {
 	    otherservers[i].timer =
 		timer_set_rel(0L, server_timo, &otherservers[i]);
-#if 0
-	    zdbug((LOG_DEBUG, "reset timer for %s",
-		   otherservers[i].addr_str));
-#endif	
 	}
     }
     free(ok_list_old);
     free(ok_list_new);
 
-#if 0
-    zdbug((LOG_DEBUG, "server_reset: %d servers now", nservers));
-#endif
 }
 
 /* note: these must match the order given in zserver.h */
@@ -442,9 +429,6 @@ server_timo(void *arg)
     Server *which = (Server *) arg;
     int auth = 0;
 
-#if 0
-    zdbug((LOG_DEBUG,"srv_timo: %s", which->addr_str));
-#endif
     /* change state and reset if appropriate */
     switch(which->state) {
       case SERV_DEAD:			/* leave him dead */
@@ -476,10 +460,6 @@ server_timo(void *arg)
     }
     /* now he's either TARDY, STARTING, or DEAD
        We send a "hello," which increments the counter */
-#if 0
-    zdbug((LOG_DEBUG, "srv %s is %s", which->addr_str,
-	   srv_states[which->state]));
-#endif
     server_hello(which, auth);
     /* reschedule the timer */
     which->timer = timer_set_rel(which->timeout, server_timo, which);
@@ -500,9 +480,6 @@ server_dispatch(ZNotice_t *notice,
     Code_t status;
     String *notice_class;
 
-#if 0
-    zdbug((LOG_DEBUG, "server_dispatch"));
-#endif
 
     if (notice->z_kind == SERVACK) {
 	srv_nack_cancel(notice, who);
@@ -568,17 +545,12 @@ server_register(notice, auth, who)
     long timerval;
 
     if (who->sin_port != srv_addr.sin_port) {
-#if 0
-	zdbug((LOG_DEBUG, "srv_wrong port %d", ntohs(who->sin_port)));
-#endif
 	return 1;
     }
     /* Not yet... talk to ken about authenticators */
 #ifdef notdef
     if (!auth) {
-#if 0
 	zdbug((LOG_DEBUG, "srv_unauth"));
-#endif
 	return 1;
     }
 #endif /* notdef */
@@ -609,10 +581,6 @@ server_register(notice, auth, who)
     otherservers[nservers].dumping = 0;
 
     nservers++;
-#if 0
-    zdbug((LOG_DEBUG, "srv %s is %s", otherservers[nservers].addr_str,
-	   srv_states[otherservers[nservers].state]));
-#endif
 
     return 0;
 }
@@ -636,10 +604,6 @@ server_kill_clt(Client *client)
     lyst[0] = inet_ntoa(client->addr.sin_addr),
     sprintf(buf, "%d", ntohs(client->addr.sin_port));
     lyst[1] = buf;
-
-#if 0
-    zdbug((LOG_DEBUG, "server kill clt %s/%s", lyst[0], lyst[1]));
-#endif
 
     pnotice = &notice;
 
@@ -687,9 +651,6 @@ kill_clt(ZNotice_t *notice,
     struct sockaddr_in who;
     Client *client;
 
-#if 0
-    zdbug((LOG_DEBUG, "kill_clt"));
-#endif
     if (extract_addr(notice, &who) != ZERR_NONE)
 	return ZERR_NONE;	/* XXX */
     client = client_find(&who.sin_addr, notice->z_port);
@@ -699,12 +660,11 @@ kill_clt(ZNotice_t *notice,
 	       server->addr_str);
 	return ZERR_NONE;	/* XXX */
     }
-#if 1
-    if (zdebug || 1) {
+
+    if (zdebug) {
 	syslog(LOG_DEBUG, "kill_clt clt_dereg %s/%d from %s",
 	       inet_ntoa(who.sin_addr), ntohs(who.sin_port), server->addr_str);
     }
-#endif
 
     /* remove the locations, too */
     client_deregister(client, 1);
@@ -734,10 +694,6 @@ extract_addr(ZNotice_t *notice,
     }
     who->sin_port = notice->z_port = htons((u_short) atoi(cp));
     who->sin_family = AF_INET;
-#if 0
-    zdbug((LOG_DEBUG,"ext %s/%d", inet_ntoa(who->sin_addr),
-	   ntohs(who->sin_port)));
-#endif
     return ZERR_NONE;
 }
 
@@ -748,10 +704,6 @@ extract_addr(ZNotice_t *notice,
 static void
 server_flush(Server *which)
 {
-#if 0
-    if (zdebug)
-	syslog(LOG_DEBUG, "server_flush %s", which->addr_str);
-#endif
     srv_nack_release(which);
 }
 
@@ -782,29 +734,18 @@ admin_dispatch(ZNotice_t *notice,
     char *opcode = notice->z_opcode;
     Code_t status = ZERR_NONE;
 
-#if 0
-    zdbug((LOG_DEBUG, "ADMIN received"));
-#endif
-
     if (strcmp(opcode, ADMIN_HELLO) == 0) {
 	hello_respond(who, ADJUST, auth);
     } else if (strcmp(opcode, ADMIN_IMHERE) == 0) {
 	srv_responded(who);
     } else if (strcmp(opcode, ADMIN_SHUTDOWN) == 0) {
-#if 0
-	zdbug((LOG_DEBUG, "server shutdown"));
-#endif
 	if (server) {
 	    srv_nack_release(server);
 	    server->state = SERV_DEAD;
 	    server->timeout = timo_dead;
 	    /* don't worry about the timer, it will
 	       be set appropriately on the next send */
-#if 0
-	    zdbug((LOG_DEBUG, "srv %s is %s", server->addr_str,
-		   srv_states[server->state]));
-#endif
-		}
+	}
     } else if (strcmp(opcode, ADMIN_BDUMP) == 0) {
 	/* Ignore a brain dump request if this is a brain dump packet
          * or a packet being processed concurrently during a brain
@@ -1129,10 +1070,6 @@ hello_respond(struct sockaddr_in *who,
 {
     Server *which;
 
-#if 0
-    zdbug((LOG_DEBUG, "hello from %s", inet_ntoa(who->sin_addr)));
-#endif
-
     send_msg(who, ADMIN_IMHERE, auth);
     if (adj != ADJUST)
 	return;
@@ -1188,10 +1125,6 @@ srv_responded(struct sockaddr_in *who)
 {
     Server *which = server_which_server(who);
 
-#if 0
-    zdbug((LOG_DEBUG, "srv_responded %s", inet_ntoa(who->sin_addr)));
-#endif
-
     if (!which) {
 	syslog(LOG_ERR, "hello input from non-server?!");
 	return;
@@ -1224,10 +1157,6 @@ srv_responded(struct sockaddr_in *who)
 	which->timer = timer_set_rel(which->timeout, server_timo, which);
 	break;
     }
-#if 0
-    zdbug((LOG_DEBUG, "srv %s is %s", which->addr_str,
-	   srv_states[which->state]));
-#endif
 }
 
 /*
@@ -1365,9 +1294,6 @@ server_forward(ZNotice_t *notice,
     int packlen;
     Code_t retval;
 
-#if 0
-    zdbug((LOG_DEBUG, "srv_forw"));
-#endif
     /* don't send to limbo */
     for (i = 1; i < nservers; i++) {
 	if (i == me_server_idx)	/* don't xmit to myself */
@@ -1494,9 +1420,6 @@ srv_nack_cancel(ZNotice_t *notice,
 	    return;
 	}
     }
-#if 0
-    zdbug((LOG_DEBUG, "srv_nack not found"));
-#endif
 }
 
 /*
@@ -1510,15 +1433,7 @@ srv_rexmit(void *arg)
     Code_t retval;
     /* retransmit the packet */
 	
-#if 0
-    zdbug((LOG_DEBUG,"srv_rexmit to %s/%d",
-	   otherservers[packet->dest.srv_idx].addr_str,
-	   ntohs(otherservers[packet->dest.srv_idx].addr.sin_port)));
-#endif
     if (otherservers[packet->dest.srv_idx].state == SERV_DEAD) {
-#if 0
-	zdbug((LOG_DEBUG, "cancelling send to dead server"));
-#endif
 	Unacked_delete(packet);
 	free(packet->packet);
 	srv_nack_release(&otherservers[packet->dest.srv_idx]);
