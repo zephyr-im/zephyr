@@ -193,6 +193,7 @@ Code_t ZClosePort(void);
 Code_t ZFlushLocations(void);
 Code_t ZFlushSubscriptions(void);
 Code_t ZFreeNotice(ZNotice_t *notice);
+Code_t ZGetLocations(ZLocations_t *, int *);
 Code_t ZParseLocations(register ZNotice_t *notice,
 		       register ZAsyncLocateData_t *zald, int *nlocs,
 		       char **user);
