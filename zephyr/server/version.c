@@ -33,7 +33,7 @@ static const char copyright[] =
 #endif
 
 char *
-get_version()
+get_version(void)
 {
   static char vers_buf[256];
   struct utsname un;

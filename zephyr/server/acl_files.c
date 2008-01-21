@@ -48,18 +48,13 @@ static const char rcsid_acl_files_c[] = "$Id$";
 
 #define COR(a,b) ((a!=NULL)?(a):(b))
 
-extern int errno;
-
-extern time_t time();
-
 /* Canonicalize a principal name */
 /* If instance is missing, it becomes "" */
 /* If realm is missing, it becomes the local realm */
 /* Canonicalized form is put in canon, which must be big enough to hold
    MAX_PRINCIPAL_SIZE characters */
-void acl_canonicalize_principal(principal, canon)
-    char *principal;
-    char *canon;
+void acl_canonicalize_principal(char *principal,
+				char *canon)
 {
     char *end;
     char *dot, *atsign;
@@ -255,8 +250,8 @@ acl_initialize(acl_file, perm)
 
 /* Eliminate all whitespace character in buf */
 /* Modifies its argument */
-static void nuke_whitespace(buf)
-    char *buf;
+static void
+nuke_whitespace(char *buf)
 {
     char *pin, *pout;
 
@@ -274,8 +269,8 @@ struct hashtbl {
 };
 
 /* Make an empty hash table of size s */
-static struct hashtbl *make_hash(size)
-    int size;
+static struct hashtbl *
+make_hash(int size)
 {
     struct hashtbl *h;
 
@@ -289,8 +284,7 @@ static struct hashtbl *make_hash(size)
 
 /* Destroy a hash table */
 static void
-destroy_hash(h)
-    struct hashtbl *h;
+destroy_hash(struct hashtbl *h)
 {
     int i;
 
@@ -303,8 +297,7 @@ destroy_hash(h)
 
 /* Compute hash value for a string */
 static unsigned int
-hashval(s)
-    char *s;
+hashval(char *s)
 {
     unsigned hv;
 
@@ -315,9 +308,9 @@ hashval(s)
 }
 
 /* Add an element to a hash table */
-static void add_hash(h, el)
-    struct hashtbl *h;
-    char *el;
+static void
+add_hash(struct hashtbl *h,
+	 char *el)
 {
     unsigned hv;
     char *s;
@@ -352,9 +345,8 @@ static void add_hash(h, el)
 
 /* Returns nonzero if el is in h */
 static int
-check_hash(h, el)
-    struct hashtbl *h;
-    char *el;
+check_hash(struct hashtbl *h,
+	   char *el)
 {
     unsigned hv;
 
@@ -391,8 +383,7 @@ static int acl_cache_next = 0;
 /* Returns < 0 if unsuccessful in loading acl */
 /* Returns index into acl_cache otherwise */
 /* Note that if acl is already loaded, this is just a lookup */
-int acl_load(name)
-    char *name;
+int acl_load(char *name)
 {
     int i;
     FILE *f;
@@ -456,7 +447,7 @@ int acl_load(name)
  * the next time they are requested.
  */
 void
-acl_cache_reset()
+acl_cache_reset(void)
 {
 	int	i;
 	
@@ -473,9 +464,9 @@ acl_cache_reset()
 
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Principal is not canonicalized, and no wildcarding is done */
-acl_exact_match(acl, principal)
-    char *acl;
-    char *principal;
+int
+acl_exact_match(char *acl,
+		char *principal)
 {
     int idx;
 
@@ -489,9 +480,8 @@ acl_exact_match(acl, principal)
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Recognizes wildcards in acl. */
 int
-acl_check(acl, principal)
-    char *acl;
-    char *principal;
+acl_check(char *acl,
+	  char *principal)
 {
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];

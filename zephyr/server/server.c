@@ -133,7 +133,7 @@ int zalone;
  */
 
 void
-server_init()
+server_init(void)
 {
     int i;
     struct in_addr *serv_addr, *server_addrs, limbo_addr;
@@ -229,7 +229,7 @@ server_init()
  * handle on a particular server other than by indexing on otherservers[].
  */
 void
-server_reset()
+server_reset(void)
 {
     int num_servers;
     struct in_addr *server_addrs;
@@ -437,8 +437,7 @@ rlm_states[] = {
  */
 
 void
-server_timo(arg)
-    void *arg;
+server_timo(void *arg)
 {
     Server *which = (Server *) arg;
     int auth = 0;
@@ -492,10 +491,9 @@ server_timo(arg)
 
 /*ARGSUSED*/
 Code_t
-server_dispatch(notice, auth, who)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
+server_dispatch(ZNotice_t *notice,
+		int auth,
+		struct sockaddr_in *who)
 {
     Server *server;
     struct sockaddr_in newwho;
@@ -625,8 +623,7 @@ server_register(notice, auth, who)
  */
 
 void
-server_kill_clt(client)
-    Client *client;
+server_kill_clt(Client *client)
 {
     int i;
     char buf[512], *lyst[2];
@@ -684,9 +681,8 @@ server_kill_clt(client)
  */
 
 static Code_t
-kill_clt(notice, server)
-    ZNotice_t *notice;
-    Server *server;
+kill_clt(ZNotice_t *notice,
+	 Server *server)
 {
     struct sockaddr_in who;
     Client *client;
@@ -720,9 +716,8 @@ kill_clt(notice, server)
  */
 
 static Code_t
-extract_addr(notice, who)
-    ZNotice_t *notice;
-    struct sockaddr_in *who;
+extract_addr(ZNotice_t *notice,
+	     struct sockaddr_in *who)
 {
     char *cp = notice->z_message;
 
@@ -751,8 +746,7 @@ extract_addr(notice, who)
  */
 
 static void
-server_flush(which)
-    Server *which;
+server_flush(Server *which)
 {
 #if 0
     if (zdebug)
@@ -767,9 +761,8 @@ server_flush(which)
  */
 
 static void
-server_hello(which, auth)
-    Server *which;
-    int auth;
+server_hello(Server *which,
+	     int auth)
 {
     send_msg(&which->addr, ADMIN_HELLO, auth);
     which->num_hello_sent++;
@@ -781,11 +774,10 @@ server_hello(which, auth)
 
 /*ARGSUSED*/
 static Code_t
-admin_dispatch(notice, auth, who, server)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    Server *server;
+admin_dispatch(ZNotice_t *notice,
+	       int auth,
+	       struct sockaddr_in *who,
+	       Server *server)
 {
     char *opcode = notice->z_opcode;
     Code_t status = ZERR_NONE;
@@ -839,11 +831,10 @@ admin_dispatch(notice, auth, who, server)
 
 /*ARGSUSED*/
 Code_t
-server_adispatch(notice, auth, who, server)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    Server *server;
+server_adispatch(ZNotice_t *notice,
+		 int auth,
+		 struct sockaddr_in *who,
+		 Server *server)
 {
 
     /* this had better be a HELLO message--start of acquisition
@@ -873,8 +864,7 @@ server_adispatch(notice, auth, who, server)
 }
 
 static void
-send_stats(who)
-    struct sockaddr_in *who;
+send_stats(struct sockaddr_in *who)
 {
     int i;
     char buf[BUFSIZ];
@@ -976,8 +966,7 @@ send_stats(who)
  */
 
 static struct in_addr *
-get_server_addrs(number)
-    int *number; /* RETURN */
+get_server_addrs(int *number)
 {
     int i;
     char **server_hosts = NULL;
@@ -1030,8 +1019,7 @@ static int nhosts = 0;
  */
 
 static char **
-get_server_list(file)
-    char *file;
+get_server_list(char *file)
 {
     FILE *fp;
     char buf[MAXHOSTNAMELEN];
@@ -1074,7 +1062,7 @@ get_server_list(file)
 }
 
 static char **
-get_single_server()
+get_single_server(void)
 {
     char buf[MAXHOSTNAMELEN];
     char **ret_list;
@@ -1096,8 +1084,7 @@ get_single_server()
  * free storage allocated by get_server_list
  */
 static void
-free_server_list(list)
-    char **list;
+free_server_list(char **list)
 {
     char **orig_list = list;
 
@@ -1115,9 +1102,8 @@ free_server_list(list)
  */
 
 static void
-setup_server(server, addr)
-    Server *server;
-    struct in_addr *addr;
+setup_server(Server *server,
+	     struct in_addr *addr)
 {
     server->state = SERV_DEAD;
     server->timeout = timo_dead;
@@ -1137,10 +1123,9 @@ setup_server(server, addr)
  */
 
 static void
-hello_respond(who, adj, auth)
-    struct sockaddr_in *who;
-    int adj;
-    int auth;
+hello_respond(struct sockaddr_in *who,
+	      int adj,
+	      int auth)
 {
     Server *which;
 
@@ -1178,8 +1163,7 @@ hello_respond(who, adj, auth)
  */
 
 Server *
-server_which_server(who)
-    struct sockaddr_in *who;
+server_which_server(struct sockaddr_in *who)
 {
     Server *server;
     int i;
@@ -1200,8 +1184,7 @@ server_which_server(who)
  * appropriately.
  */
 static void
-srv_responded(who)
-    struct sockaddr_in *who;
+srv_responded(struct sockaddr_in *who)
 {
     Server *which = server_which_server(who);
 
@@ -1252,7 +1235,7 @@ srv_responded(who)
  */
 
 void
-server_shutdown()
+server_shutdown(void)
 {
     int i;
 
@@ -1267,10 +1250,9 @@ server_shutdown()
  */
 
 static void
-send_msg(who, opcode, auth)
-    struct sockaddr_in *who;
-    char *opcode;
-    int auth;
+send_msg(struct sockaddr_in *who,
+	 char *opcode,
+	 int auth)
 {
     ZNotice_t notice;
     ZNotice_t *pnotice; /* speed hack */
@@ -1325,12 +1307,11 @@ send_msg(who, opcode, auth)
  */
 
 static void
-send_msg_list(who, opcode, lyst, num, auth)
-    struct sockaddr_in *who;
-    char *opcode;
-    char **lyst;
-    int num;
-    int auth;
+send_msg_list(struct sockaddr_in *who,
+	      char *opcode,
+	      char **lyst,
+	      int num,
+	      int auth)
 {
     ZNotice_t notice;
     char *pack;
@@ -1376,10 +1357,9 @@ send_msg_list(who, opcode, lyst, num, auth)
  */
 /*ARGSUSED*/
 void
-server_forward(notice, auth, who)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
+server_forward(ZNotice_t *notice,
+	       int auth,
+	       struct sockaddr_in *who)
 {
     int i;
     caddr_t pack;
@@ -1419,11 +1399,10 @@ server_forward(notice, auth, who)
 }
 
 static void
-server_forw_reliable(server, pack, packlen, notice)
-    Server *server;
-    caddr_t pack;
-    int packlen;
-    ZNotice_t *notice;
+server_forw_reliable(Server *server,
+		     caddr_t pack,
+		     int packlen,
+		     ZNotice_t *notice)
 {
     Code_t retval;
     Unacked *nacked;
@@ -1467,8 +1446,7 @@ server_forw_reliable(server, pack, packlen, notice)
  */
 
 void
-server_send_queue(server)
-    Server *server;
+server_send_queue(Server *server)
 {
     Pending *pending;
     ZNotice_t notice;
@@ -1495,9 +1473,8 @@ server_send_queue(server)
  */
 
 static void
-srv_nack_cancel(notice, who)
-    ZNotice_t *notice;
-    struct sockaddr_in *who;
+srv_nack_cancel(ZNotice_t *notice,
+		struct sockaddr_in *who)
 {
     Server *server = server_which_server(who);
     Unacked *nacked;
@@ -1528,8 +1505,7 @@ srv_nack_cancel(notice, who)
  */
 
 static void
-srv_rexmit(arg)
-    void *arg;
+srv_rexmit(void *arg)
 {
     Unacked *packet = (Unacked *) arg;
     Code_t retval;
@@ -1573,8 +1549,7 @@ srv_rexmit(arg)
  */
 
 static void
-srv_nack_release(server)
-    Server *server;
+srv_nack_release(Server *server)
 {
     int i;
     Unacked *nacked, *next;
@@ -1598,8 +1573,7 @@ srv_nack_release(server)
  */
 
 static void
-srv_nack_renumber (new_idx)
-    int *new_idx;
+srv_nack_renumber (int *new_idx)
 {
     /* XXX release any private queue for this server */
     Unacked *nacked;
@@ -1624,12 +1598,11 @@ srv_nack_renumber (new_idx)
  * Queue this notice to be transmitted to the server when it is ready.
  */
 static void
-server_queue(server, len, pack, auth, who)
-    Server *server;
-    int len;
-    void *pack;
-    int auth;
-    struct sockaddr_in *who;
+server_queue(Server *server,
+	     int len,
+	     void *pack,
+	     int auth,
+	     struct sockaddr_in *who)
 {
     Pending *pending;
 
@@ -1656,8 +1629,7 @@ server_queue(server, len, pack, auth, who)
  */
 
 Pending *
-server_dequeue(server)
-    Server *server;
+server_dequeue(Server *server)
 {
     Pending *pending;
 	
@@ -1673,8 +1645,7 @@ server_dequeue(server)
  */
 
 void
-server_pending_free(pending)
-    Pending *pending;
+server_pending_free(Pending *pending)
 {
     free(pending->packet);
     free(pending);
@@ -1686,10 +1657,9 @@ server_pending_free(pending)
  */
 
 void
-server_self_queue(notice, auth, who)
-    ZNotice_t* notice;
-    int auth;
-    struct sockaddr_in * who;
+server_self_queue(ZNotice_t* notice,
+		  int auth,
+		  struct sockaddr_in * who)
 {
     char *pack;
     int packlen;
@@ -1709,8 +1679,7 @@ server_self_queue(notice, auth, who)
  * (true if called from signal handler)
  */
 void
-server_dump_servers(fp)
-    FILE *fp;
+server_dump_servers(FILE *fp)
 {
     int i;
 
