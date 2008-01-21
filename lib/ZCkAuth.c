@@ -52,14 +52,11 @@ ZCheckAuthentication(ZNotice_t *notice,
 
     session = (C_Block *)cred.session;
 
-#ifdef NOENCRYPTION
-    our_checksum = 0;
-#else
     our_checksum = des_quad_cksum(notice->z_packet, NULL, 
 				  notice->z_default_format+
 				  strlen(notice->z_default_format)+1-
 				  notice->z_packet, 0, session);
-#endif
+
     /* if mismatched checksum, then the packet was corrupted */
     return ((our_checksum == notice->z_checksum) ? ZAUTH_YES : ZAUTH_FAILED);
 #else
