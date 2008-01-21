@@ -95,10 +95,6 @@ access_check(char *sender,
      * If we can't load it (because it probably doesn't exist),
      * we deny access.
      */
-#if 0
-    zdbug ((LOG_DEBUG, "checking %s for %s", buf, sender));
-#endif
-	
     retval = acl_load(buf);
     if (retval < 0) {
 	syslog(LOG_DEBUG, "Error in acl_load of %s for %s", buf, sender);

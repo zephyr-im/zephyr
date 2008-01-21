@@ -244,10 +244,8 @@ main(int argc,
     if (zalone)
 	syslog(LOG_DEBUG, "standalone operation");
 #endif
-#if 0
     if (zdebug)
 	syslog(LOG_DEBUG, "debugging on");
-#endif
 
     /* set up sockets & my_addr and myname, 
        find other servers and set up server table, initialize queues
@@ -656,9 +654,7 @@ dump_db(void)
 static RETSIGTYPE
 reset(int sig)
 {
-#if 1
     zdbug((LOG_DEBUG,"reset()"));
-#endif
     doreset = 1;
 }
 
@@ -673,9 +669,8 @@ reap(int sig)
 #else
     union wait waitb;
 #endif
-#if 1
+
     zdbug((LOG_DEBUG,"reap()"));
-#endif
 #ifdef _POSIX_VERSION
     while ((pid = waitpid(-1, &waitb, WNOHANG)) == 0) 
       { i++; if (i > 10) break; }
@@ -712,9 +707,6 @@ do_reset(void)
     sigset_t mask, omask;
 #else
     int omask;
-#endif
-#if 0
-    zdbug((LOG_DEBUG,"do_reset()"));
 #endif
 #ifdef _POSIX_VERSION
     sigemptyset(&mask);

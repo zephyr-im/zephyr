@@ -150,9 +150,9 @@ bdump_offer(struct sockaddr_in *who)
 #ifndef HAVE_KRB4
     int bdump_port = IPPORT_RESERVED - 1;
 #endif /* !HAVE_KRB4 */
-#if 1
+
     zdbug((LOG_DEBUG, "bdump_offer"));
-#endif
+
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     /* 
      * when using kerberos server-server authentication, we can
@@ -231,11 +231,9 @@ bdump_offer(struct sockaddr_in *who)
     send_list(ACKED, srv_addr.sin_port, ZEPHYR_ADMIN_CLASS, bdump_version,
 	      ADMIN_BDUMP, myname, "", lyst, 2);
 	
-#if 1
     zdbug((LOG_DEBUG,"bdump_offer: address is %s/%d\n",
 	   inet_ntoa(bdump_sin.sin_addr),
 	   ntohs(bdump_sin.sin_port)));
-#endif
     return;
 }
 
@@ -275,9 +273,8 @@ bdump_send(void)
     unsigned short fromport;
 #endif /* HAVE_KRB4 */
  
-#if 1
     zdbug((LOG_DEBUG, "bdump_send"));
-#endif
+
     /* accept the connection, and send the brain dump */
     live_socket = accept(bdump_socket, (struct sockaddr *) &from, &fromlen);
     if (live_socket < 0) {
@@ -310,10 +307,9 @@ bdump_send(void)
 	syslog(LOG_ERR, "bdump_send: unknown server?");
 	server = limbo_server;
     }
-#if 1
+
     zdbug((LOG_DEBUG, "bdump_send: connection from %s/%d",
 	   inet_ntoa(from.sin_addr), ntohs(from.sin_port)));
-#endif
 
     bdumping = 1;
     server->dumping = 1;
@@ -505,18 +501,16 @@ bdump_send(void)
 	cleanup(server);
 	return;
     }
-#if 1
+
     zdbug((LOG_DEBUG, "bdump_send: finished"));
-#endif
+
     if (server != limbo_server) {
 	/* set this guy to be up, and schedule a hello */
 	server->state = SERV_UP;
 	timer_reset(server->timer);
 	server->timer = timer_set_rel(0L, server_timo, server);
     }
-#if 0
-    zdbug((LOG_DEBUG,"cleanup sbd"));
-#endif
+
     shutdown_file_pointers();
 
 #ifdef _POSIX_VERSION
@@ -624,9 +618,8 @@ bdump_get_v12 (ZNotice_t *notice,
     if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *)&on,
 		   sizeof(on)) < 0)
 	syslog(LOG_WARNING, "bdump_get: setsockopt (SO_KEEPALIVE): %m");
-#if 1
+
     zdbug((LOG_DEBUG, "bdump_get: connected"));
-#endif
  
     /* Now begin the brain dump. */
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
@@ -795,17 +788,17 @@ bdump_get_v12 (ZNotice_t *notice,
 	cleanup(server);
 	return;
     }
-#if 1
+
     zdbug((LOG_DEBUG, "bdump_get: gbd finished"));
-#endif
+
     /* set this guy to be up, and schedule a hello */
     server->state = SERV_UP;
     timer_reset(server->timer);
     server->timer = timer_set_rel(0L, server_timo, server);
 
-#if 1
+
     zdbug((LOG_DEBUG,"cleanup gbd"));
-#endif
+
     shutdown_file_pointers();
 #ifdef _POSIX_VERSION
     action.sa_handler = SIG_DFL;
@@ -831,12 +824,11 @@ bdump_get(ZNotice_t *notice,
 
     proc = NULL;
 
-#if 1
     if (zdebug) {
 	syslog(LOG_DEBUG, "bdump_get: bdump v%s avail %s",
 	       notice->z_class_inst, inet_ntoa(who->sin_addr));
     }
-#endif
+
     if (strcmp (notice->z_class_inst, "1.2") == 0)
 	proc = bdump_get_v12;
 
@@ -977,9 +969,8 @@ cleanup(Server *server)
     struct sigaction action;
 #endif
 
-#if 1
     zdbug((LOG_DEBUG, "bdump cleanup"));
-#endif
+
     if (server != limbo_server) {
 	server->state = SERV_DEAD;
 	timer_reset(server->timer);
@@ -1010,10 +1001,10 @@ get_tgt(void)
     /* have they expired ? */
     if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + (15L * 60L)) {
 	/* +15 for leeway */
-#if 0
+
 	zdbug((LOG_DEBUG,"get new tickets: %d %d %d", ticket_time, NOW,
 	       NOW - tkt_lifetime(TKTLIFETIME) + 15L));
-#endif
+
 	dest_tkt();
 
 	retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, ZGetRealm(),
@@ -1103,13 +1094,10 @@ close_bdump(void *arg)
 	close(bdump_socket);
 	nfds = srv_socket + 1;
 	bdump_socket = -1;
-#if 1
+
 	zdbug((LOG_DEBUG, "bdump not used"));
-#endif
     } else {
-#if 1
 	zdbug((LOG_DEBUG, "bdump not open"));
-#endif
     }
     return;
 }
@@ -1139,9 +1127,7 @@ bdump_recv_loop(Server *server)
 #endif /* HAVE_KRB4 */
     ZRealm *realm = NULL;
  
-#if 1
     zdbug((LOG_DEBUG, "bdump recv loop"));
-#endif
 	
     /* do the inverse of bdump_send_loop, registering stuff on the fly */
     while (1) {
@@ -1335,9 +1321,7 @@ bdump_send_loop(Server *server)
 {
     Code_t retval;
 
-#if 1
     zdbug((LOG_DEBUG, "bdump send loop"));
-#endif
 
     retval = uloc_send_locations();
     if (retval != ZERR_NONE)
@@ -1360,9 +1344,8 @@ send_done(void)
 {
     Code_t retval;
  
-#if 1
     zdbug((LOG_DEBUG, "send_done"));
-#endif
+
     retval = send_normal_tcp(SERVACK, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
 			     "", ADMIN_DONE, myname, "", NULL, 0);
     return retval;
@@ -1554,18 +1537,12 @@ extract_sin(ZNotice_t *notice, struct sockaddr_in *target)
 
     buf = cp;
     if (!notice->z_message_len || *buf == '\0') {
-#if 0
-	zdbug((LOG_DEBUG,"no addr"));
-#endif
 	return ZSRV_PKSHORT;
     }
     target->sin_addr.s_addr = inet_addr(cp);
  
     cp += (strlen(cp) + 1);	/* past the null */
     if ((cp >= notice->z_message + notice->z_message_len) || (*cp == '\0')) {
-#if 0
-	zdbug((LOG_DEBUG, "no port"));
-#endif
 	return(ZSRV_PKSHORT);
     }
     target->sin_port = htons((u_short) atoi(cp));
