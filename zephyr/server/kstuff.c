@@ -920,24 +920,8 @@ Z_krb5_init_keyblock(krb5_context context,
 #endif
 }
 
-#if 0
-void ZLogKey(char *label, krb5_keyblock *keyblock) {
-   char *p, *buf;
-   unsigned char *k;
-   int i;
-   buf = malloc(5 *Z_keylen(keyblock)+1);
-
-   k=Z_keydata(keyblock);
-   for (i=0,p=buf; i < Z_keylen(keyblock); i++,p+=strlen(p))
-       sprintf(p, " 0x%02x", k[i]);
-   syslog(LOG_ERR, "key %s is type %d, %d bytes, %s", label, Z_enctype(keyblock), Z_keylen(keyblock), buf);
-   free(buf);
-}
-#endif
-
 void
 ZSetSession(krb5_keyblock *keyblock) {
-#if 1
     krb5_error_code result;
 
     if (__Zephyr_keyblock) {
@@ -949,9 +933,6 @@ ZSetSession(krb5_keyblock *keyblock) {
     
     if (result) /*XXX we're out of memory? */
 	;
-#else
-    memcpy(__Zephyr_session, Z_keydata(keyblock), sizeof(C_Block));
-#endif
 }
 #endif
 #ifdef HAVE_KRB4
