@@ -186,6 +186,8 @@ Code_t ZFlushMyLocations(void);
 char *ZParseExposureLevel(char *text);
 Code_t ZFormatRawNotice(ZNotice_t *, char**, int *);
 Code_t ZRetrieveSubscriptions(unsigned short, int*);
+Code_t ZRetrieveDefaultSubscriptions(int *);
+Code_t ZGetSubscriptions(ZSubscription_t *, int *);
 Code_t ZOpenPort(unsigned short *port);
 Code_t ZClosePort(void);
 Code_t ZFlushLocations(void);
