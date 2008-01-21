@@ -223,17 +223,6 @@ handle_packet(void)
 	}
     }
 
-#if 0
-    if (whoisit.sin_port != hm_port && whoisit.sin_port != hm_srv_port &&
-	strcasecmp(new_notice.z_class, ZEPHYR_ADMIN_CLASS) != 0 &&
-	whoisit.sin_port != srv_addr.sin_port &&
-	new_notice.z_kind != CLIENTACK) {
-	syslog(LOG_ERR, "bad port %s/%d", inet_ntoa(whoisit.sin_addr),
-	       ntohs(whoisit.sin_port));
-	return;
-    }
-#endif
-
     message_notices.val++;
     dispatch(&new_notice, authentic, &whoisit, from_server);
     return;
@@ -273,11 +262,7 @@ dispatch(ZNotice_t *notice,
     }
 
     who2 = *who;
-#if 0
-    if (0 && from_server) {
-	/* incorporate server_dispatch here */
-    }
-#endif
+
     notice_class = make_string(notice->z_class,1);
 
     if (from_server) {
