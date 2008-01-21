@@ -13,7 +13,7 @@
 /* $Header$ */
 
 #ifndef lint
-static char rcsid_ZCheckAuthentication_c[] =
+static const char rcsid_ZCheckAuthentication_c[] =
     "$Zephyr: /mit/zephyr/src/lib/RCS/ZCheckAuthentication.c,v 1.14 89/03/24 14:17:38 jtkohl Exp Locker: raeburn $";
 #endif
 
@@ -54,8 +54,8 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
         krb5_data cksumbuf;
 	int valid;
         char *cksum0_base, *cksum1_base, *cksum2_base;
-        char *svcinst, *x, *y;
-        char *asn1_data, *key_data;
+        char *x;
+        unsigned char *asn1_data, *key_data;
         int asn1_len, key_len, cksum0_len, cksum1_len, cksum2_len;
 
 	result = ZGetCreds(&creds);
@@ -120,7 +120,7 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 
             ZChecksum_t our_checksum;
 
-            our_checksum = des_quad_cksum(cksum0_base, NULL, cksum0_len, 0,
+            our_checksum = des_quad_cksum((unsigned char *)cksum0_base, NULL, cksum0_len, 0,
                                           key_data);
             if (our_checksum == notice->z_checksum) {
                 krb5_free_creds(Z_krb5_ctx, creds);
@@ -152,7 +152,7 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
             return ZAUTH_FAILED;
         }
         /* HOLDING: creds, asn1_data, cksumbuf.data */
-        result = ZReadZcode(notice->z_ascii_checksum,
+        result = ZReadZcode((unsigned char *)notice->z_ascii_checksum,
                             asn1_data, asn1_len, &asn1_len);
         if (result != ZERR_NONE) {
             krb5_free_creds(Z_krb5_ctx, creds);

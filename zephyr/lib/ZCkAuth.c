@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZCheckAuthentication_c[] =
+static const char rcsid_ZCheckAuthentication_c[] =
     "$Zephyr: /mit/zephyr/src/lib/RCS/ZCheckAuthentication.c,v 1.14 89/03/24 14:17:38 jtkohl Exp Locker: raeburn $";
 #endif
 
@@ -63,6 +63,6 @@ ZCheckAuthentication(ZNotice_t *notice,
     /* if mismatched checksum, then the packet was corrupted */
     return ((our_checksum == notice->z_checksum) ? ZAUTH_YES : ZAUTH_FAILED);
 #else
-    ZCheckZcodeAuthentication(notice, from);
+    return ZCheckZcodeAuthentication(notice, from);
 #endif
 } 

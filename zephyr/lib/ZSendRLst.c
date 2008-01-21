@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZSendRawList_c[] = "$Id$";
+static const char rcsid_ZSendRawList_c[] = "$Id$";
 #endif
 
 #include <internal.h>

@@ -12,7 +12,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZVariables_c[] = "$Id$";
+static const char rcsid_ZVariables_c[] = "$Id$";
 #endif
 
 #include <internal.h>

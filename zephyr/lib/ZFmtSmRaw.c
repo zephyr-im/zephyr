@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZFormatRawNotice_c[] = "$Id$";
+static const char rcsid_ZFormatRawNotice_c[] = "$Id$";
 #endif
 
 #include <internal.h>

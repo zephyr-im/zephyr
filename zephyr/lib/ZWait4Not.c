@@ -14,7 +14,7 @@
 #include "mit-copyright.h"
 
 #ifndef lint
-static char rcsid_ZWaitForNotice_c[] = "$Id$";
+static const char rcsid_ZWaitForNotice_c[] = "$Id$";
 #endif
 
 #include <internal.h>

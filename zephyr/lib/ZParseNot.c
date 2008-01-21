@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZParseNotice_c[] =
+static const char rcsid_ZParseNotice_c[] =
     "$Zephyr: /mit/zephyr/src/lib/RCS/ZParseNotice.c,v 1.22 91/03/29 03:34:46 raeburn Exp $";
 #endif
 

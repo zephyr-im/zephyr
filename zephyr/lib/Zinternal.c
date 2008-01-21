@@ -280,7 +280,8 @@ Z_ReadWait(void)
     ZNotice_t notice;
     ZPacket_t packet;
     struct sockaddr_in olddest, from;
-    int from_len, packet_len, zvlen, part, partof;
+    unsigned int from_len;
+    int packet_len, zvlen, part, partof;
     char *slash;
     Code_t retval;
     fd_set fds;
@@ -657,7 +658,7 @@ Z_FormatHeader(ZNotice_t *notice,
     Code_t retval;
     static char version[BUFSIZ]; /* default init should be all \0 */
     struct sockaddr_in name;
-    int namelen = sizeof(name);
+    unsigned int namelen = sizeof(name);
 
     if (!notice->z_sender)
 	notice->z_sender = ZGetSender();
@@ -703,7 +704,7 @@ Z_NewFormatHeader(ZNotice_t *notice,
     static char version[BUFSIZ]; /* default init should be all \0 */
     struct sockaddr_in name;
     struct timeval tv;
-    int namelen = sizeof(name);
+    unsigned int namelen = sizeof(name);
 
     if (!notice->z_sender)
 	notice->z_sender = ZGetSender();
@@ -1278,10 +1279,10 @@ Z_Checksum(krb5_data *cksumbuf,
 	   krb5_keyblock *keyblock, 
 	   krb5_cksumtype cksumtype, 
 	   char **asn1_data,
-	   int *asn1_len)
+	   unsigned int *asn1_len)
 {
     krb5_error_code result;
-    char *data;
+    unsigned char *data;
     int len;
 #if HAVE_KRB5_C_MAKE_CHECKSUM
     krb5_checksum checksum;
@@ -1353,7 +1354,7 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
      int cksum1_len;  /* length of part after checksum */
      krb5_data cksumbuf;
      krb5_data cksum;
-     char *key_data;
+     unsigned char *key_data;
      int key_len;
      krb5_enctype enctype;
      krb5_cksumtype cksumtype;
@@ -1394,7 +1395,7 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
       */
      
      result = ZMakeZcode(cstart, buffer_len - (plain_len + cksum_len),
-                         cksum.data, cksum.length);
+                         (unsigned char *)cksum.data, cksum.length);
      free(cksum.data);
      if (!result) {
           int zcode_len = strlen(cstart) + 1;
@@ -1421,7 +1422,7 @@ int
 Z_krb5_verify_cksum(krb5_keyblock *keyblock,
 		    krb5_data *cksumbuf, 
                     krb5_cksumtype cksumtype,
-		    char *asn1_data, 
+		    unsigned char *asn1_data, 
                     int asn1_len)
 {
     krb5_error_code result;
