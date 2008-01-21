@@ -24,7 +24,6 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 /*                         The tty & plain filters:                         */
 /*                                                                          */
 /****************************************************************************/
-#define HAVE_TERMCAP_H
 #ifdef HAVE_TERMCAP_H
 #include <termcap.h>
 #endif
