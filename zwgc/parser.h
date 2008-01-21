@@ -31,7 +31,7 @@
  *                 is reported to the user via stderr. 
  */
 
-extern void report_parse_error();
+extern void report_parse_error(char *, int);
 
 /*
  *    struct _Node *parse_file(FILE *input_file)
@@ -49,6 +49,6 @@ extern void report_parse_error();
  *                 is closed before this routine returns.
  */
 
-extern struct _Node *parse_file();
+extern struct _Node *parse_file(FILE *);
 
 #endif

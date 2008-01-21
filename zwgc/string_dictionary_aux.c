@@ -43,10 +43,10 @@ static char rcsid_string_dictionary_aux_c[] = "$Id$";
  *                 heap.
  */
 
-void string__dictionary_Set(d, key, value)
-     string_dictionary d;
-     string key;
-     string value;
+void
+string__dictionary_Set(string_dictionary d,
+		       string key,
+		       string value)
 {
     string_dictionary_binding *binding;
     int already_exists;
@@ -67,9 +67,9 @@ void string__dictionary_Set(d, key, value)
  *                 disappear later if key is rebound.
  */
 
-char *string_dictionary_Fetch(d, key)
-     string_dictionary d;
-     string key;
+char *
+string_dictionary_Fetch(string_dictionary d,
+			string key)
 {
     string_dictionary_binding *binding;
 
@@ -87,14 +87,14 @@ char *string_dictionary_Fetch(d, key)
  *                 all value's in the dictionary.
  */
 
-static void free_value_of_binding(b)
-     string_dictionary_binding *b;
+static void
+free_value_of_binding(string_dictionary_binding *b)
 {
     free(b->value);
 }
 
-void string_dictionary_SafeDestroy(d)
-     string_dictionary d;
+void
+string_dictionary_SafeDestroy(string_dictionary d)
 {
     string_dictionary_Enumerate(d, free_value_of_binding);
     string_dictionary_Destroy(d);

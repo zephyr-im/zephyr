@@ -17,6 +17,7 @@
 #ifndef notice_MODULE
 #define notice_MODULE
 
+#include <zephyr/zephyr.h>
 #include "new_string.h"
 
 /*
@@ -25,7 +26,7 @@
  *        Effects: Returns the # of nulls in data[0]..data[length-1]
  */
 
-extern int count_nulls();
+extern int count_nulls(char *, int);
 
 /*
  *    string get_next_field(char **data_p, int *length_p)
@@ -42,7 +43,7 @@ extern int count_nulls();
  *                 remain.  (this is the case when *length_p == 0)
  */
 
-extern string get_next_field();
+extern string get_next_field(char **, int *);
 
 /*
  *    string get_field(char *data, int length, int num)
@@ -55,7 +56,7 @@ extern string get_next_field();
  *                 "" is returned.
  */
 
-extern string get_field();
+extern string get_field(char *, int, int);
 
 /*
  *    string convert_nulls_to_newlines(data, length)
@@ -66,9 +67,9 @@ extern string get_field();
  *                be freed.
  */
 
-extern string convert_nulls_to_newlines();
+extern string convert_nulls_to_newlines(char *, int);
 
 
-extern char *decode_notice();
+extern char *decode_notice(ZNotice_t *, char *);
 
 #endif

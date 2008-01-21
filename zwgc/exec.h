@@ -17,6 +17,6 @@
 #ifndef exec_MODULE
 #define exec_MODULE
 
-extern void exec_process_packet();
+extern void exec_process_packet(Node *, ZNotice_t *);
 
 #endif

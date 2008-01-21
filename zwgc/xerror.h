@@ -22,7 +22,7 @@ static const char rcsid_xerror_h[] = "$Id$";
 
 extern int xerror_happened;
 
-void begin_xerror_trap();
-void end_xerror_trap();
+void begin_xerror_trap(Display *);
+void end_xerror_trap(Display *);
 
 #endif

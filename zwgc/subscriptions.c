@@ -44,15 +44,16 @@ static char rcsid_subscriptions_c[] = "$Id$";
  */
 static int_dictionary puntable_addresses_dict = 0;
 
-static void init_puntable_dict()
+static void
+init_puntable_dict(void)
 {
     puntable_addresses_dict = int_dictionary_Create(33);
 }
 
-static string address_to_string(class, instance, recipient)
-     string class;
-     string instance;
-     string recipient;
+static string
+address_to_string(string class,
+		  string instance,
+		  string recipient)
 {
     string result;
 
@@ -75,10 +76,9 @@ static string address_to_string(class, instance, recipient)
     return(result);
 }
 
-int puntable_address_p(class, instance, recipient)
-     string class;
-     string instance;
-     string recipient;
+int puntable_address_p(string class,
+		       string instance,
+		       string recipient)
 {
     string temp;
 
@@ -95,10 +95,9 @@ int puntable_address_p(class, instance, recipient)
     return(0);
 }
 
-void punt(class, instance, recipient)
-     string class;
-     string instance;
-     string recipient;
+void punt(string class,
+	  string instance,
+	  string recipient)
 {
     string temp;
 
@@ -110,10 +109,9 @@ void punt(class, instance, recipient)
     free(temp);
 }
 
-void unpunt(class, instance, recipient)
-     string class;
-     string instance;
-     string recipient;
+void unpunt(string class,
+	    string instance,
+	    string recipient)
 {
     string temp;
     int_dictionary_binding *binding;
@@ -146,9 +144,9 @@ static ZSubscription_t subscription_list[BATCH_SIZE];
 static int unsubscription_list_size = 0;
 static ZSubscription_t unsubscription_list[BATCH_SIZE];
 
-static void free_subscription_list(list, number_of_elements)
-     ZSubscription_t *list;
-     int number_of_elements;
+static void
+free_subscription_list(ZSubscription_t *list,
+		       int number_of_elements)
 {
     int i;
 
@@ -159,7 +157,8 @@ static void free_subscription_list(list, number_of_elements)
     }
 }
 
-static void flush_subscriptions()
+static void
+flush_subscriptions(void)
 {
       TRAP(ZSubscribeTo(subscription_list,subscription_list_size, 0),
 	   "while subscribing");
@@ -168,7 +167,8 @@ static void flush_subscriptions()
     subscription_list_size = 0;
 }
 
-static void flush_unsubscriptions()
+static void
+flush_unsubscriptions(void)
 {
     if (unsubscription_list_size)
       TRAP(ZUnsubscribeTo(unsubscription_list, unsubscription_list_size, 0),
@@ -178,10 +178,10 @@ static void flush_unsubscriptions()
     unsubscription_list_size = 0;
 }
 
-static void subscribe(class, instance, recipient)
-     string class;
-     string instance;
-     string recipient;
+static void
+subscribe(string class,
+	  string instance,
+	  string recipient)
 {
     subscription_list[subscription_list_size].zsub_class = string_Copy(class);
     subscription_list[subscription_list_size].zsub_classinst= string_Copy(instance);
@@ -191,10 +191,10 @@ static void subscribe(class, instance, recipient)
       flush_subscriptions();
 }
 
-static void unsubscribe(class, instance, recipient)
-     string class;
-     string instance;
-     string recipient;
+static void
+unsubscribe(string class,
+	    string instance,
+	    string recipient)
 {
     unsubscription_list[unsubscription_list_size].zsub_class = string_Copy(class);
     unsubscription_list[unsubscription_list_size].zsub_classinst
@@ -219,7 +219,8 @@ static void unsubscribe(class, instance, recipient)
 
 char ourhost[MAXHOSTNAMELEN],ourhostcanon[MAXHOSTNAMELEN];
 
-static void inithosts()
+static void
+inithosts(void)
 {
     struct hostent *hent;
     if (gethostname(ourhost, sizeof(ourhost)-1) == -1) {
@@ -236,8 +237,8 @@ static void inithosts()
     return;
 }
 
-static void macro_sub(str)
-     char *str;
+static void
+macro_sub(char *str)
 {
     static int initedhosts = 0;
 
@@ -256,8 +257,8 @@ static void macro_sub(str)
 #define  UNSUBSCRIBE_CHARACTER  '!'
 #define  PUNT_CHARACTER         '-'
 
-static void load_subscriptions_from_file(file)
-     FILE *file;
+static void
+load_subscriptions_from_file(FILE *file)
 {
     char line[BUFSIZ];
     char class_buffer[BUFSIZ], instance[BUFSIZ], recipient[BUFSIZ];
@@ -319,7 +320,8 @@ static void load_subscriptions_from_file(file)
 
 #define DEFSUBS "/dev/null"
 
-static void load_subscriptions()
+static void
+load_subscriptions(void)
 {
     FILE *subscriptions_file;
 
@@ -343,7 +345,7 @@ int zwgc_active = 0;
 static ZSubscription_t *saved_subscriptions = NULL;
 static int number_of_saved_subscriptions;
 
-void zwgc_shutdown()
+void zwgc_shutdown(void)
 {
     if (!zwgc_active)
       return;
@@ -367,7 +369,7 @@ void zwgc_shutdown()
     zwgc_active = 0;
 }
 
-void zwgc_startup()
+void zwgc_startup(void)
 {
     if (zwgc_active)
       return;

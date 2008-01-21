@@ -41,7 +41,7 @@
  *                  specified by default.medium.roman is used. <<<>>>
  */
 
-extern XFontStruct *get_font();
-extern XFontStruct *get_fontst_from_fid();
+extern XFontStruct *get_font(Display *, string, string, int, int);
+extern XFontStruct *get_fontst_from_fid(Font);
 
 #endif

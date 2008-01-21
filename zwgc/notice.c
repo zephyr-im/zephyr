@@ -38,9 +38,9 @@ static const char rcsid_notice_c[] = "$Id$";
  *        Effects: Returns the # of nulls in data[0]..data[length-1]
  */
 
-int count_nulls(data, length)
-     char *data;
-     int length;
+int
+count_nulls(char *data,
+	    int length)
 {
     int count = 0;
 
@@ -66,9 +66,9 @@ int count_nulls(data, length)
  *                 remain.  (this is the case when *length_p == 0)
  */
 
-string get_next_field(data_p, length_p)
-     char **data_p;
-     int *length_p;
+string
+get_next_field(char **data_p,
+	       int *length_p)
 {
     char *data = *data_p;
     int length = *length_p;
@@ -98,10 +98,9 @@ string get_next_field(data_p, length_p)
  *                 "" is returned.
  */
 
-string get_field(data, length, num)
-     char *data;
-     int length;
-     int num;
+string get_field(char *data,
+		 int length,
+		 int num)
 {
     /*
      * While num>1 and there are fields left, skip a field & decrement num:
@@ -132,9 +131,9 @@ string get_field(data, length, num)
  *                be freed.
  */
 
-string convert_nulls_to_newlines(data, length)
-     char *data;
-     int length;
+string
+convert_nulls_to_newlines(char *data,
+			  int length)
 {
     char *result, *ptr;
     char c;
@@ -158,8 +157,8 @@ string convert_nulls_to_newlines(data, length)
  *                 eventually.
  */
 
-static string z_kind_to_ascii(z_kind)
-     ZNotice_Kind_t z_kind;
+static string
+z_kind_to_ascii(ZNotice_Kind_t z_kind)
 {
     string result;
 
@@ -217,8 +216,8 @@ static string z_kind_to_ascii(z_kind)
  *                 eventually.
  */
 
-static string z_auth_to_ascii(z_auth)
-     int z_auth;
+static string
+z_auth_to_ascii(int z_auth)
 {
     string result;
 
@@ -249,9 +248,9 @@ static string z_auth_to_ascii(z_auth)
  *        Effects:
  */
 
-char *decode_notice(notice, hostname)
-     ZNotice_t *notice;
-     char *hostname;
+char *
+decode_notice(ZNotice_t *notice,
+	      char *hostname)
 {
     char *temp;
     string time, notyear, year, date_string, time_string;

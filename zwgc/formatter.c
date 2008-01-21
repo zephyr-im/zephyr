@@ -30,7 +30,8 @@ static const char rcsid_formatter_c[] = "$Id$";
 #define const
 #endif
 
-static int pure_text_length(), env_length();
+static int pure_text_length(char *, char);
+static int env_length(char *);
 
 #ifdef notdef
 static character_class atsign_set = { /* '@' = 0x40 */
@@ -171,17 +172,17 @@ static char brackets[]="()<>[]{}@";
 static char *openbracket[]={"@<","@<","@[","@[","@{","@{","@(","@(","@("};
 static char *closebracket[]={">",">","]","]","}","}",")",")",")"};
 
-static int not_contains(str, set)
-     string str;
-     const character_class set;
+static int
+not_contains(string str,
+	     const character_class set)
 {
    while (*str && ! set[*str]) str++;
    return (! *str);
 }
 
-static int pure_text_length(text,terminator)
-     char *text;
-     char terminator;
+static int
+pure_text_length(char *text,
+		 char terminator)
 {
    int len=0;
 
@@ -205,8 +206,8 @@ static int pure_text_length(text,terminator)
    }
 }
 
-static char otherside(opener)
-char opener;
+static char
+otherside(char opener)
 {
    switch (opener) {
     case '(':
@@ -227,9 +228,8 @@ char opener;
 /* the char * that str points to is free'd by this function.
  * if you want to keep it, save it yourself
  */
-string verbatim(str, bracketsonly)
-     string str;
-     int bracketsonly;
+string
+verbatim(string str, int bracketsonly)
 {
    char *temp,*temp2;
    int bracketnum,len;
@@ -306,8 +306,8 @@ string verbatim(str, bracketsonly)
    or the default terminator \0.  The text will not be modified,
    and @@ will be counted twice */
 
-string protect(str)
-     string str;
+string
+protect(string str)
 {
    string temp,temp2,temp3;
    int len,templen;
@@ -375,8 +375,8 @@ string protect(str)
 
 /* str points to a string.  return value is another string
    which is the original with all styles removed. */
-string stylestrip(str)
-     string str;
+string
+stylestrip(string str)
 {
     int templen = 0, otherchar;
     char *temp = (char *) malloc(string_Length(str) + 1);
@@ -418,8 +418,8 @@ string stylestrip(str)
     return(temp);
 }
 
-void free_desc(desc)
-     desctype *desc;
+void
+free_desc(desctype *desc)
 {
     desctype *next_desc;
 
@@ -434,8 +434,8 @@ void free_desc(desc)
 /* text points to beginning of possible env name.  return value is
    length of env name, not including @ or opener, or -1 if not a
    possible env name. */
-static int env_length(text)
-     char *text;
+static int
+env_length(char *text)
 {
    int len=0;
 
@@ -454,9 +454,9 @@ static int env_length(text)
    length of string, up to but not including the passed terminator
    or the default terminators \0 \n @.  This can modify text, and 0
    is a valid return value. */
-static int text_length(text,terminator)
-     char *text;
-     char terminator;
+static int
+text_length(char *text,
+	    char terminator)
 {
    int len=0;
 
@@ -482,9 +482,10 @@ static int text_length(text,terminator)
 /* parses str into a desc linked list.  Returns number of strings and
    newlines in *pstr and *pnl */
 
-desctype *disp_get_cmds(str,pstr,pnl)
-char *str;
-int *pstr,*pnl;
+desctype *
+disp_get_cmds(char *str,
+	      int *pstr,
+	      int *pnl)
 {
    desctype *desc,*here;
    int len;
