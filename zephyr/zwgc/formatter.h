@@ -14,6 +14,8 @@
 
 #include <zephyr/mit-copyright.h>
 
+#include "new_string.h"
+
 #ifndef formatter_MODULE
 #define formatter_MODULE
 
@@ -32,7 +34,10 @@ typedef struct _desctype {
 			   ENV, STR, END.  Undefined for EOF */
 } desctype;
 
-extern desctype *disp_get_cmds();
-extern void free_desc();
+extern desctype *disp_get_cmds(char *, int *, int *);
+extern void free_desc(desctype *);
 
+extern string protect(string);
+extern string verbatim(string, int);
+extern string stylestrip(string);
 #endif

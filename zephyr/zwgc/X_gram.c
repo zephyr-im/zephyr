@@ -37,8 +37,6 @@ static const char rcsid_X_gram_c[] = "$Id$";
 
 extern XContext desc_context;
 extern char *app_instance;
-extern unsigned long x_string_to_color();
-extern char *getenv();
 
 /*
  *
@@ -89,14 +87,14 @@ static Atom net_wm_window_type_utility = None;
  */
 
 /*ARGSUSED*/
-void x_set_icccm_hints(dpy,w,name,icon_name,psizehints,pwmhints,main_window)
-     Display *dpy;
-     Window w;
-     char *name;
-     char *icon_name;
-     XSizeHints *psizehints;
-     XWMHints *pwmhints;
-     Window main_window;
+void
+x_set_icccm_hints(Display *dpy,
+		  Window w,
+		  char *name,
+		  char *icon_name,
+		  XSizeHints *psizehints,
+		  XWMHints *pwmhints,
+		  Window main_window)
 {
    XStoreName(dpy,w,name);
    XSetIconName(dpy,w,icon_name);
@@ -113,8 +111,8 @@ void x_set_icccm_hints(dpy,w,name,icon_name,psizehints,pwmhints,main_window)
       XSetWMProtocols(dpy,w,&XA_WM_DELETE_WINDOW,1);
 }
 
-void x_gram_init(dpy)
-     Display *dpy;
+void
+x_gram_init(Display *dpy)
 {
     char *temp;
     XSizeHints sizehints;
@@ -261,8 +259,9 @@ void x_gram_init(dpy)
     }
 }
 
-int x_calc_gravity(xalign, yalign)
-     int xalign, yalign;
+int
+x_calc_gravity(int xalign,
+	       int yalign)
 {
     if (yalign > 0) {					/* North */
 	return (xalign > 0)  ? NorthWestGravity
@@ -279,21 +278,22 @@ int x_calc_gravity(xalign, yalign)
     }
 }
 
-void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
-		   beepcount)
-     Display *dpy;
-     x_gram *gram;
-     int xalign, yalign;
-     int xpos, ypos;
-     int xsize, ysize;
-     int beepcount;
+void
+x_gram_create(Display *dpy,
+	      x_gram *gram,
+	      int xalign,
+	      int yalign,
+	      int xpos,
+	      int ypos,
+	      int xsize,
+	      int ysize,
+	      int beepcount)
 {
     Window w;
     XSizeHints sizehints;
     XWMHints wmhints;
     XSetWindowAttributes attributes;
     unsigned long all_desktops = 0xFFFFFFFF;
-    extern void x_get_input();
 
     /*
      * Adjust xpos, ypos based on the alignments xalign, yalign and the sizes:
@@ -397,11 +397,11 @@ void x_gram_create(dpy, gram, xalign, yalign, xpos, ypos, xsize, ysize,
     x_get_input(dpy);
 }
 
-void x_gram_draw(dpy, w, gram, region)
-     Display *dpy;
-     Window w;
-     x_gram *gram;
-     Region region;
+void
+x_gram_draw(Display *dpy,
+	    Window w,
+	    x_gram *gram,
+	    Region region)
 {
    int i;
    GC gc;
@@ -493,11 +493,11 @@ void x_gram_draw(dpy, w, gram, region)
    XFreeGC(dpy,gc);
 }
 
-void x_gram_expose(dpy,w,gram,event)
-     Display *dpy;
-     Window w;
-     x_gram *gram;
-     XExposeEvent *event;
+void
+x_gram_expose(Display *dpy,
+	      Window w,
+	      x_gram *gram,
+	      XExposeEvent *event)
 {
    static Region region;
    static int partregion;

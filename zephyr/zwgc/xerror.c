@@ -27,24 +27,24 @@ static const char rcsid_xerror_c[] = "$Id$";
 int xerror_happened;
 
 /*ARGSUSED*/
-static int xerrortrap(dpy,xerrev)
-     Display *dpy;
-     XErrorEvent *xerrev;
+static int
+xerrortrap(Display *dpy,
+	   XErrorEvent *xerrev)
 {
    xerror_happened = 1;
    return 0;
 }
 
 /*ARGSUSED*/
-void begin_xerror_trap(dpy)
-     Display *dpy;
+void
+begin_xerror_trap(Display *dpy)
 {
    xerror_happened = 0;
    XSetErrorHandler(xerrortrap);
 }
 
-void end_xerror_trap(dpy)
-     Display *dpy;
+void
+end_xerror_trap(Display *dpy)
 {
    XSync(dpy,False);
    XSetErrorHandler(NULL);

@@ -27,7 +27,7 @@
  *        Effects: Sets all description langauge variables to "".
  */
 
-extern void var_clear_all_variables();
+extern void var_clear_all_variables(void);
 
 /*
  *    string var_get_variable(string name)
@@ -38,7 +38,7 @@ extern void var_clear_all_variables();
  *                 call.  DO NOT FREE THIS STRING.
  */
 
-extern string var_get_variable();
+extern string var_get_variable(string);
 
 /*
  *    void var_set_variable(string name, value)
@@ -49,7 +49,7 @@ extern string var_get_variable();
  *                 to have the value value.
  */
 
-extern void var_set_variable();
+extern void var_set_variable(string, string);
 
 /*
  *    void var_set_variable_to_number(string name; int number)
@@ -60,7 +60,7 @@ extern void var_set_variable();
  *                 to have as its value number's ascii representation.
  */
 
-extern void var_set_variable_to_number();
+extern void var_set_variable_to_number(string, int);
 
 /*
  *    void var_set_variable_then_free_value(string name, value)
@@ -75,7 +75,7 @@ extern void var_set_variable_to_number();
  *                 convenience reasons.
  */
 
-extern void var_set_variable_then_free_value();
+extern void var_set_variable_then_free_value(string, string);
 
 /*
  *    void var_set_number_variables_to_fields(char *data, int length)
@@ -91,6 +91,6 @@ extern void var_set_variable_then_free_value();
  *                 data or var_clear_all_variables is called.
  */
 
-extern void var_set_number_variables_to_fields();
+extern void var_set_number_variables_to_fields(char *, int);
 
 #endif

@@ -56,8 +56,8 @@ static string_dictionary number_variable_dict = NULL;
  *        Effects: Returns true iff text matches [0-9]*.  ("" matches...)
  */
 
-static int is_digits(text)
-     string text;
+static int
+is_digits(string text)
 {
     for (; *text; text++)
       if (!isdigit(*text))
@@ -83,7 +83,8 @@ static int is_digits(text)
  *        Effects: Sets all description langauge variables to "".
  */
 
-void var_clear_all_variables()
+void
+var_clear_all_variables(void)
 {
     if (non_number_variable_dict) {
 	string_dictionary_SafeDestroy(non_number_variable_dict);
@@ -104,8 +105,8 @@ void var_clear_all_variables()
  *                 call.  DO NOT FREE THIS STRING.
  */
 
-string var_get_variable(name)
-     string name;
+string
+var_get_variable(string name)
 {
     char *result;
     int field_to_get;
@@ -150,9 +151,9 @@ string var_get_variable(name)
  *                 to have the value value.
  */
 
-void var_set_variable(name, value)
-     string name;
-     string value;
+void
+var_set_variable(string name,
+		 string value)
 {
     string_dictionary_Set(is_number_variable(name) ? number_variable_dict
 			  : non_number_variable_dict, name, value);
@@ -167,9 +168,9 @@ void var_set_variable(name, value)
  *                 to have as its value number's ascii representation.
  */
 
-void var_set_variable_to_number(name, number)
-     string name;
-     int number;
+void
+var_set_variable_to_number(string name,
+			   int number)
 {
     char buffer[20];
 
@@ -190,9 +191,9 @@ void var_set_variable_to_number(name, number)
  *                 convenience reasons.
  */
 
-void var_set_variable_then_free_value(name, value)
-     string name;
-     string value;
+void
+var_set_variable_then_free_value(string name,
+				 string value)
 {
     string_dictionary_binding *binding;
     int exists;
@@ -229,9 +230,9 @@ void var_set_variable_then_free_value(name, value)
  *                 data or var_clear_all_variables is called.
  */
 
-void var_set_number_variables_to_fields(data, length)
-     char *data;
-     int length;
+void
+var_set_number_variables_to_fields(char *data,
+				   int length)
 {
     fields_data = data;
     fields_data_length = length;

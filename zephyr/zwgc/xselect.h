@@ -17,14 +17,12 @@
 #ifndef _XSELECT_H_
 #define _XSELECT_H_
 
-extern void xicccmInitAtoms();
-extern int xselGetOwnership();
-extern int xselProcessSelection();
-extern void xselOwnershipLost();
-extern void xselGiveUpOwnership();
+extern void xicccmInitAtoms(Display *);
+extern int xselGetOwnership(Display *, Window, Time);
+extern int xselProcessSelection(Display *, Window, XEvent *);
+extern void xselOwnershipLost(Time);
+extern void xselGiveUpOwnership(Display *, Window);
 
-extern int xwmprotoDelete();
-
-extern Atom XA_WM_PROTOCOLS,XA_WM_DELETE_WINDOW;
+extern Atom XA_WM_PROTOCOLS, XA_WM_DELETE_WINDOW;
 
 #endif

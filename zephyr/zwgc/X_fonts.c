@@ -51,11 +51,9 @@ static pointer_dictionary fidst_dict = NULL;
 static string face_to_string[] = { "roman", "bold", "italic", "bolditalic" };
 static string size_to_string[] = { "small", "medium", "large" };
 
-extern char *get_string_resources();
-
-static char *get_family(style,substyle)
-     char *style;
-     char *substyle;
+static char *
+get_family(char *style,
+	   char *substyle)
 {
    char *desc;
    pointer_dictionary_binding *binding;
@@ -87,10 +85,10 @@ static char *get_family(style,substyle)
    }
 }
 
-static char *get_specific_fontname(family,size,face)
-     char *family;
-     int size;
-     int face;
+static char *
+get_specific_fontname(char *family,
+		      int size,
+		      int face)
 {
    char *desc;
    pointer_dictionary_binding *binding;
@@ -127,8 +125,8 @@ static char *get_specific_fontname(family,size,face)
  * that I know that Font us really an unsigned long. */
 
 static char hexdigits[] = {"0123456789ABCDEF"};
-static char *Font_to_hex(num)
-     Font num;
+static char *
+Font_to_hex(Font num)
 {
    char *temp;
    int i;
@@ -142,8 +140,8 @@ static char *Font_to_hex(num)
    return(temp);
 }
 
-void add_fid(font)
-     XFontStruct *font;
+void
+add_fid(XFontStruct *font)
 {
    
    char *fidstr;
@@ -161,8 +159,8 @@ void add_fid(font)
 }
 
 /* requires that the font already be cached. */
-XFontStruct *get_fontst_from_fid(fid)
-     Font fid;
+XFontStruct *
+get_fontst_from_fid(Font fid)
 {
    char *fidstr;
    pointer_dictionary_binding *binding;
@@ -184,9 +182,9 @@ XFontStruct *get_fontst_from_fid(fid)
 #endif
 }
 
-static XFontStruct *get_fontst(dpy,fontname)
-     Display *dpy;
-     char *fontname;
+static XFontStruct *
+get_fontst(Display *dpy,
+	   char *fontname)
 {
    pointer_dictionary_binding *binding;
    int exists;
@@ -209,10 +207,10 @@ static XFontStruct *get_fontst(dpy,fontname)
    }
 }
 
-static char *get_fontname(family,size,face)
-     char *family;
-     int size;
-     int face;
+static char *
+get_fontname(char *family,
+	     int size,
+	     int face)
 {
    char *fontname;
 
@@ -223,12 +221,12 @@ static char *get_fontname(family,size,face)
    return(fontname);
 }
 
-static XFontStruct *complete_get_fontst(dpy,style,substyle,size,face)
-     Display *dpy;
-     string style;
-     string substyle;
-     int size;
-     int face;
+static XFontStruct *
+complete_get_fontst(Display *dpy,
+		    string style,
+		    string substyle,
+		    int size,
+		    int face)
 {
    char *family,*fontname;
    XFontStruct *fontst;
@@ -249,12 +247,12 @@ static XFontStruct *complete_get_fontst(dpy,style,substyle,size,face)
  *          Effects: unknown
  */
 
-XFontStruct *get_font(dpy,style,substyle,size,face)
-     Display *dpy;
-     string style;
-     string substyle;
-     int size;
-     int face;
+XFontStruct *
+get_font(Display *dpy,
+	 string style,
+	 string substyle,
+	 int size,
+	 int face)
 {
    char *family,*fontname;
    XFontStruct *fontst;

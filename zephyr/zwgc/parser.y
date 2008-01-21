@@ -31,7 +31,7 @@ static const char rcsid_parser_y[] = "$Id$";
 #include "node.h"
 #include "zwgc.h"
 
-static void yyerror();
+static void yyerror(char *);
 
 /*
  * the_program - local variable used to communicate the program's node
@@ -320,9 +320,9 @@ static int error_occured = 0;
  *                 is reported to the user via stderr. 
  */
 
-void report_parse_error(error_message, line_number)
-     char *error_message;
-     int line_number;
+void
+report_parse_error(char *error_message,
+		   int line_number)
 {
     if (error_occured)
       return;
@@ -338,8 +338,7 @@ void report_parse_error(error_message, line_number)
  *            stack overflow errors.
  */
  
-static void yyerror(message)
-     char *message;
+static void yyerror(char *message)
 {
     report_parse_error(message, yylineno);
 }
@@ -360,8 +359,8 @@ static void yyerror(message)
  *                 is closed before this routine returns.
  */
 
-struct _Node *parse_file(input_file)
-     FILE *input_file;
+struct _Node *
+parse_file(FILE *input_file)
 {
     the_program = NULL;
     error_occured = 0;

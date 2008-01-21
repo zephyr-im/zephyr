@@ -20,9 +20,9 @@ static const char rcsid_regexp_c[] = "$Id$";
 
 #include "regexp.h"
 
-int ed_regexp_match_p(test_string, pattern)
-     string test_string;
-     string pattern;
+int
+ed_regexp_match_p(string test_string,
+		  string pattern)
 {
     regex_t RE;
     int retval;

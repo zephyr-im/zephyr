@@ -64,7 +64,8 @@ static FILE *input_file;
 
 static int pushback = -1;
 
-static char input()
+static char
+input(void)
 {
     int c;
 
@@ -85,8 +86,8 @@ static char input()
     return(c);
 }
 
-static void unput(c)
-     int c;
+static void
+unput(int c)
 {
 #ifdef DEBUG
     if (pushback != -1) {
@@ -171,8 +172,8 @@ static struct keyword_info keywords[] =   {
  *            a file.  Resets current line # to 1.
  */
 
-void lex_open(file)
-     FILE *file;
+void
+lex_open(FILE *file)
 {
     /*
      * Initialize I/O:
@@ -219,7 +220,8 @@ void lex_open(file)
 
 #define  is_octal_digit(c)           (((c)>='0') && ((c)<='7'))
 
-static char eat_escape_code()
+static char
+eat_escape_code(void)
 {
     int c, coded_char;
 
@@ -269,8 +271,8 @@ static char eat_escape_code()
  *              string we are eating started on.
  */
 
-static char *eat_string(starting_line)
-     int starting_line;
+static char *
+eat_string(int starting_line)
 {
     int c;
     char buffer[500];
@@ -343,8 +345,8 @@ static char *eat_string(starting_line)
  *    instead of doing the above, we just eat the "endshow" & return 0.
  */
 
-static char *eat_show_line(test_for_endshow)
-     int test_for_endshow;
+static char *
+eat_show_line(int test_for_endshow)
 {
     int c;
     int saw_escape_code = 0;
@@ -408,8 +410,8 @@ static char *eat_show_line(test_for_endshow)
  *                   messages.
  */
 
-static char *eat_til_endshow(start_line_no)
-     int start_line_no;
+static char *
+eat_til_endshow(int start_line_no)
 {
     register int c;
     string text_so_far = string_Copy("");
@@ -453,7 +455,8 @@ static char *eat_til_endshow(start_line_no)
  *               returned.
  */
 
-static int handle_show()
+static int
+handle_show(void)
 {
     int c;
     int start_line_no = yylineno;
@@ -483,7 +486,7 @@ static int handle_show()
  * yylex - performs as per. the yacc manual's requirements
  */
 
-int yylex()
+int yylex(void)
 {
     register int c, last_char;
     register char *ptr;
