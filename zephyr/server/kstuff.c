@@ -851,11 +851,8 @@ ZCheckAuthentication4(ZNotice_t *notice,
     }
 
     /* Check the cryptographic checksum. */
-#ifdef NOENCRYPTION
-    checksum = 0;
-#else
     checksum = compute_checksum(notice, dat.session);
-#endif
+
     if (checksum != notice->z_checksum)
 	return ZAUTH_FAILED;
 
@@ -872,9 +869,6 @@ static ZChecksum_t
 compute_checksum(ZNotice_t *notice,
 		 C_Block session_key)
 {
-#ifdef NOENCRYPTION
-    return 0;
-#else
     ZChecksum_t checksum;
     char *cstart, *cend, *hstart = notice->z_packet, *hend = notice->z_message;
 
@@ -885,23 +879,19 @@ compute_checksum(ZNotice_t *notice,
     checksum ^= des_quad_cksum((unsigned char *)notice->z_message, NULL, notice->z_message_len,
 			       0, (C_Block *)session_key);
     return checksum;
-#endif
 }
 
 static ZChecksum_t compute_rlm_checksum(ZNotice_t *notice,
 					C_Block session_key)
 {
-#ifdef NOENCRYPTION
-    return 0;
-#else
     ZChecksum_t checksum;
     char *cstart, *cend, *hstart = notice->z_packet;
 
     cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
     cend = cstart + strlen(cstart) + 1;
     checksum = des_quad_cksum((unsigned char *)hstart, NULL, cstart - hstart, 0, (C_Block *)session_key);
+
     return checksum;
-#endif
 }
 
 #ifdef HAVE_KRB5
