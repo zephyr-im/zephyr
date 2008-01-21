@@ -54,6 +54,6 @@ extern void lex_open(FILE *);
  * yylex - performs as per. the yacc manual's requirements
  */
 
-/* extern int yylex(); */
+extern int yylex(void);
 
 #endif
