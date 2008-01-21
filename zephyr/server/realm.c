@@ -78,7 +78,7 @@ realm_get_idx_by_addr(ZRealm *realm,
 		      struct sockaddr_in *who)
 {
     struct sockaddr_in *addr;
-    int a, b;
+    int b;
 
     /* loop through the realms */
     for (addr = realm->addrs, b = 0; b < realm->count; b++, addr++)
@@ -232,7 +232,8 @@ realm_send_realms(void)
 {
     int cnt, retval;
     for (cnt = 0; cnt < nrealms; cnt++) {
-	if (retval = (subscr_send_realm_subs(&otherrealms[cnt])) != ZERR_NONE)
+	retval = subscr_send_realm_subs(&otherrealms[cnt]);
+	if (retval != ZERR_NONE)
 	    return(retval);
     }
     return ZERR_NONE;
@@ -330,8 +331,7 @@ rlm_nack_cancel(register ZNotice_t *notice,
 		struct sockaddr_in *who)
 {
     register ZRealm *which = realm_which_realm(who);
-    register Unacked *nacked, *next;
-    ZPacket_t retval;
+    register Unacked *nacked;
   
 #if 1
     zdbug((LOG_DEBUG, "rlm_nack_cancel: %s:%08X,%08X",
@@ -355,7 +355,7 @@ rlm_nack_cancel(register ZNotice_t *notice,
         
 		/* free the data */
 		free(nacked->packet);
-		LIST_DELETE(nacked);
+		Unacked_delete(nacked);
 		free(nacked);
 		return;
 	    }
@@ -579,7 +579,6 @@ void
 realm_deathgram(Server *server)
 {
     ZRealm *realm;
-    char rlm_recipient[REALM_SZ + 1];
     int jj = 0;
 
     /* Get it out once, and assume foreign servers will share */
@@ -641,7 +640,6 @@ realm_wakeup(void)
 {
     int jj, found = 0;
     ZRealm *realm;
-    char rlm_recipient[REALM_SZ + 1];
     
     for (jj = 1; jj < nservers; jj++) {    /* skip limbo server */
 	if (jj != me_server_idx && otherservers[jj].state == SERV_UP)
@@ -712,7 +710,6 @@ realm_ulocate_dispatch(ZNotice_t *notice,
 		       ZRealm *realm)
 {
     register char *opcode = notice->z_opcode;
-    Code_t status;
   
     if (!auth) {
 	syslog(LOG_WARNING, "unauth locate msg from %s (%s/%s/%s)",
@@ -829,8 +826,6 @@ realm_new_server(struct sockaddr_in *sin,
 		 ZNotice_t *notice,
 		 ZRealm *realm)
 {
-    struct hostent *hp;
-    char suggested_server[MAXHOSTNAMELEN];
     unsigned long addr;
     ZRealm *rlm;
     struct sockaddr_in sinaddr;
@@ -858,6 +853,7 @@ realm_new_server(struct sockaddr_in *sin,
     } else {
       zdbug((LOG_DEBUG, "rlm_new_srv: not switching servers (%s)", inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
     }
+    return 0;
 }
 
 static Code_t
@@ -872,6 +868,8 @@ realm_set_server(struct sockaddr_in *sin,
 	return ZSRV_NORLM;
     realm->idx = realm_get_idx_by_addr(realm, sin);
     zdbug((LOG_DEBUG, "rlm_pick_srv: switched servers (%s)", inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
+
+    return 0;
 }
 
 void
@@ -965,7 +963,7 @@ realm_sendit(ZNotice_t *notice,
     /* set a timer to retransmit */
     nacked->timer = timer_set_rel(rexmit_times[0], rlm_rexmit, nacked);
     /* chain in */
-    LIST_INSERT(&rlm_nacklist, nacked);
+    Unacked_insert(&rlm_nacklist, nacked);
     return;
 }
 
@@ -991,7 +989,6 @@ rlm_rexmit(void *arg)
     Unacked *nackpacket = (Unacked *) arg;
     Code_t retval;
     register ZRealm *realm;
-    int new_srv_idx;
 
     zdbug((LOG_DEBUG,"rlm_rexmit"));
 
@@ -1007,7 +1004,7 @@ rlm_rexmit(void *arg)
     if (nackpacket->rexmits >= (NUM_REXMIT_TIMES * realm->count)) {
 	/* give a server ack that the packet is lost/realm dead */
 	packet_ctl_nack(nackpacket);
-	LIST_DELETE(nackpacket);
+	Unacked_delete(nackpacket);
 	
 	zdbug((LOG_DEBUG, "rlm_rexmit: %s appears dead", realm->name));
 	realm->state = REALM_DEAD;
@@ -1088,12 +1085,11 @@ realm_sendit_auth(ZNotice_t *notice,
 		  int ack_to_sender)
 {
     char *buffer, *ptr;
-    caddr_t pack;
-    int buffer_len, hdrlen, offset, fragsize, ret_len, message_len;
+    int buffer_len, hdrlen, offset, fragsize, message_len;
     int origoffset, origlen;
     Code_t retval;
     Unacked *nacked;
-    char buf[1024], multi[64];
+    char multi[64];
     ZNotice_t partnotice, newnotice;
 
     offset = 0;
@@ -1237,7 +1233,7 @@ realm_sendit_auth(ZNotice_t *notice,
 	    nacked->timer = timer_set_rel(rexmit_times[0], rlm_rexmit, nacked);
 
 	    /* chain in */
-	    LIST_INSERT(&rlm_nacklist, nacked);
+	    Unacked_insert(&rlm_nacklist, nacked);
 
 	    offset += fragsize;
 	    
@@ -1286,7 +1282,7 @@ realm_sendit_auth(ZNotice_t *notice,
 	/* set a timer to retransmit */
 	nacked->timer = timer_set_rel(rexmit_times[0], rlm_rexmit, nacked);
 	/* chain in */
-	LIST_INSERT(&rlm_nacklist, nacked);
+	Unacked_insert(&rlm_nacklist, nacked);
     }
     return 0;
 }
@@ -1342,7 +1338,6 @@ ticket_retrieve(ZRealm *realm)
     int pid;
     krb5_ccache ccache;
     krb5_error_code result; 
-    krb5_auth_context authctx; 
     krb5_creds creds_in, *creds; 
     
     get_tgt();

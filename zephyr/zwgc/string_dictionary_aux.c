@@ -12,7 +12,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_string_dictionary_aux_c[] = "$Id$";
+static const char rcsid_string_dictionary_aux_c[] = "$Id$";
 #endif
 
 /*

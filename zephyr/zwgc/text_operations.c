@@ -47,7 +47,7 @@ lbreak(string *text_ptr,
     string result, whats_left;
     char *p = *text_ptr;
 
-    while (*p && !set[*p]) p++;
+    while (*p && !set[(int)*p]) p++;
 
     result = string_CreateFromData(*text_ptr, p - *text_ptr);
     whats_left = string_Copy(p);
@@ -64,7 +64,7 @@ lspan(string *text_ptr,
     string result, whats_left;
     char *p = *text_ptr;
 
-    while (*p && set[*p]) p++;
+    while (*p && set[(int)*p]) p++;
 
     result = string_CreateFromData(*text_ptr, p - *text_ptr);
     whats_left = string_Copy(p);
@@ -100,7 +100,7 @@ rbreak(string *text_ptr,
     string text = *text_ptr;
     char *p = text + strlen(text);
 
-    while (text<p && !set[p[-1]]) p--;
+    while (text<p && !set[(int)p[-1]]) p--;
 
     result = string_Copy(p);
     whats_left = string_CreateFromData(text, p - text);
@@ -118,7 +118,7 @@ rspan(string *text_ptr,
     string text = *text_ptr;
     char *p = text + strlen(text);
 
-    while (text<p && set[p[-1]]) p--;
+    while (text<p && set[(int)p[-1]]) p--;
 
     result = string_Copy(p);
     whats_left = string_CreateFromData(text, p - text);

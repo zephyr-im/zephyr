@@ -231,9 +231,9 @@ complete_get_fontst(Display *dpy,
    char *family,*fontname;
    XFontStruct *fontst;
 
-   if (family=get_family(style,substyle))
-     if (fontname=get_fontname(family,size,face))
-       if (fontst=get_fontst(dpy,fontname))
+   if ((family=get_family(style,substyle)))
+     if ((fontname=get_fontname(family,size,face)))
+       if ((fontst=get_fontst(dpy,fontname)))
 	 return(fontst);
    /* If any part fails, */
    return(NULL);
@@ -259,16 +259,16 @@ get_font(Display *dpy,
 
    if (size == SPECIAL_SIZE) {
       /* attempt to process @font explicitly */
-      if (fontst=get_fontst(dpy,substyle))
+      if ((fontst = get_fontst(dpy, substyle)))
 	return(fontst);
    } else {
-      if (family=get_family(style,substyle)) {
-	 if (fontname=get_fontname(family,size,face))
-	   if (fontst=get_fontst(dpy,fontname))
+      if ((family = get_family(style, substyle))) {
+	 if ((fontname = get_fontname(family, size,face)))
+	   if ((fontst = get_fontst(dpy, fontname)))
 	     return(fontst);
       } else {
-	 if (fontname=get_fontname(substyle,size,face))
-	   if (fontst=get_fontst(dpy,fontname))
+	 if ((fontname = get_fontname(substyle, size, face)))
+	   if ((fontst = get_fontst(dpy, fontname)))
 	     return(fontst);
       }
 
@@ -276,17 +276,17 @@ get_font(Display *dpy,
       of substyle being the fontfamily didn't happen, either. */
 
       fontst=NULL;
-      if (!(fontst=complete_get_fontst(dpy,style,"text",size,face)))
-	if (!(fontst=complete_get_fontst(dpy,"default",substyle,size,face)))
-	  if (!(fontst=complete_get_fontst(dpy,"default","text",size,face)))
-	    if (fontname=get_fontname("default",size,face))
-	      fontst=get_fontst(dpy,fontname);
+      if (!(fontst = complete_get_fontst(dpy,style,"text",size,face)))
+	if (!(fontst = complete_get_fontst(dpy,"default",substyle,size,face)))
+	  if (!(fontst = complete_get_fontst(dpy,"default","text",size,face)))
+	    if ((fontname = get_fontname("default",size,face)))
+	      fontst = get_fontst(dpy,fontname);
       if (fontst) return(fontst);
    }
 
    /* If all else fails, try fixed */
 
-   if (fontst=get_fontst(dpy,"fixed")) return(fontst);
+   if ((fontst=get_fontst(dpy,"fixed"))) return(fontst);
 
    /* No fonts available.  Die. */
 

@@ -137,7 +137,8 @@ main(int argc,
 		    if (cleanname[0] == '#' || cleanname[0] == '\0' ||
 			cleanname[0] == '\n')
 			continue;	/* ignore comment and empty lines */
-		    if (comment_ptr = strchr(cleanname, '#'))
+		    comment_ptr = strchr(cleanname, '#');
+		    if (comment_ptr)
 			*comment_ptr = '\0'; /* Ignore from # onwards */
 		    /* Get rid of old-style nol entries, just in case */
 		    cp = cleanname + strlen(cleanname) - 1;

@@ -12,7 +12,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_xmark_c[] = "$Id$";
+static const char rcsid_xmark_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>

@@ -37,6 +37,7 @@ static const char rcsid_xcut_c[] = "$Id$";
 #include "xmark.h"
 #include "error.h"
 #include "xrevstack.h"
+#include "X_driver.h"
 
 /*
  *

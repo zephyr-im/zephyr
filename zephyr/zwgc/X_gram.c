@@ -127,15 +127,18 @@ x_gram_init(Display *dpy)
        default_fgcolor = default_bgcolor;
        default_bgcolor = tc;
     }
-    if (temp = get_string_resource("foreground","Foreground"))
-      default_fgcolor = x_string_to_color(temp,default_fgcolor);
-    if (temp = get_string_resource("background","Background"))
-      default_bgcolor = x_string_to_color(temp,default_bgcolor);
+    temp = get_string_resource("foreground", "Foreground");
+    if (temp)
+      default_fgcolor = x_string_to_color(temp, default_fgcolor);
+    temp = get_string_resource("background", "Background");
+    if (temp)
+      default_bgcolor = x_string_to_color(temp, default_bgcolor);
     default_bordercolor = default_fgcolor;
-    if (temp = get_string_resource("borderColor","BorderColor"))
-      default_bordercolor = x_string_to_color(temp,default_bordercolor);
+    temp = get_string_resource("borderColor", "BorderColor");
+    if (temp)
+      default_bordercolor = x_string_to_color(temp, default_bordercolor);
 
-    temp = get_string_resource("minTimeToLive","MinTimeToLive");
+    temp = get_string_resource("minTimeToLive", "MinTimeToLive");
     if (temp && atoi(temp)>=0)
        ttl = atoi(temp);
 
@@ -302,15 +305,15 @@ x_gram_create(Display *dpy,
       xpos = WidthOfScreen(DefaultScreenOfDisplay(dpy)) - xpos - xsize
 	- 2*border_width;
     else if (xalign == 0)
-      xpos = (WidthOfScreen(DefaultScreenOfDisplay(dpy)) - xsize
-	      - 2*border_width)>>1 + xpos;
+      xpos = ((WidthOfScreen(DefaultScreenOfDisplay(dpy)) - xsize
+	       - 2*border_width)>>1) + xpos;
 
     if (yalign<0)
       ypos = HeightOfScreen(DefaultScreenOfDisplay(dpy)) - ypos - ysize
 	- 2*border_width;
     else if (yalign == 0)
-      ypos = (HeightOfScreen(DefaultScreenOfDisplay(dpy)) - ysize
-	      - 2*border_width)>>1 + ypos;
+      ypos = ((HeightOfScreen(DefaultScreenOfDisplay(dpy)) - ysize
+	       - 2*border_width)>>1) + ypos;
 
     /*
      * Create the window:

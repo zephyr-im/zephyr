@@ -211,7 +211,6 @@ timer_process(void)
     Timer *t;
     timer_proc func;
     void *arg;
-    int valid = 0;
 
     if (num_timers == 0 || heap[0]->abstime > time(NULL))
 	return;

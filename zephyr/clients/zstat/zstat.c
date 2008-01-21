@@ -15,6 +15,8 @@
 #include <internal.h>
 
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "zserver.h"
 
 #if !defined(lint) && !defined(SABER)
@@ -49,6 +51,8 @@ u_short srv_port;
 
 void usage(char *);
 void do_stat(char *);
+int srv_stat(char *);
+int hm_stat(char *, char *);
 
 RETSIGTYPE
 timeout(int ignored)
@@ -145,9 +149,6 @@ hm_stat(char *host,
 	time_t runtime;
 	struct tm *tim;
 	ZNotice_t notice;
-#ifdef _POSIX_VERSION
-	struct sigaction sa;
-#endif
 	
 	if ((inaddr.s_addr = inet_addr(host)) == (unsigned)(-1)) {
 	    if ((hp = gethostbyname(host)) == NULL) {

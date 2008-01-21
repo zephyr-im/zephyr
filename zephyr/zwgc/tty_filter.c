@@ -26,6 +26,10 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 /****************************************************************************/
 #ifdef HAVE_TERMCAP_H
 #include <termcap.h>
+#else
+#ifdef HAVE_TERM_H
+#include <term.h>
+#endif
 #endif
 
 #include "new_memory.h"
@@ -138,59 +142,65 @@ tty_filter_init(char *drivername,
 
 	tmp = tgetstr("pc", &p);
 	PC = (tmp) ? *tmp : 0;
-	if (tmp = tgetstr("md",&p)) {	/* bold ? */
+	tmp = tgetstr("md", &p);
+	if (tmp) {	/* bold ? */
 	    EXPAND("B.bold");
 	    tmp = tgetstr("me",&p);
 	    EXPAND("E.bold");
 	}
-	if (tmp = tgetstr("mr",&p)) {	/* reverse video? */
+	tmp = tgetstr("mr", &p);
+	if (tmp) {	/* reverse video? */
 	    EXPAND("B.rw");
-	    tmp = tgetstr("me",&p);
+	    tmp = tgetstr("me", &p);
 	    EXPAND("E.rw");
 	}
-	if (tmp = tgetstr("bl",&p)) {	/* Bell ? */
+	tmp = tgetstr("bl", &p);
+	if (tmp) {	/* Bell ? */
 	    EXPAND("B.bell");
 	    TD_SET("E.bell", NULL);
 	}
-	if (tmp = tgetstr("mb",&p)) {	/* Blink ? */
+	tmp = tgetstr("mb", &p);
+	if (tmp) {	/* Blink ? */
 	    EXPAND("B.blink");
-	    tmp = tgetstr("me",&p);
+	    tmp = tgetstr("me", &p);
 	    EXPAND("E.blink");
 	}
-	if (tmp = tgetstr("us",&p))	{ /* Underline ? */
+	tmp = tgetstr("us", &p);
+	if (tmp) {	/* Underline ? */
 	    EXPAND("B.u");
-	    tmp = tgetstr("ue",&p);
+	    tmp = tgetstr("ue", &p);
 	    EXPAND("E.u");
 	}
-	if (tmp = tgetstr("so",&p))	{ /* Standout ? */
+	tmp = tgetstr("so", &p);
+	if (tmp) {	/* Standout ? */
 	    EXPAND("B.so");
-	    tmp = tgetstr("se",&p);
+	    tmp = tgetstr("se", &p);
 	    EXPAND("E.so");
 	}
     }    
     /* Step 2: alias others to the nearest substitute */
     
     /* Bold = so, else rv, else ul */
-    if (NULL == string_dictionary_Lookup(termcap_dict,"B.bold")) {
-	if(b = string_dictionary_Lookup(termcap_dict,"B.so")) {
-	    TD_SET("B.bold",b->value);
+    if (NULL == string_dictionary_Lookup(termcap_dict, "B.bold")) {
+	if((b = string_dictionary_Lookup(termcap_dict, "B.so"))) {
+	    TD_SET("B.bold", b->value);
 	    TD_SET("E.bold",
-		   string_dictionary_Lookup(termcap_dict,"E.so")->value);
-	} else if (b = string_dictionary_Lookup(termcap_dict,"B.rv")) {
-	    TD_SET("B.bold",b->value);
+		   string_dictionary_Lookup(termcap_dict, "E.so")->value);
+	} else if ((b = string_dictionary_Lookup(termcap_dict, "B.rv"))) {
+	    TD_SET("B.bold", b->value);
 	    TD_SET("E.bold",
-		   string_dictionary_Lookup(termcap_dict,"E.rv")->value);
-	} else if (b = string_dictionary_Lookup(termcap_dict,"B.u")) {
-	    TD_SET("B.bold",b->value);
+		   string_dictionary_Lookup(termcap_dict, "E.rv")->value);
+	} else if ((b = string_dictionary_Lookup(termcap_dict,"B.u"))) {
+	    TD_SET("B.bold", b->value);
 	    TD_SET("E.bold",
-		   string_dictionary_Lookup(termcap_dict,"E.u")->value);
+		   string_dictionary_Lookup(termcap_dict, "E.u")->value);
 	}
     }
     
     /* Bell = ^G */
-    if (NULL == string_dictionary_Lookup(termcap_dict,"B.bell")) {
-	TD_SET("B.bell","\007");
-	TD_SET("E.bell",NULL);
+    if (NULL == string_dictionary_Lookup(termcap_dict, "B.bell")) {
+	TD_SET("B.bell", "\007");
+	TD_SET("E.bell", NULL);
     }
     
     /* Underline -> nothing */
@@ -486,10 +496,12 @@ tty_filter(string text,
 	    item = string_Copy("");
 	    
 	    if (info->bold_p && use_fonts) {
-		if (temp = string_dictionary_Fetch(termcap_dict, "B.bold"))
+		temp = string_dictionary_Fetch(termcap_dict, "B.bold");
+		if (temp)
 		  item = string_Concat2(item, temp);
 	    } else if (info->italic_p && use_fonts) {
-		if (temp = string_dictionary_Fetch(termcap_dict, "B.u"))
+		temp = string_dictionary_Fetch(termcap_dict, "B.u");
+		if (temp)
 		  item = string_Concat2(item, temp);
 	    }
 	    temp = string_CreateFromData(info->str, info->len);
@@ -497,10 +509,12 @@ tty_filter(string text,
 	    free(temp);
 
 	    if (info->bold_p && use_fonts) {
-		if (temp = string_dictionary_Fetch(termcap_dict, "E.bold"))
+		temp = string_dictionary_Fetch(termcap_dict, "E.bold");
+		if (temp)
 		  item = string_Concat2(item, temp);
 	    } else if (info->italic_p && use_fonts) {
-		if (temp = string_dictionary_Fetch(termcap_dict, "E.u"))
+		temp = string_dictionary_Fetch(termcap_dict, "E.u");
+		if (temp)
 		  item = string_Concat2(item, temp);
 	    }
 

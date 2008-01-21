@@ -118,7 +118,8 @@ xselSetProperties(Display *dpy,
    } else if (target==XA_STRING) {
       char *selected;
 
-      if (selected = getSelectedText()) {
+      selected = getSelectedText();
+      if (selected) {
 	 ChangeProp(XA_STRING,8,selected,string_Length(selected));
       } else {
 	 /* This should only happen if the pasting client is out of
@@ -179,8 +180,8 @@ xselProcessSelection(Display *dpy,
 #endif
 
    if ((ownership_start == CurrentTime) ||
-       ((selreq->time != CurrentTime) &&
-	(selreq->time < ownership_start) ||
+       (((selreq->time != CurrentTime) &&
+	 (selreq->time < ownership_start)) ||
 	((ownership_end != CurrentTime) &&
 	 (ownership_end > ownership_start) &&
 	 (selreq->time > ownership_end))))

@@ -470,7 +470,8 @@ handle_show(void)
     if (c!='\n')
       unput(c);
 
-    if (yylval.text = eat_til_endshow(start_line_no))
+    yylval.text = eat_til_endshow(start_line_no);
+    if (yylval.text)
       return(SHOW);
     else
       return(ERROR);
@@ -656,7 +657,8 @@ int yylex(void)
 	     * Handle constant strings:
 	     */
 	  case '"':
-	    if (yylval.text = eat_string(yylineno))
+	    yylval.text = eat_string(yylineno);
+	    if (yylval.text)
 	      return(STRING);
 	    else
 	      return(ERROR);

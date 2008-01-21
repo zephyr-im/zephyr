@@ -130,7 +130,7 @@ triplet_register(Client *client,
 
     /* Triplet not present in hash table, insert it. */
     triplet = triplet_alloc(dest->classname, dest->inst, dest->recip);
-    LIST_INSERT(&triplet_bucket[hashval], triplet);
+    Triplet_insert(&triplet_bucket[hashval], triplet);
     return insert_client(triplet, client, realm);
 }
 
@@ -156,7 +156,7 @@ triplet_deregister(Client *client,
 	    if (retval != ZERR_NONE)
 		return retval;
 	    if (*triplet->clients == NULL && !triplet->acl) {
-		LIST_DELETE(triplet);
+		Triplet_delete(triplet);
 		free_triplet(triplet);
 		return ZSRV_EMPTYCLASS;
 	    }
@@ -265,7 +265,7 @@ class_setup_restricted(char *class_name,
     if (!triplet)
 	return ENOMEM;
     triplet->acl = acl;
-    LIST_INSERT(&triplet_bucket[hashval], triplet);
+    Triplet_insert(&triplet_bucket[hashval], triplet);
     return ZERR_NONE;
 }
 
@@ -279,7 +279,6 @@ triplet_alloc(String *classname,
 	      String *recipient)
 {
     Triplet *triplet;
-    Client *clist;
 
     triplet = (Triplet *) malloc(sizeof(Triplet));
     if (!triplet)
