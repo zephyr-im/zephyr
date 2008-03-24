@@ -93,6 +93,14 @@ char *ZParseExposureLevel(text)
 	return(NULL);
 }
 
+/* lifted from lib/ZSendPkt.c wait_for_hmack, but waits for SERVACK instead */
+static int wait_for_srvack(notice, uid)
+    ZNotice_t *notice;
+    ZUnique_Id_t *uid;
+{
+    return (notice->z_kind == SERVACK && ZCompareUID(&notice->z_uid, uid));
+}
+
 Code_t Z_SendLocation(class, opcode, auth, format)
     char *class;
     char *opcode;
@@ -129,7 +137,7 @@ Code_t Z_SendLocation(class, opcode, auth, format)
     if ((retval = ZSendList(&notice, bptr, 3, auth)) != ZERR_NONE)
 	return (retval);
 
-    retval = Z_WaitForNotice (&retnotice, ZCompareUIDPred, &notice.z_uid,
+    retval = Z_WaitForNotice (&retnotice, wait_for_srvack, &notice.z_uid,
 			      SRV_TIMEOUT);
     if (retval != ZERR_NONE)
       return retval;
