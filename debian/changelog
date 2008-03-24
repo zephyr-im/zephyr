@@ -1,3 +1,12 @@
+zephyr (2.1.20070719.SNAPSHOT-2) unstable; urgency=low
+
+  * Z_SendLocation could be fooled by the USER_LOGIN message (which has
+    the same UID as the SERVACK we're really waiting for) arriving first.
+    Wait for the SERVACK explicitly, so the USER_LOGIN gets left on the
+    queue even if it arrives early. (thanks, Mark!)
+
+ -- Karl Ramm <kcr@debian.org>  Mon, 24 Mar 2008 19:52:35 -0400
+
 zephyr (2.1.20070719.SNAPSHOT-1) unstable; urgency=low
 
   * new upstream, Closes: #433603
