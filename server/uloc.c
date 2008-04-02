@@ -106,7 +106,7 @@ static int ul_equiv __P((Location *l1, Location *l2));
 
 static void free_loc __P((Location *loc));
 static void ulogin_locate_forward __P((ZNotice_t *notice,
-				       struct sockaddr_in *who, Realm *realm));
+				       struct sockaddr_in *who, ZRealm *realm));
 
 static Location *locations = NULL; /* ptr to first in array */
 static int num_locs = 0;	/* number in array */
@@ -282,7 +282,7 @@ ulocate_dispatch(notice, auth, who, server)
     Server *server;
 {
     char *cp;
-    Realm *realm;
+    ZRealm *realm;
 
     if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
 	/* we are talking to a current-rev client; send an ack */
@@ -1004,7 +1004,7 @@ static void
 ulogin_locate_forward(notice, who, realm)
     ZNotice_t *notice;
     struct sockaddr_in *who;
-    Realm *realm;
+    ZRealm *realm;
 {
     ZNotice_t lnotice;
 
@@ -1018,7 +1018,7 @@ void
 ulogin_realm_locate(notice, who, realm)
     ZNotice_t *notice;
     struct sockaddr_in *who;
-    Realm *realm;
+    ZRealm *realm;
 {
   char **answer;
   int found;

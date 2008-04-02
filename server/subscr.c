@@ -95,10 +95,10 @@ static char **subscr_marshal_subs __P((ZNotice_t *notice, int auth,
 				     int *found));
 static Destlist *subscr_copy_def_subs __P((char *person));
 static Code_t subscr_realm_sendit __P((Client *who, Destlist *subs,
-				       ZNotice_t *notice, Realm *realm));
+				       ZNotice_t *notice, ZRealm *realm));
 static void subscr_unsub_realms __P((Destlist *newsubs));
 static void subscr_unsub_sendit __P((Client *who, Destlist *subs, 
-				     Realm *realm));
+				     ZRealm *realm));
 static int cl_match  __P((Destlist*, Client *));
 
 static int defaults_read = 0;		/* set to 1 if the default subs
@@ -140,7 +140,7 @@ add_subscriptions(who, subs, notice, server)
     Code_t retval;
     Acl *acl;
     String *sender;
-    Realm *realm = NULL;
+    ZRealm *realm = NULL;
 
     if (!subs)
 	return ZERR_NONE;	/* no subscr -> no error */
@@ -333,7 +333,7 @@ subscr_cancel(sin, notice)
     struct sockaddr_in *sin;
     ZNotice_t *notice;
 {
-    Realm *realm;
+    ZRealm *realm;
     Client *who;
     Destlist *cancel_subs, *subs, *cancel_next, *client_subs, *client_next;
     Code_t retval;
@@ -396,7 +396,7 @@ Code_t
 subscr_realm_cancel(sin, notice, realm)
     struct sockaddr_in *sin;
     ZNotice_t *notice;
-    Realm *realm;
+    ZRealm *realm;
 {
     Client *who;
     Destlist *cancel_subs, *subs, *client_subs, *next, *next2;
@@ -452,7 +452,7 @@ subscr_cancel_client(client)
 {
     Destlist *subs, *next;
     Code_t retval;
-    Realm *realm;
+    ZRealm *realm;
 
 #if 0
     zdbug((LOG_DEBUG,"subscr_cancel_client %s",
@@ -1047,7 +1047,7 @@ subscr_realm_sendit(who, subs, notice, realm)
     Client *who;
     Destlist *subs;
     ZNotice_t *notice;
-    Realm *realm;
+    ZRealm *realm;
 {
   ZNotice_t snotice;
   char *pack;
@@ -1132,7 +1132,7 @@ subscr_realm_sendit(who, subs, notice, realm)
 static Code_t
 subscr_add_raw(client, realm, newsubs)
     Client *client;
-    Realm *realm;
+    ZRealm *realm;
     Destlist *newsubs;
 {
   Destlist *subs, *subs2, *subs3, **head;
@@ -1162,7 +1162,7 @@ subscr_add_raw(client, realm, newsubs)
 	}
     } else {
       if (!realm) {
-	Realm *remrealm = 
+	ZRealm *remrealm = 
 	  realm_get_realm_by_name(subs->dest.recip->string + 1);
 	if (remrealm) {
 	  Destlist *sub = (Destlist *) malloc(sizeof(Destlist));
@@ -1190,7 +1190,7 @@ subscr_add_raw(client, realm, newsubs)
 /* Called from bdump_recv_loop to decapsulate realm subs */
 Code_t
 subscr_realm(realm, notice)
-    Realm *realm;
+    ZRealm *realm;
     ZNotice_t *notice;
 {
         Destlist  *newsubs;
@@ -1210,7 +1210,7 @@ static void
 subscr_unsub_sendit(who, subs, realm)
     Client *who;
     Destlist *subs;
-    Realm *realm;
+    ZRealm *realm;
 {
   ZNotice_t unotice;
   Code_t retval;
@@ -1275,7 +1275,7 @@ subscr_unsub_sendit(who, subs, realm)
 /* Called from bump_send_loop by way of realm_send_realms */
 Code_t
 subscr_send_realm_subs(realm)
-    Realm *realm;
+    ZRealm *realm;
 {
   int i = 0;
   Destlist *subs, *next;
@@ -1342,7 +1342,7 @@ subscr_send_realm_subs(realm)
 
 Code_t
 subscr_realm_subs(realm)
-    Realm *realm;
+    ZRealm *realm;
 {
   int i = 0;
   Destlist *subs, *next;
@@ -1431,7 +1431,7 @@ subscr_check_foreign_subs(notice, who, server, realm, newsubs)
     ZNotice_t *notice;
     struct sockaddr_in *who;
     Server *server;
-    Realm *realm;
+    ZRealm *realm;
     Destlist *newsubs;
 {
     Destlist *subs, *subs2, *next;
@@ -1470,7 +1470,7 @@ subscr_check_foreign_subs(notice, who, server, realm, newsubs)
 
     found = 0;
     for (subs = newsubs; subs; subs = next) {
-	Realm *rlm;
+	ZRealm *rlm;
 	next=subs->next;
 	if (subs->dest.recip->string[0] != '\0') {
 	  rlm = realm_which_realm(who);
@@ -1566,7 +1566,7 @@ Code_t subscr_foreign_user(notice, who, server, realm)
     ZNotice_t *notice;
     struct sockaddr_in *who;
     Server *server;
-    Realm *realm;
+    ZRealm *realm;
 {
   Destlist *newsubs, *temp;
   Acl *acl;
@@ -1640,7 +1640,7 @@ Code_t subscr_foreign_user(notice, who, server, realm)
         temp->dest.recip = make_string(rlm_recipient, 0);
     }
     
-    status = subscr_add_raw(client, (Realm *)0, newsubs);
+    status = subscr_add_raw(client, (ZRealm *)0, newsubs);
   } else if (!strcmp(snotice.z_opcode, REALM_REQ_SUBSCRIBE)) {
     zdbug((LOG_DEBUG, "subscr_foreign_user REQ %s/%s", tp0, tp1));
     status = subscr_check_foreign_subs(notice, who, server, realm, newsubs);

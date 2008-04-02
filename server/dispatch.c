@@ -134,7 +134,7 @@ handle_packet()
     int authentic;		/* authentic flag */
     Pending *pending;		/* pending packet */
     int from_server;		/* packet is from another server */
-    Realm *realm;		/* foreign realm ptr */
+    ZRealm *realm;		/* foreign realm ptr */
 #ifdef DEBUG
     static int first_time = 1;
 #endif
@@ -251,7 +251,7 @@ dispatch(notice, auth, who, from_server)
     String *notice_class;
     struct sockaddr_in who2;
     int authflag;
-    Realm *realm;
+    ZRealm *realm;
     char *cp;
 #ifdef DEBUG
     char dbg_buf[BUFSIZ];
@@ -353,7 +353,7 @@ sendit(notice, auth, who, external)
 
     class = make_string(notice->z_class, 1);
     if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient)) {
-      Realm *rlm;
+      ZRealm *rlm;
 
       acl = class_get_acl(class);
       if (acl != NULL) {
@@ -1095,7 +1095,7 @@ control_dispatch(notice, auth, who, server)
     Client *client;
     Code_t retval;
     int wantdefs;
-    Realm *realm;
+    ZRealm *realm;
     struct sockaddr_in newwho;
 
     /*

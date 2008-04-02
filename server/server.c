@@ -882,7 +882,7 @@ send_stats(who)
     char **responses;
     int num_resp;
     char *vers, *pkts, *upt;
-    Realm *realm;
+    ZRealm *realm;
 
     int extrafields = 0;
 #define	NUM_FIXED 3			/* 3 fixed fields, plus server info */

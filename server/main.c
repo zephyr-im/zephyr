@@ -637,7 +637,7 @@ reap(sig)
 {
     int pid, i = 0;
     int oerrno = errno;
-    Realm *rlm;
+    ZRealm *rlm;
 #ifdef _POSIX_VERSION
     int waitb;
 #else

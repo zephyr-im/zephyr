@@ -67,9 +67,9 @@ typedef struct {
 
 typedef struct _Destination Destination;
 typedef struct _Destlist Destlist;
-typedef struct _Realm Realm;
-typedef struct _Realmname Realmname;
-typedef enum _Realm_state Realm_state;
+typedef struct _ZRealm ZRealm;
+typedef struct _ZRealmname ZRealmname;
+typedef enum _ZRealm_state ZRealm_state;
 typedef struct _Client Client;
 typedef struct _Triplet Triplet;
 typedef enum _Server_state Server_state;
@@ -90,14 +90,14 @@ struct _Destlist {
     struct _Destlist	*next, **prev_p;
 };
 
-enum _Realm_state {
+enum _ZRealm_state {
     REALM_UP,				/* Realm is up */
     REALM_TARDY,			/* Realm due for a hello XXX */
     REALM_DEAD,				/* Realm is considered dead */
     REALM_STARTING			/* Realm is between dead and up */
 };
 
-struct _Realm {
+struct _ZRealm {
     char name[REALM_SZ];
     int count;
     struct sockaddr_in *addrs;
@@ -107,10 +107,10 @@ struct _Realm {
     Client *client;                     
     int child_pid;
     int have_tkt;
-    Realm_state state;
+    ZRealm_state state;
 };
 
-struct _Realmname {
+struct _ZRealmname {
     char name[REALM_SZ];
     char **servers;
     int nused;
@@ -126,7 +126,7 @@ struct _Client {
     String		*principal;	/* krb principal of user */
     int			last_send;	/* Counter for last sent packet. */
     time_t		last_ack;	/* Time of last received ack */
-    Realm		*realm;
+    ZRealm		*realm;
     struct _Client	*next, **prev_p;
 };
 
@@ -215,9 +215,9 @@ int get_tgt __P((void));
 extern String *class_control, *class_admin, *class_hm;
 extern String *class_ulogin, *class_ulocate;
 int ZDest_eq __P((Destination *d1, Destination *d2));
-Code_t triplet_register __P((Client *client, Destination *dest, Realm *realm));
+Code_t triplet_register __P((Client *client, Destination *dest, ZRealm *realm));
 Code_t triplet_deregister __P((Client *client, Destination *dest,
-			       Realm *realm));
+			       ZRealm *realm));
 Code_t class_restrict __P((char *class, Acl *acl));
 Code_t class_setup_restricted __P((char *class, Acl *acl));
 Client **triplet_lookup __P((Destination *dest));
@@ -297,7 +297,7 @@ Code_t server_adispatch __P((ZNotice_t *notice, int auth,
 			     struct sockaddr_in *who, Server *server));
 
 /* found in subscr.c */
-Code_t subscr_foreign_user __P((ZNotice_t *, struct sockaddr_in *, Server *, Realm *));
+Code_t subscr_foreign_user __P((ZNotice_t *, struct sockaddr_in *, Server *, ZRealm *));
 Code_t subscr_cancel __P((struct sockaddr_in *sin, ZNotice_t *notice));
 Code_t subscr_subscribe __P((Client *who, ZNotice_t *notice, Server *server));
 Code_t subscr_send_subs __P((Client *client));
@@ -321,16 +321,16 @@ Code_t uloc_send_locations __P((void));
 /* found in realm.c */
 int realm_sender_in_realm __P((char *realm, char *sender));
 int realm_bound_for_realm __P((char *realm, char *recip));
-Realm *realm_which_realm __P((struct sockaddr_in *who));
-Realm *realm_get_realm_by_name __P((char *name));
-Realm *realm_get_realm_by_pid __P((int));
-void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, Realm *, int);
+ZRealm *realm_which_realm __P((struct sockaddr_in *who));
+ZRealm *realm_get_realm_by_name __P((char *name));
+ZRealm *realm_get_realm_by_pid __P((int));
+void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, ZRealm *, int);
 char *realm_expand_realm(char *);
 void realm_init __P((void));
-Code_t ZCheckRealmAuthentication __P((ZNotice_t *, struct sockaddr_in *,
+Code_t ZCheckZRealmAuthentication __P((ZNotice_t *, struct sockaddr_in *,
 				      char *));
 Code_t realm_control_dispatch __P((ZNotice_t *, int, struct sockaddr_in *,
-				   Server *, Realm *));
+				   Server *, ZRealm *));
 void realm_shutdown __P((void));
 void realm_deathgram __P((Server *));
 
@@ -387,7 +387,7 @@ extern int nservers;			/* number of other servers*/
 extern String *empty;
 extern String *wildcard_instance;
 
-extern Realm *otherrealms;
+extern ZRealm *otherrealms;
 extern int nrealms;
 
 extern struct in_addr my_addr;	/* my inet address */

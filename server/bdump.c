@@ -775,7 +775,7 @@ bdump_recv_loop(server)
     char *cp;
     C_Block cblock;
 #endif /* HAVE_KRB4 */
-    Realm *realm = NULL;
+    ZRealm *realm = NULL;
  
 #if 1
     zdbug((LOG_DEBUG, "bdump recv loop"));
