@@ -113,7 +113,7 @@ main(argc,argv)
 
 	if (!(hent = gethostbyname(ourhost))) {
 		fprintf(stderr,"%s: Can't resolve hostname %s; %s may be "
-			"wrong in subscriptions",argv[0],ourhost,
+			"wrong in subscriptions\n",argv[0],ourhost,
 			TOKEN_CANONNAME);
 		strncpy(ourhostcanon,ourhost,sizeof(ourhostcanon)-1);
 	} else
