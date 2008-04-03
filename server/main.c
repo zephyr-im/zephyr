@@ -91,9 +91,7 @@ unsigned short hm_srv_port;		/* host manager server sending port */
 char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 
-#ifndef HAVE_HESIOD
 char list_file[128];
-#endif
 #ifdef HAVE_KRB4
 char srvtab_file[128];
 char my_realm[REALM_SZ];
@@ -139,9 +137,7 @@ main(argc, argv)
     extern char *optarg;
     extern int optind;
 
-#ifndef HAVE_HESIOD
     sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, SERVER_LIST_FILE);
-#endif
 #ifdef HAVE_KRB4
     sprintf(srvtab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_SRVTAB);
     sprintf(tkt_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_TKFILE);

@@ -92,10 +92,9 @@ static Code_t server_register();
 #endif
 
 static struct in_addr *get_server_addrs __P((int *number));
-#ifndef HAVE_HESIOD
 static char **get_server_list __P((char *file));
+static char **get_single_server __P((void));
 static void free_server_list __P((char **list));
-#endif
 
 static Unacked *srv_nacktab[SRV_NACKTAB_HASHSIZE];
 Server *otherservers;		/* points to an array of the known
@@ -981,22 +980,25 @@ get_server_addrs(number)
     int *number; /* RETURN */
 {
     int i;
-    char **server_hosts;
+    char **server_hosts = NULL;
+    char **server_hosts_free = NULL;
     char **cpp;
     struct in_addr *addrs;
     struct in_addr *addr;
     struct hostent *hp;
 
-#ifdef HAVE_HESIOD
-    /* get the names from Hesiod */
-    server_hosts = hes_resolve("zephyr","sloc");
-    if (!server_hosts)
-	return NULL;
-#else
     server_hosts = get_server_list(list_file);
+    server_hosts_free = server_hosts;
+#ifdef HAVE_HESIOD
+    if (!server_hosts)
+	server_hosts = hes_resolve("zephyr","sloc");
+#endif
+    if (!server_hosts) {
+	server_hosts = get_single_server();
+	server_hosts_free = server_hosts;
+    }
     if (!server_hosts)
 	return NULL;
-#endif
     /* count up */
     i = 0;
     for (cpp = server_hosts; *cpp; cpp++)
@@ -1015,13 +1017,10 @@ get_server_addrs(number)
 	}
     }
     *number = i;
-#ifndef HAVE_HESIOD
-    free_server_list(server_hosts);
-#endif
+    if (server_hosts_free)
+      free_server_list(server_hosts_free);
     return addrs;
 }
-
-#ifndef HAVE_HESIOD
 
 static int nhosts = 0;
 
@@ -1040,36 +1039,55 @@ get_server_list(file)
     int nused = 0;
     char *newline;
 
+    fp = fopen(file, "r");
+    if (!fp)
+    	return NULL;
     /* start with 16, realloc if necessary */
     nhosts = 16;
     ret_list = (char **) malloc(nhosts * sizeof(char *));
+    if (!ret_list)
+    	return NULL;
 
-    fp = fopen(file, "r");
-    if (fp) {
-	while (fgets(buf, MAXHOSTNAMELEN, fp)) {
-	    /* nuke the newline, being careful not to overrun
-	       the buffer searching for it with strlen() */
-	    buf[MAXHOSTNAMELEN - 1] = '\0';
-	    newline = strchr(buf, '\n');
-	    if (newline)
-		*newline = '\0';
+    while (fgets(buf, MAXHOSTNAMELEN, fp)) {
+	/* nuke the newline, being careful not to overrun
+	   the buffer searching for it with strlen() */
+	buf[MAXHOSTNAMELEN - 1] = '\0';
+	newline = strchr(buf, '\n');
+	if (newline)
+	    *newline = '\0';
 
-	    if (nused + 1 >= nhosts) {
-		/* get more pointer space if necessary */
-		/* +1 to leave room for null pointer */
-		ret_list = (char **) realloc(ret_list, nhosts * 2);
-		nhosts = nhosts * 2;
-	    }
-	    ret_list[nused++] = strsave(buf);
-	}
-	fclose(fp);
-    } else {
-	if (gethostname(buf, sizeof(buf)) < 0) {
-	    free(ret_list);
-	    return NULL;
+	if (nused + 1 >= nhosts) {
+	    /* get more pointer space if necessary */
+	    /* +1 to leave room for null pointer */
+	    ret_list = (char **) realloc(ret_list, nhosts * 2);
+	    nhosts = nhosts * 2;
 	}
 	ret_list[nused++] = strsave(buf);
     }
+    fclose(fp);
+    if (!nused) {
+    	free(ret_list);
+	return NULL;
+    }
+    ret_list[nused] = NULL;
+    return ret_list;
+}
+
+static char **
+get_single_server()
+{
+    char buf[MAXHOSTNAMELEN];
+    char **ret_list;
+    int nused = 0;
+    nhosts = 2;
+    ret_list = (char **) malloc(nhosts * sizeof(char *));
+    if (!ret_list)
+    	return NULL;
+    if (gethostname(buf, sizeof(buf)) < 0) {
+	free(ret_list);
+	return NULL;
+    }
+    ret_list[nused++] = strsave(buf);
     ret_list[nused] = NULL;
     return ret_list;
 }
@@ -1090,7 +1108,6 @@ free_server_list(list)
     free(orig_list);
     return;
 }
-#endif
 
 /*
  * initialize the server structure for address addr, and set a timer
