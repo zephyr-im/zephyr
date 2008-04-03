@@ -18,6 +18,10 @@
 
 #define SERVER_LIST_FILE	"server.list"
 #define REALM_LIST_FILE		"realm.list"
+#ifdef HAVE_KRB5
+#define ZEPHYR_KEYTAB		"krb5.keytab"
+#define ZEPHYR_TK5FILE		"z5tkts"
+#endif
 #ifdef HAVE_KRB4
 #define ZEPHYR_SRVTAB		"srvtab"
 #define ZEPHYR_TKFILE		"ztkts"

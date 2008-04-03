@@ -209,11 +209,22 @@ Code_t ZParseNotice(buffer, len, notice)
     else
 	notice->z_default_format = "";
 	
-    if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
-	BAD_PACKET;
-    notice->z_checksum = temp;
-    numfields--;
-    ptr = next_field(ptr, end);
+    if (numfields && ptr < end) {
+      notice->z_ascii_checksum = ptr;
+
+      if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
+	notice->z_checksum = 0;
+      else
+	notice->z_checksum = temp;
+
+      numfields--;
+      ptr = next_field (ptr, end);
+    }
+    else 
+      {
+	notice->z_ascii_checksum = "";
+	notice->z_checksum = 0;
+      }
 
     if (numfields && ptr < end) {
 	notice->z_multinotice = ptr;

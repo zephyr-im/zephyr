@@ -92,6 +92,10 @@ char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 
 char list_file[128];
+#ifdef HAVE_KRB5
+char keytab_file[128];
+static char tkt5_file[256];
+#endif
 #ifdef HAVE_KRB4
 char srvtab_file[128];
 char my_realm[REALM_SZ];
@@ -120,6 +124,25 @@ static int nofork;
 struct in_addr my_addr;
 char *bdump_version = "1.2";
 
+#ifdef HAVE_KRB5
+int bdump_auth_proto = 5;
+#else /* HAVE_KRB5 */
+#ifdef HAVE_KRB4
+int bdump_auth_proto = 4;
+#else /* HAVE_KRB4 */
+int bdump_auth_proto = 0;
+#endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB5 */
+
+#ifdef HAVE_KRB5
+krb5_ccache Z_krb5_ccache;
+krb5_keyblock *__Zephyr_keyblock;
+#else
+#ifdef HAVE_KRB4
+C_Block __Zephyr_session;
+#endif
+#endif
+
 int
 main(argc, argv)
     int argc;
@@ -142,6 +165,10 @@ main(argc, argv)
     sprintf(srvtab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_SRVTAB);
     sprintf(tkt_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_TKFILE);
 #endif
+#ifdef HAVE_KRB5
+    sprintf(keytab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_KEYTAB);
+    sprintf(tkt5_file, "FILE:%s/zephyr/%s", SYSCONFDIR, ZEPHYR_TK5FILE);
+#endif
     sprintf(acl_dir, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_ACL_DIR);
     sprintf(subs_file, "%s/zephyr/%s", SYSCONFDIR, DEFAULT_SUBS_FILE);
 
@@ -150,7 +177,7 @@ main(argc, argv)
     programname = (programname) ? programname + 1 : argv[0];
 
     /* process arguments */
-    while ((optchar = getopt(argc, argv, "dsnv:f:k:")) != EOF) {
+    while ((optchar = getopt(argc, argv, "dsnv4f:k:")) != EOF) {
 	switch(optchar) {
 	  case 'd':
 	    zdebug = 1;
@@ -174,6 +201,9 @@ main(argc, argv)
 	  case 'f':
 	    init_from_dump = 0;
 	    dumpfile = optarg;
+	    break;
+	case '4':
+	    bdump_auth_proto = 4;
 	    break;
 	  case '?':
 	  default:
@@ -293,9 +323,6 @@ main(argc, argv)
     /* Reinitialize t_local now that initialization is done. */
     gettimeofday(&t_local, NULL);
     uptime = NOW;
-#ifdef HAVE_KRB4
-    timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
-#endif
 
     realm_wakeup();
 #ifdef DEBUG_MALLOC
@@ -381,6 +408,20 @@ initialize()
     
     ZSetServerState(1);
     ZInitialize();		/* set up the library */
+#ifdef HAVE_KRB5
+    krb5_cc_resolve(Z_krb5_ctx, tkt5_file, &Z_krb5_ccache);
+#ifdef HAVE_KRB5_CC_SET_DEFAULT_NAME
+    krb5_cc_set_default_name(Z_krb5_ctx, tkt5_file);
+#else
+    {
+	/* Hack to make krb5_cc_default do something reasonable */
+	char *env=(char *)malloc(strlen(tkt5_file)+12);
+	if (!env) return(1);
+	sprintf(env, "KRB5CCNAME=%s", tkt5_file);
+	putenv(env);
+    }
+#endif
+#endif
 #ifdef HAVE_KRB4
     /* Override what Zinitialize set for ZGetRealm() */
     if (*my_realm) 

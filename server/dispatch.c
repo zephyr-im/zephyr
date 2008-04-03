@@ -14,6 +14,7 @@
 #include <zephyr/mit-copyright.h>
 #include "zserver.h"
 #include <sys/socket.h>
+#include <com_err.h>
 
 #ifndef lint
 #ifndef SABER
@@ -582,14 +583,23 @@ xmit(notice, dest, auth, client)
 				   we are distributing authentic and
 				   we have a pointer to auth info
 				   */
-#ifdef HAVE_KRB4
-	retval = ZFormatAuthenticNotice(notice, noticepack, packlen, &packlen,
-					client->session_key);
-	if (retval != ZERR_NONE) {
-	    syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
-	    free(noticepack);
-	    return;
-	}
+#ifdef HAVE_KRB5
+         retval = ZFormatAuthenticNoticeV5(notice, noticepack, packlen,
+                                           &packlen, client->session_keyblock);
+         if (retval != ZERR_NONE) {
+              syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
+              free(noticepack);
+              return;
+         }
+#else
+#if defined(HAVE_KRB4)
+         retval = ZFormatAuthenticNotice(notice, noticepack, packlen,
+                                           &packlen, client->session_key);
+         if (retval != ZERR_NONE) {
+              syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
+              free(noticepack);
+              return;
+         }
 #else /* !HAVE_KRB4 */
 	notice->z_auth = 1;
 	retval = ZFormatSmallRawNotice(notice, noticepack, &packlen);
@@ -599,6 +609,7 @@ xmit(notice, dest, auth, client)
 	    return;
 	}
 #endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB5 */
     } else {
 	notice->z_auth = 0;
 	notice->z_authent_len = 0;
@@ -1126,9 +1137,27 @@ control_dispatch(notice, auth, who, server)
 		clt_ack(notice, who, AUTH_FAILED);
 	    return ZERR_NONE;
 	}
+#ifdef HAVE_KRB5
+        if (client->session_keyblock) {
+             krb5_free_keyblock_contents(Z_krb5_ctx, client->session_keyblock);
+             retval = krb5_copy_keyblock_contents(Z_krb5_ctx, ZGetSession(),
+                                         client->session_keyblock);
+        } else {
+             retval = krb5_copy_keyblock(Z_krb5_ctx, ZGetSession(), 
+                                &client->session_keyblock);
+        }
+        if (retval) {
+             syslog(LOG_WARNING, "keyblock copy failed in subscr: %s",
+                    error_message(retval));
+             if (server == me_server)
+                  nack(notice, who);
+             return ZERR_NONE;
+        }
+#else
 #ifdef HAVE_KRB4
 	/* in case it's changed */
 	memcpy(client->session_key, ZGetSession(), sizeof(C_Block));
+#endif
 #endif
 	retval = subscr_subscribe(client, notice, server);
 	if (retval != ZERR_NONE) {

@@ -17,6 +17,9 @@
 #include <zephyr/mit-copyright.h>
 
 #include <internal.h>
+
+#include <com_err.h>
+
 #include <arpa/inet.h>
 
 #include "zsrv_err.h"
@@ -28,10 +31,21 @@
 #include "access.h"
 #include "acl.h"
 
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB5) || defined(HAVE_KRB4)
 /* Kerberos-specific library interfaces used only by the server. */
+#ifdef HAVE_KRB5
+extern krb5_keyblock *__Zephyr_keyblock;
+#define ZGetSession() (__Zephyr_keyblock)
+void ZSetSession(krb5_keyblock *keyblock);
+Code_t ZFormatAuthenticNoticeV5 __P((ZNotice_t*, char*, int, int*, krb5_keyblock *));
+krb5_error_code Z_krb5_init_keyblock(krb5_context, krb5_enctype, size_t,
+        krb5_keyblock **);
+#else
 extern C_Block __Zephyr_session;
 #define ZGetSession() (__Zephyr_session)
+#endif
+void ZSetSessionDES(C_Block *key);
+
 Code_t ZFormatAuthenticNotice __P((ZNotice_t*, char*, int, int*, C_Block));
 #endif
 
@@ -120,9 +134,13 @@ struct _ZRealmname {
 struct _Client {
     struct sockaddr_in	addr;		/* ipaddr/port of client */
     Destlist		*subs	;	/* subscriptions */
+#ifdef HAVE_KRB5
+    krb5_keyblock       *session_keyblock;
+#else
 #ifdef HAVE_KRB4
     C_Block		session_key;	/* session key for this client */
 #endif /* HAVE_KRB4 */
+#endif
     String		*principal;	/* krb principal of user */
     int			last_send;	/* Counter for last sent packet. */
     time_t		last_ack;	/* Time of last received ack */
@@ -268,9 +286,6 @@ void sweep_ticket_hash_table __P((void *));
 #ifndef NOENCRYPTION
 Sched *check_key_sched_cache __P((des_cblock key));
 void add_to_key_sched_cache __P((des_cblock key, Sched *sched));
-int krb_set_key __P((char *key, int cvt));
-int krb_rd_req __P((KTEXT authent, char *service, char *instance,
-		    unsigned KRB_INT32 from_addr, AUTH_DAT *ad, char *fn));
 int krb_find_ticket __P((KTEXT authent, KTEXT ticket));
 int krb_get_lrealm __P((char *r, int n));
 #endif
@@ -355,6 +370,10 @@ extern int nfds;			/* number to look at in select() */
 extern int zdebug;
 extern char myname[];			/* domain name of this host */
 extern char list_file[];
+#ifdef HAVE_KRB5
+extern char keytab_file[];
+extern krb5_ccache Z_krb5_ccache;
+#endif
 #ifdef HAVE_KRB4
 extern char srvtab_file[];
 extern char my_realm[];

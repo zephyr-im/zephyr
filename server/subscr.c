@@ -187,18 +187,13 @@ add_subscriptions(who, subs, notice, server)
 	    }
 	}
 	if (realm && !bdumping) {
-	    if (server && server == me_server) {
-	        retval = subscr_realm_sendit(who, subs, notice, realm);
-	        if (retval != ZERR_NONE) {
-		    free_subscriptions(subs);
-		    free_string(sender);
-		    return(retval);
-		} else {
-		    /* free this one, will get from ADD */
-		    free_subscription(subs);
-		}
+	    retval = subscr_realm_sendit(who, subs, notice, realm);
+	    if (retval != ZERR_NONE) {
+		free_subscription(subs);
+		continue; /* the for loop */
 	    } else {
-	            /* Indicates we leaked traffic back to our realm */
+		/* Indicates we leaked traffic back to our realm */
+		free_subscription(subs); /* free this one, wil get from ADD */
 	    }
 	} else {
 	  retval = triplet_register(who, &subs->dest, NULL);
@@ -842,10 +837,15 @@ subscr_send_subs(client)
 {
     int i = 0;
     Destlist *subs;
+#ifdef HAVE_KRB5
+    char buf[512];
+    char *bufp;
+#else
 #ifdef HAVE_KRB4
     char buf[512];
     C_Block cblock;
 #endif /* HAVE_KRB4 */
+#endif
     char buf2[512];
     char *list[7 * NUM_FIELDS];
     int num = 0;
@@ -858,14 +858,45 @@ subscr_send_subs(client)
 
     list[num++] = buf2;
 
+#ifdef HAVE_KRB5
+#ifdef HAVE_KRB4 /* XXX make this optional for server transition time */
+    if (Z_enctype(client->session_keyblock) == ENCTYPE_DES_CBC_CRC) {
+	bufp = malloc(Z_keylen(client->session_keyblock));
+	if (bufp == NULL) {
+	    syslog(LOG_WARNING, "subscr_send_subs: cannot allocate memory for DES keyblock: %m");
+	    return errno;
+	}
+	des_ecb_encrypt(Z_keydata(client->session_keyblock), bufp, serv_ksched.s, DES_ENCRYPT);
+	retval = ZMakeAscii(buf, sizeof(buf), bufp, Z_keylen(client->session_keyblock));
+    } else {
+#endif
+	bufp = malloc(Z_keylen(client->session_keyblock) + 8); /* + enctype
+								+ length */
+	if (bufp == NULL) {
+	    syslog(LOG_WARNING, "subscr_send_subs: cannot allocate memory for keyblock: %m");
+	    return errno;
+	}
+	*(krb5_enctype *)&bufp[0] = htonl(Z_enctype(client->session_keyblock));
+	*(u_int32_t *)&bufp[4] = htonl(Z_keylen(client->session_keyblock));
+	memcpy(&bufp[8], Z_keydata(client->session_keyblock), Z_keylen(client->session_keyblock));
+
+	retval = ZMakeZcode(buf, sizeof(buf), bufp, Z_keylen(client->session_keyblock) + 8);
+#ifdef HAVE_KRB4
+    }
+#endif /* HAVE_KRB4 */
+#else /* HAVE_KRB5 */
 #ifdef HAVE_KRB4
 #ifdef NOENCRYPTION
     memcpy(cblock, client->session_key, sizeof(C_Block));
-#else
+#else /* NOENCRYPTION */
     des_ecb_encrypt(client->session_key, cblock, serv_ksched.s, DES_ENCRYPT);
-#endif
+#endif /* NOENCRYPTION */
 
     retval = ZMakeAscii(buf, sizeof(buf), cblock, sizeof(C_Block));
+#endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB5 */    
+
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     if (retval != ZERR_NONE) {
 #if 0
 	zdbug((LOG_DEBUG,"zmakeascii failed: %s", error_message(retval)));
@@ -876,7 +907,7 @@ subscr_send_subs(client)
 	zdbug((LOG_DEBUG, "cblock %s", buf));
 #endif
     }		
-#endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB4 || HAVE_KRB5*/
     retval = bdump_send_list_tcp(SERVACK, &client->addr, ZEPHYR_ADMIN_CLASS,
 				 num > 1 ? "CBLOCK" : "", ADMIN_NEWCLT,
 				 client->principal->string, "", list, num);

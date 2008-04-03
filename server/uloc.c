@@ -241,7 +241,12 @@ ulogin_dispatch(notice, auth, who, server)
 		login_sendit(notice, auth, who, 1);
 	}
     } else {
-	syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
+	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
+	    zdbug((LOG_DEBUG, "ulog opcode from unknown foreign realm %s", 
+		   notice->z_opcode));
+	} else {
+	    syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
+	}
 	if (server == me_server)
 	    nack(notice, who);
 	return ZERR_NONE;
@@ -441,6 +446,7 @@ uloc_send_locations()
 	  default:
 	    syslog(LOG_ERR,"broken location state %s/%d",
 		   loc->user->string, (int) loc->exposure);
+	    exposure_level = EXPOSE_OPSTAFF;
 	    break;
 	}
 	retval = bdump_send_list_tcp(ACKED, &loc->addr, LOGIN_CLASS,
@@ -1085,6 +1091,11 @@ ulogin_relay_locate(notice, who)
   lnotice = *notice;
   lnotice.z_opcode = LOCATE_LOCATE;
   lnotice.z_kind = ACKED;
+  lnotice.z_auth = 0;
+  lnotice.z_authent_len = 0;
+  lnotice.z_ascii_authent = "";
+  lnotice.z_checksum = 0;
+  lnotice.z_ascii_checksum = "";
   
   if ((retval = ZFormatRawNotice(&lnotice, &pack, &packlen)) != ZERR_NONE) {
     syslog(LOG_WARNING, "ulog_relay_loc format: %s",

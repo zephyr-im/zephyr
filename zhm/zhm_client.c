@@ -74,7 +74,7 @@ void transmission_tower(notice, packet, pak_len)
 	    Zperr(ret);
 	    com_err("hm", ret, "setting destination");
 	}
-	if ((ret = send_outgoing(notice)) != ZERR_NONE) {
+	if ((ret = ZSendPacket(packet, pak_len, 0)) != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("hm", ret, "while sending raw notice");
 	}

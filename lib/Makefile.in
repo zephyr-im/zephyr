@@ -37,7 +37,8 @@ OBJS =	zephyr_err.lo ZAsyncLocate.lo ZCkAuth.lo ZCkIfNot.lo ZClosePort.lo \
 	ZPeekIfNot.lo ZPeekNot.lo ZPeekPkt.lo ZPending.lo ZReadAscii.lo \
 	ZRecvNot.lo ZRecvPkt.lo ZRetSubs.lo ZSendList.lo ZSendNot.lo \
 	ZSendPkt.lo ZSendRaw.lo ZSendRLst.lo ZSetDest.lo ZSetFD.lo ZSetSrv.lo \
-	ZSubs.lo ZVariables.lo ZWait4Not.lo Zinternal.lo
+	ZSubs.lo ZVariables.lo ZWait4Not.lo Zinternal.lo ZMakeZcode.lo \
+	ZReadZcode.lo ZCkZAut.lo
 
 .SUFFIXES: .lo
 

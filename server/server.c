@@ -1405,7 +1405,7 @@ server_forward(notice, auth, who)
 	    syslog(LOG_CRIT, "srv_fwd malloc");
 	    abort();
 	}
-	retval = ZFormatSmallRawNotice(notice, pack, &packlen);
+	retval = ZNewFormatSmallRawNotice(notice, pack, &packlen);
 	if (retval != ZERR_NONE) {
 	    syslog(LOG_WARNING, "srv_fwd format: %s", error_message(retval));
 	    continue;
