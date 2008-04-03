@@ -27,6 +27,8 @@ int use_hesiod = 0;
 int hmdebug, rebootflag, noflushflag, errflg, dieflag, inetd, oldpid, nofork;
 int no_server = 1, nservchang, nserv, nclt;
 int booting = 1, timeout_type, deactivated = 1;
+int bootflag = 1;
+int started = 0;
 long starttime;
 u_short cli_port;
 struct sockaddr_in cli_sin, serv_sin, from;
@@ -76,7 +78,7 @@ char *argv[];
 	exit(-1);
     }
     prim_serv[0] = '\0';
-    while ((opt = getopt(argc, argv, "drhinf")) != EOF)
+    while ((opt = getopt(argc, argv, "drhinfN")) != EOF)
 	switch(opt) {
 	  case 'd':
 	    hmdebug = 1;
@@ -101,6 +103,9 @@ char *argv[];
 	  case 'f':
 	    noflushflag = 1;
 	    break;
+          case 'N':
+            bootflag = 0;
+            break;
 	  case '?':
 	  default:
 	    errflg++;
@@ -150,6 +155,7 @@ char *argv[];
 	exit(ZERR_SERVNAK);
     }
     init_hm();
+    started = 1;
 
     DPR2("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
     DPR2("zephyr client port: %u\n", ntohs(cli_port));
@@ -309,6 +315,8 @@ static void choose_server()
 	}
 	while ((serv_list = hes_resolve(zcluster, "sloc")) == (char **)NULL) {
 	    syslog(LOG_ERR, "No servers or no hesiod");
+	    if (!started)
+		return; /* do not hang forever*/
 	    /* wait a bit, and try again */
 	    sleep(30);
 	}
@@ -427,7 +435,10 @@ static void init_hm()
 	  memcpy(&serv_sin.sin_addr, hp->h_addr, 4);
      }
 
-     send_boot_notice(HM_BOOT);
+     if (bootflag)
+          send_boot_notice(HM_BOOT);
+     else
+          send_boot_notice(HM_ATTACH);
      deactivated = 0;
 
 #ifdef _POSIX_VERSION
@@ -600,7 +611,6 @@ static void send_stats(notice, sin)
 void die_gracefully()
 {
      syslog(LOG_INFO, "Terminate signal caught...");
-     send_flush_notice(HM_FLUSH);
      unlink(PidFile);
      closelog();
      exit(0);
