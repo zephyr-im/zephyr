@@ -223,15 +223,6 @@ handle_packet()
 	}
     }
 
-    if (whoisit.sin_port != hm_port && whoisit.sin_port != hm_srv_port &&
-	strcasecmp(new_notice.z_class, ZEPHYR_ADMIN_CLASS) != 0 &&
-	whoisit.sin_port != srv_addr.sin_port &&
-	new_notice.z_kind != CLIENTACK) {
-	syslog(LOG_ERR, "bad port %s/%d", inet_ntoa(whoisit.sin_addr),
-	       ntohs(whoisit.sin_port));
-	return;
-    }
-
     message_notices.val++;
     dispatch(&new_notice, authentic, &whoisit, from_server);
     return;
@@ -394,34 +385,6 @@ sendit(notice, auth, who, external)
 	    return;
 	}
       }
-    }
-    if (!realm_which_realm(who)) {
-	if (memcmp(&notice->z_sender_addr.s_addr, &who->sin_addr.s_addr,
-		   sizeof(notice->z_sender_addr.s_addr))) {
-	    /* someone is playing games... */
-	    /* inet_ntoa returns pointer to static area */
-	    /* max size is 255.255.255.255 */
-	    char buffer[16];
-	    strcpy(buffer, inet_ntoa(who->sin_addr));
-	    if (!auth) {
-		syslog(LOG_WARNING,
-		       "sendit unauthentic fake packet: claimed %s, real %s",
-		       inet_ntoa(notice->z_sender_addr), buffer);
-		clt_ack(notice, who, AUTH_FAILED);
-		free_string(class);
-		return;
-	    }
-	    if (ntohl(notice->z_sender_addr.s_addr) != 0) {
-		syslog(LOG_WARNING,
-		       "sendit invalid address: claimed %s, real %s",
-		       inet_ntoa(notice->z_sender_addr), buffer);
-		clt_ack(notice, who, AUTH_FAILED);
-		free_string(class);
-		return;
-	    }
-	    syslog(LOG_WARNING, "sendit addr mismatch: claimed %s, real %s",
-		   inet_ntoa(notice->z_sender_addr), buffer);
-	}
     }
 
     /* Increment the send counter, used to prevent duplicate sends to
