@@ -38,6 +38,8 @@ extern krb5_keyblock *__Zephyr_keyblock;
 #define ZGetSession() (__Zephyr_keyblock)
 void ZSetSession(krb5_keyblock *keyblock);
 Code_t ZFormatAuthenticNoticeV5 __P((ZNotice_t*, char*, int, int*, krb5_keyblock *));
+krb5_error_code Z_krb5_init_keyblock(krb5_context, krb5_enctype, size_t,
+        krb5_keyblock **);
 #else
 extern C_Block __Zephyr_session;
 #define ZGetSession() (__Zephyr_session)

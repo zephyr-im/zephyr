@@ -44,6 +44,43 @@ static const char rcsid_bdump_c[] = "$Id$";
  *	int num;
  */
 
+#if defined(HAVE_KRB5) && 0
+int krb5_init_keyblock(krb5_context context,
+        krb5_enctype type,
+        size_t size,
+        krb5_keyblock **akey)
+{
+krb5_error_code ret;
+size_t len;
+krb5_keyblock *key;
+
+*akey=NULL;
+key=malloc(sizeof(*key));
+memset(key, 0, sizeof(*key));
+ret = krb5_enctype_keysize(context, type, &len);
+if (ret)
+return ret;
+
+if (len != size) {
+krb5_set_error_string(context, "Encryption key %d is %lu bytes "
+"long, %lu was passed in",
+type, (unsigned long)len, (unsigned long)size);
+return KRB5_PROG_ETYPE_NOSUPP;
+}
+
+ret = krb5_data_alloc(&key->keyvalue, len);
+if(ret) {
+krb5_set_error_string(context, "malloc failed: %lu",
+(unsigned long)len);
+return ret;
+}
+key->keytype = type;
+*akey=key;
+return 0;
+}
+#endif
+
+
 static void close_bdump __P((void* arg));
 static Code_t bdump_send_loop __P((Server *server)),
 bdump_ask_for __P((char *inst)),
@@ -281,7 +318,93 @@ bdump_send()
 #ifdef HAVE_KRB5
     { /* "server" side */
 	krb5_auth_context actx;
+	krb5_principal principal;
+	krb5_data data;
+	krb5_ap_rep_enc_part *rep;
+	krb5_keytab kt;
+
+	if (get_tgt()) {
+	    syslog(LOG_ERR, "bdump_send: get_tgt failed");
+	    cleanup(server);
+	    return;
+	}
+ 
+	retval = krb5_build_principal(Z_krb5_ctx, &principal, 
+				      strlen(ZGetRealm()),
+				      ZGetRealm(),
+				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
+				      0); 
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_send: krb5_build_principal: %s", error_message(retval));
+	    cleanup(server);
+	    return;
+	}
 	
+
+	retval = krb5_auth_con_init(Z_krb5_ctx, &actx);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_send: krb5_auth_con_init: %s", error_message(retval));
+	    cleanup(server);
+	    return;
+	}
+
+	/* Get the "client" krb_ap_req */
+
+	memset((char *)&data, 0, sizeof(krb5_data));
+	retval = GetKrb5Data(live_socket, &data);
+	if (retval) {
+	     syslog(LOG_ERR, "bdump_send: cannot get auth response: %s",
+	            error_message(retval)); 
+	     krb5_auth_con_free(Z_krb5_ctx, actx);
+	     cleanup(server);
+	     return;
+	}
+
+
+	/* resolve keytab */
+	retval = krb5_kt_resolve(Z_krb5_ctx, keytab_file, &kt);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_send: cannot resolve keytab: %s", 
+		   error_message(retval));
+	    krb5_auth_con_free(Z_krb5_ctx, actx);
+	    krb5_kt_close(Z_krb5_ctx, kt);
+	    cleanup(server);
+	    return;
+	}
+
+	retval = krb5_rd_req(Z_krb5_ctx, &actx, &data, principal, kt, NULL, NULL);
+	krb5_free_principal(Z_krb5_ctx, principal);
+	krb5_kt_close(Z_krb5_ctx, kt);
+	free(data.data);
+	memset((char *)&data, 0, sizeof(krb5_data));
+	if (retval) {
+	     syslog(LOG_ERR, "bdump_send: mutual authentication failed: %s",
+	            error_message(retval));
+	     krb5_auth_con_free(Z_krb5_ctx, actx);
+	     cleanup(server);
+	     return;
+	}
+
+	/* Now send back our auth packet */
+
+	memset((char *)&data, 0, sizeof(krb5_data));
+	retval = krb5_mk_rep(Z_krb5_ctx, actx, &data);
+	if (retval) {
+	    syslog(LOG_ERR, "bdump_send: krb5_mk_rep: %s", error_message(retval));
+	    krb5_auth_con_free(Z_krb5_ctx, actx);
+	    cleanup(server);
+	    return;
+	}
+	retval = SendKrb5Data(live_socket, &data);
+	if (retval) {
+	     syslog(LOG_ERR, "bdump_send: cannot send authenticator: %s",
+	            error_message(retval));
+	     krb5_free_data_contents(Z_krb5_ctx, &data);
+	     krb5_auth_con_free(Z_krb5_ctx, actx);
+	     cleanup(server);
+	     return;
+	}    
+	krb5_free_data_contents(Z_krb5_ctx, &data);
     }
 #else  /* HAVE_KRB5 */  
 #ifdef HAVE_KRB4
@@ -464,6 +587,7 @@ bdump_get_v12 (notice, auth, who, server)
 
 #ifdef HAVE_KRB5
     if (get_tgt()) {
+	syslog(LOG_ERR, "bdump_get: get_tgt failed"); 
 	cleanup(server);
 	return;
     }
@@ -810,7 +934,7 @@ get_tgt()
 #ifndef NOENCRYPTION
     Sched *s;
 #endif
-	
+    
     /* have they expired ? */
     if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + (15L * 60L)) {
 	/* +15 for leeway */
@@ -1032,7 +1156,7 @@ bdump_recv_loop(server)
 		    /* ****ing netascii; this is an encrypted DES keyblock
 		       XXX this code should be conditionalized for server
 		       transitions   */
-		    retval = krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC,
+		    retval = Z_krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC,
 						sizeof(C_Block),
 						&client->session_keyblock);
 		    if (retval) {
@@ -1045,7 +1169,7 @@ bdump_recv_loop(server)
 			syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
 			       error_message(retval), cp);
 		    } else {
-			des_ecb_encrypt(cblock, client->session_keyblock->contents,
+			des_ecb_encrypt(cblock, Z_keydata(client->session_keyblock),
 					serv_ksched.s, DES_DECRYPT);
 		    }
 		} else if (*cp == 'Z') { /* Zcode! Long live the new flesh! */
@@ -1054,17 +1178,17 @@ bdump_recv_loop(server)
 			syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
 			       error_message(retval), cp);
 		    } else {
-			retval = krb5_init_keyblock(Z_krb5_ctx,
+			retval = Z_krb5_init_keyblock(Z_krb5_ctx,
 						    ntohl(*(krb5_enctype *)&buf[0]),
-						    ntohl(*(krb5_ui_4 *)&buf[4]),
+						    ntohl(*(u_int32_t *)&buf[4]),
 						    &client->session_keyblock);
 			if (retval) {
 			    syslog(LOG_ERR, "brl failed to allocate keyblock: %s",
 				   error_message(retval));
 			    return retval;
 			}
-			memcpy(client->session_keyblock->contents, &buf[8],
-			       client->session_keyblock->length);
+			memcpy(Z_keydata(client->session_keyblock), &buf[8],
+			       Z_keylen(client->session_keyblock));
 		    }
 		}
 	    }

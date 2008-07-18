@@ -861,27 +861,27 @@ subscr_send_subs(client)
 
 #ifdef HAVE_KRB5
 #ifdef HAVE_KRB4 /* XXX make this optional for server transition time */
-    if (client->session_keyblock->enctype == ENCTYPE_DES_CBC_CRC) {
-	bufp = malloc(client->session_keyblock->length);
+    if (Z_enctype(client->session_keyblock) == ENCTYPE_DES_CBC_CRC) {
+	bufp = malloc(Z_keylen(client->session_keyblock));
 	if (bufp == NULL) {
 	    syslog(LOG_WARNING, "subscr_send_subs: cannot allocate memory for DES keyblock: %m");
 	    return errno;
 	}
-	des_ecb_encrypt(client->session_keyblock->contents, bufp, serv_ksched.s, DES_ENCRYPT);
-	retval = ZMakeAscii(buf, sizeof(buf), bufp, client->session_keyblock->length);
+	des_ecb_encrypt(Z_keydata(client->session_keyblock), bufp, serv_ksched.s, DES_ENCRYPT);
+	retval = ZMakeAscii(buf, sizeof(buf), bufp, Z_keylen(client->session_keyblock));
     } else {
 #endif
-	bufp = malloc(client->session_keyblock->length + 8); /* + enctype
+	bufp = malloc(Z_keylen(client->session_keyblock) + 8); /* + enctype
 								+ length */
 	if (bufp == NULL) {
 	    syslog(LOG_WARNING, "subscr_send_subs: cannot allocate memory for keyblock: %m");
 	    return errno;
 	}
-	*(krb5_enctype *)&bufp[0] = htonl(client->session_keyblock->enctype);
-	*(krb5_ui_4 *)&bufp[4] = htonl(client->session_keyblock->length);
-	memcpy(&bufp[8], client->session_keyblock->contents, client->session_keyblock->length);
+	*(krb5_enctype *)&bufp[0] = htonl(Z_enctype(client->session_keyblock));
+	*(u_int32_t *)&bufp[4] = htonl(Z_keylen(client->session_keyblock));
+	memcpy(&bufp[8], Z_keydata(client->session_keyblock), Z_keylen(client->session_keyblock));
 
-	retval = ZMakeZcode(buf, sizeof(buf), bufp, client->session_keyblock->length + 8);
+	retval = ZMakeZcode(buf, sizeof(buf), bufp, Z_keylen(client->session_keyblock) + 8);
 #ifdef HAVE_KRB4
     }
 #endif /* HAVE_KRB4 */

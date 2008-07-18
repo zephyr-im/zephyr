@@ -1090,6 +1090,11 @@ ulogin_relay_locate(notice, who)
   lnotice = *notice;
   lnotice.z_opcode = LOCATE_LOCATE;
   lnotice.z_kind = ACKED;
+  lnotice.z_auth = 0;
+  lnotice.z_authent_len = 0;
+  lnotice.z_ascii_authent = "";
+  lnotice.z_checksum = 0;
+  lnotice.z_ascii_checksum = "";
   
   if ((retval = ZFormatRawNotice(&lnotice, &pack, &packlen)) != ZERR_NONE) {
     syslog(LOG_WARNING, "ulog_relay_loc format: %s",
