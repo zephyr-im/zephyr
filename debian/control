@@ -20,7 +20,7 @@ Description: The original "Instant Message" system libraries without Kerberos
 Package: libzephyr3-krb
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, krb4-config
+Depends: ${shlibs:Depends}, krb5-config
 Conflicts: libzephyr3
 Provides: libzephyr3
 Description: The original "Instant Message" system libraries with Kerberos 

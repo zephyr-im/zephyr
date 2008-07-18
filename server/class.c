@@ -81,9 +81,9 @@ static const char rcsid_class_c[] =
 static Triplet *triplet_bucket[HASHSIZE]; /* the hash table of pointers */
 
 static Code_t remove_client __P((Triplet *triplet, Client *client,
-				 Realm *realm));
+				 ZRealm *realm));
 static Code_t insert_client __P((Triplet *triplet, Client *client,
-				 Realm *realm));
+				 ZRealm *realm));
 static Triplet *triplet_alloc __P((String *classname, String *inst,
 				   String *recipient));
 static void free_triplet __P((Triplet *));
@@ -117,7 +117,7 @@ Code_t
 triplet_register(client, dest, realm)
     Client *client;
     Destination *dest;
-    Realm *realm;
+    ZRealm *realm;
 {
     Triplet *triplet;
     unsigned long hashval;
@@ -140,7 +140,7 @@ Code_t
 triplet_deregister(client, dest, realm)
     Client *client;
     Destination *dest;
-    Realm *realm;
+    ZRealm *realm;
 {
     Triplet *triplet;
     int retval;
@@ -304,7 +304,7 @@ static Code_t
 insert_client(triplet, client, realm)
     Triplet *triplet;
     Client *client;
-    Realm *realm;
+    ZRealm *realm;
 {
     Client **clientp, **newclients;
     int new_size;
@@ -348,7 +348,7 @@ insert_client(triplet, client, realm)
 static Code_t remove_client(triplet, client, realm)
     Triplet *triplet;
     Client *client;
-    Realm *realm;
+    ZRealm *realm;
 {
     Client **clientp;
 

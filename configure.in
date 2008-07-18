@@ -37,7 +37,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(fcntl.h paths.h termios.h sgtty.h unistd.h malloc.h)
 AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/file.h sys/utsname.h)
-AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h)
+AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h krb5_err.h)
 
 if test "$no_x" != "yes"; then
 	XCLIENTS=xzwrite
@@ -86,12 +86,13 @@ AC_SUBST(RLIB)
 AC_SUBST(SLIB)
 
 ATHENA_KRB4
+ATHENA_KRB5
 ATHENA_HESIOD
 ATHENA_REGEXP
 ATHENA_ARES
 ATHENA_UTIL_COM_ERR
 ATHENA_UTIL_SS
-LIBS="$KRB4_LIBS $HESIOD_LIBS $LIBS"
+LIBS="$KRB5_LIBS $KRB4_LIBS $HESIOD_LIBS $LIBS"
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
@@ -100,6 +101,59 @@ AC_FUNC_GETPGRP
 AC_FUNC_SETPGRP
 AC_CHECK_FUNCS(putenv strchr memcpy memmove waitpid getlogin strerror random)
 AC_CHECK_FUNCS(lrand48 gethostid getsid getpgid krb_get_err_text krb_log)
+AC_CHECK_FUNCS(krb5_free_data krb5_c_make_checksum krb5_cc_set_default_name)
+
+AC_MSG_CHECKING(for krb5_auth_con_getauthenticator taking double pointer)
+AC_CACHE_VAL(ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer, [
+local_save_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="${CPPFLAGS} ${KRB5_INC_FLAGS}"
+AC_TRY_COMPILE(
+[#define socklen_t int
+#define ssize_t int
+#include <krb5.h>
+krb5_error_code
+krb5_auth_con_getauthenticator(krb5_context context,
+                           krb5_auth_context auth_context,
+                           krb5_authenticator *authenticator);],
+[krb5_error_code foo = krb5_auth_con_getauthenticator(0, 0, 0);],
+ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer=no,
+ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer=yes)
+])
+CPPFLAGS="${local_save_CPPFLAGS}"
+if test "$ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer" = yes; then
+        AC_DEFINE(KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER)dnl
+fi
+AC_MSG_RESULT($ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer)
+
+AC_MSG_CHECKING(for enc_part2 in struct krb5_ticket)
+AC_CACHE_VAL(ac_cv_have_krb5_ticket_enc_part2, [
+local_save_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="${CPPFLAGS} ${KRB5_INC_FLAGS}"
+AC_TRY_COMPILE(
+[#include <krb5.h>], [krb5_ticket _tkt; _tkt.enc_part2;],
+ac_cv_have_krb5_ticket_enc_part2=yes,
+ac_cv_have_krb5_ticket_enc_part2=no)
+])
+CPPFLAGS="${local_save_CPPFLAGS}"
+if test "$ac_cv_have_krb5_ticket_enc_part2" = yes; then
+	AC_DEFINE(HAVE_KRB5_TICKET_ENC_PART2)dnl
+fi
+AC_MSG_RESULT($ac_cv_have_krb5_ticket_enc_part2)
+
+AC_MSG_CHECKING(for enctype in struct krb5_keyblock)
+AC_CACHE_VAL(ac_cv_have_krb5_creds_keyblock_enctype, [
+local_save_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="${CPPFLAGS} ${KRB5_INC_FLAGS}"
+AC_TRY_COMPILE(
+[#include <krb5.h>], [krb5_creds _creds; _creds.keyblock.enctype;],
+ac_cv_have_krb5_creds_keyblock_enctype=yes,
+ac_cv_have_krb5_creds_keyblock_enctype=no)
+])
+CPPFLAGS="${local_save_CPPFLAGS}"
+if test "$ac_cv_have_krb5_creds_keyblock_enctype" = yes; then
+	AC_DEFINE(HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE)dnl
+fi
+AC_MSG_RESULT($ac_cv_have_krb5_creds_keyblock_enctype)
 
 AC_CONFIG_HEADER(h/config.h)
 AC_OUTPUT(Makefile clients/Makefile clients/xzwrite/Makefile

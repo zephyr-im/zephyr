@@ -106,7 +106,7 @@ static int ul_equiv __P((Location *l1, Location *l2));
 
 static void free_loc __P((Location *loc));
 static void ulogin_locate_forward __P((ZNotice_t *notice,
-				       struct sockaddr_in *who, Realm *realm));
+				       struct sockaddr_in *who, ZRealm *realm));
 
 static Location *locations = NULL; /* ptr to first in array */
 static int num_locs = 0;	/* number in array */
@@ -241,7 +241,11 @@ ulogin_dispatch(notice, auth, who, server)
 		login_sendit(notice, auth, who, 1);
 	}
     } else {
-	syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
+	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN))
+	    zdbug((LOG_DEBUG, "ulog opcode from unknown foreign realm %s", 
+		   notice->z_opcode));
+	else
+	    syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
 	if (server == me_server)
 	    nack(notice, who);
 	return ZERR_NONE;
@@ -282,7 +286,7 @@ ulocate_dispatch(notice, auth, who, server)
     Server *server;
 {
     char *cp;
-    Realm *realm;
+    ZRealm *realm;
 
     if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
 	/* we are talking to a current-rev client; send an ack */
@@ -294,7 +298,7 @@ ulocate_dispatch(notice, auth, who, server)
 	    ulogin_locate(notice, who, auth);
 	return ZERR_NONE;
     } else {
-	syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
+        syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
 	if (server == me_server)
 	    nack(notice, who);
 	return ZERR_NONE;
@@ -441,6 +445,7 @@ uloc_send_locations()
 	  default:
 	    syslog(LOG_ERR,"broken location state %s/%d",
 		   loc->user->string, (int) loc->exposure);
+	    exposure_level = EXPOSE_OPSTAFF;
 	    break;
 	}
 	retval = bdump_send_list_tcp(ACKED, &loc->addr, LOGIN_CLASS,
@@ -1004,7 +1009,7 @@ static void
 ulogin_locate_forward(notice, who, realm)
     ZNotice_t *notice;
     struct sockaddr_in *who;
-    Realm *realm;
+    ZRealm *realm;
 {
     ZNotice_t lnotice;
 
@@ -1018,7 +1023,7 @@ void
 ulogin_realm_locate(notice, who, realm)
     ZNotice_t *notice;
     struct sockaddr_in *who;
-    Realm *realm;
+    ZRealm *realm;
 {
   char **answer;
   int found;

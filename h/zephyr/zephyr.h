@@ -39,6 +39,7 @@
 #define	SERVER_SVCNAME		"zephyr-clt"
 #define SERVER_SERVICE		"zephyr"
 #define SERVER_INSTANCE		"zephyr"
+#define SERVER_KRB5_SERVICE     "zephyr"
 
 #define ZVERSIONHDR	"ZEPH"
 #define ZVERSIONMAJOR	0
@@ -98,6 +99,7 @@ typedef struct _ZNotice_t {
     char		*z_multinotice;
     ZUnique_Id_t	z_multiuid;
     ZChecksum_t		z_checksum;
+    char                *z_ascii_checksum;
     int			z_num_other_fields;
     char		*z_other_fields[Z_MAXOTHERFIELDS];
     caddr_t		z_message;
@@ -139,6 +141,8 @@ int ZCompareMultiUIDPred ZP((ZNotice_t *, void *));
 /* Defines for ZFormatNotice, et al. */
 typedef Code_t (*Z_AuthProc) ZP((ZNotice_t*, char *, int, int *));
 Code_t ZMakeAuthentication ZP((ZNotice_t*, char *,int, int*));
+Code_t ZMakeZcodeAuthentication ZP((ZNotice_t*, char *,int, int*));
+Code_t ZMakeZcodeRealmAuthentication ZP((ZNotice_t*, char *,int, int*, char*));
 
 char *ZGetSender ZP((void));
 char *ZGetVariable ZP((char *));
@@ -152,6 +156,7 @@ Code_t ZParseNotice ZP((char*, int, ZNotice_t *));
 Code_t ZReadAscii ZP((char*, int, unsigned char*, int));
 Code_t ZReadAscii32 ZP((char *, int, unsigned long *));
 Code_t ZReadAscii16 ZP((char *, int, unsigned short *));
+Code_t ZReadZcode ZP((unsigned char*, unsigned char*, int, int *));
 Code_t ZSendPacket ZP((char*, int, int));
 Code_t ZSendList ZP((ZNotice_t*, char *[], int, Z_AuthProc));
 Code_t ZSrvSendList ZP((ZNotice_t*, char*[], int, Z_AuthProc, Code_t (*)()));
@@ -175,8 +180,12 @@ Code_t ZSrvSendRawList ZP((ZNotice_t*, char*[], int,
 Code_t ZMakeAscii ZP((char*, int, unsigned char*, int));
 Code_t ZMakeAscii32 ZP((char *, int, unsigned long));
 Code_t ZMakeAscii16 ZP((char *, int, unsigned int));
+Code_t ZMakeZcode ZP((char*, int, unsigned char*, int));
+Code_t ZMakeZcode32 ZP((char *, int, unsigned long));
 Code_t ZReceivePacket ZP((ZPacket_t, int*, struct sockaddr_in*));
 Code_t ZCheckAuthentication ZP((ZNotice_t*, struct sockaddr_in*));
+Code_t ZCheckZcodeAuthentication ZP((ZNotice_t*, struct sockaddr_in*));
+Code_t ZCheckZcodeRealmAuthentication ZP((ZNotice_t*, struct sockaddr_in*, char *realm));
 Code_t ZInitLocationInfo ZP((char *hostname, char *tty));
 Code_t ZSetLocation ZP((char *exposure));
 Code_t ZUnsetLocation ZP((void));
@@ -253,6 +262,7 @@ void ZSetDebug ZP((void (*)(ZCONST char *, va_list, void *), void *));
 #define	SRV_TIMEOUT		30
 
 #define ZAUTH (ZMakeAuthentication)
+#define ZCAUTH (ZMakeZcodeAuthentication)
 #define ZNOAUTH ((Z_AuthProc)0)
 
 /* Packet strings */

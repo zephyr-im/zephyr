@@ -37,3 +37,26 @@ Code_t ZFormatSmallRawNotice(notice, buffer, ret_len)
 
     return (ZERR_NONE);
 }
+
+Code_t ZNewFormatSmallRawNotice(notice, buffer, ret_len)
+     ZNotice_t *notice;
+     ZPacket_t buffer;
+     int *ret_len;
+{
+  Code_t retval;
+  int hdrlen;
+  
+  if ((retval = Z_AsciiFormatRawHeader(notice, buffer, Z_MAXHEADERLEN,
+                                       &hdrlen, NULL, NULL, NULL, NULL)) 
+      != ZERR_NONE)
+    return (retval);
+  
+  *ret_len = hdrlen+notice->z_message_len;
+  
+  if (*ret_len > Z_MAXPKTLEN)
+    return (ZERR_PKTLEN);
+  
+  (void) memcpy(buffer+hdrlen, notice->z_message, notice->z_message_len);
+  
+  return (ZERR_NONE);
+}
