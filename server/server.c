@@ -93,6 +93,7 @@ static Code_t server_register();
 
 static struct in_addr *get_server_addrs __P((int *number));
 static char **get_server_list __P((char *file));
+static char **get_single_server __P((void));
 static void free_server_list __P((char **list));
 
 static Unacked *srv_nacktab[SRV_NACKTAB_HASHSIZE];
@@ -990,8 +991,12 @@ get_server_addrs(number)
     server_hosts_free = server_hosts;
 #ifdef HAVE_HESIOD
     if (!server_hosts)
-      server_hosts = hes_resolve("zephyr","sloc");
+	server_hosts = hes_resolve("zephyr","sloc");
 #endif
+    if (!server_hosts) {
+	server_hosts = get_single_server();
+	server_hosts_free = server_hosts;
+    }
     if (!server_hosts)
 	return NULL;
     /* count up */
@@ -1034,36 +1039,55 @@ get_server_list(file)
     int nused = 0;
     char *newline;
 
+    fp = fopen(file, "r");
+    if (!fp)
+    	return NULL;
     /* start with 16, realloc if necessary */
     nhosts = 16;
     ret_list = (char **) malloc(nhosts * sizeof(char *));
+    if (!ret_list)
+    	return NULL;
 
-    fp = fopen(file, "r");
-    if (fp) {
-	while (fgets(buf, MAXHOSTNAMELEN, fp)) {
-	    /* nuke the newline, being careful not to overrun
-	       the buffer searching for it with strlen() */
-	    buf[MAXHOSTNAMELEN - 1] = '\0';
-	    newline = strchr(buf, '\n');
-	    if (newline)
-		*newline = '\0';
+    while (fgets(buf, MAXHOSTNAMELEN, fp)) {
+	/* nuke the newline, being careful not to overrun
+	   the buffer searching for it with strlen() */
+	buf[MAXHOSTNAMELEN - 1] = '\0';
+	newline = strchr(buf, '\n');
+	if (newline)
+	    *newline = '\0';
 
-	    if (nused + 1 >= nhosts) {
-		/* get more pointer space if necessary */
-		/* +1 to leave room for null pointer */
-		ret_list = (char **) realloc(ret_list, nhosts * 2);
-		nhosts = nhosts * 2;
-	    }
-	    ret_list[nused++] = strsave(buf);
-	}
-	fclose(fp);
-    } else {
-	if (gethostname(buf, sizeof(buf)) < 0) {
-	    free(ret_list);
-	    return NULL;
+	if (nused + 1 >= nhosts) {
+	    /* get more pointer space if necessary */
+	    /* +1 to leave room for null pointer */
+	    ret_list = (char **) realloc(ret_list, nhosts * 2);
+	    nhosts = nhosts * 2;
 	}
 	ret_list[nused++] = strsave(buf);
     }
+    fclose(fp);
+    if (!nused) {
+    	free(ret_list);
+	return NULL;
+    }
+    ret_list[nused] = NULL;
+    return ret_list;
+}
+
+static char **
+get_single_server()
+{
+    char buf[MAXHOSTNAMELEN];
+    char **ret_list;
+    int nused = 0;
+    nhosts = 2;
+    ret_list = (char **) malloc(nhosts * sizeof(char *));
+    if (!ret_list)
+    	return NULL;
+    if (gethostname(buf, sizeof(buf)) < 0) {
+	free(ret_list);
+	return NULL;
+    }
+    ret_list[nused++] = strsave(buf);
     ret_list[nused] = NULL;
     return ret_list;
 }
