@@ -16,7 +16,7 @@ static const char rcsid_ZFormatAuthenticNotice_c[] = "$Id$";
 
 #include <internal.h>
 
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB4
 Code_t
 ZFormatAuthenticNotice(ZNotice_t *notice,
 		       char *buffer,
@@ -82,6 +82,7 @@ ZFormatAuthenticNoticeV5(ZNotice_t *notice,
     if (retval)
          return (ZAUTH_FAILED);
 
+#ifdef HAVE_KRB4
     if (key_len == 8 && (enctype == ENCTYPE_DES_CBC_CRC || 
                          enctype == ENCTYPE_DES_CBC_MD4 ||
                          enctype == ENCTYPE_DES_CBC_MD5)) {
@@ -90,6 +91,7 @@ ZFormatAuthenticNoticeV5(ZNotice_t *notice,
          return ZFormatAuthenticNotice(notice, buffer, buffer_len, len,
                                        tmp);
     }
+#endif
          
     newnotice = *notice;
     newnotice.z_auth = 1;
