@@ -126,9 +126,9 @@ void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz);
 #ifdef HAVE_KRB5
 int ZGetCreds(krb5_creds **creds_out);
 int ZGetCredsRealm(krb5_creds **creds_out, char *realm);
-Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, krb5_cksumtype cksumtype, char **asn1_data, int *asn1_len);
+Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, krb5_cksumtype cksumtype, char **asn1_data, unsigned int *asn1_len);
 Code_t Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, krb5_cksumtype *cksumtype);
-int Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, krb5_cksumtype cksumtype, char *asn1_data, int asn1_len);
+int Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, krb5_cksumtype cksumtype, unsigned char *asn1_data, int asn1_len);
 Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice, 
                              char *buffer,
                              char *cksum_start, int cksum_len, 
