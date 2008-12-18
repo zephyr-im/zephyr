@@ -33,16 +33,12 @@ Code_t
 ZCheckAuthentication(ZNotice_t *notice,
 		     struct sockaddr_in *from)
 {
-#if 0
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#if defined(HAVE_KRB4) && !defined(HAVE_KRB5)
     int result;
     ZChecksum_t our_checksum;
     C_Block *session;
-#ifdef HAVE_KRB5
-    krb5_creds *creds_out;
-#else
     CREDENTIALS cred;
-#endif
+
     /* If the value is already known, return it. */
     if (notice->z_checked_auth != ZAUTH_UNSET)
 	return (notice->z_checked_auth);
@@ -50,23 +46,11 @@ ZCheckAuthentication(ZNotice_t *notice,
     if (!notice->z_auth)
 	return (ZAUTH_NO);
 
-#ifdef HAVE_KRB5
-    result = ZGetCreds(&creds_out);
-    if (result)
-      return ZAUTH_NO;
-    /* HOLDING: creds_out */
-
-    if (creds_out->keyblock.enctype != ENCTYPE_DES_CBC_CRC)
-      return (ZAUTH_NO);
-    session = (C_Block *)creds_out->keyblock.contents;
-    
-#else
     if ((result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
 			       __Zephyr_realm, &cred)) != 0)
 	return (ZAUTH_NO);
 
     session = (C_Block *)cred.session;
-#endif
 
 #ifdef NOENCRYPTION
     our_checksum = 0;
@@ -78,10 +62,6 @@ ZCheckAuthentication(ZNotice_t *notice,
 #endif
     /* if mismatched checksum, then the packet was corrupted */
     return ((our_checksum == notice->z_checksum) ? ZAUTH_YES : ZAUTH_FAILED);
-
-#else
-    return (notice->z_auth ? ZAUTH_YES : ZAUTH_NO);
-#endif
 #else
     ZCheckZcodeAuthentication(notice, from);
 #endif

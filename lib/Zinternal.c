@@ -937,27 +937,6 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
 
     *hdr_len = ptr-buffer;
 
-#if 0
-    {
-        printf("Z_FormatRawHeader output:\n");
-        for (i = 0; i < *hdr_len; i += 16) {
-            int i2;
-            printf("%03d:", i);
-            for (i2 = i; i2 < i+16 && i2 < *hdr_len; i2++)
-                printf(" %02x", buffer[i2] & 0xff);
-            for (; i2 < i+16; i2++)
-                printf("   ");
-            printf("  ");
-            for (i2 = i; i2 < i+16 && i2 < *hdr_len; i2++)
-                printf("%c",
-                       ((buffer[i2] > 0 && buffer[i2] < 127 && isprint(buffer[i2]))
-                        ? buffer[i2]
-                        : '.'));
-            printf("\n");
-        }
-    }
-#endif
-
     return (ZERR_NONE);
 }
 

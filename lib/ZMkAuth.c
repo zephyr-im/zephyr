@@ -36,10 +36,10 @@ ZMakeAuthentication(register ZNotice_t *notice,
 		    int buffer_len,
 		    int *len)
 {
-#if 1
+#ifdef HAVE_KRB5
     return ZMakeZcodeAuthentication(notice, buffer, buffer_len, len/*?XXX*/);
 #else
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB4
     int result;
     time_t now;
     KTEXT_ST authent;
@@ -47,28 +47,7 @@ ZMakeAuthentication(register ZNotice_t *notice,
     ZChecksum_t checksum;
     CREDENTIALS cred;
     C_Block *session;
-#ifdef HAVE_KRB5
-    krb5_creds *creds_out;
 
-    result = ZGetCreds(&creds_out);
-    if (result)
-      return result;
-
-    result = krb5_524_convert_creds(Z_krb5_ctx, creds_out, &cred);
-    /* krb5_free_creds(Z_krb5_ctx, creds_out);*/
-    if (result)
-      return result;
-    /* HOLDING: creds_out */
-
-    if (creds_out->keyblock.enctype != ENCTYPE_DES_CBC_CRC)
-      return (KRB5_BAD_ENCTYPE);
-    session = (C_Block *)creds_out->keyblock.contents;
-
-    result = krb_mk_req_creds(&authent, &cred, 0);
-    if (result != MK_AP_OK)
-      return result + krb_err_base;
-#endif
-#ifndef HAVE_KRB5
     result = krb_mk_req(&authent, SERVER_SERVICE, 
 			SERVER_INSTANCE, __Zephyr_realm, 0);
     if (result != MK_AP_OK)
@@ -79,7 +58,6 @@ ZMakeAuthentication(register ZNotice_t *notice,
 	return (result+krb_err_base);
 
     session = (C_Block *)cred.session;
-#endif
 
     notice->z_auth = 1;
     notice->z_authent_len = authent.length;

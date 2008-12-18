@@ -17,21 +17,6 @@ static char rcsid_ZReadAscii_c[] = "$Id$";
 #include <internal.h>
 #include <assert.h>
 
-#if 0
-static __inline__
-int
-Z_cnvt_xtoi (char c)
-{
-    c -= '0';
-    if (c < 10)
-	return c;
-    c -= 'A'-'9'-1;
-    if (c < 16)
-	return c;
-    return -1;
-}
-#endif
-
 #define Z_cnvt_xtoi(c)  ((temp=(c)-'0'),(temp<10)?temp:((temp-='A'-'9'-1),(temp<16)?temp:-1))
 
 Code_t
