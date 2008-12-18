@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZInitialize_c[] =
+static const char rcsid_ZInitialize_c[] =
     "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZInitialize.c,v 1.17 89/05/30 18:11:25 jtkohl Exp $";
 #endif
 
@@ -40,7 +40,7 @@ ZInitialize(void)
     char addr[4], hostname[MAXHOSTNAMELEN];
     struct in_addr servaddr;
     struct sockaddr_in sin;
-    int s, sinsize = sizeof(sin);
+    unsigned int s, sinsize = sizeof(sin);
     Code_t code;
     ZNotice_t notice;
 #ifdef HAVE_KRB5

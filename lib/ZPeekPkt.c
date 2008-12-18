@@ -11,7 +11,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZPeekPacket_c[] = "$Id$";
+static const char rcsid_ZPeekPacket_c[] = "$Id$";
 #endif
 
 #include <internal.h>

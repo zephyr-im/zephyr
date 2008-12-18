@@ -12,7 +12,7 @@
  */
 
 #ifndef lint
-static char rcsid_ZLocations_c[] =
+static const char rcsid_ZLocations_c[] =
     "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZLocations.c,v 1.30 90/12/20 03:04:39 raeburn Exp $";
 #endif
 
@@ -113,7 +113,6 @@ Z_SendLocation(char *class,
     time_t ourtime;
     ZNotice_t notice, retnotice;
     char *bptr[3];
-    struct hostent *hent;
     short wg_port = ZGetWGPort();
 
     if (!location_info_set)

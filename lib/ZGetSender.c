@@ -29,7 +29,6 @@ ZGetSender(void)
     krb5_principal principal;
     char *prname;
     int result;
-    char pname[ANAME_SZ], pinst[INST_SZ], prealm[REALM_SZ]; /*XXX*/
 #else    
 #ifdef HAVE_KRB4
     char pname[ANAME_SZ], pinst[INST_SZ], prealm[REALM_SZ];
