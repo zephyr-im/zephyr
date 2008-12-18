@@ -16,7 +16,8 @@ static char rcsid_ZFlushLocations_c[] = "$Id$";
 
 #include <internal.h>
 
-Code_t ZFlushLocations()
+Code_t
+ZFlushLocations(void)
 {
 	int i;
 	

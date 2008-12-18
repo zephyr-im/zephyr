@@ -16,9 +16,9 @@ static char rcsid_ZPeekNotice_c[] = "$Id$";
 
 #include <internal.h>
 
-Code_t ZPeekNotice(notice, from)
-    ZNotice_t *notice;
-    struct sockaddr_in *from;
+Code_t
+ZPeekNotice(ZNotice_t *notice,
+	    struct sockaddr_in *from)
 {
     char *buffer;
     int len;

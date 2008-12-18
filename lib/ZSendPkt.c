@@ -18,12 +18,12 @@ static char rcsid_ZSendPacket_c[] =
 #include <internal.h>
 #include <sys/socket.h>
 
-static int wait_for_hmack();
+static int wait_for_hmack(ZNotice_t *, void *);
 
-Code_t ZSendPacket(packet, len, waitforack)
-    char *packet;
-    int len;
-    int waitforack;
+Code_t
+ZSendPacket(char *packet,
+	    int len,
+	    int waitforack)
 {
     Code_t retval;
     struct sockaddr_in dest;
@@ -51,8 +51,8 @@ Code_t ZSendPacket(packet, len, waitforack)
     if ((retval = ZParseNotice(packet, len, &notice)) != ZERR_NONE)
 	return (retval);
     
-    retval = Z_WaitForNotice (&acknotice, wait_for_hmack, &notice.z_uid,
-			      HM_TIMEOUT);
+    retval = Z_WaitForNotice(&acknotice, wait_for_hmack, &notice.z_uid,
+			     HM_TIMEOUT);
     if (retval == ETIMEDOUT)
       return ZERR_HMDEAD;
     if (retval == ZERR_NONE)
@@ -60,9 +60,9 @@ Code_t ZSendPacket(packet, len, waitforack)
     return retval;
 }
 
-static int wait_for_hmack(notice, uid)
-    ZNotice_t *notice;
-    ZUnique_Id_t *uid;
+static int
+wait_for_hmack(ZNotice_t *notice,
+	       void *uid)
 {
-    return (notice->z_kind == HMACK && ZCompareUID(&notice->z_uid, uid));
+    return (notice->z_kind == HMACK && ZCompareUID(&notice->z_uid, (ZUnique_Id_t *)uid));
 }

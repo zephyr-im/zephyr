@@ -19,7 +19,8 @@ static const char rcsid_ZGetSender_c[] =
 
 #include <pwd.h>
 
-char *ZGetSender()
+char *
+ZGetSender(void)
 {
     struct passwd *pw;
     static char *sender = NULL;

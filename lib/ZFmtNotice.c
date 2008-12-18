@@ -16,11 +16,11 @@ static char rcsid_ZFormatNotice_c[] = "$Id$";
 
 #include <internal.h>
 
-Code_t ZFormatNotice(notice, buffer, ret_len, cert_routine)
-    register ZNotice_t *notice;
-    char **buffer;
-    int *ret_len;
-    Z_AuthProc cert_routine;
+Code_t
+ZFormatNotice(register ZNotice_t *notice,
+	      char **buffer,
+	      int *ret_len,
+	      Z_AuthProc cert_routine)
 {
     char header[Z_MAXHEADERLEN];
     int hdrlen;
@@ -42,11 +42,11 @@ Code_t ZFormatNotice(notice, buffer, ret_len, cert_routine)
     return (ZERR_NONE);
 }
 
-Code_t ZNewFormatNotice(notice, buffer, ret_len, cert_routine)
-    register ZNotice_t *notice;
-    char **buffer;
-    int *ret_len;
-    Z_AuthProc cert_routine;
+Code_t
+ZNewFormatNotice(register ZNotice_t *notice,
+		 char **buffer,
+		 int *ret_len,
+		 Z_AuthProc cert_routine)
 {
     char header[Z_MAXHEADERLEN];
     int hdrlen;

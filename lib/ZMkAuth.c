@@ -24,15 +24,17 @@ static const char rcsid_ZMakeAuthentication_c[] = "$Id$";
 #define krb5_free_data(ctx, dat) free((dat)->data)
 #endif
 
-Code_t ZResetAuthentication () {
+Code_t
+ZResetAuthentication(void)
+{
     return ZERR_NONE;
 }
 
-Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
-    register ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *len;
+Code_t
+ZMakeAuthentication(register ZNotice_t *notice,
+		    char *buffer,
+		    int buffer_len,
+		    int *len)
 {
 #if 1
     return ZMakeZcodeAuthentication(notice, buffer, buffer_len, len/*?XXX*/);
@@ -119,23 +121,22 @@ Code_t ZMakeAuthentication(notice, buffer, buffer_len, len)
 #endif
 }
 
-Code_t ZMakeZcodeAuthentication(notice, buffer, buffer_len, phdr_len)
-    register ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *phdr_len;
+Code_t
+ZMakeZcodeAuthentication(register ZNotice_t *notice,
+			 char *buffer,
+			 int buffer_len,
+			 int *phdr_len)
 {
     return ZMakeZcodeRealmAuthentication(notice, buffer, buffer_len, phdr_len,
 					 __Zephyr_realm);
 }
 
-Code_t ZMakeZcodeRealmAuthentication(notice, buffer, buffer_len, phdr_len, 
-				     realm)
-    register ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *phdr_len;
-    char *realm;
+Code_t
+ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
+			      char *buffer,
+			      int buffer_len,
+			      int *phdr_len, 
+			      char *realm)
 {
 #ifdef HAVE_KRB5
     krb5_error_code result;
@@ -221,11 +222,16 @@ Code_t ZMakeZcodeRealmAuthentication(notice, buffer, buffer_len, phdr_len,
 }
 
 #ifdef HAVE_KRB5
-int ZGetCreds(krb5_creds **creds_out) {
+int
+ZGetCreds(krb5_creds **creds_out)
+{
   return ZGetCredsRealm(creds_out, __Zephyr_realm);
 }
 
-int ZGetCredsRealm(krb5_creds **creds_out, char *realm) {
+int
+ZGetCredsRealm(krb5_creds **creds_out,
+	       char *realm)
+{
   krb5_creds creds_in;
   krb5_ccache ccache; /* XXX make this a global or static?*/
   int result;

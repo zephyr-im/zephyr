@@ -23,8 +23,6 @@ static const char copyright[] =
   "Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.";
 #endif
 
-extern char *inet_ntoa ();
-
 int __Zephyr_fd = -1;
 int __Zephyr_open;
 int __Zephyr_port = -1;
@@ -84,7 +82,9 @@ static struct cksum_map_s {
 };
 #define N_CKSUM_MAP (sizeof(cksum_map) / sizeof(struct cksum_map_s))
 
-Code_t Z_krb5_lookup_cksumtype(krb5_enctype e, krb5_cksumtype *c)
+Code_t
+Z_krb5_lookup_cksumtype(krb5_enctype e,
+			krb5_cksumtype *c)
 {
   int i;
 
@@ -101,25 +101,25 @@ Code_t Z_krb5_lookup_cksumtype(krb5_enctype e, krb5_cksumtype *c)
 char __Zephyr_realm[REALM_SZ];
 
 #ifdef Z_DEBUG
-void (*__Z_debug_print) __P((const char *fmt, va_list args, void *closure));
+void (*__Z_debug_print)(const char *fmt, va_list args, void *closure);
 void *__Z_debug_print_closure;
 #endif
 
 #define min(a,b) ((a)<(b)?(a):(b))
 
-static int Z_AddField __P((char **ptr, char *field, char *end));
-static int find_or_insert_uid __P((ZUnique_Id_t *uid, ZNotice_Kind_t kind));
-static Code_t Z_ZcodeFormatRawHeader __P((ZNotice_t *, char *, int, int *, char **, 
-                                 int *, char **, char **, int cksumtype));
+static int Z_AddField(char **ptr, char *field, char *end);
+static int find_or_insert_uid(ZUnique_Id_t *uid, ZNotice_Kind_t kind);
+static Code_t Z_ZcodeFormatRawHeader(ZNotice_t *, char *, int, int *, char **, 
+				     int *, char **, char **, int cksumtype);
 
 /* Find or insert uid in the old uids buffer.  The buffer is a sorted
  * circular queue.  We make the assumption that most packets arrive in
  * order, so we can usually search for a uid or insert it into the buffer
  * by looking back just a few entries from the end.  Since this code is
  * only executed by the client, the implementation isn't microoptimized. */
-static int find_or_insert_uid(uid, kind)
-    ZUnique_Id_t *uid;
-    ZNotice_Kind_t kind;
+static int
+find_or_insert_uid(ZUnique_Id_t *uid,
+		   ZNotice_Kind_t kind)
 {
     static struct _filter {
 	ZUnique_Id_t	uid;
@@ -187,7 +187,8 @@ static int find_or_insert_uid(uid, kind)
 
 /* Return 1 if there is a packet waiting, 0 otherwise */
 
-int Z_PacketWaiting()
+int
+Z_PacketWaiting(void)
 {
     struct timeval tv;
     fd_set read;
@@ -201,7 +202,8 @@ int Z_PacketWaiting()
 
 /* Wait for a complete notice to become available */
 
-Code_t Z_WaitForComplete()
+Code_t
+Z_WaitForComplete(void)
 {
     Code_t retval;
 
@@ -218,7 +220,8 @@ Code_t Z_WaitForComplete()
 
 /* Read any available packets and enqueue them */
 
-Code_t Z_ReadEnqueue()
+Code_t
+Z_ReadEnqueue(void)
 {
     Code_t retval;
 
@@ -238,9 +241,9 @@ Code_t Z_ReadEnqueue()
  * notices that haven't been touched in a while
  */
 
-struct _Z_InputQ *Z_SearchQueue(uid, kind)
-    ZUnique_Id_t *uid;
-    ZNotice_Kind_t kind;
+struct _Z_InputQ *
+Z_SearchQueue(ZUnique_Id_t *uid,
+	      ZNotice_Kind_t kind)
 {
     register struct _Z_InputQ *qptr;
     struct _Z_InputQ *next;
@@ -270,7 +273,8 @@ struct _Z_InputQ *Z_SearchQueue(uid, kind)
  * returns.
  */
 
-Code_t Z_ReadWait()
+Code_t
+Z_ReadWait(void)
 {
     register struct _Z_InputQ *qptr;
     ZNotice_t notice;
@@ -515,10 +519,10 @@ Code_t Z_ReadWait()
 
 /* Fragment management routines - compliments, more or less, of RFC815 */
 
-Code_t Z_AddNoticeToEntry(qptr, notice, part)
-    struct _Z_InputQ *qptr;
-    ZNotice_t *notice;
-    int part;
+Code_t
+Z_AddNoticeToEntry(struct _Z_InputQ *qptr,
+		   ZNotice_t *notice,
+		   int part)
 {
     int last, oldfirst, oldlast;
     struct _Z_Hole *hole, *lasthole;
@@ -633,7 +637,9 @@ Code_t Z_AddNoticeToEntry(qptr, notice, part)
     return (ZERR_NONE);
 }
 
-void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz)
+void
+Z_gettimeofday(struct _ZTimeval *ztv,
+	       struct timezone *tz)
 {
         struct timeval tv;
         (void) gettimeofday(&tv, tz); /* yeah, yeah, I know */
@@ -641,12 +647,12 @@ void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz)
         ztv->tv_usec=tv.tv_usec;
 }
 
-Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
-    ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *len;
-    Z_AuthProc cert_routine;
+Code_t
+Z_FormatHeader(ZNotice_t *notice,
+	       char *buffer,
+	       int buffer_len,
+	       int *len,
+	       Z_AuthProc cert_routine)
 {
     Code_t retval;
     static char version[BUFSIZ]; /* default init should be all \0 */
@@ -686,12 +692,12 @@ Code_t Z_FormatHeader(notice, buffer, buffer_len, len, cert_routine)
     return Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine);
 }
 
-Code_t Z_NewFormatHeader(notice, buffer, buffer_len, len, cert_routine)
-    ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *len;
-    Z_AuthProc cert_routine;
+Code_t
+Z_NewFormatHeader(ZNotice_t *notice,
+		  char *buffer,
+		  int buffer_len,
+		  int *len,
+		  Z_AuthProc cert_routine)
 {
     Code_t retval;
     static char version[BUFSIZ]; /* default init should be all \0 */
@@ -732,12 +738,31 @@ Code_t Z_NewFormatHeader(notice, buffer, buffer_len, len, cert_routine)
     return Z_NewFormatAuthHeader(notice, buffer, buffer_len, len, cert_routine);
 }
 
-Code_t Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
-    ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *len;
-    Z_AuthProc cert_routine;
+Code_t
+Z_FormatAuthHeader(ZNotice_t *notice,
+		   char *buffer,
+		   int buffer_len,
+		   int *len,
+		   Z_AuthProc cert_routine)
+{
+    if (!cert_routine) {
+	notice->z_auth = 0;
+	notice->z_authent_len = 0;
+	notice->z_ascii_authent = "";
+	notice->z_checksum = 0;
+	return (Z_FormatRawHeader(notice, buffer, buffer_len,
+				  len, NULL, NULL));
+    }
+    
+    return ((*cert_routine)(notice, buffer, buffer_len, len));
+}
+
+Code_t
+Z_NewFormatAuthHeader(ZNotice_t *notice,
+		      char *buffer,
+		      int buffer_len,
+		      int *len,
+		      Z_AuthProc cert_routine)
 {
     if (!cert_routine) {
 	notice->z_auth = 0;
@@ -751,63 +776,44 @@ Code_t Z_FormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
     return ((*cert_routine)(notice, buffer, buffer_len, len));
 } 
 	
-Code_t Z_NewFormatAuthHeader(notice, buffer, buffer_len, len, cert_routine)
-    ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *len;
-    Z_AuthProc cert_routine;
-{
-    if (!cert_routine) {
-	notice->z_auth = 0;
-	notice->z_authent_len = 0;
-	notice->z_ascii_authent = "";
-	notice->z_checksum = 0;
-	return (Z_FormatRawHeader(notice, buffer, buffer_len,
-				     len, NULL, NULL));
-    }
-    
-    return ((*cert_routine)(notice, buffer, buffer_len, len));
-} 
-	
-Code_t Z_NewFormatRawHeader(notice, buffer, buffer_len, hdr_len,
-                         cksum_start, cksum_len, cstart, cend)
-    ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *hdr_len;
-    char **cksum_start;
-    int *cksum_len;
-    char **cstart, **cend;
+Code_t
+Z_NewFormatRawHeader(ZNotice_t *notice,
+		     char *buffer,
+		     int buffer_len,
+		     int *hdr_len,
+		     char **cksum_start,
+		     int *cksum_len,
+		     char **cstart,
+		     char **cend)
 {
    return(Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len,
 				 cksum_start, cksum_len, cstart, cend, 0));
 }
 
-Code_t Z_AsciiFormatRawHeader(notice, buffer, buffer_len, hdr_len,
-			      cksum_start, cksum_len, cstart, cend)
-    ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *hdr_len;
-    char **cksum_start;
-    int *cksum_len;
-    char **cstart, **cend;
+Code_t
+Z_AsciiFormatRawHeader(ZNotice_t *notice,
+		       char *buffer,
+		       int buffer_len,
+		       int *hdr_len,
+		       char **cksum_start,
+		       int *cksum_len,
+		       char **cstart,
+		       char **cend)
 {
    return(Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len,
 				 cksum_start, cksum_len, cstart, cend, 1));
 }
 
-static Code_t Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_start,
-			      cksum_len, cstart, cend, cksumstyle)
-    ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *hdr_len;
-    char **cksum_start;
-    int *cksum_len;
-    char **cstart, **cend;
-    int cksumstyle;
+static Code_t
+Z_ZcodeFormatRawHeader(ZNotice_t *notice,
+		       char *buffer,
+		       int buffer_len,
+		       int *hdr_len,
+		       char **cksum_start,
+		       int *cksum_len,
+		       char **cstart,
+		       char **cend,
+		       int cksumstyle)
 {
     static char version_nogalaxy[BUFSIZ]; /* default init should be all \0 */
     char newrecip[BUFSIZ];
@@ -955,12 +961,13 @@ static Code_t Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len, cksum_
     return (ZERR_NONE);
 }
 
-Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
-    ZNotice_t *notice;
-    char *buffer;
-    int buffer_len;
-    int *len;
-    char **cstart, **cend;
+Code_t
+Z_FormatRawHeader(ZNotice_t *notice,
+		  char *buffer,
+		  int buffer_len,
+		  int *len,
+		  char **cstart,
+		  char **cend)
 {
     char newrecip[BUFSIZ];
     char *ptr, *end;
@@ -1068,8 +1075,9 @@ Code_t Z_FormatRawHeader(notice, buffer, buffer_len, len, cstart, cend)
 }
 
 static int
-Z_AddField(ptr, field, end)
-    char **ptr, *field, *end;
+Z_AddField(char **ptr,
+	   char *field,
+	   char *end)
 {
     register int len;
 
@@ -1086,7 +1094,8 @@ Z_AddField(ptr, field, end)
     return 0;
 }
 
-struct _Z_InputQ *Z_GetFirstComplete()
+struct _Z_InputQ *
+Z_GetFirstComplete(void)
 {
     struct _Z_InputQ *qptr;
 
@@ -1101,8 +1110,8 @@ struct _Z_InputQ *Z_GetFirstComplete()
     return ((struct _Z_InputQ *)0);
 }
 
-struct _Z_InputQ *Z_GetNextComplete(qptr)
-    struct _Z_InputQ *qptr;
+struct _Z_InputQ *
+Z_GetNextComplete(struct _Z_InputQ *qptr)
 {
     qptr = qptr->next;
     while (qptr) {
@@ -1114,8 +1123,8 @@ struct _Z_InputQ *Z_GetNextComplete(qptr)
     return ((struct _Z_InputQ *)0);
 }
 
-void Z_RemQueue(qptr)
-    struct _Z_InputQ *qptr;
+void
+Z_RemQueue(struct _Z_InputQ *qptr)
 {
     struct _Z_Hole *hole, *nexthole;
     
@@ -1163,11 +1172,11 @@ void Z_RemQueue(qptr)
     return;
 }
 
-Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
-    ZNotice_t *notice;
-    int len;
-    Z_AuthProc cert_func;
-    Z_SendProc send_func;
+Code_t
+Z_SendFragmentedNotice(ZNotice_t *notice,
+		       int len,
+		       Z_AuthProc cert_func,
+		       Z_SendProc send_func)
 {
     ZNotice_t partnotice;
     ZPacket_t buffer;
@@ -1219,13 +1228,12 @@ Code_t Z_SendFragmentedNotice(notice, len, cert_func, send_func)
 }
 
 /*ARGSUSED*/
-Code_t Z_XmitFragment(notice, buf, len, wait)
-ZNotice_t *notice;
-char *buf;
-int len;
-int wait;
+Code_t Z_XmitFragment(ZNotice_t *notice,
+		      char *buf,
+		      int len,
+		      int wait)
 {
-	return(ZSendPacket(buf, len, wait));
+    return(ZSendPacket(buf, len, wait));
 }
 
 #ifdef Z_DEBUG
@@ -1239,8 +1247,8 @@ const char *const ZNoticeKinds[] = {
 #ifdef Z_DEBUG
 
 #undef Z_debug
-#ifdef HAVE_STDARG_H
-void Z_debug (const char *format, ...)
+void
+Z_debug(const char *format, ...)
 {
     va_list pvar;
     if (!__Z_debug_print)
@@ -1249,24 +1257,11 @@ void Z_debug (const char *format, ...)
     (*__Z_debug_print) (format, pvar, __Z_debug_print_closure);
     va_end (pvar);
 }
-#else /* stdarg */
-void Z_debug (va_alist) va_dcl
-{
-    va_list pvar;
-    char *format;
-    if (!__Z_debug_print)
-      return;
-    va_start (pvar);
-    format = va_arg (pvar, char *);
-    (*__Z_debug_print) (format, pvar, __Z_debug_print_closure);
-    va_end (pvar);
-}
-#endif
 
-void Z_debug_stderr (format, args, closure)
-     const char *format;
-     va_list args;
-     void *closure;
+void
+Z_debug_stderr(const char *format,
+	       va_list args,
+	       void *closure)
 {
 #ifdef HAVE_VPRINTF
     vfprintf (stderr, format, args);
@@ -1277,21 +1272,21 @@ void Z_debug_stderr (format, args, closure)
 }
 
 #undef ZGetFD
-int ZGetFD () { return __Zephyr_fd; }
+int ZGetFD (void) { return __Zephyr_fd; }
 
 #undef ZQLength
-int ZQLength () { return __Q_CompleteLength; }
+int ZQLength (void) { return __Q_CompleteLength; }
 
 #undef ZGetDestAddr
-struct sockaddr_in ZGetDestAddr () { return __HM_addr; }
+struct sockaddr_in ZGetDestAddr (void) { return __HM_addr; }
 
 #undef ZGetRealm
-Zconst char * ZGetRealm () { return __Zephyr_realm; }
+Zconst char * ZGetRealm (void) { return __Zephyr_realm; }
 
 #undef ZSetDebug
-void ZSetDebug(proc, arg)
-    void (*proc) __P((const char *, va_list, void *));
-    char *arg;
+void
+ZSetDebug(void (*proc) __P((const char *, va_list, void *)),
+	  char *arg)
 {
     __Z_debug_print = proc;
     __Z_debug_print_closure = arg;
@@ -1299,9 +1294,13 @@ void ZSetDebug(proc, arg)
 #endif /* Z_DEBUG */
 
 #ifdef HAVE_KRB5
-Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, 
-                  krb5_cksumtype cksumtype, 
-                  char **asn1_data, int *asn1_len) {
+Code_t
+Z_Checksum(krb5_data *cksumbuf,
+	   krb5_keyblock *keyblock, 
+	   krb5_cksumtype cksumtype, 
+	   char **asn1_data,
+	   int *asn1_len)
+{
     krb5_error_code result;
     char *data;
     int len;
@@ -1360,9 +1359,14 @@ Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock,
 }
 
 Code_t
-Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice, 
-                      char *buffer, char *cksum_start, int cksum_len, 
-                      char *cstart, char *cend, int buffer_len, 
+Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
+		      ZNotice_t *notice, 
+                      char *buffer,
+		      char *cksum_start,
+		      int cksum_len, 
+                      char *cstart,
+		      char *cend,
+		      int buffer_len, 
                       int *length_adjust)
 {
      int plain_len;   /* length of part not to be checksummed */
@@ -1423,8 +1427,10 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice,
 }
 
 Code_t
-Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, 
-                  krb5_cksumtype *cksumtype) {
+Z_ExtractEncCksum(krb5_keyblock *keyblock,
+		  krb5_enctype *enctype, 
+                  krb5_cksumtype *cksumtype)
+{
     *enctype  = Z_enctype(keyblock); 
     return Z_krb5_lookup_cksumtype(*enctype, cksumtype); 
 }
@@ -1433,9 +1439,12 @@ Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype,
 #ifdef HAVE_KRB5
 /* returns 0 if invalid or losing, 1 if valid, *sigh* */
 int
-Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, 
-                    krb5_cksumtype cksumtype, char *asn1_data, 
-                    int asn1_len) {
+Z_krb5_verify_cksum(krb5_keyblock *keyblock,
+		    krb5_data *cksumbuf, 
+                    krb5_cksumtype cksumtype,
+		    char *asn1_data, 
+                    int asn1_len)
+{
     krb5_error_code result;
 #if HAVE_KRB5_C_MAKE_CHECKSUM
     krb5_checksum checksum;

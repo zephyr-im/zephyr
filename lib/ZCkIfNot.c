@@ -16,11 +16,11 @@
 static const char rcsid_ZCheckIfNotice_c[] = "$Id$";
 #endif
 
-Code_t ZCheckIfNotice(notice, from, predicate, args)
-    ZNotice_t *notice;
-    struct sockaddr_in *from;
-    register int (*predicate) __P((ZNotice_t *, void *));
-    void *args;
+Code_t
+ZCheckIfNotice(ZNotice_t *notice,
+	       struct sockaddr_in *from,
+	       register int (*predicate)(ZNotice_t *, void *),
+	       void *args)
 {
     ZNotice_t tmpnotice;
     Code_t retval;

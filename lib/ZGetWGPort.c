@@ -16,7 +16,8 @@ static char rcsid_ZGetWGPort_c[] = "$Id$";
 
 #include <internal.h>
 
-int ZGetWGPort()
+int
+ZGetWGPort(void)
 {
     char *envptr, name[128];
     FILE *fp;
