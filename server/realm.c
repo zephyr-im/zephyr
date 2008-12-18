@@ -60,24 +60,22 @@ int nrealms = 0;                /* number of other realms */
  * do a database dump of foreign realm info
  *
  */
-static void realm_sendit __P((ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender));
-static Code_t realm_sendit_auth __P((ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender));
-static void rlm_ack __P((ZNotice_t *notice, Unacked *nacked));
-static void rlm_nack_cancel __P((ZNotice_t *notice, struct sockaddr_in *who));
-static void rlm_new_ticket __P(());
-static void rlm_rexmit __P((void *arg));
-static Code_t realm_ulocate_dispatch __P((ZNotice_t *notice,int auth,struct sockaddr_in *who,Server *server,ZRealm *realm));
-static Code_t realm_new_server __P((struct sockaddr_in *, ZNotice_t *, ZRealm *));
-static Code_t realm_set_server __P((struct sockaddr_in *, ZRealm *));
+static void realm_sendit(ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender);
+static Code_t realm_sendit_auth(ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender);
+static void rlm_ack(ZNotice_t *notice, Unacked *nacked);
+static void rlm_nack_cancel(ZNotice_t *notice, struct sockaddr_in *who);
+static void rlm_rexmit(void *arg);
+static Code_t realm_ulocate_dispatch(ZNotice_t *notice,int auth,struct sockaddr_in *who,Server *server,ZRealm *realm);
+static Code_t realm_new_server(struct sockaddr_in *, ZNotice_t *, ZRealm *);
+static Code_t realm_set_server(struct sockaddr_in *, ZRealm *);
 #ifdef HAVE_KRB4
-static Code_t ticket_retrieve __P((ZRealm *realm));
-static int ticket_lookup __P((char *realm));
+static Code_t ticket_retrieve(ZRealm *realm);
+static int ticket_lookup(char *realm);
 #endif
 
 static int
-realm_get_idx_by_addr(realm, who) 
-    ZRealm *realm;
-    struct sockaddr_in *who;
+realm_get_idx_by_addr(ZRealm *realm,
+		      struct sockaddr_in *who)
 {
     struct sockaddr_in *addr;
     int a, b;
@@ -91,8 +89,7 @@ realm_get_idx_by_addr(realm, who)
 }
 
 char *
-realm_expand_realm(realmname)
-char *realmname;
+realm_expand_realm(char *realmname)
 {
     ZRealm *realm;
     int a;
@@ -120,8 +117,7 @@ char *realmname;
 }
 
 ZRealm *
-realm_get_realm_by_pid(pid)
-     int pid;
+realm_get_realm_by_pid(int pid)
 {
     ZRealm *realm;
     int a;
@@ -134,7 +130,7 @@ realm_get_realm_by_pid(pid)
 }
 
 void
-kill_realm_pids()
+kill_realm_pids(void)
 {
     ZRealm *realm;
     int a;
@@ -147,8 +143,7 @@ kill_realm_pids()
 }
 
 ZRealmname *
-get_realm_lists(file)
-    char *file;
+get_realm_lists(char *file)
 {
     ZRealmname *rlm_list, *rlm;
     int ii, nused, ntotal;
@@ -233,7 +228,7 @@ get_realm_lists(file)
 }
 
 Code_t 
-realm_send_realms()
+realm_send_realms(void)
 {
     int cnt, retval;
     for (cnt = 0; cnt < nrealms; cnt++) {
@@ -244,9 +239,7 @@ realm_send_realms()
 }
 
 int
-realm_bound_for_realm(realm, recip)
-     char *realm;
-     char *recip;
+realm_bound_for_realm(char *realm, char *recip)
 {
     char *rlm = NULL;
     int remote = strcmp(ZGetRealm(), realm);
@@ -264,9 +257,7 @@ realm_bound_for_realm(realm, recip)
 }
 
 int
-realm_sender_in_realm(realm, sender)
-     char *realm;
-     char *sender;
+realm_sender_in_realm(char *realm, char *sender)
 {
     char *rlm = NULL;
     int remote = strcmp(ZGetRealm(), realm);
@@ -283,8 +274,7 @@ realm_sender_in_realm(realm, sender)
     return 0;
 }
 
-int sender_in_realm(notice)
-    ZNotice_t *notice;
+int sender_in_realm(ZNotice_t *notice)
 {
   char *realm;
 
@@ -297,8 +287,7 @@ int sender_in_realm(notice)
 }
 
 ZRealm *
-realm_which_realm(who)
-    struct sockaddr_in *who;
+realm_which_realm(struct sockaddr_in *who)
 {
     ZRealm *realm;
     struct sockaddr_in *addr;
@@ -318,8 +307,7 @@ realm_which_realm(who)
 }
 
 ZRealm *
-realm_get_realm_by_name(name)
-    char *name;
+realm_get_realm_by_name(char *name)
 {
     int a;
     ZRealm *realm;
@@ -338,9 +326,8 @@ realm_get_realm_by_name(name)
 }
 
 static void
-rlm_nack_cancel(notice, who)
-    register ZNotice_t *notice;
-    struct sockaddr_in *who;
+rlm_nack_cancel(register ZNotice_t *notice,
+		struct sockaddr_in *who)
 {
     register ZRealm *which = realm_which_realm(who);
     register Unacked *nacked, *next;
@@ -383,9 +370,8 @@ rlm_nack_cancel(notice, who)
 }
 
 static void
-rlm_ack(notice, nacked)
-    ZNotice_t *notice;
-    Unacked *nacked;
+rlm_ack(ZNotice_t *notice,
+	Unacked *nacked)
 {
     ZNotice_t acknotice;
     ZPacket_t ackpack;
@@ -419,11 +405,10 @@ rlm_ack(notice, nacked)
 }
 
 Code_t
-realm_dispatch(notice, auth, who, server)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    Server *server;
+realm_dispatch(ZNotice_t *notice,
+	       int auth,
+	       struct sockaddr_in *who,
+	       Server *server)
 {
     ZRealm *realm;
     struct sockaddr_in newwho;
@@ -488,7 +473,7 @@ realm_dispatch(notice, auth, who, server)
 }
 
 void
-realm_init()
+realm_init(void)
 {
     Client *client;
     ZRealmname *rlmnames;
@@ -591,8 +576,7 @@ realm_init()
 }
 
 void
-realm_deathgram(server)
-    Server *server;
+realm_deathgram(Server *server)
 {
     ZRealm *realm;
     char rlm_recipient[REALM_SZ + 1];
@@ -653,7 +637,7 @@ realm_deathgram(server)
 }
 
 void
-realm_wakeup()
+realm_wakeup(void)
 {
     int jj, found = 0;
     ZRealm *realm;
@@ -721,12 +705,11 @@ realm_wakeup()
 }
 
 static Code_t
-realm_ulocate_dispatch(notice, auth, who, server, realm)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    Server *server;
-    ZRealm *realm;
+realm_ulocate_dispatch(ZNotice_t *notice,
+		       int auth,
+		       struct sockaddr_in *who,
+		       Server *server,
+		       ZRealm *realm)
 {
     register char *opcode = notice->z_opcode;
     Code_t status;
@@ -761,12 +744,11 @@ realm_ulocate_dispatch(notice, auth, who, server, realm)
 
 
 Code_t
-realm_control_dispatch(notice, auth, who, server, realm)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    Server *server;
-    ZRealm *realm;
+realm_control_dispatch(ZNotice_t *notice,
+		       int auth,
+		       struct sockaddr_in *who,
+		       Server *server,
+		       ZRealm *realm)
 {
     register char *opcode = notice->z_opcode;
     Code_t status;
@@ -843,10 +825,9 @@ realm_control_dispatch(notice, auth, who, server, realm)
 }
 
 static Code_t
-realm_new_server(sin, notice, realm)
-    struct sockaddr_in *sin;
-    ZNotice_t *notice;
-    ZRealm *realm;
+realm_new_server(struct sockaddr_in *sin,
+		 ZNotice_t *notice,
+		 ZRealm *realm)
 {
     struct hostent *hp;
     char suggested_server[MAXHOSTNAMELEN];
@@ -880,9 +861,8 @@ realm_new_server(sin, notice, realm)
 }
 
 static Code_t
-realm_set_server(sin, realm)
-    struct sockaddr_in *sin;
-    ZRealm *realm;
+realm_set_server(struct sockaddr_in *sin,
+		 ZRealm *realm)
 {
     ZRealm *rlm;
 
@@ -895,12 +875,11 @@ realm_set_server(sin, realm)
 }
 
 void
-realm_handoff(notice, auth, who, realm, ack_to_sender)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    ZRealm *realm;
-    int ack_to_sender;
+realm_handoff(ZNotice_t *notice,
+	      int auth,
+	      struct sockaddr_in *who,
+	      ZRealm *realm,
+	      int ack_to_sender)
 {
 #ifdef HAVE_KRB5
     Code_t retval;
@@ -929,12 +908,11 @@ realm_handoff(notice, auth, who, realm, ack_to_sender)
 }
 
 static void
-realm_sendit(notice, who, auth, realm, ack_to_sender)
-    ZNotice_t *notice;
-    struct sockaddr_in *who;
-    int auth;
-    ZRealm *realm;
-    int ack_to_sender;
+realm_sendit(ZNotice_t *notice,
+	     struct sockaddr_in *who,
+	     int auth,
+	     ZRealm *realm,
+	     int ack_to_sender)
 {
     caddr_t pack;
     int packlen;
@@ -992,8 +970,7 @@ realm_sendit(notice, who, auth, realm, ack_to_sender)
 }
 
 static void
-packet_ctl_nack(nackpacket)
-    Unacked *nackpacket;
+packet_ctl_nack(Unacked *nackpacket)
 {
     ZNotice_t notice;
 
@@ -1009,8 +986,7 @@ packet_ctl_nack(nackpacket)
 }
 
 static void
-rlm_rexmit(arg)
-    void *arg;
+rlm_rexmit(void *arg)
 {
     Unacked *nackpacket = (Unacked *) arg;
     Code_t retval;
@@ -1088,8 +1064,7 @@ rlm_rexmit(arg)
 }
 
 void
-realm_dump_realms(fp)
-    FILE *fp;
+realm_dump_realms(FILE *fp)
 {
     register int ii, jj;
   
@@ -1106,12 +1081,11 @@ realm_dump_realms(fp)
 
 #ifdef HAVE_KRB5
 static Code_t
-realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    ZRealm *realm;
-    int ack_to_sender;
+realm_sendit_auth(ZNotice_t *notice,
+		  struct sockaddr_in *who,
+		  int auth,
+		  ZRealm *realm,
+		  int ack_to_sender)
 {
     char *buffer, *ptr;
     caddr_t pack;
@@ -1318,8 +1292,7 @@ realm_sendit_auth(notice, who, auth, realm, ack_to_sender)
 }
 
 static int
-ticket_lookup(realm)
-char *realm;
+ticket_lookup(char *realm)
 {
     krb5_error_code result;
     krb5_timestamp sec;
@@ -1364,8 +1337,7 @@ char *realm;
 }
 
 static Code_t
-ticket_retrieve(realm)
-    ZRealm *realm;
+ticket_retrieve(ZRealm *realm)
 {
     int pid;
     krb5_ccache ccache;

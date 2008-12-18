@@ -52,23 +52,23 @@ static const char rcsid_main_c[] =
 
 #define	EVER		(;;)		/* don't stop looping */
 
-static int do_net_setup __P((void));
-static int initialize __P((void));
-static void usage __P((void));
-static void do_reset __P((void));
-static RETSIGTYPE bye __P((int));
-static RETSIGTYPE dbug_on __P((int));
-static RETSIGTYPE dbug_off __P((int));
-static RETSIGTYPE sig_dump_db __P((int));
-static RETSIGTYPE sig_dump_strings __P((int));
-static RETSIGTYPE reset __P((int));
-static RETSIGTYPE reap __P((int));
-static void read_from_dump __P((char *dumpfile));
-static void dump_db __P((void));
-static void dump_strings __P((void));
+static int do_net_setup(void);
+static int initialize(void);
+static void usage(void);
+static void do_reset(void);
+static RETSIGTYPE bye(int);
+static RETSIGTYPE dbug_on(int);
+static RETSIGTYPE dbug_off(int);
+static RETSIGTYPE sig_dump_db(int);
+static RETSIGTYPE sig_dump_strings(int);
+static RETSIGTYPE reset(int);
+static RETSIGTYPE reap(int);
+static void read_from_dump(char *dumpfile);
+static void dump_db(void);
+static void dump_strings(void);
 
 #ifndef DEBUG
-static void detach __P((void));
+static void detach(void);
 #endif
 
 static short doreset = 0;		/* if it becomes 1, perform
@@ -144,9 +144,8 @@ C_Block __Zephyr_session;
 #endif
 
 int
-main(argc, argv)
-    int argc;
-    char **argv;
+main(int argc,
+     char **argv)
 {
     int nfound;			/* #fildes ready on select */
     fd_set readable;
@@ -394,7 +393,7 @@ main(argc, argv)
    */
 
 static int
-initialize()
+initialize(void)
 {
     int zero = 0;
     if (do_net_setup())
@@ -452,7 +451,7 @@ initialize()
  */
 
 static int
-do_net_setup()
+do_net_setup(void)
 {
     struct servent *sp;
     struct hostent *hp;
@@ -522,7 +521,7 @@ do_net_setup()
  */
 
 static void
-usage()
+usage(void)
 {
 #ifdef DEBUG
 	fprintf(stderr, "Usage: %s [-d] [-s] [-n] [-k realm] [-f dumpfile]\n",
@@ -535,7 +534,7 @@ usage()
 }
 
 int
-packets_waiting()
+packets_waiting(void)
 {
     fd_set readable, initial;
     struct timeval tv;
@@ -550,8 +549,7 @@ packets_waiting()
 }
 
 static RETSIGTYPE
-bye(sig)
-    int sig;
+bye(int sig)
 {
     server_shutdown();		/* tell other servers */
 #ifdef REALM_MGMT
@@ -567,8 +565,7 @@ bye(sig)
 }
 
 static RETSIGTYPE
-dbug_on(sig)
-    int sig;
+dbug_on(int sig)
 {
     syslog(LOG_DEBUG, "debugging turned on");
 #ifdef DEBUG_MALLOC
@@ -578,8 +575,7 @@ dbug_on(sig)
 }
 
 static RETSIGTYPE
-dbug_off(sig)
-    int sig;
+dbug_off(int sig)
 {
     syslog(LOG_DEBUG, "debugging turned off");
 #ifdef DEBUG_MALLOC
@@ -591,13 +587,12 @@ dbug_off(sig)
 int fork_for_dump = 0;
 
 static RETSIGTYPE
-sig_dump_strings(sig)
-    int sig;
+sig_dump_strings(int sig)
 {
     dump_strings_flag = 1;
 }
 
-static void dump_strings()
+static void dump_strings(void)
 {
     char filename[128];
 
@@ -624,13 +619,13 @@ static void dump_strings()
 }
 
 static RETSIGTYPE
-sig_dump_db(sig)
-    int sig;
+sig_dump_db(int sig)
 {
     dump_db_flag = 1;
 }
 
-static void dump_db()
+static void
+dump_db(void)
 {
     /* dump the in-core database to human-readable form on disk */
     FILE *fp;
@@ -667,8 +662,7 @@ static void dump_db()
 }
 
 static RETSIGTYPE
-reset(sig)
-    int sig;
+reset(int sig)
 {
 #if 1
     zdbug((LOG_DEBUG,"reset()"));
@@ -677,8 +671,7 @@ reset(sig)
 }
 
 static RETSIGTYPE
-reap(sig)
-    int sig;
+reap(int sig)
 {
     int pid, i = 0;
     int oerrno = errno;
@@ -720,7 +713,7 @@ reap(sig)
 }
 
 static void
-do_reset()
+do_reset(void)
 {
     int oerrno = errno;
 #ifdef _POSIX_VERSION
@@ -759,7 +752,7 @@ do_reset()
  */
 
 static void
-detach()
+detach(void)
 {
     /* detach from terminal and fork. */
     int i;
@@ -793,8 +786,7 @@ detach()
 #endif /* not DEBUG */
 
 static void
-read_from_dump(dumpfile)
-    char *dumpfile;
+read_from_dump(char *dumpfile)
 {
     /* Not yet implemented. */
     return;

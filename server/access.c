@@ -58,10 +58,9 @@ static void access_setup __P((int first));
  */
 
 int
-access_check(sender, acl, accesstype)
-    char *sender;
-    Acl *acl;
-    Access accesstype;
+access_check(char *sender,
+	     Acl *acl,
+	     Access accesstype)
 {
     char buf[MAXPATHLEN];	/* holds the real acl name */
     char *prefix;
@@ -109,8 +108,7 @@ access_check(sender, acl, accesstype)
 }
 
 static void
-check_acl(acl)
-    Acl *acl;
+check_acl(Acl *acl)
 {
     acl->acl_types = 0;
     check_acl_type(acl, TRANSMIT, ACL_XMT);
@@ -120,10 +118,9 @@ check_acl(acl)
 }
 
 static void
-check_acl_type(acl, accesstype, typeflag)
-    Acl *acl;
-    Access accesstype;
-    int typeflag;
+check_acl_type(Acl *acl,
+	       Access accesstype,
+	       int typeflag)
 {
     char 	buf[MAXPATHLEN]; /* holds the real acl name */
     char	*prefix;
@@ -161,8 +158,7 @@ check_acl_type(acl, accesstype, typeflag)
  * acl files for the (non-)restricted class.
  */
 static void
-access_setup(first)
-    int first;
+access_setup(int first)
 {
     char buf[MAXPATHLEN];
     char class_name[512];	/* assume class names <= 511 bytes */
@@ -221,13 +217,13 @@ access_setup(first)
 }
 
 void
-access_init()
+access_init(void)
 {
     access_setup(1);
 }
 
 void
-access_reinit()
+access_reinit(void)
 {
     acl_cache_reset();
     access_setup(0);

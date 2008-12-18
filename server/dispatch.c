@@ -32,7 +32,7 @@ static const char rcsid_dispatch_c[] =
 #define HOSTS_SIZE_INIT			256
 
 #ifdef DEBUG
-ZCONST char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
+const char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
 				    "HMCTL", "SERVACK", "SERVNAK", "CLIENTACK",
 				    "STAT"};
 #endif
@@ -95,8 +95,7 @@ static struct in_addr *hosts;
 static int hosts_size = 0, num_hosts = 0;
 
 static void
-dump_stats (arg)
-    void *arg;
+dump_stats (void *arg)
 {
     syslog(LOG_INFO, "stats: %s: %d", hm_packets.str, hm_packets.val);
     syslog(LOG_INFO, "stats: %s: %d", control_notices.str,
@@ -124,7 +123,7 @@ dump_stats (arg)
  */
 
 void
-handle_packet()
+handle_packet(void)
 {
     Code_t status;
     ZPacket_t input_packet;	/* from the network */
@@ -244,11 +243,10 @@ handle_packet()
  */
 
 static void
-dispatch(notice, auth, who, from_server)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    int from_server;
+dispatch(ZNotice_t *notice,
+	 int auth,
+	 struct sockaddr_in *who,
+	 int from_server)
 {
     Code_t status;
     String *notice_class;
@@ -341,11 +339,10 @@ dispatch(notice, auth, who, from_server)
  */
 
 void
-sendit(notice, auth, who, external)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    int external;
+sendit(ZNotice_t *notice,
+       int auth,
+       struct sockaddr_in *who,
+       int external)
 {
     static int send_counter = 0;
     char recipbuf[ANAME_SZ + INST_SZ + REALM_SZ + 3], *recipp;
@@ -474,12 +471,11 @@ sendit(notice, auth, who, external)
  */
 
 static int
-send_to_dest(notice, auth, dest, send_counter, external)
-    ZNotice_t *notice;
-    int auth;
-    Destination *dest;
-    int send_counter;
-    int external;
+send_to_dest(ZNotice_t *notice,
+	     int auth,
+	     Destination *dest,
+	     int send_counter,
+	     int external)
 {
     Client **clientp;
     int any = 0;
@@ -512,8 +508,7 @@ send_to_dest(notice, auth, dest, send_counter, external)
  */
 
 void
-nack_release(client)
-    Client *client;
+nack_release(Client *client)
 {
     int i;
     Unacked *nacked, *next;
@@ -539,11 +534,10 @@ nack_release(client)
 /* the arguments must be the same as the arguments to Z_XmitFragment */
 /*ARGSUSED*/
 Code_t
-xmit_frag(notice, buf, len, waitforack)
-    ZNotice_t *notice;
-    char *buf;
-    int len;
-    int waitforack;
+xmit_frag(ZNotice_t *notice,
+	  char *buf,
+	  int len,
+	  int waitforack)
 {
     struct sockaddr_in sin;
     char *savebuf;
@@ -596,11 +590,10 @@ xmit_frag(notice, buf, len, waitforack)
  */
 
 void
-xmit(notice, dest, auth, client)
-    ZNotice_t *notice;
-    struct sockaddr_in *dest;
-    int auth;
-    Client *client;
+xmit(ZNotice_t *notice,
+     struct sockaddr_in *dest,
+     int auth,
+     Client *client)
 {
     char *noticepack;
     Unacked *nacked;
@@ -714,7 +707,7 @@ xmit(notice, dest, auth, client)
             (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
             partnotice.z_multinotice = multi;
             if (offset > 0) {
-              (void) gettimeofday(&partnotice.z_uid.tv, (struct timezone *)0);
+              (void) Z_gettimeofday(&partnotice.z_uid.tv, (struct timezone *)0);
               partnotice.z_uid.tv.tv_sec = htonl((u_long)
                                                  partnotice.z_uid.tv.tv_sec);
               partnotice.z_uid.tv.tv_usec = htonl((u_long)
@@ -807,8 +800,7 @@ xmit(notice, dest, auth, client)
  */
 
 void
-rexmit(arg)
-    void *arg;
+rexmit(void *arg)
 {
     Unacked *nacked = (Unacked *) arg;
     int retval;
@@ -874,10 +866,9 @@ rexmit(arg)
  */
 
 void
-clt_ack(notice, who, sent)
-    ZNotice_t *notice;
-    struct sockaddr_in *who;
-    Sent_type sent;
+clt_ack(ZNotice_t *notice,
+	struct sockaddr_in *who,
+	Sent_type sent)
 {
     ZNotice_t acknotice;
     ZPacket_t ackpack;
@@ -970,9 +961,8 @@ clt_ack(notice, who, sent)
  */
 
 static void
-nack_cancel(notice, who)
-    ZNotice_t *notice;
-    struct sockaddr_in *who;
+nack_cancel(ZNotice_t *notice,
+	    struct sockaddr_in *who)
 {
     Unacked *nacked;
     int hashval;
@@ -1013,11 +1003,10 @@ nack_cancel(notice, who)
 /* Dispatch an HM_CTL notice. */
 
 Code_t
-hostm_dispatch(notice, auth, who, server)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    Server *server;
+hostm_dispatch(ZNotice_t *notice,
+	       int auth,
+	       struct sockaddr_in *who,
+	       Server *server)
 {
     Server *owner;
     char *opcode = notice->z_opcode;
@@ -1099,11 +1088,10 @@ hostm_dispatch(notice, auth, who, server)
  */
 
 Code_t
-control_dispatch(notice, auth, who, server)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-    Server *server;
+control_dispatch(ZNotice_t *notice,
+		 int auth,
+		 struct sockaddr_in *who,
+		 Server *server)
 {
     char *opcode = notice->z_opcode;
     Client *client;
@@ -1273,7 +1261,7 @@ control_dispatch(notice, auth, who, server)
 }
 
 void
-hostm_shutdown()
+hostm_shutdown(void)
 {
     int i, s, newserver;
     struct sockaddr_in sin;
@@ -1300,7 +1288,7 @@ hostm_shutdown()
 }
 
 void
-realm_shutdown()
+realm_shutdown(void)
 {
     int i, s, newserver;
     struct sockaddr_in sin;
@@ -1325,9 +1313,8 @@ realm_shutdown()
 }
 
 static void
-hostm_deathgram(sin, server)
-    struct sockaddr_in *sin;
-    Server *server;
+hostm_deathgram(struct sockaddr_in *sin,
+		Server *server)
 {
     Code_t retval;
     int shutlen;
@@ -1366,7 +1353,7 @@ hostm_deathgram(sin, server)
 }
 
 static char *
-hm_recipient()
+hm_recipient(void)
 {
     static char *recipient;
     char *realm;
