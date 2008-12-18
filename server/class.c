@@ -145,10 +145,6 @@ triplet_deregister(Client *client,
     int retval;
     unsigned long hashval;
 
-#if 0
-    zdbug((LOG_DEBUG, "class_dereg: %s %s", dest->classname->string,
-	   dest->inst->string));
-#endif
     hashval = DEST_HASHVAL(*dest);
     for (triplet = triplet_bucket[hashval]; triplet; triplet = triplet->next) {
 	if (ZDest_eq(&triplet->dest, dest)) {

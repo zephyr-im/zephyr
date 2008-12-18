@@ -333,11 +333,10 @@ rlm_nack_cancel(register ZNotice_t *notice,
     register ZRealm *which = realm_which_realm(who);
     register Unacked *nacked;
   
-#if 1
     zdbug((LOG_DEBUG, "rlm_nack_cancel: %s:%08X,%08X",
            inet_ntoa(notice->z_uid.zuid_addr),
            notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
-#endif
+
     if (!which) {
 	syslog(LOG_ERR, "non-realm ack?");
 	return;
@@ -361,11 +360,6 @@ rlm_nack_cancel(register ZNotice_t *notice,
 	    }
 	}
     }
-#if 0
-    zdbug((LOG_DEBUG,"nack_cancel: nack not found %s:%08X,%08X",
-           inet_ntoa (notice->z_uid.zuid_addr),
-           notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
-#endif
     return;
 }
 
@@ -716,10 +710,6 @@ realm_ulocate_dispatch(ZNotice_t *notice,
 	       inet_ntoa(who->sin_addr), 
 	       notice->z_class, notice->z_class_inst, 
 	       notice->z_opcode); /* XXX */
-#if 0
-	syslog(LOG_WARNING, "unauth locate msg from %s",
-	       inet_ntoa(who->sin_addr));
-#endif
 	clt_ack(notice, who, AUTH_FAILED);
 	return(ZERR_NONE);
     }
@@ -755,10 +745,6 @@ realm_control_dispatch(ZNotice_t *notice,
 	       inet_ntoa(who->sin_addr), 
 	       notice->z_class, notice->z_class_inst, 
 	       notice->z_opcode); /* XXX */
-#if 0
-	syslog(LOG_WARNING, "unauth ctl msg from %s",
-	       inet_ntoa(who->sin_addr));
-#endif
 	if (server == me_server)
 	    clt_ack(notice, who, AUTH_FAILED);
 	return(ZERR_NONE);
@@ -976,11 +962,9 @@ packet_ctl_nack(Unacked *nackpacket)
     ZParseNotice(nackpacket->packet, nackpacket->packsz, &notice);
     if (nackpacket->ack_addr.sin_addr.s_addr != 0)
 	nack(&notice, &nackpacket->ack_addr);
-#if 1
     else
 	syslog(LOG_WARNING, "would have acked nobody (%s/%s/%s)",
 	       notice.z_class, notice.z_class_inst, notice.z_opcode); /* XXX */
-#endif
 }
 
 static void
@@ -1148,11 +1132,6 @@ realm_sendit_auth(ZNotice_t *notice,
 		return ZERR_BADFIELD;
 	    }
 
-#if 0
-	zdbug((LOG_DEBUG,"rlm_send_auth: orig: %d-%d/%d", origoffset, 
-	       notice->z_message_len, origlen));
-#endif
-
 	fragsize = Z_MAXPKTLEN-hdrlen-Z_FRAGFUDGE;
 
 	while (offset < notice->z_message_len || !notice->z_message_len) {
@@ -1171,11 +1150,6 @@ realm_sendit_auth(ZNotice_t *notice,
 	    message_len = min(notice->z_message_len-offset, fragsize);
 	    partnotice.z_message = notice->z_message+offset;
 	    partnotice.z_message_len = message_len;
-
-#if 0
-	    zdbug((LOG_DEBUG,"rlm_send_auth: new: %d-%d/%d", 
-		   origoffset+offset, message_len, origlen));
-#endif
 
 	    buffer = (char *) malloc(sizeof(ZPacket_t));
 	    if (!buffer) {

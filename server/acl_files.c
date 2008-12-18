@@ -317,9 +317,6 @@ add_hash(struct hashtbl *h,
     char **old;
     int i;
 
-#if 0
-    fprintf (stderr, "adding %s to acl hash %08X\n", el, h);
-#endif
     /* Make space if it isn't there already */
     if (h->entries + 1 > (h->size >> 1)) {
 	old = h->tbl;
@@ -350,23 +347,11 @@ check_hash(struct hashtbl *h,
 {
     unsigned hv;
 
-#if 0
-    fprintf (stderr, "looking for %s in acl %08X\n", el, h);
-#endif
     for (hv = hashval(el) % h->size; h->tbl[hv]; hv = (hv + 1) % h->size) {
-#if 0
-	fprintf (stderr, "\tstrcmp (%s,...)\n", h->tbl[hv]);
-#endif
 	if (!strcmp(h->tbl[hv], el)) {
-#if 0
-	    fprintf (stderr, "success!\n");
-#endif
 	    return 1;
 	}
     }
-#if 0
-    fprintf (stderr, "failure\n");
-#endif
     return 0;
 }
 
@@ -421,13 +406,8 @@ int acl_load(char *name)
      */
     if (acl_cache[i].acl == (struct hashtbl *) 0) {
 	/* Gotta reload */
-#if 0
-	fprintf (stderr, "attempting to load %s\n", name);
-#endif
 	if ((f = fopen(name, "r")) == NULL) {
-#if 0
-	    perror (name);
-#endif
+	    syslog(LOG_ERR, "Error loading acl file %s: %m", name);
 	    return -1;
 	}
 	if (acl_cache[i].acl) destroy_hash(acl_cache[i].acl);
@@ -470,9 +450,6 @@ acl_exact_match(char *acl,
 {
     int idx;
 
-#if 0
-    fprintf (stderr, "checking for %s in %s\n", principal, acl);
-#endif
     return((idx = acl_load(acl)) >= 0
 	   && check_hash(acl_cache[idx].acl, principal));
 }
