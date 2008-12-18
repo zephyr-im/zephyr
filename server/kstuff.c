@@ -132,7 +132,8 @@ GetKrb5Data(int fd, krb5_data *data) {
 
     for (i=0; i<20; i++) {
 	if (read(fd, &p[i], 1) != 1) {
-	    syslog(LOG_WARNING,"bad read reply len");
+	    p[i] = 0;
+	    syslog(LOG_WARNING,"bad read reply len @%d (got \"%s\")", i, p);
 	    return(KFAILURE);
 	}
 	if (p[i] == ' ') {
