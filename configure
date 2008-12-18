@@ -21471,7 +21471,6 @@ done
 
 
 if test "$no_x" != "yes"; then
-	XCLIENTS=xzwrite
 	ZWGC_LIBX11=-lX11
 fi
 
@@ -26178,7 +26177,7 @@ echo "${ECHO_T}$ac_cv_have_krb5_creds_keyblock_enctype" >&6; }
 
 ac_config_headers="$ac_config_headers h/config.h"
 
-ac_config_files="$ac_config_files Makefile clients/Makefile clients/xzwrite/Makefile clients/zaway/Makefile clients/zctl/Makefile clients/zleave/Makefile clients/zlocate/Makefile clients/zmailnotify/Makefile clients/znol/Makefile clients/zpopnotify/Makefile clients/zshutdown_notify/Makefile clients/zstat/Makefile clients/zwrite/Makefile lib/Makefile libdyn/Makefile server/Makefile zhm/Makefile zwgc/Makefile"
+ac_config_files="$ac_config_files Makefile clients/Makefile clients/zaway/Makefile clients/zctl/Makefile clients/zleave/Makefile clients/zlocate/Makefile clients/znol/Makefile clients/zshutdown_notify/Makefile clients/zstat/Makefile clients/zwrite/Makefile lib/Makefile libdyn/Makefile server/Makefile zhm/Makefile zwgc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -26736,14 +26735,11 @@ do
     "h/config.h") CONFIG_HEADERS="$CONFIG_HEADERS h/config.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "clients/Makefile") CONFIG_FILES="$CONFIG_FILES clients/Makefile" ;;
-    "clients/xzwrite/Makefile") CONFIG_FILES="$CONFIG_FILES clients/xzwrite/Makefile" ;;
     "clients/zaway/Makefile") CONFIG_FILES="$CONFIG_FILES clients/zaway/Makefile" ;;
     "clients/zctl/Makefile") CONFIG_FILES="$CONFIG_FILES clients/zctl/Makefile" ;;
     "clients/zleave/Makefile") CONFIG_FILES="$CONFIG_FILES clients/zleave/Makefile" ;;
     "clients/zlocate/Makefile") CONFIG_FILES="$CONFIG_FILES clients/zlocate/Makefile" ;;
-    "clients/zmailnotify/Makefile") CONFIG_FILES="$CONFIG_FILES clients/zmailnotify/Makefile" ;;
     "clients/znol/Makefile") CONFIG_FILES="$CONFIG_FILES clients/znol/Makefile" ;;
-    "clients/zpopnotify/Makefile") CONFIG_FILES="$CONFIG_FILES clients/zpopnotify/Makefile" ;;
     "clients/zshutdown_notify/Makefile") CONFIG_FILES="$CONFIG_FILES clients/zshutdown_notify/Makefile" ;;
     "clients/zstat/Makefile") CONFIG_FILES="$CONFIG_FILES clients/zstat/Makefile" ;;
     "clients/zwrite/Makefile") CONFIG_FILES="$CONFIG_FILES clients/zwrite/Makefile" ;;
