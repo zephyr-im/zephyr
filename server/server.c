@@ -87,10 +87,6 @@ static Code_t admin_dispatch __P((ZNotice_t *, int, struct sockaddr_in *,
 static Code_t kill_clt __P((ZNotice_t *, Server *));
 static Code_t extract_addr __P((ZNotice_t *, struct sockaddr_in *));
 
-#ifdef notdef
-static Code_t server_register();
-#endif
-
 static struct in_addr *get_server_addrs __P((int *number));
 static char **get_server_list __P((char *file));
 static char **get_single_server __P((void));
@@ -528,64 +524,6 @@ server_dispatch(ZNotice_t *notice,
     return status;
 }
 
-#ifdef notdef
-/*
- * Register a new server (one not in our list).  This MUST be authenticated.
- */
-
-/*ARGSUSED*/
-static Code_t
-server_register(notice, auth, who)
-    ZNotice_t *notice;
-    int auth;
-    struct sockaddr_in *who;
-{
-    Server *temp;
-    int i;
-    long timerval;
-
-    if (who->sin_port != srv_addr.sin_port) {
-	return 1;
-    }
-    /* Not yet... talk to ken about authenticators */
-#ifdef notdef
-    if (!auth) {
-	zdbug((LOG_DEBUG, "srv_unauth"));
-	return 1;
-    }
-#endif /* notdef */
-    /* OK, go ahead and set him up. */
-    temp = (Server *) malloc((nservers + 1) * sizeof(Server));
-    if (!temp) {
-	syslog(LOG_CRIT, "srv_reg malloc");
-	return 1;
-    }
-
-    memcpy(temp, otherservers, nservers * sizeof(Server));
-    free(otherservers);
-    otherservers = temp;
-    /* don't reschedule limbo's timer, so start i=1 */
-    for (i = 1; i < nservers; i++) {
-	if (i == me_server_idx) /* don't reset myself */
-	    continue;
-	/* reschedule the timers--we moved otherservers */
-	timerval = timer_when(otherservers[i].timer);
-	timer_reset(otherservers[i].timer);
-	otherservers[i].timer = timer_set_abs(timerval, server_timo,
-					      &otherservers[i]);
-    }
-    setup_server(&otherservers[nservers], &who->sin_addr);
-    otherservers[nservers].state = SERV_STARTING;
-    otherservers[nservers].timeout = timo_tardy;
-    otherservers[nservers].update_queue = NULL;
-    otherservers[nservers].dumping = 0;
-
-    nservers++;
-
-    return 0;
-}
-#endif
-
 /*
  * Tell the other servers that this client died.
  */
@@ -787,19 +725,8 @@ server_adispatch(ZNotice_t *notice,
 	return ZERR_NONE;
     }
 
-#ifdef notdef
-    syslog(LOG_INFO, "disp: new server?");
-    if (server_register(notice, auth, who) != ZERR_NONE) {
-	syslog(LOG_INFO, "new server failed");
-    } else {
-	syslog(LOG_INFO, "new server %s, %d", inet_ntoa(who->sin_addr),
-	       ntohs(who->sin_port));
-	hello_respond(who, DONT_ADJUST, auth);
-    }
-#else
     syslog(LOG_INFO, "srv_adisp: server attempt from %s",
 	   inet_ntoa(who->sin_addr));
-#endif /* notdef */
 
     return ZERR_NONE;
 }
