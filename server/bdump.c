@@ -83,7 +83,6 @@ return 0;
 
 static void close_bdump(void* arg);
 static Code_t bdump_send_loop(Server *server);
-static Code_t bdump_ask_for(char *inst);
 static Code_t bdump_recv_loop(Server *server);
 static void bdump_get_v12(ZNotice_t *, int, struct sockaddr_in *,
 			       Server *);
@@ -183,7 +182,7 @@ bdump_offer(struct sockaddr_in *who)
 	return;
     }
     if (!bdump_sin.sin_port) {
-	int len = sizeof(bdump_sin);
+	unsigned int len = sizeof(bdump_sin);
 
 	if (getsockname(bdump_socket,
 			(struct sockaddr *) &bdump_sin, &len) < 0) {
@@ -252,7 +251,7 @@ bdump_send(void)
     struct sockaddr_in from;
     Server *server;
     Code_t retval;
-    int fromlen = sizeof(from);
+    unsigned int fromlen = sizeof(from);
     int on = 1;
 #ifdef _POSIX_VERSION
     struct sigaction action;
@@ -272,7 +271,6 @@ bdump_send(void)
     /* may be moved into kstuff.c */
     krb5_principal principal;
     krb5_data k5data;
-    krb5_ap_rep_enc_part *rep;
     krb5_keytab kt;
 #endif
 #if !defined(HAVE_KRB4) && !defined(HAVE_KRB5)
@@ -1010,10 +1008,6 @@ get_tgt(void)
      * at least INST_SZ bytes long. */
     static char buf[INST_SZ + 1] = SERVER_INSTANCE;
     int retval = 0;
-    CREDENTIALS cred;
-#ifndef NOENCRYPTION
-    Sched *s;
-#endif
     
     /* have they expired ? */
     if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + (15L * 60L)) {
@@ -1039,7 +1033,7 @@ get_tgt(void)
 #ifndef NOENCRYPTION
 	retval = read_service_key(SERVER_SERVICE, SERVER_INSTANCE,
 				  ZGetRealm(), 0 /*kvno*/,
-				  srvtab_file, serv_key);
+				  srvtab_file, (char *)serv_key);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
 		   krb_get_err_text(retval));
@@ -1138,7 +1132,7 @@ bdump_recv_loop(Server *server)
     Client *client = NULL;
     struct sockaddr_in who;
 #ifdef HAVE_KRB5
-    char buf[512];
+    unsigned char buf[512];
     int blen;
 #endif
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)    
@@ -1268,7 +1262,7 @@ bdump_recv_loop(Server *server)
 					serv_ksched.s, DES_DECRYPT);
 		    }
 		} else if (*cp == 'Z') { /* Zcode! Long live the new flesh! */
-		    retval = ZReadZcode(cp, buf, sizeof(buf), &blen);
+		    retval = ZReadZcode((unsigned char *)cp, buf, sizeof(buf), &blen);
 		    if (retval != ZERR_NONE) {
 			syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
 			       error_message(retval), cp);
@@ -1329,7 +1323,7 @@ bdump_recv_loop(Server *server)
 			   error_message(retval));
 		    return retval;
 		}
-	    } /* else 
+	    } /* else */
 		 /* Other side tried to send us subs for a realm we didn't
 		    know about, and so we drop them silently */
 	

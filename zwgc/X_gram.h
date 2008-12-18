@@ -82,5 +82,6 @@ extern void x_gram_expose(Display *, Window, x_gram *, XExposeEvent *);
 extern void xshow(Display *, desctype *, int, int);
 extern void xcut(Display *, XEvent *, XContext);
 extern void x_get_input(Display *);
+extern void xshowinit(void);
 
 #endif

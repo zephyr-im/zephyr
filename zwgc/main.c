@@ -114,6 +114,7 @@ fake_startup_packet(void)
     ZNotice_t notice;
     struct timezone tz;
     char msgbuf[BUFSIZ];
+    extern void Z_gettimeofday(struct _ZTimeval *, struct timezone *);
 
     var_set_variable("version", zwgc_version_string);
 
@@ -371,7 +372,8 @@ process_notice(ZNotice_t *notice,
 
     dprintf("Got a message\n");
 
-    if (control_opcode = decode_notice(notice, hostname)) {
+    control_opcode = decode_notice(notice, hostname);
+    if (control_opcode) {
 #ifdef DEBUG
 	printf("got control opcode <%s>.\n", control_opcode);
 #endif
@@ -548,6 +550,7 @@ detach(void)
    * of finding the session leader; otherwise use the process group of
    * the parent process, which is a good guess. */
 #if defined(HAVE_GETSID)
+
   setpgid(0, getsid(0));
 #elif defined(HAVE_GETPGID)
   setpgid(0, getpgid(getppid()));
@@ -556,7 +559,8 @@ detach(void)
 #endif
 
   /* fork off and let parent exit... */
-  if (i = fork()) {
+  i = fork();
+  if (i) {
       if (i < 0) {
 	  perror("zwgc: cannot fork, aborting:");
 	  exit(1);

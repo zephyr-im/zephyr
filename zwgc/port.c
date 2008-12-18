@@ -105,7 +105,8 @@ port_close_input(port *p)
     if (!close_input_proc)
       return;
 
-    if (error = close_input_proc(p))
+    error = close_input_proc(p);
+    if (error)
       var_set_variable("error", error);
 }
 
@@ -123,7 +124,8 @@ port_close_output(port *p)
     if (!close_output_proc)
       return;
 
-    if (error = close_output_proc(p))
+    error = close_output_proc(p);
+    if (error)
       var_set_variable("error", error);
 }
 

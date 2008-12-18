@@ -64,7 +64,8 @@ get_zwgc_port_number_filename(void)
     static char buffer[40];
     char *temp;
 
-    if (temp = getenv("WGFILE"))
+    temp = getenv("WGFILE");
+    if (temp)
       return(temp);
     else {
 	sprintf(buffer, "/tmp/wg.%d", getuid());
@@ -170,7 +171,8 @@ void zephyr_init(void (*notice_handler)(ZNotice_t *))
      * not one of the allowed ones, print an error and treat it as
      * EXPOSE_NONE.
      */
-    if (temp = ZGetVariable("exposure")) {
+    temp = ZGetVariable("exposure");
+    if (temp) {
 	if (!(exposure = ZParseExposureLevel(temp))) {
 	    ERROR2("invalid exposure level %s, using exposure level none instead.\n", temp);
 	    exposure = EXPOSE_NONE;

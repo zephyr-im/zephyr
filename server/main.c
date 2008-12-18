@@ -60,7 +60,6 @@ static RETSIGTYPE bye(int);
 static RETSIGTYPE dbug_on(int);
 static RETSIGTYPE dbug_off(int);
 static RETSIGTYPE sig_dump_db(int);
-static RETSIGTYPE sig_dump_strings(int);
 static RETSIGTYPE reset(int);
 static RETSIGTYPE reap(int);
 static void read_from_dump(char *dumpfile);
@@ -395,7 +394,6 @@ main(int argc,
 static int
 initialize(void)
 {
-    int zero = 0;
     if (do_net_setup())
 	return(1);
 
@@ -585,12 +583,6 @@ dbug_off(int sig)
 }
 
 int fork_for_dump = 0;
-
-static RETSIGTYPE
-sig_dump_strings(int sig)
-{
-    dump_strings_flag = 1;
-}
 
 static void dump_strings(void)
 {

@@ -199,7 +199,8 @@ handle_packet(void)
         if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
           authentic = ZAUTH_YES;
         } else {
-          if (realm = realm_which_realm(&input_sin)) {
+	  realm = realm_which_realm(&input_sin);
+          if (realm) {
             authentic = ZCheckRealmAuthentication(&new_notice,
 						       &input_sin,
 						       realm->name);
@@ -214,7 +215,8 @@ handle_packet(void)
         if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
           authentic = ZAUTH_YES;
         } else {
-          if (realm = realm_which_realm(&whoisit)) {
+	  realm = realm_which_realm(&whoisit);
+          if (realm) {
             authentic = ZCheckRealmAuthentication(&new_notice,
                                                   &whoisit,
                                                   realm->name);
@@ -518,7 +520,7 @@ nack_release(Client *client)
 	    next = nacked->next;
 	    if (nacked->client == client) {
 		timer_reset(nacked->timer);
-		LIST_DELETE(nacked);
+		Unacked_delete(nacked);
 		free(nacked->packet);
 		free(nacked);
 	    }
@@ -543,7 +545,7 @@ xmit_frag(ZNotice_t *notice,
     char *savebuf;
     Unacked *nacked;
     Code_t retval;
-    int hashval, sendfail = 0;
+    int sendfail = 0;
 
     retval = ZSendPacket(buf, len, 0);
     if (retval != ZERR_NONE) {
@@ -579,7 +581,7 @@ xmit_frag(ZNotice_t *notice,
     nacked->packsz = len;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-    LIST_INSERT(&nacktab[NACKTAB_HASHVAL(sin, nacked->uid)], nacked);
+    Unacked_insert(&nacktab[NACKTAB_HASHVAL(sin, nacked->uid)], nacked);
     return(ZERR_NONE);
 }
 
@@ -654,10 +656,10 @@ xmit(ZNotice_t *notice,
          * same thing with authentic Zephyrs.
          */
         if (retval == ZERR_PKTLEN) {
-          ZNotice_t partnotice, newnotice;
+          ZNotice_t partnotice;
           char multi[64];
           char *buffer, *ptr;
-          int buffer_len, hdrlen, offset, fragsize, ret_len, message_len;
+          int buffer_len, hdrlen, offset, fragsize, message_len;
           int origoffset, origlen;
 
           free(noticepack);
@@ -790,7 +792,7 @@ xmit(ZNotice_t *notice,
     nacked->packsz = packlen;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-    LIST_INSERT(&nacktab[NACKTAB_HASHVAL(*dest, nacked->uid)], nacked);
+    Unacked_insert(&nacktab[NACKTAB_HASHVAL(*dest, nacked->uid)], nacked);
 }
 
 /*
@@ -808,7 +810,7 @@ rexmit(void *arg)
 #if 1
     syslog(LOG_DEBUG, "rexmit %s/%d #%d time %d",
 	   inet_ntoa(nacked->dest.addr.sin_addr),
-	   ntohs(nacked->dest.addr.sin_port), nacked->rexmits + 1, NOW);
+	   ntohs(nacked->dest.addr.sin_port), nacked->rexmits + 1, (int)NOW);
 #endif
 
     nacked->rexmits++;
@@ -821,7 +823,7 @@ rexmit(void *arg)
 	     * nack list before calling client_deregister(), which
 	     * scans the nack list.)
 	     */
-	    LIST_DELETE(nacked);
+	    Unacked_delete(nacked);
 	    if (nacked->client) {
 		server_kill_clt(nacked->client);
 		client_deregister(nacked->client, 1);
@@ -873,7 +875,6 @@ clt_ack(ZNotice_t *notice,
     ZNotice_t acknotice;
     ZPacket_t ackpack;
     int packlen;
-    int notme = 0;
     char *sent_name;
     Code_t retval;
 
@@ -982,7 +983,7 @@ nack_cancel(ZNotice_t *notice,
 		nacked->client->last_ack = NOW;
 	    timer_reset(nacked->timer);
 	    free(nacked->packet);
-	    LIST_DELETE(nacked);
+	    Unacked_delete(nacked);
 	    free(nacked);
 	    return;
 	}
@@ -1008,9 +1009,7 @@ hostm_dispatch(ZNotice_t *notice,
 	       struct sockaddr_in *who,
 	       Server *server)
 {
-    Server *owner;
     char *opcode = notice->z_opcode;
-    Code_t retval;
     int i, add = 0, remove = 0;
 
 #if 0
@@ -1291,7 +1290,6 @@ void
 realm_shutdown(void)
 {
     int i, s, newserver;
-    struct sockaddr_in sin;
 
     for (i = 0; i < nservers; i++) {
         if (i != me_server_idx && otherservers[i].state == SERV_UP)

@@ -38,6 +38,7 @@ static const char rcsid_X_driver_c[] = "$Id$";
 #include "X_gram.h"
 #include "xselect.h"
 #include "unsigned_long_dictionary.h"
+#include "zephyr.h"
 
 char *app_instance;
 
@@ -294,7 +295,8 @@ open_display_and_load_resources(int *pargc,
     /*
      * Get XENVIRONMENT resources, if they exist, and merge
      */
-    if (filename = getenv("XENVIRONMENT"))
+    filename = getenv("XENVIRONMENT");
+    if (filename)
     {
 	temp_db3 = XrmGetFileDatabase(filename);
 	XrmMergeDatabases(temp_db3, &temp_db1);
@@ -354,9 +356,11 @@ X_driver_init(char *drivername,
     /*
      * For now, set some useful variables using resources:
      */
-    if (sync=get_bool_resource("synchronous", "Synchronous", 0))
-      XSynchronize(dpy,sync);
-    if (temp = get_string_resource("geometry", "Geometry"))
+    sync = get_bool_resource("synchronous", "Synchronous", 0);
+    if (sync)
+      XSynchronize(dpy, sync);
+    temp = get_string_resource("geometry", "Geometry");
+    if (temp)
       var_set_variable("default_X_geometry", temp);
 
     temp=strrchr(argv[0],'/');

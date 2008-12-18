@@ -17,7 +17,7 @@
 #include <com_err.h>
 
 #ifndef lint
-static char rcsid_zlocate_c[] = "$Id$";
+static const char rcsid_zlocate_c[] = "$Id$";
 #endif /* lint */
 
 /*
@@ -254,7 +254,8 @@ doalarm(long nmins)
 	daytime += gseconds;
 	whenleave = ctime(&daytime);
 
-	if (fp = fopen(tempfile,"r")) {
+	fp = fopen(tempfile,"r");
+	if (fp) {
 	      if (fscanf(fp, "%d", &oldpid) == 1)
 		      if (!kill(oldpid,9))
 			      printf("Old zleave process killed.\n");

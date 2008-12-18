@@ -208,21 +208,25 @@ void init_standard_ports(int *pargc,
             current++; *pargc -= 2;
             if (!*current)
               usage();
-            if (p = get_standard_port_info((string) *current))
+	    p = get_standard_port_info((string) *current);
+            if (p)
 		p->port_setup_status = DISABLED;
         } else if (string_Eq((string) *current, "-default")) {
             current++; *pargc -= 2;
             if (!*current)
               usage();
             default_port = (string) *current;
-            if (p = get_standard_port_info((string) *current))
+	    p = get_standard_port_info((string) *current);
+            if (p)
 		p->port_setup_status = DEFAULT_OK;
         } else if (string_Eq((string) *current, "-ttymode")) {
 	    default_port = (string) "tty";
 	    (*pargc)--;
-            if (p = get_standard_port_info(default_port)) {
+	    p = get_standard_port_info(default_port);
+            if (p) {
 		p->port_setup_status = DEFAULT_OK;
-		if (p = get_standard_port_info ((string) "X"))
+		p = get_standard_port_info ((string) "X");
+		if (p)
 		    p->port_setup_status = DISABLED;
 	    }
 	} else

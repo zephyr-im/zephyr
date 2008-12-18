@@ -14,7 +14,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_hm_server_c[] = "$Id$";
+static const char rcsid_hm_server_c[] = "$Id$";
 #endif /* SABER */
 #endif /* lint */
 

@@ -14,7 +14,7 @@
 
 #ifndef lint
 #ifndef SABER
-static char rcsid_queue_c[] = "$Id$";
+static const char rcsid_queue_c[] = "$Id$";
 #endif /* SABER */
 #endif /* lint */
 
@@ -31,8 +31,9 @@ static Queue *hm_queue;
 static int retransmits_enabled = 0;
 
 static Queue *find_notice_in_queue(ZNotice_t *notice);
-static Code_t dump_queue(void);
 static void queue_timeout(void *arg);
+
+extern void new_server(char *);
 
 int rexmit_times[] = { 2, 2, 4, 4, 8, -1 };
 
@@ -82,7 +83,13 @@ add_notice_to_queue(ZNotice_t *notice,
 	    free(entry->packet);
 	} else {
 	    entry->reply = *repl;
-	    LIST_INSERT(&hm_queue, entry);
+	    /*LIST_INSERT(&hm_queue, entry);*/
+
+	    (entry)->next = *(&hm_queue);
+	    if (*&hm_queue) ((*(&hm_queue))->prev_p = &(entry)->next);
+	    (*&hm_queue) = (entry);
+	    (entry)->prev_p = (&hm_queue);
+		
 	}
 	entry->timer = (retransmits_enabled) ?
 	    timer_set_rel(rexmit_times[0], queue_timeout, entry) : NULL;
@@ -107,7 +114,9 @@ remove_notice_from_queue(ZNotice_t *notice,
     if (entry->timer)
 	timer_reset(entry->timer);
     free(entry->packet);
-    LIST_DELETE(entry);
+    /*LIST_DELETE(entry);*/
+    *(entry)->prev_p = (entry)->next;
+    if((entry)->next) ((entry)->next->prev_p = (entry)->prev_p);
 #ifdef DEBUG
     dump_queue();
 #endif /* DEBUG */
