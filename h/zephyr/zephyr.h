@@ -157,8 +157,8 @@ Code_t ZSrvSendNotice(ZNotice_t*, Z_AuthProc,
 		      Code_t (*)(ZNotice_t *, char *, int, int));
 Code_t ZFormatNotice(ZNotice_t*, char**, int*, Z_AuthProc);
 Code_t ZFormatSmallNotice(ZNotice_t*, ZPacket_t, int*, Z_AuthProc);
-Code_t ZFormatRawNoticeList(ZNotice_t *notice, char *list[], int nitems,
-			    char **buffer, int *ret_len);
+Code_t ZFormatRawNoticeList(ZNotice_t *, char *[], int, char **, int *);
+Code_t ZFormatSmallRawNotice(ZNotice_t *, ZPacket_t, int *);
 Code_t ZLocateUser(char *, int *, Z_AuthProc);
 Code_t ZRequestLocations(char *, ZAsyncLocateData_t *,
 			 ZNotice_Kind_t, Z_AuthProc);
