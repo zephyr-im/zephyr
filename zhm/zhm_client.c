@@ -21,10 +21,9 @@ static char rcsid_hm_client_c[] = "$Id$";
 extern int no_server, nclt, deactivated, noflushflag;
 extern struct sockaddr_in cli_sin, serv_sin, from;
 
-void transmission_tower(notice, packet, pak_len)
-     ZNotice_t *notice;
-     char *packet;
-     int pak_len;
+void transmission_tower(ZNotice_t *notice,
+			char *packet,
+			int pak_len)
 {
     ZNotice_t gack;
     Code_t ret;
@@ -84,8 +83,7 @@ void transmission_tower(notice, packet, pak_len)
 }
 
 Code_t
-send_outgoing(notice)
-ZNotice_t *notice;
+send_outgoing(ZNotice_t *notice)
 {
     Code_t retval;
     char *packet;
