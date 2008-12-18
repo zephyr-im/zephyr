@@ -62,10 +62,8 @@ static const char rcsid_subscr_c[] = "$Id$";
  */
 
 #ifdef HAVE_KRB4
-#ifndef NOENCRYPTION
 C_Block	serv_key;
 Sched	serv_ksched;
-#endif
 #endif
 
 /* for compatibility when sending subscription information to old clients */
@@ -872,11 +870,7 @@ subscr_send_subs(Client *client)
 #endif /* HAVE_KRB4 */
 #else /* HAVE_KRB5 */
 #ifdef HAVE_KRB4
-#ifdef NOENCRYPTION
-    memcpy(cblock, client->session_key, sizeof(C_Block));
-#else /* NOENCRYPTION */
     des_ecb_encrypt(client->session_key, cblock, serv_ksched.s, DES_ENCRYPT);
-#endif /* NOENCRYPTION */
 
     retval = ZMakeAscii(buf, sizeof(buf), cblock, sizeof(C_Block));
 #endif /* HAVE_KRB4 */

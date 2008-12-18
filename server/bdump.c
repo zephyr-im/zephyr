@@ -114,10 +114,8 @@ static long ticket_time;
 #define TKTLIFETIME	120
 #define tkt_lifetime(val) ((long) val * 5L * 60L)
 
-#ifndef NOENCRYPTION
 extern C_Block	serv_key;
 extern Sched	serv_ksched;
-#endif
 #endif /* HAVE_KRB4 */
 
 static Timer *bdump_timer;
@@ -1030,7 +1028,6 @@ get_tgt(void)
 	    ticket_time = NOW;
 	}
 
-#ifndef NOENCRYPTION
 	retval = read_service_key(SERVER_SERVICE, SERVER_INSTANCE,
 				  ZGetRealm(), 0 /*kvno*/,
 				  srvtab_file, (char *)serv_key);
@@ -1040,7 +1037,6 @@ get_tgt(void)
 	    return 1;
 	}
 	des_key_sched(serv_key, serv_ksched.s);
-#endif /* !NOENCRYPTION */
     }
 #ifdef HAVE_KRB5	
     /* XXX */
@@ -1292,12 +1288,8 @@ bdump_recv_loop(Server *server)
 		    syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
 			   error_message(retval), cp);
 		} else {
-#ifdef NOENCRYPTION
-		    memcpy(cblock, client->session_key, sizeof(C_Block));
-#else
 		    des_ecb_encrypt(cblock, client->session_key, serv_ksched.s,
 				    DES_DECRYPT);
-#endif
 		}
 	    }
 #endif /* HAVE_KRB4 */

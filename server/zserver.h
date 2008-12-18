@@ -58,12 +58,10 @@ Code_t ZFormatAuthenticNotice(ZNotice_t*, char*, int, int*, C_Block);
 #define NOW t_local.tv_sec
 
 #ifdef HAVE_KRB4
-#ifndef NOENCRYPTION
 /* Kerberos shouldn't stick us with array types... */
 typedef struct {
     des_key_schedule s;
 } Sched;
-#endif
 #endif
 
 typedef struct _Destination Destination;
