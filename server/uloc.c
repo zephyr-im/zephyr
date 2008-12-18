@@ -241,11 +241,12 @@ ulogin_dispatch(notice, auth, who, server)
 		login_sendit(notice, auth, who, 1);
 	}
     } else {
-	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN))
+	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
 	    zdbug((LOG_DEBUG, "ulog opcode from unknown foreign realm %s", 
 		   notice->z_opcode));
-	else
+	} else {
 	    syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
+	}
 	if (server == me_server)
 	    nack(notice, who);
 	return ZERR_NONE;
