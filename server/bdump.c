@@ -125,9 +125,6 @@ static struct sockaddr_in bdump_sin;
 #ifdef HAVE_KRB5
 static krb5_auth_context bdump_ac;
 #endif
-#ifdef notdef
-static int cancel_outgoing_dump;
-#endif
 
 int bdumping;
 int bdump_concurrent;
