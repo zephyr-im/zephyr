@@ -343,6 +343,8 @@ bdump_send()
 	return;
     }
 
+    syslog(LOG_INFO, "bdump_send: got %d bytes of authenticator for protocol %d", len, proto);
+
     if (get_tgt()) {
 	syslog(LOG_ERR, "bdump_send: get_tgt failed");
 	cleanup(server);
