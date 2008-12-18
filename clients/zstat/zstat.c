@@ -47,16 +47,18 @@ int outoftime = 0;
 int serveronly = 0,hmonly = 0;
 u_short srv_port;
 
-void usage(), do_stat();
+void usage(char *);
+void do_stat(char *);
 
-RETSIGTYPE timeout()
+RETSIGTYPE
+timeout(int ignored)
 {
 	outoftime = 1;
 }
 
-main(argc, argv)
-	int argc;
-	char *argv[];
+int
+main(int argc,
+     char *argv[])
 {
 	Code_t ret;
 	char hostname[MAXHOSTNAMELEN];
@@ -114,8 +116,7 @@ main(argc, argv)
 }
 
 void
-do_stat(host)
-	char *host;
+do_stat(char *host)
 {
 	char srv_host[MAXHOSTNAMELEN];
 	
@@ -132,8 +133,8 @@ do_stat(host)
 }
 
 int
-hm_stat(host,server)
-	char *host,*server;
+hm_stat(char *host,
+	char *server)
 {
 	struct in_addr inaddr;
 	Code_t code;
@@ -196,8 +197,7 @@ hm_stat(host,server)
 }
 
 int
-srv_stat(host)
-	char *host;
+srv_stat(char *host)
 {
 	char *line[20],*mp;
 	int sock,i,nf,ret;
@@ -308,8 +308,7 @@ srv_stat(host)
 }
 
 void
-usage(s)
-	char *s;
+usage(char *s)
 {
 	fprintf(stderr,"usage: %s [-s] [-h] [host ...]\n",s);
 	exit(1);

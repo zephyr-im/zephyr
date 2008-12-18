@@ -24,11 +24,11 @@ static const char rcsid_zaway_c[] = "$Id$";
 #define DEFAULT_MSG "I'm sorry, but I am currently away from the terminal and am\nnot able to receive your message.\n"
 #define RESPONSE_OPCODE ""
 
-RETSIGTYPE cleanup();
+RETSIGTYPE cleanup(int);
 u_short port;
 
-void usage(name)
-	char *name;
+void
+usage(char *name)
 {
 	printf("Usage: %s [OPTIONS] [FILE]\n"
 	       "\n"
@@ -38,9 +38,9 @@ void usage(name)
 	       name);
 }
 
-int main(argc,argv)
-	int argc;
-	char *argv[];
+int
+main(int argc,
+     char *argv[])
 {
 	FILE *fp;
 	ZNotice_t notice;
@@ -52,7 +52,7 @@ int main(argc,argv)
 	int optchar, watch_location;
 	char *cmdline_msg;
 	int nlocs;
-	char *find_message();
+	char *find_message(ZNotice_t *, FILE *);
 #ifdef _POSIX_VERSION
 	struct sigaction sa;
 #endif
@@ -203,11 +203,11 @@ int main(argc,argv)
 	}
 }
 
-char *find_message(notice,fp)
-	ZNotice_t *notice;
-	register FILE *fp;
+char *
+find_message(ZNotice_t *notice,
+	     FILE *fp)
 {
-	register char *ptr,*ptr2;
+	char *ptr,*ptr2;
 	char bfr[BUFSIZ],sender[BUFSIZ];
 	int gotone,lastwasnt;
 	
@@ -253,7 +253,8 @@ char *find_message(notice,fp)
 	return (ptr);
 }
 
-RETSIGTYPE cleanup()
+RETSIGTYPE
+cleanup(int ignored)
 {
     ZCancelSubscriptions(port);
     exit(1);
