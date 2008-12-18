@@ -28,18 +28,18 @@ union port__data {
     } file;
     struct {
 	string_stack waiting_packets;
-	string (*filter)();
+	string (*filter)(string);
     } filter;
     struct {
-	char *(*output)();
+	char *(*output)(string);
     } output;
 };
 
-typedef struct {                /* PRIVATE */
-    char *(*get)();
-    char *(*put)();
-    char *(*close_input)();
-    char *(*close_output)();
+typedef struct port__struct {                /* PRIVATE */
+    char *(*get)(struct port__struct *, char **);
+    char *(*put)(struct port__struct *, char *, int);
+    char *(*close_input)(struct port__struct *);
+    char *(*close_output)(struct port__struct *);
 #define  INPUT_CLOSED   0x1
 #define  OUTPUT_CLOSED  0x2
 #define  PORT_CLOSED    0x3
@@ -54,7 +54,7 @@ typedef struct {                /* PRIVATE */
  *                 any other port call is made.
  */
 
-extern void init_ports();
+extern void init_ports(void);
 
 /*
  *    string read_from_port(string name)
@@ -68,7 +68,7 @@ extern void init_ports();
  *                 on the heap & must be eventually freed.
  */
 
-extern string read_from_port();
+extern string read_from_port(string);
 
 /*
  *    void write_on_port(string name, char *text, int length)
@@ -80,7 +80,7 @@ extern string read_from_port();
  *                 occurs, $error is set to the error message.
  */
 
-extern void write_on_port();
+extern void write_on_port(string, char *, int);
 
 /*
  *    void close_port_input(string name)
@@ -94,7 +94,7 @@ extern void write_on_port();
  *                 occurs, $error is set to the error message.
  */
 
-extern void close_port_input();
+extern void close_port_input(string);
 
 /*
  *    void close_port_output(string name)
@@ -108,17 +108,17 @@ extern void close_port_input();
  *                 occurs, $error is set to the error message.
  */
 
-extern void close_port_output();
+extern void close_port_output(string);
 
 
-extern void create_subprocess_port();
-extern void create_file_append_port();
-extern void create_file_input_port();
-extern void create_file_output_port();
-extern void create_port_from_filter();
-extern void create_port_from_output_proc();
+extern void create_subprocess_port(string, char **);
+extern void create_file_append_port(string, string);
+extern void create_file_input_port(string, string);
+extern void create_file_output_port(string, string);
+extern void create_port_from_filter(string, string (*)(string));
+extern void create_port_from_output_proc(string, char *(*)(string));
 
-extern void init_standard_ports();
-extern void create_port_from_files();
+extern void init_standard_ports(int *, char **);
+extern void create_port_from_files(string, FILE *, FILE *);
 
 #endif

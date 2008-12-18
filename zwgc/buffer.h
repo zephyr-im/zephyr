@@ -19,8 +19,8 @@
 
 #include "new_string.h"
 
-extern string buffer_to_string();
-extern void clear_buffer();
-extern void append_buffer();
+extern string buffer_to_string(void);
+extern void clear_buffer(void);
+extern void append_buffer(char *);
 
 #endif

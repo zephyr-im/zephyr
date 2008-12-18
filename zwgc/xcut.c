@@ -42,21 +42,20 @@ static const char rcsid_xcut_c[] = "$Id$";
  *
  */
 
-extern char *xmarkGetText();
-
 extern long ttl;
 
 static char *selected_text=NULL;
 static Window selecting_in = 0;
 
-char *getSelectedText()
+char *
+getSelectedText(void)
 {
    return(selected_text);
 }
 
 #ifdef notdef
-static string x_gram_to_string(gram)
-     x_gram *gram;
+static string
+x_gram_to_string(x_gram *gram)
 {
     int i, index, len;
     int last_y = -1;
@@ -86,27 +85,27 @@ static string x_gram_to_string(gram)
  */
 
 /*ARGSUSED*/
-Bool isShiftButton1(dpy,event,arg)
-     Display *dpy;
-     XEvent *event;
-     char *arg;
+Bool
+isShiftButton1(Display *dpy,
+	       XEvent *event,
+	       char *arg)
 {
    return(event->xbutton.state & (ShiftMask|Button1Mask));
 }
 
 /*ARGSUSED*/
-Bool isShiftButton3(dpy,event,arg)
-     Display *dpy;
-     XEvent *event;
-     char *arg;
+Bool
+isShiftButton3(Display *dpy,
+	       XEvent *event,
+	       char *arg)
 {
    return(event->xbutton.state & (ShiftMask|Button3Mask));
 }
 
-void getLastEvent(dpy,state,event)
-     Display *dpy;
-     unsigned int state;
-     XEvent *event;
+void
+getLastEvent(Display *dpy,
+	     unsigned int state,
+	     XEvent *event)
 {
    XEvent xev;
 
@@ -119,11 +118,11 @@ void getLastEvent(dpy,state,event)
    }
 }
 
-void xunmark(dpy,w,gram,desc_context)
-     Display *dpy;
-     Window w;
-     x_gram *gram;
-     XContext desc_context;
+void
+xunmark(Display *dpy,
+	Window w,
+	x_gram *gram,
+	XContext desc_context)
 {
    if (gram == NULL)
      if (XFindContext(dpy, w, desc_context, (caddr_t *) &gram))
@@ -144,11 +143,11 @@ void xunmark(dpy,w,gram,desc_context)
 
 static int current_pressop = PRESSOP_NONE;
 
-void xdestroygram(dpy,w,desc_context,gram)
-     Display *dpy;
-     Window w;
-     XContext desc_context;
-     x_gram *gram;
+void
+xdestroygram(Display *dpy,
+	     Window w,
+	     XContext desc_context,
+	     x_gram *gram)
 {
     struct timeval now;
 
@@ -176,10 +175,10 @@ void xdestroygram(dpy,w,desc_context,gram)
     }
 }
 
-void xcut(dpy,event,desc_context)
-     Display *dpy;
-     XEvent *event;
-     XContext desc_context;
+void
+xcut(Display *dpy,
+     XEvent *event,
+     XContext desc_context)
 {
     x_gram *gram;
     Window w = event->xany.window;

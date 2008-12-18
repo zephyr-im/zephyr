@@ -24,12 +24,14 @@ static const char rcsid_buffer_c[] = "$Id$";
 
 static char *buffer = 0;
 
-string buffer_to_string()
+string
+buffer_to_string(void)
 {
     return(buffer);
 }
 
-void clear_buffer()
+void
+clear_buffer(void)
 {
     if (buffer)
       free(buffer);
@@ -37,8 +39,8 @@ void clear_buffer()
     buffer = string_Copy("");
 }
 
-void append_buffer(str)
-     char *str;
+void
+append_buffer(char *str)
 {
     buffer = string_Concat2(buffer, str);
 }

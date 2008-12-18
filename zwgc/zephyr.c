@@ -58,11 +58,11 @@ static unsigned short zephyr_port = 0;
  *                 modified in any way.
  */
 
-static string get_zwgc_port_number_filename()
+static string
+get_zwgc_port_number_filename(void)
 {
     static char buffer[40];
     char *temp;
-    char *getenv();
 
     if (temp = getenv("WGFILE"))
       return(temp);
@@ -76,7 +76,8 @@ static string get_zwgc_port_number_filename()
  *  Write out the port number to the wg file.
  */
 
-void write_wgfile()
+void
+write_wgfile(void)
 {
     char *name = get_zwgc_port_number_filename();
     FILE *port_file;
@@ -95,8 +96,8 @@ void write_wgfile()
  *
  */
 
-static void handle_zephyr_input(notice_handler)
-     void (*notice_handler)();
+static void
+handle_zephyr_input(void (*notice_handler)(ZNotice_t *))
 {
     ZNotice_t *notice;
     struct sockaddr_in from;
@@ -124,8 +125,7 @@ static void handle_zephyr_input(notice_handler)
  *
  */
 
-void zephyr_init(notice_handler)
-     void (*notice_handler)();
+void zephyr_init(void (*notice_handler)(ZNotice_t *))
 {
     char *temp;
     char *exposure;
@@ -197,7 +197,7 @@ void zephyr_init(notice_handler)
     /*
      * <<<>>>
      */
-    mux_add_input_source(ZGetFD(), (void (*)())handle_zephyr_input,
+    mux_add_input_source(ZGetFD(), (void (*)(void *))handle_zephyr_input,
 			 notice_handler);
     zephyr_inited = 1;
     return;
@@ -207,7 +207,7 @@ void zephyr_init(notice_handler)
  *
  */
 
-void finalize_zephyr() /* <<<>>> */
+void finalize_zephyr(void) /* <<<>>> */
 {
     string temp;
 

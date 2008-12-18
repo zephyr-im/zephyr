@@ -29,8 +29,8 @@ static const char rcsid_character_class_c[] = "$Id$";
 static character_class cache;
 
 /* character_class */
-char * string_to_character_class(str)
-     string str;
+char *
+string_to_character_class(string str)
 {
     int i;
 

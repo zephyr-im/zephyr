@@ -30,7 +30,7 @@ static const char rcsid_xselect_c[] = "$Id$";
 #include "new_string.h"
 #include "xselect.h"
 
-extern char *getSelectedText();
+extern char *getSelectedText(void);
 
 static Time ownership_start = CurrentTime;
 static Time ownership_end = CurrentTime;
@@ -52,10 +52,10 @@ static struct _ZAtom {
 
 /* internal static functions */
 
-static void xselNotify(dpy,selreq,property)
-     Display *dpy;
-     XSelectionRequestEvent *selreq;
-     Atom property;
+static void
+xselNotify(Display *dpy,
+	   XSelectionRequestEvent *selreq,
+	   Atom property)
 {
    XSelectionEvent ev;
 
@@ -82,11 +82,12 @@ static Atom RequestAtoms[] = {
   XChangeProperty(dpy,w,PROP(property,target),(type),(format), \
 		  PropModeReplace, (unsigned char *) (data),(size))
 
-static void xselSetProperties(dpy,w,property,target,selreq)
-     Display *dpy;
-     Window w;
-     Atom property,target;
-     XSelectionRequestEvent *selreq;
+static void
+xselSetProperties(Display *dpy,
+		  Window w,
+		  Atom property,
+		  Atom target,
+		  XSelectionRequestEvent *selreq)
 {
    if (target==ZA_TARGETS) {
 
@@ -136,8 +137,8 @@ static void xselSetProperties(dpy,w,property,target,selreq)
 
 /* global functions */
 
-void xicccmInitAtoms(dpy)
-     Display *dpy;
+void
+xicccmInitAtoms(Display *dpy)
 {
    int i;
 
@@ -148,10 +149,10 @@ void xicccmInitAtoms(dpy)
        RequestAtoms[i] = *(pRequestAtoms[i]);
 }
 
-int xselGetOwnership(dpy,w,time)
-     Display *dpy;
-     Window w;
-     Time time;
+int
+xselGetOwnership(Display *dpy,
+		 Window w,
+		 Time time)
 {
    int temp;
 
@@ -165,10 +166,10 @@ int xselGetOwnership(dpy,w,time)
 }
 
 /* Get the selection.  Return !0 if success, 0 if fail */
-int xselProcessSelection(dpy,w,event)
-     Display *dpy;
-     Window w;
-     XEvent *event;
+int
+xselProcessSelection(Display *dpy,
+		     Window w,
+		     XEvent *event)
 {
    XSelectionRequestEvent *selreq = &(event->xselectionrequest);
 
@@ -191,16 +192,16 @@ int xselProcessSelection(dpy,w,event)
    return(1);
 }
 
-void xselOwnershipLost(time)
-     Time time;
+void
+xselOwnershipLost(Time time)
 {
    ownership_end = time;
 }
 
 /*ARGSUSED*/
-void xselGiveUpOwnership(dpy,w)
-     Display *dpy;
-     Window w;
+void
+xselGiveUpOwnership(Display *dpy,
+		    Window w)
 {
    XSetSelectionOwner(dpy,XA_PRIMARY,None,ownership_start);
 

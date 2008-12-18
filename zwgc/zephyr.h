@@ -17,8 +17,8 @@
 #ifndef zephyr_MODULE
 #define zephyr_MODULE
 
-extern void zephyr_init();
-extern void finalize_zephyr();
-extern void write_wgfile();
+extern void zephyr_init(void(*)(ZNotice_t *));
+extern void finalize_zephyr(void);
+extern void write_wgfile(void);
 
 #endif

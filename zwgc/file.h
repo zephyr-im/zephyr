@@ -19,6 +19,6 @@
 
 #include <stdio.h>
 
-extern FILE *locate_file();
+extern FILE *locate_file(char *, char *, char *);
 
 #endif

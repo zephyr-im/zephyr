@@ -24,6 +24,10 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 /*                         The tty & plain filters:                         */
 /*                                                                          */
 /****************************************************************************/
+#define HAVE_TERMCAP_H
+#ifdef HAVE_TERMCAP_H
+#include <termcap.h>
+#endif
 
 #include "new_memory.h"
 #include "new_string.h"
@@ -33,7 +37,7 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 #include "error.h"
 
 /***************************************************************************/
-
+#ifndef HAVE_TERMCAP_H
 extern int tgetent();
 extern char *tgetstr(),*getenv();
 #ifdef linux
@@ -42,6 +46,7 @@ extern speed_t ospeed;
 extern short ospeed;
 #endif
 char PC;
+#endif
 
 /* Dictionary naming convention:
 
@@ -76,19 +81,18 @@ static char code_buf[10240], *code_buf_pos = code_buf, *code;
 		   *code_buf_pos++ = 0, TD_SET(k, code))
 
 static int
-tty_outc(c)
-    int c;
+tty_outc(int c)
 {
     *code_buf_pos++ = c;
     return 0;
 }
 
 /* ARGSUSED */
-int tty_filter_init(drivername, notfirst, pargc, argv)
-char *drivername;
-char notfirst;
-int *pargc;
-char **argv;
+int
+tty_filter_init(char *drivername,
+		char notfirst,
+		int *pargc,
+		char **argv)
 {
     static char st_buf[128];
     char tc_buf[1024], *p = st_buf, *tmp, *term;
@@ -201,10 +205,10 @@ char **argv;
 
 
 
-static int fixed_string_eq(pattern, text, text_length)
-     string pattern;
-     char *text;
-     int text_length;
+static int
+fixed_string_eq(string pattern,
+		char *text,
+		int text_length)
 {
     while (*pattern && text_length>0 && *pattern == *text) {
 	pattern++;
@@ -228,8 +232,8 @@ typedef struct _tty_str_info {
     unsigned int ignore: 1;
 } tty_str_info;
 
-static void free_info(info)
-     tty_str_info *info;
+static void
+free_info(tty_str_info *info)
 {
     tty_str_info *next_info;
 
@@ -240,10 +244,10 @@ static void free_info(info)
     }
 }
 
-static int do_mode_change(current_mode_p, text, text_length)
-     tty_str_info *current_mode_p;
-     char *text;
-     int text_length;
+static int
+do_mode_change(tty_str_info *current_mode_p,
+	       char *text,
+	       int text_length)
 {
     /* alignment commands: */
     if (fixed_string_eq("left", text, text_length) ||
@@ -279,8 +283,8 @@ static int do_mode_change(current_mode_p, text, text_length)
     return 0;
 }
 
-static tty_str_info *convert_desc_to_tty_str_info(desc)
-     desctype *desc;
+static tty_str_info *
+convert_desc_to_tty_str_info(desctype *desc)
 {
     tty_str_info *temp;
     tty_str_info *result = NULL;
@@ -367,10 +371,10 @@ static tty_str_info *convert_desc_to_tty_str_info(desc)
 
 #define  max(a,b)                ((a)>(b)?(a):(b))
 
-static int line_width(left_width, center_width, right_width)
-     int left_width;
-     int center_width;
-     int right_width;
+static int
+line_width(int left_width,
+	   int center_width,
+	   int right_width)
 {
     if (center_width>0) {
 	if (left_width==0 && right_width==0)
@@ -384,8 +388,8 @@ static int line_width(left_width, center_width, right_width)
     }
 }
 
-static int calc_max_line_width(info)
-     tty_str_info *info;
+static int
+calc_max_line_width(tty_str_info *info)
 {
     int max_line_width = 0;
     int left = 0;
@@ -432,9 +436,9 @@ static int calc_max_line_width(info)
     return(max_line_width);
 }
 
-string tty_filter(text, use_fonts)
-     string text;
-     int use_fonts;
+string
+tty_filter(string text,
+	   int use_fonts)
 {
     string text_copy = string_Copy(text);
     string result_so_far = string_Copy("");

@@ -32,22 +32,22 @@ static const char rcsid_standard_ports_c[] = "$Id$";
 #include "main.h"
 #include <zephyr/zephyr.h>
 
-extern string tty_filter();
-extern int tty_filter_init();
+extern char *tty_filter(string, int);
+extern int tty_filter_init(char *, char, int *, char **);
 
 #ifndef X_DISPLAY_MISSING
-extern char *X_driver();
-extern int X_driver_init();
+extern char *X_driver(string);
+extern int X_driver_init(char *, char, int *, char **);
 #endif
 
-extern void usage();
+extern void usage(void);
 
 /*
  *
  */
 
-char *plain_driver(input)
-     string input;
+char *
+plain_driver(string input)
 {
     string processed_input = tty_filter(input, 0);
 
@@ -61,8 +61,8 @@ char *plain_driver(input)
  *
  */
 
-char *tty_driver(input)
-     string input;
+char *
+tty_driver(string input)
 {
     string processed_input = tty_filter(input, 1);
 
@@ -76,8 +76,8 @@ char *tty_driver(input)
  *
  */
 
-string noop_filter(input)
-     string input;
+string
+noop_filter(string input)
 {
     return(input);
 }
@@ -86,8 +86,8 @@ string noop_filter(input)
  *
  */
 
-string plain_filter(input)
-     string input;
+string
+plain_filter(string input)
 {
     return(tty_filter(input, 0));
 }
@@ -96,8 +96,8 @@ string plain_filter(input)
  *
  */
 
-string fancy_filter(input)
-     string input;
+string
+fancy_filter(string input)
 {
     return(tty_filter(input, 1));
 }
@@ -118,13 +118,13 @@ static struct standard_port_info {
 #define	DISABLED	2
 
     int port_setup_status;
-    int (*port_init)();
+    int (*port_init)(char *, char, int *, char **);
 #define  INPUT_DESC  0
 #define  OUTPUT_DESC 1
 #define  FILTER      2
 #define  OUTPUT_PROC 3
     int type;
-    char *(*function)();
+    char *(*function)(string);
     int setup_arg;
 } standard_port_info_table[] = {
 #ifndef X_DISPLAY_MISSING
@@ -148,8 +148,8 @@ static struct standard_port_info {
  * <<<>>>
  */
 
-static struct standard_port_info *get_standard_port_info(port_name)
-     string port_name;
+static struct standard_port_info *
+get_standard_port_info(string port_name)
 {
     struct standard_port_info *p;
 
@@ -169,8 +169,8 @@ static struct standard_port_info *get_standard_port_info(port_name)
  *                  returns -1.
  */
 
-static int boolean_value_of(text)
-     string text;
+static int
+boolean_value_of(string text)
 {
     if (!text)
 	return(-1);			/* not set */
@@ -190,9 +190,8 @@ static int boolean_value_of(text)
  *
  */
 
-void init_standard_ports(pargc, argv)
-     int *pargc;
-     char **argv;
+void init_standard_ports(int *pargc,
+			 char **argv)
 {
     struct standard_port_info *p;
     string first_working_port = "";

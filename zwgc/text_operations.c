@@ -23,9 +23,9 @@ static const char rcsid_text_operations_c[] = "$Id$";
 #include "text_operations.h"
 #include "char_stack.h"
 
-string lany(text_ptr, str)
-     string *text_ptr;
-     string str;
+string
+lany(string *text_ptr,
+     string str)
 {
     string result, whats_left;
     char *p = *text_ptr;
@@ -40,9 +40,9 @@ string lany(text_ptr, str)
     return(result);
 }
 
-string lbreak(text_ptr, set)
-     string *text_ptr;
-     character_class set;
+string
+lbreak(string *text_ptr,
+       const character_class set)
 {
     string result, whats_left;
     char *p = *text_ptr;
@@ -57,9 +57,9 @@ string lbreak(text_ptr, set)
     return(result);
 }
 
-string lspan(text_ptr, set)
-     string *text_ptr;
-     character_class set;
+string
+lspan(string *text_ptr,
+      character_class set)
 {
     string result, whats_left;
     char *p = *text_ptr;
@@ -74,9 +74,9 @@ string lspan(text_ptr, set)
     return(result);
 }
 
-string rany(text_ptr, str)
-     string *text_ptr;
-     string str;
+string
+rany(string *text_ptr,
+     string str)
 {
     string result, whats_left;
     string text = *text_ptr;
@@ -92,9 +92,9 @@ string rany(text_ptr, str)
     return(result);
 }
 
-string rbreak(text_ptr, set)
-     string *text_ptr;
-     character_class set;
+string
+rbreak(string *text_ptr,
+       character_class set)
 {
     string result, whats_left;
     string text = *text_ptr;
@@ -110,9 +110,9 @@ string rbreak(text_ptr, set)
     return(result);
 }
 
-string rspan(text_ptr, set)
-     string *text_ptr;
-     character_class set;
+string
+rspan(string *text_ptr,
+      character_class set)
 {
     string result, whats_left;
     string text = *text_ptr;

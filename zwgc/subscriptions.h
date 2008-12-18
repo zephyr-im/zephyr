@@ -19,11 +19,11 @@
 
 extern int zwgc_active;
 
-extern int puntable_address_p(/* string class, instance, recipient */);
-extern void punt();
-extern void unpunt();
-extern void zwgc_shutdown();
-extern void zwgc_startup();
+extern int puntable_address_p(string, string, string);
+extern void punt(string, string, string);
+extern void unpunt(string, string, string);
+extern void zwgc_shutdown(void);
+extern void zwgc_startup(void);
 
 #define USRSUBS ".zephyr.subs"
 

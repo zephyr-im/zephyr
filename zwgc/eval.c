@@ -33,6 +33,7 @@ static const char rcsid_eval_c[] = "$Id$";
 #include "port.h"
 #include "buffer.h"
 #include "regexp.h"
+#include "formatter.h"
 #include "text_operations.h"
 #include "zwgc.h"
 #include "variables.h"
@@ -65,8 +66,8 @@ static const char rcsid_eval_c[] = "$Id$";
  *                eventually.
  */
 
-static string bool_to_string(bool)
-     int bool;
+static string
+bool_to_string(int bool)
 {
     return(bool ? string_Copy("TRUE") : string_Copy("FALSE"));
 }
@@ -79,8 +80,8 @@ static string bool_to_string(bool)
  *                 NULL is defined to have the boolean value true.
  */
 
-int eval_bool_expr(expr)
-     Node *expr;
+int
+eval_bool_expr(Node *expr)
 {
     string temp;
     int result;
@@ -110,15 +111,14 @@ int eval_bool_expr(expr)
  *                 eventually.
  */
 
-string eval_expr(expr)
-     Node *expr;
+string
+eval_expr(Node *expr)
 {
     int opcode = expr->opcode;
     int bool_result;
     string first, second;
     char *result;
     string *text_ptr;
-    char *getenv();           /* UNIX get environment variable function */
 
     /*
      * Dispatch based on the opcode of the top node in the expression:

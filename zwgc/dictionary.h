@@ -37,7 +37,7 @@ typedef struct _TYPE_T_dictionary {                /* PRIVATE */
  *                 that size is a prime number.
  */
 
-extern TYPE_T_dictionary TYPE_T_dictionary_Create(/* int size */);
+extern TYPE_T_dictionary TYPE_T_dictionary_Create(int);
 
 /*
  *    void TYPE_T_dictionary_Destroy(TYPE_T_dictionary d):
@@ -50,10 +50,11 @@ extern TYPE_T_dictionary TYPE_T_dictionary_Create(/* int size */);
  *                 TYPE_T_dictionary_Enumerate.
  */
 
-extern void TYPE_T_dictionary_Destroy(/* TYPE_T_dictionary d */);
+extern void TYPE_T_dictionary_Destroy(TYPE_T_dictionary);
 
 /*
- *    void TYPE_T_dictionary_Enumerate(TYPE_T_dictionary d; void (*proc)()):
+ *    void TYPE_T_dictionary_Enumerate(TYPE_T_dictionary d;
+ *                                     void (*proc)(TYPE_T_dictionary_binding *b)):
  *        Requires: proc is a void procedure taking 1 argument, a
  *                  TYPE_T_dictionary_binding pointer, which does not
  *                  make any calls using dictionary d.
@@ -63,8 +64,7 @@ extern void TYPE_T_dictionary_Destroy(/* TYPE_T_dictionary d */);
  *                 writable by proc.
  */
 
-extern void TYPE_T_dictionary_Enumerate(/* TYPE_T_dictionary d, 
-					   void (*proc)() */);
+extern void TYPE_T_dictionary_Enumerate(TYPE_T_dictionary, void (*)(TYPE_T_dictionary_binding *));
 
 /*
  *    TYPE_T_dictionary_binding *TYPE_T_dictionary_Lookup(TYPE_T_dictionary d,
@@ -74,7 +74,8 @@ extern void TYPE_T_dictionary_Enumerate(/* TYPE_T_dictionary d,
  *                 Note the access restrictions on bindings...
  */
 
-extern TYPE_T_dictionary_binding *TYPE_T_dictionary_Lookup(/* d, key */);
+extern TYPE_T_dictionary_binding *TYPE_T_dictionary_Lookup(TYPE_T_dictionary,
+							   char *);
 
 /*
  *    TYPE_T_dictionary_binding *TYPE_T_dictionary_Define(TYPE_T_dictionary d,
@@ -92,7 +93,8 @@ extern TYPE_T_dictionary_binding *TYPE_T_dictionary_Lookup(/* d, key */);
  *                 in this case.
  */
 
-extern TYPE_T_dictionary_binding *TYPE_T_dictionary_Define();
+extern TYPE_T_dictionary_binding *TYPE_T_dictionary_Define(TYPE_T_dictionary,
+							   char *, int *);
 
 /*
  *    void TYPE_T_dictionary_Delete(TYPE_T_dictionary d,
@@ -104,6 +106,7 @@ extern TYPE_T_dictionary_binding *TYPE_T_dictionary_Define();
  *                 before making this call.
  */
 
-extern void TYPE_T_dictionary_Delete();
+extern void TYPE_T_dictionary_Delete(TYPE_T_dictionary,
+				     TYPE_T_dictionary_binding *);
 
 #endif
