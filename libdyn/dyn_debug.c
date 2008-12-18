@@ -14,9 +14,9 @@
 
 #include "dynP.h"
 
-int DynDebug(obj, state)
-   DynObject obj;
-   int state;
+int
+DynDebug(DynObject obj,
+	 int state)
 {
      obj->debug = state;
 

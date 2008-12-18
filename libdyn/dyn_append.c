@@ -14,10 +14,10 @@
 
 #include "dynP.h"
 
-int DynAppend(obj, els, num)
-   DynObject obj;
-   DynPtr els;
-   int num;
+int
+DynAppend(DynObject obj,
+	  DynPtr els,
+	  int num)
 {
      if (obj->debug)
 	  fprintf(stderr, "dyn: append: Writing %d bytes from %p to %p + %d\n",
