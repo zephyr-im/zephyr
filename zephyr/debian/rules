@@ -50,10 +50,12 @@ configure: configure-stamp autotools
 configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
-	-mkdir krb
-	cd krb&& CFLAGS="-g -Wall" ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
+	-mkdir krb4
+	cd krb4 && CFLAGS="-g -Wall" ../configure --with-krb4=/usr $(CONFIGURE_ROOT)
+	-mkdir krb5
+	cd krb5 && CFLAGS="-g -Wall" ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
 	-mkdir no-krb
-	cd no-krb&& CFLAGS=-g ../configure $(CONFIGURE_ROOT)
+	cd no-krb && CFLAGS="-g -Wall" ../configure $(CONFIGURE_ROOT)
 	touch configure-stamp
 
 build: configure-stamp build-stamp
@@ -62,7 +64,7 @@ build-stamp:
 
 	# Add here commands to compile the package.
 	set -e; \
-	for dir in krb no-krb ; do  \
+	for dir in krb4 krb5 no-krb ; do  \
 		cd $$dir; \
 	rm -f lib/*.o || true; \
 		$(MAKE) -C lib			\
@@ -82,11 +84,12 @@ clean:
 	-rm -f build-stamp configure-stamp
 
 	# Add here commands to clean up after the build process.
-	-rm -rf krb no-krb debian/tmp-krb
+	-rm -rf krb krb4 krb5 no-krb debian/tmp-krb*
 	-rm debian/zephyr-server-krb.files
 	-rm debian/zephyr-server-krb.templates
 	-rm debian/zephyr-server-krb.config
 	-rm debian/zephyr-server-krb.postinst
+	-rm debian/zephyr-server-krb5.*
 	-rm debian/libzephyr3-krb.files
 
 	dh_clean
@@ -96,17 +99,19 @@ install: build
 	dh_testdir
 	dh_testroot
 	dh_clean -k
-	-rm -rf debian/tmp-krb
+	-rm -rf debian/tmp-krb*
 	dh_installdirs
 
 	# Add here commands to install the package into debian/tmp.
-	cd no-krb&&$(MAKE) install DESTDIR=`pwd`/../debian/tmp
-	cd krb&&$(MAKE)  DESTDIR=`pwd`/../debian/tmp-krb install
+	cd no-krb &&$(MAKE) install DESTDIR=`pwd`/../debian/tmp
+	cd krb4 &&$(MAKE)  DESTDIR=`pwd`/../debian/tmp-krb4 install
+	cd krb5 &&$(MAKE)  DESTDIR=`pwd`/../debian/tmp-krb5 install
 	mkdir -p debian/tmp/etc/zephyr/acl
 	set -x; for i in debian/acl/*; do install -c -m 644 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
 	install -c -m 644 debian/zephyr.vars debian/tmp/etc/zephyr
 	install -c -m 644 debian/default.subscriptions debian/tmp/etc/zephyr
-	cp -pr debian/tmp/etc/zephyr/acl debian/tmp-krb/etc/zephyr
+	cp -rp debian/tmp/etc/zephyr/acl debian/tmp-krb4/etc/zephyr
+	cp -rp debian/tmp/etc/zephyr/acl debian/tmp-krb5/etc/zephyr
 
 # Build architecture-independent files here.
 # Pass -i to all debhelper commands in this target to reduce clutter.
@@ -118,17 +123,24 @@ binary-arch: build install
 	dh_testdir
 	dh_testroot
 	set -e; \
-	for file  in  files templates config postinst docs; do \
+	for file in files templates config postinst docs; do \
 		cp debian/zephyr-server.$$file debian/zephyr-server-krb.$$file; \
+		cp debian/zephyr-server.$$file debian/zephyr-server-krb5.$$file; \
 		done
+	for file in README.Debian docs init postrm; do \
+		cp debian/zephyr-server-krb.$$file debian/zephyr-server-krb5.$$file; \
+	done
 	cp debian/libzephyr3.files debian/libzephyr3-krb.files
+	cp debian/libzephyr3.files debian/libzephyr3-krb5.files
 	dh_movefiles  -plibzephyr3 -pzephyr-clients -pzephyr-server -plibzephyr-dev
-	dh_movefiles --sourcedir=debian/tmp-krb -plibzephyr3-krb -pzephyr-server-krb
+	dh_movefiles --sourcedir=debian/tmp-krb4 -plibzephyr3-krb -pzephyr-server-krb
+	dh_movefiles --sourcedir=debian/tmp-krb5 -plibzephyr3-krb5 -pzephyr-server-krb5
 	dh_installdebconf 
 	dh_installdocs
 	dh_installinit -pzephyr-clients --init-script=zhm --no-start
-	dh_installinit -pzephyr-server-krb --init-script=zephyrd
 	dh_installinit -pzephyr-server --init-script=zephyrd
+	dh_installinit -pzephyr-server-krb --init-script=zephyrd
+	dh_installinit -pzephyr-server-krb5 --init-script=zephyrd
 	dh_installchangelogs 
 	dh_strip
 	dh_compress
@@ -137,6 +149,7 @@ binary-arch: build install
 	dh_makeshlibs
 	# sigh
 	cp debian/libzephyr3/DEBIAN/shlibs debian/libzephyr3-krb/DEBIAN/shlibs
+	cp debian/libzephyr3/DEBIAN/shlibs debian/libzephyr3-krb5/DEBIAN/shlibs
 	dh_shlibdeps
 	dh_installdeb
 	dh_gencontrol
