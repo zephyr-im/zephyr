@@ -484,14 +484,7 @@ do_net_setup(void)
     if (srv_socket < 0) {
 	syslog(LOG_ERR, "client_sock failed: %m");
 	return 1;
-    } else {
-#ifdef SO_BSDCOMPAT
-      int on = 1;
-
-      /* Prevent Linux from giving us socket errors we don't care about. */
-      setsockopt(srv_socket, SOL_SOCKET, SO_BSDCOMPAT, &on, sizeof(on));
-#endif
-    }
+    } 
     if (bind(srv_socket, (struct sockaddr *) &srv_addr,
 	     sizeof(srv_addr)) < 0) {
 	syslog(LOG_ERR, "client bind failed: %m");
