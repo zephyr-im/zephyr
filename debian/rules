@@ -50,10 +50,11 @@ configure: configure-stamp autotools
 configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
-	-mkdir krb4
-	cd krb4 && CFLAGS="-g -Wall" ../configure --with-krb4=/usr $(CONFIGURE_ROOT)
 	-mkdir krb5
 	cd krb5 && CFLAGS="-g -Wall" ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
+	#cd krb5 && CFLAGS="-g -Wall" ../configure --with-krb5=/usr $(CONFIGURE_ROOT)
+	-mkdir krb4
+	cd krb4 && CFLAGS="-g -Wall" ../configure --with-krb4=/usr $(CONFIGURE_ROOT)
 	-mkdir no-krb
 	cd no-krb && CFLAGS="-g -Wall" ../configure $(CONFIGURE_ROOT)
 	touch configure-stamp
@@ -64,7 +65,7 @@ build-stamp:
 
 	# Add here commands to compile the package.
 	set -e; \
-	for dir in krb4 krb5 no-krb ; do  \
+	for dir in krb5 krb4 no-krb ; do  \
 		cd $$dir; \
 	rm -f lib/*.o || true; \
 		$(MAKE) -C lib			\
@@ -90,7 +91,7 @@ clean:
 	-rm debian/zephyr-server-krb.config
 	-rm debian/zephyr-server-krb.postinst
 	-rm debian/zephyr-server-krb5.*
-	-rm debian/libzephyr3-krb.files
+	-rm debian/libzephyr3-krb.files debian/libzephyr3-krb5.files
 
 	dh_clean
 
