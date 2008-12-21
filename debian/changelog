@@ -1,8 +1,10 @@
 zephyr (3.0~a1) unstable; urgency=low
 
   * Kerberos 5 client support; new upstream?
+  * GNU config automated update: config.sub     (20070118 to 20080116),
+    config.guess     (20070306 to 20080123)
 
- -- Karl Ramm <kcr@1ts.org>  Tue, 25 Dec 2007 00:01:24 -0500
+ -- Karl Ramm <kcr@1ts.org>  Sun, 21 Dec 2008 02:07:58 -0500
 
 zephyr (2.1.20070719.SNAPSHOT-1) unstable; urgency=low
 
