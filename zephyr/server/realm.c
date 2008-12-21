@@ -68,7 +68,7 @@ static void rlm_rexmit(void *arg);
 static Code_t realm_ulocate_dispatch(ZNotice_t *notice,int auth,struct sockaddr_in *who,Server *server,ZRealm *realm);
 static Code_t realm_new_server(struct sockaddr_in *, ZNotice_t *, ZRealm *);
 static Code_t realm_set_server(struct sockaddr_in *, ZRealm *);
-#ifdef HAVE_KRB4
+#ifdef HAVE_KRB5
 static Code_t ticket_retrieve(ZRealm *realm);
 static int ticket_lookup(char *realm);
 #endif
@@ -476,7 +476,7 @@ realm_init(void)
     struct in_addr *addresses;
     struct hostent *hp;
     char list_file[128];
-    char rlmprinc[ANAME_SZ+INST_SZ+REALM_SZ+3];
+    char rlmprinc[MAX_PRINCIPAL_SIZE];
 
     sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, REALM_LIST_FILE);
     rlmnames = get_realm_lists(list_file);
@@ -544,7 +544,7 @@ realm_init(void)
 	memset(&client->session_key, 0, sizeof(client->session_key));
 #endif
 #endif
-	sprintf(rlmprinc, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE, 
+	snprintf(rlmprinc, MAX_PRINCIPAL_SIZE, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE, 
 		rlm->name);
 	client->principal = make_string(rlmprinc, 0);
 	client->last_send = 0;
@@ -1357,7 +1357,7 @@ ticket_retrieve(ZRealm *realm)
     pid = fork();
     if (pid < 0) {
 	syslog(LOG_ERR, "tkt_rtrv: can't fork");
-	return KRBET_KDC_AUTH_EXP;
+	return errno;
     }
     else if (pid == 0) {
 #ifdef _POSIX_VERSION
