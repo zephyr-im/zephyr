@@ -31,7 +31,7 @@
 #include "access.h"
 #include "acl.h"
 
-#if defined(HAVE_KRB5) || defined(HAVE_KRB4)
+
 /* Kerberos-specific library interfaces used only by the server. */
 #ifdef HAVE_KRB5
 extern krb5_keyblock *__Zephyr_keyblock;
@@ -40,13 +40,17 @@ void ZSetSession(krb5_keyblock *keyblock);
 Code_t ZFormatAuthenticNoticeV5(ZNotice_t*, char*, int, int*, krb5_keyblock *);
 krb5_error_code Z_krb5_init_keyblock(krb5_context, krb5_enctype, size_t,
         krb5_keyblock **);
-#else
-extern C_Block __Zephyr_session;
-#define ZGetSession() (__Zephyr_session)
 #endif
+
+#ifdef HAVE_KRB4
 void ZSetSessionDES(C_Block *key);
 
 Code_t ZFormatAuthenticNotice(ZNotice_t*, char*, int, int*, C_Block);
+
+#ifndef HAVE_KRB5
+extern C_Block __Zephyr_session;
+#define ZGetSession() (__Zephyr_session)
+#endif
 #endif
 
 /* For krb_rd_req prototype and definition. */
@@ -293,11 +297,13 @@ void hostm_shutdown(void);
 
 /* found in kstuff.c */
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
-int GetKerberosData (int, struct in_addr, AUTH_DAT *, char *, char *);
 Code_t ReadKerberosData(int, int *, char **, int *);
-Code_t SendKerberosData (int, KTEXT, char *, char *);
 void sweep_ticket_hash_table(void *);
 Code_t ZCheckRealmAuthentication(ZNotice_t *, struct sockaddr_in *, char *);
+#endif
+#ifdef HAVE_KRB4
+int GetKerberosData (int, struct in_addr, AUTH_DAT *, char *, char *);
+Code_t SendKerberosData (int, KTEXT, char *, char *);
 #endif
 #ifdef HAVE_KRB5
 Code_t SendKrb5Data(int, krb5_data *);
