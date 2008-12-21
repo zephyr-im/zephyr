@@ -320,7 +320,7 @@ sendit(ZNotice_t *notice,
        int external)
 {
     static int send_counter = 0;
-    char recipbuf[ANAME_SZ + INST_SZ + REALM_SZ + 3], *recipp;
+    char recipbuf[MAX_PRINCIPAL_SIZE], *recipp;
     int any = 0;
     Acl *acl;
     Destination dest;
@@ -389,7 +389,8 @@ sendit(ZNotice_t *notice,
       strncpy(recipbuf, notice->z_recipient, sizeof(recipbuf));
       recipp = strrchr(recipbuf, '@');
       if (recipp)
-	sprintf(recipp + 1, "%s", realm_expand_realm(recipp + 1));
+	snprintf(recipp + 1, sizeof(recipbuf) - (recipp - recipbuf),
+		 "%s", realm_expand_realm(recipp + 1));
       dest.recip = make_string(recipbuf, 0);
     }
 
