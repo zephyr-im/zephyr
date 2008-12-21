@@ -97,9 +97,9 @@ ZParseExposureLevel(char *text)
 
 /* lifted from lib/ZSendPkt.c wait_for_hmack, but waits for SERVACK instead */
 static int
-wait_for_srvack(ZNotice_t *notice, ZUnique_Id_t *uid)
+wait_for_srvack(ZNotice_t *notice, void *uid)
 {
-    return (notice->z_kind == SERVACK && ZCompareUID(&notice->z_uid, uid));
+    return (notice->z_kind == SERVACK && ZCompareUID(&notice->z_uid, (ZUnique_Id_t *)uid));
 }
 
 Code_t
