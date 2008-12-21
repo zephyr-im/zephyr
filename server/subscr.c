@@ -1036,7 +1036,6 @@ subscr_realm_sendit(Client *who,
   snotice.z_recipient = "";
   snotice.z_kind = ACKED;
   snotice.z_num_other_fields = 0;
-  snotice.z_default_format = "";
   snotice.z_sender = who->principal->string;
   snotice.z_recipient = notice->z_recipient;
   snotice.z_default_format = notice->z_default_format;
@@ -1315,7 +1314,6 @@ subscr_realm_subs(ZRealm *realm)
       snotice.z_sender = "";
     else
       snotice.z_sender = (*clientp)->principal->string;
-    snotice.z_default_format = "";
 
     if ((retval = ZFormatNoticeList(&snotice, text, NUM_FIELDS + 2,
 				    &pack, &packlen, ZNOAUTH)) != ZERR_NONE) 
