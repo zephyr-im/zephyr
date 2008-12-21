@@ -144,7 +144,7 @@ bdump_offer(struct sockaddr_in *who)
 {
     Code_t retval;
     char buf[512], *addr, *lyst[2];
-#ifndef HAVE_KRB4
+#if !defined(HAVE_KRB4) && !defined(HAVE_KRB5)
     int bdump_port = IPPORT_RESERVED - 1;
 #endif /* !HAVE_KRB4 */
 
@@ -282,7 +282,7 @@ bdump_send(void)
 		   sizeof(on)) < 0)
 	syslog(LOG_WARNING, "bdump_send: setsockopt (SO_KEEPALIVE): %m");
  
-#ifndef HAVE_KRB4
+#if !defined(HAVE_KRB4) && !defined(HAVE_KRB5)
     fromport = ntohs(from.sin_port);
 #endif
  
@@ -326,7 +326,7 @@ bdump_send(void)
 
     if (retval != 0) {
 	syslog(LOG_ERR, "bdump_send: ReadKerberosData: %s",
-	       krb_get_err_text(retval));
+	       error_message(retval));
 	cleanup(server);
 	return;
     }
@@ -446,7 +446,7 @@ bdump_send(void)
 	*/
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR, "bdump_send: getkdata: %s",
-		   krb_get_err_text(retval));
+		   error_message(retval));
 	    cleanup(server);
 	    return;
 	}
@@ -746,7 +746,7 @@ bdump_get_v12 (ZNotice_t *notice,
 	retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
 				 SERVER_SERVICE, srvtab_file);
 	if (retval != KSUCCESS) {
-	    syslog(LOG_ERR, "bdump_get getkdata: %s",krb_get_err_text(retval));
+	    syslog(LOG_ERR, "bdump_get getkdata: %s",error_message(retval));
 	    cleanup(server);
 	    return;
 	}
@@ -986,15 +986,16 @@ cleanup(Server *server)
     server->dumping = 0;
 }
 
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
 int
 get_tgt(void)
 {
+    int retval = 0;
+#ifdef HAVE_KRB4
     /* MIT Kerberos 4 get_svc_in_tkt() requires instance to be writable and
      * at least INST_SZ bytes long. */
     static char buf[INST_SZ + 1] = SERVER_INSTANCE;
-    int retval = 0;
-    
+
     /* have they expired ? */
     if (ticket_time < NOW - tkt_lifetime(TKTLIFETIME) + (15L * 60L)) {
 	/* +15 for leeway */
@@ -1009,7 +1010,7 @@ get_tgt(void)
 				    TKTLIFETIME, srvtab_file);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR,"get_tgt: krb_get_svc_in_tkt: %s",
-		   krb_get_err_text(retval));
+		   error_message(retval));
 	    ticket_time = 0;
 	    return(1);
 	} else {
@@ -1021,11 +1022,12 @@ get_tgt(void)
 				  srvtab_file, (char *)serv_key);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
-		   krb_get_err_text(retval));
+		   error_message(retval));
 	    return 1;
 	}
 	des_key_sched(serv_key, serv_ksched.s);
     }
+#endif
 #ifdef HAVE_KRB5	
     /* XXX */
     if (ticket5_time < NOW - tkt5_lifetime(TKT5LIFETIME) + (15L * 60L)) {
@@ -1220,7 +1222,9 @@ bdump_recv_loop(Server *server)
 	    if (*notice.z_class_inst) {
 		/* check out this session key I found */
 		cp = notice.z_message + strlen(notice.z_message) + 1;
-		if (*cp == '0') {
+		switch (*cp) {
+#ifdef HAVE_KRB4
+		case '0':
 		    /* ****ing netascii; this is an encrypted DES keyblock
 		       XXX this code should be conditionalized for server
 		       transitions   */
@@ -1240,7 +1244,10 @@ bdump_recv_loop(Server *server)
 			des_ecb_encrypt((C_Block *)cblock, (C_Block *)Z_keydata(client->session_keyblock),
 					serv_ksched.s, DES_DECRYPT);
 		    }
-		} else if (*cp == 'Z') { /* Zcode! Long live the new flesh! */
+		    break;
+#endif
+		case 'Z':
+		    /* Zcode! Long live the new flesh! */
 		    retval = ZReadZcode((unsigned char *)cp, buf, sizeof(buf), &blen);
 		    if (retval != ZERR_NONE) {
 			syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
@@ -1258,6 +1265,7 @@ bdump_recv_loop(Server *server)
 			memcpy(Z_keydata(client->session_keyblock), &buf[8],
 			       Z_keylen(client->session_keyblock));
 		    }
+		    break;
 		}
 	    }
 #else
