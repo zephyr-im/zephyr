@@ -134,7 +134,7 @@ ReadKerberosData(int fd, int *size, char **data, int *proto) {
 	if (read(fd, &p[i], 1) != 1) {
 	    p[i] = 0;
 	    syslog(LOG_WARNING,"ReadKerberosData: bad read reply len @%d (got \"%s\"", i, p);
-	    return(KFAILURE);
+	    return ZSRV_LEN;
 	}
 	if (p[i] == ' ') {
 	    p[i] = '\0';
@@ -144,7 +144,7 @@ ReadKerberosData(int fd, int *size, char **data, int *proto) {
 
     if (i == 20) {
 	syslog(LOG_WARNING, "ReadKerberosData: read reply len exceeds buffer");
-	    return KFAILURE;
+	    return ZSRV_BUFSHORT;
     }
 
     if (!strncmp(p, "V5-", 3) && (len = atoi(p+3)) > 0)
@@ -154,12 +154,12 @@ ReadKerberosData(int fd, int *size, char **data, int *proto) {
 
     if ((*proto < 4) | (*proto > 5)) {
 	syslog(LOG_WARNING, "ReadKerberosData: error parsing authenticator length (\"%s\")", p);
-	return KFAILURE;
+	return ZSRV_LEN;
     }
 
     if (len <= 0) {
 	syslog(LOG_WARNING, "ReadKerberosData: read reply len = %d", len);
-	return KFAILURE;
+	return ZSRV_LEN;
     }
 
     *data = malloc(len);
@@ -194,7 +194,7 @@ GetKrb5Data(int fd, krb5_data *data) {
 	if (read(fd, &p[i], 1) != 1) {
 	    p[i] = 0;
 	    syslog(LOG_WARNING,"bad read reply len @%d (got \"%s\")", i, p);
-	    return(KFAILURE);
+	    return ZSRV_LEN;
 	}
 	if (p[i] == ' ') {
 	    p[i] = '\0';
@@ -203,7 +203,7 @@ GetKrb5Data(int fd, krb5_data *data) {
     }
     if (i == 20 || strncmp(p, "V5-", 3) || !atoi(p+3)) {
         syslog(LOG_WARNING,"bad reply len");
-        return ZSRV_PKSHORT;
+        return ZSRV_LEN;
     }
     data->length = atoi(p+3);
     data->data = malloc(data->length);
@@ -244,7 +244,7 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
 {       
 #ifdef HAVE_KRB5
     char *authbuf;
-    char rlmprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4+1024];
+    char rlmprincipal[MAX_PRINCIPAL_SIZE];
     krb5_principal princ;
     krb5_data packet;
     krb5_ticket *tkt;
@@ -289,7 +289,7 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
         return ZAUTH_FAILED;
     }
 
-    (void) sprintf(rlmprincipal, "%s/%s@%s", SERVER_SERVICE,
+    (void) snprintf(rlmprincipal, MAX_PRINCIPAL_SIZE, "%s/%s@%s", SERVER_SERVICE,
                    SERVER_INSTANCE, realm);
 
     packet.length = len;
@@ -441,7 +441,8 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
     /* last part is the message body */ 
     cksum2_base = notice->z_message; 
     cksum2_len  = notice->z_message_len; 
- 
+
+#ifdef HAVE_KRB4 /*XXX*/
     if ((!notice->z_ascii_checksum || *notice->z_ascii_checksum != 'Z') && 
         key_len == 8 && 
         (enctype == ENCTYPE_DES_CBC_CRC || 
@@ -461,7 +462,8 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
           return ZAUTH_YES; 
       } else
 	  return ZAUTH_FAILED;
-    } 
+    }
+#endif
 
     /* HOLDING: authctx, authenticator */
  
@@ -724,8 +726,9 @@ ZCheckAuthentication(ZNotice_t *notice,
  
     /* last part is the message body */ 
     cksum2_base = notice->z_message; 
-    cksum2_len  = notice->z_message_len; 
- 
+    cksum2_len  = notice->z_message_len;
+
+#ifdef HAVE_KRB4 /*XXX*/
     if ((!notice->z_ascii_checksum || *notice->z_ascii_checksum != 'Z') && 
         key_len == 8 && 
         (enctype == ENCTYPE_DES_CBC_CRC || 
@@ -745,7 +748,8 @@ ZCheckAuthentication(ZNotice_t *notice,
 	return ZAUTH_YES; 
       else
 	return ZAUTH_FAILED;
-    } 
+    }
+#endif
 
     /* HOLDING: authctx, authenticator */
  
@@ -807,11 +811,11 @@ ZCheckAuthentication(ZNotice_t *notice,
 
 #undef KRB5AUTHENT
 
+#ifdef HAVE_KRB4
 static Code_t
 ZCheckAuthentication4(ZNotice_t *notice,
 		      struct sockaddr_in *from)
 {	
-#ifdef HAVE_KRB4
     int result;
     char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
     KTEXT_ST authent;
@@ -857,11 +861,8 @@ ZCheckAuthentication4(ZNotice_t *notice,
 	return ZAUTH_FAILED;
 
     return ZAUTH_YES;
-
-#else /* !HAVE_KRB4 */
-    return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
-#endif
 }
+#endif
 
 
 #ifdef HAVE_KRB4
@@ -893,6 +894,7 @@ static ZChecksum_t compute_rlm_checksum(ZNotice_t *notice,
 
     return checksum;
 }
+#endif
 
 #ifdef HAVE_KRB5
 krb5_error_code 
@@ -956,6 +958,3 @@ ZSetSessionDES(C_Block *key) {
 #endif
 }
 #endif
-
-#endif /* HAVE_KRB4 */
-
