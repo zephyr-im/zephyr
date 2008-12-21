@@ -19,7 +19,8 @@
 
 #include <zephyr/mit-copyright.h>
 #include "zserver.h"
-
+/* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX */
+/* this needs to be rethought for a world without krb4 */
 
 #ifndef SABER
 #ifndef lint
@@ -29,8 +30,15 @@ static const char rcsid_acl_files_c[] = "$Id$";
 
 /*** Routines for manipulating access control list files ***/
 
+#ifndef ANAME_SZ
+#define ANAME_SZ 40
+#define INST_SZ 40
+#endif /* XXX */
+
 /* "aname.inst@realm" */
+#ifndef MAX_PRINCIPAL_SIZE
 #define MAX_PRINCIPAL_SIZE  (ANAME_SZ + INST_SZ + REALM_SZ + 3)
+#endif
 #define INST_SEP '.'
 #define REALM_SEP '@'
 
