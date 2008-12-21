@@ -94,44 +94,49 @@ extern int __subscriptions_next;
 extern int __Zephyr_port;		/* Port number */
 extern struct in_addr __My_addr;
 
-typedef Code_t (*Z_SendProc) __P((ZNotice_t *, char *, int, int));
+typedef Code_t (*Z_SendProc) (ZNotice_t *, char *, int, int);
 
-struct _Z_InputQ *Z_GetFirstComplete __P((void));
-struct _Z_InputQ *Z_GetNextComplete __P((struct _Z_InputQ *));
-Code_t Z_XmitFragment __P((ZNotice_t*, char *,int,int));
-void Z_RemQueue __P((struct _Z_InputQ *));
-Code_t Z_AddNoticeToEntry __P((struct _Z_InputQ*, ZNotice_t*, int));
-Code_t Z_FormatAuthHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
-Code_t Z_FormatHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
-Code_t Z_FormatRawHeader __P((ZNotice_t *, char*, int,
-			      int*, char **, char **));
-Code_t Z_ReadEnqueue __P((void));
-Code_t Z_ReadWait __P((void));
-Code_t Z_SendLocation __P((char*, char*, Z_AuthProc, char*));
-Code_t Z_SendFragmentedNotice __P((ZNotice_t *notice, int len,
+struct _Z_InputQ *Z_GetFirstComplete (void);
+struct _Z_InputQ *Z_GetNextComplete (struct _Z_InputQ *);
+Code_t Z_XmitFragment (ZNotice_t*, char *,int,int);
+void Z_RemQueue (struct _Z_InputQ *);
+Code_t Z_AddNoticeToEntry (struct _Z_InputQ*, ZNotice_t*, int);
+Code_t Z_FormatAuthHeader (ZNotice_t *, char *, int, int *, Z_AuthProc);
+Code_t Z_FormatHeader (ZNotice_t *, char *, int, int *, Z_AuthProc);
+Code_t Z_FormatRawHeader (ZNotice_t *, char*, int,
+			      int*, char **, char **);
+Code_t Z_ReadEnqueue (void);
+Code_t Z_ReadWait (void);
+Code_t Z_SendLocation (char*, char*, Z_AuthProc, char*);
+Code_t Z_SendFragmentedNotice (ZNotice_t *notice, int len,
 				   Z_AuthProc cert_func,
-				   Z_SendProc send_func));
-Code_t Z_WaitForComplete __P((void));
+				   Z_SendProc send_func);
+Code_t Z_WaitForComplete (void);
 Code_t Z_WaitForNotice (ZNotice_t *notice,
 			int (*pred)(ZNotice_t *, void *), void *arg,
 			int timeout);
 
 
-Code_t Z_NewFormatHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
-Code_t Z_NewFormatAuthHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
-Code_t Z_NewFormatRawHeader __P((ZNotice_t *, char *, int, int *, char **, 
-                                 int *, char **, char **));
-Code_t Z_AsciiFormatRawHeader __P((ZNotice_t *, char *, int, int *, char **, 
-                                 int *, char **, char **));
+Code_t Z_NewFormatHeader (ZNotice_t *, char *, int, int *, Z_AuthProc);
+Code_t Z_NewFormatAuthHeader (ZNotice_t *, char *, int, int *, Z_AuthProc);
+Code_t Z_NewFormatRawHeader (ZNotice_t *, char *, int, int *, char **, 
+                                 int *, char **, char **);
+Code_t Z_AsciiFormatRawHeader (ZNotice_t *, char *, int, int *, char **, 
+                                 int *, char **, char **);
 
 void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz);
 
 #ifdef HAVE_KRB5
 int ZGetCreds(krb5_creds **creds_out);
 int ZGetCredsRealm(krb5_creds **creds_out, char *realm);
-Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock, krb5_cksumtype cksumtype, char **asn1_data, unsigned int *asn1_len);
-Code_t Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype, krb5_cksumtype *cksumtype);
-int Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf, krb5_cksumtype cksumtype, unsigned char *asn1_data, int asn1_len);
+Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock,
+		  krb5_cksumtype cksumtype, char **asn1_data,
+		  unsigned int *asn1_len);
+Code_t Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype,
+			 krb5_cksumtype *cksumtype);
+int Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf,
+			krb5_cksumtype cksumtype, unsigned char *asn1_data,
+			int asn1_len);
 Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice, 
                              char *buffer,
                              char *cksum_start, int cksum_len, 
