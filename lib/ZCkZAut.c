@@ -111,8 +111,8 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
         cksum2_base = notice->z_message;
         cksum2_len  = notice->z_message_len;
 
-#ifdef HAVE_KRB4 /* XXX this is probably a mistake for krb5 clients in mixed
-		    realms? */
+	/* The following code checks for old-style checksums, which will go
+	   away once Kerberos 4 does. */
         if ((!notice->z_ascii_checksum || *notice->z_ascii_checksum != 'Z') &&
             key_len == 8 &&
             (enctype == ENCTYPE_DES_CBC_CRC ||
@@ -122,15 +122,14 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 
             ZChecksum_t our_checksum;
 
-            our_checksum = des_quad_cksum((unsigned char *)cksum0_base, NULL, cksum0_len, 0,
-                                          (C_Block *)key_data);
+            our_checksum = z_quad_cksum((unsigned char *)cksum0_base, NULL, cksum0_len, 0,
+					key_data);
             if (our_checksum == notice->z_checksum) {
                 krb5_free_creds(Z_krb5_ctx, creds);
                 return ZAUTH_YES;
             }
         }
         /* HOLDING: creds */
-#endif
 
         cksumbuf.length = cksum0_len + cksum1_len + cksum2_len;
         cksumbuf.data = malloc(cksumbuf.length);
