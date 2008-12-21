@@ -20,11 +20,14 @@
 #endif
 
 #ifndef HAVE_KRB4
-#define REALM_SZ	MAXHOSTNAMELEN
-#define INST_SZ		0		/* no instances w/o Kerberos */
-#define ANAME_SZ	9		/* size of a username + null */
 #define CLOCK_SKEW	300		/* max time to cache packet ids */
 #endif
+
+#ifndef REALM_SZ  /* XXX */
+#include <arpa/nameser.h>
+#define REALM_SZ	NS_MAXDNAME
+#endif
+#define MAX_PRINCIPAL_SIZE	1024
 
 #define SERVER_SVC_FALLBACK	htons((unsigned short) 2103)
 #define HM_SVC_FALLBACK		htons((unsigned short) 2104)
@@ -109,9 +112,9 @@ Code_t Z_SendFragmentedNotice __P((ZNotice_t *notice, int len,
 				   Z_AuthProc cert_func,
 				   Z_SendProc send_func));
 Code_t Z_WaitForComplete __P((void));
-Code_t Z_WaitForNotice __P((ZNotice_t *notice,
-			    int (*pred) __P((ZNotice_t *, void *)), void *arg,
-			    int timeout));
+Code_t Z_WaitForNotice (ZNotice_t *notice,
+			int (*pred)(ZNotice_t *, void *), void *arg,
+			int timeout);
 
 
 Code_t Z_NewFormatHeader __P((ZNotice_t *, char *, int, int *, Z_AuthProc));
