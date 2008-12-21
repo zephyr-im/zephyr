@@ -10,7 +10,7 @@ Package: libzephyr3
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}
-Conflicts: libzephyr3-krb, libzephyr4-krb5
+Conflicts: libzephyr3-krb, libzephyr3-krb5, libzephyr3-krb45
 Description: The original "Instant Message" system libraries without Kerberos
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
  Zephyr allows users to send messages to other users or to groups of
@@ -21,7 +21,7 @@ Package: libzephyr3-krb
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, krb4-config
-Conflicts: libzephyr3, libzephyr3-krb5
+Conflicts: libzephyr3, libzephyr3-krb5, libzephyr3-krb45
 Provides: libzephyr3
 Description: The original "Instant Message" system libraries with Kerberos 
  This version of the library uses Kerberos for message authentication.
@@ -35,9 +35,23 @@ Package: libzephyr3-krb5
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, krb5-config
-Conflicts: libzephyr3, libzephyr3-krb
+Conflicts: libzephyr3, libzephyr3-krb, libzephyr3-krb45
 Provides: libzephyr3
 Description: The original "Instant Message" system libraries with Kerberos 5
+ This version of the library uses Kerberos for message authentication.
+ .
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: libzephyr3-krb45
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, krb5-config
+Conflicts: libzephyr3, libzephyr3-krb, libzephyr3-krb5
+Provides: libzephyr3
+Description: The original "Instant Message" system libraries with Kerberos 4+5
  This version of the library uses Kerberos for message authentication.
  .
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
@@ -62,7 +76,7 @@ Package: zephyr-server
 Section: net
 Architecture: any
 Depends: ${shlibs:Depends}, debconf | debconf-2.0
-Conflicts: zephyr-server-krb, zephyr-server-krb5
+Conflicts: zephyr-server-krb, zephyr-server-krb5, zephyr-server-krb45
 Description: The original "Instant Message" system-server without Kerberos
  You probably only need one server for a group of clients.
  This can be a memory-intensive server, especially for very large sites.
@@ -80,7 +94,7 @@ Package: zephyr-server-krb
 Section: net
 Architecture: any
 Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr3-krb
-Conflicts: zephyr-server, zephyr-server-krb5
+Conflicts: zephyr-server, zephyr-server-krb5, zephyr-server-krb45
 Description: The original "Instant Message" system-server with Kerberos
  You probably only need one server for a group of clients.
  This can be a memory-intensive server, especially for very large sites.
@@ -99,9 +113,29 @@ Description: The original "Instant Message" system-server with Kerberos
 Package: zephyr-server-krb5
 Section: net
 Architecture: any
-Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr3-krb
-Conflicts: zephyr-server, zephyr-server-krb
+Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr3-krb5
+Conflicts: zephyr-server, zephyr-server-krb, zephyr-server-krb45
 Description: The original "Instant Message" system-server with Kerberos 5
+ You probably only need one server for a group of clients.
+ This can be a memory-intensive server, especially for very large sites.
+ .
+ The server maintains a location and subscription database for all the
+ receiving clients. All zephyrgrams are sent to the server to be routed
+ to the intended recipient.
+ .
+ This version of the server uses Kerberos for message authentication.
+ .
+ This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ Zephyr allows users to send messages to other users or to groups of
+ users.  Users can view incoming Zephyr messages as windowgrams
+ (transient X windows) or as text on a terminal.
+
+Package: zephyr-server-krb45
+Section: net
+Architecture: any
+Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr3-krb45
+Conflicts: zephyr-server, zephyr-server-krb, zephyr-server-krb5
+Description: The original "Instant Message" system-server with Kerberos 4+5
  You probably only need one server for a group of clients.
  This can be a memory-intensive server, especially for very large sites.
  .
