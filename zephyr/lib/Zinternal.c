@@ -98,11 +98,6 @@ Z_krb5_lookup_cksumtype(krb5_enctype e,
 }
 #endif /* HAVE_KRB5 */
 
-#ifndef REALM_SZ
-#include <arpa/nameser.h>
-#define REALM_SZ	NS_MAXDNAME
-#endif
-
 char __Zephyr_realm[REALM_SZ];
 
 #ifdef Z_DEBUG
