@@ -11,7 +11,6 @@
 
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
-SONAME=3
 CONFIGURE_ROOT=--prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --sysconfdir=/etc --datadir=/etc  --with-ares=/usr --with-hesiod=/usr
 
 # see /usr/share/doc/autotools-dev/README.Debian.gz
@@ -66,17 +65,10 @@ build-stamp:
 
 	# Add here commands to compile the package.
 	set -e; \
-	for dir in krb5 krb45 krb4 no-krb ; do  \
-		cd $$dir; \
-	rm -f lib/*.o || true; \
-		$(MAKE) -C lib			\
-		 FPIC= 					\
-		 LIBEXT=a; \
-		rm -f lib/*.o; \
-		$(MAKE) LIBEXT=so \
-			FPIC=-fpic SONAME=$(SONAME); \
-		cd ..; \
-		done
+	for dir in krb5 krb45 krb4 ; do  \
+		$(MAKE) -C $$dir/lib; make -C $$dir/server; \
+	done
+	$(MAKE) -C no-krb
 
 	touch build-stamp
 
@@ -106,10 +98,10 @@ install: build
 	dh_installdirs
 
 	# Add here commands to install the package into debian/tmp.
-	cd no-krb &&$(MAKE) install DESTDIR=`pwd`/../debian/tmp
-	cd krb4 &&$(MAKE)  DESTDIR=`pwd`/../debian/tmp-krb4 install
-	cd krb5 &&$(MAKE)  DESTDIR=`pwd`/../debian/tmp-krb5 install
-	cd krb45 &&$(MAKE)  DESTDIR=`pwd`/../debian/tmp-krb45 install
+	$(MAKE) -C no-krb DESTDIR=$(CURDIR)/debian/tmp install
+	for dir in krb5 krb45 krb4 ; do \
+		$(MAKE) -C $$dir SUBDIRS="lib server" DESTDIR=$(CURDIR)/debian/tmp-$$dir install; \
+	done
 	mkdir -p debian/tmp/etc/zephyr/acl
 	set -x; for i in debian/acl/*; do install -c -m 644 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
 	install -c -m 644 debian/zephyr.vars debian/tmp/etc/zephyr
