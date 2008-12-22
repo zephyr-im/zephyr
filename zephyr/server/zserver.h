@@ -357,13 +357,13 @@ void ulogin_relay_locate(ZNotice_t *, struct sockaddr_in *);
 void ulogin_realm_locate(ZNotice_t *, struct sockaddr_in *, ZRealm *);
 
 /* found in realm.c */
-int realm_sender_in_realm(char *realm, char *sender);
-int realm_bound_for_realm(char *realm, char *recip);
+int realm_sender_in_realm(const char *realm, char *sender);
+int realm_bound_for_realm(const char *realm, char *recip);
 ZRealm *realm_which_realm(struct sockaddr_in *who);
 ZRealm *realm_get_realm_by_name(char *name);
 ZRealm *realm_get_realm_by_pid(int);
 void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, ZRealm *, int);
-char *realm_expand_realm(char *);
+const char *realm_expand_realm(char *);
 void realm_init(void);
 Code_t ZCheckZRealmAuthentication(ZNotice_t *, struct sockaddr_in *,
 				      char *);

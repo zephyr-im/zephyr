@@ -1250,7 +1250,7 @@ hm_recipient(void)
     if (recipient)
 	return recipient;
 
-    realm = ZGetRealm();
+    realm = (char *)ZGetRealm();
     if (!realm)
 	realm = "???";
     recipient = (char *) malloc(strlen(realm) + 4);
