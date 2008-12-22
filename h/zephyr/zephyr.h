@@ -232,7 +232,8 @@ extern char __Zephyr_realm[];
 #define ZGetFD()	__Zephyr_fd
 #define ZQLength()	__Q_CompleteLength
 #define ZGetDestAddr()	__HM_addr
-#define ZGetRealm()	__Zephyr_realm
+
+const char *ZGetRealm(void);
 
 
 #ifdef Z_DEBUG
