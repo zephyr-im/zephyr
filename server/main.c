@@ -189,7 +189,7 @@ main(int argc,
 	    nofork = 1;
 	    break;
 	  case 'k':
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
 	    strncpy(my_realm, optarg, REALM_SZ);
 #endif
 	    break;
@@ -418,7 +418,7 @@ initialize(void)
     }
 #endif
 #endif
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     /* Override what Zinitialize set for ZGetRealm() */
     if (*my_realm) 
       strcpy(__Zephyr_realm, my_realm);
