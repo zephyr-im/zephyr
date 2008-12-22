@@ -95,7 +95,7 @@ realm_expand_realm(char *realmname)
     int a;
 
     /* First, look for an exact match (case insensitive) */
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     if (!strcasecmp(ZGetRealm(), realmname))
 	return(ZGetRealm());
 #endif
@@ -105,7 +105,7 @@ realm_expand_realm(char *realmname)
 	return(realm->name);
 
     /* No exact match. See if there's a partial match */
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     if (!strncasecmp(ZGetRealm(), realmname, strlen(realmname)))
 	return(ZGetRealm());
 #endif
