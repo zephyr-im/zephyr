@@ -97,8 +97,10 @@ static char tkt5_file[256];
 #endif
 #ifdef HAVE_KRB4
 char srvtab_file[128];
-char my_realm[REALM_SZ];
 static char tkt_file[128];
+#endif
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+char my_realm[REALM_SZ];
 #endif
 char acl_dir[128];
 char subs_file[128];
