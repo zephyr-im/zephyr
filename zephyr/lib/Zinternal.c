@@ -1260,9 +1260,6 @@ int ZQLength (void) { return __Q_CompleteLength; }
 #undef ZGetDestAddr
 struct sockaddr_in ZGetDestAddr (void) { return __HM_addr; }
 
-#undef ZGetRealm
-Zconst char * ZGetRealm (void) { return __Zephyr_realm; }
-
 #undef ZSetDebug
 void
 ZSetDebug(void (*proc) __P((const char *, va_list, void *)),

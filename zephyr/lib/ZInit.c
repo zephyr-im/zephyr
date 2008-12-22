@@ -194,3 +194,4 @@ ZInitialize(void)
     return (ZERR_NONE);
 }
 
+const char * ZGetRealm (void) { return __Zephyr_realm; }
