@@ -389,8 +389,12 @@ sendit(ZNotice_t *notice,
       strncpy(recipbuf, notice->z_recipient, sizeof(recipbuf));
       recipp = strrchr(recipbuf, '@');
       if (recipp)
-	snprintf(recipp + 1, sizeof(recipbuf) - (recipp - recipbuf),
-		 "%s", realm_expand_realm(recipp + 1));
+	/* XXX if realm_expand_realm doesn't find a match
+	 * it returns what's passed into it, causing an overlapping
+	 * copy, the results of which are undefined.
+	 */
+	strncpy(recipp + 1, realm_expand_realm(recipp + 1),
+	       sizeof(recipbuf) - (recipp - recipbuf) - 1);
       dest.recip = make_string(recipbuf, 0);
     }
 
