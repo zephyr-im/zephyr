@@ -88,7 +88,7 @@ realm_get_idx_by_addr(ZRealm *realm,
     return 0;
 }
 
-char *
+const char *
 realm_expand_realm(char *realmname)
 {
     ZRealm *realm;
@@ -240,7 +240,7 @@ realm_send_realms(void)
 }
 
 int
-realm_bound_for_realm(char *realm, char *recip)
+realm_bound_for_realm(const char *realm, char *recip)
 {
     char *rlm = NULL;
     int remote = strcmp(ZGetRealm(), realm);
@@ -258,7 +258,7 @@ realm_bound_for_realm(char *realm, char *recip)
 }
 
 int
-realm_sender_in_realm(char *realm, char *sender)
+realm_sender_in_realm(const char *realm, char *sender)
 {
     char *rlm = NULL;
     int remote = strcmp(ZGetRealm(), realm);

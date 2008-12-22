@@ -193,7 +193,8 @@ void zephyr_init(void (*notice_handler)(ZNotice_t *))
     /*
      * Set $realm to our realm and $user to our zephyr username:
      */
-    var_set_variable("realm", ZGetRealm());
+    var_set_variable("realm", (char *)ZGetRealm()); /* XXX should propagate the
+						     * const */
     var_set_variable("user", ZGetSender());
 
     /*
