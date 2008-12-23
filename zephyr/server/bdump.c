@@ -114,9 +114,12 @@ static long ticket_time;
 #define TKTLIFETIME	120
 #define tkt_lifetime(val) ((long) val * 5L * 60L)
 
+#endif /* HAVE_KRB4 */
+
+#if defined(HAVE_KRB4) || defined(HAVE_OPENSSL)
 extern C_Block	serv_key;
 extern Sched	serv_ksched;
-#endif /* HAVE_KRB4 */
+#endif
 
 static Timer *bdump_timer;
 static int live_socket = -1;
@@ -987,10 +990,26 @@ cleanup(Server *server)
 }
 
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+
+int got_des = 0;
+
+#ifndef HAVE_KRB4
+unsigned int enctypes[] = {ENCTYPE_DES_CBC_CRC,
+			   ENCTYPE_DES_CBC_MD4,
+			   ENCTYPE_DES_CBC_MD5,
+			   ENCTYPE_DES_CBC_RAW,
+			   0};
+#endif
+
+
 int
 get_tgt(void)
 {
     int retval = 0;
+#ifndef HAVE_KRB4
+    int i;
+    krb5_keytab_entry kt_ent;
+#endif
 #ifdef HAVE_KRB4
     /* MIT Kerberos 4 get_svc_in_tkt() requires instance to be writable and
      * at least INST_SZ bytes long. */
@@ -1026,6 +1045,7 @@ get_tgt(void)
 	    return 1;
 	}
 	des_key_sched(serv_key, serv_ksched.s);
+	got_des = 1;
     }
 #endif
 #ifdef HAVE_KRB5	
@@ -1061,9 +1081,37 @@ get_tgt(void)
 					     0,
 					     NULL,
 					     &opt);
+#if defined(HAVE_OPENSSL) && !defined(HAVE_KRB4)
+	if (retval) {
+	    krb5_free_principal(Z_krb5_ctx, principal);
+	    krb5_kt_close(Z_krb5_ctx, kt);
+	    return(1);
+	}
+
+	for (i = 0; enctypes[i]; i++) {
+	    retval = krb5_kt_get_entry(Z_krb5_ctx, kt, principal,
+				       0, enctypes[i], &kt_ent);
+	    if (!retval)
+		break;
+	}
+	if (!retval) {
+	    retval = krb5_copy_keyblock(Z_krb5_ctx, &kt_ent.key, &serv_key);
+	    if (retval) {
+		krb5_free_principal(Z_krb5_ctx, principal);
+		krb5_kt_close(Z_krb5_ctx, kt);
+		return(1);
+	    }
+	
+	    des_key_sched(serv_key, serv_ksched.s);
+
+	    got_des = 1;
+	}
+#endif
 	krb5_free_principal(Z_krb5_ctx, principal);
 	krb5_kt_close(Z_krb5_ctx, kt);
+#if defined(HAVE_OPENSSL) && !defined(HAVE_KRB4)
 	if (retval) return(1);
+#endif
 
 	retval = krb5_cc_initialize (Z_krb5_ctx, Z_krb5_ccache, cred.client);
 	if (retval) return(1);
@@ -1120,10 +1168,8 @@ bdump_recv_loop(Server *server)
 #endif
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)    
     char *cp;
-#endif
-#ifdef HAVE_KRB4
     C_Block cblock;
-#endif /* HAVE_KRB4 */
+#endif
     ZRealm *realm = NULL;
  
     zdbug((LOG_DEBUG, "bdump recv loop"));
@@ -1223,26 +1269,27 @@ bdump_recv_loop(Server *server)
 		/* check out this session key I found */
 		cp = notice.z_message + strlen(notice.z_message) + 1;
 		switch (*cp) {
-#ifdef HAVE_KRB4
-		case '0':
-		    /* ****ing netascii; this is an encrypted DES keyblock
-		       XXX this code should be conditionalized for server
-		       transitions   */
-		    retval = Z_krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC,
-						sizeof(C_Block),
-						&client->session_keyblock);
-		    if (retval) {
-			syslog(LOG_ERR, "brl failed to allocate DES keyblock: %s",
-			       error_message(retval));
-			return retval;
-		    }
-		    retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(C_Block));
-		    if (retval != ZERR_NONE) {
-			syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
+#if defined(HAVE_KRB4) || defined(HAVE_OPENSSL)
+		    if (got_des) {
+			/* ****ing netascii; this is an encrypted DES keyblock
+			   XXX this code should be conditionalized for server
+			   transitions   */
+			retval = Z_krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC,
+						      sizeof(C_Block),
+						      &client->session_keyblock);
+			if (retval) {
+			    syslog(LOG_ERR, "brl failed to allocate DES keyblock: %s",
+				   error_message(retval));
+			    return retval;
+			}
+			retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(C_Block));
+			if (retval != ZERR_NONE) {
+			    syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
 			       error_message(retval), cp);
-		    } else {
-			des_ecb_encrypt((C_Block *)cblock, (C_Block *)Z_keydata(client->session_keyblock),
-					serv_ksched.s, DES_DECRYPT);
+			} else {
+			    des_ecb_encrypt((C_Block *)cblock, (C_Block *)Z_keydata(client->session_keyblock),
+					    serv_ksched.s, DES_DECRYPT);
+			}
 		    }
 		    break;
 #endif

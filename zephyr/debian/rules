@@ -50,7 +50,7 @@ configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
 	-mkdir krb5
-	cd krb5 && CFLAGS="-g -Wall" ../configure --with-krb5=/usr $(CONFIGURE_ROOT)
+	cd krb5 && CFLAGS="-g -Wall" ../configure --with-krb5=/usr --with-openssl=/usr $(CONFIGURE_ROOT)
 	-mkdir krb45
 	cd krb45 && CFLAGS="-g -Wall" ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
 	-mkdir krb4
