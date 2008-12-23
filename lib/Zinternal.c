@@ -1251,15 +1251,6 @@ Z_debug_stderr(const char *format,
     putc ('\n', stderr);
 }
 
-#undef ZGetFD
-int ZGetFD (void) { return __Zephyr_fd; }
-
-#undef ZQLength
-int ZQLength (void) { return __Q_CompleteLength; }
-
-#undef ZGetDestAddr
-struct sockaddr_in ZGetDestAddr (void) { return __HM_addr; }
-
 #undef ZSetDebug
 void
 ZSetDebug(void (*proc) __P((const char *, va_list, void *)),
@@ -1269,6 +1260,15 @@ ZSetDebug(void (*proc) __P((const char *, va_list, void *)),
     __Z_debug_print_closure = arg;
 }
 #endif /* Z_DEBUG */
+
+#undef ZGetFD
+int ZGetFD (void) { return __Zephyr_fd; }
+
+#undef ZQLength
+int ZQLength (void) { return __Q_CompleteLength; }
+
+#undef ZGetDestAddr
+struct sockaddr_in ZGetDestAddr (void) { return __HM_addr; }
 
 #ifdef HAVE_KRB5
 Code_t
