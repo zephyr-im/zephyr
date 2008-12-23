@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 Maintainer: Karl Ramm <kcr@debian.org>
 Uploaders: Karl Ramm <kcr@debian.org>, Sam Hartman <hartmans@debian.org>
-Build-Depends: debhelper (>= 4), libares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev, libreadline5-dev, libx11-dev, libxt-dev, x-dev, libxaw7-dev | libxaw8-dev, libxmu-dev, libncurses5-dev, bison, libhesiod-dev
+Build-Depends: debhelper (>= 4), libares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev, libreadline5-dev, libx11-dev, libxt-dev, x-dev, libxaw7-dev | libxaw8-dev, libxmu-dev, libncurses5-dev, bison, libhesiod-dev, libssl-dev
 Standards-Version: 3.7.2.2
 
 Package: libzephyr3
