@@ -102,6 +102,9 @@ static int setup_file_pointers(void);
 static void shutdown_file_pointers(void);
 static void cleanup(Server *server);
 
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+static int des_service_decrypt(char *in, char *out);
+#endif
 #ifdef HAVE_KRB5
 static long ticket5_time;
 #define TKT5LIFETIME 8*60*60
@@ -116,9 +119,12 @@ static long ticket_time;
 
 #endif /* HAVE_KRB4 */
 
-#if defined(HAVE_KRB4) || defined(HAVE_OPENSSL)
+#if defined(HAVE_KRB4)
 extern C_Block	serv_key;
 extern Sched	serv_ksched;
+#endif
+#if defined(HAVE_KRB5) && !defined(HAVE_KRB4)
+krb5_keyblock	*server_key;
 #endif
 
 static Timer *bdump_timer;
@@ -1081,7 +1087,7 @@ get_tgt(void)
 					     0,
 					     NULL,
 					     &opt);
-#if defined(HAVE_OPENSSL) && !defined(HAVE_KRB4)
+#ifndef HAVE_KRB4
 	if (retval) {
 	    krb5_free_principal(Z_krb5_ctx, principal);
 	    krb5_kt_close(Z_krb5_ctx, kt);
@@ -1095,21 +1101,19 @@ get_tgt(void)
 		break;
 	}
 	if (!retval) {
-	    retval = krb5_copy_keyblock(Z_krb5_ctx, &kt_ent.key, &serv_key);
+	    retval = krb5_copy_keyblock(Z_krb5_ctx, &kt_ent.key, &server_key);
 	    if (retval) {
 		krb5_free_principal(Z_krb5_ctx, principal);
 		krb5_kt_close(Z_krb5_ctx, kt);
 		return(1);
 	    }
 	
-	    des_key_sched(serv_key, serv_ksched.s);
-
 	    got_des = 1;
 	}
 #endif
 	krb5_free_principal(Z_krb5_ctx, principal);
 	krb5_kt_close(Z_krb5_ctx, kt);
-#if defined(HAVE_OPENSSL) && !defined(HAVE_KRB4)
+#ifndef HAVE_KRB4
 	if (retval) return(1);
 #endif
 
@@ -1168,7 +1172,11 @@ bdump_recv_loop(Server *server)
 #endif
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)    
     char *cp;
+#ifndef HAVE_KRB4
+    unsigned char cblock[8];
+#else
     C_Block cblock;
+#endif
 #endif
     ZRealm *realm = NULL;
  
@@ -1268,32 +1276,31 @@ bdump_recv_loop(Server *server)
 	    if (*notice.z_class_inst) {
 		/* check out this session key I found */
 		cp = notice.z_message + strlen(notice.z_message) + 1;
-		switch (*cp) {
-#if defined(HAVE_KRB4) || defined(HAVE_OPENSSL)
-		    if (got_des) {
-			/* ****ing netascii; this is an encrypted DES keyblock
-			   XXX this code should be conditionalized for server
-			   transitions   */
-			retval = Z_krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC,
-						      sizeof(C_Block),
-						      &client->session_keyblock);
+		if (*cp == '0' && got_des) {
+		    /* ****ing netascii; this is an encrypted DES keyblock
+		       XXX this code should be conditionalized for server
+		       transitions   */
+		    retval = Z_krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC,
+						  sizeof(cblock),
+						  &client->session_keyblock);
+		    if (retval) {
+			syslog(LOG_ERR, "brl failed to allocate DES keyblock: %s",
+			       error_message(retval));
+			return retval;
+		    }
+		    retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(cblock));
+		    if (retval != ZERR_NONE) {
+			syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
+			       error_message(retval), cp);
+		    } else {
+			retval = des_service_decrypt(cblock, Z_keydata(client->session_keyblock));
 			if (retval) {
-			    syslog(LOG_ERR, "brl failed to allocate DES keyblock: %s",
+			    syslog(LOG_ERR, "brl failed to decyrpt DES session key: %s",
 				   error_message(retval));
 			    return retval;
 			}
-			retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(C_Block));
-			if (retval != ZERR_NONE) {
-			    syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
-			       error_message(retval), cp);
-			} else {
-			    des_ecb_encrypt((C_Block *)cblock, (C_Block *)Z_keydata(client->session_keyblock),
-					    serv_ksched.s, DES_DECRYPT);
-			}
 		    }
-		    break;
-#endif
-		case 'Z':
+		} else if (*cp == 'Z') {
 		    /* Zcode! Long live the new flesh! */
 		    retval = ZReadZcode((unsigned char *)cp, buf, sizeof(buf), &blen);
 		    if (retval != ZERR_NONE) {
@@ -1312,7 +1319,6 @@ bdump_recv_loop(Server *server)
 			memcpy(Z_keydata(client->session_keyblock), &buf[8],
 			       Z_keylen(client->session_keyblock));
 		    }
-		    break;
 		}
 	    }
 #else
@@ -1659,3 +1665,24 @@ setup_file_pointers (void)
 
     return 0;
 }
+
+#ifdef HAVE_KRB5
+static int des_service_decrypt(char *in, char *out) {
+#ifndef HAVE_KRB4
+    krb5_data dout;
+    krb5_enc_data din;
+
+    dout.length = 8;
+    dout.data = out;
+
+    din.ciphertext.length = 8;
+    din.ciphertext.data = in;
+    din.enctype = Z_enctype(server_key);
+
+    return krb5_c_decrypt(Z_krb5_ctx, server_key, 0, 0, &din, &dout);
+#else
+    des_ecb_encrypt((C_Block *)in, (C_Block *)out, serv_ksched.s, DES_DECRYPT);
+    return 0; /* sigh */
+#endif
+}
+#endif

@@ -84,15 +84,6 @@ AC_SUBST(TLIB)
 AC_SUBST(RLIB)
 AC_SUBST(SLIB)
 
-AC_ARG_WITH(openssl,
-	[  --with-openssl=PREFIX      Use OpenSSL crypto],
-	[openssl="$withval"], [openssl=no])
-if test "$openssl" != no; then
-   AC_CHECK_LIB(crypto, DES_ecb_encrypt, [OPENSSL_LIBS=-lcrypto
-   		AC_DEFINE(HAVE_OPENSSL)],
-   		[AC_MSG_ERROR(Openssl requested but not found)])
-fi
-
 ATHENA_KRB4
 ATHENA_KRB5
 ATHENA_HESIOD
@@ -100,7 +91,7 @@ ATHENA_REGEXP
 ATHENA_ARES
 ATHENA_UTIL_COM_ERR
 ATHENA_UTIL_SS
-LIBS="$OPENSSL_LIBS $KRB5_LIBS $KRB4_LIBS $HESIOD_LIBS $LIBS"
+LIBS="$KRB5_LIBS $KRB4_LIBS $HESIOD_LIBS $LIBS"
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL

@@ -61,7 +61,7 @@ static const char rcsid_subscr_c[] = "$Id$";
  *
  */
 
-#if defined(HAVE_KRB4) || defined(HAVE_OPENSSL)
+#if defined(HAVE_KRB4)
 C_Block	serv_key;
 Sched	serv_ksched;
 #endif
