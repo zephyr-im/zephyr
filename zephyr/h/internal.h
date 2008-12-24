@@ -146,7 +146,7 @@ Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice,
                              char *cksum_start, int cksum_len, 
                              char *cstart, char *cend, int buffer_len,
                              int *length_ajdust);
-unsigned long z_quad_cksum(const unsigned char *, krb5_ui_4 *, long,
+unsigned long z_quad_cksum(const unsigned char *, u_int32_t *, long,
 			   int, unsigned char *);
 #endif
 
