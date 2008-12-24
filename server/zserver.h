@@ -61,12 +61,7 @@ extern C_Block __Zephyr_session;
 /* Current time as cached by main(); use instead of time(). */
 #define NOW t_local.tv_sec
 
-#if defined(HAVE_OPENSSL) & !defined(HAVE_KRB4)
-#define OPENSSL_DES_LIBDES_COMPATIBILITY
-#include <openssl/des.h>
-#endif
-
-#if defined(HAVE_KRB4) || defined(HAVE_OPENSSL)
+#ifdef HAVE_KRB4
 /* Kerberos shouldn't stick us with array types... */
 typedef struct {
     des_key_schedule s;
