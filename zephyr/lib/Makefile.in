@@ -47,7 +47,7 @@ OBJS =	zephyr_err.lo ZAsyncLocate.lo ZCkAuth.lo ZCkIfNot.lo ZClosePort.lo \
 all: libzephyr.la
 
 libzephyr.la: ${OBJS}
-	${LIBTOOL} --mode=link ${CC} -rpath ${libdir} -version-info 3:0:0 \
+	${LIBTOOL} --mode=link ${CC} -rpath ${libdir} -version-info 4:0:0 \
 	  ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et

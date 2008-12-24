@@ -194,4 +194,19 @@ ZInitialize(void)
     return (ZERR_NONE);
 }
 
-const char * ZGetRealm (void) { return __Zephyr_realm; }
+const char * ZGetRealm (void) {
+    return __Zephyr_realm;
+}
+
+int ZGetFD (void) {
+    return __Zephyr_fd;
+}
+
+int ZQLength (void) {
+    return __Q_CompleteLength;
+}
+
+struct sockaddr_in ZGetDestAddr (void) {
+    return __HM_addr;
+}
+
