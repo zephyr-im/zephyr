@@ -224,16 +224,11 @@ void Z_debug(const char *, ...);
 /* Compatibility */
 #define	ZNewLocateUser ZLocateUser
 
-/* Macros to retrieve Zephyr library values. */
-extern int __Zephyr_fd;
-extern int __Q_CompleteLength;
-extern struct sockaddr_in __HM_addr;
-extern char __Zephyr_realm[];
-#define ZGetFD()	__Zephyr_fd
-#define ZQLength()	__Q_CompleteLength
-#define ZGetDestAddr()	__HM_addr
-
+/* Not macros to retrieve Zephyr library values. */
 const char *ZGetRealm(void);
+int ZGetFD (void);
+int ZQLength (void);
+struct sockaddr_in ZGetDestAddr (void);
 
 
 #ifdef Z_DEBUG
