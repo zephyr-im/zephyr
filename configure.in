@@ -85,6 +85,35 @@ AC_SUBST(RLIB)
 AC_SUBST(SLIB)
 
 ATHENA_KRB4
+
+AC_ARG_WITH(krb5,
+	    [  --with-krb5=PREFIX      Use Kerberos 5],
+	    [krb5="$withval"], [krb5=no])
+if test "$krb5" != no; then
+   AC_SEARCH_LIBS(gethostbyname, nsl)
+   AC_SEARCH_LIBS(socket, socket)
+   AC_CHECK_LIB(gen, compile)
+   if test "$krb5" != yes; then
+      PATH="$PATH:$krb5/bin"
+   fi
+   AC_CHECK_PROG(krb5config, krb5-config,yes)
+   if test "$krb5config" == yes; then
+      CPPFLAGS="$CPPFLAGS $(krb5-config --cflags krb5)"
+      KRB5_LIBS="$(krb5-config --libs krb5)"
+   else
+      if test "$krb5" != yes; then
+      	 CPPFLAGS="$CPPFLAGS -I$krb5/include"
+      	 LDFLAGS="$LDFLAGS -L$krb5/lib"
+      fi
+      AC_CHECK_LIB(krb5, krb5_init_context, :,
+	           [AC_MSG_ERROR(Kerberos 5 libraries not found)],
+		   -lk5crypto -lcom_err)
+      KRB5_LIBS="-lkrb5 -l5crypto -lcom_err"
+   fi
+   AC_DEFINE(HAVE_KRB5)
+fi
+AC_SUBST(KRB5_LIBS)
+
 ATHENA_KRB5
 ATHENA_HESIOD
 ATHENA_REGEXP
@@ -101,6 +130,7 @@ AC_FUNC_SETPGRP
 AC_CHECK_FUNCS(putenv strchr memcpy memmove waitpid getlogin strerror random)
 AC_CHECK_FUNCS(lrand48 gethostid getsid getpgid krb_get_err_text krb_log)
 AC_CHECK_FUNCS(krb5_free_data krb5_c_make_checksum krb5_cc_set_default_name)
+AC_CHECK_FUNCS(krb5_crypto_init)
 
 AC_MSG_CHECKING(for krb5_auth_con_getauthenticator taking double pointer)
 AC_CACHE_VAL(ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer, [

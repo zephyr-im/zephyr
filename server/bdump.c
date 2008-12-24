@@ -103,7 +103,7 @@ static void shutdown_file_pointers(void);
 static void cleanup(Server *server);
 
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
-static int des_service_decrypt(char *in, char *out);
+static int des_service_decrypt(unsigned char *in, unsigned char *out);
 #endif
 #ifdef HAVE_KRB5
 static long ticket5_time;
@@ -1003,7 +1003,9 @@ int got_des = 0;
 unsigned int enctypes[] = {ENCTYPE_DES_CBC_CRC,
 			   ENCTYPE_DES_CBC_MD4,
 			   ENCTYPE_DES_CBC_MD5,
+#ifdef ENCTYPE_DES_CBC_RAW
 			   ENCTYPE_DES_CBC_RAW,
+#endif
 			   0};
 #endif
 
@@ -1101,7 +1103,12 @@ get_tgt(void)
 		break;
 	}
 	if (!retval) {
+#ifdef HAVE_KRB5_CRYPTO_INIT
+	    retval = krb5_copy_keyblock(Z_krb5_ctx, &kt_ent.keyblock,
+					&server_key);
+#else
 	    retval = krb5_copy_keyblock(Z_krb5_ctx, &kt_ent.key, &server_key);
+#endif
 	    if (retval) {
 		krb5_free_principal(Z_krb5_ctx, principal);
 		krb5_kt_close(Z_krb5_ctx, kt);
@@ -1667,7 +1674,7 @@ setup_file_pointers (void)
 }
 
 #ifdef HAVE_KRB5
-static int des_service_decrypt(char *in, char *out) {
+static int des_service_decrypt(unsigned char *in, unsigned char *out) {
 #ifndef HAVE_KRB4
     krb5_data dout;
     krb5_enc_data din;
@@ -1679,7 +1686,11 @@ static int des_service_decrypt(char *in, char *out) {
     din.ciphertext.data = in;
     din.enctype = Z_enctype(server_key);
 
+#ifdef HAVE_KRB5_CRYPTO_INIT
+    return krb5_c_decrypt(Z_krb5_ctx, *server_key, 0, 0, &din, &dout);
+#else
     return krb5_c_decrypt(Z_krb5_ctx, server_key, 0, 0, &din, &dout);
+#endif
 #else
     des_ecb_encrypt((C_Block *)in, (C_Block *)out, serv_ksched.s, DES_DECRYPT);
     return 0; /* sigh */

@@ -1272,14 +1272,14 @@ Z_Checksum(krb5_data *cksumbuf,
     krb5_error_code result;
     unsigned char *data;
     int len;
-#if HAVE_KRB5_C_MAKE_CHECKSUM
+#ifndef HAVE_KRB5_CRYPTO_INIT
     krb5_checksum checksum;
 #else
     Checksum checksum;
     krb5_crypto cryptctx;
 #endif
     
-#if HAVE_KRB5_C_MAKE_CHECKSUM
+#ifndef HAVE_KRB5_CRYPTO_INIT
     /* Create the checksum -- MIT crypto API */
     result = krb5_c_make_checksum(Z_krb5_ctx, cksumtype,
 				  keyblock, Z_KEYUSAGE_CLT_CKSUM,
@@ -1317,7 +1317,7 @@ Z_Checksum(krb5_data *cksumbuf,
     memcpy(*asn1_data, data, len);
     *asn1_len = len;
 
-#if HAVE_KRB5_C_MAKE_CHECKSUM
+#ifndef HAVE_KRB5_CRYPTO_INIT
     krb5_free_checksum_contents(Z_krb5_ctx, &checksum);
 #else
     free_Checksum(&checksum);
@@ -1414,7 +1414,7 @@ Z_krb5_verify_cksum(krb5_keyblock *keyblock,
                     int asn1_len)
 {
     krb5_error_code result;
-#if HAVE_KRB5_C_MAKE_CHECKSUM
+#ifndef HAVE_KRB5_CRYPTO_INIT
     krb5_checksum checksum;
     krb5_boolean valid;
 #else
@@ -1424,7 +1424,7 @@ Z_krb5_verify_cksum(krb5_keyblock *keyblock,
 #endif
 
     memset(&checksum, 0, sizeof(checksum));
-#if HAVE_KRB5_C_MAKE_CHECKSUM
+#ifndef HAVE_KRB5_CRYPTO_INIT
     /* Verify the checksum -- MIT crypto API */
     checksum.length = asn1_len;
     checksum.contents = asn1_data;
