@@ -15,6 +15,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/socket.h>
 
 #include <zephyr/zephyr_err.h>
 
