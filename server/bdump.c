@@ -1677,6 +1677,7 @@ setup_file_pointers (void)
 static int des_service_decrypt(unsigned char *in, unsigned char *out) {
 #ifndef HAVE_KRB4
     krb5_data dout;
+#ifdef HAS_KRB5_C_DECRYPT
     krb5_enc_data din;
 
     dout.length = 8;
@@ -1690,6 +1691,23 @@ static int des_service_decrypt(unsigned char *in, unsigned char *out) {
     return krb5_c_decrypt(Z_krb5_ctx, *server_key, 0, 0, &din, &dout);
 #else
     return krb5_c_decrypt(Z_krb5_ctx, server_key, 0, 0, &din, &dout);
+#endif
+#elif defined(HAVE_KRB5_CRYPTO_INIT)
+    int ret;
+    krb5_crypto crypto;
+
+    dout.length = 8;
+    dout.data = out;
+
+    ret = krb5_crypto_init(Z_krb5_ctx, server_key, Z_enctype(server_key), &crypto);
+    if (ret)
+	return ret;
+
+    ret = krb5_decrypt_ivec(Z_krb5_ctx, crypto, 0, in, 8, &dout, NULL);
+
+    krb5_crypto_destroy(Z_krb5_ctx, crypto);
+
+    return ret;
 #endif
 #else
     des_ecb_encrypt((C_Block *)in, (C_Block *)out, serv_ksched.s, DES_DECRYPT);

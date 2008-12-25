@@ -23,6 +23,9 @@
 /* Define to 1 if you have the `krb5_crypto_init' function. */
 #undef HAVE_KRB5_CRYPTO_INIT
 
+/* Define to 1 if you have the `krb5_c_decrypt' function. */
+#undef HAVE_KRB5_C_DECRYPT
+
 /* Define to 1 if `krb5_auth_con_getauthenticator' takes a double pointer third arg. */
 #undef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
 
