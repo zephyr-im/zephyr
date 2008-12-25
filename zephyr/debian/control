@@ -6,24 +6,24 @@ Uploaders: Karl Ramm <kcr@debian.org>, Sam Hartman <hartmans@debian.org>
 Build-Depends: debhelper (>= 4), libares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev, libreadline5-dev, libx11-dev, libxt-dev, x-dev, libxaw7-dev | libxaw8-dev, libxmu-dev, libncurses5-dev, bison, libhesiod-dev, libssl-dev
 Standards-Version: 3.7.2.2
 
-Package: libzephyr3
+Package: libzephyr4
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}
-Conflicts: libzephyr3-krb, libzephyr3-krb5, libzephyr3-krb45
+Conflicts: libzephyr4-krb, libzephyr4-krb5, libzephyr4-krb45
 Description: The original "Instant Message" system libraries without Kerberos
  This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
  Zephyr allows users to send messages to other users or to groups of
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
 
-Package: libzephyr3-krb
+Package: libzephyr4-krb
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, krb4-config
-Conflicts: libzephyr3, libzephyr3-krb5, libzephyr3-krb45
-Replaces: libzephyr3, libzephyr3-krb5, libzephyr3-krb45
-Provides: libzephyr3
+Conflicts: libzephyr4, libzephyr4-krb5, libzephyr4-krb45
+Replaces: libzephyr4, libzephyr4-krb5, libzephyr4-krb45
+Provides: libzephyr4
 Description: The original "Instant Message" system libraries with Kerberos 
  This version of the library uses Kerberos for message authentication.
  .
@@ -32,13 +32,13 @@ Description: The original "Instant Message" system libraries with Kerberos
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
 
-Package: libzephyr3-krb5
+Package: libzephyr4-krb5
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, krb5-config
-Conflicts: libzephyr3, libzephyr3-krb, libzephyr3-krb45
-Replaces: libzephyr3, libzephyr3-krb, libzephyr3-krb45
-Provides: libzephyr3
+Conflicts: libzephyr4, libzephyr4-krb, libzephyr4-krb45
+Replaces: libzephyr4, libzephyr4-krb, libzephyr4-krb45
+Provides: libzephyr4
 Description: The original "Instant Message" system libraries with Kerberos 5
  This version of the library uses Kerberos for message authentication.
  .
@@ -47,13 +47,13 @@ Description: The original "Instant Message" system libraries with Kerberos 5
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
 
-Package: libzephyr3-krb45
+Package: libzephyr4-krb45
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, krb5-config
-Conflicts: libzephyr3, libzephyr3-krb, libzephyr3-krb5
-Replaces: libzephyr3, libzephyr3-krb, libzephyr3-krb5
-Provides: libzephyr3
+Conflicts: libzephyr4, libzephyr4-krb, libzephyr4-krb5
+Replaces: libzephyr4, libzephyr4-krb, libzephyr4-krb5
+Provides: libzephyr4
 Description: The original "Instant Message" system libraries with Kerberos 4+5
  This version of the library uses Kerberos for message authentication.
  .
@@ -96,7 +96,7 @@ Description: The original "Instant Message" system-server without Kerberos
 Package: zephyr-server-krb
 Section: net
 Architecture: any
-Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr3-krb
+Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr4-krb
 Conflicts: zephyr-server, zephyr-server-krb5, zephyr-server-krb45
 Replaces: zephyr-server, zephyr-server-krb5, zephyr-server-krb45
 Provides: zephyr-server
@@ -118,7 +118,7 @@ Description: The original "Instant Message" system-server with Kerberos
 Package: zephyr-server-krb5
 Section: net
 Architecture: any
-Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr3-krb5
+Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr4-krb5
 Conflicts: zephyr-server, zephyr-server-krb, zephyr-server-krb45
 Replaces: zephyr-server, zephyr-server-krb, zephyr-server-krb45
 Provides: zephyr-server
@@ -140,7 +140,7 @@ Description: The original "Instant Message" system-server with Kerberos 5
 Package: zephyr-server-krb45
 Section: net
 Architecture: any
-Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr3-krb45
+Depends: ${shlibs:Depends}, debconf | debconf-2.0, libzephyr4-krb45
 Conflicts: zephyr-server, zephyr-server-krb, zephyr-server-krb5
 Replaces: zephyr-server, zephyr-server-krb, zephyr-server-krb5
 Provides: zephyr-server
@@ -162,7 +162,7 @@ Description: The original "Instant Message" system-server with Kerberos 4+5
 Package: libzephyr-dev
 Section: libdevel
 Architecture: any
-Depends: libzephyr3 (= ${binary:Version}) | libzephyr3-krb (= ${binary:Version}), libc6-dev
+Depends: libzephyr4 (= ${binary:Version}) | libzephyr4-krb (= ${binary:Version}), libc6-dev
 Description: The original "Instant Message" system development libraries
  This package is needed to compile certain other zephyr clients. There are
  various other clients available, including a totally gratuitous Motif client,

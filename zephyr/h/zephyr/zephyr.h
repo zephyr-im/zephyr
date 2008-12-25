@@ -74,12 +74,20 @@ typedef struct _ZNotice_t {
     char		*z_version;
     ZNotice_Kind_t	z_kind;
     ZUnique_Id_t	z_uid;
-#define z_sender_addr	z_uid.zuid_addr
+    union {
+	struct sockaddr		sa;
+	struct sockaddr_in	ip4;
+	struct sockaddr_in6	ip6;
+    } z_sender_sockaddr;
+    /* heavily deprecated: */
+#define z_sender_addr	z_sender_sockaddr.ip4.sin_addr
+    /* probably a bad idea?: */
+#define z_port		z_sender_sockaddr.ip4.sin_port
     struct		_ZTimeval z_time;
-    unsigned short	z_port;
     int			z_auth;
     int			z_checked_auth;
     int			z_authent_len;
+    int			z_charset;
     char		*z_ascii_authent;
     char		*z_class;
     char		*z_class_inst;

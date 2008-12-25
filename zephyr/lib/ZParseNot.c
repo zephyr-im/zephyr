@@ -117,6 +117,9 @@ ZParseNotice(char *buffer,
 	    BAD_PACKET;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_uid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_uid.tv.tv_usec);
+	memset(&notice->z_sender_sockaddr, 0, sizeof notice->z_sender_sockaddr);
+	notice->z_sender_sockaddr.ip4.sin_family = AF_INET;
+	notice->z_sender_sockaddr.ip4.sin_addr = notice->z_uid.zuid_addr;
 	numfields--;
 	ptr = next_field(ptr, end);
     }

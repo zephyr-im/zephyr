@@ -85,7 +85,7 @@ clean:
 	-rm debian/zephyr-server-krb.postinst
 	-rm debian/zephyr-server-krb5.*
 	-rm debian/zephyr-server-krb45.*
-	-rm debian/libzephyr3-krb.files debian/libzephyr3-krb5.files debian/libzephyr3-krb45.files
+	-rm debian/libzephyr4-krb.files debian/libzephyr4-krb5.files debian/libzephyr4-krb45.files
 
 	dh_clean
 
@@ -129,13 +129,13 @@ binary-arch: build install
 		cp debian/zephyr-server-krb.$$file debian/zephyr-server-krb5.$$file; \
 		cp debian/zephyr-server-krb.$$file debian/zephyr-server-krb45.$$file; \
 	done
-	cp debian/libzephyr3.files debian/libzephyr3-krb.files
-	cp debian/libzephyr3.files debian/libzephyr3-krb5.files
-	cp debian/libzephyr3.files debian/libzephyr3-krb45.files
-	dh_movefiles  -plibzephyr3 -pzephyr-clients -pzephyr-server -plibzephyr-dev
-	dh_movefiles --sourcedir=debian/tmp-krb4 -plibzephyr3-krb -pzephyr-server-krb
-	dh_movefiles --sourcedir=debian/tmp-krb5 -plibzephyr3-krb5 -pzephyr-server-krb5
-	dh_movefiles --sourcedir=debian/tmp-krb45 -plibzephyr3-krb45 -pzephyr-server-krb45
+	cp debian/libzephyr4.files debian/libzephyr4-krb.files
+	cp debian/libzephyr4.files debian/libzephyr4-krb5.files
+	cp debian/libzephyr4.files debian/libzephyr4-krb45.files
+	dh_movefiles  -plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev
+	dh_movefiles --sourcedir=debian/tmp-krb4 -plibzephyr4-krb -pzephyr-server-krb
+	dh_movefiles --sourcedir=debian/tmp-krb5 -plibzephyr4-krb5 -pzephyr-server-krb5
+	dh_movefiles --sourcedir=debian/tmp-krb45 -plibzephyr4-krb45 -pzephyr-server-krb45
 	dh_installdebconf 
 	dh_installdocs
 	dh_installinit -pzephyr-clients --init-script=zhm --no-start
@@ -150,9 +150,9 @@ binary-arch: build install
 	# You may want to make some executables suid here.
 	dh_makeshlibs
 	# sigh
-	cp debian/libzephyr3/DEBIAN/shlibs debian/libzephyr3-krb/DEBIAN/shlibs
-	cp debian/libzephyr3/DEBIAN/shlibs debian/libzephyr3-krb5/DEBIAN/shlibs
-	cp debian/libzephyr3/DEBIAN/shlibs debian/libzephyr3-krb45/DEBIAN/shlibs
+	cp debian/libzephyr4/DEBIAN/shlibs debian/libzephyr4-krb/DEBIAN/shlibs
+	cp debian/libzephyr4/DEBIAN/shlibs debian/libzephyr4-krb5/DEBIAN/shlibs
+	cp debian/libzephyr4/DEBIAN/shlibs debian/libzephyr4-krb45/DEBIAN/shlibs
 	dh_shlibdeps
 	dh_installdeb
 	dh_gencontrol
