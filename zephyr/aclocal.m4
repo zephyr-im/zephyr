@@ -244,7 +244,8 @@ if test "$krb5" != yes; then
 	LDFLAGS="$LDFLAGS -L$krb5/lib"
 fi
 AC_CHECK_LIB(krb5, krb5_init_context, :,
-	     [AC_MSG_ERROR(Kerberos 5 libraries not found)])])
+	     [AC_MSG_ERROR(Kerberos 5 libraries not found)],
+	     -lk5crypto -lcom_err)])
 
 AC_DEFUN([ATHENA_KRB5],
 [AC_ARG_WITH(krb5,
@@ -252,7 +253,7 @@ AC_DEFUN([ATHENA_KRB5],
 	[krb5="$withval"], [krb5=no])
 if test "$krb5" != no; then
 	ATHENA_KRB5_CHECK
-	KRB5_LIBS="-lkrb5"
+	KRB5_LIBS="-lkrb5 -lk5crypto -lcom_err"
 	AC_DEFINE(HAVE_KRB5)
 fi
 AC_SUBST(KRB5_LIBS)])
