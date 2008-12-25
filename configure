@@ -24646,7 +24646,7 @@ if test "${ac_cv_lib_krb5_krb5_init_context+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lkrb5  $LIBS"
+LIBS="-lkrb5 -lk5crypto -lcom_err $LIBS"
 cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -24709,7 +24709,7 @@ echo "$as_me: error: Kerberos 5 libraries not found" >&2;}
    { (exit 1); exit 1; }; }
 fi
 
-	KRB5_LIBS="-lkrb5"
+	KRB5_LIBS="-lkrb5 -lk5crypto -lcom_err"
 	cat >>confdefs.h <<\_ACEOF
 #define HAVE_KRB5 1
 _ACEOF
