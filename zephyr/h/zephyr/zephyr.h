@@ -47,6 +47,9 @@
 #define ZAUTH_YES       	1
 #define ZAUTH_NO        	0
 
+#define ZNOTICE_SOCKADDR	1
+#define ZNOTICE_CHARSET		1
+
 typedef char ZPacket_t[Z_MAXPKTLEN];
 
 /* Packet type */
