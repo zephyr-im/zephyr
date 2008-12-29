@@ -22,6 +22,7 @@ ZOpenPort(u_short *port)
 {
     struct sockaddr_in bindin;
     unsigned int len;
+    int val = 1;
     
     (void) ZClosePort();
 
@@ -32,10 +33,14 @@ ZOpenPort(u_short *port)
 
     bindin.sin_family = AF_INET;
 
-    if (port && *port)
+    if (port && *port) {
 	bindin.sin_port = *port;
-    else
+	if (setsockopt(__Zephyr_fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof val) < 0) {
+	    return errno;
+	}
+    } else {
 	bindin.sin_port = 0;
+    }
 
     bindin.sin_addr.s_addr = INADDR_ANY;
 
