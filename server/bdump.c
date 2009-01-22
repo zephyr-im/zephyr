@@ -391,12 +391,6 @@ bdump_send(void)
 	memset((char *)&k5data, 0, sizeof(krb5_data));
 	k5data.length = len;
 	k5data.data = data;
-	if (retval) {
-	     syslog(LOG_ERR, "bdump_send: cannot get auth response: %s",
-	            error_message(retval)); 
-	     cleanup(server);
-	     return;
-	}
 
 	/* resolve keytab */
 	retval = krb5_kt_resolve(Z_krb5_ctx, keytab_file, &kt);
