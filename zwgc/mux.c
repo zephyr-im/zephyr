@@ -62,10 +62,10 @@ static int max_source = -1;
  */
 
 static fd_set input_sources;
-static void (*input_handler[MAX_SOURCES])(void *);
+static void (*input_handler[MAX_SOURCES])();
 static pointer input_handler_arg[MAX_SOURCES];
 
-static int check_tty(void);
+static int check_tty();
 
 /*
  *    void mux_init()
@@ -74,8 +74,7 @@ static int check_tty(void);
  *                 any other mux call.
  */
 
-void
-mux_init(void)
+void mux_init()
 {
     int i;
 
@@ -97,10 +96,10 @@ mux_init(void)
  *                 argument arg.
  */
 
-void
-mux_add_input_source(int descriptor,
-			  void (*handler)(void *),
-			  pointer arg)
+void mux_add_input_source(descriptor, handler, arg)
+     int descriptor;
+     void (*handler)();
+     pointer arg;
 {
 #ifdef DEBUG
     if(descriptor < 0 || descriptor >= MAX_SOURCES)
@@ -129,8 +128,7 @@ mux_add_input_source(int descriptor,
  *                 true, we return.
  */
 
-void
-mux_loop(void)
+void mux_loop()
 {
     int i, nfds;
     fd_set inputs, outputs;
@@ -205,8 +203,7 @@ mux_loop(void)
     }
 }
 
-static int
-check_tty(void)
+static int check_tty()
 {
     register int result;
     int pgrp;

@@ -60,8 +60,8 @@ static int last_node_in_current_bunch_used = -1;
  *                 string on the heap when node_DestroyAllNodes is called.
  */
 
-static Node *
-node_create(int opcode)
+static Node *node_create(opcode)
+     int opcode;
 {
     Node *result;
 
@@ -102,8 +102,7 @@ node_create(int opcode)
  *
  */
 
-void
-node_DestroyAllNodes(void)
+void node_DestroyAllNodes()
 {
     struct _bunch_of_nodes *next_bunch;
     int i, last_node_used_in_this_bunch;
@@ -133,9 +132,9 @@ node_DestroyAllNodes(void)
 /*                                                                          */
 /****************************************************************************/
 
-Node *
-node_create_string_constant(int opcode,
-			    string text)
+Node *node_create_string_constant(opcode, text)
+     int opcode;
+     string text;
 {
     Node *n;
 
@@ -144,8 +143,8 @@ node_create_string_constant(int opcode,
     return(n);
 }
 
-Node *
-node_create_noary(int opcode)
+Node *node_create_noary(opcode)
+     int opcode;
 {
     Node *n;
 
@@ -153,9 +152,9 @@ node_create_noary(int opcode)
     return(n);
 }
 
-Node *
-node_create_unary(int opcode,
-		  Node *arg)
+Node *node_create_unary(opcode, arg)
+     int opcode;
+     Node *arg;
 {
     Node *n;
 
@@ -164,10 +163,10 @@ node_create_unary(int opcode,
     return(n);
 }
 
-Node *
-node_create_binary(int opcode,
-		   Node *first_arg,
-		   Node *second_arg)
+Node *node_create_binary(opcode, first_arg, second_arg)
+     int opcode;
+     Node *first_arg;
+     Node *second_arg;
 {
     Node *n;
 
@@ -192,8 +191,8 @@ node_create_binary(int opcode,
  *                 the address of the (previously) last node.
  */
 
-Node *
-reverse_list_of_nodes(Node *list)
+Node *reverse_list_of_nodes(list)
+     Node *list;
 {
     Node *next_node;
     Node *head = NULL;
@@ -221,9 +220,9 @@ reverse_list_of_nodes(Node *list)
 
 #ifdef DEBUG
 
-static void
-print_stuff(Node *node,
-	    string format_string)
+static void print_stuff(node, format_string)
+     Node *node;
+     string format_string;
 {
     char c;
 
@@ -312,7 +311,8 @@ static string how_to_print[] = {
     "match %1\n%2",
     "default\n%2" };
 
-void node_display(Node *node)
+void node_display(node)
+     Node *node;
 {
     int opcode = LAST_EXPR_OPCODE + 1;
 

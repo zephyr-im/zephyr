@@ -11,13 +11,12 @@
  */
 
 #ifndef lint
-static const char rcsid_ZPending_c[] = "$Id$";
+static char rcsid_ZPending_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
-int
-ZPending(void)
+int ZPending()
 {
 	int retval;
 	

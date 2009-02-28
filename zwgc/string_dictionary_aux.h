@@ -25,7 +25,7 @@
  *                 heap.
  */
 
-extern void string__dictionary_Set(string_dictionary, string, string);
+extern void string__dictionary_Set();
 #ifdef DEBUG_MEMORY
 #define string_dictionary_Set(a,b,c)         (set_module(__FILE__,__LINE__),\
 					      string__dictionary_Set(a,b,c))
@@ -42,8 +42,7 @@ extern void string__dictionary_Set(string_dictionary, string, string);
  *                 disappear later if key is rebound.
  */
 
-extern char *string_dictionary_Fetch(string_dictionary,
-				     string);
+extern char *string_dictionary_Fetch();
 
 /*
  *    void string_dictionary_SafeDestroy(string_dictionary d)
@@ -52,6 +51,6 @@ extern char *string_dictionary_Fetch(string_dictionary,
  *                 all value's in the dictionary.
  */
 
-extern void string_dictionary_SafeDestroy(string_dictionary);
+extern void string_dictionary_SafeDestroy();
 
 #endif

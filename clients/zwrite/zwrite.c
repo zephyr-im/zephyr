@@ -31,15 +31,14 @@ static const char rcsid_zwrite_c[] = "$Id$";
 int nrecips, msgarg, verbose, quiet, nodot, cc;
 char *whoami, *inst, *class, *opcode, *realm, *recips[MAXRECIPS];
 Z_AuthProc auth;
-void un_tabify(char **, int *);
+void un_tabify();
 
-char *fix_filsrv_inst(char *);
-void usage(char *);
-void send_off(ZNotice_t *, int);
+char *fix_filsrv_inst();
+void usage(), send_off();
 
-int
-main(int argc,
-     char *argv[])
+main(argc, argv)
+    int argc;
+    char *argv[];
 {
     int retval, arg, nocheck, nchars, msgsize, filsys, tabexpand;
     char *message, *signature = NULL, *format = NULL;
@@ -61,23 +60,20 @@ main(int argc,
     verbose = quiet = msgarg = nrecips = nocheck = filsys = nodot = 0;
     tabexpand = 1;
 
-    class = ZGetVariable("zwrite-class");
-    if (class) {
+    if (class = ZGetVariable("zwrite-class")) {
 	(void) strcpy(classbfr, class);
 	class = classbfr;
     }
     else
 	class = DEFAULT_CLASS;
-    inst = ZGetVariable("zwrite-inst");
-    if (inst) {
+    if (inst = ZGetVariable("zwrite-inst")) {
 	(void) strcpy(instbfr, inst);
 	inst = instbfr;
     }
     else
 	inst = DEFAULT_INSTANCE;
 
-    opcode = ZGetVariable("zwrite-opcode");
-    if (opcode)
+    if (opcode = ZGetVariable("zwrite-opcode"))
       opcode = strcpy(opbfr, opcode);
     else
       opcode = DEFAULT_OPCODE;
@@ -246,12 +242,11 @@ main(int argc,
     if (!nocheck && nrecips)
 	send_off(&notice, 0);
 	
-    if (!msgarg && isatty(0)) {
+    if (!msgarg && isatty(0))
 	if (nodot)
 	    printf("Type your message now.  End with the end-of-file character.\n");
 	else
 	    printf("Type your message now.  End with control-D or a dot on a line by itself.\n");
-    }
 	
     message = NULL;
     msgsize = 0;
@@ -318,7 +313,7 @@ main(int argc,
 	    message = realloc(message, (unsigned)(msgsize+1));
 	}
 	else {	/* Use read so you can send binary messages... */
-	    while ((nchars = read(fileno(stdin), bfr, sizeof bfr))) {
+	    while (nchars = read(fileno(stdin), bfr, sizeof bfr)) {
 		if (nchars == -1) {
 		    fprintf(stderr, "Read error from stdin!  Can't continue!\n");
 		    exit(1);
@@ -343,11 +338,12 @@ main(int argc,
 }
 
 void
-send_off(ZNotice_t *notice,
-	 int real)
+send_off(notice, real)
+    ZNotice_t *notice;
+    int real;
 {
     int i, success, retval;
-    char bfr[BUFSIZ], realm_recip[BUFSIZ], dest[3 * BUFSIZ];
+    char bfr[BUFSIZ], realm_recip[BUFSIZ], dest[3 * BUFSIZ], *cp;
     ZNotice_t retnotice;
 
     success = 0;
@@ -449,7 +445,8 @@ send_off(ZNotice_t *notice,
 } 
 
 void
-usage(char *s)
+usage(s)
+    char *s;
 {
     fprintf(stderr,
 	    "Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l]\n\
@@ -469,8 +466,8 @@ usage(char *s)
   name returned by gethostbyname(hostname)
  */
 
-char *
-fix_filsrv_inst(char *str)
+char *fix_filsrv_inst(str)
+char *str;
 {
 	static char fsinst[BUFSIZ];
 	char *ptr;
@@ -503,8 +500,9 @@ fix_filsrv_inst(char *str)
 #endif /* ! TABSTOP */
 
 void
-un_tabify(char **bufp,
-	  int *sizep)
+un_tabify(bufp, sizep)
+char **bufp;
+register int *sizep;
 {
     register char *cp, *cp2;
     char *cp3;

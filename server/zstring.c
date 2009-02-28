@@ -23,8 +23,9 @@ static const char rcsid_zstring_c[] =
 static String *zhash[STRING_HASH_TABLE_SIZE];
 
 String *
-make_string(char *s,
-	    int downcase)
+make_string(s, downcase)
+    char *s;
+    int downcase;
 {
     char *new_s,*p;
     String *new_z,*hp;
@@ -72,7 +73,8 @@ make_string(char *s,
 }
 
 void
-free_string(String *z)
+free_string(z)
+    String *z;
 {
     if (z == (String *) NULL)
 	return;
@@ -95,8 +97,9 @@ free_string(String *z)
 }
 
 String *
-find_string(char *s,
-	    int downcase)
+find_string(s,downcase)
+    char *s;
+    int downcase;
 {
     char *new_s,*p;
     String *z;
@@ -127,8 +130,8 @@ find_string(char *s,
 }
 
 int
-comp_string(String *a,
-	    String *b)
+comp_string(a,b)
+    String *a, *b;
 {
     if (a->hash_val > b->hash_val)
 	return 1;
@@ -138,7 +141,8 @@ comp_string(String *a,
 }
 
 void
-print_string_table(FILE *f)
+print_string_table(f)
+    FILE *f;
 {
     String *p;
     int i;
@@ -153,7 +157,8 @@ print_string_table(FILE *f)
 }
 
 String *
-dup_string(String *z)
+dup_string(z)
+    String *z;
 {
     z->ref_count++;
     return z;

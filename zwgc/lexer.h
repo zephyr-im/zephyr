@@ -48,12 +48,12 @@ extern int yylineno;
  *            a file.  Resets current line # to 1.
  */
 
-extern void lex_open(FILE *);
+extern void lex_open(/* FILE *file */);
 
 /*
  * yylex - performs as per. the yacc manual's requirements
  */
 
-extern int yylex(void);
+extern int yylex();
 
 #endif

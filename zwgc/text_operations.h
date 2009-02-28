@@ -19,11 +19,14 @@
 
 #include "character_class.h"
 
-extern string lany(string *, string);
-extern string lbreak(string *, const character_class);
-extern string lspan(string *, character_class);
-extern string rany(string *, string);
-extern string rbreak(string *, character_class);
-extern string rspan(string *, character_class);
+extern string protect();
+extern string verbatim();
+extern string stylestrip();
+extern string lany();
+extern string lbreak();
+extern string lspan();
+extern string rany();
+extern string rbreak();
+extern string rspan();
 
 #endif

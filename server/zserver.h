@@ -17,9 +17,6 @@
 #include <zephyr/mit-copyright.h>
 
 #include <internal.h>
-
-#include <com_err.h>
-
 #include <arpa/inet.h>
 
 #include "zsrv_err.h"
@@ -31,22 +28,11 @@
 #include "access.h"
 #include "acl.h"
 
-#if defined(HAVE_KRB5) || defined(HAVE_KRB4)
+#ifdef HAVE_KRB4
 /* Kerberos-specific library interfaces used only by the server. */
-#ifdef HAVE_KRB5
-extern krb5_keyblock *__Zephyr_keyblock;
-#define ZGetSession() (__Zephyr_keyblock)
-void ZSetSession(krb5_keyblock *keyblock);
-Code_t ZFormatAuthenticNoticeV5(ZNotice_t*, char*, int, int*, krb5_keyblock *);
-krb5_error_code Z_krb5_init_keyblock(krb5_context, krb5_enctype, size_t,
-        krb5_keyblock **);
-#else
 extern C_Block __Zephyr_session;
 #define ZGetSession() (__Zephyr_session)
-#endif
-void ZSetSessionDES(C_Block *key);
-
-Code_t ZFormatAuthenticNotice(ZNotice_t*, char*, int, int*, C_Block);
+Code_t ZFormatAuthenticNotice __P((ZNotice_t*, char*, int, int*, C_Block));
 #endif
 
 /* For krb_rd_req prototype and definition. */
@@ -54,21 +40,36 @@ Code_t ZFormatAuthenticNotice(ZNotice_t*, char*, int, int*, C_Block);
 #define KRB_INT32 ZEPHYR_INT32
 #endif
 
+/* These macros are for insertion into and deletion from a singly-linked list
+ * with back pointers to the previous element's next pointer.  In order to
+ * make these macros act like expressions, they use the comma operator for
+ * sequenced evaluations of assignment, and "a && b" for "evaluate assignment
+ * b if expression a is true". */
+#define LIST_INSERT(head, elem) \
+	((elem)->next = *(head), \
+	 (*head) && ((*(head))->prev_p = &(elem)->next), \
+	 (*head) = (elem), (elem)->prev_p = (head))
+#define LIST_DELETE(elem) \
+	(*(elem)->prev_p = (elem)->next, \
+	 (elem)->next && ((elem)->next->prev_p = (elem)->prev_p))
+
 /* Current time as cached by main(); use instead of time(). */
 #define NOW t_local.tv_sec
 
 #ifdef HAVE_KRB4
+#ifndef NOENCRYPTION
 /* Kerberos shouldn't stick us with array types... */
 typedef struct {
     des_key_schedule s;
 } Sched;
 #endif
+#endif
 
 typedef struct _Destination Destination;
 typedef struct _Destlist Destlist;
-typedef struct _ZRealm ZRealm;
-typedef struct _ZRealmname ZRealmname;
-typedef enum _ZRealm_state ZRealm_state;
+typedef struct _Realm Realm;
+typedef struct _Realmname Realmname;
+typedef enum _Realm_state Realm_state;
 typedef struct _Client Client;
 typedef struct _Triplet Triplet;
 typedef enum _Server_state Server_state;
@@ -89,14 +90,14 @@ struct _Destlist {
     struct _Destlist	*next, **prev_p;
 };
 
-enum _ZRealm_state {
-    REALM_UP,				/* ZRealm is up */
-    REALM_TARDY,			/* ZRealm due for a hello XXX */
-    REALM_DEAD,				/* ZRealm is considered dead */
-    REALM_STARTING			/* ZRealm is between dead and up */
+enum _Realm_state {
+    REALM_UP,				/* Realm is up */
+    REALM_TARDY,			/* Realm due for a hello XXX */
+    REALM_DEAD,				/* Realm is considered dead */
+    REALM_STARTING			/* Realm is between dead and up */
 };
 
-struct _ZRealm {
+struct _Realm {
     char name[REALM_SZ];
     int count;
     struct sockaddr_in *addrs;
@@ -106,10 +107,10 @@ struct _ZRealm {
     Client *client;                     
     int child_pid;
     int have_tkt;
-    ZRealm_state state;
+    Realm_state state;
 };
 
-struct _ZRealmname {
+struct _Realmname {
     char name[REALM_SZ];
     char **servers;
     int nused;
@@ -119,17 +120,13 @@ struct _ZRealmname {
 struct _Client {
     struct sockaddr_in	addr;		/* ipaddr/port of client */
     Destlist		*subs	;	/* subscriptions */
-#ifdef HAVE_KRB5
-    krb5_keyblock       *session_keyblock;
-#else
 #ifdef HAVE_KRB4
     C_Block		session_key;	/* session key for this client */
 #endif /* HAVE_KRB4 */
-#endif
     String		*principal;	/* krb principal of user */
     int			last_send;	/* Counter for last sent packet. */
     time_t		last_ack;	/* Time of last received ack */
-    ZRealm		*realm;
+    Realm		*realm;
     struct _Client	*next, **prev_p;
 };
 
@@ -202,183 +199,148 @@ struct _Statistic {
 };
 
 /* Function declarations */
-
-/* These macros instantiate inline functions that do the work of the formder
-   LIST_INSERT and LIST_DELETE functions, which unfortunately triggered gcc's
-   pedanticism.  The comment before the *former* macros was: */
-/* These macros are for insertion into and deletion from a singly-linked list
- * with back pointers to the previous element's next pointer.  In order to
- * make these macros act like expressions, they use the comma operator for
- * sequenced evaluations of assignment, and "a && b" for "evaluate assignment
- * b if expression a is true". */
-
-#define MAKE_LIST_INSERT(type) inline static void type##_insert(type **head, type *elem) \
-    {\
-	(elem)->next = *(head);					\
-	if(*head) (*(head))->prev_p = &(elem)->next;		\
-	(*head) = (elem);					\
-	(elem)->prev_p = (head);				\
-    }
 	
-#define MAKE_LIST_DELETE(type) inline static void type##_delete(type *elem) \
-    {\
-	*(elem)->prev_p = (elem)->next;				\
-	if((elem)->next) (elem)->next->prev_p = (elem)->prev_p;	\
-    }
-
-MAKE_LIST_INSERT(Destlist);
-MAKE_LIST_DELETE(Destlist);
-MAKE_LIST_INSERT(Client);	
-MAKE_LIST_DELETE(Client);	
-MAKE_LIST_INSERT(Triplet);	
-MAKE_LIST_DELETE(Triplet);	
-MAKE_LIST_INSERT(Unacked);
-MAKE_LIST_DELETE(Unacked);
-
 /* found in bdump.c */
-void bdump_get(ZNotice_t *notice, int auth, struct sockaddr_in *who,
-		    Server *server);
-void bdump_send(void);
-void bdump_offer(struct sockaddr_in *who);
-Code_t bdump_send_list_tcp(ZNotice_Kind_t kind, struct sockaddr_in *addr,
+void bdump_get __P((ZNotice_t *notice, int auth, struct sockaddr_in *who,
+		    Server *server));
+void bdump_send __P((void));
+void bdump_offer __P((struct sockaddr_in *who));
+Code_t bdump_send_list_tcp __P((ZNotice_Kind_t kind, struct sockaddr_in *addr,
 				char *class_name, char *inst, char *opcode,
 				char *sender, char *recip, char **lyst,
-				int num);
-int get_tgt(void);
+				int num));
+int get_tgt __P((void));
 
 /* found in class.c */
 extern String *class_control, *class_admin, *class_hm;
 extern String *class_ulogin, *class_ulocate;
-int ZDest_eq(Destination *d1, Destination *d2);
-Code_t triplet_register(Client *client, Destination *dest, ZRealm *realm);
-Code_t triplet_deregister(Client *client, Destination *dest,
-			       ZRealm *realm);
-Code_t class_restrict(char *class, Acl *acl);
-Code_t class_setup_restricted(char *class, Acl *acl);
-Client **triplet_lookup(Destination *dest);
-Acl *class_get_acl(String *class);
-int dest_eq(Destination *d1, Destination *d2);
-int order_dest_strings(Destination *d1, Destination *d2);
-void triplet_dump_subs(FILE *fp);
+int ZDest_eq __P((Destination *d1, Destination *d2));
+Code_t triplet_register __P((Client *client, Destination *dest, Realm *realm));
+Code_t triplet_deregister __P((Client *client, Destination *dest,
+			       Realm *realm));
+Code_t class_restrict __P((char *class, Acl *acl));
+Code_t class_setup_restricted __P((char *class, Acl *acl));
+Client **triplet_lookup __P((Destination *dest));
+Acl *class_get_acl __P((String *class));
+int dest_eq __P((Destination *d1, Destination *d2));
+int order_dest_strings __P((Destination *d1, Destination *d2));
+void triplet_dump_subs __P((FILE *fp));
 
 /* found in client.c */
-Code_t client_register(ZNotice_t *notice, struct in_addr *host,
-			    Client **client_p, int wantdefaults);
-void client_deregister(Client *client, int flush);
-void client_flush_host(struct in_addr *host);
-void client_dump_clients(FILE *fp);
-Client *client_find(struct in_addr *host, unsigned int port);
-Code_t client_send_clients(void);
+Code_t client_register __P((ZNotice_t *notice, struct in_addr *host,
+			    Client **client_p, int wantdefaults));
+void client_deregister __P((Client *client, int flush)); 
+void client_flush_host __P((struct in_addr *host));
+void client_dump_clients __P((FILE *fp));
+Client *client_find __P((struct in_addr *host, unsigned int port));
+Code_t client_send_clients __P((void));
 
 /* found in common.c */
-char *strsave(const char *str);
-unsigned long hash (const char *);
-void dump_quote(char *p, FILE *fp);
+char *strsave __P((const char *str));
+unsigned long hash  __P((const char *));
+void dump_quote __P((char *p, FILE *fp));
 
 /* found in dispatch.c */
-void handle_packet(void);
-void clt_ack(ZNotice_t *notice, struct sockaddr_in *who, Sent_type sent);
-void nack_release(Client *client);
-void sendit(ZNotice_t *notice, int auth, struct sockaddr_in *who,
-		 int external);
-void rexmit(void *);
-void xmit(ZNotice_t *notice, struct sockaddr_in *dest, int auth,
-	       Client *client);
-Code_t hostm_dispatch(ZNotice_t *notice, int auth,
-			   struct sockaddr_in *who, Server *server);
-Code_t control_dispatch(ZNotice_t *notice, int auth,
-			     struct sockaddr_in *who, Server *server);
-Code_t xmit_frag(ZNotice_t *notice, char *buf, int len, int waitforack);
-void hostm_shutdown(void);
+void handle_packet __P((void));
+void clt_ack __P((ZNotice_t *notice, struct sockaddr_in *who, Sent_type sent));
+void nack_release __P((Client *client));
+void sendit __P((ZNotice_t *notice, int auth, struct sockaddr_in *who,
+		 int external));
+void rexmit __P((void *));
+void xmit __P((ZNotice_t *notice, struct sockaddr_in *dest, int auth,
+	       Client *client));
+Code_t hostm_dispatch __P((ZNotice_t *notice, int auth,
+			   struct sockaddr_in *who, Server *server));
+Code_t control_dispatch __P((ZNotice_t *notice, int auth,
+			     struct sockaddr_in *who, Server *server));
+Code_t xmit_frag __P((ZNotice_t *notice, char *buf, int len, int waitforack));
+void hostm_shutdown __P((void));
 
 /* found in kstuff.c */
 #ifdef HAVE_KRB4
-int GetKerberosData (int, struct in_addr, AUTH_DAT *, char *, char *);
-Code_t ReadKerberosData(int, int *, char **, int *);
-Code_t SendKerberosData (int, KTEXT, char *, char *);
-Code_t SendKrb5Data(int, krb5_data *);
-Code_t GetKrb5Data(int, krb5_data *);
-void sweep_ticket_hash_table(void *);
-Code_t ZCheckRealmAuthentication(ZNotice_t *, struct sockaddr_in *, char *);
+int GetKerberosData  __P((int, struct in_addr, AUTH_DAT *, char *, char *));
+Code_t SendKerberosData  __P((int, KTEXT, char *, char *));
+void sweep_ticket_hash_table __P((void *));
 #endif
-    
+
+/* found in kopt.c */
+#ifdef HAVE_KRB4
+#ifndef NOENCRYPTION
+Sched *check_key_sched_cache __P((des_cblock key));
+void add_to_key_sched_cache __P((des_cblock key, Sched *sched));
+int krb_set_key __P((char *key, int cvt));
+/* int krb_rd_req __P((KTEXT authent, char *service, char *instance,
+		    unsigned KRB_INT32 from_addr, AUTH_DAT *ad, char *fn)); */
+int krb_find_ticket __P((KTEXT authent, KTEXT ticket));
+int krb_get_lrealm __P((char *r, int n));
+#endif
+#endif
+
 /* found in server.c */
-void server_timo(void *which);
-void server_dump_servers(FILE *fp);
-void server_init(void);
-void server_shutdown(void);
-void server_forward(ZNotice_t *notice, int auth,
-			 struct sockaddr_in *who);
-void server_kill_clt(Client *client);
-void server_pending_free(Pending *pending);
-void server_self_queue(ZNotice_t *, int, struct sockaddr_in *);
-void server_send_queue(Server *);
-void server_reset(void);
-Server *server_which_server(struct sockaddr_in *who);
-Pending *server_dequeue(Server *server);
-Code_t server_dispatch(ZNotice_t *notice, int auth,
-			    struct sockaddr_in *who);
-Code_t server_adispatch(ZNotice_t *notice, int auth,
-			     struct sockaddr_in *who, Server *server);
+void server_timo __P((void *which));
+void server_dump_servers __P((FILE *fp));
+void server_init __P((void));
+void server_shutdown __P((void));
+void server_forward __P((ZNotice_t *notice, int auth,
+			 struct sockaddr_in *who));
+void server_kill_clt __P((Client *client));
+void server_pending_free __P((Pending *pending));
+void server_self_queue __P((ZNotice_t *, int, struct sockaddr_in *));
+void server_send_queue __P((Server *));
+void server_reset __P((void));
+int is_server();
+Server *server_which_server __P((struct sockaddr_in *who));
+Pending *server_dequeue __P((Server *server));
+Code_t server_dispatch __P((ZNotice_t *notice, int auth,
+			    struct sockaddr_in *who));
+Code_t server_adispatch __P((ZNotice_t *notice, int auth,
+			     struct sockaddr_in *who, Server *server));
 
 /* found in subscr.c */
-Code_t subscr_foreign_user(ZNotice_t *, struct sockaddr_in *, Server *, ZRealm *);
-Code_t subscr_cancel(struct sockaddr_in *sin, ZNotice_t *notice);
-Code_t subscr_subscribe(Client *who, ZNotice_t *notice, Server *server);
-Code_t subscr_send_subs(Client *client);
-void subscr_cancel_client(Client *client);
-void subscr_sendlist(ZNotice_t *notice, int auth,
-			  struct sockaddr_in *who);
-void subscr_dump_subs(FILE *fp, Destlist *subs);
-void subscr_reset(void);
-Code_t subscr_def_subs(Client *who);
-Code_t subscr_realm(ZRealm *, ZNotice_t *);
-Code_t subscr_send_realm_subs(ZRealm *);
-Code_t subscr_realm_cancel(struct sockaddr_in *, ZNotice_t *, ZRealm *);
+Code_t subscr_foreign_user __P((ZNotice_t *, struct sockaddr_in *, Server *, Realm *));
+Code_t subscr_cancel __P((struct sockaddr_in *sin, ZNotice_t *notice));
+Code_t subscr_subscribe __P((Client *who, ZNotice_t *notice, Server *server));
+Code_t subscr_send_subs __P((Client *client));
+void subscr_cancel_client __P((Client *client));
+void subscr_sendlist __P((ZNotice_t *notice, int auth,
+			  struct sockaddr_in *who));
+void subscr_dump_subs __P((FILE *fp, Destlist *subs));
+void subscr_reset __P((void));
+Code_t subscr_def_subs __P((Client *who));
 
 /* found in uloc.c */
-void uloc_hflush(struct in_addr *addr);
-void uloc_flush_client(struct sockaddr_in *sin);
-void uloc_dump_locs(FILE *fp);
-Code_t ulogin_dispatch(ZNotice_t *notice, int auth,
-			    struct sockaddr_in *who, Server *server);
-Code_t ulocate_dispatch(ZNotice_t *notice, int auth,
-			     struct sockaddr_in *who, Server *server);
-Code_t uloc_send_locations(void);
-void ulogin_relay_locate(ZNotice_t *, struct sockaddr_in *);
-void ulogin_realm_locate(ZNotice_t *, struct sockaddr_in *, ZRealm *);
+void uloc_hflush __P((struct in_addr *addr));
+void uloc_flush_client __P((struct sockaddr_in *sin));
+void uloc_dump_locs __P((FILE *fp));
+Code_t ulogin_dispatch __P((ZNotice_t *notice, int auth,
+			    struct sockaddr_in *who, Server *server));
+Code_t ulocate_dispatch __P((ZNotice_t *notice, int auth,
+			     struct sockaddr_in *who, Server *server));
+Code_t uloc_send_locations __P((void));
 
 /* found in realm.c */
-int realm_sender_in_realm(char *realm, char *sender);
-int realm_bound_for_realm(char *realm, char *recip);
-ZRealm *realm_which_realm(struct sockaddr_in *who);
-ZRealm *realm_get_realm_by_name(char *name);
-ZRealm *realm_get_realm_by_pid(int);
-void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, ZRealm *, int);
+int realm_sender_in_realm __P((char *realm, char *sender));
+int realm_bound_for_realm __P((char *realm, char *recip));
+Realm *realm_which_realm __P((struct sockaddr_in *who));
+Realm *realm_get_realm_by_name __P((char *name));
+Realm *realm_get_realm_by_pid __P((int));
+void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, Realm *, int);
 char *realm_expand_realm(char *);
-void realm_init(void);
-Code_t ZCheckZRealmAuthentication(ZNotice_t *, struct sockaddr_in *,
-				      char *);
-Code_t realm_control_dispatch(ZNotice_t *, int, struct sockaddr_in *,
-				   Server *, ZRealm *);
-void realm_shutdown(void);
-void realm_deathgram(Server *);
-Code_t realm_send_realms(void);
-Code_t realm_dispatch(ZNotice_t *, int, struct sockaddr_in *, Server *);
-void realm_wakeup(void);
-void kill_realm_pids(void);
-void realm_dump_realms(FILE *);
+void realm_init __P((void));
+Code_t ZCheckRealmAuthentication __P((ZNotice_t *, struct sockaddr_in *,
+				      char *));
+Code_t realm_control_dispatch __P((ZNotice_t *, int, struct sockaddr_in *,
+				   Server *, Realm *));
+void realm_shutdown __P((void));
+void realm_deathgram __P((Server *));
 
 /* found in version.c */
-char *get_version(void);
-
-/* found in access.c */
-int access_check(char *, Acl *, Access);
+char *get_version __P((void));
 
 /* global identifiers */
 
 /* found in main.c */
-int packets_waiting(void);
+int packets_waiting __P((void));
 extern struct sockaddr_in srv_addr;	/* server socket address */
 extern unsigned short hm_port;		/* host manager receiver port */
 extern unsigned short hm_srv_port;	/* host manager server sending port */
@@ -393,10 +355,6 @@ extern int nfds;			/* number to look at in select() */
 extern int zdebug;
 extern char myname[];			/* domain name of this host */
 extern char list_file[];
-#ifdef HAVE_KRB5
-extern char keytab_file[];
-extern krb5_ccache Z_krb5_ccache;
-#endif
 #ifdef HAVE_KRB4
 extern char srvtab_file[];
 extern char my_realm[];
@@ -427,7 +385,7 @@ extern int nservers;			/* number of other servers*/
 extern String *empty;
 extern String *wildcard_instance;
 
-extern ZRealm *otherrealms;
+extern Realm *otherrealms;
 extern int nrealms;
 
 extern struct in_addr my_addr;	/* my inet address */

@@ -38,7 +38,7 @@ extern int mux_end_loop_p;
  *                 any other mux call.
  */
 
-extern void mux_init(void);
+extern void mux_init();
 
 /*
  *    void mux_add_input_source(int descriptior; void (*handler)(); void *arg)
@@ -50,7 +50,7 @@ extern void mux_init(void);
  *                 argument arg.
  */
 
-extern void mux_add_input_source(int, void (*)(void *), void *);
+extern void mux_add_input_source();
 
 /*
  *    void mux_loop()
@@ -67,6 +67,6 @@ extern void mux_add_input_source(int, void (*)(void *), void *);
  *                 true, we return.
  */
 
-extern void mux_loop(void);
+extern void mux_loop();
 
 #endif

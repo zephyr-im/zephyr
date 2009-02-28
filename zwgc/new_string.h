@@ -51,7 +51,7 @@ typedef char *string;
  *                 string_Copy("foo").
  */
 
-extern string string__CreateFromData(char *, int);
+extern string string__CreateFromData();
 #ifdef DEBUG_MEMORY
 #define string_CreateFromData(data,length) (set_module(__FILE__,__LINE__),\
 				    string__CreateFromData(data,length))
@@ -65,7 +65,7 @@ extern string string__CreateFromData(char *, int);
  *                 freed eventually.
  */
 
-extern string string__Copy(string);
+extern string string__Copy(/* string s */);
 #ifdef DEBUG_MEMORY
 #define string_Copy(data)  (set_module(__FILE__,__LINE__),\
 			    string__Copy(data))
@@ -81,7 +81,7 @@ extern string string__Copy(string);
  *                 returns string_Copy("abcdef").
  */
 
-extern string string__Concat(string, string);
+extern string string__Concat(/* string a, b */);
 #ifdef DEBUG_MEMORY
 #define string_Concat(a,b)  (set_module(__FILE__,__LINE__),\
 			     string__Concat(a,b))
@@ -101,7 +101,7 @@ extern string string__Concat(string, string);
  *                 only faster.  I.e., uses realloc instead of malloc+bcopy.
  */
 
-extern string string__Concat2(string, string);
+extern string string__Concat2(/* string a, b */);
 #ifdef DEBUG_MEMORY
 #define string_Concat2(a,b)  (set_module(__FILE__,__LINE__),\
 			      string__Concat2(a,b))
@@ -118,7 +118,7 @@ extern string string__Concat2(string, string);
  *                 S is returned as a convenience.
  */
 
-extern string string_Downcase(string);
+extern string string_Downcase();
 
 /*
  *    string string_Upcase(string s):
@@ -129,6 +129,6 @@ extern string string_Downcase(string);
  *                 S is returned as a convenience.
  */
 
-extern string string_Upcase(string);
+extern string string_Upcase();
 
 #endif

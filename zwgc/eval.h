@@ -28,7 +28,7 @@
  *                 eventually.
  */
 
-extern string eval_expr(Node *);
+extern string eval_expr();
 
 /*
  *    int eval_bool_expr(Node *expr)
@@ -38,6 +38,6 @@ extern string eval_expr(Node *);
  *                 NULL is defined to have the boolean value true.
  */
 
-extern int eval_bool_expr(Node *);
+extern int eval_bool_expr();
 
 #endif

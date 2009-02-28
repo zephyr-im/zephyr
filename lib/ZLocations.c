@@ -12,7 +12,7 @@
  */
 
 #ifndef lint
-static const char rcsid_ZLocations_c[] =
+static char rcsid_ZLocations_c[] =
     "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZLocations.c,v 1.30 90/12/20 03:04:39 raeburn Exp $";
 #endif
 
@@ -23,9 +23,9 @@ static const char rcsid_ZLocations_c[] =
 static char host[MAXHOSTNAMELEN], mytty[MAXPATHLEN];
 static int location_info_set = 0;
 
-Code_t
-ZInitLocationInfo(char *hostname,
-		  char *tty)
+Code_t ZInitLocationInfo(hostname, tty)
+    char *hostname;
+    char *tty;
 {
     char *ttyp, *p;
     struct hostent *hent;
@@ -56,28 +56,26 @@ ZInitLocationInfo(char *hostname,
     return (ZERR_NONE);
 }
 
-Code_t
-ZSetLocation(char *exposure)
+Code_t ZSetLocation(exposure)
+    char *exposure;
 {
     return (Z_SendLocation(LOGIN_CLASS, exposure, ZAUTH, 
 			   "$sender logged in to $1 on $3 at $2"));
 }
 
-Code_t
-ZUnsetLocation(void)
+Code_t ZUnsetLocation()
 {
     return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_LOGOUT, ZNOAUTH, 
 			   "$sender logged out of $1 on $3 at $2"));
 }
 
-Code_t
-ZFlushMyLocations(void)
+Code_t ZFlushMyLocations()
 {
     return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_FLUSH, ZAUTH, ""));
 }
 
-char *
-ZParseExposureLevel(char *text)
+char *ZParseExposureLevel(text)
+     char *text;
 {
     if (!strcasecmp(text, EXPOSE_NONE))
 	return (EXPOSE_NONE);
@@ -96,23 +94,24 @@ ZParseExposureLevel(char *text)
 }
 
 /* lifted from lib/ZSendPkt.c wait_for_hmack, but waits for SERVACK instead */
-static int
-wait_for_srvack(ZNotice_t *notice, 
-                ZUnique_id_t *uid)
+static int wait_for_srvack(notice, uid)
+    ZNotice_t *notice;
+    ZUnique_Id_t *uid;
 {
     return (notice->z_kind == SERVACK && ZCompareUID(&notice->z_uid, uid));
 }
 
-Code_t
-Z_SendLocation(char *class,
-	       char *opcode,
-	       Z_AuthProc auth,
-	       char *format)
+Code_t Z_SendLocation(class, opcode, auth, format)
+    char *class;
+    char *opcode;
+    Z_AuthProc auth;
+    char *format;
 {
     int retval;
     time_t ourtime;
     ZNotice_t notice, retnotice;
     char *bptr[3];
+    struct hostent *hent;
     short wg_port = ZGetWGPort();
 
     if (!location_info_set)

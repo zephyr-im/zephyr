@@ -18,10 +18,7 @@
 #define x_gram_TYPE
 
 #include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <sys/time.h>
-
-#include "formatter.h"
 
 typedef struct _xblock {
    unsigned long fgcolor;
@@ -76,12 +73,10 @@ typedef struct _xlinedesc {
 #define CENTERALIGN 1
 #define RIGHTALIGN  2
 
-extern void x_gram_init(Display *);
-extern void x_gram_create(Display *, x_gram *, int, int, int, int, int, int, int);
-extern void x_gram_expose(Display *, Window, x_gram *, XExposeEvent *);
-extern void xshow(Display *, desctype *, int, int);
-extern void xcut(Display *, XEvent *, XContext);
-extern void x_get_input(Display *);
-extern void xshowinit(void);
+extern void x_gram_init();
+extern void x_gram_create();
+extern void x_gram_expose();
+extern void xshow();
+extern void xcut();
 
 #endif

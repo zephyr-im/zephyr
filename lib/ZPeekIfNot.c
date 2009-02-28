@@ -11,16 +11,16 @@
  */
 
 #ifndef lint
-static const char rcsid_ZPeekIfNotice_c[] = "$Id$";
+static char rcsid_ZPeekIfNotice_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
-Code_t
-ZPeekIfNotice(ZNotice_t *notice,
-	      struct sockaddr_in *from,
-	      int (*predicate)(ZNotice_t *, char *),
-	      char *args)
+Code_t ZPeekIfNotice(notice, from, predicate, args)
+    ZNotice_t *notice;
+    struct sockaddr_in *from;
+    int (*predicate)();
+    char *args;
 {
     ZNotice_t tmpnotice;
     Code_t retval;

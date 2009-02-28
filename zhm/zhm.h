@@ -16,8 +16,6 @@
 #include <zephyr/mit-copyright.h>
 #include <internal.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <sys/time.h>
 #include "timer.h"
 

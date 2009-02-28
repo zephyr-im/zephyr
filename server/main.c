@@ -52,22 +52,23 @@ static const char rcsid_main_c[] =
 
 #define	EVER		(;;)		/* don't stop looping */
 
-static int do_net_setup(void);
-static int initialize(void);
-static void usage(void);
-static void do_reset(void);
-static RETSIGTYPE bye(int);
-static RETSIGTYPE dbug_on(int);
-static RETSIGTYPE dbug_off(int);
-static RETSIGTYPE sig_dump_db(int);
-static RETSIGTYPE reset(int);
-static RETSIGTYPE reap(int);
-static void read_from_dump(char *dumpfile);
-static void dump_db(void);
-static void dump_strings(void);
+static int do_net_setup __P((void));
+static int initialize __P((void));
+static void usage __P((void));
+static void do_reset __P((void));
+static RETSIGTYPE bye __P((int));
+static RETSIGTYPE dbug_on __P((int));
+static RETSIGTYPE dbug_off __P((int));
+static RETSIGTYPE sig_dump_db __P((int));
+static RETSIGTYPE sig_dump_strings __P((int));
+static RETSIGTYPE reset __P((int));
+static RETSIGTYPE reap __P((int));
+static void read_from_dump __P((char *dumpfile));
+static void dump_db __P((void));
+static void dump_strings __P((void));
 
 #ifndef DEBUG
-static void detach(void);
+static void detach __P((void));
 #endif
 
 static short doreset = 0;		/* if it becomes 1, perform
@@ -91,10 +92,6 @@ char *programname;			/* set to the basename of argv[0] */
 char myname[MAXHOSTNAMELEN];		/* my host name */
 
 char list_file[128];
-#ifdef HAVE_KRB5
-char keytab_file[128];
-static char tkt5_file[256];
-#endif
 #ifdef HAVE_KRB4
 char srvtab_file[128];
 char my_realm[REALM_SZ];
@@ -123,28 +120,10 @@ static int nofork;
 struct in_addr my_addr;
 char *bdump_version = "1.2";
 
-#ifdef HAVE_KRB5
-int bdump_auth_proto = 5;
-#else /* HAVE_KRB5 */
-#ifdef HAVE_KRB4
-int bdump_auth_proto = 4;
-#else /* HAVE_KRB4 */
-int bdump_auth_proto = 0;
-#endif /* HAVE_KRB4 */
-#endif /* HAVE_KRB5 */
-
-#ifdef HAVE_KRB5
-krb5_ccache Z_krb5_ccache;
-krb5_keyblock *__Zephyr_keyblock;
-#else
-#ifdef HAVE_KRB4
-C_Block __Zephyr_session;
-#endif
-#endif
-
 int
-main(int argc,
-     char **argv)
+main(argc, argv)
+    int argc;
+    char **argv;
 {
     int nfound;			/* #fildes ready on select */
     fd_set readable;
@@ -163,10 +142,6 @@ main(int argc,
     sprintf(srvtab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_SRVTAB);
     sprintf(tkt_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_TKFILE);
 #endif
-#ifdef HAVE_KRB5
-    sprintf(keytab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_KEYTAB);
-    sprintf(tkt5_file, "FILE:%s/zephyr/%s", SYSCONFDIR, ZEPHYR_TK5FILE);
-#endif
     sprintf(acl_dir, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_ACL_DIR);
     sprintf(subs_file, "%s/zephyr/%s", SYSCONFDIR, DEFAULT_SUBS_FILE);
 
@@ -175,7 +150,7 @@ main(int argc,
     programname = (programname) ? programname + 1 : argv[0];
 
     /* process arguments */
-    while ((optchar = getopt(argc, argv, "dsnv4f:k:")) != EOF) {
+    while ((optchar = getopt(argc, argv, "dsnv:f:k:")) != EOF) {
 	switch(optchar) {
 	  case 'd':
 	    zdebug = 1;
@@ -199,9 +174,6 @@ main(int argc,
 	  case 'f':
 	    init_from_dump = 0;
 	    dumpfile = optarg;
-	    break;
-	case '4':
-	    bdump_auth_proto = 4;
 	    break;
 	  case '?':
 	  default:
@@ -244,8 +216,10 @@ main(int argc,
     if (zalone)
 	syslog(LOG_DEBUG, "standalone operation");
 #endif
+#if 0
     if (zdebug)
 	syslog(LOG_DEBUG, "debugging on");
+#endif
 
     /* set up sockets & my_addr and myname, 
        find other servers and set up server table, initialize queues
@@ -319,6 +293,9 @@ main(int argc,
     /* Reinitialize t_local now that initialization is done. */
     gettimeofday(&t_local, NULL);
     uptime = NOW;
+#ifdef HAVE_KRB4
+    timer_set_rel(SWEEP_INTERVAL, sweep_ticket_hash_table, NULL);
+#endif
 
     realm_wakeup();
 #ifdef DEBUG_MALLOC
@@ -390,7 +367,7 @@ main(int argc,
    */
 
 static int
-initialize(void)
+initialize()
 {
     if (do_net_setup())
 	return(1);
@@ -404,20 +381,6 @@ initialize(void)
     
     ZSetServerState(1);
     ZInitialize();		/* set up the library */
-#ifdef HAVE_KRB5
-    krb5_cc_resolve(Z_krb5_ctx, tkt5_file, &Z_krb5_ccache);
-#ifdef HAVE_KRB5_CC_SET_DEFAULT_NAME
-    krb5_cc_set_default_name(Z_krb5_ctx, tkt5_file);
-#else
-    {
-	/* Hack to make krb5_cc_default do something reasonable */
-	char *env=(char *)malloc(strlen(tkt5_file)+12);
-	if (!env) return(1);
-	sprintf(env, "KRB5CCNAME=%s", tkt5_file);
-	putenv(env);
-    }
-#endif
-#endif
 #ifdef HAVE_KRB4
     /* Override what Zinitialize set for ZGetRealm() */
     if (*my_realm) 
@@ -447,7 +410,7 @@ initialize(void)
  */
 
 static int
-do_net_setup(void)
+do_net_setup()
 {
     struct servent *sp;
     struct hostent *hp;
@@ -484,13 +447,6 @@ do_net_setup(void)
     if (srv_socket < 0) {
 	syslog(LOG_ERR, "client_sock failed: %m");
 	return 1;
-    } else {
-#ifdef SO_BSDCOMPAT
-      int on = 1;
-
-      /* Prevent Linux from giving us socket errors we don't care about. */
-      setsockopt(srv_socket, SOL_SOCKET, SO_BSDCOMPAT, &on, sizeof(on));
-#endif
     }
     if (bind(srv_socket, (struct sockaddr *) &srv_addr,
 	     sizeof(srv_addr)) < 0) {
@@ -517,7 +473,7 @@ do_net_setup(void)
  */
 
 static void
-usage(void)
+usage()
 {
 #ifdef DEBUG
 	fprintf(stderr, "Usage: %s [-d] [-s] [-n] [-k realm] [-f dumpfile]\n",
@@ -530,7 +486,7 @@ usage(void)
 }
 
 int
-packets_waiting(void)
+packets_waiting()
 {
     fd_set readable, initial;
     struct timeval tv;
@@ -545,7 +501,8 @@ packets_waiting(void)
 }
 
 static RETSIGTYPE
-bye(int sig)
+bye(sig)
+    int sig;
 {
     server_shutdown();		/* tell other servers */
 #ifdef REALM_MGMT
@@ -561,7 +518,8 @@ bye(int sig)
 }
 
 static RETSIGTYPE
-dbug_on(int sig)
+dbug_on(sig)
+    int sig;
 {
     syslog(LOG_DEBUG, "debugging turned on");
 #ifdef DEBUG_MALLOC
@@ -571,7 +529,8 @@ dbug_on(int sig)
 }
 
 static RETSIGTYPE
-dbug_off(int sig)
+dbug_off(sig)
+    int sig;
 {
     syslog(LOG_DEBUG, "debugging turned off");
 #ifdef DEBUG_MALLOC
@@ -582,7 +541,14 @@ dbug_off(int sig)
 
 int fork_for_dump = 0;
 
-static void dump_strings(void)
+static RETSIGTYPE
+sig_dump_strings(sig)
+    int sig;
+{
+    dump_strings_flag = 1;
+}
+
+static void dump_strings()
 {
     char filename[128];
 
@@ -609,13 +575,13 @@ static void dump_strings(void)
 }
 
 static RETSIGTYPE
-sig_dump_db(int sig)
+sig_dump_db(sig)
+    int sig;
 {
     dump_db_flag = 1;
 }
 
-static void
-dump_db(void)
+static void dump_db()
 {
     /* dump the in-core database to human-readable form on disk */
     FILE *fp;
@@ -652,25 +618,30 @@ dump_db(void)
 }
 
 static RETSIGTYPE
-reset(int sig)
+reset(sig)
+    int sig;
 {
+#if 1
     zdbug((LOG_DEBUG,"reset()"));
+#endif
     doreset = 1;
 }
 
 static RETSIGTYPE
-reap(int sig)
+reap(sig)
+    int sig;
 {
     int pid, i = 0;
     int oerrno = errno;
-    ZRealm *rlm;
+    Realm *rlm;
 #ifdef _POSIX_VERSION
     int waitb;
 #else
     union wait waitb;
 #endif
-
+#if 1
     zdbug((LOG_DEBUG,"reap()"));
+#endif
 #ifdef _POSIX_VERSION
     while ((pid = waitpid(-1, &waitb, WNOHANG)) == 0) 
       { i++; if (i > 10) break; }
@@ -700,13 +671,16 @@ reap(int sig)
 }
 
 static void
-do_reset(void)
+do_reset()
 {
     int oerrno = errno;
 #ifdef _POSIX_VERSION
     sigset_t mask, omask;
 #else
     int omask;
+#endif
+#if 0
+    zdbug((LOG_DEBUG,"do_reset()"));
 #endif
 #ifdef _POSIX_VERSION
     sigemptyset(&mask);
@@ -736,7 +710,7 @@ do_reset(void)
  */
 
 static void
-detach(void)
+detach()
 {
     /* detach from terminal and fork. */
     int i;
@@ -770,7 +744,8 @@ detach(void)
 #endif /* not DEBUG */
 
 static void
-read_from_dump(char *dumpfile)
+read_from_dump(dumpfile)
+    char *dumpfile;
 {
     /* Not yet implemented. */
     return;

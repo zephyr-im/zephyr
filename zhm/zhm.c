@@ -42,40 +42,32 @@ struct hostent *hp;
 char hostname[MAXHOSTNAMELEN], loopback[4];
 char PidFile[128];
 
-static RETSIGTYPE deactivate(int);
-static RETSIGTYPE terminate(int);
-static void choose_server(void);
-static void init_hm(void);
-static void detach(void);
-static void send_stats(ZNotice_t *, struct sockaddr_in *);
-static char *strsave(const char *);
-
-extern void send_flush_notice(char *);
-extern void server_manager(ZNotice_t *);
-extern void send_boot_notice(char *);
-extern void find_next_server(char *);
+static RETSIGTYPE deactivate __P((void));
+static RETSIGTYPE terminate __P((void));
+static void choose_server __P((void));
+static void init_hm __P((void));
+static void detach __P((void));
+static void send_stats __P((ZNotice_t *, struct sockaddr_in *));
+static char *strsave __P((const char *));
 extern int optind;
 
-static RETSIGTYPE
-deactivate(int ignored)
+static RETSIGTYPE deactivate()
 {
     deactivating = 1;
 }
 
-static RETSIGTYPE
-terminate(int ignored)
+static RETSIGTYPE terminate()
 {
     terminating = 1;
 }
 
-int
-main(int argc,
-     char *argv[])
+main(argc, argv)
+char *argv[];
 {
     ZNotice_t notice;
     ZPacket_t packet;
     Code_t ret;
-    int opt, pak_len, fd, count;
+    int opt, pak_len, i, j = 0, fd, count;
     fd_set readers;
     struct timeval tv;
 
@@ -254,8 +246,7 @@ main(int argc,
     }
 }
 
-static void
-choose_server(void)
+static void choose_server()
 {
     int i = 0;
     char **clust_info, **cpp;
@@ -362,8 +353,7 @@ choose_server(void)
     }
 }
 
-static void
-init_hm(void)
+static void init_hm()
 {
      struct servent *sp;
      Code_t ret;
@@ -464,15 +454,13 @@ init_hm(void)
 #endif
 }
 
-static void
-detach(void)
+static void detach()
 {
      /* detach from terminal and fork. */
      register int i, x = ZGetFD();
      register long size;
-
-     i = fork();
-     if (i) {
+  
+     if (i = fork()) {
 	  if (i < 0)
 	       perror("fork");
 	  exit(0);
@@ -506,9 +494,9 @@ detach(void)
 
 static char version[BUFSIZ];
 
-static void
-send_stats(ZNotice_t *notice,
-	   struct sockaddr_in *sin)
+static void send_stats(notice, sin)
+     ZNotice_t *notice;
+     struct sockaddr_in *sin;
 {
      ZNotice_t newnotice;
      Code_t ret;
@@ -620,8 +608,7 @@ send_stats(ZNotice_t *notice,
 	  free(list[i]);
 }
 
-void
-die_gracefully(void)
+void die_gracefully()
 {
      syslog(LOG_INFO, "Terminate signal caught...");
      unlink(PidFile);
@@ -629,13 +616,14 @@ die_gracefully(void)
      exit(0);
 }
 
-static char *
-strsave(const char *sp)
+static char *strsave(sp)
+    const char *sp;
 {
     register char *ret;
 
-    if((ret = strdup(sp)) == NULL) {
+    if((ret = malloc((unsigned) strlen(sp)+1)) == NULL) {
 	    abort();
     }
+    strcpy(ret,sp);
     return(ret);
 }

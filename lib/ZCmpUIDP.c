@@ -11,21 +11,21 @@
  */
 
 #ifndef lint
-static const char rcsid_ZCompareUIDPred_c[] = "$Id$";
+static char rcsid_ZCompareUIDPred_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
-int
-ZCompareUIDPred(ZNotice_t *notice,
-		void *uid)
+int ZCompareUIDPred(notice, uid)
+    ZNotice_t *notice;
+    void *uid;
 {
     return (ZCompareUID(&notice->z_uid, (ZUnique_Id_t *) uid));
 }
 
-int
-ZCompareMultiUIDPred(ZNotice_t *notice,
-		     void *uid)
+int ZCompareMultiUIDPred(notice, uid)
+    ZNotice_t *notice;
+    void *uid;
 {
     return (ZCompareUID(&notice->z_multiuid, (ZUnique_Id_t *) uid));
 }

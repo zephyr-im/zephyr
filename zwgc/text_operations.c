@@ -23,9 +23,9 @@ static const char rcsid_text_operations_c[] = "$Id$";
 #include "text_operations.h"
 #include "char_stack.h"
 
-string
-lany(string *text_ptr,
-     string str)
+string lany(text_ptr, str)
+     string *text_ptr;
+     string str;
 {
     string result, whats_left;
     char *p = *text_ptr;
@@ -40,14 +40,14 @@ lany(string *text_ptr,
     return(result);
 }
 
-string
-lbreak(string *text_ptr,
-       const character_class set)
+string lbreak(text_ptr, set)
+     string *text_ptr;
+     character_class set;
 {
     string result, whats_left;
     char *p = *text_ptr;
 
-    while (*p && !set[(int)*p]) p++;
+    while (*p && !set[*p]) p++;
 
     result = string_CreateFromData(*text_ptr, p - *text_ptr);
     whats_left = string_Copy(p);
@@ -57,14 +57,14 @@ lbreak(string *text_ptr,
     return(result);
 }
 
-string
-lspan(string *text_ptr,
-      character_class set)
+string lspan(text_ptr, set)
+     string *text_ptr;
+     character_class set;
 {
     string result, whats_left;
     char *p = *text_ptr;
 
-    while (*p && set[(int)*p]) p++;
+    while (*p && set[*p]) p++;
 
     result = string_CreateFromData(*text_ptr, p - *text_ptr);
     whats_left = string_Copy(p);
@@ -74,9 +74,9 @@ lspan(string *text_ptr,
     return(result);
 }
 
-string
-rany(string *text_ptr,
-     string str)
+string rany(text_ptr, str)
+     string *text_ptr;
+     string str;
 {
     string result, whats_left;
     string text = *text_ptr;
@@ -92,15 +92,15 @@ rany(string *text_ptr,
     return(result);
 }
 
-string
-rbreak(string *text_ptr,
-       character_class set)
+string rbreak(text_ptr, set)
+     string *text_ptr;
+     character_class set;
 {
     string result, whats_left;
     string text = *text_ptr;
     char *p = text + strlen(text);
 
-    while (text<p && !set[(int)p[-1]]) p--;
+    while (text<p && !set[p[-1]]) p--;
 
     result = string_Copy(p);
     whats_left = string_CreateFromData(text, p - text);
@@ -110,15 +110,15 @@ rbreak(string *text_ptr,
     return(result);
 }
 
-string
-rspan(string *text_ptr,
-      character_class set)
+string rspan(text_ptr, set)
+     string *text_ptr;
+     character_class set;
 {
     string result, whats_left;
     string text = *text_ptr;
     char *p = text + strlen(text);
 
-    while (text<p && set[(int)p[-1]]) p--;
+    while (text<p && set[p[-1]]) p--;
 
     result = string_Copy(p);
     whats_left = string_CreateFromData(text, p - text);

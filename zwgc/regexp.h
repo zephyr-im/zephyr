@@ -19,6 +19,6 @@
 
 #include "new_string.h"
 
-extern int ed_regexp_match_p(string, string);
+extern int ed_regexp_match_p();
 
 #endif

@@ -23,9 +23,9 @@ static const char rcsid_znol_c[] = "$Id$";
 #define ON 1
 #define OFF 0
 
-int
-main(int argc,
-     char *argv[])
+main(argc,argv)
+	int argc;
+	register char *argv[];
 {
 	register char *cp;
 	ZSubscription_t subs[SUBSATONCE];
@@ -137,8 +137,7 @@ main(int argc,
 		    if (cleanname[0] == '#' || cleanname[0] == '\0' ||
 			cleanname[0] == '\n')
 			continue;	/* ignore comment and empty lines */
-		    comment_ptr = strchr(cleanname, '#');
-		    if (comment_ptr)
+		    if (comment_ptr = strchr(cleanname, '#'))
 			*comment_ptr = '\0'; /* Ignore from # onwards */
 		    /* Get rid of old-style nol entries, just in case */
 		    cp = cleanname + strlen(cleanname) - 1;

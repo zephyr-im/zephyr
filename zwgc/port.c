@@ -37,10 +37,10 @@ static const char rcsid_port_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
-static string
-port_get(port *p)
+static string port_get(p)
+     port *p;
 {
-    char *(*get_proc)(port *, char **);
+    char *(*get_proc)();
     char *error = NULL;
     char *result;
 
@@ -65,12 +65,12 @@ port_get(port *p)
       return(result);
 }
 
-static void
-port_put(port *p,
-	 char *data,
-	 int length)
+static void port_put(p, data, length)
+     port *p;
+     char *data;
+     int length;
 {
-    char *(*put_proc)(port *, char *, int);
+    char *(*put_proc)();
     char *error;
 
     if (p->status & OUTPUT_CLOSED) {
@@ -91,10 +91,10 @@ port_put(port *p,
       var_set_variable("error", error);
 }
 
-static void
-port_close_input(port *p)
+static void port_close_input(p)
+     port *p;
 {
-    char *(*close_input_proc)(port *);
+    char *(*close_input_proc)();
     char *error;
 
     if (p->status & INPUT_CLOSED)
@@ -105,15 +105,14 @@ port_close_input(port *p)
     if (!close_input_proc)
       return;
 
-    error = close_input_proc(p);
-    if (error)
+    if (error = close_input_proc(p))
       var_set_variable("error", error);
 }
 
-static void
-port_close_output(port *p)
+static void port_close_output(p)
+     port *p;
 {
-    char *(*close_output_proc)(port *);
+    char *(*close_output_proc)();
     char *error;
 
     if (p->status & OUTPUT_CLOSED)
@@ -124,8 +123,7 @@ port_close_output(port *p)
     if (!close_output_proc)
       return;
 
-    error = close_output_proc(p);
-    if (error)
+    if (error = close_output_proc(p))
       var_set_variable("error", error);
 }
 
@@ -148,15 +146,14 @@ static port_dictionary port_dict = NULL;
  *                 any other port call is made.
  */
 
-static void
-close_port_from_binding(port_dictionary_binding *b)
+static void close_port_from_binding(b)
+     port_dictionary_binding *b;
 {
     port_close_input(&(b->value));
     port_close_output(&(b->value));
 }
 
-void
-init_ports(void)
+void init_ports()
 {
     if (port_dict) {
 	port_dictionary_Enumerate(port_dict, close_port_from_binding);
@@ -179,8 +176,8 @@ init_ports(void)
  *                 various fields correctly.
  */
 
-static port *
-create_named_port(string name)
+static port *create_named_port(name)
+     string name;
 {
     int already_exists;
     port_dictionary_binding *binding;
@@ -203,8 +200,8 @@ create_named_port(string name)
  *                 it.  Otherwise returns NULL.
  */
 
-static port *
-get_named_port(string name)
+static port *get_named_port(name)
+     string name;
 {
     port_dictionary_binding *binding;
 
@@ -233,8 +230,8 @@ get_named_port(string name)
  *                 on the heap & must be eventually freed.
  */
 
-string
-read_from_port(string name)
+string read_from_port(name)
+     string name;
 {
     port *p;
 
@@ -256,10 +253,10 @@ read_from_port(string name)
  *                 occurs, $error is set to the error message.
  */
 
-void
-write_on_port(string name,
-	      char *text,
-	      int length)
+void write_on_port(name, text, length)
+     string name;
+     char *text;
+     int length;
 {
     port *p;
 
@@ -283,8 +280,8 @@ write_on_port(string name,
  *                 occurs, $error is set to the error message.
  */
 
-void
-close_port_input(string name)
+void close_port_input(name)
+     string name;
 {
     port_dictionary_binding *binding;
 
@@ -309,8 +306,8 @@ close_port_input(string name)
  *                 occurs, $error is set to the error message.
  */
 
-void
-close_port_output(string name)
+void close_port_output(name)
+     string name;
 {
     port_dictionary_binding *binding;
 
@@ -329,9 +326,9 @@ close_port_output(string name)
 /*                                                                          */
 /****************************************************************************/
 
-static string
-get_file(port *p,
-	 char **error_p)
+static string get_file(p, error_p)
+     port *p;
+     char **error_p;
 {
     char buffer[10000]; /* <<<>>> */
 
@@ -355,10 +352,10 @@ get_file(port *p,
     return(string_Copy(buffer));
 }
 
-static char *
-put_file(port *p,
-	 string text,
-	 int length)
+static char *put_file(p, text, length)
+     port *p;
+     string text;
+     int length;
 {
     if (!p->data.file.output_connector)
       return(NULL);
@@ -373,8 +370,8 @@ put_file(port *p,
     return(NULL);
 }
 
-static char *
-close_file_input(port *p)
+static char *close_file_input(p)
+     port *p;
 {
     errno = 0;
     if (p->data.file.input_connector) {
@@ -388,8 +385,8 @@ close_file_input(port *p)
     return(NULL);
 }
 
-static char *
-close_file_output(port *p)
+static char *close_file_output(p)
+     port *p;
 {
     errno = 0;
     if (p->data.file.output_connector) {
@@ -403,9 +400,10 @@ close_file_output(port *p)
     return(NULL);
 }
 
-void create_port_from_files(string name,
-			    FILE *input,
-			    FILE *output)
+void create_port_from_files(name, input, output)
+     string name;
+     FILE *input;
+     FILE *output;
 {
     port *p = create_named_port(name);
 
@@ -436,9 +434,9 @@ void create_port_from_files(string name,
 /*                                                                          */
 /****************************************************************************/
 
-void
-create_subprocess_port(string name,
-		       char **argv)
+void create_subprocess_port(name, argv)
+     string name;
+     char **argv;
 {
     int pid;
     int to_child_descriptors[2];
@@ -479,9 +477,9 @@ create_subprocess_port(string name,
     create_port_from_files(name, in, out);
 }
 
-void
-create_file_append_port(string name,
-			string filename)
+void create_file_append_port(name, filename)
+     string name;
+     string filename;
 {
     FILE *out;
     int oumask;
@@ -499,9 +497,9 @@ create_file_append_port(string name,
     create_port_from_files(name, 0, out);
 }
 
-void
-create_file_input_port(string name,
-		       string filename)
+void create_file_input_port(name, filename)
+     string name;
+     string filename;
 {
     FILE *in;
 
@@ -515,9 +513,9 @@ create_file_input_port(string name,
     create_port_from_files(name, in, 0);
 }
 
-void
-create_file_output_port(string name,
-			string filename)
+void create_file_output_port(name, filename)
+     string name;
+     string filename;
 {
     FILE *out;
     int oumask;
@@ -541,9 +539,9 @@ create_file_output_port(string name,
 /*                                                                          */
 /****************************************************************************/
 
-static string
-get_filter(port *p,
-	   char **error_p)
+static string get_filter(p, error_p)
+     port *p;
+     char **error_p;
 {
     string result;
 
@@ -557,10 +555,10 @@ get_filter(port *p,
     return(result);
 }
 
-static char *
-put_filter(port *p,
-	   string text,
-	   int length)
+static char *put_filter(p, text, length)
+     port *p;
+     string text;
+     int length;
 {
     string input;
     string output;
@@ -575,8 +573,8 @@ put_filter(port *p,
     return(NULL);
 }
 
-static char *
-close_filter_input(port *p)
+static char *close_filter_input(p)
+     port *p;
 {
     while (!string_stack_empty(p->data.filter.waiting_packets))
       string_stack_pop(p->data.filter.waiting_packets);
@@ -585,15 +583,15 @@ close_filter_input(port *p)
 }
 
 /*ARGSUSED*/
-static char *
-close_filter_output(port *p)
+static char *close_filter_output(p)
+     port *p;
 {
     return(NULL);
 }
 
-void
-create_port_from_filter(string name,
-			string (*filter)(string))
+void create_port_from_filter(name, filter)
+     string name;
+     string (*filter)();
 {
     port *p = create_named_port(name);
 
@@ -612,10 +610,10 @@ create_port_from_filter(string name,
 /*                                                                          */
 /****************************************************************************/
 
-static char *
-put_output(port *p,
-	   string text,
-	   int length)
+static char *put_output(p, text, length)
+     port *p;
+     string text;
+     int length;
 {
     string input;
     char *error;
@@ -627,15 +625,15 @@ put_output(port *p,
 }
 
 /*ARGSUSED*/
-static char *
-close_output(port *p)
+static char *close_output(p)
+     port *p;
 {
     return(NULL);
 }
 
-void
-create_port_from_output_proc(string name,
-			     char *(*output)(string))
+void create_port_from_output_proc(name, output)
+     string name;
+     char *(*output)();
 {
 #ifdef SABER /* Yes, it's another ANSI incompatiblity */
     port *p;

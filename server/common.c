@@ -25,22 +25,25 @@ static const char rcsid_common_c[] =
 /* copy a string into a newly allocated area */
 
 char *
-strsave (const char *sp)
+strsave (sp)
+    const char *sp;
 {
     char *ret;
 
-    ret = strdup(sp);
+    ret = (char *) malloc(strlen(sp) + 1);
     if (!ret) {
 	syslog(LOG_CRIT, "no mem strdup'ing");
 	abort();
     }
+    strcpy(ret, sp);
     return ret;
 }
 
 /* The "& 0x5f" provides case-insensitivity for ASCII. */
 
 unsigned long
-hash(const char *string)
+hash(string)
+    const char *string;
 {
     unsigned long hval = 0;
     char cp;
@@ -79,7 +82,9 @@ hash(const char *string)
 }
 
 /* Output a name, replacing newlines with \n and single quotes with \q. */
-void dump_quote(char *p, FILE *fp)
+void dump_quote(p, fp)
+    char *p;
+    FILE *fp;
 {
     for (; *p; p++) {
 	if (*p == '\'') {

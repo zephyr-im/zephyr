@@ -1,9 +1,3 @@
-zephyr (3.0~a1) unstable; urgency=low
-
-  * Kerberos 5 client support; new upstream?
-
- -- Karl Ramm <kcr@1ts.org>  Tue, 25 Dec 2007 00:01:24 -0500
-
 zephyr (2.1.20070719.SNAPSHOT-2) unstable; urgency=low
 
   * Z_SendLocation could be fooled by the USER_LOGIN message (which has

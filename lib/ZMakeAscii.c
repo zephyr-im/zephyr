@@ -19,11 +19,11 @@ static const char rcsid_ZMakeAscii_c[] = "$Id$";
 
 static char *itox_chars = "0123456789ABCDEF";
 
-Code_t
-ZMakeAscii(register char *ptr,
-	   int len,
-	   unsigned char *field,
-	   int num)
+Code_t ZMakeAscii(ptr, len, field, num)
+    register char *ptr;
+    int len;
+    unsigned char *field;
+    int num;
 {
     int i;
 
@@ -52,10 +52,10 @@ ZMakeAscii(register char *ptr,
     return ZERR_NONE;
 }
 
-Code_t
-ZMakeAscii32(register char *ptr,
-	     int len,
-	     unsigned long value)
+Code_t ZMakeAscii32(ptr, len, value)
+    register char *ptr;
+    int len;
+    unsigned long value;
 {
     if (len < 11)
 	return ZERR_FIELDLEN;
@@ -73,10 +73,10 @@ ZMakeAscii32(register char *ptr,
     return ZERR_NONE;
 }
 
-Code_t
-ZMakeAscii16(register char *ptr,
-	     int len,
-	     unsigned int value)
+Code_t ZMakeAscii16(ptr, len, value)
+    register char *ptr;
+    int len;
+    unsigned int value;
 {
     if (len < 7)
 	return ZERR_FIELDLEN;

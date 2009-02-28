@@ -56,7 +56,9 @@ typedef char *string;
  *                 string_Copy("foo").
  */
 
-string string__CreateFromData(char *data, int length)
+string string__CreateFromData(data, length)
+     char *data;
+     int length;
 {
     string result;
 
@@ -77,8 +79,8 @@ string string__CreateFromData(char *data, int length)
  *                 freed eventually.
  */
 
-string
-string__Copy(string s)
+string string__Copy(s)
+     string s;
 {
     int length;
     string result;
@@ -101,9 +103,8 @@ string__Copy(string s)
  *                 returns string_Copy("abcdef").
  */
 
-string
-string__Concat(string a,
-	       string b)
+string string__Concat(a, b)
+     string a, b;
 {
     string result;
     int a_length, b_size, result_size;
@@ -132,9 +133,8 @@ string__Concat(string a,
  *                 only faster.  I.e., uses realloc instead of malloc+memcpy.
  */
 
-string
-string__Concat2(string a,
-		string b)
+string string__Concat2(a, b)
+     string a, b;
 {
     int a_length = string_Length(a);
     int b_size = string_Length(b)+1;
@@ -159,8 +159,8 @@ string__Concat2(string a,
  *                 S is returned as a convenience.
  */
 
-string
-string_Downcase(string s)
+string string_Downcase(s)
+     string s;
 {
     char *ptr;
 
@@ -181,8 +181,8 @@ string_Downcase(string s)
  *                 S is returned as a convenience.
  */
 
-string
-string_Upcase(string s)
+string string_Upcase(s)
+     string s;
 {
     char *ptr;
 

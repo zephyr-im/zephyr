@@ -40,6 +40,6 @@
  *                 modified in any way or freed.
  */
 
-extern string substitute(string (*)(string), string);
+extern string substitute();
 
 #endif

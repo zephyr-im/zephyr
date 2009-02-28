@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 
-SUBDIRS=zaway zctl zleave zlocate znol \
-	zshutdown_notify zstat zwrite
+SUBDIRS=@XCLIENTS@ zaway zctl zleave zlocate zmailnotify znol \
+	zpopnotify zshutdown_notify zstat zwrite
 
 all:
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done

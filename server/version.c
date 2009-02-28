@@ -12,8 +12,6 @@
 
 #include <zephyr/mit-copyright.h>
 
-#include <sys/utsname.h>
-
 #include "zserver.h"
 #include "version.h"
 
@@ -33,10 +31,9 @@ static const char copyright[] =
 #endif
 
 char *
-get_version(void)
+get_version()
 {
   static char vers_buf[256];
-  struct utsname un;
 
   if (vers_buf[0] == '\0') {
 #ifdef DEBUG
@@ -76,13 +73,11 @@ get_version(void)
 #ifdef NeXT
     (void) strcat(vers_buf, "NeXT");
 #endif /* NeXT */
-
-    if (vers_buf[strlen(vers_buf) - 1] == '/') {
-	uname(&un);
-	(void) strcat(vers_buf, un.machine);
-	(void) strcat(vers_buf, "-");
-	(void) strcat(vers_buf, un.sysname);
-    }
   }
   return(vers_buf);
 }
+
+
+
+
+

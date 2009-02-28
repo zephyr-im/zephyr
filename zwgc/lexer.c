@@ -64,8 +64,7 @@ static FILE *input_file;
 
 static int pushback = -1;
 
-static char
-input(void)
+static char input()
 {
     int c;
 
@@ -86,8 +85,8 @@ input(void)
     return(c);
 }
 
-static void
-unput(int c)
+static void unput(c)
+     int c;
 {
 #ifdef DEBUG
     if (pushback != -1) {
@@ -172,8 +171,8 @@ static struct keyword_info keywords[] =   {
  *            a file.  Resets current line # to 1.
  */
 
-void
-lex_open(FILE *file)
+void lex_open(file)
+     FILE *file;
 {
     /*
      * Initialize I/O:
@@ -220,8 +219,7 @@ lex_open(FILE *file)
 
 #define  is_octal_digit(c)           (((c)>='0') && ((c)<='7'))
 
-static char
-eat_escape_code(void)
+static char eat_escape_code()
 {
     int c, coded_char;
 
@@ -271,8 +269,8 @@ eat_escape_code(void)
  *              string we are eating started on.
  */
 
-static char *
-eat_string(int starting_line)
+static char *eat_string(starting_line)
+     int starting_line;
 {
     int c;
     char buffer[500];
@@ -345,8 +343,8 @@ eat_string(int starting_line)
  *    instead of doing the above, we just eat the "endshow" & return 0.
  */
 
-static char *
-eat_show_line(int test_for_endshow)
+static char *eat_show_line(test_for_endshow)
+     int test_for_endshow;
 {
     int c;
     int saw_escape_code = 0;
@@ -410,8 +408,8 @@ eat_show_line(int test_for_endshow)
  *                   messages.
  */
 
-static char *
-eat_til_endshow(int start_line_no)
+static char *eat_til_endshow(start_line_no)
+     int start_line_no;
 {
     register int c;
     string text_so_far = string_Copy("");
@@ -455,8 +453,7 @@ eat_til_endshow(int start_line_no)
  *               returned.
  */
 
-static int
-handle_show(void)
+static int handle_show()
 {
     int c;
     int start_line_no = yylineno;
@@ -470,8 +467,7 @@ handle_show(void)
     if (c!='\n')
       unput(c);
 
-    yylval.text = eat_til_endshow(start_line_no);
-    if (yylval.text)
+    if (yylval.text = eat_til_endshow(start_line_no))
       return(SHOW);
     else
       return(ERROR);
@@ -487,7 +483,7 @@ handle_show(void)
  * yylex - performs as per. the yacc manual's requirements
  */
 
-int yylex(void)
+int yylex()
 {
     register int c, last_char;
     register char *ptr;
@@ -657,8 +653,7 @@ int yylex(void)
 	     * Handle constant strings:
 	     */
 	  case '"':
-	    yylval.text = eat_string(yylineno);
-	    if (yylval.text)
+	    if (yylval.text = eat_string(yylineno))
 	      return(STRING);
 	    else
 	      return(ERROR);

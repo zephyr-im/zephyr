@@ -29,15 +29,15 @@ static const char rcsid_character_class_c[] = "$Id$";
 static character_class cache;
 
 /* character_class */
-char *
-string_to_character_class(string str)
+char * string_to_character_class(str)
+     string str;
 {
     int i;
 
     (void) memset(cache, 0, sizeof(cache));
 
     for (i=0; i<strlen(str); i++)
-	cache[(int)str[i]] = 1;
+      cache[str[i]] = 1;
 
     return(cache);
 }

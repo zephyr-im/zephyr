@@ -27,16 +27,15 @@ static const char rcsid_exec_c[] = "$Id$";
 
 #include <zephyr/zephyr.h>
 #include "new_memory.h"
-#include "node.h"
 #include "exec.h"
 #include "eval.h"
+#include "node.h"
 #include "buffer.h"
 #include "port.h"
 #include "variables.h"
 #include "notice.h"
 
-static int exec_subtree(Node *);
-static int exec_fields(Node *);
+static int exec_subtree(), exec_fields();
 
 /****************************************************************************/
 /*                                                                          */
@@ -44,8 +43,8 @@ static int exec_fields(Node *);
 /*                                                                          */
 /****************************************************************************/
 
-static string
-eval_exprlist_to_string(Node *exprlist)
+static string eval_exprlist_to_string(exprlist)
+     Node *exprlist;
 {
     string result = string_Copy("");
     string temp;
@@ -65,8 +64,8 @@ eval_exprlist_to_string(Node *exprlist)
     return(result);
 }
 
-static char **
-eval_exprlist_to_args(Node *exprlist)
+static char **eval_exprlist_to_args(exprlist)
+     Node *exprlist;
 {
     char **result = (char **)malloc(sizeof(char *));
     int argc = 0;
@@ -81,8 +80,8 @@ eval_exprlist_to_args(Node *exprlist)
     return(result);
 }
 
-static void
-free_args(char **args)
+static void free_args(args)
+     char **args;
 {
     char **p;
 
@@ -104,28 +103,28 @@ free_args(char **args)
 #define  EXIT      2
 
 /*ARGSUSED*/
-static int
-exec_noop(Node *node)
+static int exec_noop(node)
+     Node *node;
 {
     return(NOBREAK);
 }
 
 /*ARGSUSED*/
-static int
-exec_break(Node *node)
+static int exec_break(node)
+     Node *node;
 {
     return(BREAK);
 }
 
 /*ARGSUSED*/
-static int
-exec_exit(Node *node)
+static int exec_exit(node)
+     Node *node;
 {
     return(EXIT);
 }
 
-static int
-exec_set(Node *node)
+static int exec_set(node)
+     Node *node;
 {
     var_set_variable_then_free_value(node->d.nodes.first->d.string_constant,
 				     eval_expr(node->d.nodes.second));
@@ -133,8 +132,8 @@ exec_set(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_execport(Node *node)
+static int exec_execport(node)
+     Node *node;
 {
     string name = eval_expr(node->d.nodes.first);
     char **argv = eval_exprlist_to_args(node->d.nodes.second);
@@ -146,8 +145,8 @@ exec_execport(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_appendport(Node *node)
+static int exec_appendport(node)
+     Node *node;
 {
     string name, filename;
 
@@ -161,8 +160,8 @@ exec_appendport(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_inputport(Node *node)
+static int exec_inputport(node)
+     Node *node;
 {
     string name, filename;
 
@@ -176,8 +175,8 @@ exec_inputport(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_outputport(Node *node)
+static int exec_outputport(node)
+     Node *node;
 {
     string name, filename;
 
@@ -191,8 +190,8 @@ exec_outputport(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_closeinput(Node *node)
+static int exec_closeinput(node)
+     Node *node;
 {
     string name;
 
@@ -203,8 +202,8 @@ exec_closeinput(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_closeoutput(Node *node)
+static int exec_closeoutput(node)
+     Node *node;
 {
     string name;
 
@@ -215,8 +214,8 @@ exec_closeoutput(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_closeport(Node *node)
+static int exec_closeport(node)
+     Node *node;
 {
     string name;
 
@@ -228,8 +227,8 @@ exec_closeport(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_put(Node *node)
+static int exec_put(node)
+     Node *node;
 {
     string name, temp;
 
@@ -250,8 +249,8 @@ exec_put(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_print(Node *node)
+static int exec_print(node)
+     Node *node;
 {
     string temp;
 
@@ -263,16 +262,16 @@ exec_print(Node *node)
 }
 
 /*ARGSUSED*/
-static int
-exec_clearbuf(Node *node)
+static int exec_clearbuf(node)
+     Node *node;
 {
     clear_buffer();
 
     return(NOBREAK);
 }
 
-static int
-exec_case(Node *node)
+static int exec_case(node)
+     Node *node;
 {
     string constant,temp;
     Node *match, *cond;
@@ -301,8 +300,8 @@ exec_case(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_while(Node *node)
+static int exec_while(node)
+     Node *node;
 {
     int continue_code = NOBREAK;
 
@@ -318,8 +317,8 @@ exec_while(Node *node)
     return(continue_code);
 }
 
-static int
-exec_if(Node *node)
+static int exec_if(node)
+     Node *node;
 {
     Node *conds;
 
@@ -330,8 +329,8 @@ exec_if(Node *node)
     return(NOBREAK);
 }
 
-static int
-exec_exec(Node *node)
+static int exec_exec(node)
+     Node *node;
 {
     int pid;
     char **argv = eval_exprlist_to_args(node->d.nodes.first);
@@ -352,7 +351,7 @@ exec_exec(Node *node)
 }
 
 static struct _Opstuff {
-    int (*exec)(Node *);
+    int (*exec)();
 } const opstuff[] = {
     { exec_noop },                         /* string_constant */
     { exec_noop },                         /* varref */
@@ -413,8 +412,8 @@ static struct _Opstuff {
     { exec_noop },                           /* default */
 };
 
-static int
-exec_subtree(Node *node)
+static int exec_subtree(node)
+     Node *node;
 {
     int retval = NOBREAK;
     
@@ -433,8 +432,8 @@ static char *notice_fields;
 static int notice_fields_length = 0;
 static int number_of_fields = 0;
 
-static int
-exec_fields(Node *node)
+static int exec_fields(node)
+     Node *node;
 {
     for (node=node->d.nodes.first; node; node=node->next) {
 	var_set_variable_then_free_value(node->d.string_constant,
@@ -449,9 +448,9 @@ exec_fields(Node *node)
     return(NOBREAK);
 }
 
-void
-exec_process_packet(Node *program,
-		    ZNotice_t *notice)
+void exec_process_packet(program, notice)
+     Node *program;
+     ZNotice_t *notice;
 {
     notice_fields = notice->z_message;
     notice_fields_length = notice->z_message_len;

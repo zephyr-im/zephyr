@@ -12,7 +12,7 @@
  */
 
 #if (!defined(lint) && !defined(SABER))
-static const char rcsid_substitute_c[] = "$Id$";
+static char rcsid_substitute_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -38,9 +38,9 @@ static const char rcsid_substitute_c[] = "$Id$";
  *                 The returned string must not be freed.
  */
 
-static string
-eat_dollar_sign_stuff(string (*lookup)(string),
-		      string *text_ptr)                 /* Input/Output parameter */
+static string eat_dollar_sign_stuff(lookup, text_ptr)
+     string (*lookup)();
+     string *text_ptr;                 /* Input/Output parameter */
 {
     char c;
     char closing_brace = 0;
@@ -132,9 +132,9 @@ eat_dollar_sign_stuff(string (*lookup)(string),
  *                 modified in any way or freed.
  */
 
-string
-substitute(string (*lookup)(string),
-	   string text)
+string substitute(lookup, text)
+     string (*lookup)();
+     string text;
 {
     string result_so_far = string_Copy("");
     char *p, *temp;

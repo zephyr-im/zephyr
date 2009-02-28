@@ -40,7 +40,7 @@ case "$1" in
 
 	# if /etc/default/zephyr-clients already exists and has a zhm_args
         # line, the config script should have sucked it into debconf
-	db_get zephyr-clients/servers || true
+	db_get zephyr-clients/servers
 
 	tmpfile=/etc/default/zephyr-client.dpkg-new
 	if test -f /etc/default/zephyr-clients

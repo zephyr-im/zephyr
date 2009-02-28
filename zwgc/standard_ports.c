@@ -32,22 +32,22 @@ static const char rcsid_standard_ports_c[] = "$Id$";
 #include "main.h"
 #include <zephyr/zephyr.h>
 
-extern char *tty_filter(string, int);
-extern int tty_filter_init(char *, char, int *, char **);
+extern string tty_filter();
+extern int tty_filter_init();
 
 #ifndef X_DISPLAY_MISSING
-extern char *X_driver(string);
-extern int X_driver_init(char *, char, int *, char **);
+extern char *X_driver();
+extern int X_driver_init();
 #endif
 
-extern void usage(void);
+extern void usage();
 
 /*
  *
  */
 
-char *
-plain_driver(string input)
+char *plain_driver(input)
+     string input;
 {
     string processed_input = tty_filter(input, 0);
 
@@ -61,8 +61,8 @@ plain_driver(string input)
  *
  */
 
-char *
-tty_driver(string input)
+char *tty_driver(input)
+     string input;
 {
     string processed_input = tty_filter(input, 1);
 
@@ -76,8 +76,8 @@ tty_driver(string input)
  *
  */
 
-string
-noop_filter(string input)
+string noop_filter(input)
+     string input;
 {
     return(input);
 }
@@ -86,8 +86,8 @@ noop_filter(string input)
  *
  */
 
-string
-plain_filter(string input)
+string plain_filter(input)
+     string input;
 {
     return(tty_filter(input, 0));
 }
@@ -96,8 +96,8 @@ plain_filter(string input)
  *
  */
 
-string
-fancy_filter(string input)
+string fancy_filter(input)
+     string input;
 {
     return(tty_filter(input, 1));
 }
@@ -118,13 +118,13 @@ static struct standard_port_info {
 #define	DISABLED	2
 
     int port_setup_status;
-    int (*port_init)(char *, char, int *, char **);
+    int (*port_init)();
 #define  INPUT_DESC  0
 #define  OUTPUT_DESC 1
 #define  FILTER      2
 #define  OUTPUT_PROC 3
     int type;
-    char *(*function)(string);
+    char *(*function)();
     int setup_arg;
 } standard_port_info_table[] = {
 #ifndef X_DISPLAY_MISSING
@@ -148,8 +148,8 @@ static struct standard_port_info {
  * <<<>>>
  */
 
-static struct standard_port_info *
-get_standard_port_info(string port_name)
+static struct standard_port_info *get_standard_port_info(port_name)
+     string port_name;
 {
     struct standard_port_info *p;
 
@@ -169,8 +169,8 @@ get_standard_port_info(string port_name)
  *                  returns -1.
  */
 
-static int
-boolean_value_of(string text)
+static int boolean_value_of(text)
+     string text;
 {
     if (!text)
 	return(-1);			/* not set */
@@ -190,8 +190,9 @@ boolean_value_of(string text)
  *
  */
 
-void init_standard_ports(int *pargc,
-			 char **argv)
+void init_standard_ports(pargc, argv)
+     int *pargc;
+     char **argv;
 {
     struct standard_port_info *p;
     string first_working_port = "";
@@ -208,25 +209,21 @@ void init_standard_ports(int *pargc,
             current++; *pargc -= 2;
             if (!*current)
               usage();
-	    p = get_standard_port_info((string) *current);
-            if (p)
+            if (p = get_standard_port_info((string) *current))
 		p->port_setup_status = DISABLED;
         } else if (string_Eq((string) *current, "-default")) {
             current++; *pargc -= 2;
             if (!*current)
               usage();
             default_port = (string) *current;
-	    p = get_standard_port_info((string) *current);
-            if (p)
+            if (p = get_standard_port_info((string) *current))
 		p->port_setup_status = DEFAULT_OK;
         } else if (string_Eq((string) *current, "-ttymode")) {
 	    default_port = (string) "tty";
 	    (*pargc)--;
-	    p = get_standard_port_info(default_port);
-            if (p) {
+            if (p = get_standard_port_info(default_port)) {
 		p->port_setup_status = DEFAULT_OK;
-		p = get_standard_port_info ((string) "X");
-		if (p)
+		if (p = get_standard_port_info ((string) "X"))
 		    p->port_setup_status = DISABLED;
 	    }
 	} else

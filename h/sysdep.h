@@ -21,15 +21,6 @@
 #include <time.h>
 #include <signal.h>
 #include <syslog.h>
-#ifdef HAVE_UNISTD_H
-#ifdef HAVE_GETSID
-#define __USE_XOPEN_EXTENDED
-#endif
-#include <unistd.h>
-#ifdef __USE_XOPEN_EXTENDED
-#undef __USE_XOPEN_EXTENDED
-#endif
-#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>

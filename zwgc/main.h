@@ -33,7 +33,7 @@ extern char *location_override;
  *                 program with error code 1.
  */
 
-extern void usage(void);
+extern void usage();
 
 /* USRDESC points to a file (relative to user's homedir) which has a user's
    description file */

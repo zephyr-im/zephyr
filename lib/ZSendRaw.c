@@ -11,13 +11,13 @@
  */
 
 #ifndef lint
-static const char rcsid_ZSendRawNotice_c[] = "$Id$";
+static char rcsid_ZSendRawNotice_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
-Code_t
-ZSendRawNotice(ZNotice_t *notice)
+Code_t ZSendRawNotice(notice)
+    ZNotice_t *notice;
 {
     Code_t retval;
     ZNotice_t newnotice;

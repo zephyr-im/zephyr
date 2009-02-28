@@ -11,15 +11,15 @@
  */
 
 #ifndef lint
-static const char rcsid_ZReceivePacket_c[] = "$Id$";
+static char rcsid_ZReceivePacket_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
-Code_t
-ZReceivePacket(ZPacket_t buffer,
-	       int *ret_len,
-	       struct sockaddr_in *from)
+Code_t ZReceivePacket(buffer, ret_len, from)
+    ZPacket_t buffer;
+    int *ret_len;
+    struct sockaddr_in *from;
 {
     Code_t retval;
     struct _Z_InputQ *nextq;

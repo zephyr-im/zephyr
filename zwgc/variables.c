@@ -56,8 +56,8 @@ static string_dictionary number_variable_dict = NULL;
  *        Effects: Returns true iff text matches [0-9]*.  ("" matches...)
  */
 
-static int
-is_digits(string text)
+static int is_digits(text)
+     string text;
 {
     for (; *text; text++)
       if (!isdigit(*text))
@@ -83,8 +83,7 @@ is_digits(string text)
  *        Effects: Sets all description langauge variables to "".
  */
 
-void
-var_clear_all_variables(void)
+void var_clear_all_variables()
 {
     if (non_number_variable_dict) {
 	string_dictionary_SafeDestroy(non_number_variable_dict);
@@ -105,16 +104,15 @@ var_clear_all_variables(void)
  *                 call.  DO NOT FREE THIS STRING.
  */
 
-string
-var_get_variable(string name)
+string var_get_variable(name)
+     string name;
 {
     char *result;
     int field_to_get;
     static string last_get_field_call_result = NULL;
 
     if (is_number_variable(name)) {
-	result = string_dictionary_Fetch(number_variable_dict, name);
-	if (result)
+	if (result = string_dictionary_Fetch(number_variable_dict, name))
 	  return(result);
 
 	/*
@@ -152,9 +150,9 @@ var_get_variable(string name)
  *                 to have the value value.
  */
 
-void
-var_set_variable(string name,
-		 string value)
+void var_set_variable(name, value)
+     string name;
+     string value;
 {
     string_dictionary_Set(is_number_variable(name) ? number_variable_dict
 			  : non_number_variable_dict, name, value);
@@ -169,9 +167,9 @@ var_set_variable(string name,
  *                 to have as its value number's ascii representation.
  */
 
-void
-var_set_variable_to_number(string name,
-			   int number)
+void var_set_variable_to_number(name, number)
+     string name;
+     int number;
 {
     char buffer[20];
 
@@ -192,9 +190,9 @@ var_set_variable_to_number(string name,
  *                 convenience reasons.
  */
 
-void
-var_set_variable_then_free_value(string name,
-				 string value)
+void var_set_variable_then_free_value(name, value)
+     string name;
+     string value;
 {
     string_dictionary_binding *binding;
     int exists;
@@ -231,9 +229,9 @@ var_set_variable_then_free_value(string name,
  *                 data or var_clear_all_variables is called.
  */
 
-void
-var_set_number_variables_to_fields(char *data,
-				   int length)
+void var_set_number_variables_to_fields(data, length)
+     char *data;
+     int length;
 {
     fields_data = data;
     fields_data_length = length;

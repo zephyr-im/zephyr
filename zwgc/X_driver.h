@@ -19,12 +19,9 @@
 
 #include <X11/Xlib.h>
 
-#include "new_string.h"
-
 extern Display *dpy;
 
-extern char *get_string_resource(string, string);
-extern int get_bool_resource(string, string, int);
-extern unsigned long x_string_to_color(char *, unsigned long);
+extern char *get_string_resource();
+extern int get_bool_resource();
 
 #endif

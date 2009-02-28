@@ -14,17 +14,17 @@
 #include "mit-copyright.h"
 
 #ifndef lint
-static const char rcsid_ZWaitForNotice_c[] = "$Id$";
+static char rcsid_ZWaitForNotice_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 #include <sys/socket.h>
 
-Code_t
-Z_WaitForNotice(ZNotice_t *notice,
-		int (*pred) __P((ZNotice_t *, void *)),
-		void *arg,
-		int timeout)
+Code_t Z_WaitForNotice (notice, pred, arg, timeout)
+     ZNotice_t *notice;
+     int (*pred) __P((ZNotice_t *, void *));
+     void *arg;
+     int timeout;
 {
   Code_t retval;
   struct timeval tv, t0;

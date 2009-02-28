@@ -14,7 +14,6 @@
 #include <zephyr/mit-copyright.h>
 #include "zserver.h"
 #include <sys/socket.h>
-#include <com_err.h>
 
 #ifndef lint
 #ifndef SABER
@@ -32,7 +31,7 @@ static const char rcsid_dispatch_c[] =
 #define HOSTS_SIZE_INIT			256
 
 #ifdef DEBUG
-const char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
+ZCONST char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
 				    "HMCTL", "SERVACK", "SERVNAK", "CLIENTACK",
 				    "STAT"};
 #endif
@@ -95,7 +94,8 @@ static struct in_addr *hosts;
 static int hosts_size = 0, num_hosts = 0;
 
 static void
-dump_stats (void *arg)
+dump_stats (arg)
+    void *arg;
 {
     syslog(LOG_INFO, "stats: %s: %d", hm_packets.str, hm_packets.val);
     syslog(LOG_INFO, "stats: %s: %d", control_notices.str,
@@ -123,7 +123,7 @@ dump_stats (void *arg)
  */
 
 void
-handle_packet(void)
+handle_packet()
 {
     Code_t status;
     ZPacket_t input_packet;	/* from the network */
@@ -134,7 +134,7 @@ handle_packet(void)
     int authentic;		/* authentic flag */
     Pending *pending;		/* pending packet */
     int from_server;		/* packet is from another server */
-    ZRealm *realm;		/* foreign realm ptr */
+    Realm *realm;		/* foreign realm ptr */
 #ifdef DEBUG
     static int first_time = 1;
 #endif
@@ -150,7 +150,9 @@ handle_packet(void)
 
     if (otherservers[me_server_idx].queue) {
 	/* something here for me; take care of it */
+#if 1
 	zdbug((LOG_DEBUG, "internal queue process"));
+#endif
 
 	pending = server_dequeue(me_server);
 
@@ -197,11 +199,10 @@ handle_packet(void)
         if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
           authentic = ZAUTH_YES;
         } else {
-	  realm = realm_which_realm(&input_sin);
-          if (realm) {
+          if (realm = realm_which_realm(&input_sin)) {
             authentic = ZCheckRealmAuthentication(&new_notice,
-						       &input_sin,
-						       realm->name);
+                                                  &input_sin,
+                                                  realm->name);
           } else 
 	    authentic = ZCheckAuthentication(&new_notice, &input_sin);
 	}
@@ -213,14 +214,22 @@ handle_packet(void)
         if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
           authentic = ZAUTH_YES;
         } else {
-	  realm = realm_which_realm(&whoisit);
-          if (realm) {
+          if (realm = realm_which_realm(&whoisit)) {
             authentic = ZCheckRealmAuthentication(&new_notice,
                                                   &whoisit,
                                                   realm->name);
           } else
 	    authentic = ZCheckAuthentication(&new_notice, &whoisit);
 	}
+    }
+
+    if (whoisit.sin_port != hm_port && whoisit.sin_port != hm_srv_port &&
+	strcasecmp(new_notice.z_class, ZEPHYR_ADMIN_CLASS) != 0 &&
+	whoisit.sin_port != srv_addr.sin_port &&
+	new_notice.z_kind != CLIENTACK) {
+	syslog(LOG_ERR, "bad port %s/%d", inet_ntoa(whoisit.sin_addr),
+	       ntohs(whoisit.sin_port));
+	return;
     }
 
     message_notices.val++;
@@ -232,16 +241,17 @@ handle_packet(void)
  */
 
 static void
-dispatch(ZNotice_t *notice,
-	 int auth,
-	 struct sockaddr_in *who,
-	 int from_server)
+dispatch(notice, auth, who, from_server)
+    ZNotice_t *notice;
+    int auth;
+    struct sockaddr_in *who;
+    int from_server;
 {
     Code_t status;
     String *notice_class;
     struct sockaddr_in who2;
     int authflag;
-    ZRealm *realm;
+    Realm *realm;
     char *cp;
 #ifdef DEBUG
     char dbg_buf[BUFSIZ];
@@ -255,6 +265,16 @@ dispatch(ZNotice_t *notice,
 	       inet_ntoa(who->sin_addr));
 	return;
     }
+#if 0
+    if (zdebug) {
+	syslog(LOG_DEBUG,
+		"disp:%s '%s' '%s' '%s' notice to '%s' from '%s' %s/%d/%d",
+		ZNoticeKinds[(int) notice->z_kind], notice->z_class,
+		notice->z_class_inst, notice->z_opcode, notice->z_recipient,
+		notice->z_sender, inet_ntoa(who->sin_addr),
+		ntohs(who->sin_port), ntohs(notice->z_port));
+    }
+#endif
 
     if (notice->z_kind == CLIENTACK) {
 	nack_cancel(notice, who);
@@ -262,7 +282,11 @@ dispatch(ZNotice_t *notice,
     }
 
     who2 = *who;
-
+#if 0
+    if (0 && from_server) {
+	/* incorporate server_dispatch here */
+    }
+#endif
     notice_class = make_string(notice->z_class,1);
 
     if (from_server) {
@@ -314,10 +338,11 @@ dispatch(ZNotice_t *notice,
  */
 
 void
-sendit(ZNotice_t *notice,
-       int auth,
-       struct sockaddr_in *who,
-       int external)
+sendit(notice, auth, who, external)
+    ZNotice_t *notice;
+    int auth;
+    struct sockaddr_in *who;
+    int external;
 {
     static int send_counter = 0;
     char recipbuf[ANAME_SZ + INST_SZ + REALM_SZ + 3], *recipp;
@@ -328,7 +353,7 @@ sendit(ZNotice_t *notice,
 
     class = make_string(notice->z_class, 1);
     if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient)) {
-      ZRealm *rlm;
+      Realm *rlm;
 
       acl = class_get_acl(class);
       if (acl != NULL) {
@@ -369,6 +394,34 @@ sendit(ZNotice_t *notice,
 	    return;
 	}
       }
+    }
+    if (!realm_which_realm(who)) {
+	if (memcmp(&notice->z_sender_addr.s_addr, &who->sin_addr.s_addr,
+		   sizeof(notice->z_sender_addr.s_addr))) {
+	    /* someone is playing games... */
+	    /* inet_ntoa returns pointer to static area */
+	    /* max size is 255.255.255.255 */
+	    char buffer[16];
+	    strcpy(buffer, inet_ntoa(who->sin_addr));
+	    if (!auth) {
+		syslog(LOG_WARNING,
+		       "sendit unauthentic fake packet: claimed %s, real %s",
+		       inet_ntoa(notice->z_sender_addr), buffer);
+		clt_ack(notice, who, AUTH_FAILED);
+		free_string(class);
+		return;
+	    }
+	    if (ntohl(notice->z_sender_addr.s_addr) != 0) {
+		syslog(LOG_WARNING,
+		       "sendit invalid address: claimed %s, real %s",
+		       inet_ntoa(notice->z_sender_addr), buffer);
+		clt_ack(notice, who, AUTH_FAILED);
+		free_string(class);
+		return;
+	    }
+	    syslog(LOG_WARNING, "sendit addr mismatch: claimed %s, real %s",
+		   inet_ntoa(notice->z_sender_addr), buffer);
+	}
     }
 
     /* Increment the send counter, used to prevent duplicate sends to
@@ -418,11 +471,12 @@ sendit(ZNotice_t *notice,
  */
 
 static int
-send_to_dest(ZNotice_t *notice,
-	     int auth,
-	     Destination *dest,
-	     int send_counter,
-	     int external)
+send_to_dest(notice, auth, dest, send_counter, external)
+    ZNotice_t *notice;
+    int auth;
+    Destination *dest;
+    int send_counter;
+    int external;
 {
     Client **clientp;
     int any = 0;
@@ -455,7 +509,8 @@ send_to_dest(ZNotice_t *notice,
  */
 
 void
-nack_release(Client *client)
+nack_release(client)
+    Client *client;
 {
     int i;
     Unacked *nacked, *next;
@@ -465,7 +520,7 @@ nack_release(Client *client)
 	    next = nacked->next;
 	    if (nacked->client == client) {
 		timer_reset(nacked->timer);
-		Unacked_delete(nacked);
+		LIST_DELETE(nacked);
 		free(nacked->packet);
 		free(nacked);
 	    }
@@ -481,16 +536,17 @@ nack_release(Client *client)
 /* the arguments must be the same as the arguments to Z_XmitFragment */
 /*ARGSUSED*/
 Code_t
-xmit_frag(ZNotice_t *notice,
-	  char *buf,
-	  int len,
-	  int waitforack)
+xmit_frag(notice, buf, len, waitforack)
+    ZNotice_t *notice;
+    char *buf;
+    int len;
+    int waitforack;
 {
     struct sockaddr_in sin;
     char *savebuf;
     Unacked *nacked;
     Code_t retval;
-    int sendfail = 0;
+    int hashval, sendfail = 0;
 
     retval = ZSendPacket(buf, len, 0);
     if (retval != ZERR_NONE) {
@@ -526,10 +582,9 @@ xmit_frag(ZNotice_t *notice,
     nacked->packsz = len;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-    Unacked_insert(&nacktab[NACKTAB_HASHVAL(sin, nacked->uid)], nacked);
+    LIST_INSERT(&nacktab[NACKTAB_HASHVAL(sin, nacked->uid)], nacked);
     return(ZERR_NONE);
 }
-
 
 /*
  * Send the notice to the client.  After transmitting, put it onto the
@@ -537,15 +592,20 @@ xmit_frag(ZNotice_t *notice,
  */
 
 void
-xmit(ZNotice_t *notice,
-     struct sockaddr_in *dest,
-     int auth,
-     Client *client)
+xmit(notice, dest, auth, client)
+    ZNotice_t *notice;
+    struct sockaddr_in *dest;
+    int auth;
+    Client *client;
 {
     char *noticepack;
     Unacked *nacked;
     int packlen, sendfail = 0;
     Code_t retval;
+
+#if 0
+    zdbug((LOG_DEBUG,"xmit"));
+#endif
 
     noticepack = (char *) malloc(sizeof(ZPacket_t));
     if (!noticepack) {
@@ -559,23 +619,14 @@ xmit(ZNotice_t *notice,
 				   we are distributing authentic and
 				   we have a pointer to auth info
 				   */
-#ifdef HAVE_KRB5
-         retval = ZFormatAuthenticNoticeV5(notice, noticepack, packlen,
-                                           &packlen, client->session_keyblock);
-         if (retval != ZERR_NONE) {
-              syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
-              free(noticepack);
-              return;
-         }
-#else
-#if defined(HAVE_KRB4)
-         retval = ZFormatAuthenticNotice(notice, noticepack, packlen,
-                                           &packlen, client->session_key);
-         if (retval != ZERR_NONE) {
-              syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
-              free(noticepack);
-              return;
-         }
+#ifdef HAVE_KRB4
+	retval = ZFormatAuthenticNotice(notice, noticepack, packlen, &packlen,
+					client->session_key);
+	if (retval != ZERR_NONE) {
+	    syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
+	    free(noticepack);
+	    return;
+	}
 #else /* !HAVE_KRB4 */
 	notice->z_auth = 1;
 	retval = ZFormatSmallRawNotice(notice, noticepack, &packlen);
@@ -585,7 +636,6 @@ xmit(ZNotice_t *notice,
 	    return;
 	}
 #endif /* HAVE_KRB4 */
-#endif /* HAVE_KRB5 */
     } else {
 	notice->z_auth = 0;
 	notice->z_authent_len = 0;
@@ -597,10 +647,10 @@ xmit(ZNotice_t *notice,
          * same thing with authentic Zephyrs.
          */
         if (retval == ZERR_PKTLEN) {
-          ZNotice_t partnotice;
+          ZNotice_t partnotice, newnotice;
           char multi[64];
           char *buffer, *ptr;
-          int buffer_len, hdrlen, offset, fragsize, message_len;
+          int buffer_len, hdrlen, offset, fragsize, ret_len, message_len;
           int origoffset, origlen;
 
           free(noticepack);
@@ -650,7 +700,7 @@ xmit(ZNotice_t *notice,
             (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
             partnotice.z_multinotice = multi;
             if (offset > 0) {
-              (void) Z_gettimeofday(&partnotice.z_uid.tv, (struct timezone *)0);
+              (void) gettimeofday(&partnotice.z_uid.tv, (struct timezone *)0);
               partnotice.z_uid.tv.tv_sec = htonl((u_long)
                                                  partnotice.z_uid.tv.tv_sec);
               partnotice.z_uid.tv.tv_usec = htonl((u_long)
@@ -695,6 +745,10 @@ xmit(ZNotice_t *notice,
 	    return;			/* DON'T put on nack list */
 	}
     }
+#if 0
+    zdbug((LOG_DEBUG," to %s/%d", inet_ntoa(dest->sin_addr),
+	   ntohs(dest->sin_port)));
+#endif
     retval = ZSetDestAddr(dest);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "xmit set addr: %s", error_message(retval));
@@ -729,7 +783,7 @@ xmit(ZNotice_t *notice,
     nacked->packsz = packlen;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-    Unacked_insert(&nacktab[NACKTAB_HASHVAL(*dest, nacked->uid)], nacked);
+    LIST_INSERT(&nacktab[NACKTAB_HASHVAL(*dest, nacked->uid)], nacked);
 }
 
 /*
@@ -739,14 +793,17 @@ xmit(ZNotice_t *notice,
  */
 
 void
-rexmit(void *arg)
+rexmit(arg)
+    void *arg;
 {
     Unacked *nacked = (Unacked *) arg;
     int retval;
 
+#if 1
     syslog(LOG_DEBUG, "rexmit %s/%d #%d time %d",
 	   inet_ntoa(nacked->dest.addr.sin_addr),
-	   ntohs(nacked->dest.addr.sin_port), nacked->rexmits + 1, (int)NOW);
+	   ntohs(nacked->dest.addr.sin_port), nacked->rexmits + 1, NOW);
+#endif
 
     nacked->rexmits++;
     if (rexmit_times[nacked->rexmits] == -1) {
@@ -758,7 +815,7 @@ rexmit(void *arg)
 	     * nack list before calling client_deregister(), which
 	     * scans the nack list.)
 	     */
-	    Unacked_delete(nacked);
+	    LIST_DELETE(nacked);
 	    if (nacked->client) {
 		server_kill_clt(nacked->client);
 		client_deregister(nacked->client, 1);
@@ -774,6 +831,10 @@ rexmit(void *arg)
     }
 
     /* retransmit the packet */
+#if 0
+    zdbug((LOG_DEBUG," to %s/%d", inet_ntoa(nacked->dest.addr.sin_addr),
+	   ntohs(nacked->dest.addr.sin_port)));
+#endif
     retval = ZSetDestAddr(&nacked->dest.addr);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "rexmit set addr: %s", error_message(retval));
@@ -799,18 +860,22 @@ rexmit(void *arg)
  */
 
 void
-clt_ack(ZNotice_t *notice,
-	struct sockaddr_in *who,
-	Sent_type sent)
+clt_ack(notice, who, sent)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
+    Sent_type sent;
 {
     ZNotice_t acknotice;
     ZPacket_t ackpack;
     int packlen;
+    int notme = 0;
     char *sent_name;
     Code_t retval;
 
     if (bdumping) {		/* don't ack while dumping */
+#if 1
 	zdbug((LOG_DEBUG,"bdumping, no ack"));
+#endif
 	return;
     }
 
@@ -839,6 +904,12 @@ clt_ack(ZNotice_t *notice,
       default:
 	abort ();
     }
+
+#if 0
+    zdbug((LOG_DEBUG,"clt_ack type %s for %d to %s/%d", sent_name,
+	   ntohs(notice->z_port), inet_ntoa(who->sin_addr),
+	   ntohs(who->sin_port)));
+#endif
 
     acknotice.z_multinotice = "";
 
@@ -885,13 +956,19 @@ clt_ack(ZNotice_t *notice,
  */
 
 static void
-nack_cancel(ZNotice_t *notice,
-	    struct sockaddr_in *who)
+nack_cancel(notice, who)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
 {
     Unacked *nacked;
     int hashval;
 
     /* search the not-yet-acked table for this packet, and flush it. */
+#if 0
+    zdbug((LOG_DEBUG, "nack_cancel: %s:%08X,%08X",
+	   inet_ntoa(notice->z_uid.zuid_addr),
+	   notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
+#endif
     hashval = NACKTAB_HASHVAL(*who, notice->z_uid);
     for (nacked = nacktab[hashval]; nacked; nacked = nacked->next) {
 	if (nacked->dest.addr.sin_addr.s_addr == who->sin_addr.s_addr
@@ -901,15 +978,17 @@ nack_cancel(ZNotice_t *notice,
 		nacked->client->last_ack = NOW;
 	    timer_reset(nacked->timer);
 	    free(nacked->packet);
-	    Unacked_delete(nacked);
+	    LIST_DELETE(nacked);
 	    free(nacked);
 	    return;
 	}
     }
 
+#if 1
     zdbug((LOG_DEBUG,"nack_cancel: nack not found %s:%08X,%08X",
 	   inet_ntoa (notice->z_uid.zuid_addr),
 	   notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
+#endif
 }
 
 /* for compatibility when sending subscription information to old clients */
@@ -920,18 +999,28 @@ nack_cancel(ZNotice_t *notice,
 /* Dispatch an HM_CTL notice. */
 
 Code_t
-hostm_dispatch(ZNotice_t *notice,
-	       int auth,
-	       struct sockaddr_in *who,
-	       Server *server)
+hostm_dispatch(notice, auth, who, server)
+    ZNotice_t *notice;
+    int auth;
+    struct sockaddr_in *who;
+    Server *server;
 {
+    Server *owner;
     char *opcode = notice->z_opcode;
+    Code_t retval;
     int i, add = 0, remove = 0;
+
+#if 0
+    zdbug((LOG_DEBUG,"hm_disp"));
+#endif
 
     if (notice->z_kind == HMACK) {
 	/* Ignore. */
 	;
     } else if (notice->z_kind != HMCTL) {
+#if 0
+	zdbug((LOG_DEBUG, "bogus HM packet"));
+#endif
 	clt_ack(notice, who, AUTH_FAILED);
     } else if (strcmp(opcode, HM_FLUSH) == 0) {
 	client_flush_host(&who->sin_addr);
@@ -996,16 +1085,17 @@ hostm_dispatch(ZNotice_t *notice,
  */
 
 Code_t
-control_dispatch(ZNotice_t *notice,
-		 int auth,
-		 struct sockaddr_in *who,
-		 Server *server)
+control_dispatch(notice, auth, who, server)
+    ZNotice_t *notice;
+    int auth;
+    struct sockaddr_in *who;
+    Server *server;
 {
     char *opcode = notice->z_opcode;
     Client *client;
     Code_t retval;
     int wantdefs;
-    ZRealm *realm;
+    Realm *realm;
     struct sockaddr_in newwho;
 
     /*
@@ -1043,6 +1133,9 @@ control_dispatch(ZNotice_t *notice,
 	subscr_sendlist(notice, auth, who);
 	return ZERR_NONE;
     } else if (!auth) {
+#if 0
+	zdbug((LOG_DEBUG,"unauth ctrl_disp"));
+#endif
 	if (server == me_server)
 	    clt_ack(notice, who, AUTH_FAILED);
 	return ZERR_NONE;
@@ -1070,27 +1163,9 @@ control_dispatch(ZNotice_t *notice,
 		clt_ack(notice, who, AUTH_FAILED);
 	    return ZERR_NONE;
 	}
-#ifdef HAVE_KRB5
-        if (client->session_keyblock) {
-             krb5_free_keyblock_contents(Z_krb5_ctx, client->session_keyblock);
-             retval = krb5_copy_keyblock_contents(Z_krb5_ctx, ZGetSession(),
-                                         client->session_keyblock);
-        } else {
-             retval = krb5_copy_keyblock(Z_krb5_ctx, ZGetSession(), 
-                                &client->session_keyblock);
-        }
-        if (retval) {
-             syslog(LOG_WARNING, "keyblock copy failed in subscr: %s",
-                    error_message(retval));
-             if (server == me_server)
-                  nack(notice, who);
-             return ZERR_NONE;
-        }
-#else
 #ifdef HAVE_KRB4
 	/* in case it's changed */
 	memcpy(client->session_key, ZGetSession(), sizeof(C_Block));
-#endif
 #endif
 	retval = subscr_subscribe(client, notice, server);
 	if (retval != ZERR_NONE) {
@@ -1108,6 +1183,19 @@ control_dispatch(ZNotice_t *notice,
 		    clt_ack(notice, who, AUTH_FAILED);
 		return ZERR_NONE;
 	    }
+#if 0
+	    if (zdebug) {
+		if (server == me_server) {
+		    syslog(LOG_DEBUG, "subscription cancel for %s/%d\n",
+			   inet_ntoa(who->sin_addr), ntohs(who->sin_port));
+		} else {
+		    syslog(LOG_DEBUG,
+			   "subscription cancel for %s/%d from %s\n",
+			   inet_ntoa(who->sin_addr), ntohs(who->sin_port),
+			   server->addr_str);
+		}
+	    }
+#endif
 	    subscr_cancel(who, notice);
 	} else {
 	    nack(notice, who);
@@ -1117,6 +1205,9 @@ control_dispatch(ZNotice_t *notice,
 	/* canceling subscriptions implies I can punt info about this client */
 	client = client_find(&who->sin_addr, notice->z_port);
 	if (client == NULL) {
+#if 0
+	    zdbug((LOG_DEBUG,"can_sub not found client"));
+#endif
 	    if (server == me_server)
 		nack(notice, who);
 	    return ZERR_NONE;
@@ -1128,6 +1219,10 @@ control_dispatch(ZNotice_t *notice,
 	    return ZERR_NONE;
 	}
 	/* don't flush locations here, let him do it explicitly */
+#if 0
+	zdbug((LOG_DEBUG, "cancelsub clt_dereg %s/%d",
+	       inet_ntoa(who->sin_addr), ntohs(who->sin_port)));
+#endif
 	client_deregister(client, 0);
     } else {
 	syslog(LOG_WARNING, "unknown ctl opcode %s", opcode); 
@@ -1146,7 +1241,7 @@ control_dispatch(ZNotice_t *notice,
 }
 
 void
-hostm_shutdown(void)
+hostm_shutdown()
 {
     int i, s, newserver;
     struct sockaddr_in sin;
@@ -1173,9 +1268,10 @@ hostm_shutdown(void)
 }
 
 void
-realm_shutdown(void)
+realm_shutdown()
 {
     int i, s, newserver;
+    struct sockaddr_in sin;
 
     for (i = 0; i < nservers; i++) {
         if (i != me_server_idx && otherservers[i].state == SERV_UP)
@@ -1197,8 +1293,9 @@ realm_shutdown(void)
 }
 
 static void
-hostm_deathgram(struct sockaddr_in *sin,
-		Server *server)
+hostm_deathgram(sin, server)
+    struct sockaddr_in *sin;
+    Server *server;
 {
     Code_t retval;
     int shutlen;
@@ -1237,7 +1334,7 @@ hostm_deathgram(struct sockaddr_in *sin,
 }
 
 static char *
-hm_recipient(void)
+hm_recipient()
 {
     static char *recipient;
     char *realm;

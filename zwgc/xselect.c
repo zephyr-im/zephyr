@@ -30,7 +30,7 @@ static const char rcsid_xselect_c[] = "$Id$";
 #include "new_string.h"
 #include "xselect.h"
 
-extern char *getSelectedText(void);
+extern char *getSelectedText();
 
 static Time ownership_start = CurrentTime;
 static Time ownership_end = CurrentTime;
@@ -52,10 +52,10 @@ static struct _ZAtom {
 
 /* internal static functions */
 
-static void
-xselNotify(Display *dpy,
-	   XSelectionRequestEvent *selreq,
-	   Atom property)
+static void xselNotify(dpy,selreq,property)
+     Display *dpy;
+     XSelectionRequestEvent *selreq;
+     Atom property;
 {
    XSelectionEvent ev;
 
@@ -82,12 +82,11 @@ static Atom RequestAtoms[] = {
   XChangeProperty(dpy,w,PROP(property,target),(type),(format), \
 		  PropModeReplace, (unsigned char *) (data),(size))
 
-static void
-xselSetProperties(Display *dpy,
-		  Window w,
-		  Atom property,
-		  Atom target,
-		  XSelectionRequestEvent *selreq)
+static void xselSetProperties(dpy,w,property,target,selreq)
+     Display *dpy;
+     Window w;
+     Atom property,target;
+     XSelectionRequestEvent *selreq;
 {
    if (target==ZA_TARGETS) {
 
@@ -118,8 +117,7 @@ xselSetProperties(Display *dpy,
    } else if (target==XA_STRING) {
       char *selected;
 
-      selected = getSelectedText();
-      if (selected) {
+      if (selected = getSelectedText()) {
 	 ChangeProp(XA_STRING,8,selected,string_Length(selected));
       } else {
 	 /* This should only happen if the pasting client is out of
@@ -138,8 +136,8 @@ xselSetProperties(Display *dpy,
 
 /* global functions */
 
-void
-xicccmInitAtoms(Display *dpy)
+void xicccmInitAtoms(dpy)
+     Display *dpy;
 {
    int i;
 
@@ -150,10 +148,10 @@ xicccmInitAtoms(Display *dpy)
        RequestAtoms[i] = *(pRequestAtoms[i]);
 }
 
-int
-xselGetOwnership(Display *dpy,
-		 Window w,
-		 Time time)
+int xselGetOwnership(dpy,w,time)
+     Display *dpy;
+     Window w;
+     Time time;
 {
    int temp;
 
@@ -167,10 +165,10 @@ xselGetOwnership(Display *dpy,
 }
 
 /* Get the selection.  Return !0 if success, 0 if fail */
-int
-xselProcessSelection(Display *dpy,
-		     Window w,
-		     XEvent *event)
+int xselProcessSelection(dpy,w,event)
+     Display *dpy;
+     Window w;
+     XEvent *event;
 {
    XSelectionRequestEvent *selreq = &(event->xselectionrequest);
 
@@ -180,8 +178,8 @@ xselProcessSelection(Display *dpy,
 #endif
 
    if ((ownership_start == CurrentTime) ||
-       (((selreq->time != CurrentTime) &&
-	 (selreq->time < ownership_start)) ||
+       ((selreq->time != CurrentTime) &&
+	(selreq->time < ownership_start) ||
 	((ownership_end != CurrentTime) &&
 	 (ownership_end > ownership_start) &&
 	 (selreq->time > ownership_end))))
@@ -193,16 +191,16 @@ xselProcessSelection(Display *dpy,
    return(1);
 }
 
-void
-xselOwnershipLost(Time time)
+void xselOwnershipLost(time)
+     Time time;
 {
    ownership_end = time;
 }
 
 /*ARGSUSED*/
-void
-xselGiveUpOwnership(Display *dpy,
-		    Window w)
+void xselGiveUpOwnership(dpy,w)
+     Display *dpy;
+     Window w;
 {
    XSetSelectionOwner(dpy,XA_PRIMARY,None,ownership_start);
 

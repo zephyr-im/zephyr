@@ -11,17 +11,17 @@
  */
 
 #ifndef lint
-static const char rcsid_ZOpenPort_c[] = "$Id$";
+static char rcsid_ZOpenPort_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 #include <sys/socket.h>
 
-Code_t
-ZOpenPort(u_short *port)
+Code_t ZOpenPort(port)
+    u_short *port;
 {
     struct sockaddr_in bindin;
-    unsigned int len;
+    int len;
     
     (void) ZClosePort();
 

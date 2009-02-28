@@ -11,14 +11,13 @@
  */
 
 #ifndef lint
-static const char rcsid_ZCompareUID_c[] = "$Id$";
+static char rcsid_ZCompareUID_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
-int
-ZCompareUID(ZUnique_Id_t *uid1,
-	    ZUnique_Id_t *uid2)
+int ZCompareUID(uid1, uid2)
+    ZUnique_Id_t *uid1, *uid2;
 {
     return (!memcmp((char *)uid1, (char *)uid2, sizeof (*uid1)));
 }

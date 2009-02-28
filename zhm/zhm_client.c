@@ -14,19 +14,17 @@
 
 #ifndef lint
 #ifndef SABER
-static const char rcsid_hm_client_c[] = "$Id$";
+static char rcsid_hm_client_c[] = "$Id$";
 #endif /* SABER */
 #endif /* lint */
 
 extern int no_server, nclt, deactivated, noflushflag;
 extern struct sockaddr_in cli_sin, serv_sin, from;
 
-extern void send_flush_notice(char *);
-extern void new_server(char *sugg_serv);
-
-void transmission_tower(ZNotice_t *notice,
-			char *packet,
-			int pak_len)
+void transmission_tower(notice, packet, pak_len)
+     ZNotice_t *notice;
+     char *packet;
+     int pak_len;
 {
     ZNotice_t gack;
     Code_t ret;
@@ -76,7 +74,7 @@ void transmission_tower(ZNotice_t *notice,
 	    Zperr(ret);
 	    com_err("hm", ret, "setting destination");
 	}
-	if ((ret = ZSendPacket(packet, pak_len, 0)) != ZERR_NONE) {
+	if ((ret = send_outgoing(notice)) != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("hm", ret, "while sending raw notice");
 	}
@@ -86,7 +84,8 @@ void transmission_tower(ZNotice_t *notice,
 }
 
 Code_t
-send_outgoing(ZNotice_t *notice)
+send_outgoing(notice)
+ZNotice_t *notice;
 {
     Code_t retval;
     char *packet;

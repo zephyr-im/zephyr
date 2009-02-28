@@ -24,13 +24,6 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 /*                         The tty & plain filters:                         */
 /*                                                                          */
 /****************************************************************************/
-#ifdef HAVE_TERMCAP_H
-#include <termcap.h>
-#else
-#ifdef HAVE_TERM_H
-#include <term.h>
-#endif
-#endif
 
 #include "new_memory.h"
 #include "new_string.h"
@@ -40,7 +33,7 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 #include "error.h"
 
 /***************************************************************************/
-#ifndef HAVE_TERMCAP_H
+
 extern int tgetent();
 extern char *tgetstr(),*getenv();
 #ifdef linux
@@ -49,7 +42,6 @@ extern speed_t ospeed;
 extern short ospeed;
 #endif
 char PC;
-#endif
 
 /* Dictionary naming convention:
 
@@ -84,18 +76,19 @@ static char code_buf[10240], *code_buf_pos = code_buf, *code;
 		   *code_buf_pos++ = 0, TD_SET(k, code))
 
 static int
-tty_outc(int c)
+tty_outc(c)
+    int c;
 {
     *code_buf_pos++ = c;
     return 0;
 }
 
 /* ARGSUSED */
-int
-tty_filter_init(char *drivername,
-		char notfirst,
-		int *pargc,
-		char **argv)
+int tty_filter_init(drivername, notfirst, pargc, argv)
+char *drivername;
+char notfirst;
+int *pargc;
+char **argv;
 {
     static char st_buf[128];
     char tc_buf[1024], *p = st_buf, *tmp, *term;
@@ -142,65 +135,59 @@ tty_filter_init(char *drivername,
 
 	tmp = tgetstr("pc", &p);
 	PC = (tmp) ? *tmp : 0;
-	tmp = tgetstr("md", &p);
-	if (tmp) {	/* bold ? */
+	if (tmp = tgetstr("md",&p)) {	/* bold ? */
 	    EXPAND("B.bold");
 	    tmp = tgetstr("me",&p);
 	    EXPAND("E.bold");
 	}
-	tmp = tgetstr("mr", &p);
-	if (tmp) {	/* reverse video? */
+	if (tmp = tgetstr("mr",&p)) {	/* reverse video? */
 	    EXPAND("B.rw");
-	    tmp = tgetstr("me", &p);
+	    tmp = tgetstr("me",&p);
 	    EXPAND("E.rw");
 	}
-	tmp = tgetstr("bl", &p);
-	if (tmp) {	/* Bell ? */
+	if (tmp = tgetstr("bl",&p)) {	/* Bell ? */
 	    EXPAND("B.bell");
 	    TD_SET("E.bell", NULL);
 	}
-	tmp = tgetstr("mb", &p);
-	if (tmp) {	/* Blink ? */
+	if (tmp = tgetstr("mb",&p)) {	/* Blink ? */
 	    EXPAND("B.blink");
-	    tmp = tgetstr("me", &p);
+	    tmp = tgetstr("me",&p);
 	    EXPAND("E.blink");
 	}
-	tmp = tgetstr("us", &p);
-	if (tmp) {	/* Underline ? */
+	if (tmp = tgetstr("us",&p))	{ /* Underline ? */
 	    EXPAND("B.u");
-	    tmp = tgetstr("ue", &p);
+	    tmp = tgetstr("ue",&p);
 	    EXPAND("E.u");
 	}
-	tmp = tgetstr("so", &p);
-	if (tmp) {	/* Standout ? */
+	if (tmp = tgetstr("so",&p))	{ /* Standout ? */
 	    EXPAND("B.so");
-	    tmp = tgetstr("se", &p);
+	    tmp = tgetstr("se",&p);
 	    EXPAND("E.so");
 	}
     }    
     /* Step 2: alias others to the nearest substitute */
     
     /* Bold = so, else rv, else ul */
-    if (NULL == string_dictionary_Lookup(termcap_dict, "B.bold")) {
-	if((b = string_dictionary_Lookup(termcap_dict, "B.so"))) {
-	    TD_SET("B.bold", b->value);
+    if (NULL == string_dictionary_Lookup(termcap_dict,"B.bold")) {
+	if(b = string_dictionary_Lookup(termcap_dict,"B.so")) {
+	    TD_SET("B.bold",b->value);
 	    TD_SET("E.bold",
-		   string_dictionary_Lookup(termcap_dict, "E.so")->value);
-	} else if ((b = string_dictionary_Lookup(termcap_dict, "B.rv"))) {
-	    TD_SET("B.bold", b->value);
+		   string_dictionary_Lookup(termcap_dict,"E.so")->value);
+	} else if (b = string_dictionary_Lookup(termcap_dict,"B.rv")) {
+	    TD_SET("B.bold",b->value);
 	    TD_SET("E.bold",
-		   string_dictionary_Lookup(termcap_dict, "E.rv")->value);
-	} else if ((b = string_dictionary_Lookup(termcap_dict,"B.u"))) {
-	    TD_SET("B.bold", b->value);
+		   string_dictionary_Lookup(termcap_dict,"E.rv")->value);
+	} else if (b = string_dictionary_Lookup(termcap_dict,"B.u")) {
+	    TD_SET("B.bold",b->value);
 	    TD_SET("E.bold",
-		   string_dictionary_Lookup(termcap_dict, "E.u")->value);
+		   string_dictionary_Lookup(termcap_dict,"E.u")->value);
 	}
     }
     
     /* Bell = ^G */
-    if (NULL == string_dictionary_Lookup(termcap_dict, "B.bell")) {
-	TD_SET("B.bell", "\007");
-	TD_SET("E.bell", NULL);
+    if (NULL == string_dictionary_Lookup(termcap_dict,"B.bell")) {
+	TD_SET("B.bell","\007");
+	TD_SET("E.bell",NULL);
     }
     
     /* Underline -> nothing */
@@ -214,10 +201,10 @@ tty_filter_init(char *drivername,
 
 
 
-static int
-fixed_string_eq(string pattern,
-		char *text,
-		int text_length)
+static int fixed_string_eq(pattern, text, text_length)
+     string pattern;
+     char *text;
+     int text_length;
 {
     while (*pattern && text_length>0 && *pattern == *text) {
 	pattern++;
@@ -241,8 +228,8 @@ typedef struct _tty_str_info {
     unsigned int ignore: 1;
 } tty_str_info;
 
-static void
-free_info(tty_str_info *info)
+static void free_info(info)
+     tty_str_info *info;
 {
     tty_str_info *next_info;
 
@@ -253,10 +240,10 @@ free_info(tty_str_info *info)
     }
 }
 
-static int
-do_mode_change(tty_str_info *current_mode_p,
-	       char *text,
-	       int text_length)
+static int do_mode_change(current_mode_p, text, text_length)
+     tty_str_info *current_mode_p;
+     char *text;
+     int text_length;
 {
     /* alignment commands: */
     if (fixed_string_eq("left", text, text_length) ||
@@ -292,8 +279,8 @@ do_mode_change(tty_str_info *current_mode_p,
     return 0;
 }
 
-static tty_str_info *
-convert_desc_to_tty_str_info(desctype *desc)
+static tty_str_info *convert_desc_to_tty_str_info(desc)
+     desctype *desc;
 {
     tty_str_info *temp;
     tty_str_info *result = NULL;
@@ -380,10 +367,10 @@ convert_desc_to_tty_str_info(desctype *desc)
 
 #define  max(a,b)                ((a)>(b)?(a):(b))
 
-static int
-line_width(int left_width,
-	   int center_width,
-	   int right_width)
+static int line_width(left_width, center_width, right_width)
+     int left_width;
+     int center_width;
+     int right_width;
 {
     if (center_width>0) {
 	if (left_width==0 && right_width==0)
@@ -397,8 +384,8 @@ line_width(int left_width,
     }
 }
 
-static int
-calc_max_line_width(tty_str_info *info)
+static int calc_max_line_width(info)
+     tty_str_info *info;
 {
     int max_line_width = 0;
     int left = 0;
@@ -445,9 +432,9 @@ calc_max_line_width(tty_str_info *info)
     return(max_line_width);
 }
 
-string
-tty_filter(string text,
-	   int use_fonts)
+string tty_filter(text, use_fonts)
+     string text;
+     int use_fonts;
 {
     string text_copy = string_Copy(text);
     string result_so_far = string_Copy("");
@@ -496,12 +483,10 @@ tty_filter(string text,
 	    item = string_Copy("");
 	    
 	    if (info->bold_p && use_fonts) {
-		temp = string_dictionary_Fetch(termcap_dict, "B.bold");
-		if (temp)
+		if (temp = string_dictionary_Fetch(termcap_dict, "B.bold"))
 		  item = string_Concat2(item, temp);
 	    } else if (info->italic_p && use_fonts) {
-		temp = string_dictionary_Fetch(termcap_dict, "B.u");
-		if (temp)
+		if (temp = string_dictionary_Fetch(termcap_dict, "B.u"))
 		  item = string_Concat2(item, temp);
 	    }
 	    temp = string_CreateFromData(info->str, info->len);
@@ -509,12 +494,10 @@ tty_filter(string text,
 	    free(temp);
 
 	    if (info->bold_p && use_fonts) {
-		temp = string_dictionary_Fetch(termcap_dict, "E.bold");
-		if (temp)
+		if (temp = string_dictionary_Fetch(termcap_dict, "E.bold"))
 		  item = string_Concat2(item, temp);
 	    } else if (info->italic_p && use_fonts) {
-		temp = string_dictionary_Fetch(termcap_dict, "E.u");
-		if (temp)
+		if (temp = string_dictionary_Fetch(termcap_dict, "E.u"))
 		  item = string_Concat2(item, temp);
 	    }
 

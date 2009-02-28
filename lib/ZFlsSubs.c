@@ -16,8 +16,7 @@
 static const char rcsid_ZFlushSubscriptions_c[] = "$Id$";
 #endif
 
-Code_t
-ZFlushSubscriptions(void)
+Code_t ZFlushSubscriptions()
 {
 	register int i;
 	

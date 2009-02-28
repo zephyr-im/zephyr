@@ -77,7 +77,7 @@ lexer.o: y.tab.h
 parser.o: y.tab.c y.tab.h
 	${CC} -c ${ALL_CFLAGS} -o $@ y.tab.c
 
-y.tab.c y.tab.h: ${srcdir}/parser.y
+y.tab.c y.tab.h: parser.y
 	${YACC} ${YFLAGS} ${srcdir}/parser.y
 
 .c.o:

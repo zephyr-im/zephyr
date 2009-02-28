@@ -59,17 +59,21 @@ static Client *client_bucket[HASHSIZE];
 				htons((unsigned short) (port))) % HASHSIZE)
 
 Code_t
-client_register(ZNotice_t *notice,
-		struct in_addr *host,
-		Client **client_p,
-		int wantdefaults)
+client_register(notice, host, client_p, wantdefaults)
+    ZNotice_t *notice;
+    struct in_addr *host;
+    Client **client_p;
+    int wantdefaults;
 {
     Client *client;
+    Code_t retval;
 
     /* chain the client's host onto this server's host list */
 
+#if 1
     zdbug((LOG_DEBUG, "client_register: adding %s at %s/%d",
 	   notice->z_sender, inet_ntoa(*host), ntohs(notice->z_port)));
+#endif
 
     if (!notice->z_port)
 	return ZSRV_BADSUBPORT;
@@ -80,12 +84,8 @@ client_register(ZNotice_t *notice,
 	if (!client)
 	    return ENOMEM;
 	memset(&client->addr, 0, sizeof(struct sockaddr_in));
-#ifdef HAVE_KRB5
-        client->session_keyblock = NULL;
-#else
-#ifdef HAVE_KRB4
+#ifdef KERBEROS
 	memset(&client->session_key, 0, sizeof(client->session_key));
-#endif
 #endif
 	client->last_send = 0;
 	client->last_ack = NOW;
@@ -95,8 +95,8 @@ client_register(ZNotice_t *notice,
 	client->subs = NULL;
 	client->realm = NULL;
 	client->principal = make_string(notice->z_sender, 0);
-	Client_insert(&client_bucket[INET_HASH(&client->addr.sin_addr,
-					       notice->z_port)], client);
+	LIST_INSERT(&client_bucket[INET_HASH(&client->addr.sin_addr,
+					     notice->z_port)], client);
     }
 
     /* Add default subscriptions only if this is not resulting from a brain
@@ -114,24 +114,22 @@ client_register(ZNotice_t *notice,
  */
 
 void
-client_deregister(Client *client,
-		  int flush)
+client_deregister(client, flush)
+    Client *client;
+    int flush;
 {
-    Client_delete(client);
+    LIST_DELETE(client);
     nack_release(client);
     subscr_cancel_client(client);
     free_string(client->principal);
-#ifdef HAVE_KRB5
-    if (client->session_keyblock)
-         krb5_free_keyblock(Z_krb5_ctx, client->session_keyblock);
-#endif
     if (flush)
 	uloc_flush_client(&client->addr);
     free(client);
 }
 
 void
-client_flush_host(struct in_addr *host)
+client_flush_host(host)
+    struct in_addr *host;
 {
     int i;
     Client *client, *next;
@@ -147,7 +145,7 @@ client_flush_host(struct in_addr *host)
 }
 
 Code_t
-client_send_clients(void)
+client_send_clients()
 {
     int i;
     Client *client;
@@ -180,7 +178,8 @@ client_send_clients(void)
  */
 
 void
-client_dump_clients(FILE *fp)
+client_dump_clients(fp)
+    FILE *fp;
 {
     Client *client;
     int i;
@@ -199,8 +198,9 @@ client_dump_clients(FILE *fp)
  */
 
 Client *
-client_find(struct in_addr *host,
-	    unsigned int port)
+client_find(host, port)
+    struct in_addr *host;
+    unsigned int port;
 {
     Client *client;
     long hashval;

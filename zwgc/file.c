@@ -38,13 +38,13 @@ static const char rcsid_file_c[] = "$Id$";
  *               if necessary.
  */
 
-char *get_home_directory(void)
+char *get_home_directory()
 {
     char *result;
+    char *getenv();
     struct passwd *passwd_entry;
 
-    result = getenv("HOME");
-    if (result)
+    if (result = getenv("HOME"))
       return(result);
 
     if (!(passwd_entry = getpwuid(getuid())))
@@ -57,9 +57,10 @@ char *get_home_directory(void)
  *
  */
 
-FILE *locate_file(char *override_filename,
-		  char *home_dir_filename,
-		  char *fallback_filename)
+FILE *locate_file(override_filename, home_dir_filename, fallback_filename)
+     char *override_filename;
+     char *home_dir_filename;
+     char *fallback_filename;
 {
     char *filename;
     FILE *result;
@@ -81,8 +82,7 @@ FILE *locate_file(char *override_filename,
     }
 
     if (home_dir_filename) {
-	filename = get_home_directory();
-	if (filename) {
+	if (filename = get_home_directory()) {
 	    filename = string_Concat(filename, "/");
 	    filename = string_Concat2(filename, home_dir_filename);
 	    result = fopen(filename, "r");

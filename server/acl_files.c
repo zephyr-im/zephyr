@@ -11,6 +11,7 @@
  */
 
 /* Define this if you really want the ACL-writing code included.  */
+/* #define WRITE_ACL */
 
 /*
  * Stolen from lib/acl_files.c because acl_load needs to be externally
@@ -47,13 +48,18 @@ static const char rcsid_acl_files_c[] = "$Id$";
 
 #define COR(a,b) ((a!=NULL)?(a):(b))
 
+extern int errno;
+
+extern time_t time();
+
 /* Canonicalize a principal name */
 /* If instance is missing, it becomes "" */
 /* If realm is missing, it becomes the local realm */
 /* Canonicalized form is put in canon, which must be big enough to hold
    MAX_PRINCIPAL_SIZE characters */
-void acl_canonicalize_principal(char *principal,
-				char *canon)
+void acl_canonicalize_principal(principal, canon)
+    char *principal;
+    char *canon;
 {
     char *end;
     char *dot, *atsign;
@@ -114,10 +120,143 @@ void acl_canonicalize_principal(char *principal,
 #endif
 }
 
+#ifdef notdef
+/* Get a lock to modify acl_file */
+/* Return new FILE pointer */
+/* or NULL if file cannot be modified */
+/* REQUIRES WRITE PERMISSION TO CONTAINING DIRECTORY */
+static FILE *acl_lock_file(acl_file)
+    char *acl_file;
+{
+    struct stat s;
+    char new[LINESIZE];
+    int nfd;
+    FILE *nf;
+    int mode;
+
+    if (stat(acl_file, &s) < 0) return(NULL);
+    mode = s.st_mode;
+    sprintf(new, NEW_FILE, acl_file);
+    for (;;) {
+	/* Open the new file */
+	if ((nfd = open(new, O_WRONLY|O_CREAT|O_EXCL, mode)) < 0) {
+	    if (errno == EEXIST) {
+		/* Maybe somebody got here already, maybe it's just old */
+		if (stat(new, &s) < 0) return(NULL);
+		if (time(0) - s.st_ctime > WAIT_TIME) {
+		    /* File is stale, kill it */
+		    unlink(new);
+		    continue;
+		} else {
+		    /* Wait and try again */
+		    sleep(1);
+		    continue;
+		}
+	    } else {
+		/* Some other error, we lose */
+		return(NULL);
+	    }
+	}
+
+	/* If we got to here, the lock file is ours and ok */
+	/* Reopen it under stdio */
+	if ((nf = fdopen(nfd, "w")) == NULL) {
+	    /* Oops, clean up */
+	    unlink(new);
+	}
+	return(nf);
+    }
+}
+
+/* Commit changes to acl_file written onto FILE *f */
+/* Returns zero if successful */
+/* Returns > 0 if lock was broken */
+/* Returns < 0 if some other error occurs */
+/* Closes f */
+static int acl_commit(acl_file, f)
+    char *acl_file;
+    FILE *f;     
+{
+#ifdef WRITE_ACL
+    char new[LINESIZE];
+    int ret;
+    struct stat s;
+
+    sprintf(new, NEW_FILE, acl_file);
+    if (fflush(f) < 0
+       || fstat(fileno(f), &s) < 0
+       || s.st_nlink == 0) {
+	acl_abort(acl_file, f);
+	return(-1);
+    }
+
+    ret = rename(new, acl_file);
+    fclose(f);
+    return(ret);
+#else
+    abort ();
+#endif
+}
+
+/* Abort changes to acl_file written onto FILE *f */
+/* Returns 0 if successful, < 0 otherwise */
+/* Closes f */
+static int acl_abort(acl_file, f)
+    char *acl_file;
+    FILE *f;     
+{
+#ifdef WRITE_ACL
+    char new[LINESIZE];
+    int ret;
+    struct stat s;
+
+    /* make sure we aren't nuking someone else's file */
+    if (fstat(fileno(f), &s) < 0 || s.st_nlink == 0) {
+	fclose(f);
+	return(-1);
+    } else {
+	sprintf(new, NEW_FILE, acl_file);
+	ret = unlink(new);
+	fclose(f);
+	return(ret);
+    }
+#else
+    abort ();
+#endif
+}
+
+/* Initialize an acl_file */
+/* Creates the file with permissions perm if it does not exist */
+/* Erases it if it does */
+/* Returns return value of acl_commit */
+int
+acl_initialize(acl_file, perm)
+    char *acl_file;
+    int perm;
+{
+    FILE *new;
+    int fd;
+
+    /* Check if the file exists already */
+    if ((new = acl_lock_file(acl_file)) != NULL) {
+	return(acl_commit(acl_file, new));
+    } else {
+	/* File must be readable and writable by owner */
+	if ((fd = open(acl_file, O_CREAT|O_EXCL, perm|0600)) < 0) {
+	    return(-1);
+	} else {
+	    close(fd);
+	    return(0);
+	}
+    }
+}
+
+#endif /* notdef */
+
 /* Eliminate all whitespace character in buf */
 /* Modifies its argument */
-static void
-nuke_whitespace(char *buf)
+static void nuke_whitespace(buf)
+    char *buf;
 {
     char *pin, *pout;
 
@@ -135,8 +274,8 @@ struct hashtbl {
 };
 
 /* Make an empty hash table of size s */
-static struct hashtbl *
-make_hash(int size)
+static struct hashtbl *make_hash(size)
+    int size;
 {
     struct hashtbl *h;
 
@@ -150,7 +289,8 @@ make_hash(int size)
 
 /* Destroy a hash table */
 static void
-destroy_hash(struct hashtbl *h)
+destroy_hash(h)
+    struct hashtbl *h;
 {
     int i;
 
@@ -163,7 +303,8 @@ destroy_hash(struct hashtbl *h)
 
 /* Compute hash value for a string */
 static unsigned int
-hashval(char *s)
+hashval(s)
+    char *s;
 {
     unsigned hv;
 
@@ -174,15 +315,18 @@ hashval(char *s)
 }
 
 /* Add an element to a hash table */
-static void
-add_hash(struct hashtbl *h,
-	 char *el)
+static void add_hash(h, el)
+    struct hashtbl *h;
+    char *el;
 {
     unsigned hv;
     char *s;
     char **old;
     int i;
 
+#if 0
+    fprintf (stderr, "adding %s to acl hash %08X\n", el, h);
+#endif
     /* Make space if it isn't there already */
     if (h->entries + 1 > (h->size >> 1)) {
 	old = h->tbl;
@@ -208,16 +352,29 @@ add_hash(struct hashtbl *h,
 
 /* Returns nonzero if el is in h */
 static int
-check_hash(struct hashtbl *h,
-	   char *el)
+check_hash(h, el)
+    struct hashtbl *h;
+    char *el;
 {
     unsigned hv;
 
+#if 0
+    fprintf (stderr, "looking for %s in acl %08X\n", el, h);
+#endif
     for (hv = hashval(el) % h->size; h->tbl[hv]; hv = (hv + 1) % h->size) {
+#if 0
+	fprintf (stderr, "\tstrcmp (%s,...)\n", h->tbl[hv]);
+#endif
 	if (!strcmp(h->tbl[hv], el)) {
+#if 0
+	    fprintf (stderr, "success!\n");
+#endif
 	    return 1;
 	}
     }
+#if 0
+    fprintf (stderr, "failure\n");
+#endif
     return 0;
 }
 
@@ -234,7 +391,8 @@ static int acl_cache_next = 0;
 /* Returns < 0 if unsuccessful in loading acl */
 /* Returns index into acl_cache otherwise */
 /* Note that if acl is already loaded, this is just a lookup */
-int acl_load(char *name)
+int acl_load(name)
+    char *name;
 {
     int i;
     FILE *f;
@@ -272,8 +430,13 @@ int acl_load(char *name)
      */
     if (acl_cache[i].acl == (struct hashtbl *) 0) {
 	/* Gotta reload */
+#if 0
+	fprintf (stderr, "attempting to load %s\n", name);
+#endif
 	if ((f = fopen(name, "r")) == NULL) {
-	    syslog(LOG_ERR, "Error loading acl file %s: %m", name);
+#if 0
+	    perror (name);
+#endif
 	    return -1;
 	}
 	if (acl_cache[i].acl) destroy_hash(acl_cache[i].acl);
@@ -293,7 +456,7 @@ int acl_load(char *name)
  * the next time they are requested.
  */
 void
-acl_cache_reset(void)
+acl_cache_reset()
 {
 	int	i;
 	
@@ -310,12 +473,15 @@ acl_cache_reset(void)
 
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Principal is not canonicalized, and no wildcarding is done */
-int
-acl_exact_match(char *acl,
-		char *principal)
+acl_exact_match(acl, principal)
+    char *acl;
+    char *principal;
 {
     int idx;
 
+#if 0
+    fprintf (stderr, "checking for %s in %s\n", principal, acl);
+#endif
     return((idx = acl_load(acl)) >= 0
 	   && check_hash(acl_cache[idx].acl, principal));
 }
@@ -323,8 +489,9 @@ acl_exact_match(char *acl,
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Recognizes wildcards in acl. */
 int
-acl_check(char *acl,
-	  char *principal)
+acl_check(acl, principal)
+    char *acl;
+    char *principal;
 {
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];
@@ -351,3 +518,71 @@ acl_check(char *acl,
        
     return(0);
 }
+
+#ifdef notdef
+/* Adds principal to acl */
+/* Wildcards are interpreted literally */
+int
+acl_add(acl, principal)
+    char *acl;
+    char *principal;
+{
+    int idx;
+    int i;
+    FILE *new;
+    char canon[MAX_PRINCIPAL_SIZE];
+
+    acl_canonicalize_principal(principal, canon);
+
+    if ((new = acl_lock_file(acl)) == NULL) return(-1);
+    if ((acl_exact_match(acl, canon))
+       || (idx = acl_load(acl)) < 0) {
+	acl_abort(acl, new);
+	return(-1);
+    }
+    /* It isn't there yet, copy the file and put it in */
+    for (i = 0; i < acl_cache[idx].acl->size; i++) {
+	if (acl_cache[idx].acl->tbl[i] != NULL) {
+	    if (fputs(acl_cache[idx].acl->tbl[i], new) == NULL
+	       || putc('\n', new) != '\n') {
+		acl_abort(acl, new);
+		return(-1);
+	    }
+	}
+    }
+    fputs(canon, new);
+    putc('\n', new);
+    return(acl_commit(acl, new));
+}
+
+/* Removes principal from acl */
+/* Wildcards are interpreted literally */
+int
+acl_delete(acl, principal)
+    char *acl;
+    char *principal;
+{
+    int idx;
+    int i;
+    FILE *new;
+    char canon[MAX_PRINCIPAL_SIZE];
+
+    acl_canonicalize_principal(principal, canon);
+
+    if ((new = acl_lock_file(acl)) == NULL) return(-1);
+    if ((!acl_exact_match(acl, canon))
+       || (idx = acl_load(acl)) < 0) {
+	acl_abort(acl, new);
+	return(-1);
+    }
+    /* It isn't there yet, copy the file and put it in */
+    for (i = 0; i < acl_cache[idx].acl->size; i++) {
+	if (acl_cache[idx].acl->tbl[i] != NULL
+	   && strcmp(acl_cache[idx].acl->tbl[i], canon)) {
+	    fputs(acl_cache[idx].acl->tbl[i], new);
+	    putc('\n', new);
+	}
+    }
+    return(acl_commit(acl, new));
+}
+#endif /* notdef */

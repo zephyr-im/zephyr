@@ -11,19 +11,19 @@
  */
 
 #ifndef lint
-static const char rcsid_ZSendPacket_c[] =
+static char rcsid_ZSendPacket_c[] =
     "$Zephyr: /mit/zephyr/src/lib/RCS/ZSendPacket.c,v 1.29 91/03/21 11:57:08 raeburn Exp $";
 #endif
 
 #include <internal.h>
 #include <sys/socket.h>
 
-static int wait_for_hmack(ZNotice_t *, void *);
+static int wait_for_hmack();
 
-Code_t
-ZSendPacket(char *packet,
-	    int len,
-	    int waitforack)
+Code_t ZSendPacket(packet, len, waitforack)
+    char *packet;
+    int len;
+    int waitforack;
 {
     Code_t retval;
     struct sockaddr_in dest;
@@ -51,8 +51,8 @@ ZSendPacket(char *packet,
     if ((retval = ZParseNotice(packet, len, &notice)) != ZERR_NONE)
 	return (retval);
     
-    retval = Z_WaitForNotice(&acknotice, wait_for_hmack, &notice.z_uid,
-			     HM_TIMEOUT);
+    retval = Z_WaitForNotice (&acknotice, wait_for_hmack, &notice.z_uid,
+			      HM_TIMEOUT);
     if (retval == ETIMEDOUT)
       return ZERR_HMDEAD;
     if (retval == ZERR_NONE)
@@ -60,9 +60,9 @@ ZSendPacket(char *packet,
     return retval;
 }
 
-static int
-wait_for_hmack(ZNotice_t *notice,
-	       void *uid)
+static int wait_for_hmack(notice, uid)
+    ZNotice_t *notice;
+    ZUnique_Id_t *uid;
 {
-    return (notice->z_kind == HMACK && ZCompareUID(&notice->z_uid, (ZUnique_Id_t *)uid));
+    return (notice->z_kind == HMACK && ZCompareUID(&notice->z_uid, uid));
 }

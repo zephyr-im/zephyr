@@ -14,9 +14,9 @@
 
 static int DynPut __P((DynObject obj, DynPtr el, int index));
 
-DynPtr
-DynGet(DynObject obj,
-       int num)
+DynPtr DynGet(obj, num)
+   DynObject obj;
+   int num;
 {
      if (num < 0) {
 	  if (obj->debug)
@@ -38,9 +38,9 @@ DynGet(DynObject obj,
      return (DynPtr) obj->array + obj->el_size*num;
 }
 
-int
-DynAdd(DynObject obj,
-       DynPtr el)
+int DynAdd(obj, el)
+   DynObject obj;
+   DynPtr el;
 {
      int	ret;
 
@@ -60,10 +60,10 @@ DynAdd(DynObject obj,
  * obj->num_el) will not be updated properly and many other functions
  * in the library will lose.  Have a nice day.
  */
-static int
-DynPut(DynObject obj,
-       DynPtr el,
-       int index)
+static int DynPut(obj, el, index)
+   DynObject obj;
+   DynPtr el;
+   int index;
 {
      int ret;
      

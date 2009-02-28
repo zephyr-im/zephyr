@@ -11,17 +11,17 @@
  */
 
 #ifndef lint
-static const char rcsid_ZFormatRawNoticeList_c[] = "$Id$";
+static char rcsid_ZFormatRawNoticeList_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
-Code_t
-ZFormatSmallRawNoticeList(ZNotice_t *notice,
-			  char *list[],
-			  int nitems,
-			  ZPacket_t buffer,
-			  int *ret_len)
+Code_t ZFormatSmallRawNoticeList(notice, list, nitems, buffer, ret_len)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+    ZPacket_t buffer;
+    int *ret_len;
 {
     Code_t retval;
     int hdrlen, i, size;

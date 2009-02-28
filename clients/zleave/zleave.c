@@ -17,7 +17,7 @@
 #include <com_err.h>
 
 #ifndef lint
-static const char rcsid_zlocate_c[] = "$Id$";
+static char rcsid_zlocate_c[] = "$Id$";
 #endif /* lint */
 
 /*
@@ -52,27 +52,23 @@ char copyright[] =
  */
 char origlogin[20];
 char tempfile[40];
+char *getlogin();
 char *whenleave;
 char *reminder_message = NULL;
 char buff[100];
 int use_zephyr=1, oldpid;
 
-void usage(void);
-void doalarm(long);
-void bother(long, char *);
-void delay(long);
-int gethm(char *, int *, int*);
+void usage(), doalarm(), bother(), delay();
 
-int
-main(int argc,
-     char **argv)
+main(argc, argv)
+char **argv;
 {
 	time_t now;
-	long when, diff;
-	int hours, minutes;
+	long when, diff, hours, minutes;
 	char *cp;
 	FILE *fp;
 	struct tm *nv;
+	int gethm();
 	int port, c;
 	ZSubscription_t sub;
 	
@@ -184,7 +180,7 @@ main(int argc,
 }
 
 void
-usage(void)
+usage()
 {
 	fprintf(stderr, "usage: zleave [[+]hhmm [-m \"Reminder Message\"]]\n\
 \tor: zleave can[cel]\n");
@@ -192,12 +188,12 @@ usage(void)
 }
 
 int
-gethm(char *cp,
-      int *hp,
-      int *mp)
+gethm(cp, hp, mp)
+register char *cp;
+int *hp, *mp;
 {
-	char c;
-	int tod;
+	register char c;
+	register int tod;
 
 	tod = 0;
 	while ((c = *cp++) != '\0') {
@@ -211,7 +207,8 @@ gethm(char *cp,
 }
 
 void
-doalarm(long nmins)
+doalarm(nmins)
+long nmins;
 {
 	time_t daytime;
 	char *msg1, *msg2, *msg3, *msg4;
@@ -254,8 +251,7 @@ doalarm(long nmins)
 	daytime += gseconds;
 	whenleave = ctime(&daytime);
 
-	fp = fopen(tempfile,"r");
-	if (fp) {
+	if (fp = fopen(tempfile,"r")) {
 	      if (fscanf(fp, "%d", &oldpid) == 1)
 		      if (!kill(oldpid,9))
 			      printf("Old zleave process killed.\n");
@@ -313,8 +309,9 @@ doalarm(long nmins)
 }
 
 void
-bother(long slp,
-       char *msg)
+bother(slp, msg)
+long slp;
+char *msg;
 {
       ZNotice_t notice;
       ZNotice_t retnotice;
@@ -387,7 +384,8 @@ bother(long slp,
  * knows what zero means.
  */
 void
-delay(long secs)
+delay(secs)
+long secs;
 {
 	long n;
 	register char *l;

@@ -102,9 +102,11 @@ static void login_sendit __P((ZNotice_t *notice, int auth,
 static char **ulogin_marshal_locs __P((ZNotice_t *notice, int *found,
 				       int auth));
 
+static int ul_equiv __P((Location *l1, Location *l2));
+
 static void free_loc __P((Location *loc));
 static void ulogin_locate_forward __P((ZNotice_t *notice,
-				       struct sockaddr_in *who, ZRealm *realm));
+				       struct sockaddr_in *who, Realm *realm));
 
 static Location *locations = NULL; /* ptr to first in array */
 static int num_locs = 0;	/* number in array */
@@ -114,10 +116,11 @@ static int num_locs = 0;	/* number in array */
  */
 
 Code_t
-ulogin_dispatch(ZNotice_t *notice,
-		int auth,
-		struct sockaddr_in *who,
-		Server *server)
+ulogin_dispatch(notice, auth, who, server)
+    ZNotice_t *notice;
+    int auth;
+    struct sockaddr_in *who;
+    Server *server;
 {
     Exposure_type retval;
     int err_ret;
@@ -238,12 +241,7 @@ ulogin_dispatch(ZNotice_t *notice,
 		login_sendit(notice, auth, who, 1);
 	}
     } else {
-	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
-	    zdbug((LOG_DEBUG, "ulog opcode from unknown foreign realm %s", 
-		   notice->z_opcode));
-	} else {
-	    syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
-	}
+	syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
 	if (server == me_server)
 	    nack(notice, who);
 	return ZERR_NONE;
@@ -254,10 +252,11 @@ ulogin_dispatch(ZNotice_t *notice,
 }
 
 static void
-login_sendit(ZNotice_t *notice,
-	     int auth,
-	     struct sockaddr_in *who,
-	     int external)
+login_sendit(notice, auth, who, external)
+    ZNotice_t *notice;
+    int auth;
+    struct sockaddr_in *who;
+    int external;
 {
     ZNotice_t log_notice;
 
@@ -276,13 +275,14 @@ login_sendit(ZNotice_t *notice,
  * Dispatch a LOCATE notice.
  */
 Code_t
-ulocate_dispatch(ZNotice_t *notice,
-		 int auth,
-		 struct sockaddr_in *who,
-		 Server *server)
+ulocate_dispatch(notice, auth, who, server)
+    ZNotice_t *notice;
+    int auth;
+    struct sockaddr_in *who;
+    Server *server;
 {
     char *cp;
-    ZRealm *realm;
+    Realm *realm;
 
     if (!strcmp(notice->z_opcode, LOCATE_LOCATE)) {
 	/* we are talking to a current-rev client; send an ack */
@@ -294,7 +294,7 @@ ulocate_dispatch(ZNotice_t *notice,
 	    ulogin_locate(notice, who, auth);
 	return ZERR_NONE;
     } else {
-        syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
+	syslog(LOG_ERR, "unknown uloc opcode %s", notice->z_opcode);
 	if (server == me_server)
 	    nack(notice, who);
 	return ZERR_NONE;
@@ -306,7 +306,8 @@ ulocate_dispatch(ZNotice_t *notice,
  */
 
 void
-uloc_hflush(struct in_addr *addr)
+uloc_hflush(addr)
+    struct in_addr *addr;
 {
     Location *loc;
     int i = 0, new_num = 0;
@@ -348,7 +349,8 @@ uloc_hflush(struct in_addr *addr)
 }
 
 void
-uloc_flush_client(struct sockaddr_in *sin)
+uloc_flush_client(sin)
+    struct sockaddr_in *sin;
 {
     Location *loc;
     int i = 0, new_num = 0;
@@ -407,7 +409,7 @@ uloc_flush_client(struct sockaddr_in *sin)
 
 /*ARGSUSED*/
 Code_t
-uloc_send_locations(void)
+uloc_send_locations()
 {
     Location *loc;
     int i;
@@ -439,7 +441,6 @@ uloc_send_locations(void)
 	  default:
 	    syslog(LOG_ERR,"broken location state %s/%d",
 		   loc->user->string, (int) loc->exposure);
-	    exposure_level = EXPOSE_OPSTAFF;
 	    break;
 	}
 	retval = bdump_send_list_tcp(ACKED, &loc->addr, LOGIN_CLASS,
@@ -458,9 +459,10 @@ uloc_send_locations(void)
  */
 
 static int
-ulogin_add_user(ZNotice_t *notice,
-		Exposure_type exposure,
-		struct sockaddr_in *who)
+ulogin_add_user(notice, exposure, who)
+    ZNotice_t *notice;
+    Exposure_type exposure;
+    struct sockaddr_in *who;
 {
     Location *loc, *oldlocs, newloc;
     int i;
@@ -535,10 +537,11 @@ ulogin_add_user(ZNotice_t *notice,
  */ 
 
 static int
-ulogin_setup(ZNotice_t *notice,
-	     Location *locs,
-	     Exposure_type exposure,
-	     struct sockaddr_in *who)
+ulogin_setup(notice, locs, exposure, who)
+    ZNotice_t *notice;
+    Location *locs;
+    Exposure_type exposure;
+    struct sockaddr_in *who;
 {
     if (ulogin_parse(notice, locs))
 	return 1;
@@ -555,8 +558,9 @@ ulogin_setup(ZNotice_t *notice,
  */
 
 static int
-ulogin_parse(ZNotice_t *notice,
-	     Location *locs)
+ulogin_parse(notice, locs)
+    ZNotice_t *notice;
+    Location *locs;
 {
     char *cp, *base;
     int nulls = 0;
@@ -594,9 +598,10 @@ ulogin_parse(ZNotice_t *notice,
 
 
 static Location *
-ulogin_find(char *user,
-	    struct in_addr *host,
-	    unsigned int port)
+ulogin_find(user, host, port)
+    char *user;
+    struct in_addr *host;
+    unsigned int port;
 {
     Location *loc;
     String *str;
@@ -627,7 +632,8 @@ ulogin_find(char *user,
  */
 
 static Location *
-ulogin_find_user(char *user)
+ulogin_find_user(user)
+    char *user;
 {
     int i, rlo, rhi;
     int compar;
@@ -664,14 +670,26 @@ ulogin_find_user(char *user)
     return &locations[i];
 }
 
+static int
+ul_equiv(l1, l2)
+    Location *l1, *l2;
+{
+    if (l1->machine != l2->machine)
+	return 0;
+    if (l1->tty != l2->tty)
+	return 0;
+    return 1;
+}
+
 /*
  * remove the user specified in notice from the internal table
  */
 
 static Exposure_type
-ulogin_remove_user(ZNotice_t *notice,
-		   struct sockaddr_in *who,
-		   int *err_return)
+ulogin_remove_user(notice, who, err_return)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
+    int *err_return;
 {
     Location *new_locs, *loc;
     int i = 0;
@@ -728,7 +746,8 @@ ulogin_remove_user(ZNotice_t *notice,
  */
 
 static void
-ulogin_flush_user(ZNotice_t *notice)
+ulogin_flush_user(notice)
+    ZNotice_t *notice;
 {
     Location *loc, *loc2;
     int i, j, num_match, num_left;
@@ -799,9 +818,10 @@ ulogin_flush_user(ZNotice_t *notice)
 
 
 static void
-ulogin_locate(ZNotice_t *notice,
-	      struct sockaddr_in *who,
-	      int auth)
+ulogin_locate(notice, who, auth)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
+    int auth;
 {
     char **answer;
     int found;
@@ -839,9 +859,10 @@ ulogin_locate(ZNotice_t *notice,
  */
 
 static char **
-ulogin_marshal_locs(ZNotice_t *notice,
-		    int *found,
-		    int auth) 
+ulogin_marshal_locs(notice, found, auth)
+    ZNotice_t *notice;
+    int *found;
+    int auth;
 {
     Location **matches = (Location **) 0;
     Location *loc;
@@ -928,7 +949,8 @@ ulogin_marshal_locs(ZNotice_t *notice,
 }
 
 void
-uloc_dump_locs(FILE *fp)
+uloc_dump_locs(fp)
+    FILE *fp;
 {
     int i;
 
@@ -968,7 +990,8 @@ uloc_dump_locs(FILE *fp)
 }
 
 static void
-free_loc(Location *loc)
+free_loc(loc)
+    Location *loc;
 {
     free_string(loc->user);
     free_string(loc->machine);
@@ -978,9 +1001,10 @@ free_loc(Location *loc)
 }
 
 static void
-ulogin_locate_forward(ZNotice_t *notice,
-		      struct sockaddr_in *who,
-		      ZRealm *realm)
+ulogin_locate_forward(notice, who, realm)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
+    Realm *realm;
 {
     ZNotice_t lnotice;
 
@@ -991,9 +1015,10 @@ ulogin_locate_forward(ZNotice_t *notice,
 }
 
 void
-ulogin_realm_locate(ZNotice_t *notice,
-		    struct sockaddr_in *who,
-		    ZRealm *realm)
+ulogin_realm_locate(notice, who, realm)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
+    Realm *realm;
 {
   char **answer;
   int found;
@@ -1037,8 +1062,9 @@ ulogin_realm_locate(ZNotice_t *notice,
 }
 
 void
-ulogin_relay_locate(ZNotice_t *notice,
-		    struct sockaddr_in *who)
+ulogin_relay_locate(notice, who)
+    ZNotice_t *notice;
+    struct sockaddr_in *who;
 {
   ZNotice_t lnotice;
   Code_t retval;
@@ -1059,11 +1085,6 @@ ulogin_relay_locate(ZNotice_t *notice,
   lnotice = *notice;
   lnotice.z_opcode = LOCATE_LOCATE;
   lnotice.z_kind = ACKED;
-  lnotice.z_auth = 0;
-  lnotice.z_authent_len = 0;
-  lnotice.z_ascii_authent = "";
-  lnotice.z_checksum = 0;
-  lnotice.z_ascii_checksum = "";
   
   if ((retval = ZFormatRawNotice(&lnotice, &pack, &packlen)) != ZERR_NONE) {
     syslog(LOG_WARNING, "ulog_relay_loc format: %s",

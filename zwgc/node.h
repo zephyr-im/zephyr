@@ -100,13 +100,13 @@ typedef struct _Node {
 
 /* Function externs */
 
-extern void node_DestroyAllNodes(void);
+extern void node_DestroyAllNodes();
 
-extern Node *node_create_string_constant(int, string);
+extern Node *node_create_string_constant();
 
-extern Node *node_create_noary(int);
-extern Node *node_create_unary(int, Node *);
-extern Node *node_create_binary(int, Node *, Node *);
+extern Node *node_create_noary();
+extern Node *node_create_unary();
+extern Node *node_create_binary();
 
 /*
  *    Node *reverse_list_of_nodes(Node *list)
@@ -117,10 +117,10 @@ extern Node *node_create_binary(int, Node *, Node *);
  *                 the address of the (previously) last node.
  */
 
-extern Node *reverse_list_of_nodes(Node *);
+extern Node *reverse_list_of_nodes();
 
 #ifdef DEBUG
-extern void node_display(Node *);
+extern void node_display();
 #endif
 
 #endif

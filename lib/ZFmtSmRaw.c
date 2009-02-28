@@ -11,15 +11,15 @@
  */
 
 #ifndef lint
-static const char rcsid_ZFormatRawNotice_c[] = "$Id$";
+static char rcsid_ZFormatRawNotice_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
-Code_t
-ZFormatSmallRawNotice(ZNotice_t *notice,
-		      ZPacket_t buffer,
-		      int *ret_len)
+Code_t ZFormatSmallRawNotice(notice, buffer, ret_len)
+    ZNotice_t *notice;
+    ZPacket_t buffer;
+    int *ret_len;
 {
     Code_t retval;
     int hdrlen;
@@ -36,27 +36,4 @@ ZFormatSmallRawNotice(ZNotice_t *notice,
     (void) memcpy(buffer+hdrlen, notice->z_message, notice->z_message_len);
 
     return (ZERR_NONE);
-}
-
-Code_t
-ZNewFormatSmallRawNotice(ZNotice_t *notice,
-			 ZPacket_t buffer,
-			 int *ret_len)
-{
-  Code_t retval;
-  int hdrlen;
-  
-  if ((retval = Z_AsciiFormatRawHeader(notice, buffer, Z_MAXHEADERLEN,
-                                       &hdrlen, NULL, NULL, NULL, NULL)) 
-      != ZERR_NONE)
-    return (retval);
-  
-  *ret_len = hdrlen+notice->z_message_len;
-  
-  if (*ret_len > Z_MAXPKTLEN)
-    return (ZERR_PKTLEN);
-  
-  (void) memcpy(buffer+hdrlen, notice->z_message, notice->z_message_len);
-  
-  return (ZERR_NONE);
 }

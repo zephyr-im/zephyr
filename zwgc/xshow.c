@@ -26,11 +26,9 @@ static const char rcsid_xshow_c[] = "$Id$";
 #include <X11/Xresource.h>
 #include "pointer_dictionary.h"
 #include "new_memory.h"
-#include "new_string.h"
 #include "formatter.h"
 #include "variables.h"
 #include "zwgc.h"
-#include "X_driver.h"
 #include "X_fonts.h"
 #include "X_gram.h"
 #include "xmode_stack.h"
@@ -38,13 +36,15 @@ static const char rcsid_xshow_c[] = "$Id$";
 #define max(a,b)   ((a)>(b)?(a):(b))
 
 XContext desc_context;
+static pointer_dictionary colorname_dict = NULL;
 
 extern int internal_border_width;
 extern unsigned long default_bgcolor;
 extern unsigned long default_fgcolor;
+extern unsigned long x_string_to_color();
 
 void
-xshowinit(void)
+xshowinit()
 {
     desc_context = XUniqueContext();
 }
@@ -55,9 +55,9 @@ struct res_dict_type {
     char *		resclass;
 };
 
-static char *
-xres_get_resource(struct res_dict_type *restype,
-		  char *style)
+static char *xres_get_resource (restype, style)
+    struct res_dict_type *restype;
+    char *style;
 {
    char *desc;
    pointer_dictionary_binding *binding;
@@ -102,10 +102,10 @@ static struct res_dict_type fgcolor_resources = {
 };
 
 /*ARGSUSED*/
-char *
-mode_to_colorname (Display *dpy,
-		   char *style,
-		   xmode *mode)
+char *mode_to_colorname (dpy, style, mode)
+    Display *dpy;
+    char *style;
+    xmode *mode;
 {
     char *desc, *result;
 
@@ -116,15 +116,16 @@ mode_to_colorname (Display *dpy,
     return result;
 }
 
-void
-fixup_and_draw(Display *dpy,
-	       char *style,
-	       xauxblock *auxblocks,
-	       xblock *blocks,
-	       int num,
-	       xlinedesc *lines,
-	       int numlines,
-	       int beepcount)
+void fixup_and_draw(dpy, style, auxblocks, blocks, num, lines, numlines,
+		    beepcount)
+     Display *dpy;
+     char *style;
+     xblock *blocks;
+     xauxblock *auxblocks;
+     int num;
+     xlinedesc *lines;
+     int numlines;
+     int beepcount;
 {
     int gram_xalign = 1;
     int gram_yalign = 1;
@@ -337,8 +338,8 @@ fixup_and_draw(Display *dpy,
 }
 
 /* Silly almost-but-not-quite-useless helper function */
-char *
-no_dots_downcase_var(char *str)
+char *no_dots_downcase_var(str)
+     char *str;
 {
    register char *var, *var2;
 
@@ -353,11 +354,11 @@ no_dots_downcase_var(char *str)
 #define MODE_TO_FONT(dpy,style,mode) \
   get_font((dpy),(style),(mode)->font?(mode)->font:(mode)->substyle, \
 	   (mode)->size, (mode)->bold+(mode)->italic*2)
-void
-xshow(Display *dpy,
-      desctype *desc,
-      int numstr,
-      int numnl)
+void xshow(dpy, desc, numstr, numnl)
+     Display *dpy;
+     desctype *desc;
+     int numstr;
+     int numnl;
 {
     XFontStruct *font;
     xmode_stack modes = xmode_stack_create();
@@ -534,10 +535,10 @@ xshow(Display *dpy,
       free(style);
 }
 
-static void
-xhandleevent(Display *dpy,
-	     Window w,
-	     XEvent *event)
+static void xhandleevent(dpy, w, event)
+     Display *dpy;
+     Window w;
+     XEvent *event;
 {
     x_gram *gram;
     
@@ -552,8 +553,8 @@ xhandleevent(Display *dpy,
     XFlush(dpy);
 }
 
-void
-x_get_input(Display *dpy)
+void x_get_input(dpy)
+     Display *dpy;
 {
     XEvent event;
     

@@ -30,8 +30,7 @@ static const char rcsid_formatter_c[] = "$Id$";
 #define const
 #endif
 
-static int pure_text_length(char *, char);
-static int env_length(char *);
+static int pure_text_length(), env_length();
 
 #ifdef notdef
 static character_class atsign_set = { /* '@' = 0x40 */
@@ -172,17 +171,17 @@ static char brackets[]="()<>[]{}@";
 static char *openbracket[]={"@<","@<","@[","@[","@{","@{","@(","@(","@("};
 static char *closebracket[]={">",">","]","]","}","}",")",")",")"};
 
-static int
-not_contains(string str,
-	     const character_class set)
+static int not_contains(str, set)
+     string str;
+     const character_class set;
 {
-   while (*str && ! set[(int)*str]) str++;
+   while (*str && ! set[*str]) str++;
    return (! *str);
 }
 
-static int
-pure_text_length(char *text,
-		 char terminator)
+static int pure_text_length(text,terminator)
+     char *text;
+     char terminator;
 {
    int len=0;
 
@@ -206,8 +205,8 @@ pure_text_length(char *text,
    }
 }
 
-static char
-otherside(char opener)
+static char otherside(opener)
+char opener;
 {
    switch (opener) {
     case '(':
@@ -223,14 +222,14 @@ otherside(char opener)
 #ifdef DEBUG
    abort();
 #endif
-   return 0;
 }
 
 /* the char * that str points to is free'd by this function.
  * if you want to keep it, save it yourself
  */
-string
-verbatim(string str, int bracketsonly)
+string verbatim(str, bracketsonly)
+     string str;
+     int bracketsonly;
 {
    char *temp,*temp2;
    int bracketnum,len;
@@ -307,8 +306,8 @@ verbatim(string str, int bracketsonly)
    or the default terminator \0.  The text will not be modified,
    and @@ will be counted twice */
 
-string
-protect(string str)
+string protect(str)
+     string str;
 {
    string temp,temp2,temp3;
    int len,templen;
@@ -329,7 +328,7 @@ protect(string str)
 	 temp[templen-2] = *str++;
 	 char_stack_pop(chs);
 	 temp[templen-1] = '\0';
-      } else if ((len = pure_text_length(str,tos))) {
+      } else if (len = pure_text_length(str,tos)) {
 	 if (tos) {
 	    /* if the block is text in an environment, just copy it */
 
@@ -376,8 +375,8 @@ protect(string str)
 
 /* str points to a string.  return value is another string
    which is the original with all styles removed. */
-string
-stylestrip(string str)
+string stylestrip(str)
+     string str;
 {
     int templen = 0, otherchar;
     char *temp = (char *) malloc(string_Length(str) + 1);
@@ -419,8 +418,8 @@ stylestrip(string str)
     return(temp);
 }
 
-void
-free_desc(desctype *desc)
+void free_desc(desc)
+     desctype *desc;
 {
     desctype *next_desc;
 
@@ -435,8 +434,8 @@ free_desc(desctype *desc)
 /* text points to beginning of possible env name.  return value is
    length of env name, not including @ or opener, or -1 if not a
    possible env name. */
-static int
-env_length(char *text)
+static int env_length(text)
+     char *text;
 {
    int len=0;
 
@@ -455,9 +454,9 @@ env_length(char *text)
    length of string, up to but not including the passed terminator
    or the default terminators \0 \n @.  This can modify text, and 0
    is a valid return value. */
-static int
-text_length(char *text,
-	    char terminator)
+static int text_length(text,terminator)
+     char *text;
+     char terminator;
 {
    int len=0;
 
@@ -483,10 +482,9 @@ text_length(char *text,
 /* parses str into a desc linked list.  Returns number of strings and
    newlines in *pstr and *pnl */
 
-desctype *
-disp_get_cmds(char *str,
-	      int *pstr,
-	      int *pnl)
+desctype *disp_get_cmds(str,pstr,pnl)
+char *str;
+int *pstr,*pnl;
 {
    desctype *desc,*here;
    int len;
@@ -510,8 +508,8 @@ disp_get_cmds(char *str,
 	 terminator = char_stack_top(terminators);
 	 char_stack_pop(terminators);
 	 curstr++;
-      } else if ((len=text_length(curstr, terminator))) { /* if there is a text
-							     block here */
+      } else if (len=text_length(curstr,terminator)) { /* if there is a text
+							  block here */
 	 here->code=DT_STR;
 	 here->str=curstr;
 	 here->len=len;

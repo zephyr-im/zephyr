@@ -11,16 +11,16 @@
  */
 
 #ifndef lint
-static const char rcsid_ZGetLocations_c[] = "$Id$";
+static char rcsid_ZGetLocations_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
 #define min(a,b) ((a)<(b)?(a):(b))
 	
-Code_t
-ZGetLocations(ZLocations_t *location,
-	      int *numlocs)
+Code_t ZGetLocations(location, numlocs)
+    ZLocations_t *location;
+    int *numlocs;
 {
     int i;
 	

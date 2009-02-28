@@ -37,26 +37,26 @@ static const char rcsid_xcut_c[] = "$Id$";
 #include "xmark.h"
 #include "error.h"
 #include "xrevstack.h"
-#include "X_driver.h"
 
 /*
  *
  */
+
+extern char *xmarkGetText();
 
 extern long ttl;
 
 static char *selected_text=NULL;
 static Window selecting_in = 0;
 
-char *
-getSelectedText(void)
+char *getSelectedText()
 {
    return(selected_text);
 }
 
 #ifdef notdef
-static string
-x_gram_to_string(x_gram *gram)
+static string x_gram_to_string(gram)
+     x_gram *gram;
 {
     int i, index, len;
     int last_y = -1;
@@ -86,27 +86,27 @@ x_gram_to_string(x_gram *gram)
  */
 
 /*ARGSUSED*/
-Bool
-isShiftButton1(Display *dpy,
-	       XEvent *event,
-	       char *arg)
+Bool isShiftButton1(dpy,event,arg)
+     Display *dpy;
+     XEvent *event;
+     char *arg;
 {
    return(event->xbutton.state & (ShiftMask|Button1Mask));
 }
 
 /*ARGSUSED*/
-Bool
-isShiftButton3(Display *dpy,
-	       XEvent *event,
-	       char *arg)
+Bool isShiftButton3(dpy,event,arg)
+     Display *dpy;
+     XEvent *event;
+     char *arg;
 {
    return(event->xbutton.state & (ShiftMask|Button3Mask));
 }
 
-void
-getLastEvent(Display *dpy,
-	     unsigned int state,
-	     XEvent *event)
+void getLastEvent(dpy,state,event)
+     Display *dpy;
+     unsigned int state;
+     XEvent *event;
 {
    XEvent xev;
 
@@ -119,11 +119,11 @@ getLastEvent(Display *dpy,
    }
 }
 
-void
-xunmark(Display *dpy,
-	Window w,
-	x_gram *gram,
-	XContext desc_context)
+void xunmark(dpy,w,gram,desc_context)
+     Display *dpy;
+     Window w;
+     x_gram *gram;
+     XContext desc_context;
 {
    if (gram == NULL)
      if (XFindContext(dpy, w, desc_context, (caddr_t *) &gram))
@@ -144,11 +144,11 @@ xunmark(Display *dpy,
 
 static int current_pressop = PRESSOP_NONE;
 
-void
-xdestroygram(Display *dpy,
-	     Window w,
-	     XContext desc_context,
-	     x_gram *gram)
+void xdestroygram(dpy,w,desc_context,gram)
+     Display *dpy;
+     Window w;
+     XContext desc_context;
+     x_gram *gram;
 {
     struct timeval now;
 
@@ -176,10 +176,10 @@ xdestroygram(Display *dpy,
     }
 }
 
-void
-xcut(Display *dpy,
-     XEvent *event,
-     XContext desc_context)
+void xcut(dpy,event,desc_context)
+     Display *dpy;
+     XEvent *event;
+     XContext desc_context;
 {
     x_gram *gram;
     Window w = event->xany.window;

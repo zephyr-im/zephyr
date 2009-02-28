@@ -15,8 +15,6 @@
 #include <internal.h>
 
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include "zserver.h"
 
 #if !defined(lint) && !defined(SABER)
@@ -49,20 +47,16 @@ int outoftime = 0;
 int serveronly = 0,hmonly = 0;
 u_short srv_port;
 
-void usage(char *);
-void do_stat(char *);
-int srv_stat(char *);
-int hm_stat(char *, char *);
+void usage(), do_stat();
 
-RETSIGTYPE
-timeout(int ignored)
+RETSIGTYPE timeout()
 {
 	outoftime = 1;
 }
 
-int
-main(int argc,
-     char *argv[])
+main(argc, argv)
+	int argc;
+	char *argv[];
 {
 	Code_t ret;
 	char hostname[MAXHOSTNAMELEN];
@@ -120,7 +114,8 @@ main(int argc,
 }
 
 void
-do_stat(char *host)
+do_stat(host)
+	char *host;
 {
 	char srv_host[MAXHOSTNAMELEN];
 	
@@ -137,8 +132,8 @@ do_stat(char *host)
 }
 
 int
-hm_stat(char *host,
-	char *server)
+hm_stat(host,server)
+	char *host,*server;
 {
 	struct in_addr inaddr;
 	Code_t code;
@@ -149,6 +144,9 @@ hm_stat(char *host,
 	time_t runtime;
 	struct tm *tim;
 	ZNotice_t notice;
+#ifdef _POSIX_VERSION
+	struct sigaction sa;
+#endif
 	
 	if ((inaddr.s_addr = inet_addr(host)) == (unsigned)(-1)) {
 	    if ((hp = gethostbyname(host)) == NULL) {
@@ -198,7 +196,8 @@ hm_stat(char *host,
 }
 
 int
-srv_stat(char *host)
+srv_stat(host)
+	char *host;
 {
 	char *line[20],*mp;
 	int sock,i,nf,ret;
@@ -309,7 +308,8 @@ srv_stat(char *host)
 }
 
 void
-usage(char *s)
+usage(s)
+	char *s;
 {
 	fprintf(stderr,"usage: %s [-s] [-h] [host ...]\n",s);
 	exit(1);

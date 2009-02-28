@@ -11,25 +11,26 @@
  */
 
 #ifndef lint
-static const char rcsid_ZSendList_c[] = "$Id$";
+static char rcsid_ZSendList_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
-Code_t ZSendList(ZNotice_t *notice,
-		 char *list[],
-		 int nitems,
-		 Z_AuthProc cert_routine)
+Code_t ZSendList(notice, list, nitems, cert_routine)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+    Z_AuthProc cert_routine;
 {
     return(ZSrvSendList(notice, list, nitems, cert_routine, Z_XmitFragment));
 }
 
-Code_t
-ZSrvSendList(ZNotice_t *notice,
-	     char *list[],
-	     int nitems,
-	     Z_AuthProc cert_routine,
-	     Code_t (*send_routine)(ZNotice_t *, char *, int, int))
+Code_t ZSrvSendList(notice, list, nitems, cert_routine, send_routine)
+    ZNotice_t *notice;
+    char *list[];
+    int nitems;
+    Z_AuthProc cert_routine;
+    Code_t (*send_routine)();
 {
     Code_t retval;
     ZNotice_t newnotice;

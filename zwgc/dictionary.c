@@ -66,8 +66,8 @@ static const char rcsid_dictionary_c[] = "$Id$";
  *                 that size is a prime number.
  */
 
-TYPE_T_dictionary
-TYPE_T_dictionary_Create(int size)
+TYPE_T_dictionary TYPE_T_dictionary_Create(size)
+     int size;
 {
     int i;
     TYPE_T_dictionary result;
@@ -94,8 +94,8 @@ TYPE_T_dictionary_Create(int size)
  *                 TYPE_T_dictionary_Enumerate.
  */
 
-void
-TYPE_T_dictionary_Destroy(TYPE_T_dictionary d)
+void TYPE_T_dictionary_Destroy(d)
+     TYPE_T_dictionary d;
 {
     int i;
     TYPE_T_dictionary_binding *binding_ptr, *new_binding_ptr;
@@ -124,8 +124,9 @@ TYPE_T_dictionary_Destroy(TYPE_T_dictionary d)
  *                 writable by proc.
  */
 
-void TYPE_T_dictionary_Enumerate(TYPE_T_dictionary d,
-				 void (*proc)(TYPE_T_dictionary_binding *))
+void TYPE_T_dictionary_Enumerate(d, proc)
+     TYPE_T_dictionary d;
+     void (*proc)(/* TYPE_T_dictionary_binding *b */);
 {
     int i;
     TYPE_T_dictionary_binding *binding_ptr;
@@ -148,8 +149,8 @@ void TYPE_T_dictionary_Enumerate(TYPE_T_dictionary d,
  *                 keys over the table's slots.
  */
 
-static unsigned int
-dictionary__hash(char *s)
+static unsigned int dictionary__hash(s)
+     char *s;
 {
     unsigned int result = 0;
 
@@ -173,9 +174,9 @@ dictionary__hash(char *s)
  *                 Note the access restrictions on bindings...
  */
 
-TYPE_T_dictionary_binding *
-TYPE_T_dictionary_Lookup(TYPE_T_dictionary d,
-			 char *key)
+TYPE_T_dictionary_binding *TYPE_T_dictionary_Lookup(d, key)
+     TYPE_T_dictionary d;
+     char *key;
 {
     TYPE_T_dictionary_binding *binding_ptr;
 
@@ -205,10 +206,10 @@ TYPE_T_dictionary_Lookup(TYPE_T_dictionary d,
  *                 in this case.
  */
 
-TYPE_T_dictionary_binding *
-TYPE_T_dictionary_Define(TYPE_T_dictionary d,
-			 char *key,
-			 int *already_existed)
+TYPE_T_dictionary_binding *TYPE_T_dictionary_Define(d, key, already_existed)
+     TYPE_T_dictionary d;
+     char *key;
+     int *already_existed;
 {
     TYPE_T_dictionary_binding **ptr_to_the_slot, *binding_ptr;
 
@@ -244,8 +245,9 @@ TYPE_T_dictionary_Define(TYPE_T_dictionary d,
  *                 before making this call.
  */
 
-void TYPE_T_dictionary_Delete(TYPE_T_dictionary d,
-			      TYPE_T_dictionary_binding *b)
+void TYPE_T_dictionary_Delete(d, b)
+     TYPE_T_dictionary d;
+     TYPE_T_dictionary_binding *b;
 {
     TYPE_T_dictionary_binding **ptr_to_binding_ptr;
 

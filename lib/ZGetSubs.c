@@ -11,16 +11,16 @@
  */
 
 #ifndef lint
-static const char rcsid_ZGetSubscriptions_c[] = "$Id$";
+static char rcsid_ZGetSubscriptions_c[] = "$Id$";
 #endif
 
 #include <internal.h>
 
 #define min(a,b) ((a)<(b)?(a):(b))
 	
-Code_t
-ZGetSubscriptions(ZSubscription_t *subscription,
-		  int *numsubs)
+Code_t ZGetSubscriptions(subscription, numsubs)
+    ZSubscription_t *subscription;
+    int *numsubs;
 {
     int i;
 	

@@ -40,13 +40,10 @@ static const char rcsid_main_c[] = "$Id$";
 #include "variables.h"
 #include "main.h"
 
-void notice_handler(ZNotice_t *);
-static void process_notice(ZNotice_t *, char *);
-static void setup_signals(int);
-static void detach(void);
-static void signal_exit(int);
+extern void notice_handler();
+static void process_notice(), setup_signals(), detach(), signal_exit();
 #ifdef HAVE_ARES
-static void notice_callback(void *, int, struct hostent *);
+static void notice_callback();
 #endif
 
 /*
@@ -108,13 +105,11 @@ static struct _Node *program = NULL;
  * <<<>>>
  */
 
-static void
-fake_startup_packet(void)
+static void fake_startup_packet()
 {
     ZNotice_t notice;
     struct timezone tz;
     char msgbuf[BUFSIZ];
-    extern void Z_gettimeofday(struct _ZTimeval *, struct timezone *);
 
     var_set_variable("version", zwgc_version_string);
 
@@ -127,7 +122,7 @@ fake_startup_packet(void)
     notice.z_default_format = "Zwgc mark II version $version now running...\n";
     notice.z_recipient = "";
     notice.z_sender = "ZWGC";
-    Z_gettimeofday(&notice.z_time, &tz);
+    gettimeofday(&notice.z_time,&tz);
     notice.z_port = 0;
     notice.z_kind = ACKED;
     notice.z_auth = ZAUTH_YES;
@@ -139,8 +134,7 @@ fake_startup_packet(void)
     process_notice(&notice, NULL);
 }
 
-static void
-read_in_description_file(void)
+static void read_in_description_file()
 {
     FILE *input_file;
     char defdesc[128];
@@ -169,8 +163,7 @@ read_in_description_file(void)
  *                 program with error code 1.
  */
 
-void
-usage(void)
+void usage()
 {
 #ifdef DEBUG
     fprintf(stderr, "\
@@ -192,8 +185,7 @@ zwgc: usage: zwgc [-f <filename>] [-subfile <filename>]\n\
  * <<<>>>
  */
 
-static void
-run_initprogs(void)
+static void run_initprogs()
 {
     /*
      * This code stolen from old zwgc: yuck.  Clean up & fix.  <<<>>>
@@ -222,9 +214,9 @@ run_initprogs(void)
  * main -- the program entry point.  Does parsing & top level control.
  */
 
-int
-main(int argc,
-     char **argv)
+int main(argc, argv)
+     int argc;
+     char **argv;
 {
     char **new;
     register char **current;
@@ -329,8 +321,8 @@ main(int argc,
 #define  USER_SUPPRESS     "SUPPRESS"
 #define  USER_UNSUPPRESS   "UNSUPPRESS"
 
-void
-notice_handler(ZNotice_t *notice)
+void notice_handler(notice)
+     ZNotice_t *notice;
 {
     struct hostent *fromhost = NULL;
 
@@ -351,10 +343,10 @@ notice_handler(ZNotice_t *notice)
 }
 
 #ifdef HAVE_ARES
-static void
-notice_callback(void *arg,
-		int status,
-		struct hostent *fromhost)
+static void notice_callback(arg, status, fromhost)
+     void *arg;
+     int status;
+     struct hostent *fromhost;
 {
     ZNotice_t *notice = (ZNotice_t *) arg;
 
@@ -364,16 +356,15 @@ notice_callback(void *arg,
 }
 #endif
 
-static void
-process_notice(ZNotice_t *notice,
-	       char *hostname)
+static void process_notice(notice, hostname)
+     ZNotice_t *notice;
+     char *hostname;
 {
     char *control_opcode;
 
     dprintf("Got a message\n");
 
-    control_opcode = decode_notice(notice, hostname);
-    if (control_opcode) {
+    if (control_opcode = decode_notice(notice, hostname)) {
 #ifdef DEBUG
 	printf("got control opcode <%s>.\n", control_opcode);
 #endif
@@ -409,7 +400,7 @@ process_notice(ZNotice_t *notice,
 	    free(instance);
 	    free(recipient);
 	} else if (!strcasecmp(control_opcode, USER_EXIT)) {
-	    signal_exit(0);
+	    signal_exit();
 	} else
 	  printf("zwgc: unknown control opcode %s.\n", control_opcode);
 
@@ -443,22 +434,21 @@ process_notice(ZNotice_t *notice,
  *
  */
 
-static void
-signal_exit(int ignored)
+static void signal_exit()
 {
     mux_end_loop_p = 1;
 }
 
 /* clean up ALL the waiting children, in case we get hit with
    multiple SIGCHLD's at once, and don't process in time. */
-static RETSIGTYPE
-signal_child(int ignored)
+static RETSIGTYPE signal_child()
 {
 #ifdef HAVE_WAITPID
   int status;
 #else
   union wait status;
 #endif
+  extern int errno;
   int pid, old_errno = errno;
 
   do {
@@ -472,14 +462,13 @@ signal_child(int ignored)
 }
 
 /* rewrite the wgfile in case it has gone away */
-static RETSIGTYPE
-signal_usr1(int ignored)
+static RETSIGTYPE signal_usr1()
 {
     write_wgfile();
 }
 
-static void
-setup_signals(int dofork)
+static void setup_signals(dofork)
+     int dofork;
 {
 #ifdef _POSIX_VERSION
     struct sigaction sa;
@@ -536,8 +525,7 @@ setup_signals(int dofork)
 
 /* detach() taken from old zwgc, with lots of stuff ripped out */
 
-static void
-detach(void)
+static void detach()
 {
   /* detach from terminal and fork. */
   register int i;
@@ -550,7 +538,6 @@ detach(void)
    * of finding the session leader; otherwise use the process group of
    * the parent process, which is a good guess. */
 #if defined(HAVE_GETSID)
-
   setpgid(0, getsid(0));
 #elif defined(HAVE_GETPGID)
   setpgid(0, getpgid(getppid()));
@@ -559,8 +546,7 @@ detach(void)
 #endif
 
   /* fork off and let parent exit... */
-  i = fork();
-  if (i) {
+  if (i = fork()) {
       if (i < 0) {
 	  perror("zwgc: cannot fork, aborting:");
 	  exit(1);

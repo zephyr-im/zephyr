@@ -11,16 +11,15 @@
  */
 
 #ifndef lint
-static const char rcsid_ZParseNotice_c[] =
+static char rcsid_ZParseNotice_c[] =
     "$Zephyr: /mit/zephyr/src/lib/RCS/ZParseNotice.c,v 1.22 91/03/29 03:34:46 raeburn Exp $";
 #endif
 
 #include <internal.h>
 
 /* Skip to the next NUL-terminated field in the packet. */
-static char *
-next_field(char *ptr,
-	   char *end)
+static char *next_field(ptr, end)
+    char *ptr, *end;
 {
     while (ptr < end && *ptr != '\0')
 	ptr++;
@@ -29,10 +28,10 @@ next_field(char *ptr,
     return (ptr);
 }
 
-Code_t
-ZParseNotice(char *buffer,
-	     int len,
-	     ZNotice_t *notice)
+Code_t ZParseNotice(buffer, len, notice)
+    char *buffer;
+    int len;
+    ZNotice_t *notice;
 {
     char *ptr, *end;
     unsigned long temp;
@@ -210,22 +209,11 @@ ZParseNotice(char *buffer,
     else
 	notice->z_default_format = "";
 	
-    if (numfields && ptr < end) {
-      notice->z_ascii_checksum = ptr;
-
-      if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
-	notice->z_checksum = 0;
-      else
-	notice->z_checksum = temp;
-
-      numfields--;
-      ptr = next_field (ptr, end);
-    }
-    else 
-      {
-	notice->z_ascii_checksum = "";
-	notice->z_checksum = 0;
-      }
+    if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
+	BAD_PACKET;
+    notice->z_checksum = temp;
+    numfields--;
+    ptr = next_field(ptr, end);
 
     if (numfields && ptr < end) {
 	notice->z_multinotice = ptr;

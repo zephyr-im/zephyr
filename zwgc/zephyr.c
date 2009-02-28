@@ -58,14 +58,13 @@ static unsigned short zephyr_port = 0;
  *                 modified in any way.
  */
 
-static string
-get_zwgc_port_number_filename(void)
+static string get_zwgc_port_number_filename()
 {
     static char buffer[40];
     char *temp;
+    char *getenv();
 
-    temp = getenv("WGFILE");
-    if (temp)
+    if (temp = getenv("WGFILE"))
       return(temp);
     else {
 	sprintf(buffer, "/tmp/wg.%d", getuid());
@@ -77,8 +76,7 @@ get_zwgc_port_number_filename(void)
  *  Write out the port number to the wg file.
  */
 
-void
-write_wgfile(void)
+void write_wgfile()
 {
     char *name = get_zwgc_port_number_filename();
     FILE *port_file;
@@ -97,8 +95,8 @@ write_wgfile(void)
  *
  */
 
-static void
-handle_zephyr_input(void (*notice_handler)(ZNotice_t *))
+static void handle_zephyr_input(notice_handler)
+     void (*notice_handler)();
 {
     ZNotice_t *notice;
     struct sockaddr_in from;
@@ -126,7 +124,8 @@ handle_zephyr_input(void (*notice_handler)(ZNotice_t *))
  *
  */
 
-void zephyr_init(void (*notice_handler)(ZNotice_t *))
+void zephyr_init(notice_handler)
+     void (*notice_handler)();
 {
     char *temp;
     char *exposure;
@@ -171,8 +170,7 @@ void zephyr_init(void (*notice_handler)(ZNotice_t *))
      * not one of the allowed ones, print an error and treat it as
      * EXPOSE_NONE.
      */
-    temp = ZGetVariable("exposure");
-    if (temp) {
+    if (temp = ZGetVariable("exposure")) {
 	if (!(exposure = ZParseExposureLevel(temp))) {
 	    ERROR2("invalid exposure level %s, using exposure level none instead.\n", temp);
 	    exposure = EXPOSE_NONE;
@@ -199,7 +197,7 @@ void zephyr_init(void (*notice_handler)(ZNotice_t *))
     /*
      * <<<>>>
      */
-    mux_add_input_source(ZGetFD(), (void (*)(void *))handle_zephyr_input,
+    mux_add_input_source(ZGetFD(), (void (*)())handle_zephyr_input,
 			 notice_handler);
     zephyr_inited = 1;
     return;
@@ -209,7 +207,7 @@ void zephyr_init(void (*notice_handler)(ZNotice_t *))
  *
  */
 
-void finalize_zephyr(void) /* <<<>>> */
+void finalize_zephyr() /* <<<>>> */
 {
     string temp;
 
