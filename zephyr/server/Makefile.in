@@ -30,7 +30,7 @@ LIBS=${LIBZEPHYR} @LIBS@ -lcom_err
 
 OBJS=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \
 	dispatch.o kstuff.o main.o server.o subscr.o timer.o uloc.o \
-	zstring.o realm.o version.o
+	zstring.o realm.o version.o utf8proc.o
 
 all: zephyrd
 
