@@ -40,7 +40,7 @@ zephyr (2.1.20070719.SNAPSHOT-1.1) unstable; urgency=low
 
  -- Christian Perrier <bubulle@debian.org>  Wed, 20 Feb 2008 20:11:27 +0100
 
-phyr (2.1.20070719.SNAPSHOT-1) unstable; urgency=low
+zephyr (2.1.20070719.SNAPSHOT-1) unstable; urgency=low
 
   * new upstream, Closes: #433603
   * byteswap port number for display in zwgc, Closes: #243101
