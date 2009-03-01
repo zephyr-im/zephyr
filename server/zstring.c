@@ -22,6 +22,45 @@ static const char rcsid_zstring_c[] =
 
 static String *zhash[STRING_HASH_TABLE_SIZE];
 
+int valid_utf8_p(const char* s)
+{
+    int len;
+    ssize_t uc;
+
+    while (len = utf8proc_iterate(s, -1, &uc)) {
+        if (len <=0) return 0; /* Not valid UTF-8 encoding. */
+        if (!(utf8proc_codepoint_valid(uc))) return 0; /* Not valid unicode codepoint. */
+        if (uc == 0) return 1; /* NULL, we're done. */
+        s += len;
+    }
+    return 0; /* We shouldn't get here. */
+}
+
+static char *zdowncase(const char* s)
+{
+    char *new_s, *p;
+
+    if (valid_utf8_p(s)) {
+        /* Use utf8proc if we're dealing with UTF-8.
+         * Rather than downcase, casefold and normalize to NFKC.
+         */
+        utf8proc_map(s, 0, &new_s,
+                     UTF8PROC_NULLTERM   | UTF8PROC_STABLE
+                     | UTF8PROC_CASEFOLD | UTF8PROC_COMPAT
+                     | UTF8PROC_COMPOSE);
+    } else {
+        /* If not, fall back to old methods. */
+        new_s = strsave(s);
+        p = new_s;
+        while(*p) {
+            if (isascii(*p) && isupper(*p))
+                *p = tolower(*p);
+            p++;
+        }
+    }
+    return new_s;
+}
+
 String *
 make_string(char *s,
 	    int downcase)
@@ -31,13 +70,7 @@ make_string(char *s,
     int i;
 
     if (downcase) {
-	new_s = strsave(s);
-	p = new_s;
-	while(*p) {
-	    if (isascii(*p) && isupper(*p))
-		*p = tolower(*p);
-	    p++;
-	}
+	new_s = zdowncase(s);
     } else {
 	new_s = s;
     }
@@ -102,13 +135,7 @@ find_string(char *s,
     String *z;
 
     if (downcase) {
-	new_s = strsave(s);
-	p = new_s;
-	while (*p) {
-	    if (isascii(*p) && isupper(*p))
-		*p = tolower(*p);
-	    p++;
-	}
+	new_s = zdowncase(s);
     } else {
 	new_s = s;
     }

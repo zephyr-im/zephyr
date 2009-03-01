@@ -30,6 +30,7 @@
 #include "zstring.h"
 #include "access.h"
 #include "acl.h"
+#include "utf8proc.h"
 
 
 /* Kerberos-specific library interfaces used only by the server. */
