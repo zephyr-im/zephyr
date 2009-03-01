@@ -4,8 +4,9 @@ zephyr (2.1.20070719.SNAPSHOT-2) unstable; urgency=low
     the same UID as the SERVACK we're really waiting for) arriving first.
     Wait for the SERVACK explicitly, so the USER_LOGIN gets left on the
     queue even if it arrives early. (thanks, Mark!)
+  * Acknowledge NMUs
 
- -- Karl Ramm <kcr@debian.org>  Mon, 24 Mar 2008 19:52:35 -0400
+ -- Karl Ramm <kcr@debian.org>  Sun, 01 Mar 2009 02:44:53 -0500
 
 zephyr (2.1.20070719.SNAPSHOT-1.2) unstable; urgency=low
 
