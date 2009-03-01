@@ -6,8 +6,9 @@ zephyr (2.1.20070719.SNAPSHOT-2) unstable; urgency=low
     queue even if it arrives early. (thanks, Mark!)
   * Acknowledge NMUs
   * Build-depend on x11proto-core-dev.  Closess: #515456
+  * Japanese debconf translation, thanks to Hideki Yamane.  Closes: #510734
 
- -- Karl Ramm <kcr@debian.org>  Sun, 01 Mar 2009 02:47:16 -0500
+ -- Karl Ramm <kcr@debian.org>  Sun, 01 Mar 2009 02:52:20 -0500
 
 zephyr (2.1.20070719.SNAPSHOT-1.2) unstable; urgency=low
 
