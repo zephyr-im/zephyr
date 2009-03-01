@@ -7,7 +7,37 @@ zephyr (2.1.20070719.SNAPSHOT-2) unstable; urgency=low
 
  -- Karl Ramm <kcr@debian.org>  Mon, 24 Mar 2008 19:52:35 -0400
 
-zephyr (2.1.20070719.SNAPSHOT-1) unstable; urgency=low
+zephyr (2.1.20070719.SNAPSHOT-1.2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fix pending l10n issues. Debconf translations:
+    - Swedish. Closes: #491531
+  * Brazilian Portuguese. Closes: #501262
+
+ -- Christian Perrier <bubulle@debian.org>  Mon, 06 Oct 2008 07:16:54 +0200
+
+zephyr (2.1.20070719.SNAPSHOT-1.1) unstable; urgency=low
+
+  * Non-maintainer upload to fix pending l10n issues
+  * Debconf templates and debian/control reviewed by the debian-l10n-
+    english team as part of the Smith review project. Closes: #453291
+  * [Debconf translation updates]
+    - Galician. Closes: #454511, #447936
+    - Finnish. Closes: #454608
+    - Czech. Closes: #455240
+    - Spanish. Closes: #455576
+    - Italian. Closes: #456225
+    - Basque. Closes: #456823
+    - German. Closes: #456981
+    - Dutch. Closes: #457034, #447724
+    - Russian. Closes: #457087, #451807
+    - Portuguese. Closes: #457111
+    - Vietnamese. Closes: #457301
+    - French. Closes: #457560, #435494, #435495
+
+ -- Christian Perrier <bubulle@debian.org>  Wed, 20 Feb 2008 20:11:27 +0100
+
+phyr (2.1.20070719.SNAPSHOT-1) unstable; urgency=low
 
   * new upstream, Closes: #433603
   * byteswap port number for display in zwgc, Closes: #243101

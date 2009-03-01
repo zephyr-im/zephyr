@@ -1,10 +1,22 @@
+# These templates have been reviewed by the debian-l10n-english
+# team
+#
+# If modifications/additions/rewording are needed, please ask
+# debian-l10n-english@lists.debian.org for advice.
+#
+# Even minor modifications require translation updates and such
+# changes should be coordinated with translators and reviewers.
+
 Template: zephyr-clients/servers
 Type: string
 _Description: Zephyr servers:
- Please type the full names of your zephyr servers, separated by spaces.
- (note that this can be a subset of what you're telling the servers)
- If you are using hesiod to advertise your zephyr servers, leave this
- blank.
+ Please specify the full names of the Zephyr servers, as a
+ space-separated list.
+ .
+ The list configured on clients can be a subset of the list configured
+ on servers.
+ .
+ This can be left empty if Hesiod is used to advertise Zephyr servers.
 
 Template: zephyr-clients/read_conf
 Type: boolean

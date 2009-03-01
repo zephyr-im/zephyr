@@ -20,10 +20,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: zephyr 2.1.20010518.SNAPSHOT-17\n"
-"Report-Msgid-Bugs-To: kcr@debian.org\n"
-"POT-Creation-Date: 2007-07-19 04:11-0400\n"
-"PO-Revision-Date: 2007-04-25 01:00+0200\n"
+"Project-Id-Version: zephyr 2.1.20070719.SNAPSHOT-4\n"
+"Report-Msgid-Bugs-To: Source: zephyr@packages.debian.org\n"
+"POT-Creation-Date: 2007-12-05 09:47+0530\n"
+"PO-Revision-Date: 2007-12-05 15:50+0100\n"
 "Last-Translator: Carlos Valdivia Yagüe <valyag@dat.etsit.upm.es>\n"
 "Language-Team: Debian L10n Spanish <debian-l10n-spanish@lists.debian.org>\n"
 "MIME-Version: 1.0\n"
@@ -32,65 +32,34 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid "Zephyr servers:"
-msgstr "Servidores zephyr:"
+msgstr "Servidores Zephyr:"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001
-#, fuzzy
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(note that this can be a subset of what you're telling the servers) If you "
-"are using hesiod to advertise your zephyr servers, leave this blank."
+"Please specify the full names of the Zephyr servers, as a space-separated "
+"list."
 msgstr ""
-"Por favor, introduzca el nombre completo de sus servidores zephyr separados "
-"por espacios (tenga en cuenta que puede tratarse de un subconjunto de lo que "
-"usted considera como los servidores)."
+"Por favor, introduzca el nombre completo de los servidores Zephyr como una "
+"lista separada por espacios."
 
 #. Type: string
 #. Description
-#: ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(Note that this can be a superset of that you're telling the clients.)"
+"The list configured on clients can be a subset of the list configured on "
+"servers."
 msgstr ""
-"Por favor, introduzca los nombres completos de los servidores zephyr "
-"separados por espacios (tenga en cuenta que se puede tratar de un conjunto "
-"más amplio de lo que usted considera como los clientes)."
+"La lista configurada en los clientes puede ser un subconjunto de la lista "
+"configurada en los servidores."
 
-#~ msgid "for internal use"
-#~ msgstr "para uso interno"
-
-#~ msgid ""
-#~ "We want to try and capture user changes when they edit a config file "
-#~ "manually.  To do this we look at the file in the config script. However, "
-#~ "in the case of preconfigure, the config script is run twice before the "
-#~ "postinst is run.  Thus we may read the wrong value before the edited "
-#~ "value is written out in postinst. If this is false we skip reading config "
-#~ "files until postinst runs."
-#~ msgstr ""
-#~ "Para averiguar qué cambios ha realizado el usuario manualmente en el "
-#~ "fichero de configuración, es preciso mirar en el fichero que hay en el "
-#~ "script de configuración. Sin embargo, si se trata de preconfigurar el "
-#~ "paquete, dicho script se ejecuta dos veces antes de que lo haga el "
-#~ "posterior a la instalación. De ese modo, es posible obtener un valor "
-#~ "equivocado antes de que se guarde después de la instalación el valor "
-#~ "editado. Si no es éste el caso, nos saltamos la lectura de los ficheros "
-#~ "de configuración hasta que se ejecute el script posterior a la "
-#~ "instalación."
-
-#~ msgid "You have no zephyr servers specified for the client"
-#~ msgstr "No ha especificado servidores zephyr para el cliente"
-
-#~ msgid ""
-#~ "The zephyr-clients package for whatever reason does not have any zephyr "
-#~ "servers configured.  Please edit the file /etc/default/zephyr-clients and "
-#~ "add the names of your zephyr servers, separated by spaces to the zhm_args "
-#~ "variable."
-#~ msgstr ""
-#~ "Por algún motivo el paquete zephyr-clients no tiene configurado ningún "
-#~ "servidor zephyr. Por favor, edite el fichero /etc/default/zephyr-clients "
-#~ "y añada los nombres de los servidores zephyr separados por espacios en la "
-#~ "variable zhm_args."
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:2001
+msgid "This can be left empty if Hesiod is used to advertise Zephyr servers."
+msgstr ""
+"Puede dejarlo en blanco si se utiliza Hesiod para anunciar los servidores "
+"Zephyr."
