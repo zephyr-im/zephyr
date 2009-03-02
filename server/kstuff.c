@@ -20,12 +20,13 @@ static const char rcsid_kstuff_c[] = "$Id$";
 #endif
 #endif
 
-#ifdef HAVE_KRB4
-
+#if defined(HAVE_KRB4) && defined(HAVE_KRB5)
 static ZChecksum_t compute_checksum(ZNotice_t *, C_Block);
 static ZChecksum_t compute_rlm_checksum(ZNotice_t *, C_Block);
 static Code_t ZCheckAuthentication4(ZNotice_t *notice, struct sockaddr_in *from);
+#endif
 
+#ifdef HAVE_KRB4
 /*
  * GetKerberosData
  *
@@ -105,7 +106,7 @@ SendKerberosData(int fd,	/* file descriptor to write onto */
     int written;
     int size_to_write;
 
-    rem = krb_mk_req(ticket, service, host, ZGetRealm(), (u_long) 0);
+    rem = krb_mk_req(ticket, service, host, (char *)ZGetRealm(), (u_long) 0);
     if (rem != KSUCCESS)
 	return rem + krb_err_base;
 
@@ -811,7 +812,7 @@ ZCheckAuthentication(ZNotice_t *notice,
 
 #undef KRB5AUTHENT
 
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB4) && defined(HAVE_KRB5)
 static Code_t
 ZCheckAuthentication4(ZNotice_t *notice,
 		      struct sockaddr_in *from)
@@ -865,7 +866,7 @@ ZCheckAuthentication4(ZNotice_t *notice,
 #endif
 
 
-#ifdef HAVE_KRB4
+#if defined(HAVE_KRB4) && defined(HAVE_KRB5)
 static ZChecksum_t
 compute_checksum(ZNotice_t *notice,
 		 C_Block session_key)

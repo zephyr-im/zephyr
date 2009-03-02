@@ -297,10 +297,10 @@ Code_t xmit_frag(ZNotice_t *notice, char *buf, int len, int waitforack);
 void hostm_shutdown(void);
 
 /* found in kstuff.c */
+Code_t ZCheckRealmAuthentication(ZNotice_t *, struct sockaddr_in *, char *);
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
 Code_t ReadKerberosData(int, int *, char **, int *);
 void sweep_ticket_hash_table(void *);
-Code_t ZCheckRealmAuthentication(ZNotice_t *, struct sockaddr_in *, char *);
 #endif
 #ifdef HAVE_KRB4
 int GetKerberosData (int, struct in_addr, AUTH_DAT *, char *, char *);

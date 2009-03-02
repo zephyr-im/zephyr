@@ -27,7 +27,7 @@ int valid_utf8_p(const char* s)
     int len;
     ssize_t uc;
 
-    while (len = utf8proc_iterate(s, -1, &uc)) {
+    while ((len = utf8proc_iterate((const unsigned char *)s, -1, &uc))) {
         if (len <=0) return 0; /* Not valid UTF-8 encoding. */
         if (!(utf8proc_codepoint_valid(uc))) return 0; /* Not valid unicode codepoint. */
         if (uc == 0) return 1; /* NULL, we're done. */
@@ -44,7 +44,7 @@ static char *zdowncase(const char* s)
         /* Use utf8proc if we're dealing with UTF-8.
          * Rather than downcase, casefold and normalize to NFKC.
          */
-        utf8proc_map(s, 0, &new_s,
+        utf8proc_map((const unsigned char *)s, 0, (unsigned char **)&new_s,
                      UTF8PROC_NULLTERM   | UTF8PROC_STABLE
                      | UTF8PROC_CASEFOLD | UTF8PROC_COMPAT
                      | UTF8PROC_COMPOSE);
@@ -65,7 +65,7 @@ String *
 make_string(char *s,
 	    int downcase)
 {
-    char *new_s,*p;
+    char *new_s;
     String *new_z,*hp;
     int i;
 
@@ -131,7 +131,7 @@ String *
 find_string(char *s,
 	    int downcase)
 {
-    char *new_s,*p;
+    char *new_s;
     String *z;
 
     if (downcase) {
