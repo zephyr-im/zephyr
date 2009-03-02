@@ -117,9 +117,6 @@ ZParseNotice(char *buffer,
 	    BAD_PACKET;
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_uid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_uid.tv.tv_usec);
-	memset(&notice->z_sender_sockaddr, 0, sizeof notice->z_sender_sockaddr);
-	notice->z_sender_sockaddr.ip4.sin_family = AF_INET;
-	notice->z_sender_sockaddr.ip4.sin_addr = notice->z_uid.zuid_addr;
 	numfields--;
 	ptr = next_field(ptr, end);
     }
@@ -250,6 +247,44 @@ ZParseNotice(char *buffer,
     else
 	notice->z_multiuid = notice->z_uid;
 
+    if (numfields && ptr < end) {
+	/* we will take it on faith that ipv6 addresses are longer than ipv4
+	   addresses */
+	unsigned char addrbuf[sizeof(notice->z_sender_sockaddr.ip6.sin6_addr)];
+	int len;
+
+	/* because we're paranoid about naughtily misformated packets */
+	if (memchr(ptr, '\0', end - ptr))
+	    BAD_PACKET;
+
+	if (ZReadZcode((unsigned char *)ptr, addrbuf, sizeof(addrbuf), &len) == ZERR_BADFIELD)
+	    BAD_PACKET;
+
+	if (len == sizeof(notice->z_sender_sockaddr.ip6.sin6_addr))
+	    memcpy(&notice->z_sender_sockaddr.ip6.sin6_addr, addrbuf, len);
+	else if (len == sizeof(notice->z_sender_sockaddr.ip4.sin_addr))
+	    memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, addrbuf, len);
+	else
+	    BAD_PACKET;
+
+	numfields--;
+	ptr = next_field(ptr, end);
+    } else {
+	memset(&notice->z_sender_sockaddr, 0, sizeof notice->z_sender_sockaddr);
+	notice->z_sender_sockaddr.ip4.sin_family = AF_INET;
+	notice->z_sender_sockaddr.ip4.sin_addr = notice->z_uid.zuid_addr;
+    }
+
+    if (numfields && ptr < end) {
+	if (ZReadAscii16(ptr, end-ptr, &notice->z_charset) == ZERR_BADFIELD)
+	    BAD_PACKET;
+	notice->z_charset = htons(notice->z_charset);
+
+	numfields--;
+	ptr = next_field(ptr, end);
+    } else
+	notice->z_charset = ZCHARSET_UNKNOWN;
+    
     for (i=0;ptr < end && i<Z_MAXOTHERFIELDS && numfields;i++,numfields--) {
 	notice->z_other_fields[i] = ptr;
 	ptr = next_field(ptr, end);

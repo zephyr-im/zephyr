@@ -683,6 +683,11 @@ Z_FormatHeader(ZNotice_t *notice,
     
     (void) memcpy(&notice->z_uid.zuid_addr, &__My_addr, sizeof(__My_addr));
 
+    (void) memset(&notice->z_sender_sockaddr, 0, sizeof(notice->z_sender_sockaddr));
+    notice->z_sender_sockaddr.ip4.sin_family = AF_INET; /*XXX*/
+    notice->z_sender_sockaddr.ip4.sin_port = notice->z_port;
+    (void) memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, &__My_addr, sizeof(__My_addr));
+	
     notice->z_multiuid = notice->z_uid;
 
     if (!version[0])
@@ -820,6 +825,12 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
     char newrecip[BUFSIZ];
     char *ptr, *end;
     int i;
+    int addrlen = 0;
+    unsigned char *addraddr = NULL;
+
+    if (!(notice->z_sender_sockaddr.sa.sa_family == AF_INET ||
+	  notice->z_sender_sockaddr.sa.sa_family == AF_INET6))
+	return ZERR_ILLVAL;
 
     if (!notice->z_class)
             notice->z_class = "";
@@ -929,6 +940,22 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
         return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
         
+    if (notice->z_sender_sockaddr.sa.sa_family == AF_INET) {
+	addrlen = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
+	addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip4.sin_addr;
+    } else if (notice->z_sender_sockaddr.sa.sa_family == AF_INET6) {
+	addrlen = sizeof(notice->z_sender_sockaddr.ip6.sin6_addr);
+	addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip6.sin6_addr;
+    }
+
+    if (ZMakeZcode(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
+	return ZERR_HEADERLEN;
+    ptr += strlen(ptr) + 1;
+
+    if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_charset)) == ZERR_FIELDLEN)
+	return ZERR_HEADERLEN;
+    ptr += strlen(ptr) + 1;
+	
     for (i=0;i<notice->z_num_other_fields;i++)
         if (Z_AddField(&ptr, notice->z_other_fields[i], end))
             return (ZERR_HEADERLEN);
@@ -952,6 +979,12 @@ Z_FormatRawHeader(ZNotice_t *notice,
     char newrecip[BUFSIZ];
     char *ptr, *end;
     int i;
+    int addrlen = 0;
+    unsigned char *addraddr = NULL;
+
+    if (!(notice->z_sender_sockaddr.sa.sa_family == AF_INET ||
+	  notice->z_sender_sockaddr.sa.sa_family == AF_INET6))
+	return ZERR_ILLVAL;
 
     if (!notice->z_class)
 	    notice->z_class = "";
@@ -992,7 +1025,7 @@ Z_FormatRawHeader(ZNotice_t *notice,
     ptr += strlen(ptr)+1;
 
     if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_port)) == ZERR_FIELDLEN)
-	return (ZERR_HEADERLEN);
+        return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
     if (ZMakeAscii32(ptr, end-ptr, notice->z_auth) == ZERR_FIELDLEN)
@@ -1044,6 +1077,22 @@ Z_FormatRawHeader(ZNotice_t *notice,
 		   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
+
+    if (notice->z_sender_sockaddr.sa.sa_family == AF_INET) {
+	addrlen = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
+	addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip4.sin_addr;
+    } else if (notice->z_sender_sockaddr.sa.sa_family == AF_INET6) {
+	addrlen = sizeof(notice->z_sender_sockaddr.ip6.sin6_addr);
+	addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip6.sin6_addr;
+    }
+
+    if (ZMakeZcode(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
+	return ZERR_HEADERLEN;
+    ptr += strlen(ptr) + 1;
+
+    if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_charset)) == ZERR_FIELDLEN)
+	return ZERR_HEADERLEN;
+    ptr += strlen(ptr) + 1;
 	
     for (i=0;i<notice->z_num_other_fields;i++)
 	if (Z_AddField(&ptr, notice->z_other_fields[i], end))

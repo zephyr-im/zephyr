@@ -40,7 +40,7 @@
 #define Z_MAXPKTLEN		1024
 #define Z_MAXHEADERLEN		800
 #define Z_MAXOTHERFIELDS	10	/* Max unknown fields in ZNotice_t */
-#define Z_NUMFIELDS		17
+#define Z_NUMFIELDS		19
 
 /* Authentication levels returned by ZCheckAuthentication */
 #define ZAUTH_FAILED    	(-1)
@@ -49,6 +49,11 @@
 
 #define ZNOTICE_SOCKADDR	1
 #define ZNOTICE_CHARSET		1
+
+#define ZCHARSET_UNKNOWN        0
+/* The following are from http://www.iana.org/assignments/character-sets */
+#define ZCHARSET_ISO_8859_1	4
+#define ZCHARSET_UTF_8		106
 
 typedef char ZPacket_t[Z_MAXPKTLEN];
 
@@ -86,12 +91,12 @@ typedef struct _ZNotice_t {
     /* heavily deprecated: */
 #define z_sender_addr	z_sender_sockaddr.ip4.sin_addr
     /* probably a bad idea?: */
-#define z_port		z_sender_sockaddr.ip4.sin_port
     struct		_ZTimeval z_time;
+    unsigned short      z_port;
+    unsigned short	z_charset;
     int			z_auth;
     int			z_checked_auth;
     int			z_authent_len;
-    int			z_charset;
     char		*z_ascii_authent;
     char		*z_class;
     char		*z_class_inst;
