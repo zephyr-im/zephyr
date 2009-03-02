@@ -41,7 +41,6 @@ ZMakeAuthentication(register ZNotice_t *notice,
 #else
 #ifdef HAVE_KRB4
     int result;
-    time_t now;
     KTEXT_ST authent;
     char *cstart, *cend;
     ZChecksum_t checksum;
@@ -80,10 +79,10 @@ ZMakeAuthentication(register ZNotice_t *notice,
 	return(result);
 
     /* Compute a checksum over the header and message. */
-    checksum = des_quad_cksum(buffer, NULL, cstart - buffer, 0, session);
-    checksum ^= des_quad_cksum(cend, NULL, buffer + *len - cend, 0,
+    checksum = des_quad_cksum((unsigned char *)buffer, NULL, cstart - buffer, 0, session);
+    checksum ^= des_quad_cksum((unsigned char *)cend, NULL, buffer + *len - cend, 0,
 			       session);
-    checksum ^= des_quad_cksum(notice->z_message, NULL, notice->z_message_len,
+    checksum ^= des_quad_cksum((unsigned char *)notice->z_message, NULL, notice->z_message_len,
 			       0, session);
     notice->z_checksum = checksum;
     ZMakeAscii32(cstart, buffer + buffer_len - cstart, checksum);
@@ -193,7 +192,9 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
     *phdr_len += phdr_adj;
 
     return (result);
-#endif /* HAVE_KRB5 */
+#else /* HAVE_KRB5 */
+    return ZERR_INTERNAL;
+#endif
 }
 
 #ifdef HAVE_KRB5

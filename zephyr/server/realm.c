@@ -61,7 +61,9 @@ int nrealms = 0;                /* number of other realms */
  *
  */
 static void realm_sendit(ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender);
+#ifdef HAVE_KRB5
 static Code_t realm_sendit_auth(ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender);
+#endif
 static void rlm_ack(ZNotice_t *notice, Unacked *nacked);
 static void rlm_nack_cancel(ZNotice_t *notice, struct sockaddr_in *who);
 static void rlm_rexmit(void *arg);

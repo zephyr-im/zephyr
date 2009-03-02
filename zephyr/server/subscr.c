@@ -820,7 +820,8 @@ subscr_send_subs(Client *client)
 #endif /* HAVE_KRB4 */
 #else /* HAVE_KRB5 */
 #ifdef HAVE_KRB4
-    des_ecb_encrypt(client->session_key, cblock, serv_ksched.s, DES_ENCRYPT);
+    des_ecb_encrypt((des_cblock *)client->session_key, (des_cblock *)cblock,
+		    serv_ksched.s, DES_ENCRYPT);
 
     retval = ZMakeAscii(buf, sizeof(buf), cblock, sizeof(C_Block));
 #endif /* HAVE_KRB4 */

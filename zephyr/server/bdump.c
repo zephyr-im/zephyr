@@ -102,7 +102,7 @@ static int setup_file_pointers(void);
 static void shutdown_file_pointers(void);
 static void cleanup(Server *server);
 
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB5
 static int des_service_decrypt(unsigned char *in, unsigned char *out);
 #endif
 #ifdef HAVE_KRB5
@@ -1026,8 +1026,8 @@ get_tgt(void)
 
 	dest_tkt();
 
-	retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, ZGetRealm(),
-				    "krbtgt", ZGetRealm(),
+	retval = krb_get_svc_in_tkt(SERVER_SERVICE, buf, (char *)ZGetRealm(),
+				    "krbtgt", (char *)ZGetRealm(),
 				    TKTLIFETIME, srvtab_file);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR,"get_tgt: krb_get_svc_in_tkt: %s",
@@ -1039,7 +1039,7 @@ get_tgt(void)
 	}
 
 	retval = read_service_key(SERVER_SERVICE, SERVER_INSTANCE,
-				  ZGetRealm(), 0 /*kvno*/,
+				  (char *)ZGetRealm(), 0 /*kvno*/,
 				  srvtab_file, (char *)serv_key);
 	if (retval != KSUCCESS) {
 	    syslog(LOG_ERR, "get_tgt: read_service_key: %s",
@@ -1333,8 +1333,9 @@ bdump_recv_loop(Server *server)
 		    syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
 			   error_message(retval), cp);
 		} else {
-		    des_ecb_encrypt(cblock, client->session_key, serv_ksched.s,
-				    DES_DECRYPT);
+		    des_ecb_encrypt((des_cblock *)cblock,
+				    (des_cblock *)client->session_key,
+				    serv_ksched.s, DES_DECRYPT);
 		}
 	    }
 #endif /* HAVE_KRB4 */
@@ -1670,8 +1671,8 @@ setup_file_pointers (void)
 #ifdef HAVE_KRB5
 static int des_service_decrypt(unsigned char *in, unsigned char *out) {
 #ifndef HAVE_KRB4
-    krb5_data dout;
 #ifdef HAS_KRB5_C_DECRYPT
+    krb5_data dout;
     krb5_enc_data din;
 
     dout.length = 8;
@@ -1705,7 +1706,7 @@ static int des_service_decrypt(unsigned char *in, unsigned char *out) {
 #endif
 #else
     des_ecb_encrypt((C_Block *)in, (C_Block *)out, serv_ksched.s, DES_DECRYPT);
-    return 0; /* sigh */
 #endif
+    return 0; /* sigh */
 }
 #endif
