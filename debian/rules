@@ -50,13 +50,13 @@ configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
 	-mkdir krb5
-	cd krb5 && CFLAGS="-g -Wall" ../configure --with-krb5=/usr --with-openssl=/usr $(CONFIGURE_ROOT)
+	cd krb5 && CFLAGS="" ../configure --with-krb5=/usr --with-openssl=/usr $(CONFIGURE_ROOT)
 	-mkdir krb45
-	cd krb45 && CFLAGS="-g -Wall" ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
+	cd krb45 && CFLAGS="" ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
 	-mkdir krb4
-	cd krb4 && CFLAGS="-g -Wall" ../configure --with-krb4=/usr $(CONFIGURE_ROOT)
+	cd krb4 && CFLAGS="" ../configure --with-krb4=/usr $(CONFIGURE_ROOT)
 	-mkdir no-krb
-	cd no-krb && CFLAGS="-g -Wall" ../configure $(CONFIGURE_ROOT)
+	cd no-krb && CFLAGS="" ../configure $(CONFIGURE_ROOT)
 	touch configure-stamp
 
 build: configure-stamp build-stamp
@@ -66,7 +66,7 @@ build-stamp:
 	# Add here commands to compile the package.
 	set -e; \
 	for dir in krb5 krb45 krb4 ; do  \
-		$(MAKE) -C $$dir/lib; make -C $$dir/server; \
+		$(MAKE) -C $$dir/lib; $(MAKE) -C $$dir/server; \
 	done
 	$(MAKE) -C no-krb
 

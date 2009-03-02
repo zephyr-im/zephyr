@@ -662,6 +662,9 @@ xmit(ZNotice_t *notice,
                                                   partnotice.z_uid.tv.tv_usec);
               (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr,
                             sizeof(__My_addr));
+	      partnotice.z_sender_sockaddr.ip4.sin_family = AF_INET; /* XXX */
+              (void) memcpy((char *)&partnotice.z_sender_sockaddr.ip4.sin_addr,
+			    &__My_addr, sizeof(__My_addr));
             }
             partnotice.z_message = notice->z_message+offset;
             message_len = min(notice->z_message_len-offset, fragsize);
