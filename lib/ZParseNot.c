@@ -254,7 +254,7 @@ ZParseNotice(char *buffer,
 	int len;
 
 	/* because we're paranoid about naughtily misformated packets */
-	if (memchr(ptr, '\0', end - ptr))
+	if (memchr(ptr, '\0', end - ptr) == NULL)
 	    BAD_PACKET;
 
 	if (ZReadZcode((unsigned char *)ptr, addrbuf, sizeof(addrbuf), &len) == ZERR_BADFIELD)
