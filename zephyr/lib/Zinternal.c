@@ -734,6 +734,11 @@ Z_NewFormatHeader(ZNotice_t *notice,
     
     (void) memcpy(&notice->z_uid.zuid_addr, &__My_addr, sizeof(__My_addr));
 
+    (void) memset(&notice->z_sender_sockaddr, 0, sizeof(notice->z_sender_sockaddr));
+    notice->z_sender_sockaddr.ip4.sin_family = AF_INET; /*XXX*/
+    notice->z_sender_sockaddr.ip4.sin_port = notice->z_port;
+    (void) memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, &__My_addr, sizeof(__My_addr));
+
     notice->z_multiuid = notice->z_uid;
 
     if (!version[0])
@@ -1235,6 +1240,10 @@ Z_SendFragmentedNotice(ZNotice_t *notice,
 		htonl((u_long) partnotice.z_uid.tv.tv_usec);
 	    (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr, 
 			  sizeof(__My_addr));
+	    (void) memset(&notice->z_sender_sockaddr, 0, sizeof(notice->z_sender_sockaddr));
+	    notice->z_sender_sockaddr.ip4.sin_family = AF_INET; /*XXX*/
+	    notice->z_sender_sockaddr.ip4.sin_port = notice->z_port;
+	    (void) memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, &__My_addr, sizeof(__My_addr));
 	}
 	message_len = min(notice->z_message_len-offset, fragsize);
 	partnotice.z_message = notice->z_message+offset;
