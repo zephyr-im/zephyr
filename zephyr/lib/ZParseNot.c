@@ -260,11 +260,13 @@ ZParseNotice(char *buffer,
 	if (ZReadZcode((unsigned char *)ptr, addrbuf, sizeof(addrbuf), &len) == ZERR_BADFIELD)
 	    BAD_PACKET;
 
-	if (len == sizeof(notice->z_sender_sockaddr.ip6.sin6_addr))
+	if (len == sizeof(notice->z_sender_sockaddr.ip6.sin6_addr)) {
+	    notice->z_sender_sockaddr.ip6.sin6_family = AF_INET6;
 	    memcpy(&notice->z_sender_sockaddr.ip6.sin6_addr, addrbuf, len);
-	else if (len == sizeof(notice->z_sender_sockaddr.ip4.sin_addr))
+	} else if (len == sizeof(notice->z_sender_sockaddr.ip4.sin_addr)) {
+	    notice->z_sender_sockaddr.ip4.sin_family = AF_INET;
 	    memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, addrbuf, len);
-	else
+	} else
 	    BAD_PACKET;
 
 	numfields--;
