@@ -13,6 +13,8 @@
 export DH_OPTIONS
 CONFIGURE_ROOT=--prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --sysconfdir=/etc --datadir=/etc  --with-ares=/usr --with-hesiod=/usr
 
+CFLAGS=-O -g
+
 # see /usr/share/doc/autotools-dev/README.Debian.gz
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
