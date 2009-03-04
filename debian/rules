@@ -13,8 +13,6 @@
 export DH_OPTIONS
 CONFIGURE_ROOT=--prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --sysconfdir=/etc --datadir=/etc  --with-ares=/usr --with-hesiod=/usr
 
-CFLAGS=-O -g
-
 # see /usr/share/doc/autotools-dev/README.Debian.gz
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -52,11 +50,11 @@ configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
 	-mkdir krb5
-	cd krb5 && CFLAGS="" ../configure --with-krb5=/usr --with-openssl=/usr $(CONFIGURE_ROOT)
+	cd krb5 && CFLAGS="-g -O" ../configure --with-krb5=/usr --with-openssl=/usr $(CONFIGURE_ROOT)
 	-mkdir krb45
-	cd krb45 && CFLAGS="" ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
+	cd krb45 && CFLAGS="-g -O" ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
 	-mkdir krb4
-	cd krb4 && CFLAGS="" ../configure --with-krb4=/usr $(CONFIGURE_ROOT)
+	cd krb4 && CFLAGS="-g -O" ../configure --with-krb4=/usr $(CONFIGURE_ROOT)
 	-mkdir no-krb
 	cd no-krb && CFLAGS="" ../configure $(CONFIGURE_ROOT)
 	touch configure-stamp
