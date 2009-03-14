@@ -1,22 +1,12 @@
-#
-#    Translators, if you are not familiar with the PO format, gettext
-#    documentation is worth reading, especially sections dedicated to
-#    this format, e.g. by running:
-#         info -n '(gettext)PO Files'
-#         info -n '(gettext)Header Entry'
-#
-#    Some information specific to po-debconf are available at
-#            /usr/share/doc/po-debconf/README-trans
-#         or http://www.debian.org/intl/l10n/po-debconf/README-trans
-#
-#    Developers do not need to manually edit POT or PO files.
+# Portuguese translation for zephyr's debconf messages
+# Ricardo Silva <ardoric@gmail.com>, 2007
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: zephyr 2.1.20010518.SNAPSHOT-17.1\n"
-"Report-Msgid-Bugs-To: kcr@debian.org\n"
-"POT-Creation-Date: 2007-07-19 04:11-0400\n"
-"PO-Revision-Date: 2007-03-12 21:15+0000\n"
+"Project-Id-Version: zephyr 2.1.20070719.SNAPSHOT-3\n"
+"Report-Msgid-Bugs-To: Source: zephyr@packages.debian.org\n"
+"POT-Creation-Date: 2007-12-05 09:47+0530\n"
+"PO-Revision-Date: 2007-12-19 22:05+0000\n"
 "Last-Translator: Ricardo Silva <ardoric@gmail.com>\n"
 "Language-Team: Portuguese <traduz@debianpt.org>\n"
 "MIME-Version: 1.0\n"
@@ -25,33 +15,54 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid "Zephyr servers:"
 msgstr "Servidores Zephyr:"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001
-#, fuzzy
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(note that this can be a subset of what you're telling the servers) If you "
-"are using hesiod to advertise your zephyr servers, leave this blank."
+"Please specify the full names of the Zephyr servers, as a space-separated "
+"list."
 msgstr ""
-"Por favor escreva os nomes completos dos seus servidores zephyr, separados "
-"por espaços. (note que esta lista pode ser um subconjunto do que diz aos "
-"servidores)"
+"Por favor especifique o nome completo dos servidores Zephyr, numa lista "
+"separada por espaços."
 
 #. Type: string
 #. Description
-#: ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(Note that this can be a superset of that you're telling the clients.)"
+"The list configured on clients can be a subset of the list configured on "
+"servers."
 msgstr ""
-"Por favor escreva os nomes completos dos seus servidores zephyr, separados "
-"por espaços. (Note que esta lista pode ser um super-conjunto do que diz aos "
-"clientes.)"
+"A lista configurada nos clientes pode ser um sub-conjunto da lista "
+"configurada nos servidores."
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:2001
+msgid "This can be left empty if Hesiod is used to advertise Zephyr servers."
+msgstr ""
+"Esta opção pode ser deixada vazia se o Hesiod for utilizado para anunciar os "
+"servidores Zephyr."
+
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(note that this can be a subset of what you're telling the servers) If "
+#~ "you are using hesiod to advertise your zephyr servers, leave this blank."
+#~ msgstr ""
+#~ "Por favor escreva os nomes completos dos seus servidores zephyr, "
+#~ "separados por espaÃ§os. (note que esta lista pode ser um subconjunto do "
+#~ "que diz aos servidores)"
+
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(Note that this can be a superset of that you're telling the clients.)"
+#~ msgstr ""
+#~ "Por favor escreva os nomes completos dos seus servidores zephyr, "
+#~ "separados por espaÃ§os. (Note que esta lista pode ser um super-conjunto "
+#~ "do que diz aos clientes.)"
 
 #~ msgid "for internal use"
 #~ msgstr "para uso interno"
@@ -64,16 +75,16 @@ msgstr ""
 #~ "value is written out in postinst. If this is false we skip reading config "
 #~ "files until postinst runs."
 #~ msgstr ""
-#~ "Tentamos determinar que alterações os utilizadores fazem quando editam um "
-#~ "ficheiro de configuração manualmente. Para tal analisamos o ficheiro no "
-#~ "script de configuração. No entanto quando há pré-configuração, o script "
-#~ "de configuração é corrido duas vezes antes do pós-instalação. Assim "
-#~ "podemos ler os valores errados antes que o valor editado seja escrito no "
-#~ "pós-instalação. Se esta opção for falsa não analisamos os ficheiros de "
-#~ "configuração até que o pós-instalação corra."
+#~ "Tentamos determinar que alteraÃ§Ãµes os utilizadores fazem quando editam "
+#~ "um ficheiro de configuraÃ§Ã£o manualmente. Para tal analisamos o ficheiro "
+#~ "no script de configuraÃ§Ã£o. No entanto quando hÃ¡ prÃ©-configuraÃ§Ã£o, o "
+#~ "script de configuraÃ§Ã£o Ã© corrido duas vezes antes do pÃ³s-instalaÃ§Ã"
+#~ "£o. Assim podemos ler os valores errados antes que o valor editado seja "
+#~ "escrito no pÃ³s-instalaÃ§Ã£o. Se esta opÃ§Ã£o for falsa nÃ£o analisamos "
+#~ "os ficheiros de configuraÃ§Ã£o atÃ© que o pÃ³s-instalaÃ§Ã£o corra."
 
 #~ msgid "You have no zephyr servers specified for the client"
-#~ msgstr "Não tem nenhum servidor zephyr especificado para o cliente"
+#~ msgstr "NÃ£o tem nenhum servidor zephyr especificado para o cliente"
 
 #~ msgid ""
 #~ "The zephyr-clients package for whatever reason does not have any zephyr "
@@ -81,7 +92,7 @@ msgstr ""
 #~ "add the names of your zephyr servers, separated by spaces to the zhm_args "
 #~ "variable."
 #~ msgstr ""
-#~ "O pacote zephyr-clients por alguma razão não tem nenhum servidor zephyr "
+#~ "O pacote zephyr-clients por alguma razÃ£o nÃ£o tem nenhum servidor zephyr "
 #~ "configurado. Por favor edite o ficheiro /etc/default/zephyr-clients e "
-#~ "adicione os nomes dos seus servidores zephyr, separados por espaços à "
-#~ "variável zhm_args."
+#~ "adicione os nomes dos seus servidores zephyr, separados por espaÃ§os Ã  "
+#~ "variÃ¡vel zhm_args."

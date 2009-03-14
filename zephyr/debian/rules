@@ -56,7 +56,7 @@ configure-stamp:
 	-mkdir krb4
 	cd krb4 && CFLAGS="-g -O" ../configure --with-krb4=/usr $(CONFIGURE_ROOT)
 	-mkdir no-krb
-	cd no-krb && CFLAGS="" ../configure $(CONFIGURE_ROOT)
+	cd no-krb && CFLAGS="-g -O" ../configure $(CONFIGURE_ROOT)
 	touch configure-stamp
 
 build: configure-stamp build-stamp

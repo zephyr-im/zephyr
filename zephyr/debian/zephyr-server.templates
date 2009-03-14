@@ -1,8 +1,20 @@
+# These templates have been reviewed by the debian-l10n-english
+# team
+#
+# If modifications/additions/rewording are needed, please ask
+# debian-l10n-english@lists.debian.org for advice.
+#
+# Even minor modifications require translation updates and such
+# changes should be coordinated with translators and reviewers.
+
 Template: zephyr-server/servers
 Type: string
 _Description: Zephyr servers:
- Please type the full names of your zephyr servers, separated by spaces.
- (Note that this can be a superset of that you're telling the clients.)
+ Please specify the full names of the Zephyr servers, as a
+ space-separated list.
+ .
+ The list configured on clients can be a subset of the list configured
+ on servers.
 
 Template: zephyr-server/read_conf
 Type: boolean

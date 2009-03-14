@@ -1,3 +1,4 @@
+# translation of zephyr_2.1.20070719.SNAPSHOT-1.1_sv.po to Swedish
 # Translators, if you are not familiar with the PO format, gettext
 # documentation is worth reading, especially sections dedicated to
 # this format, e.g. by running:
@@ -7,82 +8,50 @@
 # /usr/share/doc/po-debconf/README-trans
 # or http://www.debian.org/intl/l10n/po-debconf/README-trans
 # Developers do not need to manually edit POT or PO files.
-# , fuzzy
 #
-#
+# Martin Ågren <martin.agren@gmail.com>, 2008.
 msgid ""
 msgstr ""
-"Project-Id-Version: zephyr 2.1.20010518.SNAPSHOT-13\n"
-"Report-Msgid-Bugs-To: kcr@debian.org\n"
-"POT-Creation-Date: 2007-07-19 04:11-0400\n"
-"PO-Revision-Date: 2005-12-17 23:27+0100\n"
-"Last-Translator: Daniel Nylander <po@danielnylander.se>\n"
-"Language-Team: Swedish <tp-sv@listor.tp-sv.se>\n"
+"Project-Id-Version: zephyr_2.1.20070719.SNAPSHOT-1.1_sv\n"
+"Report-Msgid-Bugs-To: Source: zephyr@packages.debian.org\n"
+"POT-Creation-Date: 2007-12-05 09:47+0530\n"
+"PO-Revision-Date: 2008-07-20 10:41+0200\n"
+"Last-Translator: Martin Ågren <martin.agren@gmail.com>\n"
+"Language-Team: Swedish <debian-l10n-swedish@lists.debian.org>\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=iso-8859-1\n"
+"Content-Type: text/plain; charset=ISO-8859-1\n"
 "Content-Transfer-Encoding: 8bit\n"
+"X-Generator: KBabel 1.11.4\n"
+"Plural-Forms:  nplurals=2; plural=(n != 1);\n"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid "Zephyr servers:"
-msgstr ""
+msgstr "Zephyr-servrar:"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001
-#, fuzzy
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(note that this can be a subset of what you're telling the servers) If you "
-"are using hesiod to advertise your zephyr servers, leave this blank."
-msgstr ""
-"Vänligen ange hela namnen för dina zephyr-servrar, separerade med "
-"mellanslag. (notera att detta kan vara ett subset av vad du berättar för "
-"servrarna)"
+"Please specify the full names of the Zephyr servers, as a space-separated "
+"list."
+msgstr "Ange hela namnen på Zephyr-servrarna som en blankstegsseparerad lista."
 
 #. Type: string
 #. Description
-#: ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(Note that this can be a superset of that you're telling the clients.)"
+"The list configured on clients can be a subset of the list configured on "
+"servers."
 msgstr ""
-"Vänligen ange hela namnen för dina zephyr-servrar, separerade med mellanslag "
-"(Notera att detta kan vara ett superset av vad du berättar för klienterna.)"
+"Den lista som konfigureras på klienter kan vara en delmängd av listan som "
+"konfigureras på servrar."
 
-#~ msgid ""
-#~ "We want to try and capture user changes when they edit a config file "
-#~ "manually.  To do this we look at the file in the config script. However, "
-#~ "in the case of preconfigure, the config script is run twice before the "
-#~ "postinst is run.  Thus we may read the wrong value before the edited "
-#~ "value is written out in postinst. If this is false we skip reading config "
-#~ "files until postinst runs."
-#~ msgstr ""
-#~ "Vi vill försöka att fånga in användarändringar när de redigerar en "
-#~ "konfigurationsfil manuellt. För att göra dett ser vi på filen i "
-#~ "konfigurationsskriptet. Hur som helst, i fallet med förkonfigurationer "
-#~ "körs konfigurationsskriptet dubbelt före postinst körs. Därför kan vi "
-#~ "läsa av fel värde före det redigerade värdet har skrivits ut i postinst. "
-#~ "Om detta är falskt hoppar vi över läsning av konfigurationsfiler tills "
-#~ "postinst körs."
-
-#~ msgid "You have no zephyr servers specified for the client"
-#~ msgstr "Du har inga zephyr-servrar angivna för klienten"
-
-#~ msgid ""
-#~ "The zephyr-clients package for whatever reason does not have any zephyr "
-#~ "servers configured.  Please edit the file /etc/default/zephyr-clients and "
-#~ "add the names of your zephyr servers, separated by spaces to the zhm_args "
-#~ "variable."
-#~ msgstr ""
-#~ "Paketet zephyr-clients har av någon anledning inte några zephyr-servrar "
-#~ "konfigurerade. Vänligen redigera filen /etc/default/zephyr-clients och "
-#~ "lägg till namnen för din zephyr-servrar i variabeln zhm_args, separera "
-#~ "med mellanslag."
-
-#~ msgid "What are your zephyr servers?"
-#~ msgstr "Vilka är dina zephyr-servrar?"
-
-#~ msgid "You should never see this"
-#~ msgstr "Du bör aldrig se detta"
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:2001
+msgid "This can be left empty if Hesiod is used to advertise Zephyr servers."
+msgstr ""
+"Detta fält kan lämnas tomt om Hesiod används för att tillkännage Zephyr-"
+"servrar."

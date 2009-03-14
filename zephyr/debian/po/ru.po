@@ -1,4 +1,4 @@
-# translation of zephyr_2.1.20010518.SNAPSHOT-17_ru.po to Russian
+# translation of ru.po to Russian
 #
 #    Translators, if you are not familiar with the PO format, gettext
 #    documentation is worth reading, especially sections dedicated to
@@ -12,14 +12,14 @@
 #
 #    Developers do not need to manually edit POT or PO files.
 #
-# Unknown, 2003,
-# Yuri Kozlov <kozlov.y@gmail.com>, 2006.
+# Unknown, 2003,.
+# Yuri Kozlov <kozlov.y@gmail.com>, 2006, 2007.
 msgid ""
 msgstr ""
-"Project-Id-Version: 2.1.20010518.SNAPSHOT-17\n"
-"Report-Msgid-Bugs-To: kcr@debian.org\n"
-"POT-Creation-Date: 2007-07-19 04:11-0400\n"
-"PO-Revision-Date: 2006-12-24 18:45+0300\n"
+"Project-Id-Version: 2.1.20070719.SNAPSHOT-3\n"
+"Report-Msgid-Bugs-To: Source: zephyr@packages.debian.org\n"
+"POT-Creation-Date: 2007-12-05 09:47+0530\n"
+"PO-Revision-Date: 2007-12-19 20:35+0300\n"
 "Last-Translator: Yuri Kozlov <kozlov.y@gmail.com>\n"
 "Language-Team: Russian <debian-l10n-russian@lists.debian.org>\n"
 "MIME-Version: 1.0\n"
@@ -31,61 +31,31 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid "Zephyr servers:"
 msgstr "Серверы Zephyr:"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001
-#, fuzzy
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(note that this can be a subset of what you're telling the servers) If you "
-"are using hesiod to advertise your zephyr servers, leave this blank."
-msgstr ""
-"Введите полные имена ваших серверов zephyr, разделяя их пробелами. (заметим, "
-"что это может быть подмножеством того, что вы указываете серверам.)"
+"Please specify the full names of the Zephyr servers, as a space-separated "
+"list."
+msgstr "Введите список полных имён серверов Zephyr через пробел."
 
 #. Type: string
 #. Description
-#: ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(Note that this can be a superset of that you're telling the clients.)"
+"The list configured on clients can be a subset of the list configured on "
+"servers."
 msgstr ""
-"Введите полные имена ваших серверов zephyr, разделяя их пробелами. (заметим, "
-"что это может быть надмножеством того, что вы указываете клиентам.)"
+"На клиентах можно указывать подмножество списка, настроенного на серверах."
 
-#~ msgid "for internal use"
-#~ msgstr "для внутреннего использования"
-
-#~ msgid ""
-#~ "We want to try and capture user changes when they edit a config file "
-#~ "manually.  To do this we look at the file in the config script. However, "
-#~ "in the case of preconfigure, the config script is run twice before the "
-#~ "postinst is run.  Thus we may read the wrong value before the edited "
-#~ "value is written out in postinst. If this is false we skip reading config "
-#~ "files until postinst runs."
-#~ msgstr ""
-#~ "Мы хотим попробовать захватить пользовательские изменения, когда "
-#~ "пользователи редактируют файл настроек вручную. Чтобы это сделать, мы "
-#~ "смотрим в файл сценария config. Однако в случае preconfigure, сценарий "
-#~ "config запускается дважды до запуска postinst. Потому мы можем прочитать "
-#~ "неверное значение до того, как отредактированное значение будет записано "
-#~ "из postinst. Если это не удалось, то мы пропускаем чтение файлов "
-#~ "настроек, пока не будет запущен postinst."
-
-#~ msgid "You have no zephyr servers specified for the client"
-#~ msgstr "Вы не указали сервера zephyr для клиента"
-
-#~ msgid ""
-#~ "The zephyr-clients package for whatever reason does not have any zephyr "
-#~ "servers configured.  Please edit the file /etc/default/zephyr-clients and "
-#~ "add the names of your zephyr servers, separated by spaces to the zhm_args "
-#~ "variable."
-#~ msgstr ""
-#~ "Пакет zephyr-clients по какой-то причине не настроен ни на один из "
-#~ "серверов zephyr. Пожалуйста, отредактируйте файл /etc/default/zephyr-"
-#~ "clients и добавьте имена ваших серверов zephyr, разделяя их пробелами, в "
-#~ "переменную zhm_args."
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:2001
+msgid "This can be left empty if Hesiod is used to advertise Zephyr servers."
+msgstr ""
+"Можно ничего не вводить, если для объявления серверов Zephyr используется "
+"Hesiod."

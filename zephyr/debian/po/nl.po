@@ -14,45 +14,68 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: zephyr\n"
-"Report-Msgid-Bugs-To: kcr@debian.org\n"
-"POT-Creation-Date: 2007-07-19 04:11-0400\n"
-"PO-Revision-Date: 2007-02-28 21:28+0100\n"
+"Report-Msgid-Bugs-To: Source: zephyr@packages.debian.org\n"
+"POT-Creation-Date: 2007-12-05 09:47+0530\n"
+"PO-Revision-Date: 2007-12-09 14:00+0100\n"
 "Last-Translator: Bart Cornelis <cobaco@skolelinux.no>\n"
 "Language-Team: debian-l10n-dutch <debian-l10n-dutch@lists.debian.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: Dutch\n"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid "Zephyr servers:"
 msgstr "Zephyr-servers:"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001
-#, fuzzy
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(note that this can be a subset of what you're telling the servers) If you "
-"are using hesiod to advertise your zephyr servers, leave this blank."
+"Please specify the full names of the Zephyr servers, as a space-separated "
+"list."
 msgstr ""
-"Gelieve de volledige naam van uw zephyr-servers op te geven gescheiden door "
-"spaties (merk op dat dit een subset kan zijn van wat u aan de servers "
-"vertelt)."
+"Gelieve hier een (met spaties gescheiden) lijst van de de volledige namen "
+"van de Zephyr-servers op te geven."
 
 #. Type: string
 #. Description
-#: ../zephyr-server.templates:1001
-#, fuzzy
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(Note that this can be a superset of that you're telling the clients.)"
+"The list configured on clients can be a subset of the list configured on "
+"servers."
 msgstr ""
-"Gelieve de volledige namen van uw zephyr-servers op te geven, gescheiden "
-"door spaties (merk op dat dit een superset kan zijn van wat u de clients "
-"verteld)."
+"De op de clients ingestelde lijst mag een subset zijn van de op de servers "
+"ingestelde lijst."
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:2001
+msgid "This can be left empty if Hesiod is used to advertise Zephyr servers."
+msgstr ""
+"Als u Hesiod gebruikt om Zephyr-servers te adverteren kunt u dit veld "
+"leeglaten."
+
+#, fuzzy
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(note that this can be a subset of what you're telling the servers) If "
+#~ "you are using hesiod to advertise your zephyr servers, leave this blank."
+#~ msgstr ""
+#~ "Gelieve de volledige naam van uw zephyr-servers op te geven gescheiden "
+#~ "door spaties (merk op dat dit een subset kan zijn van wat u aan de "
+#~ "servers vertelt)."
+
+#, fuzzy
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(Note that this can be a superset of that you're telling the clients.)"
+#~ msgstr ""
+#~ "Gelieve de volledige namen van uw zephyr-servers op te geven, gescheiden "
+#~ "door spaties (merk op dat dit een superset kan zijn van wat u de clients "
+#~ "verteld)."
 
 #~ msgid "for internal use"
 #~ msgstr "voor intern gebruik"
