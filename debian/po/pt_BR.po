@@ -7,19 +7,18 @@
 # /usr/share/doc/po-debconf/README-trans
 # or http://www.debian.org/intl/l10n/po-debconf/README-trans
 # Developers do not need to manually edit POT or PO files.
-# 
+#
 # 	
-# 
+#
 msgid ""
 msgstr ""
 "Project-Id-Version: zephyr 2.1\n"
-"Report-Msgid-Bugs-To: kcr@debian.org\n"
-"POT-Creation-Date: 2007-07-19 04:11-0400\n"
-"PO-Revision-Date: 2005-03-21 23:30-0300\n"
-"Last-Translator: Felipe Augusto van de Wiel (faw) <felipe@cathedrallabs."
+"Report-Msgid-Bugs-To: Source: zephyr@packages.debian.org\n"
+"POT-Creation-Date: 2007-12-05 09:47+0530\n"
+"PO-Revision-Date: 2008-10-06 02:33-0300\n"
+"Last-Translator: Felipe Augusto van de Wiel (faw) <faw@debian.org>\n"
+"Language-Team: Brazilian Portuguese <debian-l10n-portuguese@lists.debian."
 "org>\n"
-"Language-Team: Portuguese/Brazil <debian-l10n-portuguese@listas.cipsga.org."
-"br>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -27,33 +26,54 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid "Zephyr servers:"
-msgstr ""
+msgstr "Servidores Zephyr:"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001
-#, fuzzy
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(note that this can be a subset of what you're telling the servers) If you "
-"are using hesiod to advertise your zephyr servers, leave this blank."
+"Please specify the full names of the Zephyr servers, as a space-separated "
+"list."
 msgstr ""
-"Por favor digite o nome completo dos seus servidores zephyr, separado por "
-"espaços. (note que isso pode ser um subconjunto daquilo que você está "
-"dizendo aos servidores)"
+"Por favor, especifique os nomes completos dos servidores Zephyr, use uma "
+"lista separada por espaços."
 
 #. Type: string
 #. Description
-#: ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(Note that this can be a superset of that you're telling the clients.)"
+"The list configured on clients can be a subset of the list configured on "
+"servers."
 msgstr ""
-"Por favor digite os nomes completos de seus servidores zephyr, separado por "
-"espaços. (Note que isso pode ser um subconjunto daquilo que você está "
-"dizendo aos clientes.)"
+"A lista configurada nos clientes pode ser um subconjunto da lista "
+"configurada nos servidores."
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:2001
+msgid "This can be left empty if Hesiod is used to advertise Zephyr servers."
+msgstr ""
+"É possível deixar este campo vazio se o Hesiod for usado para anunciar os "
+"servidores Zephyr."
+
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(note that this can be a subset of what you're telling the servers) If "
+#~ "you are using hesiod to advertise your zephyr servers, leave this blank."
+#~ msgstr ""
+#~ "Por favor digite o nome completo dos seus servidores zephyr, separado por "
+#~ "espaços. (note que isso pode ser um subconjunto daquilo que você está "
+#~ "dizendo aos servidores)"
+
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(Note that this can be a superset of that you're telling the clients.)"
+#~ msgstr ""
+#~ "Por favor digite os nomes completos de seus servidores zephyr, separado "
+#~ "por espaços. (Note que isso pode ser um subconjunto daquilo que você está "
+#~ "dizendo aos clientes.)"
 
 #~ msgid ""
 #~ "We want to try and capture user changes when they edit a config file "

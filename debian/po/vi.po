@@ -1,50 +1,72 @@
 # Vietnamese translation for Zephyr.
-# Copyright © 2005 Free Software Foundation, Inc.
-# Clytie Siddall <clytie@riverland.net.au>, 2005.
+# Copyright © 2007 Free Software Foundation, Inc.
+# Clytie Siddall <clytie@riverland.net.au>, 2005-2007.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: zephyr 2.1.20010518.SNAPSHOT-13\n"
-"Report-Msgid-Bugs-To: kcr@debian.org\n"
-"POT-Creation-Date: 2007-07-19 04:11-0400\n"
-"PO-Revision-Date: 2005-08-21 21:51+0930\n"
+"Project-Id-Version: zephyr 2.1.20070719.SNAPSHOT-3\n"
+"Report-Msgid-Bugs-To: Source: zephyr@packages.debian.org\n"
+"POT-Creation-Date: 2007-12-05 09:47+0530\n"
+"PO-Revision-Date: 2007-12-21 22:24+1030\n"
 "Last-Translator: Clytie Siddall <clytie@riverland.net.au>\n"
-"Language-Team: Vietnamese <gnomevi-list@lists.sourceforge.net>\n"
+"Language-Team: Vietnamese <vi-VN@googlegroups.com>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=1; plural=0\n"
-"X-Generator: LocFactoryEditor 1.2.2\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: LocFactoryEditor 1.7b1\n"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid "Zephyr servers:"
-msgstr ""
+msgstr "Máy phục vụ Zephyr:"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001
-#, fuzzy
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(note that this can be a subset of what you're telling the servers) If you "
-"are using hesiod to advertise your zephyr servers, leave this blank."
+"Please specify the full names of the Zephyr servers, as a space-separated "
+"list."
 msgstr ""
-"Hãy gõ tên đầy đủ của các trình phục vụ zephyr của bạn, định giới bằng dấu "
-"cách (ghi chú: đây có thể là nhóm con của điều mà bạn đang báo những trình "
-"phục vụ)."
+"Hãy ghi rõ tên đầy đủ của mỗi máy phục vụ Zephyr, làm danh sách định giới "
+"bằng dấu cách."
 
 #. Type: string
 #. Description
-#: ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(Note that this can be a superset of that you're telling the clients.)"
+"The list configured on clients can be a subset of the list configured on "
+"servers."
 msgstr ""
-"Hãy gõ tên đầy đủ của các trình phục vụ zephyr của bạn, định giới bằng dấu "
-"cách (ghi chú: điều này có thể là siêu nhóm của điều mà bạn đang báo những "
-"trình khách)."
+"Danh sách được cấu hình trên máy khách có thể là tập hợp con của danh sách "
+"được cấu hình trên máy phục vụ."
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:2001
+msgid "This can be left empty if Hesiod is used to advertise Zephyr servers."
+msgstr ""
+"Trường này có thể bỏ rỗng nếu Hesiod được dùng để quảng cáo máy phục vụ "
+"Zephyr."
+
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(note that this can be a subset of what you're telling the servers) If "
+#~ "you are using hesiod to advertise your zephyr servers, leave this blank."
+#~ msgstr ""
+#~ "Hãy gõ tên đầy đủ của các máy phục vụ Zephyr của bạn, định giới bằng dấu "
+#~ "cách (ghi chú: đây có thể là tập hợp con của điều mà bạn báo cho máy phục "
+#~ "vụ). Dùng Hesiod để quảng cáo các máy phục vụ Zephyr thì bỏ rỗng trường "
+#~ "này."
+
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(Note that this can be a superset of that you're telling the clients.)"
+#~ msgstr ""
+#~ "Hãy gõ tên đầy đủ của các trình phục vụ zephyr của bạn, định giới bằng "
+#~ "dấu cách (ghi chú: điều này có thể là siêu nhóm của điều mà bạn đang báo "
+#~ "những trình khách)."
 
 #~ msgid ""
 #~ "We want to try and capture user changes when they edit a config file "

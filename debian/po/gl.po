@@ -5,9 +5,9 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: zephyr\n"
-"Report-Msgid-Bugs-To: kcr@debian.org\n"
-"POT-Creation-Date: 2007-07-19 04:11-0400\n"
-"PO-Revision-Date: 2007-02-28 10:30+0100\n"
+"Report-Msgid-Bugs-To: Source: zephyr@packages.debian.org\n"
+"POT-Creation-Date: 2007-12-05 09:47+0530\n"
+"PO-Revision-Date: 2007-12-05 20:45+0000\n"
 "Last-Translator: Jacobo Tarrio <jtarrio@debian.org>\n"
 "Language-Team: Galician <proxecto@trasno.net>\n"
 "MIME-Version: 1.0\n"
@@ -16,33 +16,55 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001 ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid "Zephyr servers:"
 msgstr "Servidores zephyr:"
 
 #. Type: string
 #. Description
-#: ../zephyr-clients.templates:1001
-#, fuzzy
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(note that this can be a subset of what you're telling the servers) If you "
-"are using hesiod to advertise your zephyr servers, leave this blank."
+"Please specify the full names of the Zephyr servers, as a space-separated "
+"list."
 msgstr ""
-"Escriba os nomes completos dos seus servidores zephyr, separados por "
-"espazos. (Teña en conta que isto pode ser un subconxunto do que lles conta "
-"aos servidores)"
+"Indique os nomes completos dos servidores Zephyr, nunha lista de nomes "
+"separados por comas."
 
 #. Type: string
 #. Description
-#: ../zephyr-server.templates:1001
+#: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid ""
-"Please type the full names of your zephyr servers, separated by spaces. "
-"(Note that this can be a superset of that you're telling the clients.)"
+"The list configured on clients can be a subset of the list configured on "
+"servers."
 msgstr ""
-"Escriba os nomes completos dos seus servidores zephyr, separados por "
-"espazos. (Teña en conta que pode ser un superconxunto do que lles di aos "
-"clientes)."
+"A lista configurada nos clientes pode ser un subconxunto da lista "
+"configurada nos servidores."
+
+#. Type: string
+#. Description
+#: ../zephyr-clients.templates:2001
+msgid "This can be left empty if Hesiod is used to advertise Zephyr servers."
+msgstr ""
+"Pódese deixar baleiro se se emprega Hesiod para anunciar os servidores "
+"Zephyr."
+
+#, fuzzy
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(note that this can be a subset of what you're telling the servers) If "
+#~ "you are using hesiod to advertise your zephyr servers, leave this blank."
+#~ msgstr ""
+#~ "Escriba os nomes completos dos seus servidores zephyr, separados por "
+#~ "espazos. (Teña en conta que isto pode ser un subconxunto do que lles "
+#~ "conta aos servidores)"
+
+#~ msgid ""
+#~ "Please type the full names of your zephyr servers, separated by spaces. "
+#~ "(Note that this can be a superset of that you're telling the clients.)"
+#~ msgstr ""
+#~ "Escriba os nomes completos dos seus servidores zephyr, separados por "
+#~ "espazos. (Teña en conta que pode ser un superconxunto do que lles di aos "
+#~ "clientes)."
 
 #~ msgid "for internal use"
 #~ msgstr "para uso interno"

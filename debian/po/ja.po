@@ -1,26 +1,24 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# Copyright (C) 2008 Karl Ramm <kcr@debian.org>
+# This file is distributed under the same license as the zephyr package.
+# Hideki Yamane (Debian-JP) <henrich@debian.or.jp>, 2008.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: zephyr 2.1.20070719.SNAPSHOT-1.2\n"
 "Report-Msgid-Bugs-To: Source: zephyr@packages.debian.org\n"
 "POT-Creation-Date: 2007-12-05 09:47+0530\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"PO-Revision-Date: 2008-12-28 22:26+0900\n"
+"Last-Translator: Hideki Yamane (Debian-JP) <henrich@debian.or.jp>\n"
+"Language-Team: Japanese <debian-japanese@lists.debian.org>\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #. Type: string
 #. Description
 #: ../zephyr-clients.templates:2001 ../zephyr-server.templates:2001
 msgid "Zephyr servers:"
-msgstr ""
+msgstr "Zephyr サーバ:"
 
 #. Type: string
 #. Description
@@ -29,6 +27,7 @@ msgid ""
 "Please specify the full names of the Zephyr servers, as a space-separated "
 "list."
 msgstr ""
+"Zephyr サーバの名前を全て、スペースで区切ったリストで指定してください。"
 
 #. Type: string
 #. Description
@@ -37,9 +36,10 @@ msgid ""
 "The list configured on clients can be a subset of the list configured on "
 "servers."
 msgstr ""
+"クライアント上で設定されたリストは、サーバ上で設定されたリストのサブセットになります。"
 
 #. Type: string
 #. Description
 #: ../zephyr-clients.templates:2001
 msgid "This can be left empty if Hesiod is used to advertise Zephyr servers."
-msgstr ""
+msgstr "Hesiod を Zephyr サーバの広報に利用している場合は、ここは空のままで構いません。"
