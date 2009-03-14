@@ -3,7 +3,9 @@ Section: net
 Priority: optional
 Maintainer: Karl Ramm <kcr@debian.org>
 Uploaders: Karl Ramm <kcr@debian.org>, Sam Hartman <hartmans@debian.org>
-Build-Depends: debhelper (>= 4), libares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev, libreadline5-dev, libx11-dev, libxt-dev, x-dev  | x11proto-core-dev, libxaw7-dev | libxaw8-dev, libxmu-dev, libncurses5-dev, bison, libhesiod-dev
+Build-Depends: debhelper (>= 4), libares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev,
+               libreadline5-dev, libx11-dev, libxt-dev, x-dev  | x11proto-core-dev,
+               libxaw7-dev | libxaw8-dev, libxmu-dev, libncurses5-dev, bison, libhesiod-dev
 Standards-Version: 3.7.2.2
 
 Package: libzephyr4
@@ -44,7 +46,7 @@ Provides: libzephyr4
 Description: The original "Instant Message" system libraries with Kerberos 5
  This version of the library uses Kerberos for message authentication.
  .
- This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ This is the Project Athena Zephyr notification system.
  Zephyr allows users to send messages to other users or to groups of
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
@@ -59,7 +61,7 @@ Provides: libzephyr4
 Description: The original "Instant Message" system libraries with Kerberos 4+5
  This version of the library uses Kerberos for message authentication.
  .
- This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ This is the Project Athena Zephyr notification system.
  Zephyr allows users to send messages to other users or to groups of
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
@@ -133,7 +135,7 @@ Description: The original "Instant Message" system-server with Kerberos 5
  .
  This version of the server uses Kerberos for message authentication.
  .
- This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ This is the Project Athena Zephyr notification system.
  Zephyr allows users to send messages to other users or to groups of
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
@@ -155,7 +157,7 @@ Description: The original "Instant Message" system-server with Kerberos 4+5
  .
  This version of the server uses Kerberos for message authentication.
  .
- This is the Project Athena Zephyr notification system 2000/04/21 snapshot.
+ This is the Project Athena Zephyr notification system.
  Zephyr allows users to send messages to other users or to groups of
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
