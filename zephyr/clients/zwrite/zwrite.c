@@ -38,14 +38,14 @@ void usage(char *);
 void send_off(ZNotice_t *, int);
 
 int
-main(int argc,
-     char *argv[])
+main(int argc, char *argv[])
 {
     int retval, arg, nocheck, nchars, msgsize, filsys, tabexpand;
     char *message, *signature = NULL, *format = NULL;
     static char bfr[BUFSIZ], classbfr[BUFSIZ], instbfr[BUFSIZ], sigbfr[BUFSIZ];
     static char opbfr[BUFSIZ];
     static ZNotice_t notice;
+    char *charset = NULL;
 
     whoami = argv[0];
 
@@ -90,7 +90,7 @@ main(int argc,
 	
     arg = 1;
 	
-    for (;arg<argc&&!msgarg;arg++) {
+    for (;arg<argc && !msgarg; arg++) {
 	if (*argv[arg] != '-') {
 	    recips[nrecips++] = argv[arg];
 	    continue;
@@ -183,6 +183,12 @@ main(int argc,
 	case 'C':
 	    cc = 1;
 	    break;
+	case 'x':
+	    if (arg == argc-1)
+		usage(whoami);
+	    arg++;
+	    charset = argv[arg];
+	    break;
 	default:
 	    usage(whoami);
 	}
@@ -228,6 +234,7 @@ main(int argc,
     notice.z_sender = 0;
     notice.z_message_len = 0;
     notice.z_recipient = "";
+    notice.z_charset = ZGetCharset(charset);
     if (format)
 	    notice.z_default_format = format;
     else if (filsys == 1)
@@ -343,8 +350,7 @@ main(int argc,
 }
 
 void
-send_off(ZNotice_t *notice,
-	 int real)
+send_off(ZNotice_t *notice, int real)
 {
     int i, success, retval;
     char bfr[BUFSIZ], realm_recip[BUFSIZ], dest[3 * BUFSIZ];
@@ -454,7 +460,7 @@ usage(char *s)
     fprintf(stderr,
 	    "Usage: %s [-a] [-o] [-d] [-v] [-q] [-n] [-t] [-u] [-l]\n\
 \t[-c class] [-i inst] [-O opcode] [-f fsname] [-s signature] [-C]\n\
-\t[user ...] [-F format] [-r realm] [-m message]\n", s);
+\t[user ...] [-F format] [-r realm] [-x charset] [-m message]\n", s);
     fprintf(stderr,"\t-f and -c are mutually exclusive\n\
 \t-f and -i are mutually exclusive\n\
 \trecipients must be specified unless -c or -f specifies a class\n\

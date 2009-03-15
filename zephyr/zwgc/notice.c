@@ -265,6 +265,7 @@ decode_notice(ZNotice_t *notice,
     var_set_variable("instance", notice->z_class_inst);
     var_set_variable("opcode", notice->z_opcode);
     var_set_variable("default", notice->z_default_format);
+    var_set_variable("charset", ZCharsetToString(notice->z_charset));
     var_set_variable("recipient",
 		     (notice->z_recipient[0] ? notice->z_recipient : "*"));
     var_set_variable("fullsender", notice->z_sender);
