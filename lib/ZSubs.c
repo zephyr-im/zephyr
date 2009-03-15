@@ -23,6 +23,16 @@ static Code_t Z_Subscriptions(register ZSubscription_t *sublist,
 static Code_t subscr_sendoff(ZNotice_t *notice, char **lyst, int num,
 			     int authit);
 
+#ifdef CMU_ZCTL_PUNT
+Code_t
+ZPunt(ZSubscription_t *sublist,
+      int nitems,
+      unsigned int port)
+{
+    return (Z_Subscriptions(sublist, nitems, port, "SUPPRESS", 1));
+}
+#endif
+
 Code_t
 ZSubscribeTo(ZSubscription_t *sublist,
 	     int nitems,

@@ -39,6 +39,13 @@ static const char rcsid_main_c[] = "$Id$";
 #include "port.h"
 #include "variables.h"
 #include "main.h"
+#ifdef CMU_ZCTL_PUNT
+#include "int_dictionary.h"
+#endif
+#ifdef CMU_ZWGCPLUS
+#include "plus.h"
+int zwgcplus = 0;
+#endif
 
 void notice_handler(ZNotice_t *);
 static void process_notice(ZNotice_t *, char *);
@@ -47,6 +54,9 @@ static void detach(void);
 static void signal_exit(int);
 #ifdef HAVE_ARES
 static void notice_callback(void *, int, struct hostent *);
+#endif
+#ifdef CMU_ZWGCPLUS
+void reprocess_notice(ZNotice_t *notice, char *hostname);
 #endif
 
 /*
@@ -111,32 +121,42 @@ static struct _Node *program = NULL;
 static void
 fake_startup_packet(void)
 {
-    ZNotice_t notice;
+    ZNotice_t *notice = (ZNotice_t *)malloc(sizeof(ZNotice_t));
     struct timezone tz;
     char msgbuf[BUFSIZ];
     extern void Z_gettimeofday(struct _ZTimeval *, struct timezone *);
 
     var_set_variable("version", zwgc_version_string);
 
-    (void) memset(&notice, 0, sizeof(notice));
+    (void) memset(notice, 0, sizeof(ZNotice_t));
 
-    notice.z_version = "";
-    notice.z_class = "WG_CTL_CLASS";
-    notice.z_class_inst = "WG_CTL_USER<<<>>>";
-    notice.z_opcode = "WG_STARTUP";
-    notice.z_default_format = "Zwgc mark II version $version now running...\n";
-    notice.z_recipient = "";
-    notice.z_sender = "ZWGC";
-    Z_gettimeofday(&notice.z_time, &tz);
-    notice.z_port = 0;
-    notice.z_kind = ACKED;
-    notice.z_auth = ZAUTH_YES;
+    notice->z_version = "";
+    notice->z_class = "WG_CTL_CLASS";
+    notice->z_class_inst = "WG_CTL_USER<<<>>>";
+    notice->z_opcode = "WG_STARTUP";
+    notice->z_default_format = "Zwgc mark II version $version now running...\n";
+    notice->z_recipient = "";
+    notice->z_sender = "ZWGC";
+    Z_gettimeofday(&notice->z_time, &tz);
+    notice->z_port = 0;
+    notice->z_kind = ACKED;
+    notice->z_auth = ZAUTH_YES;
+    notice->z_charset = ZCHARSET_UNKNOWN;
     sprintf(msgbuf,"Zwgc mark II version %s now running...",
 	    zwgc_version_string);
-    notice.z_message = msgbuf;
-    notice.z_message_len = strlen(notice.z_message)+1;
+    notice->z_message = msgbuf;
+    notice->z_message_len = strlen(notice->z_message)+1;
     
-    process_notice(&notice, NULL);
+#ifdef CMU_ZWGCPLUS
+    list_add_notice(notice);
+    set_notice_fake(notice, 1);
+#endif
+    process_notice(notice, NULL);
+#ifdef CMU_ZWGCPLUS
+    list_del_notice(notice);
+#else
+    free(notice);
+#endif
 }
 
 static void
@@ -289,6 +309,9 @@ main(int argc,
      * Initialize various subsystems in proper order:
      */
     dprintf("Initializing subsystems...\n"); /*<<<>>>*/
+#ifdef CMU_ZWGCPLUS
+    init_noticelist();
+#endif
     mux_init();
     var_clear_all_variables(); /* <<<>>> */
     init_ports();       /* <<<>>> */
@@ -311,6 +334,11 @@ main(int argc,
     dprintf("Test Zwgc parser.\n\n");
     read_in_description_file();
 
+#ifdef CMU_ZWGCPLUS
+    if (strcmp(progname, "zwgcplus") == 0)
+      zwgcplus = 1;
+#endif
+
     dprintf("Entering main loop\n");
     mux_loop();
 
@@ -329,10 +357,55 @@ main(int argc,
 #define  USER_SUPPRESS     "SUPPRESS"
 #define  USER_UNSUPPRESS   "UNSUPPRESS"
 
+#ifdef CMU_ZCTL_PUNT
+#define  USER_LIST_SUPPRESSED "LIST-SUPPRESSED"
+
+#define PUNT_INC 1024
+extern int_dictionary puntable_addresses_dict;
+ZNotice_t punt_reply;
+
+void
+create_punt_reply(int_dictionary_binding *punt)
+{
+    string binding;
+    int key_len = strlen(punt->key);
+    char *tmp;
+    
+    if (!punt_reply.z_message) {
+	punt_reply.z_message = (char *)malloc(PUNT_INC);
+	punt_reply.z_message[0] = 0;
+    }
+    
+    if ((punt_reply.z_message_len + key_len + 1) / PUNT_INC > 
+	(punt_reply.z_message_len + PUNT_INC - 1) / PUNT_INC) {
+	char *new_message = (char *)malloc((punt_reply.z_message_len
+					    / PUNT_INC + 1) * PUNT_INC);
+	
+	strcpy(new_message, punt_reply.z_message);
+	
+	free(punt_reply.z_message);
+	punt_reply.z_message = new_message;
+    }
+    tmp = punt_reply.z_message + strlen(punt_reply.z_message);
+    strcat (punt_reply.z_message, punt->key);
+    strcat (punt_reply.z_message, "\n");
+    punt_reply.z_message_len += key_len + 1;
+    
+    while (*tmp != '\001') tmp++;
+    *tmp = ',';
+    while (*tmp != '\001') tmp++;
+    *tmp = ',';
+}
+#endif /* CMU_ZCTL_PUNT */
+
 void
 notice_handler(ZNotice_t *notice)
 {
     struct hostent *fromhost = NULL;
+
+#if defined(CMU_ZWGCPLUS)
+    list_add_notice(notice);
+#endif
 
     if (notice->z_sender_addr.s_addr) {
 #ifdef HAVE_ARES
@@ -346,8 +419,12 @@ notice_handler(ZNotice_t *notice)
 #endif
     }
     process_notice(notice, fromhost ? fromhost->h_name : NULL);
+#ifdef CMU_ZWGCPLUS
+    /* Let list_del_notice clean up for us. */
+#else
     ZFreeNotice(notice);
     free(notice);
+#endif
 }
 
 #ifdef HAVE_ARES
@@ -358,9 +435,17 @@ notice_callback(void *arg,
 {
     ZNotice_t *notice = (ZNotice_t *) arg;
 
+#ifdef CMU_ZWGCPLUS
+    plus_set_hname(notice, fromhost ? fromhost->h_name : NULL);
+#endif
+
     process_notice(notice, fromhost ? fromhost->h_name : NULL);
+#ifdef CMU_ZWGCPLUS
+    list_del_notice(notice);
+#else
     ZFreeNotice(notice);
     free(notice);
+#endif
 }
 #endif
 
@@ -408,12 +493,59 @@ process_notice(ZNotice_t *notice,
 	    free(class);
 	    free(instance);
 	    free(recipient);
+#ifdef CMU_ZCTL_PUNT
+        } else if (!strcasecmp(control_opcode, USER_LIST_SUPPRESSED)) {
+	    struct sockaddr_in old, to;
+	    int retval;
+	    
+	    if (!notice->z_port) {
+		printf("zwgc: can't reply to LIST-SUPPRESSED request\n");
+		return;
+	    }
+	    memset((char *) &punt_reply, 0, sizeof(ZNotice_t));
+	    punt_reply.z_kind = CLIENTACK;
+	    punt_reply.z_class = WG_CTL_CLASS;
+	    punt_reply.z_class_inst = "WG_REPLY";
+	    punt_reply.z_recipient = "zctl?";
+	    punt_reply.z_sender = "Zwgc";
+	    punt_reply.z_default_format = "";
+	    punt_reply.z_opcode = USER_LIST_SUPPRESSED;
+	    punt_reply.z_port = notice->z_port;
+	    punt_reply.z_message = NULL;
+	    punt_reply.z_message_len = 0;
+	    
+	    if (puntable_addresses_dict) {
+		int_dictionary_Enumerate(puntable_addresses_dict,
+					 create_punt_reply);
+	    }
+	    
+	    old = ZGetDestAddr();
+	    to = old;
+	    
+	    to.sin_port = notice->z_port;
+	    if ((retval = ZSetDestAddr(&to)) != ZERR_NONE) {
+		com_err("zwgc",retval,"while setting destination address");
+		exit(1);
+	    }
+	    
+	    ZSendNotice(&punt_reply, ZNOAUTH);
+	    
+	    if ((retval = ZSetDestAddr(&old)) != ZERR_NONE) {
+		com_err("zwgc",retval,"while resetting destination address");
+		exit(1);
+	    }
+	    
+	    if (punt_reply.z_message) {
+		free(punt_reply.z_message);
+		punt_reply.z_message = NULL;
+	    }
+#endif
 	} else if (!strcasecmp(control_opcode, USER_EXIT)) {
 	    signal_exit(0);
 	} else
 	  printf("zwgc: unknown control opcode %s.\n", control_opcode);
 
-	return;
+	goto cleanup;
     }
 
     if (!zwgc_active) {
@@ -421,7 +553,7 @@ process_notice(ZNotice_t *notice,
 	if (zwgc_debug)
 	  printf("NON-ACTIVE: PUNTED <%s>!!!!\n", notice->z_class_inst);
 #endif
-	return;
+	goto cleanup;	
     }
     
     if (puntable_address_p(notice->z_class,
@@ -431,11 +563,23 @@ process_notice(ZNotice_t *notice,
 	if (zwgc_debug)
 	  printf("PUNTED <%s>!!!!\n", notice->z_class_inst);
 #endif
-	return;
+	goto cleanup;
     }
 
     exec_process_packet(program, notice);
+  cleanup:
+    return;
 }
+
+#ifdef CMU_ZWGCPLUS
+void reprocess_notice(ZNotice_t *notice,
+		      char *hostname)
+{
+  list_add_notice(notice);
+  process_notice(notice, hostname);
+  list_del_notice(notice);
+}
+#endif
 
 /***************************************************************************/
 

@@ -224,6 +224,9 @@ static XrmOptionDescRec cmd_options[] = {
     {"-foreground",  "*foreground",   XrmoptionSepArg, (caddr_t) NULL},
     {"-geometry",    ".geometry",     XrmoptionSepArg, (caddr_t) NULL},
     {"-iconname",    ".iconName",     XrmoptionSepArg, (caddr_t) NULL},
+#ifdef CMU_ZWGCPLUS
+    {"-lifespan",    "*lifespan",     XrmoptionSepArg, (caddr_t) NULL},
+#endif
     {"-name",        ".name",         XrmoptionSepArg, (caddr_t) NULL},
     {"-reverse",     "*reverseVideo", XrmoptionNoArg,  (caddr_t) "on"},
     {"-rv",          "*reverseVideo", XrmoptionNoArg,  (caddr_t) "on"},

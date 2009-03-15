@@ -34,6 +34,11 @@ static const char rcsid_xshow_c[] = "$Id$";
 #include "X_fonts.h"
 #include "X_gram.h"
 #include "xmode_stack.h"
+#ifdef CMU_ZWGCPLUS
+#include <zephyr/zephyr.h>
+#include "xrevstack.h"
+#include "plus.h"
+#endif
 
 #define max(a,b)   ((a)>(b)?(a):(b))
 
@@ -331,6 +336,9 @@ fixup_and_draw(Display *dpy,
     gram_ysize = yofs+internal_border_width;
     gram->numblocks = num;
     gram->blocks = blocks;
+#ifdef CMU_ZWGCPLUS
+    gram->notice = get_stored_notice();
+#endif
     
     x_gram_create(dpy, gram, gram_xalign, gram_yalign, gram_xpos,
 		  gram_ypos, gram_xsize, gram_ysize, beepcount);
@@ -575,5 +583,196 @@ x_get_input(Display *dpy)
     }
 }
 
+#ifdef CMU_ZWGCPLUS
+void 
+plus_window_deletions(ZNotice_t *notice)
+{
+  x_gram *tmp, *fry;
+  char *val;
+  int done;
+  static char class_nm[NAMESIZE], instance_nm[NAMESIZE], recip_nm[NAMESIZE];
+  
+  if (!dpy)
+    return;
+
+  val = var_get_variable("delete_window");
+  
+#ifdef DEBUG_DELETION
+  fprintf(stderr, "delete_window(%s)\n", val);
+#endif
+  if (val) {
+    if (!strcmp(val, "this")) {
+      do {
+	done = 1;
+	tmp = bottom_gram;
+	while (tmp) {
+	  if (tmp->notice == (char *)notice) {
+	    fry = tmp;
+	    tmp = tmp->above;
+	    xdestroygram(dpy, fry->w, desc_context, fry, 1);
+	    done = 0;
+	  } else {
+	    tmp = tmp->above;
+	  }
+	}
+      } while (!done);
+    }
+    else if (!strcmp(val, "s")) {
+      /* I cheated. This is really sender, not class */
+      strcpy(class_nm, notice->z_sender);
+      do {
+	done = 1;
+	tmp = bottom_gram;
+	while (tmp) {
+	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_sender, class_nm)) {
+	    fry = tmp;
+	    tmp = tmp->above;
+	    xdestroygram(dpy, fry->w, desc_context, fry, 1);
+	    done = 0;
+	  } else {
+	    tmp = tmp->above;
+	  }
+	}
+      } while (!done);
+    }
+    else if (!strcmp(val, "ns")) {
+      /* I cheated. This is really sender, not class */
+      strcpy(class_nm, notice->z_sender);
+      do {
+	done = 1;
+	tmp = bottom_gram;
+	while (tmp) {
+	  if (!!strcasecmp(((ZNotice_t *)(tmp->notice))->z_sender, class_nm)) {
+	    fry = tmp;
+	    tmp = tmp->above;
+	    xdestroygram(dpy, fry->w, desc_context, fry, 1);
+	    done = 0;
+	  } else {
+	    tmp = tmp->above;
+	  }
+	}
+      } while (!done);
+    }
+    else if (!strcmp(val, "r")) {
+      strcpy(recip_nm, notice->z_recipient);
+      do {
+	done = 1;
+	tmp = bottom_gram;
+	while (tmp) {
+	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) {
+	    fry = tmp;
+	    tmp = tmp->above;
+	    xdestroygram(dpy, fry->w, desc_context, fry, 1);
+	    done = 0;
+	  } else {
+	    tmp = tmp->above;
+	  }
+	}
+      } while (!done);
+    }
+    else if (!strcmp(val, "nr")) {
+      strcpy(recip_nm, notice->z_recipient);
+      do {
+	done = 1;
+	tmp = bottom_gram;
+	while (tmp) {
+	  if (!!strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) {
+	    fry = tmp;
+	    tmp = tmp->above;
+	    xdestroygram(dpy, fry->w, desc_context, fry, 1);
+	    done = 0;
+	  } else {
+	    tmp = tmp->above;
+	  }
+	}
+      } while (!done);
+    }
+    else if (!strcmp(val, "cir")) {
+      strcpy(class_nm, notice->z_class);
+      strcpy(instance_nm, notice->z_class_inst);
+      strcpy(recip_nm, notice->z_recipient);
+      do {
+	done = 1;
+	tmp = bottom_gram;
+	while (tmp) {
+	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class_inst, instance_nm)
+	      && !strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)
+	      && !strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm))
+	    {
+	      fry = tmp;
+	      tmp = tmp->above;
+	      xdestroygram(dpy, fry->w, desc_context, fry, 1);
+	      done = 0;
+	    } else {
+	      tmp = tmp->above;
+	    }
+	}
+      } while (!done);
+    }
+    else if (!strcmp(val, "ci")) {
+      strcpy(class_nm, notice->z_class);
+      strcpy(instance_nm, notice->z_class_inst);
+      do {
+	done = 1;
+	tmp = bottom_gram;
+	while (tmp) {
+	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class_inst, instance_nm)
+	      && !strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)) 
+	    {
+	      fry = tmp;
+	      tmp = tmp->above;
+	      xdestroygram(dpy, fry->w, desc_context, fry, 1);
+	      done = 0;
+	    } else {
+	      tmp = tmp->above;
+	    }
+	}
+      } while (!done);
+    }
+    else if (!strcmp(val, "cr")) {
+      strcpy(class_nm, notice->z_class);
+      strcpy(recip_nm, notice->z_recipient);
+      do {
+	done = 1;
+	tmp = bottom_gram;
+	while (tmp) {
+	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm) &&
+	      !strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) 
+	    {
+	      fry = tmp;
+	      tmp = tmp->above;
+	      xdestroygram(dpy, fry->w, desc_context, fry, 1);
+	      done = 0;
+	    } else {
+	      tmp = tmp->above;
+	    }
+	}
+      } while (!done);
+    }
+    else if (!strcmp(val, "c")) {
+      strcpy(class_nm, notice->z_class);
+      do {
+	done = 1;
+	tmp = bottom_gram;
+	while (tmp) {
+	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)) {
+	    fry = tmp;
+	    tmp = tmp->above;
+	    xdestroygram(dpy, fry->w, desc_context, fry, 1);
+	    done = 0;
+	  } else {
+	    tmp = tmp->above;
+	  }
+	}
+      } while (!done);
+    }
+    else if (!strcmp(val, "all")) {
+      while (bottom_gram) {
+	xdestroygram(dpy, bottom_gram->w, desc_context, bottom_gram, 1);
+      }
+    }
+  }
+}
+#endif
 #endif /* X_DISPLAY_MISSING */
 

@@ -34,6 +34,9 @@ static const char rcsid_X_gram_c[] = "$Id$";
 #include "xrevstack.h"
 #include "xerror.h"
 #include "xselect.h"
+#ifdef CMU_ZWGCPLUS
+#include "plus.h"
+#endif
 
 extern XContext desc_context;
 extern char *app_instance;
@@ -47,7 +50,7 @@ int internal_border_width = 2;
 unsigned long default_fgcolor;
 unsigned long default_bgcolor;
 unsigned long default_bordercolor;
-long ttl = 500;
+long ttl = 0;
 static int reset_saver;
 static int border_width = 1;
 static int cursor_code = XC_sailboat;
@@ -142,6 +145,16 @@ x_gram_init(Display *dpy)
     if (temp && atoi(temp)>=0)
        ttl = atoi(temp);
 
+#ifdef CMU_ZWGCPLUS
+    if (ttl == 0) {
+      temp = get_string_resource("lifespan", "LifeSpan");
+      if (temp && atoi(temp)>=0)
+        ttl = atoi(temp);
+    }
+
+    get_full_names = get_bool_resource("getFullNames", "GetFullNames", 0);
+#endif
+
     reverse_stack = get_bool_resource("reverseStack", "ReverseStack", 0);
     reset_saver =  get_bool_resource("resetSaver", "ResetSaver", 1);
     /* The default here should be 1, but mwm sucks */
@@ -222,6 +235,9 @@ x_gram_init(Display *dpy)
     xattributes.cursor = cursor;
     xattributes.event_mask = (ExposureMask|ButtonReleaseMask|ButtonPressMask
 			      |LeaveWindowMask|Button1MotionMask
+#ifdef CMU_ZWGCPLUS
+			      |KeyPressMask
+#endif
 			      |Button3MotionMask|StructureNotifyMask);
     xattributes_mask = (CWBackPixel|CWBorderPixel|CWEventMask|CWCursor);
 

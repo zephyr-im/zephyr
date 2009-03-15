@@ -184,6 +184,34 @@ if test "$ac_cv_have_krb5_creds_keyblock_enctype" = yes; then
 fi
 AC_MSG_RESULT($ac_cv_have_krb5_creds_keyblock_enctype)
 
+AC_ARG_ENABLE(cmu-zwgcplus,
+[  --enable-cmu-zwgcplus   enable CMU zwgcplus extensions],[
+if test "$enableval" = "yes"; then
+        AC_DEFINE(CMU_ZWGCPLUS,1)
+fi
+])
+
+AC_ARG_ENABLE(cmu-zctl-punt,
+[  --enable-cmu-zctl-punt  enable CMU zctl punt extensions],[
+if test "$enableval" = "yes"; then
+        AC_DEFINE(CMU_ZCTL_PUNT,1)
+fi
+])
+
+AC_ARG_ENABLE(cmu-hm-flush-restrict,
+[  --enable-cmu-hm-flush-restrict   enable CMU zctl hm flush restriction],[
+if test "$enableval" = "yes"; then
+        AC_DEFINE(HM_FLUSH_RESTRICT,1)
+fi
+])
+
+AC_ARG_ENABLE(cmu-opstaff-locate-self,
+[  --enable-cmu-opstaff-locate-self enable CMU opstaff locate-self ability],[
+if test "$enableval" = "yes"; then
+        AC_DEFINE(OPSTAFF_LOCATE_SELF,1)
+fi
+])
+
 AC_CONFIG_HEADER(h/config.h)
 AC_OUTPUT(Makefile clients/Makefile clients/zaway/Makefile
           clients/zctl/Makefile clients/zleave/Makefile

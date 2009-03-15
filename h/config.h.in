@@ -8,6 +8,18 @@
 /* Define to compile with Kerberos v5 support. */
 #undef HAVE_KRB5
 
+/* Define to allow users to locate themselves if they are opstaff */
+#undef OPSTAFF_LOCATE_SELF
+
+/* Define to get hm_flush restrictions in zctl */
+#undef HM_FLUSH_RESTRICT
+
+/* Define to pull in CMU zctl punt backward compat foo */
+#undef CMU_ZCTL_PUNT
+
+/* Define to enable zwgcplus support */
+#undef CMU_ZWGCPLUS
+
 /* Define to 1 if `enc_part2' is member of `krb5_ticket'. */
 #undef HAVE_KRB5_TICKET_ENC_PART2
 

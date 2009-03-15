@@ -42,7 +42,10 @@ static const char rcsid_subscriptions_c[] = "$Id$";
 /*
  *
  */
-static int_dictionary puntable_addresses_dict = 0;
+#ifndef CMU_ZCTL_PUNT
+static
+#endif
+int_dictionary puntable_addresses_dict = 0;
 
 static void
 init_puntable_dict(void)
@@ -62,6 +65,9 @@ address_to_string(string class,
      */
     if (string_Eq(recipient,""))
       recipient = "*";
+    else if (recipient[0] == '@') {
+      recipient = string_Concat("*", recipient);
+    }
 
     /*
      * The following is a hack for now only.  It should be replaced with
@@ -81,11 +87,19 @@ int puntable_address_p(string class,
 		       string recipient)
 {
     string temp;
+    int ret;
 
     if (!puntable_addresses_dict)
       init_puntable_dict();
 
     temp = address_to_string(class, instance, recipient);
+    ret = int_dictionary_Lookup(puntable_addresses_dict, temp);
+    free(temp);
+    if (ret)
+        return 1;;
+
+    /* This kludge is to allow punts of wildcard instance to work */
+    temp = address_to_string(class, "*", recipient);
     if (int_dictionary_Lookup(puntable_addresses_dict, temp)) {
 	free(temp);
 	return(1);
