@@ -31,6 +31,10 @@ static const char rcsid_notice_c[] = "$Id$";
 #include "error.h"
 #include "variables.h"
 #include "notice.h"
+#ifdef CMU_ZWGCPLUS
+#include <pwd.h>
+#include "plus.h"
+#endif
 
 /*
  *    int count_nulls(char *data, int length)
@@ -254,6 +258,9 @@ decode_notice(ZNotice_t *notice,
 {
     char *temp;
     string time, notyear, year, date_string, time_string;
+#ifdef CMU_ZWGCPLUS
+    extern char *getSelectedText();
+#endif
 
     /*
      * Convert useful notice fields to ascii and store away in
@@ -265,7 +272,7 @@ decode_notice(ZNotice_t *notice,
     var_set_variable("instance", notice->z_class_inst);
     var_set_variable("opcode", notice->z_opcode);
     var_set_variable("default", notice->z_default_format);
-    var_set_variable("charset", ZCharsetToString(notice->z_charset));
+    var_set_variable("charset", (char *)ZCharsetToString(notice->z_charset)); /*XXX const*/
     var_set_variable("recipient",
 		     (notice->z_recipient[0] ? notice->z_recipient : "*"));
     var_set_variable("fullsender", notice->z_sender);
@@ -273,6 +280,14 @@ decode_notice(ZNotice_t *notice,
     var_set_variable_then_free_value("kind", z_kind_to_ascii(notice->z_kind));
     var_set_variable_then_free_value("auth", z_auth_to_ascii(notice->z_auth));
 
+#ifdef CMU_ZWGCPLUS
+    if ((temp=getSelectedText()) != 0)
+	var_set_variable("selection", temp);
+    
+    var_set_variable("delete_window", "none");
+    var_set_variable("event_time", "none");
+    var_set_variable("event_name", "event");
+#endif
     /*
      * Set $sender to the name of the notice sender except first strip off the
      * realm name if it is the local realm:
@@ -283,6 +298,17 @@ decode_notice(ZNotice_t *notice,
 						      temp-notice->z_sender));
     else
       var_set_variable("sender", notice->z_sender);
+#ifdef CMU_ZWGCPLUS
+    if (get_full_names) {
+      struct passwd *pwnam = getpwnam(var_get_variable("sender"));
+      if (pwnam) {
+        temp = string_Copy(pwnam->pw_gecos);
+        var_set_variable_then_free_value("sendername", temp);
+      } else {
+        var_set_variable("sendername", "unknown");
+      }
+    }
+#endif
     
     /*
      * Convert time & date notice was sent to ascii.  The $time

@@ -38,6 +38,9 @@ static const char rcsid_zephyr_c[] = "$Id$";
 #ifndef X_DISPLAY_MISSING
 #include "X_driver.h"
 #endif
+#ifdef CMU_ZWGCPLUS
+#include "plus.h"
+#endif
 
 #ifdef DEBUG
 extern int zwgc_debug;
@@ -119,6 +122,13 @@ handle_zephyr_input(void (*notice_handler)(ZNotice_t *))
 	    notice->z_auth = ZCheckAuthentication(notice, &from);
 	    notice_handler(notice);
 	}
+#ifdef CMU_ZWGCPLUS
+	if (get_list_refcount(notice) <= 0) {
+	    /* no windows created */
+	    if (!get_notice_fake(notice))
+		list_del_notice(notice);
+	}
+#endif
     }
 }
 

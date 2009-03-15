@@ -38,6 +38,9 @@ static const char rcsid_xcut_c[] = "$Id$";
 #include "error.h"
 #include "xrevstack.h"
 #include "X_driver.h"
+#ifdef CMU_ZWGCPLUS
+#include "plus.h"
+#endif
 
 /*
  *
@@ -139,7 +142,7 @@ xunmark(Display *dpy,
 #define PRESSOP_KILL 1	/* normal click */
 #define PRESSOP_SEL  2	/* shift left */
 #define PRESSOP_EXT  3  /* shift right */
-#define PRESSOP_NUKE 4	/* ctrl */
+#define PRESSOP_NUKE 4 /* ctrl */
 #define PRESSOP_STOP 5  /* pressop cancelled by moving out of window */
 
 static int current_pressop = PRESSOP_NONE;
@@ -169,7 +172,15 @@ xdestroygram(Display *dpy,
     delete_gram(gram);
     free(gram->text);
     free(gram->blocks);
+#ifdef CMU_ZWGCPLUS
+    if (gram->notice)
+      list_del_notice(gram->notice);
+#endif
     free(gram);
+
+#ifdef CMU_ZWGCPLUS
+    XFlush(dpy);
+#endif
 
     if (bottom_gram == NULL && unlinked == NULL) {
        /* flush colormap here */
@@ -196,6 +207,36 @@ xcut(Display *dpy,
      * Dispatch on the event type:
      */
     switch(event->type) {
+#ifdef CMU_ZWGCPLUS
+    case KeyPress:
+      {
+        char c;
+        char *plusvar;
+        int res, metaflag;
+        res = XLookupString(event, &c, 1, NULL, NULL);
+        metaflag = event->xkey.state & Mod1Mask;
+
+        /* Recheck if zwgcplus is turned on;
+         *  Zephyr variables override zwgc variables
+         */
+
+        zwgcplus = 1;
+        plusvar = (char *)ZGetVariable("zwgcplus") ? (char *)ZGetVariable("zwgcplus") : (char *)var_get_variable("zwgcplus");
+
+        if ((plusvar[0]=='\0') || (strcmp(plusvar,"no") == 0))
+          zwgcplus = 0;
+        else {
+          if (strcmp(plusvar,"no") == 0)
+            zwgcplus = 0;
+          if (strcmp(plusvar,"new") == 0)
+            zwgcplus = 2;
+        }
+
+        if (res != 0 && zwgcplus != 0)
+          plus_retry_notice(gram->notice, c, metaflag);
+      }
+      break;
+#endif
       case ClientMessage:
 	if ((event->xclient.message_type == XA_WM_PROTOCOLS) &&
 	    (event->xclient.format == 32) &&
@@ -273,6 +314,10 @@ xcut(Display *dpy,
 	      selected_text = xmarkGetText();
 	      /* this is ok, since to get here, the selection must be owned */
 	      current_pressop = PRESSOP_EXT;
+#ifdef CMU_ZWGCPLUS
+              if (selected_text)
+                XStoreBytes(dpy, selected_text, strlen(selected_text)+1);
+#endif
 	   }
 	} else if ( (event->xbutton.state)&ControlMask ) {
 	   current_pressop = PRESSOP_NUKE;
@@ -288,6 +333,10 @@ xcut(Display *dpy,
 		   current_pressop == PRESSOP_EXT) {
 	   if (selected_text) free(selected_text);
 	   selected_text = xmarkGetText();
+#ifdef CMU_ZWGCPLUS
+	   if (selected_text)
+	     XStoreBytes(dpy, selected_text, strlen(selected_text)+1);
+#endif
 	} else if (current_pressop == PRESSOP_NUKE) {
 	   XWindowAttributes wa;
 	   int gx,gy;

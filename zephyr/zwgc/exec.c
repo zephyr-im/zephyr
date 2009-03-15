@@ -453,6 +453,10 @@ void
 exec_process_packet(Node *program,
 		    ZNotice_t *notice)
 {
+#ifdef CMU_ZWGCPLUS
+    set_stored_notice(notice);
+#endif
+
     notice_fields = notice->z_message;
     notice_fields_length = notice->z_message_len;
 
@@ -466,4 +470,10 @@ exec_process_packet(Node *program,
 
     clear_buffer();
     (void)exec_subtree(program);
+
+#ifdef CMU_ZWGCPLUS
+    plus_queue_notice(notice);
+    plus_window_deletions(notice); /* OOPS */
+    set_stored_notice(NULL);
+#endif
 }

@@ -144,14 +144,24 @@ mux_loop(void)
 	 */
 	if (mux_end_loop_p)
 	  break;
-
+	tvp = NULL;
+	tv.tv_sec = 0;
 	if (have_tty) {
+#ifdef CMU_ZWGCPLUS
+            tv.tv_sec = plus_timequeue_events();
+           if (tv.tv_sec > 10) tv.tv_sec = 10;
+#else
 	    tv.tv_sec = 10;
+#endif
 	    tv.tv_usec = 0;
-	    tvp = &tv;
+#ifdef CMU_ZWGCPLUS
 	} else {
-	    tvp = NULL;
+	   tv.tv_sec = plus_timequeue_events();
+	   tv.tv_usec = 0;
+#endif
 	}
+	if (tv.tv_sec)
+	 tvp = &tv;
 
 	/*
 	 * Do a select on all the file descriptors we care about to

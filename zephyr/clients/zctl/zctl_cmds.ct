@@ -84,5 +84,15 @@
 
 	request		ss_quit, "Quit.",
 			quit, exit, q;
+#ifdef CMU_BACKWARD_COMPAT
+	request		do_punt, "Ignore specified messages.",
+			punt;
 
+	request		do_punt, "Stop ignoring specified messages.",
+			unpunt;
+
+	request		list_punts, "List current messages to ignore.",
+			list_punts, lp;
+
+#endif
 	end;
