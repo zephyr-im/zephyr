@@ -3,9 +3,6 @@ zephyr (3.0~a1) unstable; urgency=low
   * Kerberos 5 client support; new upstream?
   * GNU config automated update: config.sub     (20070118 to 20080116),
     config.guess     (20070306 to 20080123)
-  * Acknowledge NMUs
-  * Build-depend on x11proto-core-dev.  Closess: #515456
-  * Japanese debconf translation, thanks to Hideki Yamane.  Closes: #510734
 
  -- Karl Ramm <kcr@1ts.org>  Sun, 21 Dec 2008 02:07:58 -0500
 
