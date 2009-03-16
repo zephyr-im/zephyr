@@ -345,7 +345,7 @@ list_add_notice(notice)
 	/* no entry */
 	pt = (notnode *)malloc(sizeof(notnode));
 	pt->notice = notice;
-	pt->refcount = 0;
+	pt->refcount = 1;
 	pt->fake_notice = 0;
 	pt->next = notlist[bx];
 	pt->opcode = notice->z_opcode;
