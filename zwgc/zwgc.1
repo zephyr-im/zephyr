@@ -1,7 +1,7 @@
 .\"	$Id$
-'	# end of TP (cf }N below)
-'	# copied here, since we use @ in some of our tags, and that
-'	# messes up \w and \h
+.\"	# end of TP (cf }N below)
+.\"	# copied here, since we use @ in some of our tags, and that
+.\"	# messes up \w and \h
 .de }1
 .ds ]X \&\\*(]B\\
 .nr )E 0
@@ -23,7 +23,7 @@
 .if "\\n()E"2" .}2
 .nr )E 0
 ..
-'	# tagged paragraph (paragraph with hanging label, but no para spacing)
+.\"	# tagged paragraph (paragraph with hanging label, but no para spacing)
 .de TQ
 .if !"\\$1"" .nr )I \\$1n
 .ne 1.1v
@@ -688,7 +688,7 @@ zwgc*option: value
 Zwgc*option: value
 zwgc.option: value
 *option: value
-.option: value
+\&.option: value
 .in -5
 .fi
 .sp
