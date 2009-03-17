@@ -35,7 +35,7 @@ case "$1" in
   stop)
 	echo -n "Stopping $DESC: "
 	start-stop-daemon --oknodo --stop --quiet --pidfile /var/run/$NAME.pid \
-		--exec $DAEMON
+		$DAEMON
 	echo "$NAME."
 	;;
   restart|force-reload)
