@@ -139,7 +139,7 @@ binary-arch: build install
 		done; \
 	done
 	for dir in $(VARIETALS); do \
-		cp debian/libzephyr4.files debian/libzephyr4-$$dir; \
+		cp debian/libzephyr4.files debian/libzephyr4-$$dir.files; \
 	done
 	dh_movefiles  -plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev
 	for dir in $(VARIETALS); do \
