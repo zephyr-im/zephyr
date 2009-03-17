@@ -1,10 +1,12 @@
-zephyr (3.0~a1) unstable; urgency=low
+zephyr (3.0~alpha.20090316-1) unstable; urgency=low
 
-  * Kerberos 5 client support; new upstream?
+  * Kerberos 5 client support; new upstream
   * GNU config automated update: config.sub     (20070118 to 20080116),
     config.guess     (20070306 to 20080123)
-
- -- Karl Ramm <kcr@1ts.org>  Sun, 21 Dec 2008 02:07:58 -0500
+  * Upstream merged CMU zwgcplus;  Closes: #207362
+  * Fix braino in init script.  Closes: #448459
+  
+ -- Karl Ramm <kcr@debian.org>  Mon, 16 Mar 2009 19:57:49 -0400
 
 zephyr (2.1.20070719.SNAPSHOT-2) unstable; urgency=low
 
@@ -13,7 +15,7 @@ zephyr (2.1.20070719.SNAPSHOT-2) unstable; urgency=low
     Wait for the SERVACK explicitly, so the USER_LOGIN gets left on the
     queue even if it arrives early. (thanks, Mark!)
   * Acknowledge NMUs
-  * Build-depend on x11proto-core-dev.  Closess: #515456
+  * Build-depend on x11proto-core-dev.  Closes: #515456
   * Japanese debconf translation, thanks to Hideki Yamane.  Closes: #510734
 
  -- Karl Ramm <kcr@debian.org>  Sun, 01 Mar 2009 02:52:20 -0500
