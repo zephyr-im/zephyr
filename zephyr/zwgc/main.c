@@ -53,7 +53,7 @@ static void setup_signals(int);
 static void detach(void);
 static void signal_exit(int);
 #ifdef HAVE_ARES
-static void notice_callback(void *, int, struct hostent *);
+static void notice_callback(void *, int, int, struct hostent *);
 #endif
 #ifdef CMU_ZWGCPLUS
 void reprocess_notice(ZNotice_t *notice, char *hostname);
@@ -250,7 +250,6 @@ main(int argc,
     register char **current;
     int dofork = 1;
 #ifdef HAVE_ARES
-    char *errmem;
     int status;
 #endif
 
@@ -299,8 +298,7 @@ main(int argc,
     status = ares_init(&achannel);
     if (status != ARES_SUCCESS) {
 	fprintf(stderr, "Couldn't initialize resolver: %s\n",
-		ares_strerror(status, &errmem));
-	ares_free_errmem(errmem);
+		ares_strerror(status));
 	return(1);
     }
 #endif
@@ -431,6 +429,7 @@ notice_handler(ZNotice_t *notice)
 static void
 notice_callback(void *arg,
 		int status,
+		int timeouts,
 		struct hostent *fromhost)
 {
     ZNotice_t *notice = (ZNotice_t *) arg;
