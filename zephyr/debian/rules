@@ -8,12 +8,19 @@
 
 # Uncomment this to turn on verbose mode. 
 #export DH_VERBOSE=1
+VARIETALS=krb5
+#VARIETALS=krb krb45 krb5
+
+PACKAGES:=-plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev $(foreach i,$(VARIETALS),-plibzephyr4-$(i) -pzephyr-server-$(i))
 
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
 CONFIGURE_ROOT=--prefix=/usr --mandir=\$${prefix}/share/man \
 	--infodir=\$${prefix}/share/info --sysconfdir=/etc --datadir=/etc \
 	--with-ares=/usr --with-hesiod=/usr --enable-cmu-zwgcplus
+CONFIGURE_krb5=--with-krb5=/usr
+CONFIGURE_krb45=--with-krb4=/usr --with-krb5=/usr
+CONFIGURE_krb=--with-krb4=/usr
 
 # see /usr/share/doc/autotools-dev/README.Debian.gz
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
@@ -51,12 +58,11 @@ configure: configure-stamp autotools
 configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
-	-mkdir krb5
-	cd krb5 && CFLAGS="-g -O" ../configure --with-krb5=/usr $(CONFIGURE_ROOT)
-	-mkdir krb45
-	cd krb45 && CFLAGS="-g -O" ../configure --with-krb4=/usr --with-krb5=/usr $(CONFIGURE_ROOT)
-	-mkdir krb4
-	cd krb4 && CFLAGS="-g -O" ../configure --with-krb4=/usr $(CONFIGURE_ROOT)
+	for i in $(foreach i,$(VARIETALS),"$i:$(CONFIGURE_$i)"); do \
+		IFS=: ; set $$i ; \
+		mkdir $$1 || true;  \
+		(cd $$1 && CFLAGS="-g -O" ../configure $$2 $(CONFIGURE_ROOT)); \
+	done
 	-mkdir no-krb
 	cd no-krb && CFLAGS="-g -O" ../configure $(CONFIGURE_ROOT)
 	touch configure-stamp
@@ -67,7 +73,7 @@ build-stamp:
 
 	# Add here commands to compile the package.
 	set -e; \
-	for dir in krb5 krb45 krb4 ; do  \
+	for dir in $(VARIETALS) ; do  \
 		$(MAKE) -C $$dir/lib; $(MAKE) -C $$dir/server; \
 	done
 	$(MAKE) -C no-krb
@@ -80,7 +86,7 @@ clean:
 	-rm -f build-stamp configure-stamp
 
 	# Add here commands to clean up after the build process.
-	-rm -rf krb krb4 krb5 krb45 no-krb debian/tmp-krb*
+	-rm -rf $(VARIETALS) no-krb debian/tmp-krb*
 	-rm debian/zephyr-server-krb.files
 	-rm debian/zephyr-server-krb.templates
 	-rm debian/zephyr-server-krb.config
@@ -101,17 +107,17 @@ install: build
 
 	# Add here commands to install the package into debian/tmp.
 	$(MAKE) -C no-krb DESTDIR=$(CURDIR)/debian/tmp install
-	for dir in krb5 krb45 krb4 ; do \
+	for dir in $(VARIETALS); do \
 		$(MAKE) -C $$dir SUBDIRS="lib server" DESTDIR=$(CURDIR)/debian/tmp-$$dir install; \
 	done
 	mkdir -p debian/tmp/etc/zephyr/acl
 	set -x; for i in debian/acl/*; do install -c -m 644 -o root $$i debian/tmp/etc/zephyr/acl; done; set +x
 	install -c -m 644 debian/zephyr.vars debian/tmp/etc/zephyr
 	install -c -m 644 debian/default.subscriptions debian/tmp/etc/zephyr
-	cp -rp debian/tmp/etc/zephyr/acl debian/tmp-krb4/etc/zephyr
-	cp -rp debian/tmp/etc/zephyr/acl debian/tmp-krb5/etc/zephyr
-	cp -rp debian/tmp/etc/zephyr/acl debian/tmp-krb45/etc/zephyr
-
+	for dir in $(VARIETALS); do \
+		cp -rp debian/tmp/etc/zephyr/acl debian/tmp-$$dir/etc/zephyr; \
+	done
+	
 # Build architecture-independent files here.
 # Pass -i to all debhelper commands in this target to reduce clutter.
 binary-indep: build install
@@ -123,46 +129,48 @@ binary-arch: build install
 	dh_testroot
 	set -e; \
 	for file in files templates config postinst docs; do \
-		cp debian/zephyr-server.$$file debian/zephyr-server-krb.$$file; \
-		cp debian/zephyr-server.$$file debian/zephyr-server-krb5.$$file; \
-		cp debian/zephyr-server.$$file debian/zephyr-server-krb45.$$file; \
-		done
-	for file in README.Debian docs init postrm; do \
-		cp debian/zephyr-server-krb.$$file debian/zephyr-server-krb5.$$file; \
-		cp debian/zephyr-server-krb.$$file debian/zephyr-server-krb45.$$file; \
+		for dir in $(VARIETALS); do \
+			cp debian/zephyr-server.$$file debian/zephyr-server-$$dir.$$file; \
+		done; \
 	done
-	cp debian/libzephyr4.files debian/libzephyr4-krb.files
-	cp debian/libzephyr4.files debian/libzephyr4-krb5.files
-	cp debian/libzephyr4.files debian/libzephyr4-krb45.files
+	for file in README.Debian docs init postrm; do \
+		for dir in $(filter-out krb,$(VARIETALS)); do \
+			cp debian/zephyr-server-krb.$$file debian/zephyr-server-$$dir.$$file; \
+		done; \
+	done
+	for dir in $(VARIETALS); do \
+		cp debian/libzephyr4.files debian/libzephyr4-$$dir; \
+	done
 	dh_movefiles  -plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev
-	dh_movefiles --sourcedir=debian/tmp-krb4 -plibzephyr4-krb -pzephyr-server-krb
-	dh_movefiles --sourcedir=debian/tmp-krb5 -plibzephyr4-krb5 -pzephyr-server-krb5
-	dh_movefiles --sourcedir=debian/tmp-krb45 -plibzephyr4-krb45 -pzephyr-server-krb45
+	for dir in $(VARIETALS); do \
+		dh_movefiles --sourcedir=debian/tmp-$$dir -plibzephyr4-$$dir -pzephyr-server-$$dir; \
+	done
 	dh_installdebconf 
 	dh_installdocs
 	dh_installinit -pzephyr-clients --init-script=zhm --no-start
 	dh_installinit -pzephyr-server --init-script=zephyrd
-	dh_installinit -pzephyr-server-krb --init-script=zephyrd
-	dh_installinit -pzephyr-server-krb5 --init-script=zephyrd
-	dh_installinit -pzephyr-server-krb45 --init-script=zephyrd
+	for dir in $(VARIETALS); do \
+		dh_installinit -pzephyr-server-$$dir --init-script=zephyrd; \
+	done
 	dh_installchangelogs 
 	dh_strip
 	dh_compress
 	dh_fixperms
-	# You may want to make some executables suid here.
 	dh_makeshlibs
 	# sigh
-	cp debian/libzephyr4/DEBIAN/shlibs debian/libzephyr4-krb/DEBIAN/shlibs
-	cp debian/libzephyr4/DEBIAN/shlibs debian/libzephyr4-krb5/DEBIAN/shlibs
-	cp debian/libzephyr4/DEBIAN/shlibs debian/libzephyr4-krb45/DEBIAN/shlibs
-	dh_shlibdeps
-	dh_installdeb
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
+	for dir in $(VARIETALS); do \
+		cp debian/libzephyr4/DEBIAN/shlibs debian/libzephyr4-$$dir/DEBIAN/shlibs; \
+	done
+	dh_shlibdeps $(PACKAGES)
+	dh_installdeb $(PACKAGES)
+	dh_gencontrol $(PACKAGES)
+	dh_md5sums $(PACKAGES)
+	dh_builddeb $(PACKAGES)
+	for dir in $(VARIETALS); do \
+		dh_builddeb --sourcedir=debian/tmp-$$dir -plibzephyr4-$$dir -pzephyr-server-$$dir; \
+	done
+
 
 binary: binary-indep binary-arch
 
-.PHONY: autotools build clean binary-indep binary-arch binary install configure
-
-
+.PHONY: autotools build clean binary-indep binary-arch binary install 
