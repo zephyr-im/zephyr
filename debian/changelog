@@ -3,7 +3,7 @@ zephyr (2.1.20070719.SNAPSHOT-3) unstable; urgency=low
   * Fix braino in init script.  Closes: #448459
   * Fix improper sign extension in zwgc.
 
- --
+ -- Karl Ramm <kcr@debian.org>  Wed, 18 Mar 2009 16:13:17 -0400
 
 zephyr (2.1.20070719.SNAPSHOT-2) unstable; urgency=low
 
