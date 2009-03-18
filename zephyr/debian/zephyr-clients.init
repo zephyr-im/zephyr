@@ -35,8 +35,8 @@ case "$1" in
   stop)
 	echo -n "Stopping $DESC: "
 	start-stop-daemon --oknodo --stop --quiet --pidfile /var/run/$NAME.pid \
-		$DAEMON
-	echo "$NAME."
+		--name $NAME
+	echo "$NAME."-
 	;;
   restart|force-reload)
 	#
@@ -46,7 +46,7 @@ case "$1" in
 	#
 	echo -n "Restarting $DESC: "
 	start-stop-daemon --oknodo --stop --retry 5 --quiet --pidfile \
-		/var/run/$NAME.pid --exec $DAEMON
+		/var/run/$NAME.pid --name $NAME
 	start-stop-daemon --start --quiet --pidfile \
 		/var/run/$NAME.pid --exec $DAEMON -- -N $zhm_args
 	echo "$NAME."
