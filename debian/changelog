@@ -4,6 +4,7 @@ zephyr (3.0~alpha.20090316-1) unstable; urgency=low
   * GNU config automated update: config.sub     (20070118 to 20080116),
     config.guess     (20070306 to 20080123)
   * Upstream merged CMU zwgcplus;  Closes: #207362
+  * Upstream now uses c-ares: Closes: #477047
   * Fix braino in init script.  Closes: #448459
   
  -- Karl Ramm <kcr@debian.org>  Mon, 16 Mar 2009 19:57:49 -0400
