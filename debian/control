@@ -4,8 +4,8 @@ Priority: optional
 Maintainer: Karl Ramm <kcr@debian.org>
 Uploaders: Sam Hartman <hartmans@debian.org>
 Build-Depends: debhelper (>= 5), libc-ares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev,
-               libreadline5-dev, libx11-dev, libxt-dev, x11proto-core-dev | x-dev,
-               libxaw7-dev | libxaw8-dev, libxmu-dev, libncurses5-dev, bison, libhesiod-dev
+               libreadline5-dev, libx11-dev, libxt-dev, x11proto-core-dev, libncurses5-dev,
+	       bison, libhesiod-dev
 Standards-Version: 3.8.1.0
 Vcs-Svn: svn://svn.1ts.org/debian/branches/zephyr-reloaded/zephyr
 
