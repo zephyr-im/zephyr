@@ -25614,9 +25614,9 @@ fi
 
 fi
 
-{ echo "$as_me:$LINENO: checking for ares_init in -lcares" >&5
-echo $ECHO_N "checking for ares_init in -lcares... $ECHO_C" >&6; }
-if test "${ac_cv_lib_cares_ares_init+set}" = set; then
+{ echo "$as_me:$LINENO: checking for ares_getaddrinfo in -lcares" >&5
+echo $ECHO_N "checking for ares_getaddrinfo in -lcares... $ECHO_C" >&6; }
+if test "${ac_cv_lib_cares_ares_getaddrinfo+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -25634,11 +25634,11 @@ cat >>conftest.$ac_ext <<_ACEOF
 #ifdef __cplusplus
 extern "C"
 #endif
-char ares_init ();
+char ares_getaddrinfo ();
 int
 main ()
 {
-return ares_init ();
+return ares_getaddrinfo ();
   ;
   return 0;
 }
@@ -25661,21 +25661,21 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest$ac_exeext &&
        $as_test_x conftest$ac_exeext; then
-  ac_cv_lib_cares_ares_init=yes
+  ac_cv_lib_cares_ares_getaddrinfo=yes
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-	ac_cv_lib_cares_ares_init=no
+	ac_cv_lib_cares_ares_getaddrinfo=no
 fi
 
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ echo "$as_me:$LINENO: result: $ac_cv_lib_cares_ares_init" >&5
-echo "${ECHO_T}$ac_cv_lib_cares_ares_init" >&6; }
-if test $ac_cv_lib_cares_ares_init = yes; then
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_cares_ares_getaddrinfo" >&5
+echo "${ECHO_T}$ac_cv_lib_cares_ares_getaddrinfo" >&6; }
+if test $ac_cv_lib_cares_ares_getaddrinfo = yes; then
   ARES_LIBS="-lcares"
 		    cat >>confdefs.h <<\_ACEOF
 #define HAVE_ARES 1
