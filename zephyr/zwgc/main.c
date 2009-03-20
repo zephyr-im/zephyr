@@ -407,7 +407,12 @@ notice_handler(ZNotice_t *notice)
 #endif
 
 #ifdef HAVE_ARES
-    ares_getnameinfo(achannel, (const struct sockaddr *)&(notice->z_sender_sockaddr),
+    ares_getnameinfo(achannel,
+		     (const struct sockaddr *)&(notice->z_sender_sockaddr),
+		     notice->z_sender_sockaddr.sa.sa_family == AF_INET ?
+		     sizeof(struct sockaddr_in) :
+		     notice->z_sender_sockaddr.sa.sa_family == AF_INET6 ?
+		     sizeof(struct sockaddr_in6) :
 		     sizeof(notice->z_sender_sockaddr), ARES_NI_LOOKUPHOST,
 		     notice_callback, notice);
     
