@@ -32,12 +32,14 @@ static character_class cache;
 char *
 string_to_character_class(string str)
 {
-    int i;
+    int i, l;
 
     (void) memset(cache, 0, sizeof(cache));
 
-    for (i=0; i<strlen(str); i++)
-	cache[(int)(unsigned char)str[i]] = 1;
+    l = strlen(str);
+
+    for (i = 0; i < l; i++)
+	cache[(unsigned char)str[i]] = 1;
 
     return(cache);
 }
