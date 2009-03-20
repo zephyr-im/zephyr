@@ -123,7 +123,7 @@ LIBS="$KRB5_LIBS $KRB4_LIBS $HESIOD_LIBS $LIBS"
 
 dnl Checks for library functions.
 AC_CHECK_FUNC(res_send, :, AC_CHECK_LIB(resolv, res_send))
-AC_CHECK_LIB(cares, ares_init,
+AC_CHECK_LIB(cares, ares_getaddrinfo,
 		    [ARES_LIBS="-lcares"
 		    AC_DEFINE(HAVE_ARES)],
 		    [AC_MSG_ERROR(libcares not found)])
