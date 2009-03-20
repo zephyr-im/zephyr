@@ -13,7 +13,7 @@ Package: libzephyr4
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Conflicts: libzephyr4-krb, libzephyr4-krb5, libzephyr4-krb45
+Conflicts: libzephyr4-krb, libzephyr4-krb5, libzephyr4-krb45, libzephyr3-krb
 Description: Project Athena's notification service - non-Kerberos libraries
  Zephyr is derived from the original Project Athena 'Instant Message' system
  and allows users to send messages to other users or to groups of users.
@@ -26,7 +26,7 @@ Package: libzephyr4-krb
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, krb4-config
-Conflicts: libzephyr4, libzephyr4-krb5, libzephyr4-krb45
+Conflicts: libzephyr4, libzephyr4-krb5, libzephyr4-krb45, libzephyr3
 Replaces: libzephyr4, libzephyr4-krb5, libzephyr4-krb45
 Provides: libzephyr4
 Description: Project Athena's notification service - libraries with Kerberos
@@ -41,7 +41,7 @@ Package: libzephyr4-krb5
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, krb5-config
-Conflicts: libzephyr4, libzephyr4-krb, libzephyr4-krb45
+Conflicts: libzephyr4, libzephyr4-krb, libzephyr4-krb45, libzephyr3
 Replaces: libzephyr4, libzephyr4-krb, libzephyr4-krb45
 Provides: libzephyr4
 Description: The original "Instant Message" system libraries with Kerberos 5
@@ -56,7 +56,7 @@ Package: libzephyr4-krb45
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, krb5-config
-Conflicts: libzephyr4, libzephyr4-krb, libzephyr4-krb5
+Conflicts: libzephyr4, libzephyr4-krb, libzephyr4-krb5, libzephyr3
 Replaces: libzephyr4, libzephyr4-krb, libzephyr4-krb5
 Provides: libzephyr4
 Description: The original "Instant Message" system libraries with Kerberos 4+5
