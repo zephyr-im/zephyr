@@ -21,6 +21,7 @@ static const char rcsid_main_c[] = "$Id$";
 #endif
 
 #include <netdb.h>
+#include <arpa/nameser.h>
 #include <sys/socket.h>
 #include <sys/resource.h>
 #include <zephyr/mit-copyright.h>
@@ -53,7 +54,7 @@ static void setup_signals(int);
 static void detach(void);
 static void signal_exit(int);
 #ifdef HAVE_ARES
-static void notice_callback(void *, int, int, struct hostent *);
+static void notice_callback(void *, int, int, char *, char *);
 #endif
 #ifdef CMU_ZWGCPLUS
 void reprocess_notice(ZNotice_t *notice, char *hostname);
@@ -399,23 +400,22 @@ create_punt_reply(int_dictionary_binding *punt)
 void
 notice_handler(ZNotice_t *notice)
 {
-    struct hostent *fromhost = NULL;
+    char node[MAXDNAME];
 
 #if defined(CMU_ZWGCPLUS)
     list_add_notice(notice);
 #endif
 
-    if (notice->z_sender_addr.s_addr) {
 #ifdef HAVE_ARES
-	ares_gethostbyaddr(achannel, &(notice->z_sender_addr),
-			   sizeof(notice->z_sender_addr), AF_INET,
-			   notice_callback, notice);
-	return;
+    ares_getnameinfo(achannel, (const struct sockaddr *)&(notice->z_sender_sockaddr),
+		     sizeof(notice->z_sender_sockaddr), ARES_NI_LOOKUPHOST,
+		     notice_callback, notice);
+    
 #else
-	fromhost = gethostbyaddr((char *) &(notice->z_sender_addr),
-				 sizeof(struct in_addr), AF_INET);
-#endif
-    }
+    ret = getnameinfo((const struct sockaddr *)&(notice->z_sender_sockaddr),
+		      sizeof(notice->z_sender_sockaddr),
+		      node, sizeof(node), NULL, 0, 0);
+    
     process_notice(notice, fromhost ? fromhost->h_name : NULL);
 #ifdef CMU_ZWGCPLUS
     /* Let list_del_notice clean up for us. */
@@ -423,22 +423,31 @@ notice_handler(ZNotice_t *notice)
     ZFreeNotice(notice);
     free(notice);
 #endif
+#endif
 }
 
 #ifdef HAVE_ARES
+/*
 static void
 notice_callback(void *arg,
 		int status,
 		int timeouts,
 		struct hostent *fromhost)
+*/
+static void
+notice_callback(void *arg,
+		int status,
+		int timeouts,
+		char *node,
+		char *service)
 {
     ZNotice_t *notice = (ZNotice_t *) arg;
 
 #ifdef CMU_ZWGCPLUS
-    plus_set_hname(notice, fromhost ? fromhost->h_name : NULL);
+    plus_set_hname(notice, node);
 #endif
 
-    process_notice(notice, fromhost ? fromhost->h_name : NULL);
+    process_notice(notice, node);
 #ifdef CMU_ZWGCPLUS
     list_del_notice(notice);
 #else
