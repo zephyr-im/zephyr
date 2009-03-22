@@ -25,12 +25,16 @@ ZGetCharset(char *charset)
 {
     char *p;
     short retval;
+    static int once = 1;
 	
     if (charset == NULL)
 	charset = getenv("ZEPHYR_CHARSET");
 
     if (charset == NULL) {
-	setlocale(LC_ALL, "");
+	if (once) {
+	    setlocale(LC_ALL, "");
+	    once = 0;
+	}
 	charset = nl_langinfo(CODESET);
     }
 
