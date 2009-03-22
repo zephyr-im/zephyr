@@ -417,11 +417,11 @@ notice_handler(ZNotice_t *notice)
 		     notice_callback, notice);
     
 #else
-    ret = getnameinfo((const struct sockaddr *)&(notice->z_sender_sockaddr),
-		      sizeof(notice->z_sender_sockaddr),
-		      node, sizeof(node), NULL, 0, 0);
+    getnameinfo((const struct sockaddr *)&(notice->z_sender_sockaddr),
+		sizeof(notice->z_sender_sockaddr),
+		node, sizeof(node), NULL, 0, 0);
     
-    process_notice(notice, fromhost ? fromhost->h_name : NULL);
+    process_notice(notice, node);
 #ifdef CMU_ZWGCPLUS
     /* Let list_del_notice clean up for us. */
 #else
