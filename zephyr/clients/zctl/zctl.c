@@ -300,7 +300,8 @@ void
 set_var(int argc, char *argv[])
 {
 	int retval,setting_exp,i;
-	char *exp_level,*newargv[1];
+	char *exp_level = NULL;
+	char *newargv[1];
 	char varcat[BUFSIZ];
 	
 	if (argc < 2) {
@@ -581,7 +582,7 @@ purge_subs(register ZSubscription_t *subs,
 	char errbuf[BUFSIZ],subline[BUFSIZ];
 	char backup[BUFSIZ],ourline[BUFSIZ];
 	int delflag = NOT_REMOVED;
-	int keep;
+	int keep = 0;
 
 	switch (which) {
 	case SUBONLY:
@@ -666,7 +667,7 @@ load_subs(int argc,
 #endif
 	FILE *fp;
 	int ind,unind,lineno,i,retval,type;
-	short wgport;
+	short wgport = 0;
 	char *comma,*comma2,*file,subline[BUFSIZ];
 
 	if (argc > 2) {
@@ -905,12 +906,13 @@ void
 current(int argc,
 	char *argv[])
 {
-	FILE *fp;
+	FILE *fp = NULL;
 	char errbuf[BUFSIZ];
 	ZSubscription_t subs;
 	int i,nsubs,retval,save,one,defs;
 	short wgport;
-	char *file,backup[BUFSIZ];
+	char backup[BUFSIZ];
+	char *file = NULL;
 	
 	save = 0;
 	defs = 0;
