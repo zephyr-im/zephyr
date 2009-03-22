@@ -53,6 +53,9 @@ main(int argc,
 	char *cmdline_msg;
 	int nlocs;
 	char *find_message(ZNotice_t *, FILE *);
+	char *charset = NULL;
+	unsigned short zcharset;
+	    
 #ifdef _POSIX_VERSION
 	struct sigaction sa;
 #endif
@@ -74,7 +77,7 @@ main(int argc,
 
 	cmdline_msg = 0;
 	watch_location = 0;
-	while ((optchar = getopt(argc, argv, "m:wh")) != EOF) {
+	while ((optchar = getopt(argc, argv, "m:whx:")) != EOF) {
 		switch (optchar) {
 		case 'm':
 			cmdline_msg = optarg;
@@ -88,6 +91,10 @@ main(int argc,
 			usage(argv[0]);
 			return 0;
 
+		case 'x':
+			charset = optarg;
+			break;
+
 		case '?':
 			fprintf(stderr,
 				"Unrecognized option '-%c'.\n"
@@ -96,6 +103,8 @@ main(int argc,
 			return 1;
 		}
 	}
+
+	zcharset = ZGetCharset(charset);
 
 	if (argc > optind)
 		(void) strcpy(awayfile,argv[optind]);
@@ -190,6 +199,7 @@ main(int argc,
 		notice.z_sender = 0;
 		notice.z_default_format = "";
 		notice.z_opcode = RESPONSE_OPCODE;
+		notice.z_charset = zcharset;
 
 		msg[0] = "Automated reply:";
 		msg[1] = ptr;
