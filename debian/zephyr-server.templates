@@ -16,6 +16,23 @@ _Description: Zephyr servers:
  The list configured on clients can be a subset of the list configured
  on servers.
 
+Template: zephyr-server/no-more-krb4
+Type: boolean
+Default: true
+Description: Incompatible Upgrade
+ You appear to be upgrading from a version of the zephyr server that
+ uses Kerberos version 4 to authenticate.  Kerberos version 4 support
+ has been removed from Debian, and accordingly from the zephyr server.
+ This version of the zephyr server uses only Kerberos 5 to
+ authenticate, and thus is almost certainly incompatible with any of
+ your currently deployed clients.
+ .
+ A server that authenticates both ways can be built for lenny from the
+ zephyr source package, see:
+   /usr/share/doc/libzephyr4-krb5/README.krb4-5
+ .
+ Continue with the upgrade?
+
 Template: zephyr-server/read_conf
 Type: boolean
 Default: true
