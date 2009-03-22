@@ -21,6 +21,7 @@ static const char rcsid_X_gram_c[] = "$Id$";
 
 #ifndef X_DISPLAY_MISSING
 
+#include <zephyr/zephyr.h>
 #include "X_gram.h"
 #include "xmark.h"
 #include <X11/Xutil.h>
