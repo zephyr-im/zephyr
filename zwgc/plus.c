@@ -10,7 +10,7 @@
 #include <sysdep.h>
 #ifdef CMU_ZWGCPLUS
 #if (!defined(lint) && !defined(SABER))
-static char rcsid_plus_c[] = "$Id$";
+static const char rcsid_plus_c[] = "$Id$";
 #endif
 
 #include <zephyr/mit-copyright.h>
@@ -27,6 +27,7 @@ static char rcsid_plus_c[] = "$Id$";
 #include "notice.h"
 #include "X_gram.h"
 #include "xrevstack.h"
+#include "main.h"
 #include "plus.h"
 
 int get_full_names = 0;
@@ -53,10 +54,10 @@ static ZNotice_t *stored_notice;
 static notnode *notlist[HASHSIZE];
 TimeNode *timeq_head = NULL;
 
-TimeNode 
-*addtimenode(head, node)
-  TimeNode *head;
-  TimeNode *node;
+int list_hash_fun(ZNotice_t *notice);
+
+TimeNode *
+addtimenode(TimeNode *head, TimeNode *node)
 {
   if(head == NULL) {
 #ifdef DEBUG_TIMEQUEUE
@@ -79,11 +80,8 @@ TimeNode
 }
 
 void 
-handle_timeq_event(event)
-  TimeNode *event;
+handle_timeq_event(TimeNode *event)
 {
-  char *tmp;
-
   char buf[128];
   notnode *pt;
   int bx = list_hash_fun(event->notice);
@@ -115,10 +113,7 @@ handle_timeq_event(event)
 }
 
 void 
-schedule_event(secs, name, notice)
-  long secs;
-  char *name;
-  ZNotice_t *notice;
+schedule_event(long secs, char *name, ZNotice_t *notice)
 {
   time_t eventtime = (time(NULL)) + secs;
   TimeNode *newnode;
@@ -152,8 +147,7 @@ schedule_event(secs, name, notice)
 }
 
 void 
-free_timenode(node)
-  TimeNode *node;
+free_timenode(TimeNode *node)
 {
 #ifdef DEBUG_TIMEQUEUE
   fprintf(stderr, "free_timenode(%s)\n", node->event_name);
@@ -165,9 +159,7 @@ free_timenode(node)
 
 /* returns the number of notices destroyed */
 int 
-destroy_timeq_notice(notice, name)
-  ZNotice_t *notice;
-  char *name;
+destroy_timeq_notice(ZNotice_t *notice, char *name)
 {
   TimeNode *curr = timeq_head;
   TimeNode *prev = NULL;
@@ -202,7 +194,7 @@ destroy_timeq_notice(notice, name)
 }
 
 long 
-plus_timequeue_events()
+plus_timequeue_events(void)
 { 
   /* returns number of seconds to the next event or 0L */
   /* if there are no events remaining to be processed */
@@ -230,9 +222,7 @@ plus_timequeue_events()
 }
 
 void
-plus_set_hname(notice, hname) 
-  ZNotice_t *notice;
-  char *hname;
+plus_set_hname(ZNotice_t *notice, char *hname) 
 {
   notnode *pt;
   int bx;
@@ -247,8 +237,7 @@ plus_set_hname(notice, hname)
 }
 
 void 
-plus_queue_notice(notice)
-  ZNotice_t *notice;
+plus_queue_notice(ZNotice_t *notice)
 {
   char *val;
   int howlong = 0;
@@ -283,8 +272,7 @@ plus_queue_notice(notice)
 }
 
 int 
-list_hash_fun(notice)
-  ZNotice_t *notice;
+list_hash_fun(ZNotice_t *notice)
 {
     int ix;
     int res = 0, val = 1, ptval;
@@ -303,7 +291,7 @@ list_hash_fun(notice)
 
 /* initialize hash table */
 void 
-init_noticelist()
+init_noticelist(void)
 {
     int ix;
 
@@ -315,7 +303,7 @@ init_noticelist()
 }
 
 void 
-dump_noticelist()
+dump_noticelist(void)
 {
     notnode *pt;
     int bx;
@@ -329,8 +317,7 @@ dump_noticelist()
 
 /* add notice to table. Either generate a new entry, or increment ref count. */
 void 
-list_add_notice(notice)
-  ZNotice_t *notice;
+list_add_notice(ZNotice_t *notice)
 {
     notnode *pt;
     int bx = list_hash_fun(notice);
@@ -360,8 +347,7 @@ list_add_notice(notice)
 /* remove notice from table. If refcount reaches 0, return 1; if refcount is 
    still positive, return 0; if notice not there, return -1. */
 int 
-list_del_notice(notice)
-  ZNotice_t *notice;
+list_del_notice(ZNotice_t *notice)
 {
     notnode *pt, **ppt;
     int bx = list_hash_fun(notice);
@@ -399,9 +385,7 @@ list_del_notice(notice)
 }
 
 void 
-set_notice_fake(notice, val)
-  ZNotice_t *notice;
-  int val;
+set_notice_fake(ZNotice_t *notice, int val)
 {
     notnode *pt;
     int bx = list_hash_fun(notice);
@@ -414,8 +398,7 @@ set_notice_fake(notice, val)
 }
 
 int 
-get_notice_fake(notice)
-  ZNotice_t *notice;
+get_notice_fake(ZNotice_t *notice)
 {
     notnode *pt;
     int bx = list_hash_fun(notice);
@@ -430,8 +413,7 @@ get_notice_fake(notice)
 }
 
 int 
-get_list_refcount(notice)
-  ZNotice_t *notice;
+get_list_refcount(ZNotice_t *notice)
 {
     notnode *pt;
     int bx = list_hash_fun(notice);
@@ -449,8 +431,8 @@ get_list_refcount(notice)
 }
 
 /* export a reference to the current notice. */
-char 
-*get_stored_notice()
+char *
+get_stored_notice(void)
 {
     if (!stored_notice)
 	return NULL;
@@ -461,17 +443,13 @@ char
 }
 
 void 
-set_stored_notice(notice)
-  ZNotice_t *notice;
+set_stored_notice(ZNotice_t *notice)
 {
     stored_notice = notice;
 }
 
 void 
-plus_retry_notice(notice, ch, metaflag)
-  ZNotice_t *notice;
-  char ch;
-  int metaflag;
+plus_retry_notice(ZNotice_t *notice, char ch, int metaflag)
 {
     char buf[128];
     char *tmp;

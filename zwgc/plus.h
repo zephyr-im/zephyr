@@ -10,17 +10,17 @@
 extern int get_full_names;
 extern int zwgcplus;
 
-extern void init_noticelist();
-extern void dump_noticelist();
-extern void list_add_notice();
-extern int list_del_notice();
-extern int get_list_refcount();
-extern void set_notice_fake();
-extern int get_notice_fake();
-extern char *get_stored_notice();
-extern void plus_retry_notice();
-extern void set_stored_notice();
-extern void plus_window_deletions();
+extern void init_noticelist(void);
+extern void dump_noticelist(void);
+extern void list_add_notice(ZNotice_t *notice);
+extern int list_del_notice(ZNotice_t *notice);
+extern int get_list_refcount(ZNotice_t *notice);
+extern void set_notice_fake(ZNotice_t *notice, int val);
+extern int get_notice_fake(ZNotice_t *notice);
+extern char *get_stored_notice(void);
+extern void plus_retry_notice(ZNotice_t *notice, char ch, int metaflag);
+extern void set_stored_notice(ZNotice_t *notice);
+extern void plus_window_deletions(ZNotice_t *notice); /* actually in xshow.c */
 
-extern void plus_queue_notice();
-extern long plus_timequeue_events();
+extern void plus_queue_notice(ZNotice_t *notice);
+extern long plus_timequeue_events(void);

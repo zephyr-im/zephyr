@@ -56,9 +56,6 @@ static void signal_exit(int);
 #ifdef HAVE_ARES
 static void notice_callback(void *, int, int, char *, char *);
 #endif
-#ifdef CMU_ZWGCPLUS
-void reprocess_notice(ZNotice_t *notice, char *hostname);
-#endif
 
 /*
  * Global zwgc-wide variables:
@@ -585,8 +582,8 @@ process_notice(ZNotice_t *notice,
 }
 
 #ifdef CMU_ZWGCPLUS
-void reprocess_notice(ZNotice_t *notice,
-		      char *hostname)
+void
+reprocess_notice(ZNotice_t *notice, char *hostname)
 {
   list_add_notice(notice);
   process_notice(notice, hostname);

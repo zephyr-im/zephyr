@@ -93,7 +93,7 @@ int puntable_address_p(string class,
       init_puntable_dict();
 
     temp = address_to_string(class, instance, recipient);
-    ret = int_dictionary_Lookup(puntable_addresses_dict, temp);
+    ret = (int)int_dictionary_Lookup(puntable_addresses_dict, temp);
     free(temp);
     if (ret)
         return 1;;

@@ -29,6 +29,9 @@ static const char rcsid_mux_c[] = "$Id$";
 #include "error.h"
 #include "zwgc.h"
 #include "pointer.h"
+#ifdef CMU_ZWGCPLUS
+#include "plus.h"
+#endif
 
 #ifdef _AIX
 #include <sys/select.h>

@@ -25,12 +25,12 @@ static const char rcsid_standard_ports_c[] = "$Id$";
 /*                                                                          */
 /****************************************************************************/
 
+#include <zephyr/zephyr.h>
 #include "new_memory.h"
 #include "port.h"
 #include "variables.h"
 #include "error.h"
 #include "main.h"
-#include <zephyr/zephyr.h>
 
 extern char *tty_filter(string, int);
 extern int tty_filter_init(char *, char, int *, char **);
