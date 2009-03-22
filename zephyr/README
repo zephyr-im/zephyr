@@ -1,4 +1,6 @@
-This is a snapshot of the Project Athena Zephyr notification system.
+This is an alpha release of version 3.0 of the Project Athena Zephyr
+notification system.
+
 Zephyr allows users to send messages to other users or to groups of
 users.  Users can view incoming Zephyr messages as windowgrams
 (transient X windows) or as text on a terminal. Zephyr can optionally
