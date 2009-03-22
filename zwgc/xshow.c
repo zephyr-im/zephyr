@@ -24,6 +24,7 @@ static const char rcsid_xshow_c[] = "$Id$";
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xresource.h>
+#include <zephyr/zephyr.h>
 #include "pointer_dictionary.h"
 #include "new_memory.h"
 #include "new_string.h"
@@ -141,7 +142,7 @@ fixup_and_draw(Display *dpy,
 
     int line, block=0;
     int maxwidth=0, chars=0, maxascent, maxdescent;
-    int ssize,  lsize,csize, rsize, width;
+    int ssize,  lsize,csize, rsize, width = 0;
     int i, ascent, descent;
 
     int yofs = internal_border_width;
@@ -607,7 +608,7 @@ plus_window_deletions(ZNotice_t *notice)
 	done = 1;
 	tmp = bottom_gram;
 	while (tmp) {
-	  if (tmp->notice == (char *)notice) {
+	  if (tmp->notice == notice) {
 	    fry = tmp;
 	    tmp = tmp->above;
 	    xdestroygram(dpy, fry->w, desc_context, fry);

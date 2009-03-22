@@ -115,9 +115,9 @@ string
 eval_expr(Node *expr)
 {
     int opcode = expr->opcode;
-    int bool_result;
+    int bool_result = 0;
     string first, second;
-    char *result;
+    char *result = NULL;
     string *text_ptr;
 
     /*

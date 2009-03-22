@@ -431,7 +431,7 @@ get_list_refcount(ZNotice_t *notice)
 }
 
 /* export a reference to the current notice. */
-char *
+ZNotice_t *
 get_stored_notice(void)
 {
     if (!stored_notice)
@@ -439,7 +439,7 @@ get_stored_notice(void)
 
     list_add_notice(stored_notice);
 
-    return (char *)stored_notice;
+    return stored_notice;
 }
 
 void 

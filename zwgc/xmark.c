@@ -23,6 +23,7 @@ static const char rcsid_xmark_c[] = "$Id$";
 
 #include <X11/X.h>
 #include <X11/Xlib.h>
+#include <zephyr/zephyr.h>
 #include "X_gram.h"
 #include "X_fonts.h"
 #include "xmark.h"

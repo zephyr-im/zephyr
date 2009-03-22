@@ -428,7 +428,7 @@ x_gram_draw(Display *dpy,
    XGCValues gcvals;
    xblock *xb;
    XTextItem text;
-   int startblock,endblock,startpixel,endpixel;
+   int startblock, endblock, startpixel = 0, endpixel = 0;
    
 #define SetFG(fg) \
    gcvals.foreground=fg; \

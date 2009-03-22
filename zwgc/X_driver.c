@@ -27,6 +27,7 @@ static const char rcsid_X_driver_c[] = "$Id$";
 
 #ifndef X_DISPLAY_MISSING
 
+#include <zephyr/zephyr.h>
 #include "new_string.h"
 #include "X_driver.h"
 #include <X11/Xresource.h>

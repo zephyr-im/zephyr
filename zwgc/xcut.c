@@ -224,7 +224,8 @@ xcut(Display *dpy,
          */
 
         zwgcplus = 1;
-        plusvar = ZGetVariable("zwgcplus") ? ZGetVariable("zwgcplus") : (char *)var_get_variable("zwgcplus");
+        plusvar = ZGetVariable("zwgcplus")
+	    ? ZGetVariable("zwgcplus") : var_get_variable("zwgcplus");
 
         if ((plusvar[0]=='\0') || (strcmp(plusvar,"no") == 0))
           zwgcplus = 0;
