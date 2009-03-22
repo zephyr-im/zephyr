@@ -15,6 +15,10 @@ zlocate \- find a user using Zephyr
 .B -a
 | 
 .B -d
+] [
+.B -1
+] [
+.B -p
 ] user ...
 .SH DESCRIPTION
 .I Zlocate
@@ -33,12 +37,22 @@ using X or for some other reason is only using the terminal interface to
 
 By default, all zlocate requests are authenticated using
 .IR Kerberos .
-If you do not have kerberos tickets, or for some other reason do not
+If you do not have Kerberos tickets, or for some other reason do not
 want to authenticate, the
 .B -d
 option will turn off authentication.  The
 .B -a
 option is the default, authentication on.
+
+When locating multiple users,
+.I zlocate
+will display the user name on a line by itself, followed by the locations for that user. To display the user name on the same line as the output, use the
+.B -1
+option (the numeral one).
+
+To look up multiple users in parallel asynchronously, use the
+.B -p
+option.
 
 .SH DIAGNOSTICS
 .I zlocate
