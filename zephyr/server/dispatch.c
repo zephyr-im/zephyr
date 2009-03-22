@@ -94,6 +94,7 @@ static Unacked *nacktab[NACKTAB_HASHSIZE];
 static struct in_addr *hosts;
 static int hosts_size = 0, num_hosts = 0;
 
+#ifdef DEBUG
 static void
 dump_stats (void *arg)
 {
@@ -116,6 +117,7 @@ dump_stats (void *arg)
     /* log stuff once an hour */
     timer_set_rel ((long) 6*60*60, dump_stats, arg);
 }
+#endif
 
 /*
  * Handle an input packet.
