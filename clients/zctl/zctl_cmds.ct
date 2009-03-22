@@ -52,7 +52,7 @@
 	request		unset_var, "Delete a variable's value.",
 			unset;
 
-	request		wgc_control, "Get the WindowGram to reread it's description file.",
+	request		wgc_control, "Get the WindowGram to reread its description file.",
 			wg_read;
 
 	request		wgc_control, "Tell the WindowGram not to react to incoming notices.",
