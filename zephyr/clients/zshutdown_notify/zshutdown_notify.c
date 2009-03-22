@@ -120,6 +120,7 @@ main(int argc,
 
     notice.z_kind = N_KIND;
     notice.z_port = 0;
+    notice.z_charset = ZCHARSET_UNKNOWN;
     notice.z_class = N_CLASS;
     notice.z_class_inst = hostname;
     notice.z_opcode = N_OPCODE;

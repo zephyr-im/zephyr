@@ -128,8 +128,13 @@ binary-arch: build install
 	dh_testdir
 	dh_testroot
 	set -e; \
-	for file in files templates config postinst docs; do \
+	for file in files templates postinst docs; do \
 		for dir in $(VARIETALS); do \
+			cp debian/zephyr-server.$$file debian/zephyr-server-$$dir.$$file; \
+		done; \
+	done
+	for file in config; do \
+		for dir in $(filter-out krb5,$(VARIETALS)); do \
 			cp debian/zephyr-server.$$file debian/zephyr-server-$$dir.$$file; \
 		done; \
 	done

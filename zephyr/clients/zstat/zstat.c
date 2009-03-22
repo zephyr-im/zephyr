@@ -237,6 +237,7 @@ srv_stat(char *host)
 	(void) memset((char *)&notice, 0, sizeof(notice));
 	notice.z_kind = UNSAFE;
 	notice.z_port = 0;
+	notice.z_charset = ZCHARSET_UNKNOWN;
 	notice.z_class = ZEPHYR_ADMIN_CLASS;
 	notice.z_class_inst = "";
 	notice.z_opcode = ADMIN_STATUS;

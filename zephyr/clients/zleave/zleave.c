@@ -335,6 +335,7 @@ bother(long slp,
 	    (void) memset((char *)&notice, 0, sizeof(notice));
 	    notice.z_kind = ACKED;
 	    notice.z_port = 0;
+	    notice.z_charset = ZCHARSET_UNKNOWN;
 	    notice.z_class = MESSAGE_CLASS;
 	    notice.z_class_inst = INSTANCE;
 	    notice.z_recipient = ZGetSender();
