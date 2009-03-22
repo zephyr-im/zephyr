@@ -29,6 +29,7 @@ static const char rcsid_xcut_c[] = "$Id$";
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <zephyr/zephyr.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "X_gram.h"
@@ -38,8 +39,10 @@ static const char rcsid_xcut_c[] = "$Id$";
 #include "error.h"
 #include "xrevstack.h"
 #include "X_driver.h"
+#include "xcut.h"
 #ifdef CMU_ZWGCPLUS
 #include "plus.h"
+#include "variables.h"
 #endif
 
 /*
@@ -213,7 +216,7 @@ xcut(Display *dpy,
         char c;
         char *plusvar;
         int res, metaflag;
-        res = XLookupString(event, &c, 1, NULL, NULL);
+        res = XLookupString(&(event->xkey), &c, 1, NULL, NULL);
         metaflag = event->xkey.state & Mod1Mask;
 
         /* Recheck if zwgcplus is turned on;
@@ -221,7 +224,7 @@ xcut(Display *dpy,
          */
 
         zwgcplus = 1;
-        plusvar = (char *)ZGetVariable("zwgcplus") ? (char *)ZGetVariable("zwgcplus") : (char *)var_get_variable("zwgcplus");
+        plusvar = ZGetVariable("zwgcplus") ? ZGetVariable("zwgcplus") : (char *)var_get_variable("zwgcplus");
 
         if ((plusvar[0]=='\0') || (strcmp(plusvar,"no") == 0))
           zwgcplus = 0;
