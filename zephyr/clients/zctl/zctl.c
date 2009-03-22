@@ -1050,9 +1050,8 @@ fix_macros2(char *src, char **dest)
 		*dest = ZGetSender();
 }
 
-do_punt(argc, argv)
-int argc;
-char **argv;
+int
+do_punt(int argc, char **argv)
 {
 #ifdef CMU_ZCTL_PUNT
   char *class, *inst, *recip, *msg, *whoami = argv[0];
@@ -1143,9 +1142,8 @@ char **argv;
   return 0;
 }
 
-list_punts(argc, argv)
-int argc;
-char **argv;
+int
+list_punts(int argc, char **argv)
 {
 #ifdef CMU_ZCTL_PUNT
   ZNotice_t notice;
