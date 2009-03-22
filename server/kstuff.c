@@ -22,8 +22,10 @@ static const char rcsid_kstuff_c[] = "$Id$";
 
 #if defined(HAVE_KRB4) && defined(HAVE_KRB5)
 static ZChecksum_t compute_checksum(ZNotice_t *, C_Block);
-static ZChecksum_t compute_rlm_checksum(ZNotice_t *, C_Block);
 static Code_t ZCheckAuthentication4(ZNotice_t *notice, struct sockaddr_in *from);
+#endif
+#ifdef HAVE_KRB5
+static ZChecksum_t compute_rlm_checksum(ZNotice_t *, unsigned char *);
 #endif
 
 #ifdef HAVE_KRB4
@@ -443,7 +445,6 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
     cksum2_base = notice->z_message; 
     cksum2_len  = notice->z_message_len; 
 
-#ifdef HAVE_KRB4 /*XXX*/
     if ((!notice->z_ascii_checksum || *notice->z_ascii_checksum != 'Z') && 
         key_len == 8 && 
         (enctype == ENCTYPE_DES_CBC_CRC || 
@@ -464,7 +465,6 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
       } else
 	  return ZAUTH_FAILED;
     }
-#endif
 
     /* HOLDING: authctx, authenticator */
  
@@ -882,16 +882,19 @@ compute_checksum(ZNotice_t *notice,
 			       0, (C_Block *)session_key);
     return checksum;
 }
+#endif
 
+#ifdef HAVE_KRB5
 static ZChecksum_t compute_rlm_checksum(ZNotice_t *notice,
-					C_Block session_key)
+					unsigned char *session_key)
 {
     ZChecksum_t checksum;
     char *cstart, *cend, *hstart = notice->z_packet;
 
     cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
     cend = cstart + strlen(cstart) + 1;
-    checksum = des_quad_cksum((unsigned char *)hstart, NULL, cstart - hstart, 0, (C_Block *)session_key);
+    checksum = z_quad_cksum((unsigned char *)hstart, NULL,
+			    cstart - hstart, 0, session_key);
 
     return checksum;
 }
