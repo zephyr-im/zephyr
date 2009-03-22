@@ -174,12 +174,11 @@ main(int argc,
 		}
 
 		if (cmdline_msg) {
-			ptr = malloc(strlen(cmdline_msg)+1);
-			if (!ptr) {
-				com_err(argv[0],ENOMEM,"while getting cmdline message");
-				exit(1);
-			}
-			(void) strcpy(ptr,cmdline_msg);
+		    ptr = strdup(cmdline_msg);
+		    if (!ptr) {
+			com_err(argv[0],ENOMEM,"while getting cmdline message");
+			exit(1);
+		    }
 		}
 		else if (fp) {
 			if (!(ptr = find_message(&notice,fp))) {
