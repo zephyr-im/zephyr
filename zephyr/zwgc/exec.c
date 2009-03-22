@@ -34,6 +34,9 @@ static const char rcsid_exec_c[] = "$Id$";
 #include "port.h"
 #include "variables.h"
 #include "notice.h"
+#ifdef CMU_ZWGCPLUS
+#include "plus.h"
+#endif
 
 static int exec_subtree(Node *);
 static int exec_fields(Node *);
