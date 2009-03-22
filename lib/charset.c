@@ -70,5 +70,6 @@ ZCharsetToString(unsigned short charset)
 	return "ISO-8859-1";
     else if (charset == ZCHARSET_UTF_8)
 	return "UTF-8";
+    return "UNKNOWN";
 }
 	
