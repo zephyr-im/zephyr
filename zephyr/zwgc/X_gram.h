@@ -40,7 +40,7 @@ typedef struct _x_gram {
    struct _x_gram *below,*above;
    Window w;
 #ifdef CMU_ZWGCPLUS
-   char *notice;
+   ZNotice_t *notice;
 #endif
    struct timeval can_die;
 } x_gram;

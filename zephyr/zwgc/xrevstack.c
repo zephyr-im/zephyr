@@ -22,6 +22,7 @@ static const char rcsid_xrevstack_c[] = "$Id$";
 #ifndef X_DISPLAY_MISSING
 
 #ifndef TRUEREVSTACK
+#include <zephyr/zephyr.h>
 #include "X_gram.h"
 
 x_gram *bottom_gram = NULL;

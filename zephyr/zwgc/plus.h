@@ -17,7 +17,7 @@ extern int list_del_notice(ZNotice_t *notice);
 extern int get_list_refcount(ZNotice_t *notice);
 extern void set_notice_fake(ZNotice_t *notice, int val);
 extern int get_notice_fake(ZNotice_t *notice);
-extern char *get_stored_notice(void);
+extern ZNotice_t *get_stored_notice(void);
 extern void plus_retry_notice(ZNotice_t *notice, char ch, int metaflag);
 extern void set_stored_notice(ZNotice_t *notice);
 extern void plus_window_deletions(ZNotice_t *notice); /* actually in xshow.c */
