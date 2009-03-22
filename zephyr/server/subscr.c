@@ -496,7 +496,7 @@ subscr_marshal_subs(ZNotice_t *notice,
     char **answer = NULL;
     unsigned short temp;
     Code_t retval;
-    Client *client;
+    Client *client = NULL;
     Destlist *subs = NULL, *sub;
     int i;
     int defsubs = 0;
