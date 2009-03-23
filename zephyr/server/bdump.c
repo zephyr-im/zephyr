@@ -865,11 +865,6 @@ bdump_send_list_tcp(ZNotice_Kind_t kind,
 
     memset (&notice, 0, sizeof(notice));
  
-    retval = ZMakeAscii(addrbuf, sizeof(addrbuf),
-			(unsigned char *) &addr->sin_addr,
-			sizeof(struct in_addr));
-    if (retval != ZERR_NONE)
-	return retval;
     notice.z_kind = kind;
  
     notice.z_port = addr->sin_port;
@@ -879,8 +874,9 @@ bdump_send_list_tcp(ZNotice_Kind_t kind,
     notice.z_sender = sender;
     notice.z_recipient = recip;
     notice.z_default_format = "";
-    notice.z_num_other_fields = 1;
-    notice.z_other_fields[0] = addrbuf;
+    notice.z_num_other_fields = 0;
+    if (addr)
+	notice.z_sender_sockaddr.ip4 = *addr; /*XXX*/
  
     retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen, ZNOAUTH);
     if (retval != ZERR_NONE)
@@ -1230,20 +1226,8 @@ bdump_recv_loop(Server *server)
 		    notice.z_recipient);
 	}
 #endif /* DEBUG */
-	if (notice.z_num_other_fields >= 1) {
-	    retval = ZReadAscii(notice.z_other_fields[0],
-				strlen(notice.z_other_fields[0]),
-				(unsigned char *) &who.sin_addr,
-				sizeof(struct in_addr));
-	    if (retval != ZERR_NONE) {
-		syslog(LOG_ERR, "brl zreadascii failed: %s",
-		       error_message(retval));
-		return retval;
-	    }
-	} else {
-	    who.sin_addr.s_addr = notice.z_sender_addr.s_addr;
-	}
-	who.sin_family = AF_INET;
+	who.sin_family = AF_INET; /*XXX*/
+	who.sin_addr.s_addr = notice.z_sender_sockaddr.ip4.sin_addr.s_addr;
 	who.sin_port = notice.z_port;
 
 	if (strcmp(notice.z_opcode, ADMIN_DONE) == 0) {

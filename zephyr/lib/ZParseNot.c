@@ -257,8 +257,16 @@ ZParseNotice(char *buffer,
 	if (memchr(ptr, '\0', end - ptr) == NULL)
 	    BAD_PACKET;
 
-	if (ZReadZcode((unsigned char *)ptr, addrbuf, sizeof(addrbuf), &len) == ZERR_BADFIELD)
-	    BAD_PACKET;
+	if (*ptr == 'Z') {
+	    if (ZReadZcode((unsigned char *)ptr, addrbuf,
+			   sizeof(addrbuf), &len) == ZERR_BADFIELD)
+		BAD_PACKET;
+	} else {
+	    len = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
+	    if (ZReadAscii(ptr, end - ptr, (unsigned char *)addrbuf,
+			   len) == ZERR_BADFIELD)
+		BAD_PACKET;
+	}
 
 	if (len == sizeof(notice->z_sender_sockaddr.ip6.sin6_addr)) {
 	    notice->z_sender_sockaddr.ip6.sin6_family = AF_INET6;
@@ -272,7 +280,8 @@ ZParseNotice(char *buffer,
 	numfields--;
 	ptr = next_field(ptr, end);
     } else {
-	memset(&notice->z_sender_sockaddr, 0, sizeof notice->z_sender_sockaddr);
+	memset(&notice->z_sender_sockaddr, 0,
+	       sizeof notice->z_sender_sockaddr);
 	notice->z_sender_sockaddr.ip4.sin_family = AF_INET;
 	notice->z_sender_sockaddr.ip4.sin_addr = notice->z_uid.zuid_addr;
     }
