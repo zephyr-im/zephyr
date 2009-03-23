@@ -102,7 +102,7 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
          */
         cksum1_base = notice->z_multinotice;
         if (notice->z_num_other_fields)
-          x = notice->z_other_fields[notice->z_num_other_fields];
+	    x = notice->z_other_fields[notice->z_num_other_fields - 1];
         else
           x = cksum1_base + strlen(cksum1_base) + 1; /* multiuid */
         cksum1_len  = x + strlen(x) + 1 - cksum1_base;
