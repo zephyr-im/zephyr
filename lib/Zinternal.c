@@ -683,10 +683,12 @@ Z_FormatHeader(ZNotice_t *notice,
     
     (void) memcpy(&notice->z_uid.zuid_addr, &__My_addr, sizeof(__My_addr));
 
-    (void) memset(&notice->z_sender_sockaddr, 0, sizeof(notice->z_sender_sockaddr));
-    notice->z_sender_sockaddr.ip4.sin_family = AF_INET; /*XXX*/
-    notice->z_sender_sockaddr.ip4.sin_port = notice->z_port;
-    (void) memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, &__My_addr, sizeof(__My_addr));
+    if (notice->z_sender_sockaddr.ip4.sin_family == 0) {
+	(void) memset(&notice->z_sender_sockaddr, 0, sizeof(notice->z_sender_sockaddr));
+	notice->z_sender_sockaddr.ip4.sin_family = AF_INET; /*XXX*/
+	notice->z_sender_sockaddr.ip4.sin_port = notice->z_port;
+	(void) memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, &__My_addr, sizeof(__My_addr));
+    }
 	
     notice->z_multiuid = notice->z_uid;
 
@@ -989,7 +991,7 @@ Z_FormatRawHeader(ZNotice_t *notice,
 
     if (!(notice->z_sender_sockaddr.sa.sa_family == AF_INET ||
 	  notice->z_sender_sockaddr.sa.sa_family == AF_INET6))
-	return ZERR_ILLVAL;
+	notice->z_sender_sockaddr.sa.sa_family = AF_INET; /* \/\/hatever *//*XXX*/
 
     if (!notice->z_class)
 	    notice->z_class = "";
@@ -1086,13 +1088,14 @@ Z_FormatRawHeader(ZNotice_t *notice,
     if (notice->z_sender_sockaddr.sa.sa_family == AF_INET) {
 	addrlen = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
 	addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip4.sin_addr;
+	if (ZMakeAscii(ptr, end - ptr, addraddr, addrlen) == ZERR_FIELDLEN)
+	    return ZERR_HEADERLEN;
     } else if (notice->z_sender_sockaddr.sa.sa_family == AF_INET6) {
 	addrlen = sizeof(notice->z_sender_sockaddr.ip6.sin6_addr);
 	addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip6.sin6_addr;
+	if (ZMakeZcode(ptr, end - ptr, addraddr, addrlen) == ZERR_FIELDLEN)
+	    return ZERR_HEADERLEN;
     }
-
-    if (ZMakeZcode(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
-	return ZERR_HEADERLEN;
     ptr += strlen(ptr) + 1;
 
     if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_charset)) == ZERR_FIELDLEN)
