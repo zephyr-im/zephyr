@@ -296,11 +296,6 @@ main(int argc,
     action.sa_handler = sig_dump_db;
     sigaction(SIGFPE, &action, NULL);
 
-#ifdef SIGEMT
-    action.sa_handler = sig_dump_strings;
-    sigaction(SIGEMT, &action, NULL);
-#endif
-
     action.sa_handler = reset;
     sigaction(SIGHUP, &action, NULL);
 #else /* !posix */
@@ -310,9 +305,6 @@ main(int argc,
     signal(SIGUSR2, dbug_off);
     signal(SIGCHLD, reap);
     signal(SIGFPE, sig_dump_db);
-#ifdef SIGEMT
-    signal(SIGEMT, sig_dump_strings);
-#endif
     signal(SIGHUP, reset);
 #endif /* _POSIX_VERSION */
 
