@@ -112,6 +112,7 @@ typedef struct _ZNotice_t {
     char		*z_other_fields[Z_MAXOTHERFIELDS];
     caddr_t		z_message;
     int			z_message_len;
+    int			z_num_hdr_fields;
 } ZNotice_t;
 
 /* Subscription structure */

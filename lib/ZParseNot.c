@@ -77,6 +77,7 @@ ZParseNotice(char *buffer,
     if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
 	BAD_PACKET;
     numfields = temp;
+    notice->z_num_hdr_fields = numfields;
     ptr = next_field(ptr, end);
 
     /*XXX 3 */

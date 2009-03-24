@@ -431,15 +431,24 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
     cksum0_len  = x + strlen(x) + 1 - cksum0_base; 
     /* second part is from z_multinotice through other fields: 
      * - z_multinotice 
-     * - z_multiuid 
+     * - z_multiuid
+     * - z_sender_(sock)addr
+     * - z_charset
      * - z_other_fields[] 
      */ 
     cksum1_base = notice->z_multinotice; 
     if (notice->z_num_other_fields) 
-        x = notice->z_other_fields[notice->z_num_other_fields]; 
-    else 
-        x = cksum1_base + strlen(cksum1_base) + 1; /* multiuid */ 
-    cksum1_len  = x + strlen(x) + 1 - cksum1_base; 
+        x = notice->z_other_fields[notice->z_num_other_fields - 1]; 
+    else {
+	/* see also lib/ZCkZaut.c:ZCheckZcodeAuthentication */
+	/* XXXXXXXXXXXXXXXXXXXXXXX */
+        x = cksum1_base + strlen(cksum1_base) + 1; /* multinotice */
+	if (notice->z_num_hdr_fields > 17)
+	    x = x + strlen(x) + 1; /* multiuid */
+	if (notice->z_num_hdr_fields > 18)
+	    x = x + strlen(x) + 1; /* sender */
+    }
+    cksum1_len  = x + strlen(x) + 1 - cksum1_base; /* charset / extra field */
  
     /* last part is the message body */ 
     cksum2_base = notice->z_message; 
