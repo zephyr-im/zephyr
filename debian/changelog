@@ -1,3 +1,9 @@
+zephyr (1:3.0~beta.0) inconceivable; urgency=low
+
+  * Mark version for upstream trunk 
+
+ -- Karl Ramm <kcr@1ts.org>  Sat, 28 Mar 2009 12:59:14 -0400
+
 zephyr (3.0~alpha.20090316-1) unstable; urgency=low
 
   * Kerberos 5 client support; new upstream
