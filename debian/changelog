@@ -1,4 +1,4 @@
-zephyr (1:3.0~beta.0) inconceivable; urgency=low
+zephyr (1:3.0~beta.HEAD) inconceivable; urgency=low
 
   * Mark version for upstream trunk 
 
