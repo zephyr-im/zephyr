@@ -1,0 +1,226 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(server/server.c)
+
+test -d h || mkdir h
+test -d h/zephyr || mkdir h/zephyr
+
+test -z "$lbindir" && lbindir='${bindir}'
+test -z "$lsbindir" && lsbindir='${sbindir}'
+AC_SUBST(lbindir)
+AC_SUBST(lsbindir)
+
+AC_CANONICAL_SYSTEM
+AC_DEFINE_UNQUOTED(MACHINE_TYPE, "$host")
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_YACC
+AC_PROG_LEX
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+AC_PROG_LIBTOOL
+
+AC_MSG_CHECKING(location of temporary directory)
+if test -d /var/tmp; then
+	found_tmp=/var/tmp/
+elif test -d /usr/tmp; then
+	found_tmp=/usr/tmp/
+else
+	found_tmp=/tmp/
+fi
+AC_DEFINE_UNQUOTED(FOUND_TMP, "${found_tmp}")
+AC_MSG_RESULT(${found_tmp})
+
+dnl Checks for header files.
+AC_PATH_XTRA
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS(fcntl.h paths.h termios.h sgtty.h unistd.h malloc.h term.h)
+AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/file.h sys/utsname.h)
+AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h krb5_err.h termcap.h)
+
+if test "$no_x" != "yes"; then
+	ZWGC_LIBX11=-lX11
+fi
+AC_SUBST(XCLIENTS)
+AC_SUBST(ZWGC_LIBX11)
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_SIGNAL
+AC_TYPE_UID_T
+AC_CHECK_SIZEOF(short)
+AC_CHECK_SIZEOF(int)
+AC_CHECK_SIZEOF(long)
+AC_MSG_CHECKING(for 32-bit integer type)
+if test "$ac_cv_sizeof_long" = 4; then
+	int32=long
+elif test "$ac_cv_sizeof_int" = 4; then
+	int32=int
+elif test "$ac_cv_sizeof_short" = 4; then
+	int32=short
+else
+	AC_WARN([Can't find 32-bit type, using long])
+	int32=long
+fi
+AC_DEFINE_UNQUOTED(ZEPHYR_INT32, ${int32})
+AC_MSG_RESULT(${int32})
+
+AC_CHECK_LIB(w, wslen)
+AC_CHECK_LIB(dl, dlopen)
+
+AC_SEARCH_LIBS(gethostbyname, nsl)
+AC_SEARCH_LIBS(socket, socket)
+
+# Hesiod needs -lresolv on Sun systems for res_send.
+if test "$hesiod" != "no"; then
+	AC_CHECK_LIB(44bsd, strerror)
+	AC_CHECK_LIB(resolv, res_send)
+	AC_CHECK_LIB(resolv, __res_send)
+fi
+
+AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
+AC_CHECK_LIB(src, srcsrpy, [SLIB=-lsrc; AC_DEFINE(HAVE_SRC)])
+AC_SUBST(TLIB)
+AC_SUBST(RLIB)
+AC_SUBST(SLIB)
+
+ATHENA_KRB4
+
+AC_ARG_WITH(krb5,
+	    [  --with-krb5=PREFIX      Use Kerberos 5],
+	    [krb5="$withval"], [krb5=no])
+if test "$krb5" != no; then
+   AC_SEARCH_LIBS(gethostbyname, nsl)
+   AC_SEARCH_LIBS(socket, socket)
+   AC_CHECK_LIB(gen, compile)
+   if test "$krb5" != yes; then
+      PATH="$PATH:$krb5/bin"
+   fi
+   AC_CHECK_PROG(krb5config, krb5-config,yes)
+   if test "$krb5config" == yes; then
+      CPPFLAGS="$CPPFLAGS $(krb5-config --cflags krb5)"
+      KRB5_LIBS="$(krb5-config --libs krb5)"
+   else
+      if test "$krb5" != yes; then
+      	 CPPFLAGS="$CPPFLAGS -I$krb5/include"
+      	 LDFLAGS="$LDFLAGS -L$krb5/lib"
+      fi
+      AC_CHECK_LIB(krb5, krb5_init_context, :,
+	           [AC_MSG_ERROR(Kerberos 5 libraries not found)],
+		   -lk5crypto -lcom_err)
+      KRB5_LIBS="-lkrb5 -l5crypto -lcom_err"
+   fi
+   AC_DEFINE(HAVE_KRB5)
+fi
+AC_SUBST(KRB5_LIBS)
+
+ATHENA_HESIOD
+ATHENA_REGEXP
+ATHENA_UTIL_COM_ERR
+ATHENA_UTIL_SS
+LIBS="$KRB5_LIBS $KRB4_LIBS $HESIOD_LIBS $LIBS"
+
+dnl Checks for library functions.
+AC_CHECK_FUNC(res_send, :, AC_CHECK_LIB(resolv, res_send))
+AC_CHECK_LIB(cares, ares_getaddrinfo,
+		    [ARES_LIBS="-lcares"
+		    AC_DEFINE(HAVE_ARES)],
+		    :)
+AC_SUBST(ARES_LIBS)
+		    
+AC_PROG_GCC_TRADITIONAL
+AC_FUNC_VPRINTF
+AC_FUNC_GETPGRP
+AC_FUNC_SETPGRP
+AC_CHECK_FUNCS(putenv strchr memcpy memmove waitpid getlogin strerror random)
+AC_CHECK_FUNCS(lrand48 gethostid getsid getpgid krb_get_err_text krb_log)
+AC_CHECK_FUNCS(krb5_free_data krb5_c_make_checksum krb5_cc_set_default_name)
+AC_CHECK_FUNCS(krb5_crypto_init krb5_c_decrypt)
+
+AC_MSG_CHECKING(for krb5_auth_con_getauthenticator taking double pointer)
+AC_CACHE_VAL(ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer, [
+local_save_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="${CPPFLAGS} ${KRB5_INC_FLAGS}"
+AC_TRY_COMPILE(
+[#define socklen_t int
+#define ssize_t int
+#include <krb5.h>
+krb5_error_code
+krb5_auth_con_getauthenticator(krb5_context context,
+                           krb5_auth_context auth_context,
+                           krb5_authenticator *authenticator);],
+[krb5_error_code foo = krb5_auth_con_getauthenticator(0, 0, 0);],
+ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer=no,
+ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer=yes)
+])
+CPPFLAGS="${local_save_CPPFLAGS}"
+if test "$ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer" = yes; then
+        AC_DEFINE(KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER)dnl
+fi
+AC_MSG_RESULT($ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer)
+
+AC_MSG_CHECKING(for enc_part2 in struct krb5_ticket)
+AC_CACHE_VAL(ac_cv_have_krb5_ticket_enc_part2, [
+local_save_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="${CPPFLAGS} ${KRB5_INC_FLAGS}"
+AC_TRY_COMPILE(
+[#include <krb5.h>], [krb5_ticket _tkt; _tkt.enc_part2;],
+ac_cv_have_krb5_ticket_enc_part2=yes,
+ac_cv_have_krb5_ticket_enc_part2=no)
+])
+CPPFLAGS="${local_save_CPPFLAGS}"
+if test "$ac_cv_have_krb5_ticket_enc_part2" = yes; then
+	AC_DEFINE(HAVE_KRB5_TICKET_ENC_PART2)dnl
+fi
+AC_MSG_RESULT($ac_cv_have_krb5_ticket_enc_part2)
+
+AC_MSG_CHECKING(for enctype in struct krb5_keyblock)
+AC_CACHE_VAL(ac_cv_have_krb5_creds_keyblock_enctype, [
+local_save_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="${CPPFLAGS} ${KRB5_INC_FLAGS}"
+AC_TRY_COMPILE(
+[#include <krb5.h>], [krb5_creds _creds; _creds.keyblock.enctype;],
+ac_cv_have_krb5_creds_keyblock_enctype=yes,
+ac_cv_have_krb5_creds_keyblock_enctype=no)
+])
+CPPFLAGS="${local_save_CPPFLAGS}"
+if test "$ac_cv_have_krb5_creds_keyblock_enctype" = yes; then
+	AC_DEFINE(HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE)dnl
+fi
+AC_MSG_RESULT($ac_cv_have_krb5_creds_keyblock_enctype)
+
+AC_ARG_ENABLE(cmu-zwgcplus,
+[  --enable-cmu-zwgcplus   enable CMU zwgcplus extensions],[
+if test "$enableval" = "yes"; then
+        AC_DEFINE(CMU_ZWGCPLUS,1)
+fi
+])
+
+AC_ARG_ENABLE(cmu-zctl-punt,
+[  --enable-cmu-zctl-punt  enable CMU zctl punt extensions],[
+if test "$enableval" = "yes"; then
+        AC_DEFINE(CMU_ZCTL_PUNT,1)
+fi
+])
+
+AC_ARG_ENABLE(cmu-hm-flush-restrict,
+[  --enable-cmu-hm-flush-restrict   enable CMU zctl hm flush restriction],[
+if test "$enableval" = "yes"; then
+        AC_DEFINE(HM_FLUSH_RESTRICT,1)
+fi
+])
+
+AC_ARG_ENABLE(cmu-opstaff-locate-self,
+[  --enable-cmu-opstaff-locate-self enable CMU opstaff locate-self ability],[
+if test "$enableval" = "yes"; then
+        AC_DEFINE(OPSTAFF_LOCATE_SELF,1)
+fi
+])
+
+AC_CONFIG_HEADER(h/config.h)
+AC_OUTPUT(Makefile clients/Makefile clients/zaway/Makefile
+          clients/zctl/Makefile clients/zleave/Makefile
+          clients/zlocate/Makefile clients/znol/Makefile
+          clients/zshutdown_notify/Makefile clients/zstat/Makefile
+          clients/zwrite/Makefile lib/Makefile libdyn/Makefile
+          server/Makefile zhm/Makefile zwgc/Makefile)

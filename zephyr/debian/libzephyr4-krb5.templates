@@ -1,0 +1,15 @@
+Template: libzephyr4-krb5/no-more-krb4
+Type: boolean
+Default: true
+Description: Potentially incompatible upgrade
+ You appear to be upgrading from a version of zephyr that uses
+ Kerberos version 4 to authenticate.  Kerberos version 4 support has
+ been removed from Debian, and accordingly from zephyr.  This version
+ of zephyr uses Kerberos 5 to authenticate, and thus your servers must
+ have been upgraded for it to be useful.
+ .
+ A server that authenticates both ways can be built for lenny from the
+ zephyr source package, see:
+   /usr/share/doc/libzephyr4-krb5/README.krb4-5
+ .
+ Continue with the upgrade?
