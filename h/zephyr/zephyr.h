@@ -113,6 +113,7 @@ typedef struct _ZNotice_t {
     caddr_t		z_message;
     int			z_message_len;
     int			z_num_hdr_fields;
+    char **		z_hdr_fields;
 } ZNotice_t;
 
 /* Subscription structure */
