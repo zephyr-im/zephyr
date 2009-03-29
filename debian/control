@@ -7,7 +7,9 @@ Build-Depends: debhelper (>= 5), libc-ares-dev, libkrb5-dev (>= 1.2.2-4), comerr
                libreadline5-dev, libx11-dev, libxt-dev, x11proto-core-dev, libncurses5-dev,
 	       bison, libhesiod-dev, autotools-dev
 Standards-Version: 3.8.1.0
-Vcs-Svn: svn://svn.1ts.org/debian/branches/zephyr-reloaded/zephyr
+Homepage: http://zephyr.1ts.org/
+Vcs-Svn: svn://zephyr.1ts.org/trunk/zephyr
+Vcs-Browser: http://zephyr.1ts.org/browser/trunk/zephyr
 
 Package: libzephyr4
 Section: libs
