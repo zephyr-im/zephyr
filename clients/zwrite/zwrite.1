@@ -12,41 +12,41 @@ zwrite \- write to another user via Zephyr
 .SH SYNOPSIS
 .B zwrite
 [
-.BI -a
+.BI \-a
 ] [
-.BI -d
+.BI \-d
 ] [
-.BI -v
+.BI \-v
 ] [
-.BI -q
+.BI \-q
 ] [
-.BI -t
+.BI \-t
 ] [
-.BI -u
+.BI \-u
 ] [
-.BI -o
+.BI \-o
 ] [
-.BI -n
+.BI \-n
 ] [
-.BI -l
+.BI \-l
 ] [
-.BI -C
+.BI \-C
 ] [
-.BI -O
+.BI \-O
 opcode ] [
-.BI -s
+.BI \-s
 signature ] [
-.BI -c
+.BI \-c
 class ] [
-.BI -i
+.BI \-i
 instance ] [
-.BI -r
+.BI \-r
 realm ] [
-.BI -f
+.BI \-f
 arg ] [
 .BI user \ ...
 ] [
-.BI -m
+.BI \-m
 .BI message
 ]
 .SH DESCRIPTION
@@ -162,7 +162,7 @@ for a description of how to restrict access to classes.  When this option
 is specified, the message is sent to recipient "*" unless an additional
 list of recipients is specified.
 .br
-This argument may not be used in conjunction with the -f option.
+This argument may not be used in conjunction with the \-f option.
 .TP
 .B \-i \fIinstance\fR
 Allows a user to specify a different instance than the default.
@@ -172,7 +172,7 @@ sent to a large group of people (e.g. a development group) just by having
 the members subscribe to messages of class "MESSAGE", the specified instance,
 and recipient "*".
 .br
-This argument may not be used in conjunction with the -f option.
+This argument may not be used in conjunction with the \-f option.
 .TP
 .B \-r \fIrealm\fR
 Allows a user to specify a different realm for the message, if the
@@ -210,7 +210,7 @@ set to
 .I arg
 unmodified.
 .br
-This option may not be used in conjunction with the -c or -i option.
+This option may not be used in conjunction with the \-c or \-i option.
 .TP
 .B \-m
 .I Zwrite
