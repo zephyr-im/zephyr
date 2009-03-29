@@ -79,28 +79,31 @@ class must be authenticated.
 The class registry lists all classes which are restricted.
 .SH FILES
 .TP 10
-.I /usr/athena/lib/zephyr/class-registry.acl:
+.I /etc/zephyr/acl/class-registry.acl:
 List of classes which are restricted
 .TP
-.I /usr/athena/lib/zephyr/iws-*.acl:
+.I /etc/zephyr/acl/iws-*.acl:
 Access Control Lists for instance-wildcard restrictions
 .TP
-.I /usr/athena/lib/zephyr/iui-*.acl:
+.I /etc/zephyr/acl/iui-*.acl:
 Access Control Lists for instance-identity restrictions
 .TP
-.I /usr/athena/lib/zephyr/sub-*.acl:
+.I /etc/zephyr/acl/sub-*.acl:
 Access Control Lists for subscribing
 .TP
-.I /usr/athena/lib/zephyr/xmt-*.acl:
+.I /etc/zephyr/acl/xmt-*.acl:
 Access Control Lists for transmitting
 .TP
-.I /usr/athena/lib/zephyr/srvtab:
-Kerberos Service keys
+.I /etc/zephyr/srvtab:
+Kerberos 4 Service keys
 .TP
-.I /usr/athena/lib/zephyr/ztkts:
+.I /etc/zephyr/krb5.keytab:
+Kerberos V Service keys
+.TP
+.I /etc/zephyr/ztkts:
 Current Kerberos tickets for exchange with other servers 
 .TP
-.I /usr/tmp/zephyr.db:
+.I /var/tmp/zephyr.db:
 File containing an ASCII dump of the database.
 .SH BUGS
 The current implementation of the Zephyr server (\fIzephyrd(8)\fR) makes
