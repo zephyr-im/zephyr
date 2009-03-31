@@ -14,17 +14,18 @@
 #define	__ZSRV_CONF_H__
 #include <zephyr/mit-copyright.h>
 
-/* Path names are relative to CONFDIR, except for the class registry. */
+/* Path names are relative to CONFDIR, except for the class registry and
+   ticket files. */
 
 #define SERVER_LIST_FILE	"server.list"
 #define REALM_LIST_FILE		"realm.list"
 #ifdef HAVE_KRB5
 #define ZEPHYR_KEYTAB		"krb5.keytab"
-#define ZEPHYR_TK5FILE		"z5tkts"
+#define ZEPHYR_TK5FILE		"/var/run/zephyrd.tkt"
 #endif
 #ifdef HAVE_KRB4
 #define ZEPHYR_SRVTAB		"srvtab"
-#define ZEPHYR_TKFILE		"ztkts"
+#define ZEPHYR_TKFILE		"/var/run/zephyrd.tkt4"
 #endif
 #define	ZEPHYR_ACL_DIR		"acl/"
 #define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"

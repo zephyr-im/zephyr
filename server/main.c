@@ -163,11 +163,11 @@ main(int argc,
     sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, SERVER_LIST_FILE);
 #ifdef HAVE_KRB4
     sprintf(srvtab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_SRVTAB);
-    sprintf(tkt_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_TKFILE);
+    strcpy(tkt_file, ZEPHYR_TKFILE);
 #endif
 #ifdef HAVE_KRB5
     sprintf(keytab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_KEYTAB);
-    sprintf(tkt5_file, "FILE:%s/zephyr/%s", SYSCONFDIR, ZEPHYR_TK5FILE);
+    strcpy(tkt5_file, ZEPHYR_TK5FILE);
 #endif
     sprintf(acl_dir, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_ACL_DIR);
     sprintf(subs_file, "%s/zephyr/%s", SYSCONFDIR, DEFAULT_SUBS_FILE);
