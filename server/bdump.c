@@ -858,7 +858,7 @@ bdump_send_list_tcp(ZNotice_Kind_t kind,
 		    int num)
 {
     ZNotice_t notice;
-    char *pack, addrbuf[100];
+    char *pack;
     int packlen, count;
     Code_t retval;
     u_short length;
