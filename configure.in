@@ -38,6 +38,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(fcntl.h paths.h termios.h sgtty.h unistd.h malloc.h term.h)
 AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/file.h sys/utsname.h)
 AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h krb5_err.h termcap.h)
+AC_CHECK_HEADERS(arpa/nameser_compat.h)
 
 if test "$no_x" != "yes"; then
 	ZWGC_LIBX11=-lX11
