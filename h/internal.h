@@ -25,6 +25,9 @@
 
 #ifndef REALM_SZ  /* XXX */
 #include <arpa/nameser.h>
+#ifdef HAVE_ARPA_NAMESER_COMPAT_H
+#include <arpa/nameser_compat.h>
+#endif
 #define REALM_SZ	NS_MAXDNAME
 #endif
 #define MAX_PRINCIPAL_SIZE	1024

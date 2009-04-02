@@ -22,6 +22,9 @@ static const char rcsid_main_c[] = "$Id$";
 
 #include <netdb.h>
 #include <arpa/nameser.h>
+#ifdef HAVE_ARPA_NAMESER_COMPAT_H
+#include <arpa/nameser_compat.h>
+#endif
 #include <sys/socket.h>
 #include <sys/resource.h>
 #include <zephyr/mit-copyright.h>
