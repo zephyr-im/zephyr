@@ -52,7 +52,7 @@ libzephyr.la: ${OBJS}
 
 zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
 	compile_et ${srcdir}/zephyr_err.et
-	mv -f zephyr_err.h ${BUILDTOP}/h/zephyr
+	cp -f zephyr_err.h ${BUILDTOP}/h/zephyr
 
 .c.lo:
 	${LIBTOOL} --mode=compile ${CC} -c -o $@ ${ALL_CFLAGS} $<
