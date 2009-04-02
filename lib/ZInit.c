@@ -59,14 +59,22 @@ ZInitialize(void)
 #endif
 #endif
 
+    /* On OS X you don't need to initialize the Kerberos error tables 
+       as long as you link with -framework Kerberos */ 
+#if !(defined(__APPLE__) && defined(__MACH__))
 #ifdef HAVE_KRB4
     initialize_krb_error_table();
 #endif
 #ifdef HAVE_KRB5
     initialize_krb5_error_table();
 #endif
+#endif
 
+#if defined(__APPLE__) && defined(__MACH__) 
+    add_error_table(&et_zeph_error_table); 
+#else 
     initialize_zeph_error_table();
+#endif
     
     (void) memset((char *)&__HM_addr, 0, sizeof(__HM_addr));
 

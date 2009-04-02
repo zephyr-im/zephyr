@@ -417,7 +417,13 @@ initialize(void)
     if (*my_realm) 
       strcpy(__Zephyr_realm, my_realm);
 #endif
-    init_zsrv_err_tbl();	/* set up err table */
+
+    /* set up err table */
+#if defined(__APPLE__) && defined(__MACH__) 
+    add_error_table(&et_zsrv_error_table); 
+#else 
+    init_zsrv_err_tbl(); 
+#endif 
 
     ZSetFD(srv_socket);		/* set up the socket as the input fildes */
 
