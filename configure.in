@@ -10,6 +10,7 @@ AC_SUBST(lbindir)
 AC_SUBST(lsbindir)
 
 AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 AC_DEFINE_UNQUOTED(MACHINE_TYPE, "$host")
 
 dnl Checks for programs.
