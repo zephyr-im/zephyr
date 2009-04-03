@@ -356,9 +356,10 @@ bdump_send(void)
 				      strlen(ZGetRealm()),
 				      ZGetRealm(),
 				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
-				      0); 
+				      NULL); 
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_send: krb5_build_principal: %s", error_message(retval));
+	    syslog(LOG_ERR, "bdump_send: krb5_build_principal: %s",
+		   error_message(retval));
 	    cleanup(server);
 	    return;
 	}
@@ -366,14 +367,17 @@ bdump_send(void)
 
 	retval = krb5_auth_con_init(Z_krb5_ctx, &bdump_ac);
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_send: krb5_auth_con_init: %s", error_message(retval));
+	    syslog(LOG_ERR, "bdump_send: krb5_auth_con_init: %s",
+		   error_message(retval));
 	    cleanup(server);
 	    return;
 	}
 
-	retval = krb5_auth_con_setflags(Z_krb5_ctx, bdump_ac, KRB5_AUTH_CONTEXT_DO_SEQUENCE);
+	retval = krb5_auth_con_setflags(Z_krb5_ctx, bdump_ac,
+					KRB5_AUTH_CONTEXT_DO_SEQUENCE);
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_send: krb5_auth_con_setflags: %s", error_message(retval));
+	    syslog(LOG_ERR, "bdump_send: krb5_auth_con_setflags: %s",
+		   error_message(retval));
 	    cleanup(server);
 	    return;
 	}
@@ -637,16 +641,18 @@ bdump_get_v12 (ZNotice_t *notice,
 				      strlen(ZGetRealm()),
 				      ZGetRealm(),
 				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
-				      0); 
+				      NULL); 
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_get: krb5_build_principal: %s", error_message(retval));
+	    syslog(LOG_ERR, "bdump_get: krb5_build_principal: %s",
+		   error_message(retval));
 	    cleanup(server);
 	    return;
 	}
 
 	retval = krb5_copy_principal(Z_krb5_ctx, principal, &creds.server);
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (server): %s", error_message(retval));
+	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (server): %s",
+		   error_message(retval));
 	    krb5_free_principal(Z_krb5_ctx, principal);
 	    cleanup(server);
 	    return;
@@ -655,7 +661,8 @@ bdump_get_v12 (ZNotice_t *notice,
 	retval = krb5_copy_principal(Z_krb5_ctx, principal, &creds.client);
 	krb5_free_principal(Z_krb5_ctx, principal);
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (client): %s", error_message(retval));
+	    syslog(LOG_ERR, "bdump_get: krb5_copy_principal (client): %s",
+		   error_message(retval));
 	    krb5_free_cred_contents(Z_krb5_ctx, &creds);
 	    cleanup(server);
 	    return;
@@ -1060,7 +1067,7 @@ get_tgt(void)
 				      strlen(ZGetRealm()),
 				      ZGetRealm(),
 				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
-				      0); 
+				      NULL); 
 	if (retval) {
 	  krb5_free_principal(Z_krb5_ctx, principal);
 	  return(1);

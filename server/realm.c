@@ -1289,7 +1289,8 @@ ticket_lookup(char *realm)
     result = krb5_build_principal(Z_krb5_ctx, &creds_in.server, 
                                   strlen(realm), 
                                   realm, 
-                                  SERVER_KRB5_SERVICE, SERVER_INSTANCE, 0); 
+                                  SERVER_KRB5_SERVICE, SERVER_INSTANCE,
+				  NULL); 
     if (result) {
       krb5_cc_close(Z_krb5_ctx, ccache);
       return 0;
@@ -1340,7 +1341,7 @@ ticket_retrieve(ZRealm *realm)
 	    result = krb5_build_principal(Z_krb5_ctx, &creds_in.server, 
 					  strlen(realm->name), realm->name, 
 					  SERVER_KRB5_SERVICE, SERVER_INSTANCE, 
-					  0); 
+					  NULL); 
 
 	/* HOLDING: creds_in.server */ 
      
@@ -1396,7 +1397,8 @@ ticket_retrieve(ZRealm *realm)
 
 	syslog(LOG_INFO, "tkt_rtrv running for %s", realm->name);
 	while (1) {
-	    /* Get a pointer to the default ccache. We don't need to free this. */ 
+	    /* Get a pointer to the default ccache.
+	       We don't need to free this. */ 
 	    result = krb5_cc_default(Z_krb5_ctx, &ccache); 
 
 	    /* GRRR.  There's no allocator or constructor for krb5_creds */ 
@@ -1404,13 +1406,15 @@ ticket_retrieve(ZRealm *realm)
 	    memset(&creds_in, 0, sizeof(creds_in)); 
  
 	    if (!result) 
-		result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client); 
+		result = krb5_cc_get_principal(Z_krb5_ctx, ccache,
+					       &creds_in.client); 
 	    /* construct the service principal */ 
 	    if (!result)  
 		result = krb5_build_principal(Z_krb5_ctx, &creds_in.server, 
 					      strlen(realm->name), realm->name, 
-					      SERVER_KRB5_SERVICE, SERVER_INSTANCE, 
-					      0); 
+					      SERVER_KRB5_SERVICE,
+					      SERVER_INSTANCE, 
+					      NULL); 
 
 	    /* HOLDING: creds_in.server */ 
 	    

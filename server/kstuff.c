@@ -320,16 +320,19 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
 				  SERVER_INSTANCE, NULL);
     if (!result) {
         result = krb5_rd_req(Z_krb5_ctx, &authctx, &packet, server, 
-                             keytabid, 0, &tkt);
+                             keytabid, NULL, &tkt);
 	krb5_free_principal(Z_krb5_ctx, server);
     }
     krb5_kt_close(Z_krb5_ctx, keytabid);
 
     if (result) {
-      if (result == KRB5KRB_AP_ERR_REPEAT)
-	syslog(LOG_DEBUG, "ZCheckRealmAuthentication: k5 auth failed: %s", error_message(result));
-      else
-        syslog(LOG_WARNING,"ZCheckRealmAuthentication: k5 auth failed: %s", error_message(result));
+	if (result == KRB5KRB_AP_ERR_REPEAT) {
+	    syslog(LOG_DEBUG, "ZCheckRealmAuthentication: k5 auth failed: %s",
+		   error_message(result));
+	} else {
+	    syslog(LOG_WARNING,"ZCheckRealmAuthentication: k5 auth failed: %s",
+		   error_message(result));
+	}
         free(authbuf);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         return ZAUTH_FAILED;
@@ -612,16 +615,18 @@ ZCheckAuthentication(ZNotice_t *notice,
 				  SERVER_INSTANCE, NULL);
     if (!result) {
         result = krb5_rd_req(Z_krb5_ctx, &authctx, &packet, server, 
-                             keytabid, 0, &tkt);
+                             keytabid, NULL, &tkt);
 	krb5_free_principal(Z_krb5_ctx, server);
     }
     krb5_kt_close(Z_krb5_ctx, keytabid);
 
     if (result) {
       if (result == KRB5KRB_AP_ERR_REPEAT)
-	syslog(LOG_DEBUG, "ZCheckAuthentication: k5 auth failed: %s", error_message(result));
+	syslog(LOG_DEBUG, "ZCheckAuthentication: k5 auth failed: %s",
+	       error_message(result));
       else
-        syslog(LOG_WARNING,"ZCheckAuthentication: k5 auth failed: %s", error_message(result));
+        syslog(LOG_WARNING,"ZCheckAuthentication: k5 auth failed: %s",
+	       error_message(result));
         free(authbuf);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         return ZAUTH_FAILED;
