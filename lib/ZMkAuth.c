@@ -220,7 +220,8 @@ ZGetCredsRealm(krb5_creds **creds_out,
   result = krb5_build_principal(Z_krb5_ctx, &creds_in.server,
 				strlen(realm),
 				realm,
-				SERVER_SERVICE, SERVER_INSTANCE, 0);
+				SERVER_SERVICE, SERVER_INSTANCE,
+				NULL);
   if (result) {
     krb5_cc_close(Z_krb5_ctx, ccache);
     return result;
