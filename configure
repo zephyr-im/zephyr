@@ -24567,12 +24567,15 @@ echo "$as_me: error: Kerberos 5 libraries not found" >&2;}
    { (exit 1); exit 1; }; }
 fi
 
-      KRB5_LIBS="-lkrb5 -l5crypto -lcom_err"
+      KRB5_LIBS="-lkrb5 -lk5crypto -lcom_err"
    fi
    cat >>confdefs.h <<\_ACEOF
 #define HAVE_KRB5 1
 _ACEOF
 
+   case "$target_os" in
+      darwin*) KRB5_LIBS="$KRB5_LIBS -framework Kerberos" ;;
+   esac
 fi
 
 
