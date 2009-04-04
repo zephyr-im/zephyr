@@ -265,7 +265,7 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
     char *x; 
     unsigned char *asn1_data;
     unsigned char *key_data; 
-    int asn1_len, key_len, cksum0_len, cksum1_len, cksum2_len; 
+    int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0; 
 #ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
     krb5_authenticator *authenticator;
 #define KRB5AUTHENT authenticator
@@ -438,21 +438,25 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
      * - z_sender_(sock)addr
      * - z_charset
      * - z_other_fields[] 
-     */ 
-    cksum1_base = notice->z_multinotice; 
-    if (notice->z_num_other_fields) 
-        x = notice->z_other_fields[notice->z_num_other_fields - 1]; 
-    else {
-	/* see also ZCheckAuthentication and lib/ZCkZaut.c:ZCheckZcodeAuthentication */
-	/* XXXXXXXXXXXXXXXXXXXXXXX */
-        x = cksum1_base + strlen(cksum1_base) + 1; /* multinotice */
-	if (notice->z_num_hdr_fields > 17)
-	    x = x + strlen(x) + 1; /* multiuid */
-	if (notice->z_num_hdr_fields > 18)
-	    x = x + strlen(x) + 1; /* sender */
+     */
+    if (notice->z_num_hdr_fields > 15 ) {
+	cksum1_base = notice->z_multinotice; 
+	if (notice->z_num_other_fields) 
+	    x = notice->z_other_fields[notice->z_num_other_fields - 1]; 
+	else {
+	    /* see also ZCheckAuthentication and
+	       lib/ZCkZaut.c:ZCheckZcodeAuthentication */
+	    /* XXXXXXXXXXXXXXXXXXXXXXX */
+	    if (notice->z_num_hdr_fields > 16) 
+		x = cksum1_base + strlen(cksum1_base) + 1; /* multinotice */
+	    if (notice->z_num_hdr_fields > 17)
+		x = x + strlen(x) + 1; /* multiuid */
+	    if (notice->z_num_hdr_fields > 18)
+		x = x + strlen(x) + 1; /* sender */
+	}
+	cksum1_len  = x + strlen(x) + 1 - cksum1_base; /* charset / extra field */
     }
-    cksum1_len  = x + strlen(x) + 1 - cksum1_base; /* charset / extra field */
- 
+    
     /* last part is the message body */ 
     cksum2_base = notice->z_message; 
     cksum2_len  = notice->z_message_len; 
@@ -490,8 +494,9 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
     } 
     /* HOLDING: authctx, authenticator, cksumbuf.data */ 
  
-    memcpy(cksumbuf.data, cksum0_base, cksum0_len); 
-    memcpy(cksumbuf.data + cksum0_len, cksum1_base, cksum1_len); 
+    memcpy(cksumbuf.data, cksum0_base, cksum0_len);
+    if (cksum1_len)
+	memcpy(cksumbuf.data + cksum0_len, cksum1_base, cksum1_len); 
     memcpy(cksumbuf.data + cksum0_len + cksum1_len, 
            cksum2_base, cksum2_len); 
  
@@ -558,7 +563,7 @@ ZCheckAuthentication(ZNotice_t *notice,
     char *cksum0_base, *cksum1_base, *cksum2_base; 
     char *x; 
     unsigned char *asn1_data, *key_data; 
-    int asn1_len, key_len, cksum0_len, cksum1_len, cksum2_len; 
+    int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0; 
 #ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
     krb5_authenticator *authenticator;
 #define KRB5AUTHENT authenticator
@@ -732,19 +737,23 @@ ZCheckAuthentication(ZNotice_t *notice,
      * - z_multiuid 
      * - z_other_fields[] 
      */ 
-    cksum1_base = notice->z_multinotice; 
-    if (notice->z_num_other_fields) 
-        x = notice->z_other_fields[notice->z_num_other_fields - 1]; 
-    else {
-	/* see also ZCheckRealmAuthentication and lib/ZCkZaut.c:ZCheckZcodeAuthentication  */
-	/* XXXXXXXXXXXXXXXXXXXXXXX */
-        x = cksum1_base + strlen(cksum1_base) + 1; /* multinotice */
-	if (notice->z_num_hdr_fields > 17)
-	    x = x + strlen(x) + 1; /* multiuid */
-	if (notice->z_num_hdr_fields > 18)
-	    x = x + strlen(x) + 1; /* sender */
+    if (notice->z_num_hdr_fields > 15 ) {
+	cksum1_base = notice->z_multinotice; 
+	if (notice->z_num_other_fields) 
+	    x = notice->z_other_fields[notice->z_num_other_fields - 1]; 
+	else {
+	    /* see also ZCheckRealmAuthentication
+	       and lib/ZCkZaut.c:ZCheckZcodeAuthentication  */
+	    /* XXXXXXXXXXXXXXXXXXXXXXX */
+	    if (notice->z_num_hdr_fields > 16)
+		x = cksum1_base + strlen(cksum1_base) + 1; /* multinotice */
+	    if (notice->z_num_hdr_fields > 17)
+		x = x + strlen(x) + 1; /* multiuid */
+	    if (notice->z_num_hdr_fields > 18)
+		x = x + strlen(x) + 1; /* sender */
+	}
+	cksum1_len  = x + strlen(x) + 1 - cksum1_base; /* charset / extra field */
     }
-    cksum1_len  = x + strlen(x) + 1 - cksum1_base; /* charset / extra field */
  
     /* last part is the message body */ 
     cksum2_base = notice->z_message; 
@@ -785,8 +794,9 @@ ZCheckAuthentication(ZNotice_t *notice,
     } 
     /* HOLDING: authctx, authenticator, cksumbuf.data */ 
  
-    memcpy(cksumbuf.data, cksum0_base, cksum0_len); 
-    memcpy(cksumbuf.data + cksum0_len, cksum1_base, cksum1_len); 
+    memcpy(cksumbuf.data, cksum0_base, cksum0_len);
+    if (cksum1_len)
+	memcpy(cksumbuf.data + cksum0_len, cksum1_base, cksum1_len); 
     memcpy(cksumbuf.data + cksum0_len + cksum1_len, 
            cksum2_base, cksum2_len); 
  
