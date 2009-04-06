@@ -168,7 +168,7 @@ Description: The original "Instant Message" system-server with Kerberos 4+5
 Package: libzephyr-dev
 Section: libdevel
 Architecture: any
-Depends: libzephyr4 (= ${binary:Version}) | libzephyr4-krb (= ${binary:Version}), ${misc:Depends}, libc6-dev
+Depends: libzephyr4 (= ${binary:Version}) | libzephyr4-krb (= ${binary:Version}) | libzephyr4-krb5 (= ${binary:Version}) | libzephyr4-krb45 (= ${binary:Version}), ${misc:Depends}, libc6-dev
 Description: Project Athena's notification service - development files
  Zephyr is derived from the original Project Athena 'Instant Message' system
  and allows users to send messages to other users or to groups of users.
