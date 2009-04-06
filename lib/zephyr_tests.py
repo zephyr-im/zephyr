@@ -16,7 +16,7 @@ from ctypes import c_uint16, c_uint32
 from ctypes import POINTER, c_void_p, c_char_p
 from ctypes import Structure, Union, sizeof
 
-__revision__ = "$Id 0 0 0 $"
+__revision__ = "$Id$"
 __version__ = "%s/%s" % (__revision__.split()[3], __revision__.split()[2])
 
 # TODO: pick some real framework later, we're just poking around for now
