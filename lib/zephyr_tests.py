@@ -20,6 +20,19 @@ from ctypes import Structure, Union, sizeof
 __revision__ = "$Id$"
 __version__ = "%s/%s" % (__revision__.split()[3], __revision__.split()[2])
 
+def ctypes_pprint(cstruct, indent=""):
+    """pretty print a ctypes Structure or Union"""
+    for field_name, field_ctype in cstruct._fields_:
+        field_value = getattr(cstruct, field_name)
+        print indent + field_name,
+        if hasattr(field_value, "_fields_"):
+            print
+            ctypes_pprint(field_value, indent + "    ")
+        else:
+            # TODO: add other displays based on field_ctype
+            print field_value
+
+
 # TODO: pick some real framework later, we're just poking around for now
 class TestSuite(object):
     """test collection and runner"""
@@ -85,9 +98,9 @@ ZNOAUTH = 0
 class _ZTimeval(Structure):
     _fields_ = [
 # 	int tv_sec;
-        ("tv_sec", c_int),
+        ("tv_sec", c_uint),
 # 	int tv_usec;
-        ("tv_usec", c_int),
+        ("tv_usec", c_uint),
 # };
         ]
 
@@ -305,6 +318,7 @@ class ZephyrTestSuite(TestSuite):
         st = self._libzephyr.ZParseNotice(zbuf, zbuflen, new_notice)
         print "ZParseNotice:", "retval", st
         print "\tz_version", new_notice.z_version
+        ctypes_pprint(new_notice)
 
 if __name__ == "__main__":
     parser = optparse.OptionParser(usage=__doc__,
