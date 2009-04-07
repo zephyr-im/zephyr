@@ -23,36 +23,58 @@ from ctypes import Structure, Union, sizeof
 __revision__ = "$Id$"
 __version__ = "%s/%s" % (__revision__.split()[3], __revision__.split()[2])
 
+def print_line_or_lines(results, indent):
+    """short values on same line, multi-line on later ones..."""
+    if len(results) == 1:
+        print results[0]
+    else:
+        print
+        for result in results:
+            print indent + result
+
 def ctypes_pprint(cstruct, indent=""):
     """pretty print a ctypes Structure or Union"""
+    
     for field_name, field_ctype in cstruct._fields_:
         field_value = getattr(cstruct, field_name)
         print indent + field_name,
+        next_indent = indent + "    "
         pprint_name = "pprint_%s" % field_name
+        pformat_name = "pformat_%s" % field_name
         if hasattr(cstruct, pprint_name):
-            print getattr(cstruct, pprint_name)(indent + "    ")
+            # no longer used
+            getattr(cstruct, pprint_name)(next_indent)
+        elif hasattr(cstruct, pformat_name):
+            # counted-array and other common cases
+            print_line_or_lines(getattr(cstruct, pformat_name)(), next_indent)
+        elif hasattr(field_value, "pformat"):
+            # common for small compound types
+            print_line_or_lines(field_value.pformat(), next_indent)
         elif hasattr(field_value, "pprint"):
-            print field_value.pprint()
+            # useful for Union selectors
+            field_value.pprint(next_indent)
         elif hasattr(field_value, "_fields_"):
+            # generic recursion
             print
-            ctypes_pprint(field_value, indent + "    ")
+            ctypes_pprint(field_value, next_indent)
         else:
+            # generic simple (or unknown/uninteresting) value
             print field_value
 
 class Enum(c_int):
-    def pprint(self):
+    def pformat(self):
         try:
-            return "%s(%d)" % (self._values_[self.value], self.value)
+            return ["%s(%d)" % (self._values_[self.value], self.value)]
         except IndexError:
-            return "unknown enum value(%d)" % (self.value)
+            return ["unknown enum value(%d)" % (self.value)]
 
 # not really an enum, but we get a richer effect by treating it as one
 class Enum_u16(c_uint16):
-    def pprint(self):
+    def pformat(self):
         try:
-            return "%s(%d)" % (self._values_[self.value], self.value)
+            return ["%s(%d)" % (self._values_[self.value], self.value)]
         except IndexError:
-            return "unknown enum value(%d)" % (self.value)
+            return ["unknown enum value(%d)" % (self.value)]
 
 
 # TODO: pick some real framework later, we're just poking around for now
@@ -70,8 +92,8 @@ class in_addr(Structure):
     _fields_ = [
         ("s_addr", c_uint32),
         ]
-    def pprint(self):
-        return socket.inet_ntoa(struct.pack("<I", self.s_addr))
+    def pformat(self):
+        return [socket.inet_ntoa(struct.pack("<I", self.s_addr))]
 
 class _U_in6_u(Union):
     _fields_ = [
@@ -103,6 +125,8 @@ class sockaddr_in(Structure):
         # hack from linux - do we actually need it?
         ("sin_zero", c_ubyte * (sizeof(sockaddr)-sizeof(c_uint16)-sizeof(c_uint16)-sizeof(in_addr))),
         ]
+    def pformat_sin_zero(self):
+        return ["[ignored]"]
         
 # RFC2553...
 class sockaddr_in6(Structure):
@@ -141,15 +165,15 @@ class _ZTimeval(Structure):
         ("tv_usec", c_uint),
 # };
         ]
-    def pprint(self):
+    def pformat(self):
         try:
             timestr = time.ctime(self.tv_sec)
         except ValueError:
             timestr = "invalid unix time"
         if self.tv_usec >= 1000000:
             # invalid usec, still treat as numbers
-            return "%dsec, %dusec (%s)" % (self.tv_sec, self.tv_usec, timestr)
-        return "%d.%06dsec (%s)" % (self.tv_sec, self.tv_usec, timestr)
+            return ["%dsec, %dusec (%s)" % (self.tv_sec, self.tv_usec, timestr)]
+        return ["%d.%06dsec (%s)" % (self.tv_sec, self.tv_usec, timestr)]
 
 # typedef struct _ZUnique_Id_t {
 class ZUnique_Id_t(Structure):
@@ -172,6 +196,14 @@ class _U_z_sender_sockaddr(Union):
         ("ip6", sockaddr_in6),
         #     } z_sender_sockaddr;
         ]
+    def pprint(self, indent):
+        print
+        if self.sa.sa_family.value == socket.AF_INET:
+            ctypes_pprint(self.ip4, indent + ".ip4:")
+        elif self.sa.sa_family.value == socket.AF_INET6:
+            ctypes_pprint(self.ip6, indent + ".ip6:")
+        else:
+            ctypes_pprint(self.sa, indent + ".sa:")
 
 # typedef struct _ZNotice_t {
 class ZNotice_t(Structure):
@@ -243,19 +275,15 @@ class ZNotice_t(Structure):
         ("z_hdr_fields", POINTER(c_char_p)),
         # } ZNotice_t;
         ]
-    def pprint_z_other_fields(self, indent):
-        fields = ["%s%d: %s" % (indent, n, self.z_other_fields[n])
-                  for n in range(Z_MAXOTHERFIELDS)]
-        return "\n" + "\n".join(fields)
-    def pprint_z_hdr_fields(self, indent):
+    def pformat_z_other_fields(self):
+        return ["%d: %s" % (n, self.z_other_fields[n])
+                for n in range(Z_MAXOTHERFIELDS)]
+    def pformat_z_hdr_fields(self):
         if not self.z_hdr_fields:
-            return "NULL"
-        fields = ["%s%d: %s" % (indent, n, self.z_hdr_fields[n])
-                  for n in range(self.z_num_hdr_fields)]
-        return "\n" + "\n".join(fields)
+            return ["NULL"]
+        return ["%d: %s" % (n, self.z_hdr_fields[n])
+                for n in range(self.z_num_hdr_fields)]
         
-
-
 class libZephyr(object):
     """wrappers for functions in libZephyr"""
     testable_funcs = [
