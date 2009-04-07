@@ -36,6 +36,21 @@ def ctypes_pprint(cstruct, indent=""):
         else:
             print field_value
 
+class Enum(c_int):
+    def pprint(self):
+        try:
+            return "%s(%d)" % (self._values_[self.value], self.value)
+        except IndexError:
+            return "unknown enum value(%d)" % (self.value)
+
+# not really an enum, but we get a richer effect by treating it as one
+class Enum_u16(c_uint16):
+    def pprint(self):
+        try:
+            return "%s(%d)" % (self._values_[self.value], self.value)
+        except IndexError:
+            return "unknown enum value(%d)" % (self.value)
+
 
 # TODO: pick some real framework later, we're just poking around for now
 class TestSuite(object):
@@ -67,15 +82,19 @@ class in6_addr(Structure):
         ("in6_u", _U_in6_u),
         ]
 
+class AF_(Enum_u16):
+    _socket_af = dict([(v,n) for n,v in socket.__dict__.items() if n.startswith("AF_")])
+    _values_ = [_socket_af.get(k, "unknown address family") for k in range(min(_socket_af), max(_socket_af)+1)]
+
 class sockaddr(Structure):
     _fields_ = [
-        ("sa_family", c_uint16),
+        ("sa_family", AF_),
         ("sa_data", c_char * 14),
         ]
 
 class sockaddr_in(Structure):
     _fields_ = [
-        ("sin_family", c_uint16),
+        ("sin_family", AF_),
         ("sin_port", c_uint16),
         ("sin_addr", in_addr),
         # hack from linux - do we actually need it?
@@ -85,7 +104,7 @@ class sockaddr_in(Structure):
 # RFC2553...
 class sockaddr_in6(Structure):
     _fields_ = [
-        ("sin6_family", c_uint16),
+        ("sin6_family", AF_),
         ("sin6_port", c_uint16),
         ("sin6_flowinfo", c_uint32),
         ("sin6_addr", in6_addr),
@@ -99,6 +118,16 @@ Z_MAXOTHERFIELDS = 10
 #define ZCAUTH (ZMakeZcodeAuthentication)
 #define ZNOAUTH ((Z_AuthProc)0)
 ZNOAUTH = 0
+
+# typedef enum {
+#     UNSAFE, UNACKED, ACKED, HMACK, HMCTL, SERVACK, SERVNAK, CLIENTACK, STAT
+# } ZNotice_Kind_t;
+# extern const char *ZNoticeKinds[9];
+
+class ZNotice_Kind_t(Enum):
+    _values_ = [
+        "UNSAFE", "UNACKED", "ACKED", "HMACK", "HMCTL", "SERVACK", "SERVNAK", "CLIENTACK", "STAT",
+        ]
 
 # struct _ZTimeval {
 class _ZTimeval(Structure):
@@ -149,7 +178,7 @@ class ZNotice_t(Structure):
         #     char		*z_version;
         ("z_version", c_char_p),
         #     ZNotice_Kind_t	z_kind;
-        ("z_kind", c_int),        # no enums yet
+        ("z_kind", ZNotice_Kind_t),
         #     ZUnique_Id_t	z_uid;
         ("z_uid", ZUnique_Id_t),
         #     union {
@@ -171,6 +200,7 @@ class ZNotice_t(Structure):
         #     int			z_auth;
         ("z_auth", c_int),
         #     int			z_checked_auth;
+        # TODO: fake enum, for display
         ("z_checked_auth", c_int),
         #     int			z_authent_len;
         ("z_authent_len", c_int),
