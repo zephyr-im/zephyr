@@ -10,8 +10,11 @@
 
 import optparse
 import os
+import socket
+import struct
 import ctypes
 import ctypes.util
+import time
 from ctypes import c_int, c_uint, c_ushort, c_char, c_ubyte
 from ctypes import c_uint16, c_uint32
 from ctypes import POINTER, c_void_p, c_char_p
@@ -25,11 +28,12 @@ def ctypes_pprint(cstruct, indent=""):
     for field_name, field_ctype in cstruct._fields_:
         field_value = getattr(cstruct, field_name)
         print indent + field_name,
-        if hasattr(field_value, "_fields_"):
+        if hasattr(field_value, "pprint"):
+            print field_value.pprint()
+        elif hasattr(field_value, "_fields_"):
             print
             ctypes_pprint(field_value, indent + "    ")
         else:
-            # TODO: add other displays based on field_ctype
             print field_value
 
 
@@ -48,6 +52,8 @@ class in_addr(Structure):
     _fields_ = [
         ("s_addr", c_uint32),
         ]
+    def pprint(self):
+        return socket.inet_ntoa(struct.pack("<I", self.s_addr))
 
 class _U_in6_u(Union):
     _fields_ = [
@@ -103,6 +109,15 @@ class _ZTimeval(Structure):
         ("tv_usec", c_uint),
 # };
         ]
+    def pprint(self):
+        try:
+            timestr = time.ctime(self.tv_sec)
+        except ValueError:
+            timestr = "invalid unix time"
+        if self.tv_usec >= 1000000:
+            # invalid usec, still treat as numbers
+            return "%dsec, %dusec (%s)" % (self.tv_sec, self.tv_usec, timestr)
+        return "%d.%06dsec (%s)" % (self.tv_sec, self.tv_usec, timestr)
 
 # typedef struct _ZUnique_Id_t {
 class ZUnique_Id_t(Structure):
