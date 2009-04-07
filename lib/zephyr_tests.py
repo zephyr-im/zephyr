@@ -183,8 +183,8 @@ class ZNotice_t(Structure):
         ]
 
 
-class ZephyrTestSuite(TestSuite):
-    """Tests for libzephyr"""
+class libZephyr(object):
+    """wrappers for functions in libZephyr"""
     testable_funcs = [
         "ZInitialize", 
         "ZGetFD", 
@@ -194,20 +194,17 @@ class ZephyrTestSuite(TestSuite):
         "ZParseNotice",
         "ZFormatNotice",
         ]
+    def __init__(self, library_path):
+        """connect to the library and build the wrappers"""
+        self._lib = ctypes.cdll.LoadLibrary(library_path)
 
-    def setup(self):
-        # find the library
-        self._libzephyr_path = os.path.join(self.builddir, "libzephyr.so.4.0.0")
-        # check for libtool...
-        if not os.path.exists(self._libzephyr_path):
-            self._libzephyr_path = os.path.join(self.builddir, ".libs", "libzephyr.so.4.0.0")
-        self._libzephyr = ctypes.cdll.LoadLibrary(self._libzephyr_path)
         # generic bindings?
         for funcname in self.testable_funcs:
-            setattr(self, funcname, getattr(self._libzephyr, funcname))
+            setattr(self, funcname, getattr(self._lib, funcname))
 
         # TODO: fix return types, caller types in a more generic way later
         #   (perhaps by parsing the headers or code)
+        #   perhaps metaprogramming or decorators...
         self.ZGetRealm.restype = ctypes.c_char_p
         self.ZGetSender.restype = ctypes.c_char_p
         
@@ -253,6 +250,19 @@ class ZephyrTestSuite(TestSuite):
         # library-specific setup...
         self.ZInitialize()
 
+        
+
+
+class ZephyrTestSuite(TestSuite):
+    """Tests for libzephyr"""
+    def setup(self):
+        # find the library
+        libzephyr_path = os.path.join(self.builddir, "libzephyr.so.4.0.0")
+        # check for libtool...
+        if not os.path.exists(libzephyr_path):
+            libzephyr_path = os.path.join(self.builddir, ".libs", "libzephyr.so.4.0.0")
+        self._libzephyr = libZephyr(libzephyr_path)
+
     def run(self):
         tests = sorted([testname for testname in dir(self) 
                         if testname.startswith("test_")])
@@ -271,12 +281,12 @@ class ZephyrTestSuite(TestSuite):
 
     def test_zinit(self):
         """test that ZInitialize did something"""
-        print "fd", self.ZGetFD()
-        realm = self.ZGetRealm()
+        print "fd", self._libzephyr.ZGetFD()
+        realm = self._libzephyr.ZGetRealm()
         print "realm", realm
         if not realm or realm == "local-realm":
             raise TestFailure("useless realm %s" % realm)
-        print self.ZGetSender()
+        print self._libzephyr.ZGetSender()
         
     def test_notices(self):
         """test notice construct/destruct"""
@@ -284,12 +294,12 @@ class ZephyrTestSuite(TestSuite):
         print "sizeof ZNotice_t", sizeof(notice)
         zbuf = c_char_p(0)
         zbuflen = c_int(0)
-        st = self.ZFormatNotice(notice, zbuf, zbuflen, ZNOAUTH)
+        st = self._libzephyr.ZFormatNotice(notice, zbuf, zbuflen, ZNOAUTH)
         print "ZFormatNotice:", "retval", st
         print "\tzbuflen", zbuflen
         print "\tzbuf", repr(zbuf.value)
         new_notice = ZNotice_t()
-        st = self.ZParseNotice(zbuf, zbuflen, new_notice)
+        st = self._libzephyr.ZParseNotice(zbuf, zbuflen, new_notice)
         print "ZParseNotice:", "retval", st
         print "\tz_version", new_notice.z_version
 
