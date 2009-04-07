@@ -11,6 +11,7 @@
 import optparse
 import os
 import ctypes
+import ctypes.util
 from ctypes import c_int, c_uint, c_ushort, c_char, c_ubyte
 from ctypes import c_uint16, c_uint32
 from ctypes import POINTER, c_void_p, c_char_p
@@ -194,8 +195,10 @@ class libZephyr(object):
         "ZParseNotice",
         "ZFormatNotice",
         ]
-    def __init__(self, library_path):
+    def __init__(self, library_path=None):
         """connect to the library and build the wrappers"""
+        if not library_path:
+            library_path = ctypes.util.find_library("zephyr")
         self._lib = ctypes.cdll.LoadLibrary(library_path)
 
         # generic bindings?
@@ -302,7 +305,6 @@ class ZephyrTestSuite(TestSuite):
         st = self._libzephyr.ZParseNotice(zbuf, zbuflen, new_notice)
         print "ZParseNotice:", "retval", st
         print "\tz_version", new_notice.z_version
-
 
 if __name__ == "__main__":
     parser = optparse.OptionParser(usage=__doc__,
