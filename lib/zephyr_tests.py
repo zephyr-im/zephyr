@@ -28,7 +28,10 @@ def ctypes_pprint(cstruct, indent=""):
     for field_name, field_ctype in cstruct._fields_:
         field_value = getattr(cstruct, field_name)
         print indent + field_name,
-        if hasattr(field_value, "pprint"):
+        pprint_name = "pprint_%s" % field_name
+        if hasattr(cstruct, pprint_name):
+            print getattr(cstruct, pprint_name)(indent + "    ")
+        elif hasattr(field_value, "pprint"):
             print field_value.pprint()
         elif hasattr(field_value, "_fields_"):
             print
@@ -240,6 +243,17 @@ class ZNotice_t(Structure):
         ("z_hdr_fields", POINTER(c_char_p)),
         # } ZNotice_t;
         ]
+    def pprint_z_other_fields(self, indent):
+        fields = ["%s%d: %s" % (indent, n, self.z_other_fields[n])
+                  for n in range(Z_MAXOTHERFIELDS)]
+        return "\n" + "\n".join(fields)
+    def pprint_z_hdr_fields(self, indent):
+        if not self.z_hdr_fields:
+            return "NULL"
+        fields = ["%s%d: %s" % (indent, n, self.z_hdr_fields[n])
+                  for n in range(self.z_num_hdr_fields)]
+        return "\n" + "\n".join(fields)
+        
 
 
 class libZephyr(object):
