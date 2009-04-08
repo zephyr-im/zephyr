@@ -1665,7 +1665,7 @@ static int des_service_decrypt(unsigned char *in, unsigned char *out) {
     krb5_data dout;
     krb5_enc_data din;
 
-#ifdef HAS_KRB5_C_DECRYPT
+#ifdef HAVE_KRB5_C_DECRYPT
     dout.length = 8;
     dout.data = out;
 
