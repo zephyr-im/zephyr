@@ -1667,10 +1667,10 @@ static int des_service_decrypt(unsigned char *in, unsigned char *out) {
 
 #ifdef HAVE_KRB5_C_DECRYPT
     dout.length = 8;
-    dout.data = out;
+    dout.data = (char *)out; /*What*/
 
     din.ciphertext.length = 8;
-    din.ciphertext.data = in;
+    din.ciphertext.data = (char *)in;
     din.enctype = Z_enctype(server_key);
 
 #ifdef HAVE_KRB5_CRYPTO_INIT
