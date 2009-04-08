@@ -22,7 +22,8 @@ static const char rcsid_server_c[] = "$Id$";
 #endif
 
 #define SRV_NACKTAB_HASHSIZE		1023
-#define SRV_NACKTAB_HASHVAL(which, uid)	(((which) ^ (uid).zuid_addr.s_addr ^ \
+#define SRV_NACKTAB_HASHVAL(which, uid)	((unsigned int) \
+					 ((which) ^ (uid).zuid_addr.s_addr ^ \
 					  (uid).tv.tv_sec ^ (uid).tv.tv_usec) \
 					 % SRV_NACKTAB_HASHSIZE)
 /*
