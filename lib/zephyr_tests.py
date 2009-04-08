@@ -156,24 +156,35 @@ class ZNotice_Kind_t(Enum):
         "UNSAFE", "UNACKED", "ACKED", "HMACK", "HMCTL", "SERVACK", "SERVNAK", "CLIENTACK", "STAT",
         ]
 
+def pformat_timeval(tv_sec, tv_usec):
+    """format timeval parts as seconds and human-readable time"""
+    try:
+        timestr = time.ctime(tv_sec)
+    except ValueError:
+        timestr = "invalid unix time"
+    if tv_usec >= 1000000 or tv_usec < 0:
+        # invalid usec, still treat as numbers
+        return ["%dsec, %dusec (bad) (%s)" % (tv_sec, tv_usec, timestr)]
+    return ["%d.%06dsec (%s)" % (tv_sec, tv_usec, timestr)]
+
 # struct _ZTimeval {
 class _ZTimeval(Structure):
     _fields_ = [
 # 	int tv_sec;
-        ("tv_sec", c_uint),
+        ("tv_sec", c_int),
 # 	int tv_usec;
-        ("tv_usec", c_uint),
+        ("tv_usec", c_int),
 # };
         ]
     def pformat(self):
-        try:
-            timestr = time.ctime(self.tv_sec)
-        except ValueError:
-            timestr = "invalid unix time"
-        if self.tv_usec >= 1000000:
-            # invalid usec, still treat as numbers
-            return ["%dsec, %dusec (%s)" % (self.tv_sec, self.tv_usec, timestr)]
-        return ["%d.%06dsec (%s)" % (self.tv_sec, self.tv_usec, timestr)]
+        return pformat_timeval(self.tv_sec, self.tv_usec)
+
+
+class _ZTimeval_Net(_ZTimeval):
+    """When _ZTimeval is used in a ZUnique_Id_t, the time parts are
+    stored in network byte order.  Handle this by faking up a different type."""
+    def pformat(self):
+        return pformat_timeval(socket.ntohl(self.tv_sec), socket.ntohl(self.tv_usec))
 
 # typedef struct _ZUnique_Id_t {
 class ZUnique_Id_t(Structure):
@@ -181,7 +192,7 @@ class ZUnique_Id_t(Structure):
         #     struct	in_addr zuid_addr;
         ("zuid_addr", in_addr),
         #     struct	_ZTimeval	tv;
-        ("tv", _ZTimeval),
+        ("tv", _ZTimeval_Net),
         # } ZUnique_Id_t;
         ]
 
