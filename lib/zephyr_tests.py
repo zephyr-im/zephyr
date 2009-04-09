@@ -84,6 +84,22 @@ class TestSuite(object):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def run(self):
+        tests = sorted([testname for testname in dir(self) 
+                        if testname.startswith("test_")])
+        failures = []
+        for test in tests:
+            try:
+                print "===", "starting", test, "==="
+                getattr(self, test)()
+                print "===", "done", test, "==="
+            except TestFailure, tf:
+                print "===", "FAILED", test, "==="
+                failures.append([test, tf])
+
+        return failures
+
+
 class TestFailure(Exception):
     pass
 
@@ -305,6 +321,7 @@ class libZephyr(object):
         "Z_FormatRawHeader",
         "ZParseNotice",
         "ZFormatNotice",
+        "ZCompareUID",
         ]
     def __init__(self, library_path=None):
         """connect to the library and build the wrappers"""
@@ -361,6 +378,14 @@ class libZephyr(object):
             c_void_p,                   # cert_routine
             ]
 
+        # int
+        # ZCompareUID(ZUnique_Id_t *uid1,
+	#             ZUnique_Id_t *uid2)
+        self.ZCompareUID.argtypes = [
+            POINTER(ZUnique_Id_t),      # *uid1
+            POINTER(ZUnique_Id_t),      # *uid2
+            ]
+
         # library-specific setup...
         self.ZInitialize()
 
@@ -376,18 +401,6 @@ class ZephyrTestSuite(TestSuite):
         if not os.path.exists(libzephyr_path):
             libzephyr_path = os.path.join(self.builddir, ".libs", "libzephyr.so.4.0.0")
         self._libzephyr = libZephyr(libzephyr_path)
-
-    def run(self):
-        tests = sorted([testname for testname in dir(self) 
-                        if testname.startswith("test_")])
-        failures = []
-        for test in tests:
-            try:
-                getattr(self, test)()
-            except TestFailure, tf:
-                failures.append([test, tf])
-
-        return failures
 
     def cleanup(self):
         # no cleanup needed yet
@@ -417,6 +430,29 @@ class ZephyrTestSuite(TestSuite):
         print "ZParseNotice:", "retval", st
         print "\tz_version", new_notice.z_version
         ctypes_pprint(new_notice)
+
+    def test_z_compare_uid(self):
+        """test ZCompareUID"""
+
+        uid1 = ZUnique_Id_t()
+        uid2 = ZUnique_Id_t()
+        assert self._libzephyr.ZCompareUID(uid1, uid2), "null uids don't match"
+        
+        # there's no ZUnique_Id_t constructor - Z_FormatHeader and Z_NewFormatHeader initialize notice->z_uid directly
+        notice1 = ZNotice_t()
+        zbuf = c_char_p(0)
+        zbuflen = c_int(0)
+        st = self._libzephyr.ZFormatNotice(notice1, zbuf, zbuflen, ZNOAUTH)
+        assert st == 0, "ZFormatNotice notice1 failed"
+
+        notice2 = ZNotice_t()
+        zbuf = c_char_p(0)
+        zbuflen = c_int(0)
+        st = self._libzephyr.ZFormatNotice(notice2, zbuf, zbuflen, ZNOAUTH)
+        assert st == 0, "ZFormatNotice notice2 failed"
+
+        assert not self._libzephyr.ZCompareUID(notice1.z_uid, notice2.z_uid), "distinct notices don't compare as distinct"
+        # ctypes_pprint(notice1.z_uid)
 
 if __name__ == "__main__":
     parser = optparse.OptionParser(usage=__doc__,
