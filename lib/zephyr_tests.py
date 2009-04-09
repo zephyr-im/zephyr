@@ -155,7 +155,7 @@ class sockaddr_in6(Structure):
         ]
         
 # zephyr/zephyr.h
-#define Z_MAXOTHERFIELDS	10	/* Max unknown fields in ZNotice_t */
+#define Z_MAXOTHERFIELDS        10      /* Max unknown fields in ZNotice_t */
 Z_MAXOTHERFIELDS = 10
 #define ZAUTH (ZMakeAuthentication)
 #define ZCAUTH (ZMakeZcodeAuthentication)
@@ -186,9 +186,9 @@ def pformat_timeval(tv_sec, tv_usec):
 # struct _ZTimeval {
 class _ZTimeval(Structure):
     _fields_ = [
-# 	int tv_sec;
+#       int tv_sec;
         ("tv_sec", c_int),
-# 	int tv_usec;
+#       int tv_usec;
         ("tv_usec", c_int),
 # };
         ]
@@ -205,9 +205,9 @@ class _ZTimeval_Net(_ZTimeval):
 # typedef struct _ZUnique_Id_t {
 class ZUnique_Id_t(Structure):
     _fields_ = [
-        #     struct	in_addr zuid_addr;
+        #     struct    in_addr zuid_addr;
         ("zuid_addr", in_addr),
-        #     struct	_ZTimeval	tv;
+        #     struct    _ZTimeval       tv;
         ("tv", _ZTimeval_Net),
         # } ZUnique_Id_t;
         ]
@@ -215,11 +215,11 @@ class ZUnique_Id_t(Structure):
 #     union {
 class _U_z_sender_sockaddr(Union):
     _fields_ = [
-        # 	struct sockaddr		sa;
+        #       struct sockaddr         sa;
         ("sa", sockaddr),
-        # 	struct sockaddr_in	ip4;
+        #       struct sockaddr_in      ip4;
         ("ip4", sockaddr_in),
-        # 	struct sockaddr_in6	ip6;
+        #       struct sockaddr_in6     ip6;
         ("ip6", sockaddr_in6),
         #     } z_sender_sockaddr;
         ]
@@ -235,68 +235,68 @@ class _U_z_sender_sockaddr(Union):
 # typedef struct _ZNotice_t {
 class ZNotice_t(Structure):
     _fields_ = [
-        # char		*z_packet;
+        # char          *z_packet;
         ("z_packet", c_char_p),
-        #     char		*z_version;
+        #     char              *z_version;
         ("z_version", c_char_p),
-        #     ZNotice_Kind_t	z_kind;
+        #     ZNotice_Kind_t    z_kind;
         ("z_kind", ZNotice_Kind_t),
-        #     ZUnique_Id_t	z_uid;
+        #     ZUnique_Id_t      z_uid;
         ("z_uid", ZUnique_Id_t),
         #     union {
-        # 	struct sockaddr		sa;
-        # 	struct sockaddr_in	ip4;
-        # 	struct sockaddr_in6	ip6;
+        #       struct sockaddr         sa;
+        #       struct sockaddr_in      ip4;
+        #       struct sockaddr_in6     ip6;
         #     } z_sender_sockaddr;
         ("z_sender_sockaddr", _U_z_sender_sockaddr),
 
         #     /* heavily deprecated: */
-        # #define z_sender_addr	z_sender_sockaddr.ip4.sin_addr
+        # #define z_sender_addr z_sender_sockaddr.ip4.sin_addr
         #     /* probably a bad idea?: */
-        #     struct		_ZTimeval z_time;
+        #     struct            _ZTimeval z_time;
         ("z_time", _ZTimeval),
         #     unsigned short      z_port;
         ("z_port", c_ushort),
-        #     unsigned short	z_charset;
+        #     unsigned short    z_charset;
         ("z_charset", c_ushort),
-        #     int			z_auth;
+        #     int                       z_auth;
         ("z_auth", c_int),
-        #     int			z_checked_auth;
+        #     int                       z_checked_auth;
         # TODO: fake enum, for display
         ("z_checked_auth", c_int),
-        #     int			z_authent_len;
+        #     int                       z_authent_len;
         ("z_authent_len", c_int),
-        #     char		*z_ascii_authent;
+        #     char              *z_ascii_authent;
         ("z_ascii_authent", c_char_p),
-        #     char		*z_class;
+        #     char              *z_class;
         ("z_class", c_char_p),
-        #     char		*z_class_inst;
+        #     char              *z_class_inst;
         ("z_class_inst", c_char_p),
-        #     char		*z_opcode;
+        #     char              *z_opcode;
         ("z_opcode", c_char_p),
-        #     char		*z_sender;
+        #     char              *z_sender;
         ("z_sender", c_char_p),
-        #     char		*z_recipient;
+        #     char              *z_recipient;
         ("z_recipient", c_char_p),
-        #     char		*z_default_format;
+        #     char              *z_default_format;
         ("z_default_format", c_char_p),
-        #     char		*z_multinotice;
+        #     char              *z_multinotice;
         ("z_multinotice", c_char_p),
-        #     ZUnique_Id_t	z_multiuid;
+        #     ZUnique_Id_t      z_multiuid;
         ("z_multiuid", ZUnique_Id_t),
-        #     ZChecksum_t		z_checksum;
+        #     ZChecksum_t               z_checksum;
         ("z_checksum", c_uint),
         #     char                *z_ascii_checksum;
         ("z_ascii_checksum", c_char_p),
-        #     int			z_num_other_fields;
+        #     int                       z_num_other_fields;
         ("z_num_other_fields", c_int),
-        #     char		*z_other_fields[Z_MAXOTHERFIELDS];
+        #     char              *z_other_fields[Z_MAXOTHERFIELDS];
         ("z_other_fields", c_char_p * Z_MAXOTHERFIELDS),
-        #     caddr_t		z_message;
+        #     caddr_t           z_message;
         ("z_message", c_char_p), # not 1980
-        #     int			z_message_len;
+        #     int                       z_message_len;
         ("z_message_len", c_int),
-        #     int			z_num_hdr_fields;
+        #     int                       z_num_hdr_fields;
         ("z_num_hdr_fields", c_int),
         #     char                **z_hdr_fields;
         ("z_hdr_fields", POINTER(c_char_p)),
@@ -341,11 +341,11 @@ class libZephyr(object):
         
         # Code_t
         # Z_FormatRawHeader(ZNotice_t *notice,
-	#	  char *buffer,
-	#	  int buffer_len,
-	#	  int *len,
-	#	  char **cstart,
-	#	  char **cend)
+        #         char *buffer,
+        #         int buffer_len,
+        #         int *len,
+        #         char **cstart,
+        #         char **cend)
         # This stuffs a notice into a buffer; cstart/cend point into the checksum in buffer
         self.Z_FormatRawHeader.argtypes = [
             c_void_p,            # *notice
@@ -358,8 +358,8 @@ class libZephyr(object):
 
         # Code_t
         # ZParseNotice(char *buffer,
-        # 	     int len,
-        # 	     ZNotice_t *notice)
+        #            int len,
+        #            ZNotice_t *notice)
         self.ZParseNotice.argtypes = [
             c_char_p,             # *buffer
             c_int,                # len
@@ -368,9 +368,9 @@ class libZephyr(object):
 
         # Code_t
         # ZFormatNotice(register ZNotice_t *notice,
-        # 	      char **buffer,
-        # 	      int *ret_len,
-        # 	      Z_AuthProc cert_routine)
+        #             char **buffer,
+        #             int *ret_len,
+        #             Z_AuthProc cert_routine)
         self.ZFormatNotice.argtypes = [
             POINTER(ZNotice_t),         # *notice
             POINTER(c_char_p),          # **buffer
@@ -380,7 +380,7 @@ class libZephyr(object):
 
         # int
         # ZCompareUID(ZUnique_Id_t *uid1,
-	#             ZUnique_Id_t *uid2)
+        #             ZUnique_Id_t *uid2)
         self.ZCompareUID.argtypes = [
             POINTER(ZUnique_Id_t),      # *uid1
             POINTER(ZUnique_Id_t),      # *uid2
