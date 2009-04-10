@@ -322,6 +322,7 @@ class libZephyr(object):
         "ZParseNotice",
         "ZFormatNotice",
         "ZCompareUID",
+        "ZExpandRealm",
         ]
     def __init__(self, library_path=None):
         """connect to the library and build the wrappers"""
@@ -384,6 +385,14 @@ class libZephyr(object):
         self.ZCompareUID.argtypes = [
             POINTER(ZUnique_Id_t),      # *uid1
             POINTER(ZUnique_Id_t),      # *uid2
+            ]
+
+        # char *
+        # ZExpandRealm(realm)
+        # char *realm;  # mmm 80's
+        self.ZExpandRealm.restype = c_char_p
+        self.ZExpandRealm.argtypes = [
+            c_char_p,           # realm
             ]
 
         # library-specific setup...
@@ -453,6 +462,13 @@ class ZephyrTestSuite(TestSuite):
 
         assert not self._libzephyr.ZCompareUID(notice1.z_uid, notice2.z_uid), "distinct notices don't compare as distinct"
         # ctypes_pprint(notice1.z_uid)
+
+    def test_z_expand_realm(self):
+        """test ZExpandRealm"""
+        assert self._libzephyr.ZExpandRealm("") == ""
+        assert self._libzephyr.ZExpandRealm("localhost") == ""
+        assert self._libzephyr.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
+
 
 if __name__ == "__main__":
     parser = optparse.OptionParser(usage=__doc__,
