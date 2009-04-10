@@ -21,11 +21,16 @@ static const char rcsid_server_c[] = "$Id$";
 #endif
 #endif
 
-#define SRV_NACKTAB_HASHSIZE		1023
-#define SRV_NACKTAB_HASHVAL(which, uid)	((unsigned int) \
-					 ((which) ^ (uid).zuid_addr.s_addr ^ \
-					  (uid).tv.tv_sec ^ (uid).tv.tv_usec) \
-					 % SRV_NACKTAB_HASHSIZE)
+enum {
+    SRV_NACKTAB_HASHSIZE = 1023
+};
+inline unsigned int
+srv_nacktab_hashval(int which, ZUnique_Id_t uid) {
+    return (which ^
+	    uid.zuid_addr.s_addr ^ uid.tv.tv_sec ^ uid.tv.tv_usec)
+	% SRV_NACKTAB_HASHSIZE;
+}
+
 /*
  * Server manager.  Deal with  traffic to and from other servers.
  *
@@ -1290,7 +1295,7 @@ server_forw_reliable(Server *server,
     nacked->packsz = packlen;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], srv_rexmit, nacked);
-    hashval = SRV_NACKTAB_HASHVAL(nacked->dest.srv_idx, nacked->uid);
+    hashval = srv_nacktab_hashval(nacked->dest.srv_idx, nacked->uid);
     Unacked_insert(&srv_nacktab[hashval], nacked);
 }
 
@@ -1337,7 +1342,7 @@ srv_nack_cancel(ZNotice_t *notice,
 	syslog(LOG_ERR, "non-server ack?");
 	return;
     }
-    hashval = SRV_NACKTAB_HASHVAL(server - otherservers, notice->z_uid);
+    hashval = srv_nacktab_hashval(server - otherservers, notice->z_uid);
     for (nacked = srv_nacktab[hashval]; nacked; nacked = nacked->next) {
 	if (nacked->dest.srv_idx == server - otherservers
 	    && ZCompareUID(&nacked->uid, &notice->z_uid)) {
