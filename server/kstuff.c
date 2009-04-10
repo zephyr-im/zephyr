@@ -261,11 +261,12 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
     krb5_cksumtype cksumtype; 
     krb5_data cksumbuf;
     int valid;
-    char *cksum0_base, *cksum1_base, *cksum2_base; 
+    char *cksum0_base, *cksum1_base = NULL, *cksum2_base; 
     char *x; 
     unsigned char *asn1_data;
     unsigned char *key_data; 
-    int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0; 
+    int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0;
+    krb5_flags acflags;
 #ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
     krb5_authenticator *authenticator;
 #define KRB5AUTHENT authenticator
@@ -308,6 +309,22 @@ ZCheckRealmAuthentication(ZNotice_t *notice,
     /* HOLDING: authbuf, keytabid */
     /* Create the auth context */
     result = krb5_auth_con_init(Z_krb5_ctx, &authctx);
+    if (result) {
+        krb5_kt_close(Z_krb5_ctx, keytabid);
+        free(authbuf);
+        return (result);
+    }
+
+    result = krb5_auth_con_getflags(Z_krb5_ctx, authctx, &acflags);
+    if (result) {
+        krb5_kt_close(Z_krb5_ctx, keytabid);
+        free(authbuf);
+        return (result);
+    }
+
+    acflags &= ~KRB5_AUTH_CONTEXT_DO_TIME;
+
+    result = krb5_auth_con_setflags(Z_krb5_ctx, authctx, acflags);
     if (result) {
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
@@ -560,10 +577,11 @@ ZCheckAuthentication(ZNotice_t *notice,
     krb5_cksumtype cksumtype; 
     krb5_data cksumbuf;
     int valid;
-    char *cksum0_base, *cksum1_base, *cksum2_base; 
+    char *cksum0_base, *cksum1_base = NULL, *cksum2_base; 
     char *x; 
     unsigned char *asn1_data, *key_data; 
-    int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0; 
+    int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0;
+    krb5_flags acflags;
 #ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
     krb5_authenticator *authenticator;
 #define KRB5AUTHENT authenticator
@@ -608,6 +626,22 @@ ZCheckAuthentication(ZNotice_t *notice,
     /* HOLDING: authbuf, keytabid */
     /* Create the auth context */
     result = krb5_auth_con_init(Z_krb5_ctx, &authctx);
+    if (result) {
+        krb5_kt_close(Z_krb5_ctx, keytabid);
+        free(authbuf);
+        return (result);
+    }
+
+    result = krb5_auth_con_getflags(Z_krb5_ctx, authctx, &acflags);
+    if (result) {
+        krb5_kt_close(Z_krb5_ctx, keytabid);
+        free(authbuf);
+        return (result);
+    }
+
+    acflags &= ~KRB5_AUTH_CONTEXT_DO_TIME;
+
+    result = krb5_auth_con_setflags(Z_krb5_ctx, authctx, acflags);
     if (result) {
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
