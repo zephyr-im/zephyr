@@ -23,12 +23,18 @@ static const char rcsid_dispatch_c[] =
 #endif
 #endif
 
-#define NACKTAB_HASHSIZE		1023
-#define NACKTAB_HASHVAL(sockaddr, uid)	(((sockaddr).sin_addr.s_addr ^ \
-					  (sockaddr).sin_port ^ \
-					  (uid).zuid_addr.s_addr ^ \
-					  (uid).tv.tv_sec ^ \
-					  (uid).tv.tv_usec) % NACKTAB_HASHSIZE)
+enum {
+    NACKTAB_HASHSIZE = 1023
+};
+inline unsigned int
+nacktab_hashval(struct sockaddr_in sa, ZUnique_Id_t uid) {
+    return (sa.sin_addr.s_addr ^
+	    sa.sin_port ^
+	    uid.zuid_addr.s_addr ^
+	    uid.tv.tv_sec ^
+	    uid.tv.tv_usec) % NACKTAB_HASHSIZE;
+}
+
 #define HOSTS_SIZE_INIT			256
 
 #ifdef DEBUG
@@ -533,7 +539,7 @@ xmit_frag(ZNotice_t *notice,
     nacked->packsz = len;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-    Unacked_insert(&nacktab[NACKTAB_HASHVAL(sin, nacked->uid)], nacked);
+    Unacked_insert(&nacktab[nacktab_hashval(sin, nacked->uid)], nacked);
     return(ZERR_NONE);
 }
 
@@ -739,7 +745,7 @@ xmit(ZNotice_t *notice,
     nacked->packsz = packlen;
     nacked->uid = notice->z_uid;
     nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-    Unacked_insert(&nacktab[NACKTAB_HASHVAL(*dest, nacked->uid)], nacked);
+    Unacked_insert(&nacktab[nacktab_hashval(*dest, nacked->uid)], nacked);
 }
 
 /*
@@ -902,7 +908,7 @@ nack_cancel(ZNotice_t *notice,
     int hashval;
 
     /* search the not-yet-acked table for this packet, and flush it. */
-    hashval = NACKTAB_HASHVAL(*who, notice->z_uid);
+    hashval = nacktab_hashval(*who, notice->z_uid);
     for (nacked = nacktab[hashval]; nacked; nacked = nacked->next) {
 	if (nacked->dest.addr.sin_addr.s_addr == who->sin_addr.s_addr
 	    && nacked->dest.addr.sin_port == who->sin_port
