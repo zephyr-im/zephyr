@@ -6,6 +6,7 @@ datadir=@datadir@
 sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
+datarootdir=@datarootdir@
 
 includedir=${prefix}/include
 mandir=@mandir@
@@ -30,7 +31,7 @@ ALL_CFLAGS=${CFLAGS} -DDATADIR=\"${datadir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h -I${srcdir} -I. @X_CFLAGS@ ${CPPFLAGS}
 YFLAGS=-d
 LDFLAGS=@X_LIBS@ @LDFLAGS@
-LIBS=${LIBZEPHYR} @LIBS@ -lcom_err @X_PRE_LIBS@ @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
+LIBS=${LIBZEPHYR} @LIBS@ -lcom_err @ZWGC_LIBX11@ @X_EXTRA_LIBS@ \
      @TLIB@ @REGEX_LIBS@ @ARES_LIBS@
 
 OBJS=	port_dictionary.o pointer_dictionary.o unsigned_long_dictionary.o \

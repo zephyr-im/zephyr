@@ -6,6 +6,7 @@ datadir=@datadir@
 sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
+datarootdir=@datarootdir@
 
 includedir=${prefix}/include
 mandir=@mandir@
@@ -25,14 +26,14 @@ CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h ${CPPFLAGS}
 LDFLAGS=@LDFLAGS@
-LIBS=${LIBZEPHYR} @LIBS@ -lcom_err
+HESIOD_LIBS=@HESIOD_LIBS@
 
 OBJS=	timer.o queue.o zhm.o zhm_client.o zhm_server.o
 
 all: zhm
 
 zhm: ${OBJS} ${LIBZEPHYR}
-	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBZEPHYR} ${HESIOD_LIBS}
 
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<

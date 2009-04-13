@@ -6,6 +6,7 @@ datadir=@datadir@
 sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
+datarootdir=@datarootdir@
 
 includedir=${prefix}/include
 mandir=@mandir@
@@ -26,7 +27,7 @@ CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ ${CPPFLAGS}
 LDFLAGS=@LDFLAGS@
-LIBS=${LIBZEPHYR} -lss -lreadline -lhistory -lcurses @LIBS@ -lcom_err
+LIBS=${LIBZEPHYR} @SS_LIBS@ @LIBS@ -lcom_err
 
 OBJS=	zctl.o zctl_cmds.o
 

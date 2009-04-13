@@ -6,6 +6,7 @@ datadir=@datadir@
 sysconfdir=@sysconfdir@
 sbindir=@sbindir@
 lsbindir=@lsbindir@
+datarootdir=@datarootdir@
 
 includedir=${prefix}/include
 mandir=@mandir@
