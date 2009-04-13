@@ -1,0 +1,67 @@
+
+
+Generic library setup that should be moved into zephyr_tests.py:
+
+   >>> import os
+   >>> import zephyr_tests
+   >>> libzephyr_path = os.path.join("../../../build/", "lib/.libs/", "libzephyr.so.4.0.0")
+   >>> _z = zephyr_tests.libZephyr(libzephyr_path)
+
+ZInit() got run by libZephyr, internally.  Make sure other things
+actually got set up:
+
+   >>> assert _z.ZGetFD() == -1
+   >>> realm = _z.ZGetRealm()
+   >>> assert realm
+   >>> assert realm != "local-realm"
+   >>> assert _z.ZGetSender()
+   >>> assert "@" in _z.ZGetSender()
+
+ZNotice_t structure pseudo-round-trip (needs a lot more explicit
+settings and assertions to be a real round-trip test...)
+
+   >>> notice = zephyr_tests.ZNotice_t()
+   >>> from ctypes import sizeof
+   >>> assert sizeof(notice) > 150
+   >>> from ctypes import c_char_p, c_int
+   >>> zbuf = c_char_p(0)
+   >>> zbuflen = c_int(0)
+   >>> st = _z.ZFormatNotice(notice, zbuf, zbuflen, zephyr_tests.ZNOAUTH)
+   >>> assert st == 0
+   >>> assert zbuf.value.startswith("ZEPH")
+   >>> new_notice = zephyr_tests.ZNotice_t()
+   >>> st = _z.ZParseNotice(zbuf, zbuflen, new_notice)
+   >>> assert st == 0
+   >>> assert new_notice.z_version.startswith("ZEPH")
+
+Should we check for ZEPH0.2 now, or leave that open?
+
+Simple test of ZCompareUID:
+
+   >>> uid1 = zephyr_tests.ZUnique_Id_t()
+   >>> uid2 = zephyr_tests.ZUnique_Id_t()
+   >>> assert _z.ZCompareUID(uid1, uid2), "null uids don't match"
+
+There's no ZUnique_Id_t constructor - Z_FormatHeader and
+Z_NewFormatHeader initialize notice->z_uid directly, so cheat and use
+ZNotice_t as the constructor...
+
+   >>> notice1 = zephyr_tests.ZNotice_t()
+   >>> zbuf = c_char_p(0)
+   >>> zbuflen = c_int(0)
+   >>> st = _z.ZFormatNotice(notice1, zbuf, zbuflen, zephyr_tests.ZNOAUTH)
+   >>> assert st == 0, "ZFormatNotice notice1 failed"
+
+   >>> notice2 = zephyr_tests.ZNotice_t()
+   >>> zbuf = c_char_p(0)
+   >>> zbuflen = c_int(0)
+   >>> st = _z.ZFormatNotice(notice2, zbuf, zbuflen, zephyr_tests.ZNOAUTH)
+   >>> assert st == 0, "ZFormatNotice notice1 failed"
+
+   >>> assert not _z.ZCompareUID(notice1.z_uid, notice2.z_uid), "distinct notices don't compare as distinct"
+
+Trivial test of ZExpandRealm, using terribly well known hostnames:
+
+   >>> assert _z.ZExpandRealm("") == ""
+   >>> assert _z.ZExpandRealm("localhost") == ""
+   >>> assert _z.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
