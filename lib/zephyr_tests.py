@@ -323,6 +323,8 @@ class libZephyr(object):
         "ZFormatNotice",
         "ZCompareUID",
         "ZExpandRealm",
+        "ZOpenPort",
+        "ZClosePort",
         ]
     def __init__(self, library_path=None):
         """connect to the library and build the wrappers"""
@@ -393,6 +395,11 @@ class libZephyr(object):
         self.ZExpandRealm.restype = c_char_p
         self.ZExpandRealm.argtypes = [
             c_char_p,           # realm
+            ]
+
+        # Code_t ZOpenPort(u_short *port)
+        self.ZOpenPort.argtypes = [
+            POINTER(c_ushort),  # port
             ]
 
         # library-specific setup...
