@@ -474,6 +474,8 @@ def find_buildpath():
                                    version = "%%prog %s" % __version__)
     parser.add_option("--builddir", default="..", 
                       help="where to find the top of the build tree")
+    parser.add_option("--verbose", "-v", action="store_true",
+                      help="pass through for doctest.testfile")
     opts, args = parser.parse_args()
     assert not args, "no args yet"
 
