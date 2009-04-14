@@ -35,7 +35,7 @@ static const char rcsid_ZInitialize_c[] =
 #if defined(HAVE_KRB5) && defined(KRB5_REFERRAL_REALM)
 #include <profile.h>
 
-int z_get_host_realm_replacement(char *, char ***);
+static int z_get_host_realm_replacement(char *, char ***);
 #endif
 
 Code_t
@@ -318,7 +318,8 @@ static int txt_lookup(char *qname, char **result) {
     return -1;
 }	
 
-int z_get_host_realm_replacement(char *inhost, char ***krealms) {
+static int
+z_get_host_realm_replacement(char *inhost, char ***krealms) {
     char *host, *p;
     char *realm = NULL;
     char *default_realm = NULL;
