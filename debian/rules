@@ -74,7 +74,7 @@ build-stamp:
 	# Add here commands to compile the package.
 	set -e; \
 	for dir in $(VARIETALS) ; do  \
-		$(MAKE) -C $$dir/lib; $(MAKE) -C $$dir/server; \
+		$(MAKE) -C $$dir/lib all check; $(MAKE) -C $$dir/server; \
 	done
 	$(MAKE) -C no-krb
 
