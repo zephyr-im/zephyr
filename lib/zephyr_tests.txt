@@ -24,9 +24,12 @@ ZInit() got run by libZephyr, internally.  Make sure other things
 actually got set up:
 
    >>> assert _z.ZGetFD() == -1
+   >>> Zauthtype = _z.Zauthtype
+   >>> assert Zauthtype in (0, 4, 5)
    >>> realm = _z.ZGetRealm()
    >>> assert realm
-   >>> assert realm != "local-realm"
+   >>> if Zauthtype: assert realm != 'local-realm'
+   >>> if not Zauthtype: assert realm == 'local-realm'
    >>> assert _z.ZGetSender()
    >>> assert "@" in _z.ZGetSender()
 
@@ -76,8 +79,10 @@ ZNotice_t as the constructor...
 Trivial test of ZExpandRealm, using terribly well known hostnames:
 
    >>> assert _z.ZExpandRealm("") == ""
-   >>> assert _z.ZExpandRealm("localhost") == ""
-   >>> assert _z.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
+   >>> if Zauthtype: assert _z.ZExpandRealm("localhost") == ""
+   >>> if Zauthtype: assert _z.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
+   >>> if not Zauthtype: assert _z.ZExpandRealm("localhost") == "LOCALHOST"
+   >>> if not Zauthtype: assert _z.ZExpandRealm("bitsy.mit.edu") == "BITSY.MIT.EDU"
 
 Trivial test of ZopenPort and ZClosePort:
 

@@ -38,6 +38,14 @@ static const char rcsid_ZInitialize_c[] =
 static int z_get_host_realm_replacement(char *, char ***);
 #endif
 
+#if defined(HAVE_KRB5)
+int Zauthtype = 5;
+#elif defined(HAVE_KRB4)
+int Zauthtype = 4;
+#else
+int Zauthtype = 0;
+#endif
+
 Code_t
 ZInitialize(void)
 {

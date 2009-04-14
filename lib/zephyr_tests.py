@@ -332,6 +332,9 @@ class libZephyr(object):
             library_path = ctypes.util.find_library("zephyr")
         self._lib = ctypes.cdll.LoadLibrary(library_path)
 
+        # grab the Zauthtype variable
+        self.Zauthtype = ctypes.c_int.in_dll(self._lib, 'Zauthtype').value
+        
         # generic bindings?
         for funcname in self.testable_funcs:
             setattr(self, funcname, getattr(self._lib, funcname))
@@ -427,8 +430,12 @@ class ZephyrTestSuite(TestSuite):
         print "fd", self._libzephyr.ZGetFD()
         realm = self._libzephyr.ZGetRealm()
         print "realm", realm
-        if not realm or realm == "local-realm":
+        if not realm:
+            raise TestFailure("empty realm %s" % realm)
+        if self._libzephyr.Zauthtype and realm == 'local-realm':
             raise TestFailure("useless realm %s" % realm)
+        if self._libzephyr.Zauthtype == 0 and realm != 'local-realm':
+            raise TestFailure("wrong realm %s (should be local-realm)" % realm)
         print self._libzephyr.ZGetSender()
         
     def test_notices(self):
@@ -470,11 +477,20 @@ class ZephyrTestSuite(TestSuite):
         assert not self._libzephyr.ZCompareUID(notice1.z_uid, notice2.z_uid), "distinct notices don't compare as distinct"
         # ctypes_pprint(notice1.z_uid)
 
+    def test_zauthtype(self):
+        """Make sure Zauthtype is an acceptable value"""
+        assert self._libzephyr.Zauthtype in (0, 4, 5)
+
     def test_z_expand_realm(self):
         """test ZExpandRealm"""
-        assert self._libzephyr.ZExpandRealm("") == ""
-        assert self._libzephyr.ZExpandRealm("localhost") == ""
-        assert self._libzephyr.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
+        if self._libzephyr.Zauthtype:
+            assert self._libzephyr.ZExpandRealm("") == ""
+            assert self._libzephyr.ZExpandRealm("localhost") == ""
+            assert self._libzephyr.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
+        else:
+            assert self._libzephyr.ZExpandRealm("") == ""
+            assert self._libzephyr.ZExpandRealm("localhost") == "LOCALHOST"
+            assert self._libzephyr.ZExpandRealm("bitsy.mit.edu") == "BITSY.MIT.EDU"
 
 def find_buildpath():
     parser = optparse.OptionParser(usage=__doc__,
