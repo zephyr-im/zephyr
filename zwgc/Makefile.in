@@ -116,7 +116,6 @@ X_gram.o: xrevstack.h xerror.h xselect.h
 browser.o: zwgc.h
 buffer.o: new_memory.h buffer.h
 character_class.o: character_class.h
-display.o: new_memory.h new_string.h variables.h display.h
 eval.o: new_memory.h node.h eval.h substitute.h port.h buffer.h regexp.h
 eval.o: text_operations.h zwgc.h variables.h
 exec.o: new_memory.h exec.h eval.h node.h buffer.h port.h variables.h notice.h
