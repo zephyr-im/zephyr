@@ -1,4 +1,16 @@
+Zephyr Library Tests
 
+This file is a collection of doctests for the zephyr library.
+Minimum coverage goal is "every non-static function, and every data
+structure that shows up in those function prototypes."
+
+This file is also a test of the practicality of rich doctests as API
+documentation.  It will start out as a bunch of snippets, and later be
+edited to use actual chapters and appendices - narrative structure
+beyond "here's a test! here's another test!"  At that point we'll also
+pick a formatting language (probably ReStructured Text but for now, we
+need no more than whitespace separated paragraphs to be
+comprehensible.)
 
 Generic library setup that should be moved into zephyr_tests.py:
 
