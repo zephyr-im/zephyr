@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char rcsid_ZInitialize_c[] =
-    "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZInitialize.c,v 1.17 89/05/30 18:11:25 jtkohl Exp $";
+    "$Id$";
 #endif
 
 #include <internal.h>

@@ -6,7 +6,6 @@
  *      Created by:     David C. Jedlinsky
  *
  *      $Id$
- *      $Zephyr: /mit/zephyr/src.rw/zhm/RCS/zhm.h,v 1.13 90/10/19 07:11:48 raeburn Exp $
  *
  *      Copyright (c) 1987, 1991 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file

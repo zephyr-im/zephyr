@@ -13,7 +13,7 @@
 
 #ifndef lint
 static const char rcsid_ZLocations_c[] =
-    "$Zephyr: /afs/athena.mit.edu/astaff/project/zephyr/src/lib/RCS/ZLocations.c,v 1.30 90/12/20 03:04:39 raeburn Exp $";
+    "$Id$";
 #endif
 
 #include <internal.h>

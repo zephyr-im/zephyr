@@ -14,7 +14,7 @@
 
 #ifndef lint
 static const char rcsid_ZCheckAuthentication_c[] =
-    "$Zephyr: /mit/zephyr/src/lib/RCS/ZCheckAuthentication.c,v 1.14 89/03/24 14:17:38 jtkohl Exp Locker: raeburn $";
+    "$Id$";
 #endif
 
 #include <internal.h>
