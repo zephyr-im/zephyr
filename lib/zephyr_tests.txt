@@ -78,3 +78,56 @@ Trivial test of ZExpandRealm, using terribly well known hostnames:
    >>> assert _z.ZExpandRealm("") == ""
    >>> assert _z.ZExpandRealm("localhost") == ""
    >>> assert _z.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
+
+Trivial test of ZopenPort and ZClosePort:
+
+   >>> from ctypes import c_ushort
+   >>> port = c_ushort(0)
+   >>> st = _z.ZOpenPort(port)
+   >>> assert st == 0
+   >>> assert _z.ZGetFD() != -1
+   >>> assert port != 0
+
+TODO: consider checking that ZGetFD is returning a socket on that port.
+
+   >>> assert _z.ZClosePort() == 0
+   >>> assert _z.ZGetFD() == -1
+
+Coverage:
+
+Files complete:
+   ZOpenPort.c
+   ZClosePort.c
+   ZExpnRlm.c
+   ZCmpUID.c
+   ZGetSender.c (needs richer test)
+
+Pending:
+
+ZRequestLocations (ZAsyncLocate.c)
+ZParseLocations (ZAsyncLocate.c)
+ZCompareALDPred (ZAsyncLocate.c)
+ZFreeALD (ZAsyncLocate.c)
+ZCheckAuthentication (ZCkAuth.c)
+ZCheckIfNotice (ZCkIfNot.c)
+ZCheckZcodeAuthentication (ZCkZAut.c)
+ZCompareUIDPred (ZCmpUIDP.c)
+ZCompareMultiUIDPred (ZCmpUIDP.c)
+ZFlushLocations (ZFlsLocs.c)
+ZFlushSubscriptions (ZFlsSubs.c)
+ZFormatAuthenticNotice (ZFmtAuth.c)
+ZFormatAuthenticNoticeV5 (ZFmtAuth.c)
+ZFormatNoticeList (ZFmtList.c)
+ZFormatNotice (ZFmtNotice.c)
+ZNewFormatNotice (ZFmtNotice.c)
+ZFormatRawNotice (ZFmtRaw.c)
+ZFormatRawNoticeList (ZFmtRawLst.c)
+ZFormatSmallRawNoticeList (ZFmtSmRLst.c)
+ZFormatSmallRawNotice (ZFmtSmRaw.c)
+ZNewFormatSmallRawNotice (ZFmtSmRaw.c)
+ZFreeNotice (ZFreeNot.c)
+ZGetLocations (ZGetLocs.c)
+ZGetSubscriptions (ZGetSubs.c)
+ZGetWGPort (ZGetWGPort.c)
+ZIfNotice (ZIfNotice.c)
+(...continue with ZInit.c...)
