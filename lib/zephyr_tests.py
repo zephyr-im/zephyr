@@ -469,8 +469,7 @@ class ZephyrTestSuite(TestSuite):
         assert self._libzephyr.ZExpandRealm("localhost") == ""
         assert self._libzephyr.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
 
-
-if __name__ == "__main__":
+def find_buildpath():
     parser = optparse.OptionParser(usage=__doc__,
                                    version = "%%prog %s" % __version__)
     parser.add_option("--builddir", default="..", 
@@ -478,7 +477,10 @@ if __name__ == "__main__":
     opts, args = parser.parse_args()
     assert not args, "no args yet"
 
-    tester = ZephyrTestSuite(builddir=os.path.join(opts.builddir, "lib"))
+    return os.path.join(opts.builddir, "lib")
+
+if __name__ == "__main__":
+    tester = ZephyrTestSuite(builddir=find_buildpath())
     tester.setup()
     failures = tester.run()
     tester.cleanup()

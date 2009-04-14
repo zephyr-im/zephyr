@@ -4,7 +4,8 @@ Generic library setup that should be moved into zephyr_tests.py:
 
    >>> import os
    >>> import zephyr_tests
-   >>> libzephyr_path = os.path.join("../../../build/", "lib/.libs/", "libzephyr.so.4.0.0")
+   >>> buildpath = zephyr_tests.find_buildpath()
+   >>> libzephyr_path = os.path.join(buildpath, ".libs", "libzephyr.so.4.0.0")
    >>> _z = zephyr_tests.libZephyr(libzephyr_path)
 
 ZInit() got run by libZephyr, internally.  Make sure other things

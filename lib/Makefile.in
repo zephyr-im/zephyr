@@ -59,6 +59,8 @@ zephyr_err.c ${BUILDTOP}/h/zephyr/zephyr_err.h: zephyr_err.et
 	${LIBTOOL} --mode=compile ${CC} -c -o $@ ${ALL_CFLAGS} $<
 
 check:
+	python $(srcdir)/zephyr_tests.py --builddir=$(BUILDTOP)
+	$(srcdir)/zephyr_run_doctests --builddir=$(BUILDTOP)
 
 install: libzephyr.la
 	${LIBTOOL} --mode=install ${INSTALL} -m 644 libzephyr.la \
