@@ -102,15 +102,9 @@ tty_filter_init(char *drivername,
     int ex;
     string_dictionary_binding *b;
     int isrealtty = string_Eq(drivername, "tty");
-#ifdef HAVE_TERMIOS_H
     struct termios tbuf;
 
     ospeed = (tcgetattr(STDIN_FILENO, &tbuf) == 0) ? cfgetospeed(&tbuf) : 2400;
-#else
-    struct sgttyb sgttyb;
-
-    ospeed = (ioctl(0, TIOCGETP, &sgttyb) == 0) ? sgttyb.sg_ospeed : 2400;
-#endif
 
     if (termcap_dict == (string_dictionary) NULL)
       termcap_dict = string_dictionary_Create(7);

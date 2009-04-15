@@ -152,20 +152,7 @@ ZEPHYR_INT32 gethostid();
 #define STDERR_FILENO 2
 #endif
 
-#ifdef HAVE_TERMIOS_H
-# include <termios.h>
-#else
-# ifdef HAVE_SYS_FILIO_H
-#  include <sys/filio.h>
-# else
-#  ifdef HAVE_SGTTY_H
-#   include <sgtty.h>
-#  endif
-#  ifdef HAVE_SYS_IOCTL_H
-#   include <sys/ioctl.h>
-#  endif
-# endif
-#endif
+#include <termios.h>
 
 /* Kerberos compatibility. */
 #ifdef HAVE_KRB4

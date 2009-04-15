@@ -233,9 +233,6 @@
 /* Define to 1 if you have the <termcap.h> header file. */
 #undef HAVE_TERMCAP_H
 
-/* Define to 1 if you have the <termios.h> header file. */
-#undef HAVE_TERMIOS_H
-
 /* Define to 1 if you have the <term.h> header file. */
 #undef HAVE_TERM_H
 
