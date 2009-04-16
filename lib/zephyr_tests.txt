@@ -103,6 +103,9 @@ TODO: check that ZGetDestAddr points somewhere, too.
 ZMakeAscii takes a target buffer and length and an input buffer and
 length, and generates the "special" Zephyr encoding.
 
+TODO: use the "reference" implementation to run a bunch of
+random-value comparison tests.
+
    >>> sample = "test\0message"
    >>> ref = zephyr_tests.py_make_ascii(sample)
    >>> from ctypes import create_string_buffer
@@ -112,6 +115,21 @@ length, and generates the "special" Zephyr encoding.
    >>> assert st == 0
    >>> assert outbuf.value == ref, "%r != %r" % (outbuf.value, ref)
 
+A few simple string tests:
+   >>> def zma(sample):
+   ...   outlen = len(sample) * 6
+   ...   outbuf = create_string_buffer(outlen)
+   ...   st = _z.ZMakeAscii(outbuf, outlen, sample, len(sample))
+   ...   assert st == 0
+   ...   return outbuf.value
+   >>> zma("")
+   ''
+   >>> zma("j")
+   '0x6A'
+   >>> zma("jK")
+   '0x6A4B'
+   >>> zma("jK__\0")
+   '0x6A4B5F5F 0x00'
 
 Coverage:
 
