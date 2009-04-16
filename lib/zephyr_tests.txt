@@ -84,7 +84,7 @@ Trivial test of ZExpandRealm, using terribly well known hostnames:
    >>> if not Zauthtype: assert _z.ZExpandRealm("localhost") == "LOCALHOST"
    >>> if not Zauthtype: assert _z.ZExpandRealm("bitsy.mit.edu") == "BITSY.MIT.EDU"
 
-Trivial test of ZopenPort and ZClosePort:
+Trivial test of ZOpenPort and ZClosePort:
 
    >>> from ctypes import c_ushort
    >>> port = c_ushort(0)
@@ -97,6 +97,21 @@ TODO: consider checking that ZGetFD is returning a socket on that port.
 
    >>> assert _z.ZClosePort() == 0
    >>> assert _z.ZGetFD() == -1
+
+TODO: check that ZGetDestAddr points somewhere, too.
+
+ZMakeAscii takes a target buffer and length and an input buffer and
+length, and generates the "special" Zephyr encoding.
+
+   >>> sample = "test\0message"
+   >>> ref = zephyr_tests.py_make_ascii(sample)
+   >>> from ctypes import create_string_buffer
+   >>> outlen = len(sample) * 6
+   >>> outbuf = create_string_buffer(outlen)
+   >>> st = _z.ZMakeAscii(outbuf, outlen, sample, len(sample))
+   >>> assert st == 0
+   >>> assert outbuf.value == ref, "%r != %r" % (outbuf.value, ref)
+
 
 Coverage:
 
@@ -135,4 +150,18 @@ ZGetLocations (ZGetLocs.c)
 ZGetSubscriptions (ZGetSubs.c)
 ZGetWGPort (ZGetWGPort.c)
 ZIfNotice (ZIfNotice.c)
-(...continue with ZInit.c...)
+ZGetRealm (ZInit.c)
+ZQLength (ZInit.c)
+ZGetDestAddr (ZInit.c)
+ZLocateUser (ZLocateU.c)
+ZInitLocationInfo (ZLocations.c)
+ZSetLocation (ZLocations.c)
+ZUnsetLocation (ZLocations.c)
+ZFlushMyLocations (ZLocations.c)
+ZParseExposureLevel (ZLocations.c)
+Z_SendLocation (ZLocations.c)
+ZMakeAscii32 (ZMakeAscii.c)
+ZMakeAscii16 (ZMakeAscii.c)
+ZMakeZcode32 (ZMakeZcode.c)
+ZMakeZcode (ZMakeZcode.c)
+(...continue with ZMkAuth.c...)

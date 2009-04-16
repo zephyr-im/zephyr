@@ -325,6 +325,7 @@ class libZephyr(object):
         "ZExpandRealm",
         "ZOpenPort",
         "ZClosePort",
+        "ZMakeAscii",
         ]
     def __init__(self, library_path=None):
         """connect to the library and build the wrappers"""
@@ -405,8 +406,29 @@ class libZephyr(object):
             POINTER(c_ushort),  # port
             ]
 
+        # Code_t
+        # ZMakeAscii(register char *ptr,
+        # 	   int len,
+        # 	   unsigned char *field,
+        # 	   int num)
+        self.ZMakeAscii.argtypes = [
+            c_char_p,           # ptr
+            c_int,              # len
+            c_char_p,           # field; c_uchar_p?
+            c_int,              # num
+            ]
+
+
         # library-specific setup...
         self.ZInitialize()
+
+def py_make_ascii(input):
+    """reference ZMakeAscii expressed as python..."""
+    hexes = ["%02X" % ord(ch) for ch in input]
+    output = []
+    for i in range(0, len(hexes), 4):
+        output.append("0x" + "".join(hexes[i:i+4]))
+    return " ".join(output)
 
         
 
