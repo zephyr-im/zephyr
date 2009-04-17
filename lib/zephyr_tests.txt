@@ -131,6 +131,19 @@ A few simple string tests:
    >>> zma("jK__\0")
    '0x6A4B5F5F 0x00'
 
+Same thing with ZMakeZcode, a compact binary format that is still NUL-terminated...
+
+   >>> sample = "test\0message"
+   >>> ref = zephyr_tests.py_make_zcode(sample)
+   >>> from ctypes import create_string_buffer
+   >>> outlen = len(sample) * 2
+   >>> outbuf = create_string_buffer(outlen)
+   >>> st = _z.ZMakeZcode(outbuf, outlen, sample, len(sample))
+   >>> assert st == 0
+   >>> assert outbuf.value == ref, "%r != %r" % (outbuf.value, ref)
+
+
+
 Coverage:
 
 Files complete:

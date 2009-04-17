@@ -326,6 +326,7 @@ class libZephyr(object):
         "ZOpenPort",
         "ZClosePort",
         "ZMakeAscii",
+        "ZMakeZcode",
         ]
     def __init__(self, library_path=None):
         """connect to the library and build the wrappers"""
@@ -418,6 +419,18 @@ class libZephyr(object):
             c_int,              # num
             ]
 
+        # Code_t
+        # ZMakeZcode(register char *ptr,
+        # 	   int len,
+        # 	   unsigned char *field,
+        # 	   int num)
+        self.ZMakeZcode.argtypes = [
+            c_char_p,           # ptr
+            c_int,              # len
+            c_char_p,           # field; c_uchar_p?
+            c_int,              # num
+            ]
+
 
         # library-specific setup...
         self.ZInitialize()
@@ -430,7 +443,9 @@ def py_make_ascii(input):
         output.append("0x" + "".join(hexes[i:i+4]))
     return " ".join(output)
 
-        
+def py_make_zcode(input):
+    """reference ZMakeZcode expressed as python..."""
+    return "Z" + input.replace("\xff", "\xff\xf1").replace("\0", "\xff\xf0")
 
 
 class ZephyrTestSuite(TestSuite):
