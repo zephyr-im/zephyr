@@ -239,6 +239,7 @@ Code_t ZReceiveNotice(ZNotice_t *notice, struct sockaddr_in *from);
 const char *ZGetCharsetString(char *charset);
 unsigned short ZGetCharset(char *charset);
 const char *ZCharsetToString(unsigned short charset);
+Code_t ZTransliterate(char *in, int inlen, char *inset, char *outset, char **out, int *outlen);
 #ifdef Z_DEBUG
 void Z_debug(const char *, ...);
 #endif
