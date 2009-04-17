@@ -236,6 +236,7 @@ Code_t ZUnsubscribeTo(ZSubscription_t *sublist, int nitems,
 Code_t ZCancelSubscriptions(unsigned int port);
 int ZPending(void);
 Code_t ZReceiveNotice(ZNotice_t *notice, struct sockaddr_in *from);
+const char *ZGetCharsetString(char *charset);
 unsigned short ZGetCharset(char *charset);
 const char *ZCharsetToString(unsigned short charset);
 #ifdef Z_DEBUG

@@ -323,6 +323,10 @@ class libZephyr(object):
         "ZFormatNotice",
         "ZCompareUID",
         "ZExpandRealm",
+        "ZGetCharsetString",
+        "ZGetCharset",
+        "ZCharsetToString",
+        "ZTransliterate",
         "ZOpenPort",
         "ZClosePort",
         "ZMakeAscii",
@@ -402,9 +406,46 @@ class libZephyr(object):
             c_char_p,           # realm
             ]
 
+        # unsigned short
+        # ZGetCharset(char *charset)
+        self.ZGetCharset.restype = c_ushort
+        self.ZGetCharset.argtypes = [
+            c_char_p,		# charset
+            ]
+
+        # const char *
+        # ZCharsetToString(unsigned short charset)
+        self.ZCharsetToString.restype = c_char_p
+        self.ZCharsetToString.argtypes = [
+            c_ushort,		# charset
+            ]
+
+        # Code_t
+        # ZTransliterate(char *in,
+        #               int inlen,
+        #               char *inset,
+        #               char *outset,
+        #               char **out,
+        #               int *outlen)
+        self.ZTransliterate.argtypes = [
+            c_char_p,		# in
+            c_int,		# inlnet,
+            c_char_p,		# inset
+            c_char_p,		# outset
+            POINTER(c_char_p),	# out
+            POINTER(c_int),	# outlen
+            ]
+
         # Code_t ZOpenPort(u_short *port)
         self.ZOpenPort.argtypes = [
             POINTER(c_ushort),  # port
+            ]
+
+        # const char *
+        # ZGetCharsetString(char *charset)
+        self.ZGetCharsetString.restype = c_char_p
+        self.ZGetCharsetString.argtypes = [
+            c_char_p,		# charset
             ]
 
         # Code_t

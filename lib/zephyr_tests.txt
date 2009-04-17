@@ -84,6 +84,64 @@ Trivial test of ZExpandRealm, using terribly well known hostnames:
    >>> if not Zauthtype: assert _z.ZExpandRealm("localhost") == "LOCALHOST"
    >>> if not Zauthtype: assert _z.ZExpandRealm("bitsy.mit.edu") == "BITSY.MIT.EDU"
 
+ZGetCharsetString is a utility function for clients that need to know the
+full name of the output character set, e.g. zwgc.  Calling it
+with NULL will get it from $ZEPHYR_CHARSET or the locale.
+Trivial testing of ZGetCharsetString:
+
+   >>> os.environ['LANG'] = 'C'
+   >>> assert _z.ZGetCharsetString(None) == 'ANSI_X3.4-1968'
+   >>> os.environ['ZEPHYR_CHARSET'] = 'ISO-8859-1'
+   >>> assert _z.ZGetCharsetString(None) == 'ISO-8859-1'
+   >>> assert _z.ZGetCharsetString('UTF-8') == 'UTF-8'
+
+ZGetCharset is a utility function for clients that need to know the
+registry number of a character set, e.g. zwrite.  It gets its defaults from
+alal the places that ZGetCharsetString does, because it calls it.
+Trivial testing of ZGetCharset:
+
+   >>> assert _z.ZGetCharset(None) == 4
+   >>> assert _z.ZGetCharset('NONE') == 0
+   >>> assert _z.ZGetCharset('UNKNOWN') == 0
+   >>> assert _z.ZGetCharset('ANSI_X3.4-1968') == 4
+   >>> assert _z.ZGetCharset('ISO-8859-1') == 4
+   >>> assert _z.ZGetCharset('UTF-8') == 106
+   >>> assert _z.ZGetCharset('GIANT RUBBER PANTS') == 0
+
+ZCharsetToString converts the registry numbers of the "allowed" character
+sets into strings.
+Trivial testing of ZCharsetToString:
+
+   >>> assert _z.ZCharsetToString(0) == 'UNKNOWN'
+   >>> assert _z.ZCharsetToString(4) == 'ISO-8859-1'
+   >>> assert _z.ZCharsetToString(106) == 'UTF-8'
+   >>> assert _z.ZCharsetToString(1701) == 'UNKNOWN'
+
+ZTransliterate does character set conversion for display purposes, and when
+it works, it sticks a malloc'd buffer in to **bufp.
+"Trivial" testing of ZTransliterate:
+
+   >>> from ctypes import c_char_p, c_int, byref, string_at
+   >>> from errno import EINVAL, EILSEQ
+   >>> bufp = c_char_p(None)
+   >>> length = c_int(0)
+   >>> assert _z.ZTransliterate('test', 4, 'ANSI_X3.4-1968', 'ANSI_X3.4-1968', byref(bufp), byref(length)) == 0
+   >>> assert string_at(bufp, length) == 'test'
+   >>> assert _z.ZTransliterate('test', 4, 'ANSI_X3.4-1968', 'UTF-8', byref(bufp), byref(length)) == 0
+   >>> assert string_at(bufp, length) == 'test'
+   >>> assert _z.ZTransliterate('test', 4, 'ISO-8859-1', 'ANSI_X3.4-1968', byref(bufp), byref(length)) == 0
+   >>> assert string_at(bufp, length) == 'test'
+   >>> assert _z.ZTransliterate('test', 4, 'ISO-8859-1', 'ANSI_X3.4-1968', byref(bufp), byref(length)) == 0
+   >>> assert string_at(bufp, length) == 'test'
+   >>> assert _z.ZTransliterate('t\xebst', 4, 'ISO-8859-1', 'ANSI_X3.4-1968', byref(bufp), byref(length)) == 0
+   >>> assert string_at(bufp, length) == 't?st'
+   >>> assert _z.ZTransliterate('t\xebst', 4, 'ISO-8859-1', 'UTF-8', byref(bufp), byref(length)) == 0
+   >>> assert string_at(bufp, length) == 't\xc3\xabst'
+   >>> assert _z.ZTransliterate('t\xc3\xabst', 5, 'UTF-8', 'ISO-8859-1', byref(bufp), byref(length)) == 0
+   >>> assert string_at(bufp, length) == 't\xebst'
+   >>> assert _z.ZTransliterate('t\xc3\xabst', 5, 'UTF-8', 'Oh, my bees', byref(bufp), byref(length)) == EINVAL
+   >>> assert _z.ZTransliterate('t\xc3x\xabst', 5, 'UTF-8', 'ISO-8859-1', byref(bufp), byref(length)) == EILSEQ
+
 Trivial test of ZOpenPort and ZClosePort:
 
    >>> from ctypes import c_ushort
@@ -151,6 +209,7 @@ Files complete:
    ZClosePort.c
    ZExpnRlm.c
    ZCmpUID.c
+   charset.c
    ZGetSender.c (needs richer test)
 
 Pending:

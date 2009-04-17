@@ -15,16 +15,18 @@ static const char rcsid_charset_c[] = "$Id$";
 #endif /* lint */
 
 #include <internal.h>
+
 #include <string.h>
 #include <locale.h>
 #include <langinfo.h>
 #include <ctype.h>
+#include <iconv.h>
+#include <errno.h>
 
-unsigned short
-ZGetCharset(char *charset)
+const char *
+ZGetCharsetString(char *charset)
 {
     char *p;
-    short retval;
     static int once = 1;
 	
     if (charset == NULL)
@@ -46,6 +48,15 @@ ZGetCharset(char *charset)
     for (p = charset; *p; p++)
 	*p = toupper(*p);
 
+    return charset;
+}
+
+unsigned short
+ZGetCharset(char *charset)
+{
+    short retval;
+	
+    charset = (char *)ZGetCharsetString(charset);
     if (!strcmp(charset, "NONE") || !strcmp(charset, "UNKNOWN"))
 	retval = ZCHARSET_UNKNOWN;
     else if (!strcmp(charset, "ANSI_X3.4-1968"))
@@ -72,4 +83,56 @@ ZCharsetToString(unsigned short charset)
 	return "UTF-8";
     return "UNKNOWN";
 }
-	
+
+Code_t
+ZTransliterate(char *in, int inlen, char *inset, char *outset, char **out, int *outlen)
+{
+    iconv_t ih;
+    char *outset_t, *inp, *outp;
+    int retval;
+    size_t size, inleft, outleft;
+
+    *out = NULL;
+    *outlen = 0;
+
+    outset_t = malloc(strlen(outset) + 11);
+    if (outset_t == NULL)
+	return errno;
+    sprintf(outset_t, "%s//TRANSLIT", outset);
+
+    ih = iconv_open(outset_t, inset);
+
+    free(outset_t);
+
+    if (ih != (iconv_t)-1) {
+	size = inlen; /* doubling this should be enough, but.. */
+	do {
+	    size = size * 2;
+	    
+	    *out = malloc(size);
+	    if (*out == NULL) {
+		iconv_close(ih);
+		return errno;
+	    }
+	    
+	    inleft = inlen;
+	    outleft = size;
+	    
+	    inp = in;
+	    outp = *out;
+	    
+	    retval = iconv(ih, &inp, &inleft, &outp, &outleft);
+	    if (retval < 0)
+		free(*out);
+	} while (retval < 0 && errno == E2BIG);
+
+	iconv_close(ih);
+    }
+
+    if (ih == (iconv_t)-1 || retval < 0)
+	return errno;
+
+    *outlen = size - outleft;
+
+    return ZERR_NONE;
+}
