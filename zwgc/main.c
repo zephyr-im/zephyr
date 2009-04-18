@@ -48,7 +48,7 @@ static const char rcsid_main_c[] = "$Id$";
 #endif
 #ifdef CMU_ZWGCPLUS
 #include "plus.h"
-int zwgcplus = 0;
+int zwgcplus = 1;
 #endif
 
 void notice_handler(ZNotice_t *);
@@ -244,8 +244,7 @@ run_initprogs(void)
  */
 
 int
-main(int argc,
-     char **argv)
+main(int argc, char **argv)
 {
     char **new;
     register char **current;
@@ -332,11 +331,6 @@ main(int argc,
 
     dprintf("Test Zwgc parser.\n\n");
     read_in_description_file();
-
-#ifdef CMU_ZWGCPLUS
-    if (strcmp(progname, "zwgcplus") == 0)
-      zwgcplus = 1;
-#endif
 
     dprintf("Entering main loop\n");
     mux_loop();
