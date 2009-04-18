@@ -32,8 +32,11 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 #endif
 #endif
 
+#include <zephyr/zephyr.h>
+
 #include "new_memory.h"
 #include "new_string.h"
+#include "variables.h"
 #include "string_dictionary_aux.h"
 #include "formatter.h"
 #include "zwgc.h"
@@ -235,6 +238,8 @@ typedef struct _tty_str_info {
     unsigned int ignore: 1;
 } tty_str_info;
 
+const char *info_default_string = "";
+
 static void
 free_info(tty_str_info *info)
 {
@@ -242,6 +247,8 @@ free_info(tty_str_info *info)
 
     while (info) {
 	next_info = info->next;
+	if (info->str != info_default_string)
+	    free(info->str);
 	free(info);
 	info = next_info;
     }
@@ -286,6 +293,24 @@ do_mode_change(tty_str_info *current_mode_p,
     return 0;
 }
 
+static void
+zwgc_transliterate(char *in, int inlen, char **out, int *outlen){
+    int retval = 0;
+    string notice_charset = var_get_variable("notice_charset");
+    string tty_charset = var_get_variable("tty_charset");
+
+    if (string_Eq(notice_charset, "UNKNOWN") ||
+	string_Eq(notice_charset, tty_charset) ||
+	(retval = ZTransliterate(in, inlen,
+				 notice_charset, tty_charset,
+				 out, outlen)) != 0) {
+	*out = string_CreateFromData(in, inlen);
+	*outlen = inlen;
+    }
+    if (retval != 0)
+	var_set_variable("error", strerror(retval));
+}
+
 static tty_str_info *
 convert_desc_to_tty_str_info(desctype *desc)
 {
@@ -301,7 +326,7 @@ convert_desc_to_tty_str_info(desctype *desc)
     tty_str_info current_mode;
 
     current_mode.next = NULL;
-    current_mode.str = "";
+    current_mode.str = info_default_string; /* "" */
     current_mode.len = 0;
     current_mode.alignment = 'l';
     current_mode.bold_p = 0;
@@ -356,8 +381,7 @@ convert_desc_to_tty_str_info(desctype *desc)
 	}
 	if (desc->code == DT_STR) {
 	    /* just combine string info with current mode: */
-	    temp->str = desc->str;
-	    temp->len = desc->len;
+	    zwgc_transliterate(desc->str, desc->len, &temp->str, &temp->len);
 	} else if (desc->code == DT_NL) {
 	    /* make the new block a ' ' alignment block with an empty string */
 	    temp->alignment = ' ';

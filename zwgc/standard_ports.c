@@ -198,10 +198,12 @@ void init_standard_ports(int *pargc,
     string default_port = "";
     char **new, **current;
     int fallback;
+    char *charset = NULL;
 
     /*
      * Process argument list handling "-disable <port>" and
      * "-default <output port>" arguments, as well as "-ttymode"
+     * and -charset, because tty_filter_init gets run twice
      */
     for (new=current=argv+1; *current; current++) {
         if (string_Eq((string) *current, "-disable")) {
@@ -219,6 +221,11 @@ void init_standard_ports(int *pargc,
 	    p = get_standard_port_info((string) *current);
             if (p)
 		p->port_setup_status = DEFAULT_OK;
+        } else if (string_Eq((string) *current, "-charset")) {
+            current++; *pargc -= 2;
+            if (!*current)
+              usage();
+	    charset = *current;
         } else if (string_Eq((string) *current, "-ttymode")) {
 	    default_port = (string) "tty";
 	    (*pargc)--;
@@ -233,6 +240,8 @@ void init_standard_ports(int *pargc,
           *(new++) = *current;
     }
     *new = *current;
+
+    var_set_variable_then_free_value("tty_charset", (string)ZGetCharsetString(charset));
 
     fallback = boolean_value_of(ZGetVariable("fallback"));
     /*
