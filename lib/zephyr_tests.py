@@ -68,6 +68,11 @@ class Enum(c_int):
         except IndexError:
             return ["unknown enum value(%d)" % (self.value)]
 
+def populate_enum(cls):
+    """make members for each of the enum values"""
+    for value, tag in enumerate(cls._values_):
+        setattr(cls, tag, cls(value))
+
 # not really an enum, but we get a richer effect by treating it as one
 class Enum_u16(c_uint16):
     def pformat(self):
@@ -127,6 +132,8 @@ class AF_(Enum_u16):
     _socket_af = dict([(v,n) for n,v in socket.__dict__.items() if n.startswith("AF_")])
     _values_ = [_socket_af.get(k, "unknown address family") for k in range(min(_socket_af), max(_socket_af)+1)]
 
+populate_enum(AF_)
+
 class sockaddr(Structure):
     _fields_ = [
         ("sa_family", AF_),
@@ -171,6 +178,7 @@ class ZNotice_Kind_t(Enum):
     _values_ = [
         "UNSAFE", "UNACKED", "ACKED", "HMACK", "HMCTL", "SERVACK", "SERVNAK", "CLIENTACK", "STAT",
         ]
+populate_enum(ZNotice_Kind_t)
 
 def pformat_timeval(tv_sec, tv_usec):
     """format timeval parts as seconds and human-readable time"""

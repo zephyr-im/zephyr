@@ -52,6 +52,33 @@ settings and assertions to be a real round-trip test...)
 
 Should we check for ZEPH0.2 now, or leave that open?
 
+   >>> notice = zephyr_tests.ZNotice_t()
+   >>> notice.z_kind = zephyr_tests.ZNotice_Kind_t.UNSAFE
+   >>> notice.z_class = c_char_p("testclass")
+   >>> notice.z_class_inst = c_char_p("testinstance")
+   >>> notice.z_opcode = c_char_p("TESTOPCODE")
+   >>> notice.z_sender = c_char_p("someone")
+   >>> notice.z_recipient = c_char_p("someone_else")
+   >>> notice.z_message = c_char_p("short message body")
+   >>> notice.z_message_len = c_int(len("short message body"))
+   >>> zbuf = c_char_p(0)
+   >>> zbuflen = c_int(0)
+   >>> st = _z.ZFormatNotice(notice, zbuf, zbuflen, zephyr_tests.ZNOAUTH)
+   >>> assert st == 0
+   >>> assert zbuf.value.startswith("ZEPH")
+   >>> new_notice = zephyr_tests.ZNotice_t()
+   >>> st = _z.ZParseNotice(zbuf, zbuflen, new_notice)
+   >>> assert st == 0
+   >>> assert new_notice.z_version.startswith("ZEPH")
+   >>> new_notice.z_class
+   'testclass'
+   >>> new_notice.z_class_inst
+   'testinstance'
+   >>> new_notice.z_opcode
+   'TESTOPCODE'
+   >>> new_notice.z_message[:new_notice.z_message_len]
+   'short message body'
+
 Simple test of ZCompareUID:
 
    >>> uid1 = zephyr_tests.ZUnique_Id_t()
