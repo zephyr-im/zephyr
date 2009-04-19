@@ -1172,6 +1172,7 @@ hostm_shutdown(void)
 	    break;
     }
     newserver = (i < nservers);
+    sin.sin_family = AF_INET;
     for (i = 0; i < num_hosts; i++) {
 	sin.sin_addr = hosts[i];
 	sin.sin_port = hm_port;
@@ -1269,4 +1270,3 @@ hm_recipient(void)
     strcat (recipient, realm);
     return recipient;
 }
-
