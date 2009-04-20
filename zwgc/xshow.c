@@ -156,22 +156,22 @@ fixup_and_draw(Display *dpy,
     /* Find total lengths of left, center, and right parts.  Also find the
        length of the longest line and the total number of characters. */
 
-    for (line=0; line<numlines; line++) {
+    for (line = 0; line < numlines; line++) {
 	lsize = csize = rsize = 0;
 	maxascent = maxdescent = 0;
 	
 	/* add up sizes for each block, get max ascent and descent */
 	
-	for (i=0; i<lines[line].numblock; i++,block++) {
+	for (i = 0; i < lines[line].numblock; i++, block++) {
 	    chars += auxblocks[block].len;
 	    ssize = XTextWidth(auxblocks[block].font, auxblocks[block].str,
 			       auxblocks[block].len);
 	    auxblocks[block].width = ssize;
 	    ascent = auxblocks[block].font->ascent;
 	    descent = auxblocks[block].font->descent;
-	    if (ascent>maxascent)
+	    if (ascent > maxascent)
 	      maxascent = ascent;
-	    if (descent>maxdescent)
+	    if (descent > maxdescent)
 	      maxdescent = descent;
 	    switch (auxblocks[block].align) {
 	      case LEFTALIGN:
@@ -190,9 +190,9 @@ fixup_and_draw(Display *dpy,
 	
 	/* save what we need to do size fixups */
 	
-	if (maxascent>lines[line].ascent)
+	if (maxascent > lines[line].ascent)
 	  lines[line].ascent = maxascent;
-	if (maxdescent>lines[line].descent)
+	if (maxdescent > lines[line].descent)
 	  lines[line].descent = maxdescent;
 	lines[line].lsize = lsize;
 	lines[line].csize = csize;
@@ -200,7 +200,7 @@ fixup_and_draw(Display *dpy,
 	
 	/* get width of line and see if it is bigger than the max width */
 
-	switch ((lsize?1:0)+(csize?2:0)+(rsize?4:0)) {
+	switch ((lsize ? 1 : 0) + (csize ?2 : 0) + (rsize ? 4 : 0)) {
 #ifdef DEBUG
 	  default:
 	    abort();
@@ -224,7 +224,7 @@ fixup_and_draw(Display *dpy,
 	    /* XXX implicit assumption that a line must have at least one
 	       block, so that there is indeed a reasonable font in
 	       auxblocks[0].font */
-	    width = lsize*2+csize+XTextWidth(auxblocks[0].font," ",1);
+	    width = lsize * 2 + csize + XTextWidth(auxblocks[0].font, " ", 1);
 	    break;
 	    
 	  case 4:
@@ -232,19 +232,19 @@ fixup_and_draw(Display *dpy,
 	    break;
 	    
 	  case 5:
-	    width = lsize+rsize+XTextWidth(auxblocks[0].font, " ", 1);
+	    width = lsize + rsize + XTextWidth(auxblocks[0].font, " ", 1);
 	    break;
 	    
 	  case 6:
-	    width = csize+rsize*2+XTextWidth(auxblocks[0].font, " ", 1);
+	    width = csize + rsize * 2 + XTextWidth(auxblocks[0].font, " ", 1);
 	    break;
 	    
 	  case 7:
-	    width = max(lsize,rsize)*2+csize+
-	      XTextWidth(auxblocks[0].font," ",1)*2;
+	    width = max(lsize, rsize) * 2 + csize +
+		XTextWidth(auxblocks[0].font, " ", 1) * 2;
 	    break;
 	}
-	if (width>maxwidth)
+	if (width > maxwidth)
 	  maxwidth = width;
     }
 
@@ -254,16 +254,16 @@ fixup_and_draw(Display *dpy,
     gram->text = (char *)malloc(chars);
     block = 0;
 
-    for (line=0; line<numlines; line++) {
+    for (line = 0; line < numlines; line++) {
 	lofs = internal_border_width;
-	cofs = ((maxwidth-lines[line].csize)>>1) + internal_border_width;
-	rofs = maxwidth-lines[line].rsize + internal_border_width;
+	cofs = ((maxwidth - lines[line].csize) >> 1) + internal_border_width;
+	rofs = maxwidth - lines[line].rsize + internal_border_width;
 	ystart = yofs;
 	yofs += lines[line].ascent;
-	yend = yofs+lines[line].descent+1;   /* +1 because lines look scrunched
-						without it. */
+	yend = yofs + lines[line].descent + 1;   /* +1 because lines look scrunched
+						    without it. */
 
-	for (i=0; i<lines[line].numblock; i++,block++) {
+	for (i = 0; i < lines[line].numblock; i++, block++) {
 	    blocks[block].fid = auxblocks[block].font->fid;
 	    switch (auxblocks[block].align) {
 	      case LEFTALIGN:
@@ -292,7 +292,7 @@ fixup_and_draw(Display *dpy,
 	    blocks[block].y2 = yend;
 	    blocks[block].strindex = strindex;
 	    blocks[block].strlen = auxblocks[block].len;
-	    strncpy(gram->text+strindex, auxblocks[block].str,
+	    strncpy(gram->text + strindex, auxblocks[block].str,
 		    auxblocks[block].len);
 	    strindex += blocks[block].strlen;
 	}
@@ -301,41 +301,46 @@ fixup_and_draw(Display *dpy,
 
     }
 
-    if ((geometry = var_get_variable("X_geometry")),(geometry[0]=='\0')) 
-      if ((geometry = xres_get_geometry(style))==NULL)
-	if ((geometry = var_get_variable("default_X_geometry")),
-	    (geometry[0]=='\0'))
-	  geometry = "+0+0";
-    sscanf(geometry, "%c%[0123456789c]%c%[0123456789c]", &xfrom, xpos,
-	   &yfrom, ypos);
+    geometry = var_get_variable("X_geometry");
+    if (geometry[0] == '\0')
+        geometry = xres_get_geometry(style);
+    if (geometry == NULL)
+        geometry = var_get_variable("default_X_geometry");
+    if (geometry[0] == '\0')
+        geometry = "+0+0";
 
-    if (xpos[0]=='c') {
+    sscanf(geometry, "%c%[0123456789c]%c%[0123456789c]", &xfrom, xpos,
+           &yfrom, ypos);
+
+    if (xpos[0] == 'c') {
       gram_xalign = 0;
       gram_xpos = 0;
     } else
       gram_xpos = atoi(xpos);
-    if (xfrom=='-')
+    if (xfrom == '-')
       gram_xalign *= -1;
 
-    if (ypos[0]=='c') {
+    if (ypos[0] == 'c') {
       gram_yalign = 0;
       gram_ypos = 0;
     } else
       gram_ypos = atoi(ypos);
-    if (yfrom=='-')
+    if (yfrom == '-')
       gram_yalign *= -1;
 
-    if ((bgstr = var_get_variable("X_background")),(bgstr[0]=='\0'))
-      if ((bgstr = xres_get_bgcolor(style))==NULL)
-	if ((bgstr = var_get_variable("default_X_background")),
-	    (bgstr[0]=='\0'))
-	  gram->bgcolor = default_bgcolor;
-    if (bgstr && bgstr[0])
-      gram->bgcolor = x_string_to_color(bgstr,default_bgcolor);
+    bgstr = var_get_variable("X_background");
+    if (bgstr[0] == '\0')
+	bgstr = xres_get_bgcolor(style);
+    if (bgstr == NULL)
+	bgstr = var_get_variable("default_X_background");
+    if (bgstr[0]=='\0')
+	gram->bgcolor = default_bgcolor;
 
+    if (bgstr && bgstr[0])
+      gram->bgcolor = x_string_to_color(bgstr, default_bgcolor);
     
-    gram_xsize = maxwidth+(internal_border_width<<1);
-    gram_ysize = yofs+internal_border_width;
+    gram_xsize = maxwidth + (internal_border_width << 1);
+    gram_ysize = yofs + internal_border_width;
     gram->numblocks = num;
     gram->blocks = blocks;
 #ifdef CMU_ZWGCPLUS
@@ -343,7 +348,7 @@ fixup_and_draw(Display *dpy,
 #endif
     
     x_gram_create(dpy, gram, gram_xalign, gram_yalign, gram_xpos,
-		  gram_ypos, gram_xsize, gram_ysize, beepcount);
+                  gram_ypos, gram_xsize, gram_ysize, beepcount);
 }
 
 /* Silly almost-but-not-quite-useless helper function */
@@ -356,18 +361,27 @@ no_dots_downcase_var(char *str)
    var2 = var;
    while (*var++)
       if (*var == '.')
-	 *var = '_';
+         *var = '_';
    return(var2);
 }
 
-#define MODE_TO_FONT(dpy,style,mode) \
-  get_font((dpy),(style),(mode)->font?(mode)->font:(mode)->substyle, \
-	   (mode)->size, (mode)->bold+(mode)->italic*2)
+inline static XFontStruct *
+mode_to_font(Display *dpy, char *style, xmode *mode) {
+    return get_font(dpy,
+		    style,
+		    mode->font ? mode->font : mode->substyle,
+		    mode->size,
+		    mode->bold + mode->italic * 2);
+}
+
+inline static int
+envmatch(desctype *desc, char *str) {
+    int len = strlen(str);
+    return desc->len == len && strncasecmp(desc->str, str, len) == 0;
+}
+
 void
-xshow(Display *dpy,
-      desctype *desc,
-      int numstr,
-      int numnl)
+xshow(Display *dpy, desctype *desc, int numstr, int numnl)
 {
     XFontStruct *font;
     xmode_stack modes = xmode_stack_create();
@@ -381,10 +395,10 @@ xshow(Display *dpy,
     int free_style = 0;
     int beepcount = 0;
 
-    lines = (xlinedesc *)malloc(sizeof(xlinedesc)*(numnl+1));
+    lines = (xlinedesc *)malloc(sizeof(xlinedesc) * (numnl + 1));
 
-    blocks = (xblock *)malloc(sizeof(xblock)*numstr);
-    auxblocks = (xauxblock *)malloc(sizeof(xauxblock)*numstr);
+    blocks = (xblock *)malloc(sizeof(xblock) * numstr);
+    auxblocks = (xauxblock *)malloc(sizeof(xauxblock) * numstr);
 
     curmode.bold = 0;
     curmode.italic = 0;
@@ -396,53 +410,50 @@ xshow(Display *dpy,
 
     style = var_get_variable("style");
     if (style[0] == '\0') {
-       style = string_Concat(no_dots_downcase_var("class"),".");
-       style = string_Concat2(style,no_dots_downcase_var("instance"));
-       style = string_Concat2(style,".");
-       style = string_Concat2(style,no_dots_downcase_var("sender"));
+       style = string_Concat(no_dots_downcase_var("class"), ".");
+       style = string_Concat2(style, no_dots_downcase_var("instance"));
+       style = string_Concat2(style, ".");
+       style = string_Concat2(style, no_dots_downcase_var("sender"));
        string_Downcase(style);
        free_style = 1;
     }
 
-    for (; desc->code!=DT_EOF; desc=desc->next) {
+    for (; desc->code != DT_EOF; desc = desc->next) {
 	switch (desc->code) {
 	  case DT_ENV:
 	    xmode_stack_push(modes, curmode);
 	    curmode.substyle = string_Copy(curmode.substyle);
 	    if (curmode.font)
 	      curmode.font = string_Copy(curmode.font);
-	    
-#define envmatch(string,length) ((desc->len==(length)) && (strncasecmp(desc->str,(string),(length))==0))
-
-	    if (envmatch("roman",5)) {
+	    if (envmatch(desc, "roman")) {
 		curmode.bold = 0;
 		curmode.italic = 0;
-	    } else if (envmatch("bold",4) || envmatch("b",1))
+	    } else if (envmatch(desc, "bold") || envmatch(desc, "b"))
 	      curmode.bold = 1;
-	    else if (envmatch("italic",6)||envmatch("i",1))
+	    else if (envmatch(desc, "italic") || envmatch(desc, "i"))
 	      curmode.italic = 1;
-	    else if (envmatch("large",5))
+	    else if (envmatch(desc, "large"))
 	      curmode.size = LARGE_SIZE;
-	    else if (envmatch("medium",6))
+	    else if (envmatch(desc, "medium"))
 	      curmode.size = MEDIUM_SIZE;
-	    else if (envmatch("small",5))
+	    else if (envmatch(desc, "small"))
 	      curmode.size = SMALL_SIZE;
-	    else if (envmatch("left",4)||envmatch("l",1))
+	    else if (envmatch(desc, "left") || envmatch(desc, "l"))
 	      curmode.align = LEFTALIGN;
-	    else if (envmatch("center",6)||envmatch("c",1))
+	    else if (envmatch(desc, "center") || envmatch(desc, "c"))
 	      curmode.align = CENTERALIGN;
-	    else if (envmatch("right",5)||envmatch("r",1))
+	    else if (envmatch(desc, "right") || envmatch(desc, "r"))
 	      curmode.align = RIGHTALIGN;
-	    else if (envmatch("beep",4))
+	    else if (envmatch(desc, "beep"))
 	      beepcount++;
-	    else if (envmatch("font",4)) {
+	    else if (envmatch(desc, "font")) {
 	       /* lookahead needed.  desc->next->str should be the
 		  font name, and desc->next->next->code should be
 		  a DT_END*/
 	       if ((desc->next) &&
 		   (desc->next->next) &&
 		   (desc->next->code == DT_STR) &&
-		   (desc->next->next->code==DT_END)) {
+		   (desc->next->next->code == DT_END)) {
 
 		  /* Since @font mutates the current environment, we have
 		     to pop the environment that this case usually pushes */
@@ -451,20 +462,20 @@ xshow(Display *dpy,
 		  xmode_stack_pop(modes);
 
 		  /* mutating... */
-		  curmode.size=SPECIAL_SIZE; /* This is an @font() */
-		  curmode.font=string_CreateFromData(desc->next->str,
-						     desc->next->len);
+		  curmode.size = SPECIAL_SIZE; /* This is an @font() */
+		  curmode.font = string_CreateFromData(desc->next->str,
+						       desc->next->len);
 		  /* skip over the rest of the @font */
-		  desc=desc->next->next;
+		  desc = desc->next->next;
 	       }
-	    } else if (envmatch("color",5)) {
+	    } else if (envmatch(desc, "color")) {
 	       /* lookahead needed.  desc->next->str should be the
 		  font name, and desc->next->next->code should be
 		  a DT_END*/
 	       if ((desc->next) &&
 		   (desc->next->next) &&
 		   (desc->next->code == DT_STR) &&
-		   (desc->next->next->code==DT_END)) {
+		   (desc->next->next->code == DT_END)) {
 		  char *colorname;
 
 		  /* Since @font mutates the current environment, we have
@@ -474,13 +485,13 @@ xshow(Display *dpy,
 		  xmode_stack_pop(modes);
 
 		  /* mutating... */
-		  colorname=string_CreateFromData(desc->next->str,
-						  desc->next->len);
-		  curmode.color = x_string_to_color(colorname,default_fgcolor);
+		  colorname = string_CreateFromData(desc->next->str,
+						    desc->next->len);
+		  curmode.color = x_string_to_color(colorname, default_fgcolor);
 		  free(colorname);
 		  curmode.expcolor = 1;
 		  /* skip over the rest of the @font */
-		  desc=desc->next->next;
+		  desc = desc->next->next;
 	       }
 	    } else if (desc->len > 0) { /* avoid @{...} */
 	       free(curmode.substyle);
@@ -494,14 +505,14 @@ xshow(Display *dpy,
 
 	  case DT_STR:
 	    auxblocks[nextblock].align = curmode.align;
-	    auxblocks[nextblock].font = MODE_TO_FONT(dpy,style,&curmode);
+	    auxblocks[nextblock].font = mode_to_font(dpy, style, &curmode);
 	    auxblocks[nextblock].str = desc->str;
 	    auxblocks[nextblock].len = desc->len;
 	    if (curmode.expcolor)
 	       blocks[nextblock].fgcolor = curmode.color;
 	    else
 	       blocks[nextblock].fgcolor =
-		 x_string_to_color(mode_to_colorname(dpy,style,&curmode),
+		 x_string_to_color(mode_to_colorname(dpy, style, &curmode),
 				   default_fgcolor);
 	    nextblock++;
 	    break;
@@ -515,7 +526,7 @@ xshow(Display *dpy,
 	  case DT_NL:
 	    lines[line].startblock = linestart;
 	    lines[line].numblock = nextblock-linestart;
-	    font = MODE_TO_FONT(dpy,style,&curmode);
+	    font = mode_to_font(dpy, style, &curmode);
 	    lines[line].ascent = font->ascent;
 	    lines[line].descent = font->descent;
 	    line++;
@@ -529,7 +540,7 @@ xshow(Display *dpy,
     if (linestart != nextblock) {
        lines[line].startblock = linestart;
        lines[line].numblock = nextblock-linestart;
-       font = MODE_TO_FONT(dpy,style,&curmode);
+       font = mode_to_font(dpy, style, &curmode);
        lines[line].ascent = 0;
        lines[line].descent = 0;
        line++;

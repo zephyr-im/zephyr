@@ -318,19 +318,19 @@ x_gram_create(Display *dpy,
     /*
      * Adjust xpos, ypos based on the alignments xalign, yalign and the sizes:
      */
-    if (xalign<0)
-      xpos = WidthOfScreen(DefaultScreenOfDisplay(dpy)) - xpos - xsize
-	- 2*border_width;
+    if (xalign < 0)
+      xpos = WidthOfScreen(DefaultScreenOfDisplay(dpy))
+	  - xpos - xsize - 2 * border_width;
     else if (xalign == 0)
-      xpos = ((WidthOfScreen(DefaultScreenOfDisplay(dpy)) - xsize
-	       - 2*border_width)>>1) + xpos;
+      xpos = ((WidthOfScreen(DefaultScreenOfDisplay(dpy))
+	       - xsize - 2 * border_width) >> 1) + xpos;
 
     if (yalign<0)
-      ypos = HeightOfScreen(DefaultScreenOfDisplay(dpy)) - ypos - ysize
-	- 2*border_width;
+      ypos = HeightOfScreen(DefaultScreenOfDisplay(dpy))
+	  - ypos - ysize - 2 * border_width;
     else if (yalign == 0)
-      ypos = ((HeightOfScreen(DefaultScreenOfDisplay(dpy)) - ysize
-	       - 2*border_width)>>1) + ypos;
+      ypos = ((HeightOfScreen(DefaultScreenOfDisplay(dpy))
+	       - ysize - 2 * border_width) >> 1) + ypos;
 
     /*
      * Create the window:
@@ -348,7 +348,7 @@ x_gram_create(Display *dpy,
     sizehints.width = xsize;
     sizehints.height = ysize;
     sizehints.win_gravity = x_calc_gravity(xalign, yalign);
-    sizehints.flags = USPosition|USSize|PWinGravity;
+    sizehints.flags = USPosition | USSize | PWinGravity;
 
     wmhints.input = False;
     wmhints.initial_state = NormalState;
@@ -356,21 +356,20 @@ x_gram_create(Display *dpy,
        wmhints.window_group = group_leader;
        wmhints.flags = InputHint | StateHint | WindowGroupHint;
 
-       x_set_icccm_hints(dpy,w,title_name,icon_name,&sizehints,&wmhints,
+       x_set_icccm_hints(dpy, w, title_name, icon_name, &sizehints, &wmhints,
 			 group_leader);
     } else {
        wmhints.flags = InputHint | StateHint;
 
-       x_set_icccm_hints(dpy,w,title_name,icon_name,&sizehints,&wmhints,0);
+       x_set_icccm_hints(dpy, w, title_name, icon_name, &sizehints, &wmhints, 0);
     }
        
     if (net_wm_window_type != None && net_wm_window_type_utility != None)
-	XChangeProperty(dpy, w, net_wm_window_type, XA_ATOM, 32,
-			PropModeReplace,
+	XChangeProperty(dpy, w, net_wm_window_type, XA_ATOM, 32, PropModeReplace,
 			(unsigned char *) &net_wm_window_type_utility, 1);
     if (set_all_desktops && net_wm_desktop != None)
-	XChangeProperty(dpy, w, net_wm_desktop, XA_CARDINAL, 32,
-			PropModeReplace, (unsigned char *) &all_desktops, 1);
+	XChangeProperty(dpy, w, net_wm_desktop, XA_CARDINAL, 32, PropModeReplace,
+			(unsigned char *) &all_desktops, 1);
 
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
 
@@ -385,16 +384,16 @@ x_gram_create(Display *dpy,
     if (reverse_stack && bottom_gram) {
        XWindowChanges winchanges;
        
-       winchanges.sibling=bottom_gram->w;
-       winchanges.stack_mode=Below;
+       winchanges.sibling = bottom_gram->w;
+       winchanges.stack_mode = Below;
        /* Metacity may use border_width even if it's not specified in
 	* the value mask, so we must initialize it.  See:
 	* http://bugzilla.gnome.org/show_bug.cgi?id=305257 */
-       winchanges.border_width=border_width;
+       winchanges.border_width = border_width;
 
        begin_xerror_trap (dpy);
        XReconfigureWMWindow (dpy, w, DefaultScreen (dpy),
-			     CWSibling|CWStackMode, &winchanges);
+			     CWSibling | CWStackMode, &winchanges);
        end_xerror_trap (dpy);
        if (xerror_happened) {
 	   /* The event didn't go.  Print an error message, and continue.  */
@@ -417,11 +416,16 @@ x_gram_create(Display *dpy,
     x_get_input(dpy);
 }
 
+inline static void
+SetFG(Display *dpy, GC gc, unsigned long foreground) {
+    XGCValues gcvals;
+
+    gcvals.foreground = foreground;
+    XChangeGC(dpy, gc, GCForeground, &gcvals);
+}
+
 void
-x_gram_draw(Display *dpy,
-	    Window w,
-	    x_gram *gram,
-	    Region region)
+x_gram_draw(Display *dpy, Window w, x_gram *gram, Region region)
 {
    int i;
    GC gc;
@@ -430,87 +434,83 @@ x_gram_draw(Display *dpy,
    XTextItem text;
    int startblock, endblock, startpixel = 0, endpixel = 0;
    
-#define SetFG(fg) \
-   gcvals.foreground=fg; \
-   XChangeGC(dpy,gc,GCForeground,&gcvals)
-
    gc = XCreateGC(dpy, w, 0, &gcvals);
-   XSetRegion(dpy,gc,region);
+   XSetRegion(dpy, gc, region);
  
    if ((markgram == gram) && (STARTBLOCK != -1) && (ENDBLOCK != -1)) {
       if (xmarkSecond() == XMARK_END_BOUND) {
-	 startblock=STARTBLOCK;
-	 endblock=ENDBLOCK;
-	 startpixel=STARTPIXEL;
-	 endpixel=ENDPIXEL;
+	 startblock = STARTBLOCK;
+         endblock = ENDBLOCK;
+         startpixel = STARTPIXEL;
+         endpixel = ENDPIXEL;
       } else {
-	 startblock=ENDBLOCK;
-	 endblock=STARTBLOCK;
-	 startpixel=ENDPIXEL;
-	 endpixel=STARTPIXEL;
+         startblock = ENDBLOCK;
+         endblock = STARTBLOCK;
+         startpixel = ENDPIXEL;
+         endpixel = STARTPIXEL;
       }
    } else {
       startblock = -1;
       endblock = -1;
    }
 
-   for (i=0,xb=gram->blocks ; i<gram->numblocks ; i++,xb++) {
-      if (XRectInRegion(region,xb->x1,xb->y1,xb->x2-xb->x1,
-			xb->y2-xb->y1) != RectangleOut) {
-	 if (i==startblock) {
-	    if (i==endblock) {
-	       SetFG(gram->bgcolor);
-	       XFillRectangle(dpy,w,gc,xb->x1,xb->y1,startpixel,
-			      (xb->y2-xb->y1));
-	       SetFG(xb->fgcolor);
-	       XFillRectangle(dpy,w,gc,xb->x1+startpixel,xb->y1,
-			      (endpixel-startpixel),(xb->y2-xb->y1));
-	       SetFG(gram->bgcolor);
-	       XFillRectangle(dpy,w,gc,xb->x1+endpixel,xb->y1,
-			      (xb->x2-xb->x1-endpixel),(xb->y2-xb->y1));
-	    } else {
-	       SetFG(gram->bgcolor);
-	       XFillRectangle(dpy,w,gc,xb->x1,xb->y1,startpixel,
-			      (xb->y2-xb->y1));
-	       SetFG(xb->fgcolor);
-	       XFillRectangle(dpy,w,gc,xb->x1+startpixel,xb->y1,
-			      (xb->x2-xb->x1-startpixel),(xb->y2-xb->y1));
-	    }
-	 } else if (i==endblock) {
-	    SetFG(xb->fgcolor);
-	    XFillRectangle(dpy,w,gc,xb->x1,xb->y1,endpixel,
-			   (xb->y2-xb->y1));
-	    SetFG(gram->bgcolor);
-	    XFillRectangle(dpy,w,gc,xb->x1+endpixel,xb->y1,
-			   (xb->x2-xb->x1-endpixel),(xb->y2-xb->y1));
-	 } else {
-	    if ((startblock < i) && (i < endblock)) {
-	       SetFG(xb->fgcolor);
-	    } else {
-	       SetFG(gram->bgcolor);
-	    }
-	    XFillRectangle(dpy,w,gc,xb->x1,xb->y1,(xb->x2-xb->x1),
-			   (xb->y2-xb->y1));
-	 }
+   for (i=0, xb = gram->blocks; i < gram->numblocks; i++, xb++) {
+      if (XRectInRegion(region, xb->x1, xb->y1, xb->x2 - xb->x1,
+                        xb->y2 - xb->y1) != RectangleOut) {
+         if (i == startblock) {
+            if (i == endblock) {
+                SetFG(dpy, gc, gram->bgcolor);
+                XFillRectangle(dpy, w, gc, xb->x1, xb->y1, startpixel,
+                               xb->y2 - xb->y1);
+                SetFG(dpy, gc, xb->fgcolor);
+                XFillRectangle(dpy, w, gc, xb->x1 + startpixel, xb->y1,
+                               endpixel - startpixel, xb->y2 - xb->y1);
+                SetFG(dpy, gc, gram->bgcolor);
+                XFillRectangle(dpy, w, gc, xb->x1 + endpixel, xb->y1,
+                               xb->x2 - xb->x1 - endpixel, xb->y2 - xb->y1);
+            } else {
+                SetFG(dpy, gc, gram->bgcolor);
+                XFillRectangle(dpy, w, gc, xb->x1, xb->y1, startpixel,
+                              xb->y2 - xb->y1);
+                SetFG(dpy, gc, xb->fgcolor);
+                XFillRectangle(dpy, w, gc, xb->x1 + startpixel, xb->y1,
+                               xb->x2 - xb->x1 - startpixel,xb->y2 - xb->y1);
+            }
+         } else if (i == endblock) {
+             SetFG(dpy, gc, xb->fgcolor);
+             XFillRectangle(dpy, w, gc, xb->x1, xb->y1, endpixel,
+                            xb->y2 - xb->y1);
+             SetFG(dpy, gc, gram->bgcolor);
+             XFillRectangle(dpy, w, gc, xb->x1 + endpixel, xb->y1,
+                            xb->x2 - xb->x1 - endpixel, xb->y2 - xb->y1);
+         } else {
+             if (startblock < i && i < endblock) {
+                 SetFG(dpy, gc, xb->fgcolor);
+             } else {
+                 SetFG(dpy, gc, gram->bgcolor);
+             }
+             XFillRectangle(dpy, w, gc, xb->x1, xb->y1, xb->x2 - xb->x1,
+                            xb->y2 - xb->y1);
+         }
       }
    }
 
-   gcvals.function=GXxor;
-   XChangeGC(dpy,gc,GCFunction,&gcvals);
+   gcvals.function = GXxor;
+   XChangeGC(dpy, gc, GCFunction, &gcvals);
 
-   for (i=0,xb=gram->blocks ; i<gram->numblocks ; i++,xb++) {
-      if (XRectInRegion(region,xb->x1,xb->y1,xb->x2-xb->x1,
-			xb->y2-xb->y1) != RectangleOut) {
-	 SetFG(gram->bgcolor^xb->fgcolor);
-	 text.chars=gram->text+xb->strindex;
-	 text.nchars=xb->strlen;
-	 text.delta=0;
-	 text.font=xb->fid;
-	 XDrawText(dpy,w,gc,xb->x,xb->y,&text,1);
+   for (i=0, xb = gram->blocks; i < gram->numblocks; i++, xb++) {
+      if (XRectInRegion(region, xb->x1, xb->y1, xb->x2 - xb->x1,
+                        xb->y2 - xb->y1) != RectangleOut) {
+	  SetFG(dpy, gc, gram->bgcolor ^ xb->fgcolor);
+	  text.chars = gram->text + xb->strindex;
+	  text.nchars = xb->strlen;
+	  text.delta = 0;
+	  text.font = xb->fid;
+	  XDrawText(dpy, w, gc, xb->x, xb->y, &text, 1);
      }
    }
 
-   XFreeGC(dpy,gc);
+   XFreeGC(dpy, gc);
 }
 
 void
