@@ -157,6 +157,7 @@ xdestroygram(Display *dpy,
 	     x_gram *gram)
 {
     struct timeval now;
+    int i;
 
     gettimeofday(&now,NULL);
     if ((gram->can_die.tv_sec == 0) ||
@@ -174,6 +175,8 @@ xdestroygram(Display *dpy,
     XDestroyWindow(dpy, w);
     delete_gram(gram);
     free(gram->text);
+    for (i=0; i < gram->numblocks; i++)
+	free(gram->blocks[i].wstr);
     free(gram->blocks);
 #ifdef CMU_ZWGCPLUS
     if (gram->notice)

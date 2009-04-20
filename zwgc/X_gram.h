@@ -24,12 +24,14 @@
 #include "formatter.h"
 
 typedef struct _xblock {
-   unsigned long fgcolor;
-   Font fid;
-   int x,y;
-   int x1,y1,x2,y2; /* bounds of block.  used for cut and paste. */
-   int strindex;
-   int strlen;
+    unsigned long fgcolor;
+    Font fid;
+    int x,y;
+    int x1,y1,x2,y2; /* bounds of block.  used for cut and paste. */
+    int strindex;
+    int strlen;
+    char *wstr;
+    int wlen;
 } xblock;
 
 typedef struct _x_gram {
@@ -46,11 +48,11 @@ typedef struct _x_gram {
 } x_gram;
 
 typedef struct _xauxblock {
-   int align;
-   XFontStruct *font;
-   char *str;
-   int len;
-   int width;
+    int align;
+    XFontStruct *font;
+    char *str;
+    int len;
+    int width;
 } xauxblock;
 
 typedef struct _xmode {

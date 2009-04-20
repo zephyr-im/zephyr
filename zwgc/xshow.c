@@ -164,8 +164,9 @@ fixup_and_draw(Display *dpy,
 	
 	for (i = 0; i < lines[line].numblock; i++, block++) {
 	    chars += auxblocks[block].len;
-	    ssize = XTextWidth(auxblocks[block].font, auxblocks[block].str,
-			       auxblocks[block].len);
+	    ssize = XTextWidth16(auxblocks[block].font,
+				 (XChar2b *)blocks[block].wstr,
+				 blocks[block].wlen / 2);
 	    auxblocks[block].width = ssize;
 	    ascent = auxblocks[block].font->ascent;
 	    descent = auxblocks[block].font->descent;
@@ -394,6 +395,8 @@ xshow(Display *dpy, desctype *desc, int numstr, int numnl)
     char *style;
     int free_style = 0;
     int beepcount = 0;
+    char *notice_charset = var_get_variable("notice_charset");
+    int i;
 
     lines = (xlinedesc *)malloc(sizeof(xlinedesc) * (numnl + 1));
 
@@ -508,6 +511,20 @@ xshow(Display *dpy, desctype *desc, int numstr, int numnl)
 	    auxblocks[nextblock].font = mode_to_font(dpy, style, &curmode);
 	    auxblocks[nextblock].str = desc->str;
 	    auxblocks[nextblock].len = desc->len;
+	    i = ZTransliterate(desc->str, desc->len,
+			       strcmp(notice_charset, "UNKNOWN") ?
+			        notice_charset : "ISO-8859-1",
+			       "UTF-16BE",
+			       &blocks[nextblock].wstr,
+			       &blocks[nextblock].wlen);
+	    if (i) {
+		var_set_variable("error", strerror(i));
+		blocks[nextblock].wlen = desc->len * 2;
+		blocks[nextblock].wstr = malloc(blocks[nextblock].wlen);
+		for (i = 0; i < desc->len; i++)
+		    *(short *)&(blocks[nextblock].wstr[i * 2]) = htons((short)(unsigned char)desc->str[i]);
+		/* XXX */
+	    }
 	    if (curmode.expcolor)
 	       blocks[nextblock].fgcolor = curmode.color;
 	    else

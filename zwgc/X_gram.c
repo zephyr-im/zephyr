@@ -431,7 +431,7 @@ x_gram_draw(Display *dpy, Window w, x_gram *gram, Region region)
    GC gc;
    XGCValues gcvals;
    xblock *xb;
-   XTextItem text;
+   XTextItem16 text;
    int startblock, endblock, startpixel = 0, endpixel = 0;
    
    gc = XCreateGC(dpy, w, 0, &gcvals);
@@ -502,11 +502,11 @@ x_gram_draw(Display *dpy, Window w, x_gram *gram, Region region)
       if (XRectInRegion(region, xb->x1, xb->y1, xb->x2 - xb->x1,
                         xb->y2 - xb->y1) != RectangleOut) {
 	  SetFG(dpy, gc, gram->bgcolor ^ xb->fgcolor);
-	  text.chars = gram->text + xb->strindex;
-	  text.nchars = xb->strlen;
+	  text.chars = (XChar2b *)xb->wstr;
+	  text.nchars = xb->wlen / 2;
 	  text.delta = 0;
 	  text.font = xb->fid;
-	  XDrawText(dpy, w, gc, xb->x, xb->y, &text, 1);
+	  XDrawText16(dpy, w, gc, xb->x, xb->y, &text, 1);
      }
    }
 
