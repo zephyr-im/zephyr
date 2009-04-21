@@ -31,7 +31,7 @@
 #define  LARGE_SIZE        2
 
 /*
- *    XFontStruct *get_font(string family; int size, face)
+ *    XFontSet get_font(string family; int size, face)
  *         Requires: size is one of SMALL_SIZE, MEDIUM_SIZE, LARGE_SIZE and
  *                   face is one of ROMAN_FACE, BOLD_FACE, ITALIC_FACE,
  *                   BOLDITALIC_FACE.
@@ -41,7 +41,6 @@
  *                  specified by default.medium.roman is used. <<<>>>
  */
 
-extern XFontStruct *get_font(Display *, string, string, int, int);
-extern XFontStruct *get_fontst_from_fid(Font);
+extern XFontSet get_font(Display *, string, string, int, int);
 
 #endif

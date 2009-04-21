@@ -46,22 +46,24 @@ x_gram *oldgram = NULL;
 
 void
 xmarkSetBound(x_gram *gram,
-	      int x,
-	      int y,
-	      int which)
+              int x,
+              int y,
+              int which)
 {
    int i,xofs,yofs;
-   XFontStruct *font;
+   XFontSet font;
    xblock *xb;
    unsigned char *s;
+   int num_chars;
+   XRectangle *ink, *logical;
 
 #ifdef MARK_DEBUG
 #define RETURN \
    if ((oldblock[which] != markblock[which]) || \
        (oldpixel[which] != markpixel[which])) { \
       printf("----- SetBound:\noldblock[%d]=%d,   oldpixel[%d]=%d\nmarkblock[%d]=%d, markpixel[%d]=%d\n-----", \
-	     which,oldblock[which],which,oldpixel[which], \
-	     which,markblock[which],which,markpixel[which]); \
+             which,oldblock[which],which,oldpixel[which], \
+             which,markblock[which],which,markpixel[which]); \
    } \
    return
 #else
@@ -78,8 +80,8 @@ xmarkSetBound(x_gram *gram,
 
    /* Start at the top, fastforward to first span not too high. */
    for (i=0,xb=gram->blocks ;
-	(i<gram->numblocks) && (xb->y2 < y) ;
-	i++,xb++) ;
+        (i<gram->numblocks) && (xb->y2 < y) ;
+        i++,xb++) ;
 
    /* the point is after the end */
    if (i==gram->numblocks) {
@@ -108,25 +110,41 @@ xmarkSetBound(x_gram *gram,
    for (yofs=xb->y1;(i<gram->numblocks) && (xb->y1 == yofs);i++,xb++) {
 
       if (x <= xb->x2) {
-	 markblock[which]=i;
+         markblock[which]=i;
 
-	 xofs=xb->x1;
-	 if ((x < xofs) || (y < xb->y1)) {
-	    markchar[which]=0;
-	    RETURN;
-	 }
-	 font=get_fontst_from_fid(xb->fid);
-	 for (i=0,s=(unsigned char *)((gram->text)+(xb->strindex));
-	      xofs<x && i<xb->strlen;
-	      i++,s++) {
-	     /* if font->per_char is NULL, then we should use min_bounds */
-	     short usewidth = font->per_char ? font->per_char[*s - font->min_char_or_byte2].width : font->min_bounds.width;
-	   if (x <= (xofs+=usewidth)) {
-	      markchar[which]=i;
-	      markpixel[which]=xofs - xb->x1 - usewidth;
-	      RETURN;
-	   }
-	 }
+         xofs=xb->x1;
+         if ((x < xofs) || (y < xb->y1)) {
+            markchar[which]=0;
+            RETURN;
+         }
+         font = xb->font;
+#ifdef X_HAVE_UTF8_STRING
+         Xutf8TextPerCharExtents(font, xb->wstr, xb->wlen,
+                                 NULL, NULL, -1, &num_chars, NULL, NULL);
+#else
+         XwcTextPerCharExtents(font, (XChar2b *)xb->wstr, xb->wlen,
+                               NULL, NULL, -1, &num_chars, NULL, NULL);
+#endif
+         ink = malloc(num_chars * sizeof(XRectangle));
+         logical = malloc(num_chars * sizeof(XRectangle));
+#ifdef X_HAVE_UTF8_STRING
+         Xutf8TextPerCharExtents(font, xb->wstr, xb->wlen,
+                                 ink, logical, num_chars, &num_chars, NULL, NULL);
+#else
+         XwcTextPerCharExtents(font, (XChar2b *)xb->wstr, xb->wlen,
+                               ink, logical, num_chars, &num_chars, NULL, NULL);
+#endif
+         for (i=0;i<num_chars;i++) {
+           if (x <= xofs + logical[i].x + logical[i].width) {
+              markchar[which]=i;
+              markpixel[which]=xofs + logical[i].x - xb->x1;
+              free(ink);
+              free(logical);
+              RETURN;
+           }
+         }
+         free(ink);
+         free(logical);
       }
    }
 
@@ -140,7 +158,7 @@ xmarkSetBound(x_gram *gram,
 /* needs both bounds to be valid (!= -1) */
 static int
 xmarkNearest(int x,
-	     int y)
+             int y)
 {
    int middle;
 
@@ -154,20 +172,20 @@ xmarkNearest(int x,
    else {
       middle=(ENDCHAR+STARTCHAR)/2;
       if (markchar[XMARK_TEMP_BOUND] < middle)
-	return(XMARK_START_BOUND);
+        return(XMARK_START_BOUND);
       else
-	return(XMARK_END_BOUND);
+        return(XMARK_END_BOUND);
    }
 }
 
 void
 xmarkExpose(Display *dpy,
-	    Window w,
-	    x_gram *gram,
-	    unsigned int b1,
-	    unsigned int p1,
-	    unsigned int b2,
-	    unsigned int p2)
+            Window w,
+            x_gram *gram,
+            unsigned int b1,
+            unsigned int p1,
+            unsigned int b2,
+            unsigned int p2)
 {
 #define swap(x,y) temp=(x); (x)=(y); (y)=temp
    int i,temp;
@@ -193,40 +211,40 @@ xmarkExpose(Display *dpy,
 
    for (i=b1;i<=b2;i++) {
       if (b1==b2) {
-	 expose.x=gram->blocks[i].x1+p1;
-	 expose.y=gram->blocks[i].y1;
-	 expose.width=p2-p1;
-	 expose.height=gram->blocks[i].y2-gram->blocks[i].y1;
-	 expose.count=0;
+         expose.x=gram->blocks[i].x1+p1;
+         expose.y=gram->blocks[i].y1;
+         expose.width=p2-p1;
+         expose.height=gram->blocks[i].y2-gram->blocks[i].y1;
+         expose.count=0;
       } else if (i==b1) {
-	 expose.x=gram->blocks[i].x1+p1;
-	 expose.y=gram->blocks[i].y1;
-	 expose.width=gram->blocks[i].x2-p1;
-	 expose.height=gram->blocks[i].y2-gram->blocks[i].y1;
-	 expose.count=b2-i;
+         expose.x=gram->blocks[i].x1+p1;
+         expose.y=gram->blocks[i].y1;
+         expose.width=gram->blocks[i].x2-p1;
+         expose.height=gram->blocks[i].y2-gram->blocks[i].y1;
+         expose.count=b2-i;
       } else if (i==b2) {
-	 expose.x=gram->blocks[i].x1;
-	 expose.y=gram->blocks[i].y1;
-	 expose.width=p2;
-	 expose.height=gram->blocks[i].y2-gram->blocks[i].y1;
-	 expose.count=b2-i;
+         expose.x=gram->blocks[i].x1;
+         expose.y=gram->blocks[i].y1;
+         expose.width=p2;
+         expose.height=gram->blocks[i].y2-gram->blocks[i].y1;
+         expose.count=b2-i;
       } else {
-	 expose.x=gram->blocks[i].x1;
-	 expose.y=gram->blocks[i].y1;
-	 expose.width=gram->blocks[i].x2-gram->blocks[i].x1;
-	 expose.height=gram->blocks[i].y2-gram->blocks[i].y1;
-	 expose.count=b2-i;
+         expose.x=gram->blocks[i].x1;
+         expose.y=gram->blocks[i].y1;
+         expose.width=gram->blocks[i].x2-gram->blocks[i].x1;
+         expose.height=gram->blocks[i].y2-gram->blocks[i].y1;
+         expose.count=b2-i;
       }
 
 #ifdef MARK_DEBUG
    if (expose.width && expose.height) {
       printf("---- markExpose:\nb1=%d p1=%d b2=%d p2=%d\n",b1,p1,b2,p2);
       printf("x=%d y=%d w=%d h=%d\n-----",
-	     expose.x,expose.y,expose.width,expose.height);
+             expose.x,expose.y,expose.width,expose.height);
    }
 #endif
       if ((expose.width && expose.height) || (expose.count == 0))
-	XSendEvent(dpy,w,True,ExposureMask,&event);
+        XSendEvent(dpy,w,True,ExposureMask,&event);
    }
 }
 
@@ -234,9 +252,9 @@ xmarkExpose(Display *dpy,
 
 void
 xmarkRedraw(Display *dpy,
-	    Window w,
-	    x_gram *gram,
-	    int range)
+            Window w,
+            x_gram *gram,
+            int range)
 {
 #define ob1 ((unsigned int) oldblock[XMARK_START_BOUND])
 #define ob2 ((unsigned int) oldblock[XMARK_END_BOUND])
@@ -262,7 +280,7 @@ xmarkRedraw(Display *dpy,
    }
 #ifdef DEBUG
      else {
-	printf("xmarkRedraw:  This shouldn't happen!\n");
+        printf("xmarkRedraw:  This shouldn't happen!\n");
      }
 #endif
 }
@@ -277,11 +295,11 @@ xmarkSecond(void)
      return(XMARK_END_BOUND);
    else {
       if (STARTCHAR > ENDCHAR)
-	return(XMARK_START_BOUND);
+        return(XMARK_START_BOUND);
       else if (STARTCHAR < ENDCHAR)
-	return(XMARK_END_BOUND);
+        return(XMARK_END_BOUND);
       else
-	return(XMARK_END_BOUND);
+        return(XMARK_END_BOUND);
    }
 }
 
@@ -305,8 +323,8 @@ xmarkClear(void)
 
 int
 xmarkExtendFromFirst(x_gram *gram,
-		     int x,
-		     int y)
+                     int x,
+                     int y)
 {
    if (markgram != gram) {
       xmarkClear();
@@ -328,8 +346,8 @@ xmarkExtendFromFirst(x_gram *gram,
 
 int
 xmarkExtendFromNearest(x_gram *gram,
-		       int x,
-		       int y)
+                       int x,
+                       int y)
 {
    int bound;
 
@@ -363,34 +381,34 @@ xmarkGetText(void)
 
     if (xmarkValid()) {
        if (xmarkSecond() == XMARK_END_BOUND) {
-	  startblock=STARTBLOCK;
-	  endblock=ENDBLOCK;
-	  startchar=STARTCHAR;
-	  endchar=ENDCHAR;
+          startblock=STARTBLOCK;
+          endblock=ENDBLOCK;
+          startchar=STARTCHAR;
+          endchar=ENDCHAR;
        } else {
-	  startblock=ENDBLOCK;
-	  endblock=STARTBLOCK;
-	  startchar=ENDCHAR;
-	  endchar=STARTCHAR;
+          startblock=ENDBLOCK;
+          endblock=STARTBLOCK;
+          startchar=ENDCHAR;
+          endchar=STARTCHAR;
        }
 
        for (i=startblock; i<=endblock; i++) {
-	  if (last_y != -1 && last_y != markgram->blocks[i].y)
-	    text_so_far = string_Concat2(text_so_far, "\n");
-	  index = markgram->blocks[i].strindex;
-	  len = markgram->blocks[i].strlen;
-	  if (startblock == endblock)
-	    temp = string_CreateFromData(text+index+startchar,
-					 endchar-startchar);
-	  else if (i==startblock)
-	    temp = string_CreateFromData(text+index+startchar,len-startchar);
-	  else if (i==endblock)
-	    temp = string_CreateFromData(text+index,endchar);
-	  else
-	    temp = string_CreateFromData(text+index,len);
-	  text_so_far = string_Concat2(text_so_far, temp);
-	  free(temp);
-	  last_y = markgram->blocks[i].y;
+          if (last_y != -1 && last_y != markgram->blocks[i].y)
+            text_so_far = string_Concat2(text_so_far, "\n");
+          index = markgram->blocks[i].strindex;
+          len = markgram->blocks[i].strlen;
+          if (startblock == endblock)
+            temp = string_CreateFromData(text+index+startchar,
+                                         endchar-startchar);
+          else if (i==startblock)
+            temp = string_CreateFromData(text+index+startchar,len-startchar);
+          else if (i==endblock)
+            temp = string_CreateFromData(text+index,endchar);
+          else
+            temp = string_CreateFromData(text+index,len);
+          text_so_far = string_Concat2(text_so_far, temp);
+          free(temp);
+          last_y = markgram->blocks[i].y;
        }
     }
 
@@ -398,4 +416,3 @@ xmarkGetText(void)
 }
 
 #endif /* X_DISPLAY_MISSING */
-

@@ -60,8 +60,8 @@ static int enable_delete;
 static char *title_name,*icon_name;
 static Cursor cursor;
 static Window group_leader; /* In order to have transient windows,
-			     * I need a top-level window to always exist
-			     */
+                             * I need a top-level window to always exist
+                             */
 static XClassHint classhint;
 static XSetWindowAttributes xattributes;
 static unsigned long xattributes_mask;
@@ -83,7 +83,7 @@ static Atom net_wm_window_type_utility = None;
  * and for individual zgrams:
  *
  * WM_TRANSIENT_FOR         XSetTransientForHint(dpy,w,main_window);
- * WM_PROTOCOLS		    XSetWMProtocols(dpy,w,protocols,cnt);
+ * WM_PROTOCOLS             XSetWMProtocols(dpy,w,protocols,cnt);
  */
 
 /* set all properties defined in ICCCM.  If main_window == 0,
@@ -93,12 +93,12 @@ static Atom net_wm_window_type_utility = None;
 /*ARGSUSED*/
 void
 x_set_icccm_hints(Display *dpy,
-		  Window w,
-		  char *name,
-		  char *icon_name,
-		  XSizeHints *psizehints,
-		  XWMHints *pwmhints,
-		  Window main_window)
+                  Window w,
+                  char *name,
+                  char *icon_name,
+                  XSizeHints *psizehints,
+                  XWMHints *pwmhints,
+                  Window main_window)
 {
    XStoreName(dpy,w,name);
    XSetIconName(dpy,w,icon_name);
@@ -109,7 +109,7 @@ x_set_icccm_hints(Display *dpy,
       e.g. Motif wm */
    if (main_window != None) {
       if (set_transient)
-	  XSetTransientForHint(dpy,w,main_window);
+          XSetTransientForHint(dpy,w,main_window);
    }
    if (enable_delete)
       XSetWMProtocols(dpy,w,&XA_WM_DELETE_WINDOW,1);
@@ -183,42 +183,42 @@ x_gram_init(Display *dpy)
 
     temp = get_string_resource("pointerColor", "Foreground");
     if (temp) {
-	char *temp2;
-	XColor cursor_fore, cursor_back;
-	/* XXX need to do our own parsing here, since the RecolorCursor
-	   routine requires an XColor, not an unsigned long (pixel) */
-	if (!(temp2 = get_string_resource("background","Background"))) {
-	    if (default_bgcolor == WhitePixelOfScreen(DefaultScreenOfDisplay(dpy)))
-		temp2 = "white";
-	    else
-		temp2 = "black";
-	}
-	if (XParseColor(dpy,
-			DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
-			temp, &cursor_fore) &&
-	    XParseColor(dpy,
-			DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
-			temp2, &cursor_back)) {
-	      XRecolorCursor(dpy, cursor, &cursor_fore, &cursor_back);
-	  }
+        char *temp2;
+        XColor cursor_fore, cursor_back;
+        /* XXX need to do our own parsing here, since the RecolorCursor
+           routine requires an XColor, not an unsigned long (pixel) */
+        if (!(temp2 = get_string_resource("background","Background"))) {
+            if (default_bgcolor == WhitePixelOfScreen(DefaultScreenOfDisplay(dpy)))
+                temp2 = "white";
+            else
+                temp2 = "black";
+        }
+        if (XParseColor(dpy,
+                        DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
+                        temp, &cursor_fore) &&
+            XParseColor(dpy,
+                        DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
+                        temp2, &cursor_back)) {
+              XRecolorCursor(dpy, cursor, &cursor_fore, &cursor_back);
+          }
     }
     if (!(title_name=get_string_resource("title","Title")))
       if (!(title_name=get_string_resource("name","Name")))
-	title_name=app_instance;
+        title_name=app_instance;
 
     if (!(icon_name=get_string_resource("iconName","IconName")))
       if (!(icon_name=get_string_resource("name","Name")))
-	icon_name=app_instance;
+        icon_name=app_instance;
 
     if (!(temp=get_string_resource("name","Name")))
       if (!(temp=(char *) getenv("RESOURCE_NAME")))
-	temp=app_instance;
+        temp=app_instance;
     classhint.res_name=string_Copy(temp);
     classhint.res_class="Zwgc";
 
     if (set_transient) {
        group_leader=XCreateSimpleWindow(dpy,DefaultRootWindow(dpy),0,0,100,100,
-					0,default_bordercolor,default_bgcolor);
+                                        0,default_bordercolor,default_bgcolor);
        sizehints.x = 0;
        sizehints.y = 0;
        sizehints.width = 100;
@@ -230,84 +230,84 @@ x_gram_init(Display *dpy)
        wmhints.flags = InputHint | StateHint;
 
        x_set_icccm_hints(dpy,group_leader,"ZwgcGroup","ZwgcGroup",&sizehints,
-			 &wmhints,0);
+                         &wmhints,0);
     }
     xattributes.border_pixel = default_bordercolor;
     xattributes.cursor = cursor;
     xattributes.event_mask = (ExposureMask|ButtonReleaseMask|ButtonPressMask
-			      |LeaveWindowMask|Button1MotionMask
+                              |LeaveWindowMask|Button1MotionMask
 #ifdef CMU_ZWGCPLUS
-			      |KeyPressMask
+                              |KeyPressMask
 #endif
-			      |Button3MotionMask|StructureNotifyMask);
+                              |Button3MotionMask|StructureNotifyMask);
     xattributes_mask = (CWBackPixel|CWBorderPixel|CWEventMask|CWCursor);
 
     set_all_desktops = get_bool_resource("allDesktops", "AllDesktops", True);
     net_wm_desktop = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
     net_wm_window_type = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
     net_wm_window_type_utility = XInternAtom(dpy,
-					     "_NET_WM_WINDOW_TYPE_UTILITY",
-					     False);
+                                             "_NET_WM_WINDOW_TYPE_UTILITY",
+                                             False);
 
     temp = get_string_resource ("backingStore", "BackingStore");
     if (!temp)
-	return;
+        return;
     xattributes_mask |= CWBackingStore;
     if (!strcasecmp (temp, "notuseful"))
-	xattributes.backing_store = NotUseful;
+        xattributes.backing_store = NotUseful;
     else if (!strcasecmp (temp, "whenmapped"))
-	xattributes.backing_store = WhenMapped;
+        xattributes.backing_store = WhenMapped;
     else if (!strcasecmp (temp, "always"))
-	xattributes.backing_store = Always;
+        xattributes.backing_store = Always;
     else if (!strcasecmp (temp, "default"))
-	xattributes_mask &= ~CWBackingStore;
+        xattributes_mask &= ~CWBackingStore;
     else {
-	switch (get_bool_resource ("backingStore", "BackingStore", -1)) {
-	case 0:
-	    xattributes.backing_store = NotUseful;
-	    break;
-	case 1:
-	    xattributes.backing_store = WhenMapped;
-	    break;
-	case -1:
-	    fprintf (stderr,
-		 "zwgc: Cannot interpret backing-store resource value `%s'.\n",
-		     temp);
-	    xattributes_mask &= ~CWBackingStore;
-	    break;
-	}
+        switch (get_bool_resource ("backingStore", "BackingStore", -1)) {
+        case 0:
+            xattributes.backing_store = NotUseful;
+            break;
+        case 1:
+            xattributes.backing_store = WhenMapped;
+            break;
+        case -1:
+            fprintf (stderr,
+                 "zwgc: Cannot interpret backing-store resource value `%s'.\n",
+                     temp);
+            xattributes_mask &= ~CWBackingStore;
+            break;
+        }
     }
 }
 
 int
 x_calc_gravity(int xalign,
-	       int yalign)
+               int yalign)
 {
-    if (yalign > 0) {					/* North */
-	return (xalign > 0)  ? NorthWestGravity
-	     : (xalign == 0) ? NorthGravity
-	     :                 NorthEastGravity;
-    } else if (yalign == 0) {				/* Center */
-	return (xalign > 0)  ? WestGravity
-	     : (xalign == 0) ? CenterGravity
-	     :                 EastGravity;
-    } else {						/* South */
-	return (xalign > 0)  ? SouthWestGravity
-	     : (xalign == 0) ? SouthGravity
-	     :                 SouthEastGravity;
+    if (yalign > 0) {                                   /* North */
+        return (xalign > 0)  ? NorthWestGravity
+             : (xalign == 0) ? NorthGravity
+             :                 NorthEastGravity;
+    } else if (yalign == 0) {                           /* Center */
+        return (xalign > 0)  ? WestGravity
+             : (xalign == 0) ? CenterGravity
+             :                 EastGravity;
+    } else {                                            /* South */
+        return (xalign > 0)  ? SouthWestGravity
+             : (xalign == 0) ? SouthGravity
+             :                 SouthEastGravity;
     }
 }
 
 void
 x_gram_create(Display *dpy,
-	      x_gram *gram,
-	      int xalign,
-	      int yalign,
-	      int xpos,
-	      int ypos,
-	      int xsize,
-	      int ysize,
-	      int beepcount)
+              x_gram *gram,
+              int xalign,
+              int yalign,
+              int xpos,
+              int ypos,
+              int xsize,
+              int ysize,
+              int beepcount)
 {
     Window w;
     XSizeHints sizehints;
@@ -320,17 +320,17 @@ x_gram_create(Display *dpy,
      */
     if (xalign < 0)
       xpos = WidthOfScreen(DefaultScreenOfDisplay(dpy))
-	  - xpos - xsize - 2 * border_width;
+          - xpos - xsize - 2 * border_width;
     else if (xalign == 0)
       xpos = ((WidthOfScreen(DefaultScreenOfDisplay(dpy))
-	       - xsize - 2 * border_width) >> 1) + xpos;
+               - xsize - 2 * border_width) >> 1) + xpos;
 
     if (yalign<0)
       ypos = HeightOfScreen(DefaultScreenOfDisplay(dpy))
-	  - ypos - ysize - 2 * border_width;
+          - ypos - ysize - 2 * border_width;
     else if (yalign == 0)
       ypos = ((HeightOfScreen(DefaultScreenOfDisplay(dpy))
-	       - ysize - 2 * border_width) >> 1) + ypos;
+               - ysize - 2 * border_width) >> 1) + ypos;
 
     /*
      * Create the window:
@@ -339,9 +339,9 @@ x_gram_create(Display *dpy,
     attributes.background_pixel = gram->bgcolor;
     
     gram->w = w = XCreateWindow (dpy, DefaultRootWindow (dpy), xpos, ypos,
-				 xsize, ysize, border_width, 0,
-				 CopyFromParent, CopyFromParent,
-				 xattributes_mask, &attributes);
+                                 xsize, ysize, border_width, 0,
+                                 CopyFromParent, CopyFromParent,
+                                 xattributes_mask, &attributes);
     
     sizehints.x = xpos;
     sizehints.y = ypos;
@@ -357,7 +357,7 @@ x_gram_create(Display *dpy,
        wmhints.flags = InputHint | StateHint | WindowGroupHint;
 
        x_set_icccm_hints(dpy, w, title_name, icon_name, &sizehints, &wmhints,
-			 group_leader);
+                         group_leader);
     } else {
        wmhints.flags = InputHint | StateHint;
 
@@ -365,11 +365,11 @@ x_gram_create(Display *dpy,
     }
        
     if (net_wm_window_type != None && net_wm_window_type_utility != None)
-	XChangeProperty(dpy, w, net_wm_window_type, XA_ATOM, 32, PropModeReplace,
-			(unsigned char *) &net_wm_window_type_utility, 1);
+        XChangeProperty(dpy, w, net_wm_window_type, XA_ATOM, 32, PropModeReplace,
+                        (unsigned char *) &net_wm_window_type_utility, 1);
     if (set_all_desktops && net_wm_desktop != None)
-	XChangeProperty(dpy, w, net_wm_desktop, XA_CARDINAL, 32, PropModeReplace,
-			(unsigned char *) &all_desktops, 1);
+        XChangeProperty(dpy, w, net_wm_desktop, XA_CARDINAL, 32, PropModeReplace,
+                        (unsigned char *) &all_desktops, 1);
 
     XSaveContext(dpy, w, desc_context, (caddr_t)gram);
 
@@ -378,7 +378,7 @@ x_gram_create(Display *dpy,
     XMapWindow(dpy, w);
 
     if (beepcount)
-	XBell(dpy, 0);
+        XBell(dpy, 0);
 
     xerror_happened = 0;
     if (reverse_stack && bottom_gram) {
@@ -387,17 +387,17 @@ x_gram_create(Display *dpy,
        winchanges.sibling = bottom_gram->w;
        winchanges.stack_mode = Below;
        /* Metacity may use border_width even if it's not specified in
-	* the value mask, so we must initialize it.  See:
-	* http://bugzilla.gnome.org/show_bug.cgi?id=305257 */
+        * the value mask, so we must initialize it.  See:
+        * http://bugzilla.gnome.org/show_bug.cgi?id=305257 */
        winchanges.border_width = border_width;
 
        begin_xerror_trap (dpy);
        XReconfigureWMWindow (dpy, w, DefaultScreen (dpy),
-			     CWSibling | CWStackMode, &winchanges);
+                             CWSibling | CWStackMode, &winchanges);
        end_xerror_trap (dpy);
        if (xerror_happened) {
-	   /* The event didn't go.  Print an error message, and continue.  */
-	   ERROR ("Error configuring window to the bottom of the stack.\n");
+           /* The event didn't go.  Print an error message, and continue.  */
+           ERROR ("Error configuring window to the bottom of the stack.\n");
        }
     }
     /* we always need to keep a linked list of windows */
@@ -406,7 +406,7 @@ x_gram_create(Display *dpy,
        pull_to_top(gram);
 
     if (reset_saver)
-	XResetScreenSaver(dpy);
+        XResetScreenSaver(dpy);
 
     XFlush(dpy);
     /* Because the flushing/syncing/etc with the error trapping can cause
@@ -431,7 +431,11 @@ x_gram_draw(Display *dpy, Window w, x_gram *gram, Region region)
    GC gc;
    XGCValues gcvals;
    xblock *xb;
-   XTextItem16 text;
+#ifdef X_HAVE_UTF8_STRING
+   XmbTextItem text;
+#else
+   XwcTextItem text;
+#endif
    int startblock, endblock, startpixel = 0, endpixel = 0;
    
    gc = XCreateGC(dpy, w, 0, &gcvals);
@@ -439,7 +443,7 @@ x_gram_draw(Display *dpy, Window w, x_gram *gram, Region region)
  
    if ((markgram == gram) && (STARTBLOCK != -1) && (ENDBLOCK != -1)) {
       if (xmarkSecond() == XMARK_END_BOUND) {
-	 startblock = STARTBLOCK;
+         startblock = STARTBLOCK;
          endblock = ENDBLOCK;
          startpixel = STARTPIXEL;
          endpixel = ENDPIXEL;
@@ -501,12 +505,20 @@ x_gram_draw(Display *dpy, Window w, x_gram *gram, Region region)
    for (i=0, xb = gram->blocks; i < gram->numblocks; i++, xb++) {
       if (XRectInRegion(region, xb->x1, xb->y1, xb->x2 - xb->x1,
                         xb->y2 - xb->y1) != RectangleOut) {
-	  SetFG(dpy, gc, gram->bgcolor ^ xb->fgcolor);
-	  text.chars = (XChar2b *)xb->wstr;
-	  text.nchars = xb->wlen / 2;
-	  text.delta = 0;
-	  text.font = xb->fid;
-	  XDrawText16(dpy, w, gc, xb->x, xb->y, &text, 1);
+          SetFG(dpy, gc, gram->bgcolor ^ xb->fgcolor);
+#ifdef X_HAVE_UTF8_STRING
+          text.chars = xb->wstr;
+#else
+          text.chars = (XChar2b *)xb->wstr;
+#endif
+          text.nchars = xb->wlen;
+          text.delta = 0;
+          text.font_set = xb->font;
+#ifdef X_HAVE_UTF8_STRING
+          Xutf8DrawText(dpy, w, gc, xb->x, xb->y, &text, 1);
+#else
+          XwcDrawText(dpy, w, gc, xb->x, xb->y, &text, 1);
+#endif
      }
    }
 
@@ -515,9 +527,9 @@ x_gram_draw(Display *dpy, Window w, x_gram *gram, Region region)
 
 void
 x_gram_expose(Display *dpy,
-	      Window w,
-	      x_gram *gram,
-	      XExposeEvent *event)
+              Window w,
+              x_gram *gram,
+              XExposeEvent *event)
 {
    static Region region;
    static int partregion;
@@ -530,7 +542,7 @@ x_gram_expose(Display *dpy,
 
 #ifdef MARK_DEBUG
    printf("----- xeventExpose:\nx=%d y=%d w=%d h=%d\n-----",
-	  event->x,event->y,event->width,event->height);
+          event->x,event->y,event->width,event->height);
 #endif
 
    if (! partregion) {
@@ -548,4 +560,3 @@ x_gram_expose(Display *dpy,
 }
 
 #endif /* X_DISPLAY_MISSING */
-

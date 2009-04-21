@@ -27,6 +27,7 @@ static const char rcsid_main_c[] = "$Id$";
 #endif
 #include <sys/socket.h>
 #include <sys/resource.h>
+#include <locale.h>
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
 
@@ -144,7 +145,7 @@ fake_startup_packet(void)
     notice->z_auth = ZAUTH_YES;
     notice->z_charset = ZCHARSET_UNKNOWN;
     sprintf(msgbuf,"Zwgc mark II version %s now running...",
-	    zwgc_version_string);
+            zwgc_version_string);
     notice->z_message = msgbuf;
     notice->z_message_len = strlen(notice->z_message)+1;
     
@@ -229,13 +230,13 @@ run_initprogs(void)
     
     status = system(progname);
     if (status == 127) {
-	perror("zwgc initprog exec");
-	fprintf(stderr,"zwgc initprog of <%s> failed: no shell.\n",
-		progname);
+        perror("zwgc initprog exec");
+        fprintf(stderr,"zwgc initprog of <%s> failed: no shell.\n",
+                progname);
     } else if (status!=-1 && status>>8) {
-	perror("zwgc initprog exec");
-	fprintf(stderr,"zwgc initprog of <%s> failed with status [%d].\n",
-		progname, status>>8);
+        perror("zwgc initprog exec");
+        fprintf(stderr,"zwgc initprog of <%s> failed with status [%d].\n",
+                progname, status>>8);
     }
 }
 
@@ -253,6 +254,7 @@ main(int argc, char **argv)
     int status;
 #endif
 
+    setlocale(LC_ALL, "");
     progname = argv[0];
 
     /*
@@ -261,33 +263,33 @@ main(int argc, char **argv)
      * arguments, removing then from argc, argv:
      */
     for (new=current=argv+1; *current; current++) {
-	if (string_Eq(*current, "-debug")) {
-	    argc--;
+        if (string_Eq(*current, "-debug")) {
+            argc--;
 #ifdef DEBUG
-	    zwgc_debug = 1;
+            zwgc_debug = 1;
 #endif
-	} else if (string_Eq(*current, "-f")) {
-	    argc -= 2; current++;
-	    if (!*current)
-	      usage();
-	    description_filename_override = *current;
-	} else if (string_Eq(*current, "-subfile")) {
-	    argc -= 2; current++;
-	    if (!*current)
-	      usage();
-	    subscriptions_filename_override = *current;
-	} else if (string_Eq(*current, "-nofork")) {
-	    argc--;
-	    dofork = 0;
-	} else if (string_Eq(*current, "-reenter")) {
-	    argc--;			/* just throw it away */
-	} else if (string_Eq(*current, "-loc")) {
-	    argc -= 2; current++;
-	    if (!*current)
-	      usage();
-	    location_override = *current;
-	} else
-	  *(new)++ = *current;
+        } else if (string_Eq(*current, "-f")) {
+            argc -= 2; current++;
+            if (!*current)
+              usage();
+            description_filename_override = *current;
+        } else if (string_Eq(*current, "-subfile")) {
+            argc -= 2; current++;
+            if (!*current)
+              usage();
+            subscriptions_filename_override = *current;
+        } else if (string_Eq(*current, "-nofork")) {
+            argc--;
+            dofork = 0;
+        } else if (string_Eq(*current, "-reenter")) {
+            argc--;                     /* just throw it away */
+        } else if (string_Eq(*current, "-loc")) {
+            argc -= 2; current++;
+            if (!*current)
+              usage();
+            location_override = *current;
+        } else
+          *(new)++ = *current;
     }
     *new = *current;
 
@@ -297,9 +299,9 @@ main(int argc, char **argv)
      */
     status = ares_init(&achannel);
     if (status != ARES_SUCCESS) {
-	fprintf(stderr, "Couldn't initialize resolver: %s\n",
-		ares_strerror(status));
-	return(1);
+        fprintf(stderr, "Couldn't initialize resolver: %s\n",
+                ares_strerror(status));
+        return(1);
     }
 #endif
 
@@ -322,7 +324,7 @@ main(int argc, char **argv)
     zephyr_init(notice_handler);
 
     if (dofork)
-	detach();
+        detach();
     /*
      * Run the initprogs program(s) now that we are all set to deal:
      */
@@ -365,19 +367,19 @@ create_punt_reply(int_dictionary_binding *punt)
     char *tmp;
     
     if (!punt_reply.z_message) {
-	punt_reply.z_message = (char *)malloc(PUNT_INC);
-	punt_reply.z_message[0] = 0;
+        punt_reply.z_message = (char *)malloc(PUNT_INC);
+        punt_reply.z_message[0] = 0;
     }
     
     if ((punt_reply.z_message_len + key_len + 1) / PUNT_INC > 
-	(punt_reply.z_message_len + PUNT_INC - 1) / PUNT_INC) {
-	char *new_message = (char *)malloc((punt_reply.z_message_len
-					    / PUNT_INC + 1) * PUNT_INC);
-	
-	strcpy(new_message, punt_reply.z_message);
-	
-	free(punt_reply.z_message);
-	punt_reply.z_message = new_message;
+        (punt_reply.z_message_len + PUNT_INC - 1) / PUNT_INC) {
+        char *new_message = (char *)malloc((punt_reply.z_message_len
+                                            / PUNT_INC + 1) * PUNT_INC);
+        
+        strcpy(new_message, punt_reply.z_message);
+        
+        free(punt_reply.z_message);
+        punt_reply.z_message = new_message;
     }
     tmp = punt_reply.z_message + strlen(punt_reply.z_message);
     strcat (punt_reply.z_message, punt->key);
@@ -402,18 +404,18 @@ notice_handler(ZNotice_t *notice)
 
 #ifdef HAVE_ARES
     ares_getnameinfo(achannel,
-		     (const struct sockaddr *)&(notice->z_sender_sockaddr),
-		     notice->z_sender_sockaddr.sa.sa_family == AF_INET ?
-		     sizeof(struct sockaddr_in) :
-		     notice->z_sender_sockaddr.sa.sa_family == AF_INET6 ?
-		     sizeof(struct sockaddr_in6) :
-		     sizeof(notice->z_sender_sockaddr), ARES_NI_LOOKUPHOST,
-		     notice_callback, notice);
+                     (const struct sockaddr *)&(notice->z_sender_sockaddr),
+                     notice->z_sender_sockaddr.sa.sa_family == AF_INET ?
+                     sizeof(struct sockaddr_in) :
+                     notice->z_sender_sockaddr.sa.sa_family == AF_INET6 ?
+                     sizeof(struct sockaddr_in6) :
+                     sizeof(notice->z_sender_sockaddr), ARES_NI_LOOKUPHOST,
+                     notice_callback, notice);
     
 #else
     getnameinfo((const struct sockaddr *)&(notice->z_sender_sockaddr),
-		sizeof(notice->z_sender_sockaddr),
-		node, sizeof(node), NULL, 0, 0);
+                sizeof(notice->z_sender_sockaddr),
+                node, sizeof(node), NULL, 0, 0);
     
     process_notice(notice, node);
 #ifdef CMU_ZWGCPLUS
@@ -429,16 +431,16 @@ notice_handler(ZNotice_t *notice)
 /*
 static void
 notice_callback(void *arg,
-		int status,
-		int timeouts,
-		struct hostent *fromhost)
+                int status,
+                int timeouts,
+                struct hostent *fromhost)
 */
 static void
 notice_callback(void *arg,
-		int status,
-		int timeouts,
-		char *node,
-		char *service)
+                int status,
+                int timeouts,
+                char *node,
+                char *service)
 {
     ZNotice_t *notice = (ZNotice_t *) arg;
 
@@ -458,7 +460,7 @@ notice_callback(void *arg,
 
 static void
 process_notice(ZNotice_t *notice,
-	       char *hostname)
+               char *hostname)
 {
     char *control_opcode;
 
@@ -467,110 +469,110 @@ process_notice(ZNotice_t *notice,
     control_opcode = decode_notice(notice, hostname);
     if (control_opcode) {
 #ifdef DEBUG
-	printf("got control opcode <%s>.\n", control_opcode);
+        printf("got control opcode <%s>.\n", control_opcode);
 #endif
-	if (!strcasecmp(control_opcode, USER_REREAD)) {
-	    read_in_description_file();
-	} else if (!strcasecmp(control_opcode, USER_SHUTDOWN))
-	  zwgc_shutdown();
-	else if (!strcasecmp(control_opcode, USER_STARTUP)) {
+        if (!strcasecmp(control_opcode, USER_REREAD)) {
+            read_in_description_file();
+        } else if (!strcasecmp(control_opcode, USER_SHUTDOWN))
+          zwgc_shutdown();
+        else if (!strcasecmp(control_opcode, USER_STARTUP)) {
 #ifdef DEBUG_MEMORY
-	    report_memory_usage(); /* <<<>>> */
+            report_memory_usage(); /* <<<>>> */
 #endif
-	    zwgc_startup();
-	} else if (!strcasecmp(control_opcode, USER_SUPPRESS)) {
-	    string class = get_field(notice->z_message,
-				     notice->z_message_len, 1);
-	    string instance = get_field(notice->z_message,
-					notice->z_message_len, 2);
-	    string recipient = get_field(notice->z_message,
-					 notice->z_message_len, 3);
-	    punt(class, instance, recipient);
-	    free(class);
-	    free(instance);
-	    free(recipient);
-	} else if (!strcasecmp(control_opcode, USER_UNSUPPRESS)) {
-	    string class = get_field(notice->z_message,
-				     notice->z_message_len, 1);
-	    string instance = get_field(notice->z_message,
-					notice->z_message_len, 2);
-	    string recipient = get_field(notice->z_message,
-					 notice->z_message_len, 3);
-	    unpunt(class, instance, recipient);
-	    free(class);
-	    free(instance);
-	    free(recipient);
+            zwgc_startup();
+        } else if (!strcasecmp(control_opcode, USER_SUPPRESS)) {
+            string class = get_field(notice->z_message,
+                                     notice->z_message_len, 1);
+            string instance = get_field(notice->z_message,
+                                        notice->z_message_len, 2);
+            string recipient = get_field(notice->z_message,
+                                         notice->z_message_len, 3);
+            punt(class, instance, recipient);
+            free(class);
+            free(instance);
+            free(recipient);
+        } else if (!strcasecmp(control_opcode, USER_UNSUPPRESS)) {
+            string class = get_field(notice->z_message,
+                                     notice->z_message_len, 1);
+            string instance = get_field(notice->z_message,
+                                        notice->z_message_len, 2);
+            string recipient = get_field(notice->z_message,
+                                         notice->z_message_len, 3);
+            unpunt(class, instance, recipient);
+            free(class);
+            free(instance);
+            free(recipient);
 #ifdef CMU_ZCTL_PUNT
         } else if (!strcasecmp(control_opcode, USER_LIST_SUPPRESSED)) {
-	    struct sockaddr_in old, to;
-	    int retval;
-	    
-	    if (!notice->z_port) {
-		printf("zwgc: can't reply to LIST-SUPPRESSED request\n");
-		return;
-	    }
-	    memset((char *) &punt_reply, 0, sizeof(ZNotice_t));
-	    punt_reply.z_kind = CLIENTACK;
-	    punt_reply.z_class = WG_CTL_CLASS;
-	    punt_reply.z_class_inst = "WG_REPLY";
-	    punt_reply.z_recipient = "zctl?";
-	    punt_reply.z_sender = "Zwgc";
-	    punt_reply.z_default_format = "";
-	    punt_reply.z_opcode = USER_LIST_SUPPRESSED;
-	    punt_reply.z_port = notice->z_port;
-	    punt_reply.z_message = NULL;
-	    punt_reply.z_message_len = 0;
-	    
-	    if (puntable_addresses_dict) {
-		int_dictionary_Enumerate(puntable_addresses_dict,
-					 create_punt_reply);
-	    }
-	    
-	    old = ZGetDestAddr();
-	    to = old;
-	    
-	    to.sin_port = notice->z_port;
-	    if ((retval = ZSetDestAddr(&to)) != ZERR_NONE) {
-		com_err("zwgc",retval,"while setting destination address");
-		exit(1);
-	    }
-	    
-	    ZSendNotice(&punt_reply, ZNOAUTH);
-	    
-	    if ((retval = ZSetDestAddr(&old)) != ZERR_NONE) {
-		com_err("zwgc",retval,"while resetting destination address");
-		exit(1);
-	    }
-	    
-	    if (punt_reply.z_message) {
-		free(punt_reply.z_message);
-		punt_reply.z_message = NULL;
-	    }
+            struct sockaddr_in old, to;
+            int retval;
+            
+            if (!notice->z_port) {
+                printf("zwgc: can't reply to LIST-SUPPRESSED request\n");
+                return;
+            }
+            memset((char *) &punt_reply, 0, sizeof(ZNotice_t));
+            punt_reply.z_kind = CLIENTACK;
+            punt_reply.z_class = WG_CTL_CLASS;
+            punt_reply.z_class_inst = "WG_REPLY";
+            punt_reply.z_recipient = "zctl?";
+            punt_reply.z_sender = "Zwgc";
+            punt_reply.z_default_format = "";
+            punt_reply.z_opcode = USER_LIST_SUPPRESSED;
+            punt_reply.z_port = notice->z_port;
+            punt_reply.z_message = NULL;
+            punt_reply.z_message_len = 0;
+            
+            if (puntable_addresses_dict) {
+                int_dictionary_Enumerate(puntable_addresses_dict,
+                                         create_punt_reply);
+            }
+            
+            old = ZGetDestAddr();
+            to = old;
+            
+            to.sin_port = notice->z_port;
+            if ((retval = ZSetDestAddr(&to)) != ZERR_NONE) {
+                com_err("zwgc",retval,"while setting destination address");
+                exit(1);
+            }
+            
+            ZSendNotice(&punt_reply, ZNOAUTH);
+            
+            if ((retval = ZSetDestAddr(&old)) != ZERR_NONE) {
+                com_err("zwgc",retval,"while resetting destination address");
+                exit(1);
+            }
+            
+            if (punt_reply.z_message) {
+                free(punt_reply.z_message);
+                punt_reply.z_message = NULL;
+            }
 #endif
-	} else if (!strcasecmp(control_opcode, USER_EXIT)) {
-	    signal_exit(0);
-	} else
-	  printf("zwgc: unknown control opcode %s.\n", control_opcode);
+        } else if (!strcasecmp(control_opcode, USER_EXIT)) {
+            signal_exit(0);
+        } else
+          printf("zwgc: unknown control opcode %s.\n", control_opcode);
 
-	goto cleanup;
+        goto cleanup;
     }
 
     if (!zwgc_active) {
 #ifdef DEBUG
-	if (zwgc_debug)
-	  printf("NON-ACTIVE: PUNTED <%s>!!!!\n", notice->z_class_inst);
+        if (zwgc_debug)
+          printf("NON-ACTIVE: PUNTED <%s>!!!!\n", notice->z_class_inst);
 #endif
-	goto cleanup;	
+        goto cleanup;   
     }
     
     if (puntable_address_p(notice->z_class,
-			   notice->z_class_inst,
-			   notice->z_recipient)) {
+                           notice->z_class_inst,
+                           notice->z_recipient)) {
 #ifdef DEBUG
-	if (zwgc_debug)
-	  printf("PUNTED <%s>!!!!\n", notice->z_class_inst);
+        if (zwgc_debug)
+          printf("PUNTED <%s>!!!!\n", notice->z_class_inst);
 #endif
-	goto cleanup;
+        goto cleanup;
     }
 
     exec_process_packet(program, notice);
@@ -639,15 +641,15 @@ setup_signals(int dofork)
     sa.sa_flags = 0;
     
     if (dofork) {
-	sa.sa_handler = SIG_IGN;
-	sigaction(SIGINT, &sa, (struct sigaction *)0);
-	sigaction(SIGTSTP, &sa, (struct sigaction *)0);
-	sigaction(SIGQUIT, &sa, (struct sigaction *)0);
-	sigaction(SIGTTOU, &sa, (struct sigaction *)0);
+        sa.sa_handler = SIG_IGN;
+        sigaction(SIGINT, &sa, (struct sigaction *)0);
+        sigaction(SIGTSTP, &sa, (struct sigaction *)0);
+        sigaction(SIGQUIT, &sa, (struct sigaction *)0);
+        sigaction(SIGTTOU, &sa, (struct sigaction *)0);
     } else {
-	/* clean up on SIGINT; exiting on logout is the user's problem, now. */
-	sa.sa_handler = signal_exit;
-	sigaction(SIGINT, &sa, (struct sigaction *)0);
+        /* clean up on SIGINT; exiting on logout is the user's problem, now. */
+        sa.sa_handler = signal_exit;
+        sigaction(SIGINT, &sa, (struct sigaction *)0);
     }
 
     /* behavior never changes */
@@ -666,21 +668,21 @@ setup_signals(int dofork)
 
 #else /* !POSIX */
     if (dofork) {
-	/* Ignore keyboard signals if forking.  Bad things will happen. */
-	signal(SIGINT, SIG_IGN);
-	signal(SIGTSTP, SIG_IGN);
-	signal(SIGTTOU, SIG_IGN);
-	signal(SIGQUIT, SIG_IGN);
+        /* Ignore keyboard signals if forking.  Bad things will happen. */
+        signal(SIGINT, SIG_IGN);
+        signal(SIGTSTP, SIG_IGN);
+        signal(SIGTTOU, SIG_IGN);
+        signal(SIGQUIT, SIG_IGN);
     } else {
-	/* clean up on SIGINT; exiting on logout is the user's problem, now. */
-	signal(SIGINT, signal_exit);
+        /* clean up on SIGINT; exiting on logout is the user's problem, now. */
+        signal(SIGINT, signal_exit);
     }
     
     /* behavior never changes */
     signal(SIGTERM, signal_exit);
     signal(SIGHUP, signal_exit);
     signal(SIGCHLD, signal_child);
-    signal(SIGPIPE, SIG_IGN);		/* so that Xlib gets an error */
+    signal(SIGPIPE, SIG_IGN);           /* so that Xlib gets an error */
     signal(SIGUSR1, signal_usr1);
 #endif
 }
@@ -713,9 +715,9 @@ detach(void)
   i = fork();
   if (i) {
       if (i < 0) {
-	  perror("zwgc: cannot fork, aborting:");
-	  exit(1);
+          perror("zwgc: cannot fork, aborting:");
+          exit(1);
       }
       exit(0);
   }
-}	
+}       

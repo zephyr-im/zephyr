@@ -57,14 +57,14 @@ xshowinit(void)
 }
 
 struct res_dict_type {
-    pointer_dictionary	dict;
-    char *		resname_suffix;
-    char *		resclass;
+    pointer_dictionary  dict;
+    char *              resname_suffix;
+    char *              resclass;
 };
 
 static char *
 xres_get_resource(struct res_dict_type *restype,
-		  char *style)
+                  char *style)
 {
    char *desc;
    pointer_dictionary_binding *binding;
@@ -85,9 +85,9 @@ xres_get_resource(struct res_dict_type *restype,
       value=get_string_resource(desc, restype->resclass);
       free(desc);
       if (value==NULL)
-	 pointer_dictionary_Delete(restype->dict, binding);
+         pointer_dictionary_Delete(restype->dict, binding);
       else
-	 binding->value=(pointer) value;
+         binding->value=(pointer) value;
       return value;  /* If resource returns NULL, return NULL also */
    }
 }
@@ -111,8 +111,8 @@ static struct res_dict_type fgcolor_resources = {
 /*ARGSUSED*/
 char *
 mode_to_colorname (Display *dpy,
-		   char *style,
-		   xmode *mode)
+                   char *style,
+                   xmode *mode)
 {
     char *desc, *result;
 
@@ -125,13 +125,13 @@ mode_to_colorname (Display *dpy,
 
 void
 fixup_and_draw(Display *dpy,
-	       char *style,
-	       xauxblock *auxblocks,
-	       xblock *blocks,
-	       int num,
-	       xlinedesc *lines,
-	       int numlines,
-	       int beepcount)
+               char *style,
+               xauxblock *auxblocks,
+               xblock *blocks,
+               int num,
+               xlinedesc *lines,
+               int numlines,
+               int beepcount)
 {
     int gram_xalign = 1;
     int gram_yalign = 1;
@@ -150,6 +150,7 @@ fixup_and_draw(Display *dpy,
     int ystart,yend;
 
     char *bgstr, *geometry, xpos[10], ypos[10], xfrom, yfrom;
+    XFontSetExtents *fse;
 
     gram = (x_gram *)malloc(sizeof(x_gram));
 
@@ -157,96 +158,103 @@ fixup_and_draw(Display *dpy,
        length of the longest line and the total number of characters. */
 
     for (line = 0; line < numlines; line++) {
-	lsize = csize = rsize = 0;
-	maxascent = maxdescent = 0;
-	
-	/* add up sizes for each block, get max ascent and descent */
-	
-	for (i = 0; i < lines[line].numblock; i++, block++) {
-	    chars += auxblocks[block].len;
-	    ssize = XTextWidth16(auxblocks[block].font,
-				 (XChar2b *)blocks[block].wstr,
-				 blocks[block].wlen / 2);
-	    auxblocks[block].width = ssize;
-	    ascent = auxblocks[block].font->ascent;
-	    descent = auxblocks[block].font->descent;
-	    if (ascent > maxascent)
-	      maxascent = ascent;
-	    if (descent > maxdescent)
-	      maxdescent = descent;
-	    switch (auxblocks[block].align) {
-	      case LEFTALIGN:
-		lsize += ssize;
-		break;
-		
-	      case CENTERALIGN:
-		csize += ssize;
-		break;
-		
-	      case RIGHTALIGN:
-		rsize += ssize;
-		break;
-	    }
-	}
-	
-	/* save what we need to do size fixups */
-	
-	if (maxascent > lines[line].ascent)
-	  lines[line].ascent = maxascent;
-	if (maxdescent > lines[line].descent)
-	  lines[line].descent = maxdescent;
-	lines[line].lsize = lsize;
-	lines[line].csize = csize;
-	lines[line].rsize = rsize;
-	
-	/* get width of line and see if it is bigger than the max width */
-
-	switch ((lsize ? 1 : 0) + (csize ?2 : 0) + (rsize ? 4 : 0)) {
-#ifdef DEBUG
-	  default:
-	    abort();
+        lsize = csize = rsize = 0;
+        maxascent = maxdescent = 0;
+        
+        /* add up sizes for each block, get max ascent and descent */
+        
+        for (i = 0; i < lines[line].numblock; i++, block++) {
+            chars += auxblocks[block].len;
+#ifdef X_HAVE_UTF8_STRING
+            ssize = Xutf8TextEscapement(auxblocks[block].font,
+                                        blocks[block].wstr,
+                                        blocks[block].wlen);
+#else
+            ssize = XwcTextEscapement(auxblocks[block].font,
+                                      (XChar2b *)blocks[block].wstr,
+                                      blocks[block].wlen);
 #endif
-	    
-	  case 0:
-	    width = 0;
-	    break;
-	    
-	  case 1:
-	    width = lsize;
-	    break;
-	    
-	  case 2:
-	    width = csize;
-	    break;
-	    
-	  case 3:
-	    /* in all these cases, we just want to add the width of *any*
-	       space, so the first font will do just fine. */
-	    /* XXX implicit assumption that a line must have at least one
-	       block, so that there is indeed a reasonable font in
-	       auxblocks[0].font */
-	    width = lsize * 2 + csize + XTextWidth(auxblocks[0].font, " ", 1);
-	    break;
-	    
-	  case 4:
-	    width = rsize;
-	    break;
-	    
-	  case 5:
-	    width = lsize + rsize + XTextWidth(auxblocks[0].font, " ", 1);
-	    break;
-	    
-	  case 6:
-	    width = csize + rsize * 2 + XTextWidth(auxblocks[0].font, " ", 1);
-	    break;
-	    
-	  case 7:
-	    width = max(lsize, rsize) * 2 + csize +
-		XTextWidth(auxblocks[0].font, " ", 1) * 2;
-	    break;
-	}
-	if (width > maxwidth)
-	  maxwidth = width;
+            auxblocks[block].width = ssize;
+            fse = XExtentsOfFontSet(auxblocks[block].font);
+            ascent = -fse->max_logical_extent.y;
+            descent = fse->max_logical_extent.y + fse->max_logical_extent.height;
+            if (ascent > maxascent)
+              maxascent = ascent;
+            if (descent > maxdescent)
+              maxdescent = descent;
+            switch (auxblocks[block].align) {
+              case LEFTALIGN:
+                lsize += ssize;
+                break;
+                
+              case CENTERALIGN:
+                csize += ssize;
+                break;
+                
+              case RIGHTALIGN:
+                rsize += ssize;
+                break;
+            }
+        }
+        
+        /* save what we need to do size fixups */
+        
+        if (maxascent > lines[line].ascent)
+          lines[line].ascent = maxascent;
+        if (maxdescent > lines[line].descent)
+          lines[line].descent = maxdescent;
+        lines[line].lsize = lsize;
+        lines[line].csize = csize;
+        lines[line].rsize = rsize;
+        
+        /* get width of line and see if it is bigger than the max width */
+
+        switch ((lsize ? 1 : 0) + (csize ?2 : 0) + (rsize ? 4 : 0)) {
+#ifdef DEBUG
+          default:
+            abort();
+#endif
+            
+          case 0:
+            width = 0;
+            break;
+            
+          case 1:
+            width = lsize;
+            break;
+            
+          case 2:
+            width = csize;
+            break;
+            
+          case 3:
+            /* in all these cases, we just want to add the width of *any*
+               space, so the first font will do just fine. */
+            /* XXX implicit assumption that a line must have at least one
+               block, so that there is indeed a reasonable font in
+               auxblocks[0].font */
+            width = lsize * 2 + csize + XmbTextEscapement(auxblocks[0].font, " ", 1);
+            break;
+            
+          case 4:
+            width = rsize;
+            break;
+            
+          case 5:
+            width = lsize + rsize + XmbTextEscapement(auxblocks[0].font, " ", 1);
+            break;
+            
+          case 6:
+            width = csize + rsize * 2 + XmbTextEscapement(auxblocks[0].font, " ", 1);
+            break;
+            
+          case 7:
+            width = max(lsize, rsize) * 2 + csize +
+                XmbTextEscapement(auxblocks[0].font, " ", 1) * 2;
+            break;
+        }
+        if (width > maxwidth)
+          maxwidth = width;
     }
 
     /* fixup x,y for each block, create big string and indices into it */
@@ -256,49 +264,49 @@ fixup_and_draw(Display *dpy,
     block = 0;
 
     for (line = 0; line < numlines; line++) {
-	lofs = internal_border_width;
-	cofs = ((maxwidth - lines[line].csize) >> 1) + internal_border_width;
-	rofs = maxwidth - lines[line].rsize + internal_border_width;
-	ystart = yofs;
-	yofs += lines[line].ascent;
-	yend = yofs + lines[line].descent + 1;   /* +1 because lines look scrunched
-						    without it. */
+        lofs = internal_border_width;
+        cofs = ((maxwidth - lines[line].csize) >> 1) + internal_border_width;
+        rofs = maxwidth - lines[line].rsize + internal_border_width;
+        ystart = yofs;
+        yofs += lines[line].ascent;
+        yend = yofs + lines[line].descent + 1;   /* +1 because lines look scrunched
+                                                    without it. */
 
-	for (i = 0; i < lines[line].numblock; i++, block++) {
-	    blocks[block].fid = auxblocks[block].font->fid;
-	    switch (auxblocks[block].align) {
-	      case LEFTALIGN:
-		blocks[block].x = lofs;
-		blocks[block].x1 = lofs;
-		lofs += auxblocks[block].width;
-		blocks[block].x2 = lofs;
-		break;
-		
-	      case CENTERALIGN:
-		blocks[block].x = cofs;
-		blocks[block].x1 = cofs;
-		cofs += auxblocks[block].width;
-		blocks[block].x2 = cofs;
-		break;
+        for (i = 0; i < lines[line].numblock; i++, block++) {
+            blocks[block].font = auxblocks[block].font;
+            switch (auxblocks[block].align) {
+              case LEFTALIGN:
+                blocks[block].x = lofs;
+                blocks[block].x1 = lofs;
+                lofs += auxblocks[block].width;
+                blocks[block].x2 = lofs;
+                break;
+                
+              case CENTERALIGN:
+                blocks[block].x = cofs;
+                blocks[block].x1 = cofs;
+                cofs += auxblocks[block].width;
+                blocks[block].x2 = cofs;
+                break;
 
-	      case RIGHTALIGN:
-		blocks[block].x = rofs;
-		blocks[block].x1 = rofs;
-		rofs += auxblocks[block].width;
-		blocks[block].x2 = rofs;
-		break;
-	    }
-	    blocks[block].y = yofs;
-	    blocks[block].y1 = ystart;
-	    blocks[block].y2 = yend;
-	    blocks[block].strindex = strindex;
-	    blocks[block].strlen = auxblocks[block].len;
-	    strncpy(gram->text + strindex, auxblocks[block].str,
-		    auxblocks[block].len);
-	    strindex += blocks[block].strlen;
-	}
+              case RIGHTALIGN:
+                blocks[block].x = rofs;
+                blocks[block].x1 = rofs;
+                rofs += auxblocks[block].width;
+                blocks[block].x2 = rofs;
+                break;
+            }
+            blocks[block].y = yofs;
+            blocks[block].y1 = ystart;
+            blocks[block].y2 = yend;
+            blocks[block].strindex = strindex;
+            blocks[block].strlen = auxblocks[block].len;
+            strncpy(gram->text + strindex, auxblocks[block].str,
+                    auxblocks[block].len);
+            strindex += blocks[block].strlen;
+        }
 
-	yofs = yend;
+        yofs = yend;
 
     }
 
@@ -331,11 +339,11 @@ fixup_and_draw(Display *dpy,
 
     bgstr = var_get_variable("X_background");
     if (bgstr[0] == '\0')
-	bgstr = xres_get_bgcolor(style);
+        bgstr = xres_get_bgcolor(style);
     if (bgstr == NULL)
-	bgstr = var_get_variable("default_X_background");
+        bgstr = var_get_variable("default_X_background");
     if (bgstr[0]=='\0')
-	gram->bgcolor = default_bgcolor;
+        gram->bgcolor = default_bgcolor;
 
     if (bgstr && bgstr[0])
       gram->bgcolor = x_string_to_color(bgstr, default_bgcolor);
@@ -369,10 +377,10 @@ no_dots_downcase_var(char *str)
 inline static XFontStruct *
 mode_to_font(Display *dpy, char *style, xmode *mode) {
     return get_font(dpy,
-		    style,
-		    mode->font ? mode->font : mode->substyle,
-		    mode->size,
-		    mode->bold + mode->italic * 2);
+                    style,
+                    mode->font ? mode->font : mode->substyle,
+                    mode->size,
+                    mode->bold + mode->italic * 2);
 }
 
 inline static int
@@ -384,7 +392,8 @@ envmatch(desctype *desc, char *str) {
 void
 xshow(Display *dpy, desctype *desc, int numstr, int numnl)
 {
-    XFontStruct *font;
+    XFontSet font;
+    XFontSetExtents *fse;
     xmode_stack modes = xmode_stack_create();
     xmode curmode;
     xlinedesc *lines;
@@ -422,134 +431,148 @@ xshow(Display *dpy, desctype *desc, int numstr, int numnl)
     }
 
     for (; desc->code != DT_EOF; desc = desc->next) {
-	switch (desc->code) {
-	  case DT_ENV:
-	    xmode_stack_push(modes, curmode);
-	    curmode.substyle = string_Copy(curmode.substyle);
-	    if (curmode.font)
-	      curmode.font = string_Copy(curmode.font);
-	    if (envmatch(desc, "roman")) {
-		curmode.bold = 0;
-		curmode.italic = 0;
-	    } else if (envmatch(desc, "bold") || envmatch(desc, "b"))
-	      curmode.bold = 1;
-	    else if (envmatch(desc, "italic") || envmatch(desc, "i"))
-	      curmode.italic = 1;
-	    else if (envmatch(desc, "large"))
-	      curmode.size = LARGE_SIZE;
-	    else if (envmatch(desc, "medium"))
-	      curmode.size = MEDIUM_SIZE;
-	    else if (envmatch(desc, "small"))
-	      curmode.size = SMALL_SIZE;
-	    else if (envmatch(desc, "left") || envmatch(desc, "l"))
-	      curmode.align = LEFTALIGN;
-	    else if (envmatch(desc, "center") || envmatch(desc, "c"))
-	      curmode.align = CENTERALIGN;
-	    else if (envmatch(desc, "right") || envmatch(desc, "r"))
-	      curmode.align = RIGHTALIGN;
-	    else if (envmatch(desc, "beep"))
-	      beepcount++;
-	    else if (envmatch(desc, "font")) {
-	       /* lookahead needed.  desc->next->str should be the
-		  font name, and desc->next->next->code should be
-		  a DT_END*/
-	       if ((desc->next) &&
-		   (desc->next->next) &&
-		   (desc->next->code == DT_STR) &&
-		   (desc->next->next->code == DT_END)) {
+        switch (desc->code) {
+          case DT_ENV:
+            xmode_stack_push(modes, curmode);
+            curmode.substyle = string_Copy(curmode.substyle);
+            if (curmode.font)
+              curmode.font = string_Copy(curmode.font);
+            if (envmatch(desc, "roman")) {
+                curmode.bold = 0;
+                curmode.italic = 0;
+            } else if (envmatch(desc, "bold") || envmatch(desc, "b"))
+              curmode.bold = 1;
+            else if (envmatch(desc, "italic") || envmatch(desc, "i"))
+              curmode.italic = 1;
+            else if (envmatch(desc, "large"))
+              curmode.size = LARGE_SIZE;
+            else if (envmatch(desc, "medium"))
+              curmode.size = MEDIUM_SIZE;
+            else if (envmatch(desc, "small"))
+              curmode.size = SMALL_SIZE;
+            else if (envmatch(desc, "left") || envmatch(desc, "l"))
+              curmode.align = LEFTALIGN;
+            else if (envmatch(desc, "center") || envmatch(desc, "c"))
+              curmode.align = CENTERALIGN;
+            else if (envmatch(desc, "right") || envmatch(desc, "r"))
+              curmode.align = RIGHTALIGN;
+            else if (envmatch(desc, "beep"))
+              beepcount++;
+            else if (envmatch(desc, "font")) {
+               /* lookahead needed.  desc->next->str should be the
+                  font name, and desc->next->next->code should be
+                  a DT_END*/
+               if ((desc->next) &&
+                   (desc->next->next) &&
+                   (desc->next->code == DT_STR) &&
+                   (desc->next->next->code == DT_END)) {
 
-		  /* Since @font mutates the current environment, we have
-		     to pop the environment that this case usually pushes */
-		  free(curmode.substyle);
-		  curmode = xmode_stack_top(modes);
-		  xmode_stack_pop(modes);
+                  /* Since @font mutates the current environment, we have
+                     to pop the environment that this case usually pushes */
+                  free(curmode.substyle);
+                  curmode = xmode_stack_top(modes);
+                  xmode_stack_pop(modes);
 
-		  /* mutating... */
-		  curmode.size = SPECIAL_SIZE; /* This is an @font() */
-		  curmode.font = string_CreateFromData(desc->next->str,
-						       desc->next->len);
-		  /* skip over the rest of the @font */
-		  desc = desc->next->next;
-	       }
-	    } else if (envmatch(desc, "color")) {
-	       /* lookahead needed.  desc->next->str should be the
-		  font name, and desc->next->next->code should be
-		  a DT_END*/
-	       if ((desc->next) &&
-		   (desc->next->next) &&
-		   (desc->next->code == DT_STR) &&
-		   (desc->next->next->code == DT_END)) {
-		  char *colorname;
+                  /* mutating... */
+                  curmode.size = SPECIAL_SIZE; /* This is an @font() */
+                  curmode.font = string_CreateFromData(desc->next->str,
+                                                       desc->next->len);
+                  /* skip over the rest of the @font */
+                  desc = desc->next->next;
+               }
+            } else if (envmatch(desc, "color")) {
+               /* lookahead needed.  desc->next->str should be the
+                  font name, and desc->next->next->code should be
+                  a DT_END*/
+               if ((desc->next) &&
+                   (desc->next->next) &&
+                   (desc->next->code == DT_STR) &&
+                   (desc->next->next->code == DT_END)) {
+                  char *colorname;
 
-		  /* Since @font mutates the current environment, we have
-		     to pop the environment that this case usually pushes */
-		  free(curmode.substyle);
-		  curmode = xmode_stack_top(modes);
-		  xmode_stack_pop(modes);
+                  /* Since @font mutates the current environment, we have
+                     to pop the environment that this case usually pushes */
+                  free(curmode.substyle);
+                  curmode = xmode_stack_top(modes);
+                  xmode_stack_pop(modes);
 
-		  /* mutating... */
-		  colorname = string_CreateFromData(desc->next->str,
-						    desc->next->len);
-		  curmode.color = x_string_to_color(colorname, default_fgcolor);
-		  free(colorname);
-		  curmode.expcolor = 1;
-		  /* skip over the rest of the @font */
-		  desc = desc->next->next;
-	       }
-	    } else if (desc->len > 0) { /* avoid @{...} */
-	       free(curmode.substyle);
-	       if (curmode.font) {
-		  free(curmode.font);
-		  curmode.font = NULL;
-	       }
-	       curmode.substyle = string_CreateFromData(desc->str, desc->len);
-	    }
-	    break;
+                  /* mutating... */
+                  colorname = string_CreateFromData(desc->next->str,
+                                                    desc->next->len);
+                  curmode.color = x_string_to_color(colorname, default_fgcolor);
+                  free(colorname);
+                  curmode.expcolor = 1;
+                  /* skip over the rest of the @font */
+                  desc = desc->next->next;
+               }
+            } else if (desc->len > 0) { /* avoid @{...} */
+               free(curmode.substyle);
+               if (curmode.font) {
+                  free(curmode.font);
+                  curmode.font = NULL;
+               }
+               curmode.substyle = string_CreateFromData(desc->str, desc->len);
+            }
+            break;
 
-	  case DT_STR:
-	    auxblocks[nextblock].align = curmode.align;
-	    auxblocks[nextblock].font = mode_to_font(dpy, style, &curmode);
-	    auxblocks[nextblock].str = desc->str;
-	    auxblocks[nextblock].len = desc->len;
-	    i = ZTransliterate(desc->str, desc->len,
-			       strcmp(notice_charset, "UNKNOWN") ?
-			        notice_charset : "ISO-8859-1",
-			       "UTF-16BE",
-			       &blocks[nextblock].wstr,
-			       &blocks[nextblock].wlen);
-	    if (i) {
-		var_set_variable("error", strerror(i));
-		blocks[nextblock].wlen = desc->len * 2;
-		blocks[nextblock].wstr = malloc(blocks[nextblock].wlen);
-		for (i = 0; i < desc->len; i++)
-		    *(short *)&(blocks[nextblock].wstr[i * 2]) = htons((short)(unsigned char)desc->str[i]);
-		/* XXX */
-	    }
-	    if (curmode.expcolor)
-	       blocks[nextblock].fgcolor = curmode.color;
-	    else
-	       blocks[nextblock].fgcolor =
-		 x_string_to_color(mode_to_colorname(dpy, style, &curmode),
-				   default_fgcolor);
-	    nextblock++;
-	    break;
+          case DT_STR:
+            auxblocks[nextblock].align = curmode.align;
+            auxblocks[nextblock].font = mode_to_font(dpy, style, &curmode);
+            auxblocks[nextblock].str = desc->str;
+            auxblocks[nextblock].len = desc->len;
+            i = ZTransliterate(desc->str, desc->len,
+                               strcmp(notice_charset, "UNKNOWN") ?
+                                notice_charset : "ISO-8859-1",
+#ifdef X_HAVE_UTF8_STRING-
+                               "UTF-8",
+#else
+                               "UTF-16BE",
+#endif
+                               &blocks[nextblock].wstr,
+                               &blocks[nextblock].wlen);
+            if (i) {
+                var_set_variable("error", strerror(i));
+#ifdef X_HAVE_UTF8_STRING
+                blocks[nextblock].wlen = desc->len;
+                blocks[nextblock].wstr = strdup(desc->str);
+#else
+                blocks[nextblock].wlen = desc->len * 2;
+                blocks[nextblock].wstr = malloc(blocks[nextblock].wlen);
+                for (i = 0; i < desc->len; i++)
+                    *(short *)&(blocks[nextblock].wstr[i * 2]) = htons((short)(unsigned char)desc->str[i]);
+                /* XXX */
+#endif
+            }
+#ifndef X_HAVE_UTF8_STRING
+            blocks[nextblock].wlen /= 2;
+#endif
+            if (curmode.expcolor)
+               blocks[nextblock].fgcolor = curmode.color;
+            else
+               blocks[nextblock].fgcolor =
+                 x_string_to_color(mode_to_colorname(dpy, style, &curmode),
+                                   default_fgcolor);
+            nextblock++;
+            break;
 
-	  case DT_END:
-	    free(curmode.substyle);
-	    curmode = xmode_stack_top(modes);
-	    xmode_stack_pop(modes);
-	    break;
+          case DT_END:
+            free(curmode.substyle);
+            curmode = xmode_stack_top(modes);
+            xmode_stack_pop(modes);
+            break;
 
-	  case DT_NL:
-	    lines[line].startblock = linestart;
-	    lines[line].numblock = nextblock-linestart;
-	    font = mode_to_font(dpy, style, &curmode);
-	    lines[line].ascent = font->ascent;
-	    lines[line].descent = font->descent;
-	    line++;
-	    linestart = nextblock;
-	    break;
-	}
+          case DT_NL:
+            lines[line].startblock = linestart;
+            lines[line].numblock = nextblock-linestart;
+            font = mode_to_font(dpy, style, &curmode);
+            fse = XExtentsOfFontSet(font);
+            lines[line].ascent = -fse->max_logical_extent.y;
+            lines[line].descent = fse->max_logical_extent.y +
+                fse->max_logical_extent.height;
+            line++;
+            linestart = nextblock;
+            break;
+        }
     }
 
     /* case DT_EOF:    will drop through to here. */
@@ -565,7 +588,7 @@ xshow(Display *dpy, desctype *desc, int numstr, int numnl)
     
     free(curmode.substyle);
     fixup_and_draw(dpy, style, auxblocks, blocks, nextblock, lines, line,
-		   beepcount);
+                   beepcount);
     free(lines);
     free(auxblocks);
     if (free_style)
@@ -574,8 +597,8 @@ xshow(Display *dpy, desctype *desc, int numstr, int numnl)
 
 static void
 xhandleevent(Display *dpy,
-	     Window w,
-	     XEvent *event)
+             Window w,
+             XEvent *event)
 {
     x_gram *gram;
     
@@ -608,8 +631,8 @@ x_get_input(Display *dpy)
       XNoOp(dpy);  /* Ensure server is still with us... */
     
     while (XPending(dpy)) {
-	XNextEvent(dpy,&event);
-	xhandleevent(dpy, event.xany.window, &event);
+        XNextEvent(dpy,&event);
+        xhandleevent(dpy, event.xany.window, &event);
     }
 }
 
@@ -633,88 +656,88 @@ plus_window_deletions(ZNotice_t *notice)
   if (val) {
     if (!strcmp(val, "this")) {
       do {
-	done = 1;
-	tmp = bottom_gram;
-	while (tmp) {
-	  if (tmp->notice == notice) {
-	    fry = tmp;
-	    tmp = tmp->above;
-	    xdestroygram(dpy, fry->w, desc_context, fry);
-	    done = 0;
-	  } else {
-	    tmp = tmp->above;
-	  }
-	}
+        done = 1;
+        tmp = bottom_gram;
+        while (tmp) {
+          if (tmp->notice == notice) {
+            fry = tmp;
+            tmp = tmp->above;
+            xdestroygram(dpy, fry->w, desc_context, fry);
+            done = 0;
+          } else {
+            tmp = tmp->above;
+          }
+        }
       } while (!done);
     }
     else if (!strcmp(val, "s")) {
       /* I cheated. This is really sender, not class */
       strcpy(class_nm, notice->z_sender);
       do {
-	done = 1;
-	tmp = bottom_gram;
-	while (tmp) {
-	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_sender, class_nm)) {
-	    fry = tmp;
-	    tmp = tmp->above;
-	    xdestroygram(dpy, fry->w, desc_context, fry);
-	    done = 0;
-	  } else {
-	    tmp = tmp->above;
-	  }
-	}
+        done = 1;
+        tmp = bottom_gram;
+        while (tmp) {
+          if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_sender, class_nm)) {
+            fry = tmp;
+            tmp = tmp->above;
+            xdestroygram(dpy, fry->w, desc_context, fry);
+            done = 0;
+          } else {
+            tmp = tmp->above;
+          }
+        }
       } while (!done);
     }
     else if (!strcmp(val, "ns")) {
       /* I cheated. This is really sender, not class */
       strcpy(class_nm, notice->z_sender);
       do {
-	done = 1;
-	tmp = bottom_gram;
-	while (tmp) {
-	  if (!!strcasecmp(((ZNotice_t *)(tmp->notice))->z_sender, class_nm)) {
-	    fry = tmp;
-	    tmp = tmp->above;
-	    xdestroygram(dpy, fry->w, desc_context, fry);
-	    done = 0;
-	  } else {
-	    tmp = tmp->above;
-	  }
-	}
+        done = 1;
+        tmp = bottom_gram;
+        while (tmp) {
+          if (!!strcasecmp(((ZNotice_t *)(tmp->notice))->z_sender, class_nm)) {
+            fry = tmp;
+            tmp = tmp->above;
+            xdestroygram(dpy, fry->w, desc_context, fry);
+            done = 0;
+          } else {
+            tmp = tmp->above;
+          }
+        }
       } while (!done);
     }
     else if (!strcmp(val, "r")) {
       strcpy(recip_nm, notice->z_recipient);
       do {
-	done = 1;
-	tmp = bottom_gram;
-	while (tmp) {
-	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) {
-	    fry = tmp;
-	    tmp = tmp->above;
-	    xdestroygram(dpy, fry->w, desc_context, fry);
-	    done = 0;
-	  } else {
-	    tmp = tmp->above;
-	  }
-	}
+        done = 1;
+        tmp = bottom_gram;
+        while (tmp) {
+          if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) {
+            fry = tmp;
+            tmp = tmp->above;
+            xdestroygram(dpy, fry->w, desc_context, fry);
+            done = 0;
+          } else {
+            tmp = tmp->above;
+          }
+        }
       } while (!done);
     }
     else if (!strcmp(val, "nr")) {
       strcpy(recip_nm, notice->z_recipient);
       do {
-	done = 1;
-	tmp = bottom_gram;
-	while (tmp) {
-	  if (!!strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) {
-	    fry = tmp;
-	    tmp = tmp->above;
-	    xdestroygram(dpy, fry->w, desc_context, fry);
-	    done = 0;
-	  } else {
-	    tmp = tmp->above;
-	  }
-	}
+        done = 1;
+        tmp = bottom_gram;
+        while (tmp) {
+          if (!!strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) {
+            fry = tmp;
+            tmp = tmp->above;
+            xdestroygram(dpy, fry->w, desc_context, fry);
+            done = 0;
+          } else {
+            tmp = tmp->above;
+          }
+        }
       } while (!done);
     }
     else if (!strcmp(val, "cir")) {
@@ -722,87 +745,86 @@ plus_window_deletions(ZNotice_t *notice)
       strcpy(instance_nm, notice->z_class_inst);
       strcpy(recip_nm, notice->z_recipient);
       do {
-	done = 1;
-	tmp = bottom_gram;
-	while (tmp) {
-	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class_inst, instance_nm)
-	      && !strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)
-	      && !strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm))
-	    {
-	      fry = tmp;
-	      tmp = tmp->above;
-	      xdestroygram(dpy, fry->w, desc_context, fry);
-	      done = 0;
-	    } else {
-	      tmp = tmp->above;
-	    }
-	}
+        done = 1;
+        tmp = bottom_gram;
+        while (tmp) {
+          if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class_inst, instance_nm)
+              && !strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)
+              && !strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm))
+            {
+              fry = tmp;
+              tmp = tmp->above;
+              xdestroygram(dpy, fry->w, desc_context, fry);
+              done = 0;
+            } else {
+              tmp = tmp->above;
+            }
+        }
       } while (!done);
     }
     else if (!strcmp(val, "ci")) {
       strcpy(class_nm, notice->z_class);
       strcpy(instance_nm, notice->z_class_inst);
       do {
-	done = 1;
-	tmp = bottom_gram;
-	while (tmp) {
-	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class_inst, instance_nm)
-	      && !strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)) 
-	    {
-	      fry = tmp;
-	      tmp = tmp->above;
-	      xdestroygram(dpy, fry->w, desc_context, fry);
-	      done = 0;
-	    } else {
-	      tmp = tmp->above;
-	    }
-	}
+        done = 1;
+        tmp = bottom_gram;
+        while (tmp) {
+          if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class_inst, instance_nm)
+              && !strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)) 
+            {
+              fry = tmp;
+              tmp = tmp->above;
+              xdestroygram(dpy, fry->w, desc_context, fry);
+              done = 0;
+            } else {
+              tmp = tmp->above;
+            }
+        }
       } while (!done);
     }
     else if (!strcmp(val, "cr")) {
       strcpy(class_nm, notice->z_class);
       strcpy(recip_nm, notice->z_recipient);
       do {
-	done = 1;
-	tmp = bottom_gram;
-	while (tmp) {
-	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm) &&
-	      !strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) 
-	    {
-	      fry = tmp;
-	      tmp = tmp->above;
-	      xdestroygram(dpy, fry->w, desc_context, fry);
-	      done = 0;
-	    } else {
-	      tmp = tmp->above;
-	    }
-	}
+        done = 1;
+        tmp = bottom_gram;
+        while (tmp) {
+          if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm) &&
+              !strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) 
+            {
+              fry = tmp;
+              tmp = tmp->above;
+              xdestroygram(dpy, fry->w, desc_context, fry);
+              done = 0;
+            } else {
+              tmp = tmp->above;
+            }
+        }
       } while (!done);
     }
     else if (!strcmp(val, "c")) {
       strcpy(class_nm, notice->z_class);
       do {
-	done = 1;
-	tmp = bottom_gram;
-	while (tmp) {
-	  if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)) {
-	    fry = tmp;
-	    tmp = tmp->above;
-	    xdestroygram(dpy, fry->w, desc_context, fry);
-	    done = 0;
-	  } else {
-	    tmp = tmp->above;
-	  }
-	}
+        done = 1;
+        tmp = bottom_gram;
+        while (tmp) {
+          if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)) {
+            fry = tmp;
+            tmp = tmp->above;
+            xdestroygram(dpy, fry->w, desc_context, fry);
+            done = 0;
+          } else {
+            tmp = tmp->above;
+          }
+        }
       } while (!done);
     }
     else if (!strcmp(val, "all")) {
       while (bottom_gram) {
-	xdestroygram(dpy, bottom_gram->w, desc_context, bottom_gram);
+        xdestroygram(dpy, bottom_gram->w, desc_context, bottom_gram);
       }
     }
   }
 }
 #endif
 #endif /* X_DISPLAY_MISSING */
-

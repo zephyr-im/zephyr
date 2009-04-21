@@ -25,7 +25,7 @@
 
 typedef struct _xblock {
     unsigned long fgcolor;
-    Font fid;
+    XFontSet font;
     int x,y;
     int x1,y1,x2,y2; /* bounds of block.  used for cut and paste. */
     int strindex;
@@ -49,7 +49,7 @@ typedef struct _x_gram {
 
 typedef struct _xauxblock {
     int align;
-    XFontStruct *font;
+    XFontSet font;
     char *str;
     int len;
     int width;
