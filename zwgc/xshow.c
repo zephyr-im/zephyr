@@ -374,7 +374,7 @@ no_dots_downcase_var(char *str)
    return(var2);
 }
 
-inline static XFontStruct *
+inline static XFontSet
 mode_to_font(Display *dpy, char *style, xmode *mode) {
     return get_font(dpy,
                     style,
@@ -523,7 +523,7 @@ xshow(Display *dpy, desctype *desc, int numstr, int numnl)
             i = ZTransliterate(desc->str, desc->len,
                                strcmp(notice_charset, "UNKNOWN") ?
                                 notice_charset : "ISO-8859-1",
-#ifdef X_HAVE_UTF8_STRING-
+#ifdef X_HAVE_UTF8_STRING
                                "UTF-8",
 #else
                                "UTF-16BE",

@@ -50,10 +50,9 @@ xmarkSetBound(x_gram *gram,
               int y,
               int which)
 {
-   int i,xofs,yofs;
+   int i, xofs, yofs;
    XFontSet font;
    xblock *xb;
-   unsigned char *s;
    int num_chars;
    XRectangle *ink, *logical;
 
