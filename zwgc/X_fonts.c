@@ -51,37 +51,35 @@ static string face_to_string[] = { "roman", "bold", "italic", "bolditalic" };
 static string size_to_string[] = { "small", "medium", "large" };
 
 static char *
-get_family(char *style,
-           char *substyle)
+get_family(char *style, char *substyle)
 {
-   char *desc;
-   pointer_dictionary_binding *binding;
-   int exists;
-   char *family;
-
-   desc=string_Concat("style.",style);
-   desc=string_Concat2(desc,".substyle.");
-   desc=string_Concat2(desc,substyle);
-   desc=string_Concat2(desc,".fontfamily");
-
-   if (!family_dict)
-      family_dict = pointer_dictionary_Create(37);
-   binding = pointer_dictionary_Define(family_dict,desc,&exists);
-
-   if (exists) {
-      free(desc);
-      return((string) binding->value);
-   } else {
-#define STYLE_CLASS "StyleKey.Style1.Style2.Style3.SubstyleKey.Substyle.FontfamilyKey"
-      family=get_string_resource(desc,STYLE_CLASS);
-#undef STYLE_CLASS
-      free(desc);
-      if (family==NULL)
-         pointer_dictionary_Delete(family_dict,binding);
-      else
-         binding->value=(pointer) family;
-      return(family);  /* If resource returns NULL, return NULL also */
-   }
+    char *desc;
+    pointer_dictionary_binding *binding;
+    int exists;
+    char *family;
+    
+    desc=string_Concat("style.", style);
+    desc=string_Concat2(desc, ".substyle.");
+    desc=string_Concat2(desc, substyle);
+    desc=string_Concat2(desc, ".fontfamily");
+    
+    if (!family_dict)
+	family_dict = pointer_dictionary_Create(37);
+    binding = pointer_dictionary_Define(family_dict, desc, &exists);
+    
+    if (exists) {
+	free(desc);
+	return((string) binding->value);
+    } else {
+        family = get_string_resource(desc,
+                 "StyleKey.Style1.Style2.Style3.SubstyleKey.Substyle.FontfamilyKey");
+	free(desc);
+	if (family == NULL)
+	    pointer_dictionary_Delete(family_dict, binding);
+	else
+	    binding->value = (pointer)family;
+	return(family);  /* If resource returns NULL, return NULL also */
+    }
 }
 
 static char *
@@ -89,39 +87,37 @@ get_specific_fontname(char *family,
                       int size,
                       int face)
 {
-   char *desc;
-   pointer_dictionary_binding *binding;
-   int exists;
-   char *fontname;
+    char *desc;
+    pointer_dictionary_binding *binding;
+    int exists;
+    char *fontname;
 
-   desc = string_Concat("fontfamily.",family);
-   desc = string_Concat2(desc, ".");
-   desc = string_Concat2(desc, size_to_string[size]);
-   desc = string_Concat2(desc, ".");
-   desc = string_Concat2(desc, face_to_string[face]);
-
-   if (!fontname_dict)
-      fontname_dict = pointer_dictionary_Create(37);
-   binding = pointer_dictionary_Define(fontname_dict,desc,&exists);
-
-   if (exists) {
+    desc = string_Concat("fontfamily.", family);
+    desc = string_Concat2(desc, ".");
+    desc = string_Concat2(desc, size_to_string[size]);
+    desc = string_Concat2(desc, ".");
+    desc = string_Concat2(desc, face_to_string[face]);
+    
+    if (!fontname_dict)
+	fontname_dict = pointer_dictionary_Create(37);
+    binding = pointer_dictionary_Define(fontname_dict, desc, &exists);
+    
+    if (exists) {
+	free(desc);
+	return (string)binding->value;
+    } else {
+      fontname = get_string_resource(desc, "FontfamilyKey.Fontfamily.Size.Face");
       free(desc);
-      return((string) binding->value);
-   } else {
-#define FAMILY_CLASS "FontfamilyKey.Fontfamily.Size.Face"
-      fontname=get_string_resource(desc,FAMILY_CLASS);
-      free(desc);
-      if (fontname==NULL)
-         pointer_dictionary_Delete(fontname_dict,binding);
+      if (fontname == NULL)
+         pointer_dictionary_Delete(fontname_dict, binding);
       else
-         binding->value=(pointer) fontname;
-      return(fontname);  /* If resource returns NULL, return NULL also */
+         binding->value = (pointer)fontname;
+      return fontname;  /* If resource returns NULL, return NULL also */
    }
 }
 
 static XFontSet
-get_fontst(Display *dpy,
-           char *fontname)
+get_fontst(Display *dpy, char *fontname)
 {
    pointer_dictionary_binding *binding;
    int exists;
@@ -134,33 +130,34 @@ get_fontst(Display *dpy,
        fontst_dict = pointer_dictionary_Create(37);
    binding = pointer_dictionary_Define(fontst_dict, fontname, &exists);
 
-   if (exists) {
+   if (exists)
        return((XFontSet)binding->value);
-   } else {
-       fontst = XCreateFontSet(dpy, fontname, &missing_list, &missing_count,
-                              &def_string);
-       XFreeStringList(missing_list);
-       if (fontst == NULL)
-           pointer_dictionary_Delete(fontst_dict,binding);
-       else
-           binding->value = (pointer)fontst;
 
-       return(fontst);  /* If resource returns NULL, return NULL also */
-   }
+   fontst = XCreateFontSet(dpy, fontname, &missing_list, &missing_count,
+			   &def_string);
+   XFreeStringList(missing_list);
+
+   if (fontst == NULL)
+       pointer_dictionary_Delete(fontst_dict,binding);
+   else
+       binding->value = (pointer)fontst;
+   
+   return(fontst);  /* If resource returns NULL, return NULL also */
 }
 
 static char *
-get_fontname(char *family,
-             int size,
-             int face)
+get_fontname(char *family, int size, int face)
 {
-   char *fontname;
+    char *fontname;
 
-   if (!(fontname=get_specific_fontname(family,size,face)))
-    if (!(fontname=get_specific_fontname(family,size,ROMAN_FACE)))
-     if (!(fontname=get_specific_fontname(family,MEDIUM_SIZE,face)))
-      fontname=get_specific_fontname(family,MEDIUM_SIZE,ROMAN_FACE);
-   return(fontname);
+    fontname = get_specific_fontname(family, size, face);
+    if (!fontname)
+	fontname = get_specific_fontname(family, size, ROMAN_FACE);
+    if (!fontname)
+	fontname = get_specific_fontname(family, MEDIUM_SIZE, face);
+    if (!fontname)
+	fontname = get_specific_fontname(family, MEDIUM_SIZE, ROMAN_FACE);
+    return(fontname);
 }
 
 static XFontSet
@@ -170,15 +167,20 @@ complete_get_fontst(Display *dpy,
                     int size,
                     int face)
 {
-   char *family,*fontname;
-   XFontSet fontst;
+    char *family, *fontname;
+    XFontSet fontst;
 
-   if ((family=get_family(style,substyle)))
-     if ((fontname=get_fontname(family,size,face)))
-       if ((fontst=get_fontst(dpy,fontname)))
-         return(fontst);
-   /* If any part fails, */
-   return(NULL);
+    family = get_family(style, substyle);
+    if (!family)
+	return NULL;
+    fontname = get_fontname(family, size, face);
+    if (!fontname)
+	return NULL;
+    fontst = get_fontst(dpy, fontname);
+    if (!fontst)
+	return NULL;
+
+    return fontst;
 }
 
 /*
@@ -197,41 +199,51 @@ get_font(Display *dpy,
          int face)
 {
    char *family,*fontname;
-   XFontSet fontst;
+   XFontSet fontst = NULL;
 
    if (size == SPECIAL_SIZE) {
-      /* attempt to process @font explicitly */
-      if ((fontst = get_fontst(dpy, substyle)))
-        return(fontst);
+       /* attempt to process @font explicitly */
+       fontst = get_fontst(dpy, substyle);
    } else {
-      if ((family = get_family(style, substyle))) {
-         if ((fontname = get_fontname(family, size,face)))
-           if ((fontst = get_fontst(dpy, fontname)))
-             return(fontst);
-      } else {
-         if ((fontname = get_fontname(substyle, size, face)))
-           if ((fontst = get_fontst(dpy, fontname)))
-             return(fontst);
-      }
+       family = get_family(style, substyle);
 
-      /* At this point, the no-failure case didn't happen, and the case
-      of substyle being the fontfamily didn't happen, either. */
+       if (family)
+	   fontname = get_fontname(family, size, face);
+       else
+	   fontname = get_fontname(substyle, size, face);
 
-      fontst=NULL;
-      if (!(fontst = complete_get_fontst(dpy,style,"text",size,face)))
-        if (!(fontst = complete_get_fontst(dpy,"default",substyle,size,face)))
-          if (!(fontst = complete_get_fontst(dpy,"default","text",size,face)))
-            if ((fontname = get_fontname("default",size,face)))
-              fontst = get_fontst(dpy,fontname);
-      if (fontst) return(fontst);
+       if (fontname) {
+	   fontst = get_fontst(dpy, fontname);
+	   if (fontst)
+	       return fontst;
+       }
+       
+       /* At this point, the no-failure case didn't happen, and the case
+	  of substyle being the fontfamily didn't happen, either. */
+       
+       fontst = complete_get_fontst(dpy, style, "text", size, face);
+       if (!fontst)
+	   fontst = complete_get_fontst(dpy, "default", substyle, size, face);
+       if (!fontst)
+	   fontst = complete_get_fontst(dpy, "default", "text", size, face);
+       if (!fontst) {
+	   fontname = get_fontname("default", size, face);
+	   if (fontname)
+	       fontst = get_fontst(dpy, fontname);
+       }
    }
-
+   if (fontst)
+       return fontst;
+   
    /* If all else fails, try fixed */
 
-   if ((fontst=get_fontst(dpy,"fixed"))) return(fontst);
-
+   fontst = get_fontst(dpy, "fixed");
+   
+   if (fontst)
+       return fontst;
+   
    /* No fonts available.  Die. */
-
+   
    ERROR("Unable to open font \"fixed\".  Aborting...");
 #ifdef DEBUG
    abort();
