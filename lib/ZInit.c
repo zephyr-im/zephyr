@@ -301,11 +301,11 @@ static int txt_lookup(char *qname, char **result) {
 
 	if (left < 10)
 	    return -1;
-	type = ntohs(*(u_int16_t *)p);
+	type = ntohs(*(uint16_t *)p);
 	p += 2;
-	class = ntohs(*(u_int16_t *)p);
+	class = ntohs(*(uint16_t *)p);
 	p += 6;
-	ret = ntohs(*(u_int16_t *)p);
+	ret = ntohs(*(uint16_t *)p);
 	p += 2;
 	left -= 10;
 

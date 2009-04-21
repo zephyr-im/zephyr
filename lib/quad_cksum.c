@@ -124,7 +124,7 @@
 #ifdef HAVE_KRB5
 unsigned long
 z_quad_cksum(const unsigned char *in,	/* input block */
-	     u_int32_t *out,		/* optional longer output */
+	     uint32_t *out,		/* optional longer output */
 	     long length,		/* original length in bytes */
 	     int out_count,		/* number of iterations */
 	     unsigned char *c_seed	/* secret seed, 8 bytes */
@@ -138,10 +138,10 @@ z_quad_cksum(const unsigned char *in,	/* input block */
      * checksum is written unto the address pointed to.
      */
 
-    register u_int32_t z;
-    register u_int32_t z2;
-    register u_int32_t x;
-    register u_int32_t x2;
+    register uint32_t z;
+    register uint32_t z2;
+    register uint32_t x;
+    register uint32_t x2;
     const unsigned char *p;
     register int32_t len;
     register int i;

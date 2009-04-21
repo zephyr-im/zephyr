@@ -811,7 +811,7 @@ subscr_send_subs(Client *client)
 	    return errno;
 	}
 	*(krb5_enctype *)&bufp[0] = htonl(Z_enctype(client->session_keyblock));
-	*(u_int32_t *)&bufp[4] = htonl(Z_keylen(client->session_keyblock));
+	*(uint32_t *)&bufp[4] = htonl(Z_keylen(client->session_keyblock));
 	memcpy(&bufp[8], Z_keydata(client->session_keyblock), Z_keylen(client->session_keyblock));
 
 	retval = ZMakeZcode(buf, sizeof(buf), bufp, Z_keylen(client->session_keyblock) + 8);
@@ -1010,7 +1010,7 @@ subscr_realm_sendit(Client *who,
   /* convert the address to a string of the form x.x.x.x/port */
   strcpy(addr, inet_ntoa(who->addr.sin_addr));
   if ((retval = ZMakeAscii(port, sizeof(port), (unsigned char *) 
-                           &who->addr.sin_port, sizeof(u_short))) != ZERR_NONE) 
+                           &who->addr.sin_port, sizeof(unsigned short))) != ZERR_NONE) 
     {
       syslog(LOG_ERR, "subscr_rlm_sendit make ascii: %s",
              error_message(retval));
@@ -1285,7 +1285,7 @@ subscr_realm_subs(ZRealm *realm)
 
     num = 0;
     if ((retval = ZMakeAscii(port, sizeof(port), (unsigned char *) 
-			     &num, sizeof(u_short))) != ZERR_NONE) 
+			     &num, sizeof(unsigned short))) != ZERR_NONE) 
       {
 	syslog(LOG_ERR, "subscr_rlm_sendit make ascii: %s",
 	       error_message(retval));
@@ -1499,7 +1499,8 @@ Code_t subscr_foreign_user(ZNotice_t *notice,
   
   snotice = *notice;
   
-  if ((status = ZReadAscii(cp, strlen(cp), (unsigned char *)&snotice.z_port, sizeof(u_short)))
+  if ((status = ZReadAscii(cp, strlen(cp), (unsigned char *)&snotice.z_port,
+			   sizeof(unsigned short)))
       != ZERR_NONE) 
     {
       syslog(LOG_ERR, "subscr_foreign_user read ascii: %s",

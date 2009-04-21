@@ -1301,7 +1301,7 @@ bdump_recv_loop(Server *server)
 		    } else {
 			retval = Z_krb5_init_keyblock(Z_krb5_ctx,
 						    ntohl(*(krb5_enctype *)&buf[0]),
-						    ntohl(*(u_int32_t *)&buf[4]),
+						    ntohl(*(uint32_t *)&buf[4]),
 						    &client->session_keyblock);
 			if (retval) {
 			    syslog(LOG_ERR, "brl failed to allocate keyblock: %s",
@@ -1467,7 +1467,7 @@ send_normal_tcp(ZNotice_Kind_t kind,
     char *pack;
     int packlen, count;
     Code_t retval;
-    u_short length;
+    unsigned short length;
  
     memset (&notice, 0, sizeof(notice));
 
@@ -1512,7 +1512,7 @@ send_normal_tcp(ZNotice_Kind_t kind,
     }
 #endif
 
-    length = htons((u_short) packlen);
+    length = htons((unsigned short) packlen);
  
     count = net_write(output, (char *) &length, sizeof(length));
     if (count != sizeof(length)) {
@@ -1550,10 +1550,10 @@ send_normal_tcp(ZNotice_Kind_t kind,
 static Code_t
 get_packet(void *packet, int len, int *retlen)
 {
-    u_short length;
+    unsigned short length;
     int result;
  
-    result = net_read(input, (char *) &length, sizeof(u_short));
+    result = net_read(input, (char *) &length, sizeof(unsigned short));
     if (result < sizeof(short)) {
 	if (result < 0) {
 	    return errno;
@@ -1596,7 +1596,7 @@ extract_sin(ZNotice_t *notice, struct sockaddr_in *target)
     if ((cp >= notice->z_message + notice->z_message_len) || (*cp == '\0')) {
 	return(ZSRV_PKSHORT);
     }
-    target->sin_port = htons((u_short) atoi(cp));
+    target->sin_port = htons((unsigned short)atoi(cp));
     target->sin_family = AF_INET;
     return ZERR_NONE;
 }
