@@ -176,6 +176,17 @@ Trivial test of ZOpenPort and ZClosePort:
    >>> st = _z.ZOpenPort(port)
    >>> assert st == 0
    >>> assert _z.ZGetFD() != -1
+   >>> zsock = zephyr_tests.getsockname(_z.ZGetFD())
+   >>> assert zsock
+   >>> from socket import AF_INET
+   >>> assert zsock.sa_family.value == AF_INET, zsock.sa_family
+
+(Here we're actually using getsockname as an "is that file descriptor
+ a socket" test; the wrapper is weak in that it can't check for
+ ENOTSOCK without requiring Python 2.6, so it just throws an exception
+ on any return of -1.  If ctypes.cast worked on sockaddr, we could
+ also cast it to sockaddr_in and look at the address and port...)
+
    >>> assert port != 0
    >>> zephyr_tests.ctypes_pprint(_z.ZGetDestAddr())
    ... # doctest: +ELLIPSIS
@@ -183,8 +194,6 @@ Trivial test of ZOpenPort and ZClosePort:
    sin_port ...
    sin_addr 127.0.0.1
    sin_zero [ignored]
-
-TODO: consider checking that ZGetFD is returning a socket on that port.
 
    >>> assert _z.ZClosePort() == 0
    >>> assert _z.ZGetFD() == -1

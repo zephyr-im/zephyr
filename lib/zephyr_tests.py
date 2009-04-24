@@ -593,6 +593,26 @@ def find_buildpath():
 
     return os.path.join(opts.builddir, "lib")
 
+def getsockname(fd):
+    """wrapped C lib getsocketname (works on raw fd)"""
+    libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c"))
+
+    call_getsockname = libc.getsockname
+    call_getsockname.argtypes = [
+        c_int,                 # int s
+        POINTER(sockaddr),     # struct sockaddr *name
+        POINTER(c_int),        # socklen_t *namelen
+        ]
+    name = sockaddr(0)
+    namelen = c_int(sizeof(name))
+    ret = call_getsockname(fd, name, namelen)
+    if ret == 0:
+        return name
+    # we can't get at errno until python 2.6...
+    print ret
+    raise EnvironmentError("getsockname failed")
+
+
 if __name__ == "__main__":
     tester = ZephyrTestSuite(builddir=find_buildpath())
     tester.setup()
