@@ -339,6 +339,7 @@ class libZephyr(object):
         "ZClosePort",
         "ZMakeAscii",
         "ZMakeZcode",
+        "ZGetDestAddr",
         ]
     def __init__(self, library_path=None):
         """connect to the library and build the wrappers"""
@@ -480,6 +481,8 @@ class libZephyr(object):
             c_int,              # num
             ]
 
+        # struct sockaddr_in ZGetDestAddr (void) {
+        self.ZGetDestAddr.restype = sockaddr_in
 
         # library-specific setup...
         self.ZInitialize()

@@ -177,13 +177,17 @@ Trivial test of ZOpenPort and ZClosePort:
    >>> assert st == 0
    >>> assert _z.ZGetFD() != -1
    >>> assert port != 0
+   >>> zephyr_tests.ctypes_pprint(_z.ZGetDestAddr())
+   ... # doctest: +ELLIPSIS
+   sin_family AF_INET(2)
+   sin_port ...
+   sin_addr 127.0.0.1
+   sin_zero [ignored]
 
 TODO: consider checking that ZGetFD is returning a socket on that port.
 
    >>> assert _z.ZClosePort() == 0
    >>> assert _z.ZGetFD() == -1
-
-TODO: check that ZGetDestAddr points somewhere, too.
 
 ZMakeAscii takes a target buffer and length and an input buffer and
 length, and generates the "special" Zephyr encoding.
