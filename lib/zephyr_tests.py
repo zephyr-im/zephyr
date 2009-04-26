@@ -340,6 +340,8 @@ class libZephyr(object):
         "ZMakeAscii",
         "ZMakeZcode",
         "ZGetDestAddr",
+        "ZSetFD",
+        "ZPending",
         ]
     def __init__(self, library_path=None):
         """connect to the library and build the wrappers"""

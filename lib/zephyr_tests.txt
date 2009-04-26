@@ -241,6 +241,29 @@ Same thing with ZMakeZcode, a compact binary format that is still NUL-terminated
    >>> assert outbuf.value == ref, "%r != %r" % (outbuf.value, ref)
 
 
+Queued Packet Tests
+===================
+
+Eventually we'll want tests that install a realm (or several) and
+actually send and receive packets against them, so-called "system
+tests".  In the meantime, a faster and more local test that
+synthesizes packets and feeds them through the queuing mechanism will
+get us some more coverage.
+
+   >>> read_end, write_end = os.pipe()
+   >>> assert _z.ZSetFD(read_end) == 0
+   >>> assert _z.ZPending() == 0
+
+TODO: cook up test-specific notices, but for now we've got some lying
+around from above...
+
+   >>> zwhole = string_at(zbuf, size=zbuflen)
+   >>> wrote = os.write(write_end, zwhole)
+   >>> assert wrote == zbuflen.value, "%s != %s" % (wrote, zbuflen.value)
+   >>> zcount = _z.ZPending()
+
+zcount ends up being -1, because recvfrom gives 'Socket operation on
+non-socket' (ENOTSOCK).  Instead we need to actually create a local socket...
 
 Coverage:
 
