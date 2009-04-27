@@ -250,7 +250,10 @@ tests".  In the meantime, a faster and more local test that
 synthesizes packets and feeds them through the queuing mechanism will
 get us some more coverage.
 
-   >>> read_end, write_end = os.pipe()
+   >>> from socket import AF_UNIX, SOCK_DGRAM, socketpair
+   >>> read_end_sock, write_end_sock = socketpair(AF_UNIX, SOCK_DGRAM)
+   >>> read_end = read_end_sock.fileno()
+   >>> write_end = write_end_sock.fileno()
    >>> assert _z.ZSetFD(read_end) == 0
    >>> assert _z.ZPending() == 0
 
