@@ -250,23 +250,23 @@ tests".  In the meantime, a faster and more local test that
 synthesizes packets and feeds them through the queuing mechanism will
 get us some more coverage.
 
-   >>> from socket import AF_UNIX, SOCK_DGRAM, socketpair
-   >>> read_end_sock, write_end_sock = socketpair(AF_UNIX, SOCK_DGRAM)
-   >>> read_end = read_end_sock.fileno()
-   >>> write_end = write_end_sock.fileno()
-   >>> assert _z.ZSetFD(read_end) == 0
+   >>> from socket import SOCK_DGRAM, socket, ntohs
+   >>> port = c_ushort(0)
+   >>> st = _z.ZOpenPort(port)
+   >>> port = ntohs(port.value)
+   >>> assert port
+   >>> sock = socket(AF_INET, SOCK_DGRAM)
+   >>> assert sock
    >>> assert _z.ZPending() == 0
 
 TODO: cook up test-specific notices, but for now we've got some lying
 around from above...
 
    >>> zwhole = string_at(zbuf, size=zbuflen)
-   >>> wrote = os.write(write_end, zwhole)
+   >>> wrote = sock.sendto(zwhole, ('127.0.0.1', port))
    >>> assert wrote == zbuflen.value, "%s != %s" % (wrote, zbuflen.value)
    >>> zcount = _z.ZPending()
-
-zcount ends up being -1, because recvfrom gives 'Socket operation on
-non-socket' (ENOTSOCK).  Instead we need to actually create a local socket...
+   >>> assert zcount == 1
 
 Coverage:
 
