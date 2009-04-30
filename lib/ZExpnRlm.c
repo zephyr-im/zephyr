@@ -26,7 +26,7 @@ char *realm;
 	expand[sizeof(expand)-1] = '\0';
 	result = krb5_free_host_realm(Z_krb5_ctx, list_realms);
 	return expand;
-#endif
+#else
 #ifndef HAVE_KRB4
         struct hostent *he;
 
@@ -97,5 +97,6 @@ char *realm;
 	    return(krb_realm);
 	  }
 	}
-#endif /* KERBEROS */
+#endif /* HAVE_KRB4 */
+#endif
 }

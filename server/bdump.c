@@ -1697,7 +1697,7 @@ static int des_service_decrypt(unsigned char *in, unsigned char *out) {
 #endif
 #else
     des_ecb_encrypt((C_Block *)in, (C_Block *)out, serv_ksched.s, DES_DECRYPT);
-#endif
     return 0; /* sigh */
+#endif
 }
 #endif

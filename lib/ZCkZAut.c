@@ -190,7 +190,7 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 	return ZAUTH_YES;
     else
 	return ZAUTH_FAILED;
-#endif /* HAVE_KRB5 */
-
+#else /* HAVE_KRB5 */
     return (notice->z_auth ? ZAUTH_YES : ZAUTH_NO);
+#endif
 }
