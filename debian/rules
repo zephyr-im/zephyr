@@ -21,6 +21,7 @@ CONFIGURE_ROOT=--prefix=/usr --mandir=\$${prefix}/share/man \
 CONFIGURE_krb5=--with-krb5=/usr
 CONFIGURE_krb45=--with-krb4=/usr --with-krb5=/usr
 CONFIGURE_krb=--with-krb4=/usr
+CHECK=check
 
 # see /usr/share/doc/autotools-dev/README.Debian.gz
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
@@ -74,9 +75,9 @@ build-stamp:
 	# Add here commands to compile the package.
 	set -e; \
 	for dir in $(VARIETALS) ; do  \
-		$(MAKE) -C $$dir/lib all check; $(MAKE) -C $$dir/server; \
+		$(MAKE) -C $$dir/lib all $(CHECK); $(MAKE) -C $$dir/server; \
 	done
-	$(MAKE) -C no-krb
+	$(MAKE) -C no-krb all $(CHECK)
 
 	touch build-stamp
 
