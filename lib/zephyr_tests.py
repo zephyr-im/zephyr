@@ -21,7 +21,10 @@ from ctypes import POINTER, c_void_p, c_char_p
 from ctypes import Structure, Union, sizeof
 
 __revision__ = "$Id$"
-__version__ = "%s/%s" % (__revision__.split()[3], __revision__.split()[2])
+try:
+    __version__ = "%s/%s" % (__revision__.split()[3], __revision__.split()[2])
+except IndexError:
+    __version__ = "unknown"
 
 def print_line_or_lines(results, indent):
     """short values on same line, multi-line on later ones..."""
