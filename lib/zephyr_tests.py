@@ -583,7 +583,7 @@ class ZephyrTestSuite(TestSuite):
             assert self._libzephyr.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
         else:
             assert self._libzephyr.ZExpandRealm("") == ""
-            assert self._libzephyr.ZExpandRealm("localhost") == "LOCALHOST"
+            assert self._libzephyr.ZExpandRealm("localhost") == socket.getfqdn("localhost").upper()
             assert self._libzephyr.ZExpandRealm("bitsy.mit.edu") == "BITSY.MIT.EDU"
 
 def find_buildpath():
