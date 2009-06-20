@@ -173,7 +173,7 @@ LIBS="$KRB5_LIBS $KRB4_LIBS $LIBS"
 dnl Checks for library functions.
 #XXX more looking for res_send
 #AC_CHECK_FUNC(res_send, :, AC_CHECK_LIB(resolv, res_send))
-AC_CHECK_LIB(cares, ares_getaddrinfo,
+AC_CHECK_LIB(cares, ares_getnameinfo,
 		    [ARES_LIBS="-lcares"
 		    AC_DEFINE(HAVE_ARES)],
 		    :)
