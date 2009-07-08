@@ -158,11 +158,8 @@ if test "$ss" != no; then
 		CPPFLAGS="$CPPFLAGS -I$ss/include"
 		LDFLAGS="$LDFLAGS -L$ss/lib"
 	fi
-	#XXX
-	#AC_CHECK_LIB(curses, initscr)
-	#AC_CHECK_LIB(readline, readline)
-	AC_CHECK_LIB(ss, ss_perror, SS_LIBS=-lss,
-		     [AC_MSG_ERROR(ss library not found)], -lcom_err)
+	AC_CHECK_LIB(ss, ss_perror, SS_LIBS="-lss -lreadline -lcurses",
+		     [AC_MSG_ERROR(ss library not found)], -lcom_err -lreadline -lcurses)
 	AC_SUBST(SS_LIBS)
 else
 	AC_MSG_ERROR(This package requires ss.)
