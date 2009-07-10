@@ -1,0 +1,4 @@
+Built with:
+CPPFLAGS="-I/usr/include/kerberosIV -I/usr/include/et" ./configure --with-krb4 --with-krb5
+
+$PATH needs to have the translate_et in /usr/bin come before the one in /usr/local/bin

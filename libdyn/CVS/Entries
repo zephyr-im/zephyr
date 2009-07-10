@@ -1,0 +1,16 @@
+/Makefile.in/1.3/Wed Feb  5 02:59:36 2003//
+/README/1.1/Wed Feb  5 02:59:36 2003//
+/dyn.3/1.1/Wed Feb  5 02:59:36 2003//
+/dynP.h/1.4/Wed Feb  5 02:59:36 2003//
+/dyn_append.c/1.3/Wed Feb  5 02:59:36 2003//
+/dyn_create.c/1.2/Wed Feb  5 02:59:36 2003//
+/dyn_debug.c/1.2/Wed Feb  5 02:59:36 2003//
+/dyn_delete.c/1.3/Wed Feb  5 02:59:36 2003//
+/dyn_header.c/1.1/Wed Feb  5 02:59:36 2003//
+/dyn_insert.c/1.3/Wed Feb  5 02:59:36 2003//
+/dyn_paranoid.c/1.2/Wed Feb  5 02:59:36 2003//
+/dyn_put.c/1.3/Wed Feb  5 02:59:36 2003//
+/dyn_realloc.c/1.2/Wed Feb  5 02:59:36 2003//
+/dyn_size.c/1.2/Wed Feb  5 02:59:36 2003//
+/dyntest.c/1.2/Wed Feb  5 02:59:36 2003//
+D

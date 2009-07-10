@@ -1,0 +1,174 @@
+==15882== Memcheck, a memory error detector.
+==15882== Copyright (C) 2002-2006, and GNU GPL'd, by Julian Seward et al.
+==15882== Using LibVEX rev 1658, a library for dynamic binary translation.
+==15882== Copyright (C) 2004-2006, and GNU GPL'd, by OpenWorks LLP.
+==15882== Using valgrind-3.2.1, a dynamic binary instrumentation framework.
+==15882== Copyright (C) 2000-2006, and GNU GPL'd, by Julian Seward et al.
+==15882== For more details, rerun with: -v
+==15882== 
+==15882== Mismatched free() / delete / delete []
+==15882==    at 0x4A05130: operator delete(void*) (vg_replace_malloc.c:244)
+==15882==    by 0x5C38659: SlotMemSegment::SlotMemSegment(char const*) (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C3B74A: Slot::Slot(char const*, Log*, _CKYCardContext*) (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C3BD50: SlotList::updateSlotList() (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C3BF06: SlotList::SlotList(Log*) (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C32690: C_Initialize (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x3EEFC38734: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC3895E: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC433B9: SECMOD_LoadModule (in /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC43506: SECMOD_LoadModule (in /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1DD73: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1E3C5: NSS_Init (in /usr/lib64/libnss3.so)
+==15882==  Address 0x4EBC480 is 0 bytes inside a block of size 24 alloc'd
+==15882==    at 0x4A05CB9: operator new[](unsigned long) (vg_replace_malloc.c:199)
+==15882==    by 0x5C3861F: SlotMemSegment::SlotMemSegment(char const*) (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C3B74A: Slot::Slot(char const*, Log*, _CKYCardContext*) (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C3BD50: SlotList::updateSlotList() (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C3BF06: SlotList::SlotList(Log*) (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C32690: C_Initialize (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x3EEFC38734: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC3895E: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC433B9: SECMOD_LoadModule (in /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC43506: SECMOD_LoadModule (in /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1DD73: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1E3C5: NSS_Init (in /usr/lib64/libnss3.so)
+==15882== 
+==15882== Syscall param write(buf) points to uninitialised byte(s)
+==15882==    at 0x3EDBAC4150: __write_nocancel (in /lib64/libc-2.5.so)
+==15882==    by 0x3D37606A69: (within /usr/lib64/libpcsclite.so.1.0.0)
+==15882==    by 0x3D37606BD6: (within /usr/lib64/libpcsclite.so.1.0.0)
+==15882==    by 0x3D37604303: SCardConnect (in /usr/lib64/libpcsclite.so.1.0.0)
+==15882==    by 0x3EDCE074D4: CKYCardConnection_Connect (in /usr/lib64/libckyapplet.so.1.0.0)
+==15882==    by 0x5C3AF32: Slot::connectToToken() (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C3D785: Slot::refreshTokenState() (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C3EA78: Slot::isTokenPresent() (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C3EF39: SlotList::getSlotList(unsigned char, unsigned long*, unsigned long*) (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x5C316EA: C_GetSlotList (in /usr/lib64/pkcs11/libcoolkeypk11.so)
+==15882==    by 0x3EEFC389EC: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC433B9: SECMOD_LoadModule (in /usr/lib64/libnss3.so)
+==15882==  Address 0x7FEFFE55C is on thread 1's stack
+==15882== 
+==15882== Syscall param socketcall.sendto(to..sa_family) points to uninitialised byte(s)
+==15882==    at 0x3EDBAD28E3: __sendto_nocancel (in /lib64/libc-2.5.so)
+==15882==    by 0x4C12CBB: ZSendPacket (ZSendPkt.c:44)
+==15882==    by 0x40AF61: hostm_deathgram (dispatch.c:1331)
+==15882==    by 0x40AC7E: hostm_shutdown (dispatch.c:1264)
+==15882==    by 0x40D386: bye (main.c:549)
+==15882==    by 0x3EDBA301AF: (within /lib64/libc-2.5.so)
+==15882==    by 0x3EDBA1D8B3: (below main) (in /lib64/libc-2.5.so)
+==15882==  Address 0x7FEFFFDA8 is on thread 1's stack
+==15882== 
+==15882== ERROR SUMMARY: 7 errors from 3 contexts (suppressed: 30 from 1)
+==15882== malloc/free: in use at exit: 76,577,412 bytes in 420,746 blocks.
+==15882== malloc/free: 4,861,627 allocs, 4,440,881 frees, 1,458,012,028 bytes allocated.
+==15882== For counts of detected errors, rerun with: -v
+==15882== searching for pointers to 420,746 not-freed blocks.
+==15882== checked 15,414,384 bytes.
+==15882== 
+==15882== 
+==15882== 72 bytes in 1 blocks are definitely lost in loss record 40 of 118
+==15882==    at 0x4A04B32: calloc (vg_replace_malloc.c:279)
+==15882==    by 0x3EEFC6B20B: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC6B278: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC6B168: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC603AC: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC64F76: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1DDD4: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1E3C5: NSS_Init (in /usr/lib64/libnss3.so)
+==15882==    by 0x53637BE: (within /usr/lib64/krb5/plugins/preauth/pkinit.so)
+==15882==    by 0x5363F7A: (within /usr/lib64/krb5/plugins/preauth/pkinit.so)
+==15882==    by 0x3E2EC60509: krb5_init_preauth_context (in /usr/lib64/libkrb5.so.3.3)
+==15882==    by 0x3E2EC60F8C: krb5_preauth_request_context_init (in /usr/lib64/libkrb5.so.3.3)
+==15882== 
+==15882== 
+==15882== 253 bytes in 11 blocks are definitely lost in loss record 52 of 118
+==15882==    at 0x4A05809: malloc (vg_replace_malloc.c:149)
+==15882==    by 0x40424F: add_hash (acl_files.c:347)
+==15882==    by 0x404591: acl_load (acl_files.c:447)
+==15882==    by 0x403869: access_check (access.c:103)
+==15882==    by 0x41098A: add_subscriptions (subscr.c:172)
+==15882==    by 0x410829: subscr_subscribe (subscr.c:129)
+==15882==    by 0x40A849: control_dispatch (dispatch.c:1171)
+==15882==    by 0x40E6B3: server_dispatch (server.c:539)
+==15882==    by 0x408430: dispatch (dispatch.c:295)
+==15882==    by 0x408351: handle_packet (dispatch.c:237)
+==15882==    by 0x40CDA9: main (main.c:371)
+==15882== 
+==15882== 
+==15882== 832 bytes in 15 blocks are possibly lost in loss record 69 of 118
+==15882==    at 0x4A05809: malloc (vg_replace_malloc.c:149)
+==15882==    by 0x3EEFCE2699: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFCE565F: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFCE1977: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC9C04D: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1DECA: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1E3C5: NSS_Init (in /usr/lib64/libnss3.so)
+==15882==    by 0x53637BE: (within /usr/lib64/krb5/plugins/preauth/pkinit.so)
+==15882==    by 0x5363F7A: (within /usr/lib64/krb5/plugins/preauth/pkinit.so)
+==15882==    by 0x3E2EC60509: krb5_init_preauth_context (in /usr/lib64/libkrb5.so.3.3)
+==15882==    by 0x3E2EC60F8C: krb5_preauth_request_context_init (in /usr/lib64/libkrb5.so.3.3)
+==15882==    by 0x3E2EC57176: krb5_get_init_creds (in /usr/lib64/libkrb5.so.3.3)
+==15882== 
+==15882== 
+==15882== 2,736 bytes in 24 blocks are possibly lost in loss record 83 of 118
+==15882==    at 0x4A04B32: calloc (vg_replace_malloc.c:279)
+==15882==    by 0x3EEFC6AE7F: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC6B10C: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC603AC: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC64F76: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1DDD4: (within /usr/lib64/libnss3.so)
+==15882==    by 0x3EEFC1E3C5: NSS_Init (in /usr/lib64/libnss3.so)
+==15882==    by 0x53637BE: (within /usr/lib64/krb5/plugins/preauth/pkinit.so)
+==15882==    by 0x5363F7A: (within /usr/lib64/krb5/plugins/preauth/pkinit.so)
+==15882==    by 0x3E2EC60509: krb5_init_preauth_context (in /usr/lib64/libkrb5.so.3.3)
+==15882==    by 0x3E2EC60F8C: krb5_preauth_request_context_init (in /usr/lib64/libkrb5.so.3.3)
+==15882==    by 0x3E2EC57176: krb5_get_init_creds (in /usr/lib64/libkrb5.so.3.3)
+==15882== 
+==15882== 
+==15882== 14,120 bytes in 353 blocks are definitely lost in loss record 94 of 118
+==15882==    at 0x4A05809: malloc (vg_replace_malloc.c:149)
+==15882==    by 0x411B60: extract_subscriptions (subscr.c:988)
+==15882==    by 0x413425: subscr_foreign_user (subscr.c:1606)
+==15882==    by 0x4182CD: realm_control_dispatch (realm.c:791)
+==15882==    by 0x4174CF: realm_dispatch (realm.c:457)
+==15882==    by 0x4084F5: dispatch (dispatch.c:301)
+==15882==    by 0x408351: handle_packet (dispatch.c:237)
+==15882==    by 0x40CDA9: main (main.c:371)
+==15882== 
+==15882== 
+==15882== 17,024 (640 direct, 16,384 indirect) bytes in 16 blocks are definitely lost in loss record 96 of 118
+==15882==    at 0x4A05809: malloc (vg_replace_malloc.c:149)
+==15882==    by 0x41056F: server_queue (server.c:1628)
+==15882==    by 0x40FC64: server_forward (server.c:1402)
+==15882==    by 0x41832C: realm_control_dispatch (realm.c:794)
+==15882==    by 0x4174CF: realm_dispatch (realm.c:457)
+==15882==    by 0x4084F5: dispatch (dispatch.c:301)
+==15882==    by 0x408351: handle_packet (dispatch.c:237)
+==15882==    by 0x405CA3: bdump_recv_loop (bdump.c:854)
+==15882==    by 0x404EB8: bdump_send (bdump.c:335)
+==15882==    by 0x40CD3B: main (main.c:369)
+==15882== 
+==15882== 
+==15882== 74,808 bytes in 9 blocks are possibly lost in loss record 107 of 118
+==15882==    at 0x4A05809: malloc (vg_replace_malloc.c:149)
+==15882==    by 0x3E2EC4AEA2: krb5_ktfile_resolve (in /usr/lib64/libkrb5.so.3.3)
+==15882==    by 0x40B465: ZCheckRealmAuthentication (kstuff.c:212)
+==15882==    by 0x40827D: handle_packet (dispatch.c:219)
+==15882==    by 0x40CDA9: main (main.c:371)
+==15882== 
+==15882== 
+==15882== 56,937,484 (163,488 direct, 56,773,996 indirect) bytes in 6,812 blocks are definitely lost in loss record 112 of 118
+==15882==    at 0x4A05809: malloc (vg_replace_malloc.c:149)
+==15882==    by 0x3E2EC4AE7C: krb5_ktfile_resolve (in /usr/lib64/libkrb5.so.3.3)
+==15882==    by 0x40B465: ZCheckRealmAuthentication (kstuff.c:212)
+==15882==    by 0x40827D: handle_packet (dispatch.c:219)
+==15882==    by 0x40CDA9: main (main.c:371)
+==15882== 
+==15882== LEAK SUMMARY:
+==15882==    definitely lost: 178,573 bytes in 7,193 blocks.
+==15882==    indirectly lost: 56,790,380 bytes in 13,509 blocks.
+==15882==      possibly lost: 78,376 bytes in 48 blocks.
+==15882==    still reachable: 19,530,083 bytes in 399,996 blocks.
+==15882==         suppressed: 0 bytes in 0 blocks.
+==15882== Reachable blocks (those to which a pointer was found) are not shown.
+==15882== To see them, rerun with: --show-reachable=yes
