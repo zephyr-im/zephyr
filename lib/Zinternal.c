@@ -946,22 +946,26 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
                    sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
         return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
-        
-    if (notice->z_sender_sockaddr.sa.sa_family == AF_INET) {
-	addrlen = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
-	addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip4.sin_addr;
-    } else if (notice->z_sender_sockaddr.sa.sa_family == AF_INET6) {
-	addrlen = sizeof(notice->z_sender_sockaddr.ip6.sin6_addr);
-	addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip6.sin6_addr;
+
+    if (!notice->z_num_hdr_fields || notice->z_num_hdr_fields > 17) {
+	if (notice->z_sender_sockaddr.sa.sa_family == AF_INET) {
+	    addrlen = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
+	    addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip4.sin_addr;
+	} else if (notice->z_sender_sockaddr.sa.sa_family == AF_INET6) {
+	    addrlen = sizeof(notice->z_sender_sockaddr.ip6.sin6_addr);
+	    addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip6.sin6_addr;
+	}
+
+	if (ZMakeZcode(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
+	    return ZERR_HEADERLEN;
+	ptr += strlen(ptr) + 1;
     }
 
-    if (ZMakeZcode(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
-	return ZERR_HEADERLEN;
-    ptr += strlen(ptr) + 1;
-
-    if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_charset)) == ZERR_FIELDLEN)
-	return ZERR_HEADERLEN;
-    ptr += strlen(ptr) + 1;
+    if (!notice->z_num_hdr_fields || notice->z_num_hdr_fields > 18) {
+	if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_charset)) == ZERR_FIELDLEN)
+	    return ZERR_HEADERLEN;
+	ptr += strlen(ptr) + 1;
+    }
 	
     for (i=0;i<notice->z_num_other_fields;i++)
         if (Z_AddField(&ptr, notice->z_other_fields[i], end))
