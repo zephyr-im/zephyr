@@ -15,7 +15,6 @@
 #include <zephyr/mit-copyright.h>
 #include "zserver.h"
 #include <sys/socket.h>
-#include <com_err.h>
 
 #ifndef lint
 static const char rcsid_bdump_c[] = "$Id$";

@@ -13,7 +13,6 @@
 #include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include <ss/ss.h>
-#include <com_err.h>
 #include <pwd.h>
 #include <netdb.h>
 #ifndef lint

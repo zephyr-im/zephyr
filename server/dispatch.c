@@ -14,7 +14,6 @@
 #include <zephyr/mit-copyright.h>
 #include "zserver.h"
 #include <sys/socket.h>
-#include <com_err.h>
 
 #ifndef lint
 #ifndef SABER

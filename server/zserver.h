@@ -16,8 +16,6 @@
 
 #include <internal.h>
 
-#include <com_err.h>
-
 #include <arpa/inet.h>
 
 #include "zsrv_err.h"

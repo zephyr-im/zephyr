@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <com_err.h>
+#include <zephyr/zephyr.h>
 
 extern int error_code;
 

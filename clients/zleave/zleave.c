@@ -14,8 +14,6 @@
 #include <zephyr/mit-copyright.h>
 #include <zephyr/zephyr.h>
 
-#include <com_err.h>
-
 #ifndef lint
 static const char rcsid_zlocate_c[] = "$Id$";
 #endif /* lint */
