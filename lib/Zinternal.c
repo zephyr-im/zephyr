@@ -869,7 +869,7 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
         return (ZERR_HEADERLEN);
 
     if (ZMakeAscii32(ptr, end-ptr,
-                     Z_NUMFIELDS + notice->z_num_other_fields)
+                     (notice->z_num_hdr_fields ? (notice->z_num_hdr_fields - notice->z_num_other_fields) : Z_NUMFIELDS) + notice->z_num_other_fields)
         == ZERR_FIELDLEN)
         return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
