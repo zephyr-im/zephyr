@@ -29,7 +29,7 @@ CFLAGS=@CFLAGS@ ${DEBUG}
 ALL_CFLAGS=${CFLAGS} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h ${CPPFLAGS}
 LDFLAGS=@LDFLAGS@
-LIBS=@LIBZEPHYR_LIBS@ -lcom_err
+LIBS=@LIBZEPHYR_LIBS@ -lcom_err @LIBICONV@
 
 OBJS =	zephyr_err.lo ZAsyncLocate.lo ZCkAuth.lo ZCkIfNot.lo ZClosePort.lo \
 	ZCmpUID.lo ZCmpUIDP.lo ZFlsLocs.lo ZFlsSubs.lo ZFmtAuth.lo \

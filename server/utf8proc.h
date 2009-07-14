@@ -55,7 +55,11 @@
 
 
 #include <stdlib.h>
+#ifdef HAVE_STDBOOL_H
 #include <stdbool.h>
+#else
+typedef enum {false = 0, true = 1} bool;
+#endif
 #include <sys/types.h>
 #include <inttypes.h>
 #include <limits.h>

@@ -20,6 +20,10 @@
 static const char rcsid_bdump_c[] = "$Id$";
 #endif /* lint */
 
+#ifndef MIN
+#define MIN(x, y)               ((x) < (y) ? (x) : (y))
+#endif
+
 /*
  * External functions are:
  *

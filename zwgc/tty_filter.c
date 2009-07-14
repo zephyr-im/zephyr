@@ -28,6 +28,13 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 #include <termcap.h>
 #else
 #ifdef HAVE_TERM_H
+#ifdef HAVE_TERMIO_H
+/* I blame Solaris.  Solaris to blame. */
+#include <termio.h>
+#endif
+#ifdef HAVE_CURSES_H
+#include <curses.h>
+#endif
 #include <term.h>
 #endif
 #endif
