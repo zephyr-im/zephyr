@@ -5,11 +5,12 @@ Maintainer: Karl Ramm <kcr@debian.org>
 Uploaders: Sam Hartman <hartmans@debian.org>
 Build-Depends: debhelper (>= 5), libc-ares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev,
                libreadline5-dev, libx11-dev, libxt-dev, x11proto-core-dev, libncurses5-dev,
-	       bison, libhesiod-dev, autotools-dev
+	       bison, libhesiod-dev, autotools-dev, python (>= 2.5)
 Standards-Version: 3.8.1.0
 Homepage: http://zephyr.1ts.org/
 Vcs-Svn: svn://zephyr.1ts.org/trunk/zephyr
 Vcs-Browser: http://zephyr.1ts.org/browser/trunk/zephyr
+XS-Python-Version: 2.5
 
 Package: libzephyr4
 Section: libs
@@ -68,6 +69,15 @@ Description: The original "Instant Message" system libraries with Kerberos 4+5
  Zephyr allows users to send messages to other users or to groups of
  users.  Users can view incoming Zephyr messages as windowgrams
  (transient X windows) or as text on a terminal.
+
+Package: libzephyr-python
+Section: python
+Architecture: any
+Depends: ${python:Depends}, libzephyr4
+Provides: ${python:Provides}
+XB-Python-Version: ${python:Verions}
+Description: Python bindings for zephyr library
+ Get at the zephyr library from python.
 
 Package: zephyr-clients
 Section: net

@@ -11,7 +11,7 @@
 VARIETALS=krb5
 #VARIETALS=krb krb45 krb5
 
-PACKAGES:=-plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev $(foreach i,$(VARIETALS),-plibzephyr4-$(i) -pzephyr-server-$(i))
+PACKAGES:=-plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev -plibzephyr-python $(foreach i,$(VARIETALS),-plibzephyr4-$(i) -pzephyr-server-$(i))
 
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
@@ -118,6 +118,8 @@ install: build
 	for dir in $(VARIETALS); do \
 		cp -rp debian/tmp/etc/zephyr/acl debian/tmp-$$dir/etc/zephyr; \
 	done
+	mkdir -p debian/tmp/usr/lib/python2.5/site-packages
+	install -c -m 644 python/zephyr.py debian/tmp/usr/lib/python2.5/site-packages
 	
 # Build architecture-independent files here.
 # Pass -i to all debhelper commands in this target to reduce clutter.
@@ -147,7 +149,7 @@ binary-arch: build install
 	for dir in $(VARIETALS); do \
 		cp debian/libzephyr4.files debian/libzephyr4-$$dir.files; \
 	done
-	dh_movefiles  -plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev
+	dh_movefiles  -plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev -plibzephyr-python
 	for dir in $(VARIETALS); do \
 		dh_movefiles --sourcedir=debian/tmp-$$dir -plibzephyr4-$$dir -pzephyr-server-$$dir; \
 	done
@@ -158,7 +160,9 @@ binary-arch: build install
 	for dir in $(VARIETALS); do \
 		dh_installinit -pzephyr-server-$$dir --init-script=zephyrd; \
 	done
-	dh_installchangelogs 
+	dh_installchangelogs
+	dh_pycentral -plibzephyr-python
+	dh_python -plibzephyr-python
 	dh_strip
 	dh_compress
 	dh_fixperms
