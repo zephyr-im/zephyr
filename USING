@@ -53,7 +53,7 @@ commonly written as <class,instance,recipient>.  The default class is
 username", you are sending a message to <MESSAGE,PERSONAL,username>.
 If you don't specify a username on the zwrite command line, you will
 be sending to the recipient "*", so when you use "zwrite -c newclass",
-you are sending a message to <newclass,PERSONAL,username>.
+you are sending a message to <newclass,PERSONAL,*>.
 
 Similarly, every time you request a subscription, you are subscribing
 to a class, an instance, and a recipient.  The recipient must be
