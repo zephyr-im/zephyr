@@ -24,3 +24,4 @@ extern void plus_window_deletions(ZNotice_t *notice); /* actually in xshow.c */
 
 extern void plus_queue_notice(ZNotice_t *notice);
 extern long plus_timequeue_events(void);
+void plus_set_hname(ZNotice_t *notice, char *hname);
