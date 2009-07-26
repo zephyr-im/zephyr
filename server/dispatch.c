@@ -8,7 +8,7 @@
  *
  *	Copyright (c) 1987, 1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #include <zephyr/mit-copyright.h>
@@ -142,6 +142,7 @@ handle_packet(void)
     Pending *pending;		/* pending packet */
     int from_server;		/* packet is from another server */
     ZRealm *realm;		/* foreign realm ptr */
+    struct sockaddr_in *whence; /* pointer to actual origin */
 #ifdef DEBUG
     static int first_time = 1;
 #endif
@@ -172,7 +173,7 @@ handle_packet(void)
 	return;
     }
 
-    /* 
+    /*
      * nothing in internal queue, go to the external library
      * queue/socket
      */
@@ -189,6 +190,7 @@ handle_packet(void)
 	       inet_ntoa(whoisit.sin_addr), error_message(status));
 	return;
     }
+
     if (server_which_server(&whoisit)) {
 	/* we need to parse twice--once to get
 	   the source addr, second to check
@@ -197,37 +199,26 @@ handle_packet(void)
 	input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
 	input_sin.sin_port = new_notice.z_port;
 	input_sin.sin_family = AF_INET;
-        /* Should check to see if packet is from another realm's server, 
+        /* Should check to see if packet is from another realm's server,
            or a client */
-        /* Clients don't check auth of acks, nor do we make it so they
-           can in general, so this is safe. */
-        if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
-          authentic = ZAUTH_YES;
-        } else {
-	  realm = realm_which_realm(&input_sin);
-          if (realm) {
-            authentic = ZCheckRealmAuthentication(&new_notice,
-						       &input_sin,
-						       realm->name);
-          } else 
-	    authentic = ZCheckAuthentication(&new_notice, &input_sin);
-	}
 	from_server = 1;
+	whence = &input_sin;
     } else {
 	from_server = 0;
-        /* Clients don't check auth of acks, nor do we make it so they
-           can in general, so this is safe. */
-        if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
-          authentic = ZAUTH_YES;
-        } else {
-	  realm = realm_which_realm(&whoisit);
-          if (realm) {
-            authentic = ZCheckRealmAuthentication(&new_notice,
-                                                  &whoisit,
-                                                  realm->name);
-          } else
-	    authentic = ZCheckAuthentication(&new_notice, &whoisit);
-	}
+	whence = &whoisit;
+    }
+
+    /* Clients don't check auth of acks, nor do we make it so they
+       can in general, so this is safe. */
+    if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
+	authentic = ZAUTH_YES;
+    } else {
+	realm = realm_which_realm(whence);
+	if (realm) {
+	    authentic = ZCheckRealmAuthentication(&new_notice, whence,
+						  realm->name);
+	} else
+	    authentic = ZCheckSrvAuthentication(&new_notice, whence);
     }
 
     message_notices.val++;
@@ -389,8 +380,8 @@ sendit(ZNotice_t *notice,
     /* Send to clients subscribed to the triplet itself. */
     dest.classname = class;
     dest.inst = make_string(notice->z_class_inst, 1);
-    if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient) && 
-	*notice->z_recipient == '@') 
+    if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient) &&
+	*notice->z_recipient == '@')
       dest.recip = make_string("", 0);
     else {
       strncpy(recipbuf, notice->z_recipient, sizeof(recipbuf));
@@ -564,7 +555,7 @@ xmit(ZNotice_t *notice,
 	syslog(LOG_ERR, "xmit malloc");
 	return;			/* DON'T put on nack list */
     }
-	
+
     packlen = sizeof(ZPacket_t);
 
     if (auth && client) {	/*
@@ -603,7 +594,7 @@ xmit(ZNotice_t *notice,
 	notice->z_authent_len = 0;
 	notice->z_ascii_authent = (char *)"";
 	retval = ZFormatSmallRawNotice(notice, noticepack, &packlen);
-        /* This code is needed because a Zephyr can "grow" when a remote 
+        /* This code is needed because a Zephyr can "grow" when a remote
          * realm name is inserted into the Zephyr before being resent out
          * locally. It essentially matches the code in realm.c to do the
          * same thing with authentic Zephyrs.
@@ -624,7 +615,7 @@ xmit(ZNotice_t *notice,
           }
 
           partnotice = *notice;
-          
+
           partnotice.z_auth = 0;
           partnotice.z_authent_len = 0;
           partnotice.z_ascii_authent = (char *)"";
@@ -639,7 +630,7 @@ xmit(ZNotice_t *notice,
           }
           buffer_len = sizeof(ZPacket_t);
 
-          retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
+          retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len,
                                      &hdrlen, NULL, NULL);
           if (retval != ZERR_NONE) {
             syslog(LOG_ERR, "xmit unauth refrag fmt: failed");
@@ -649,7 +640,7 @@ xmit(ZNotice_t *notice,
 
           if (notice->z_multinotice && strcmp(notice->z_multinotice, ""))
             if (sscanf(notice->z_multinotice, "%d/%d", &origoffset, &origlen)
-                != 2) 
+                != 2)
               {
                 syslog(LOG_WARNING, "xmit unauth refrag: parse failed");
                 free(buffer);
@@ -677,7 +668,7 @@ xmit(ZNotice_t *notice,
             message_len = min(notice->z_message_len-offset, fragsize);
             partnotice.z_message_len = message_len;
 
-            retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len, 
+            retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len,
                                        &hdrlen, &ptr, NULL);
             if (retval != ZERR_NONE) {
               syslog(LOG_WARNING, "xmit unauth refrag raw: %s",
@@ -689,7 +680,7 @@ xmit(ZNotice_t *notice,
             ptr = buffer+hdrlen;
 
             (void) memcpy(ptr, partnotice.z_message, partnotice.z_message_len);
-            
+
             buffer_len = hdrlen+partnotice.z_message_len;
 
             xmit_frag(&partnotice, buffer, buffer_len, 0);
@@ -865,7 +856,7 @@ clt_ack(ZNotice_t *notice,
     retval = ZFormatSmallRawNotice(&acknotice, ackpack, &packlen);
 
     if (retval == ZERR_HEADERLEN) {
-      /* Since an ack header can be larger than a message header... (crock) */ 
+      /* Since an ack header can be larger than a message header... (crock) */
       acknotice.z_opcode = "";
       acknotice.z_class = "";
       acknotice.z_class_inst = "";
@@ -1091,7 +1082,7 @@ control_dispatch(ZNotice_t *notice,
              retval = krb5_copy_keyblock_contents(Z_krb5_ctx, ZGetSession(),
                                          client->session_keyblock);
         } else {
-             retval = krb5_copy_keyblock(Z_krb5_ctx, ZGetSession(), 
+             retval = krb5_copy_keyblock(Z_krb5_ctx, ZGetSession(),
                                 &client->session_keyblock);
         }
         if (retval) {
@@ -1145,7 +1136,7 @@ control_dispatch(ZNotice_t *notice,
 	/* don't flush locations here, let him do it explicitly */
 	client_deregister(client, 0);
     } else {
-	syslog(LOG_WARNING, "unknown ctl opcode %s", opcode); 
+	syslog(LOG_WARNING, "unknown ctl opcode %s", opcode);
 	if (server == me_server) {
 	    if (strcmp(notice->z_class_inst, ZEPHYR_CTL_REALM) != 0)
 		nack(notice, who);
