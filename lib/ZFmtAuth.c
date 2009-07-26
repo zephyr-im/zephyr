@@ -7,7 +7,7 @@
  *
  *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #ifndef lint
@@ -76,14 +76,14 @@ ZFormatAuthenticNoticeV5(ZNotice_t *notice,
     int key_len;
     char *cksum_start, *cstart, *cend;
     int cksum_len;
-    
+
     key_len = Z_keylen(keyblock);
     retval = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
     if (retval)
-         return (ZAUTH_FAILED);
+	return (ZAUTH_FAILED);
 
 #ifdef HAVE_KRB4
-    if (key_len == 8 && (enctype == ENCTYPE_DES_CBC_CRC || 
+    if (key_len == 8 && (enctype == ENCTYPE_DES_CBC_CRC ||
                          enctype == ENCTYPE_DES_CBC_MD4 ||
                          enctype == ENCTYPE_DES_CBC_MD5)) {
          C_Block tmp;
@@ -92,38 +92,39 @@ ZFormatAuthenticNoticeV5(ZNotice_t *notice,
                                        tmp);
     }
 #endif
-         
+
     newnotice = *notice;
     newnotice.z_auth = 1;
     newnotice.z_authent_len = 0;
     newnotice.z_ascii_authent = "";
 
     if ((retval = Z_NewFormatRawHeader(&newnotice, buffer, buffer_len,
-                                       &hdrlen, 
-                                       &cksum_start, &cksum_len, &cstart, 
+                                       &hdrlen,
+                                       &cksum_start, &cksum_len, &cstart,
                                        &cend)) != ZERR_NONE)
 	return (retval);
-     
-    retval = Z_InsertZcodeChecksum(keyblock, &newnotice, buffer, 
-                                   cksum_start, cksum_len, cstart, cend, 
-                                   buffer_len, &hdr_adj);
-     if (retval)
-          return retval;
-     
-     hdrlen += hdr_adj;
-     
-     ptr = buffer+hdrlen;
 
-     if (newnotice.z_message_len+hdrlen > buffer_len)
-          return (ZERR_PKTLEN);
-     
-     (void) memcpy(ptr, newnotice.z_message, newnotice.z_message_len);
-     
-     *len = hdrlen+newnotice.z_message_len;
-     
-     if (*len > Z_MAXPKTLEN)
-          return (ZERR_PKTLEN);
-     
-     return (ZERR_NONE);
+    /* we know this is only called by the server */
+    retval = Z_InsertZcodeChecksum(keyblock, &newnotice, buffer,
+                                   cksum_start, cksum_len, cstart, cend,
+                                   buffer_len, &hdr_adj, 1);
+    if (retval)
+	return retval;
+
+    hdrlen += hdr_adj;
+
+    ptr = buffer+hdrlen;
+
+    if (newnotice.z_message_len+hdrlen > buffer_len)
+	 return (ZERR_PKTLEN);
+
+    (void) memcpy(ptr, newnotice.z_message, newnotice.z_message_len);
+
+    *len = hdrlen+newnotice.z_message_len;
+
+    if (*len > Z_MAXPKTLEN)
+	return (ZERR_PKTLEN);
+
+    return (ZERR_NONE);
 }
 #endif

@@ -9,7 +9,7 @@
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #include <zephyr/mit-copyright.h>
@@ -34,7 +34,6 @@
 extern krb5_keyblock *__Zephyr_keyblock;
 #define ZGetSession() (__Zephyr_keyblock)
 void ZSetSession(krb5_keyblock *keyblock);
-Code_t ZFormatAuthenticNoticeV5(ZNotice_t*, char*, int, int*, krb5_keyblock *);
 krb5_error_code Z_krb5_init_keyblock(krb5_context, krb5_enctype, size_t,
         krb5_keyblock **);
 #endif
@@ -104,7 +103,7 @@ struct _ZRealm {
     int idx;				/* which server we are connected to */
     Destlist *subs;                     /* what their clients sub to */
     Destlist *remsubs;                  /* our subs on their end */
-    Client *client;                     
+    Client *client;
     int child_pid;
     int have_tkt;
     ZRealm_state state;
@@ -220,7 +219,7 @@ struct _Statistic {
 	(*head) = (elem);					\
 	(elem)->prev_p = (head);				\
     }
-	
+
 #define MAKE_LIST_DELETE(type) inline static void type##_delete(type *elem) \
     {\
 	*(elem)->prev_p = (elem)->next;				\
@@ -229,10 +228,10 @@ struct _Statistic {
 
 MAKE_LIST_INSERT(Destlist);
 MAKE_LIST_DELETE(Destlist);
-MAKE_LIST_INSERT(Client);	
-MAKE_LIST_DELETE(Client);	
-MAKE_LIST_INSERT(Triplet);	
-MAKE_LIST_DELETE(Triplet);	
+MAKE_LIST_INSERT(Client);
+MAKE_LIST_DELETE(Client);
+MAKE_LIST_INSERT(Triplet);
+MAKE_LIST_DELETE(Triplet);
 MAKE_LIST_INSERT(Unacked);
 MAKE_LIST_DELETE(Unacked);
 
@@ -293,6 +292,7 @@ Code_t xmit_frag(ZNotice_t *notice, char *buf, int len, int waitforack);
 void hostm_shutdown(void);
 
 /* found in kstuff.c */
+Code_t ZCheckSrvAuthentication(ZNotice_t *notice, struct sockaddr_in *from);
 Code_t ZCheckRealmAuthentication(ZNotice_t *, struct sockaddr_in *, char *);
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
 Code_t ReadKerberosData(int, int *, char **, int *);
@@ -306,7 +306,7 @@ Code_t SendKerberosData (int, KTEXT, char *, char *);
 Code_t SendKrb5Data(int, krb5_data *);
 Code_t GetKrb5Data(int, krb5_data *);
 #endif
-    
+
 /* found in server.c */
 void server_timo(void *which);
 void server_dump_servers(FILE *fp);

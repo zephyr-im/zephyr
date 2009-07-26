@@ -8,7 +8,7 @@
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of
  *	Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #include <internal.h>
@@ -56,10 +56,10 @@ static struct cksum_map_s {
   { ENCTYPE_DES_CBC_MD4,              CKSUMTYPE_RSA_MD4_DES },
   { ENCTYPE_DES_CBC_MD5,              CKSUMTYPE_RSA_MD5_DES },
 
-  /* 
+  /*
    * The implementors hate us, and are inconsistent with names for
    * most things defined after RFC1510.  Note that des3-cbc-sha1
-   * and des3-cbc-sha1-kd are listed by number to avoid confusion 
+   * and des3-cbc-sha1-kd are listed by number to avoid confusion
    * caused by inconsistency between the names used in the specs
    * and those used by implementations.
    * -- jhutz, 30-Nov-2002
@@ -109,7 +109,7 @@ void *__Z_debug_print_closure;
 
 static int Z_AddField(char **ptr, char *field, char *end);
 static int find_or_insert_uid(ZUnique_Id_t *uid, ZNotice_Kind_t kind);
-static Code_t Z_ZcodeFormatRawHeader(ZNotice_t *, char *, int, int *, char **, 
+static Code_t Z_ZcodeFormatRawHeader(ZNotice_t *, char *, int, int *, char **,
 				     int *, char **, char **, int cksumtype);
 
 /* Find or insert uid in the old uids buffer.  The buffer is a sorted
@@ -197,7 +197,7 @@ Z_PacketWaiting(void)
     FD_ZERO(&read);
     FD_SET(ZGetFD(), &read);
     return (select(ZGetFD() + 1, &read, NULL, NULL, &tv));
-} 
+}
 
 
 /* Wait for a complete notice to become available */
@@ -227,7 +227,7 @@ Z_ReadEnqueue(void)
 
     if (ZGetFD() < 0)
 	return (ZERR_NOPORT);
-    
+
     while (Z_PacketWaiting())
 	if ((retval = Z_ReadWait()) != ZERR_NONE)
 	    return (retval);
@@ -289,7 +289,7 @@ Z_ReadWait(void)
 
     if (ZGetFD() < 0)
 	return (ZERR_NOPORT);
-	
+
     FD_ZERO(&fds);
     FD_SET(ZGetFD(), &fds);
     tv.tv_sec = 60;
@@ -302,7 +302,7 @@ Z_ReadWait(void)
 
     from_len = sizeof(struct sockaddr_in);
 
-    packet_len = recvfrom(ZGetFD(), packet, sizeof(packet), 0, 
+    packet_len = recvfrom(ZGetFD(), packet, sizeof(packet), 0,
 			  (struct sockaddr *)&from, &from_len);
 
     if (packet_len < 0)
@@ -316,7 +316,7 @@ Z_ReadWait(void)
     if (packet_len < zvlen || memcmp(packet, ZVERSIONHDR, zvlen) != 0) {
 	Z_discarded_packets++;
 	return (ZERR_NONE);
-    }	
+    }
 
     /* Parse the notice */
     if ((retval = ZParseNotice(packet, packet_len, &notice)) != ZERR_NONE)
@@ -444,13 +444,13 @@ Z_ReadWait(void)
     if (!__Q_Head)
 	__Q_Head = qptr;
 
-    
+
     /* Copy the from field, multiuid, kind, and checked authentication. */
     qptr->from = from;
     qptr->uid = notice.z_multiuid;
     qptr->kind = notice.z_kind;
     qptr->auth = notice.z_checked_auth;
-    
+
     /*
      * If this is the first part of the notice, we take the header
      * from it.  We only take it if this is the first fragment so that
@@ -542,7 +542,7 @@ Z_AddNoticeToEntry(struct _Z_InputQ *qptr,
 
     (void) gettimeofday(&tv, (struct timezone *)0);
     qptr->timep = tv.tv_sec;
-    
+
     last = part+notice->z_message_len-1;
 
     hole = qptr->holelist;
@@ -634,7 +634,7 @@ Z_AddNoticeToEntry(struct _Z_InputQ *qptr,
 	(void) memcpy(qptr->packet+qptr->header_len, qptr->msg,
 		       qptr->msg_len);
     }
-    
+
     return (ZERR_NONE);
 }
 
@@ -676,11 +676,11 @@ Z_FormatHeader(ZNotice_t *notice,
     }
 
     notice->z_multinotice = "";
-    
+
     (void) Z_gettimeofday(&notice->z_uid.tv, (struct timezone *)0);
     notice->z_uid.tv.tv_sec = htonl((u_long) notice->z_uid.tv.tv_sec);
     notice->z_uid.tv.tv_usec = htonl((u_long) notice->z_uid.tv.tv_usec);
-    
+
     (void) memcpy(&notice->z_uid.zuid_addr, &__My_addr, sizeof(__My_addr));
 
     if (notice->z_sender_sockaddr.ip4.sin_family == 0) {
@@ -689,7 +689,7 @@ Z_FormatHeader(ZNotice_t *notice,
 	notice->z_sender_sockaddr.ip4.sin_port = notice->z_port;
 	(void) memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, &__My_addr, sizeof(__My_addr));
     }
-	
+
     notice->z_multiuid = notice->z_uid;
 
     if (!version[0])
@@ -729,11 +729,11 @@ Z_NewFormatHeader(ZNotice_t *notice,
     }
 
     notice->z_multinotice = "";
-    
+
     (void) gettimeofday(&tv, (struct timezone *)0);
     notice->z_uid.tv.tv_sec = htonl((u_long) tv.tv_sec);
     notice->z_uid.tv.tv_usec = htonl((u_long) tv.tv_usec);
-    
+
     (void) memcpy(&notice->z_uid.zuid_addr, &__My_addr, sizeof(__My_addr));
 
     (void) memset(&notice->z_sender_sockaddr, 0, sizeof(notice->z_sender_sockaddr));
@@ -766,7 +766,7 @@ Z_FormatAuthHeader(ZNotice_t *notice,
 	return (Z_FormatRawHeader(notice, buffer, buffer_len,
 				  len, NULL, NULL));
     }
-    
+
     return ((*cert_routine)(notice, buffer, buffer_len, len));
 }
 
@@ -785,10 +785,10 @@ Z_NewFormatAuthHeader(ZNotice_t *notice,
 	return (Z_FormatRawHeader(notice, buffer, buffer_len,
 				  len, NULL, NULL));
     }
-    
+
     return ((*cert_routine)(notice, buffer, buffer_len, len));
-} 
-	
+}
+
 Code_t
 Z_NewFormatRawHeader(ZNotice_t *notice,
 		     char *buffer,
@@ -878,7 +878,7 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
         return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid, 
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid,
                    sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
         return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
@@ -916,7 +916,7 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
         (void) sprintf(newrecip, "%s@%s", notice->z_recipient, __Zephyr_realm);
         if (Z_AddField(&ptr, newrecip, end))
             return (ZERR_HEADERLEN);
-    }           
+    }
     if (Z_AddField(&ptr, notice->z_default_format, end))
         return (ZERR_HEADERLEN);
 
@@ -942,7 +942,7 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
     if (Z_AddField(&ptr, notice->z_multinotice, end))
         return (ZERR_HEADERLEN);
 
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid, 
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid,
                    sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
         return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
@@ -966,11 +966,11 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
 	    return ZERR_HEADERLEN;
 	ptr += strlen(ptr) + 1;
     }
-	
+
     for (i=0;i<notice->z_num_other_fields;i++)
         if (Z_AddField(&ptr, notice->z_other_fields[i], end))
             return (ZERR_HEADERLEN);
-    
+
     if (cksum_len)
         *cksum_len = ptr-*cksum_start;
 
@@ -1030,7 +1030,7 @@ Z_FormatRawHeader(ZNotice_t *notice,
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
 
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid, 
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid,
 		   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
@@ -1068,7 +1068,7 @@ Z_FormatRawHeader(ZNotice_t *notice,
 	(void) sprintf(newrecip, "%s@%s", notice->z_recipient, __Zephyr_realm);
 	if (Z_AddField(&ptr, newrecip, end))
 	    return (ZERR_HEADERLEN);
-    }		
+    }
     if (Z_AddField(&ptr, notice->z_default_format, end))
 	return (ZERR_HEADERLEN);
 
@@ -1084,7 +1084,7 @@ Z_FormatRawHeader(ZNotice_t *notice,
     if (Z_AddField(&ptr, notice->z_multinotice, end))
 	return (ZERR_HEADERLEN);
 
-    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid, 
+    if (ZMakeAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid,
 		   sizeof(ZUnique_Id_t)) == ZERR_FIELDLEN)
 	return (ZERR_HEADERLEN);
     ptr += strlen(ptr)+1;
@@ -1105,13 +1105,13 @@ Z_FormatRawHeader(ZNotice_t *notice,
     if (ZMakeAscii16(ptr, end-ptr, ntohs(notice->z_charset)) == ZERR_FIELDLEN)
 	return ZERR_HEADERLEN;
     ptr += strlen(ptr) + 1;
-	
+
     for (i=0;i<notice->z_num_other_fields;i++)
 	if (Z_AddField(&ptr, notice->z_other_fields[i], end))
 	    return (ZERR_HEADERLEN);
-    
+
     *len = ptr-buffer;
-	
+
     return (ZERR_NONE);
 }
 
@@ -1168,39 +1168,39 @@ void
 Z_RemQueue(struct _Z_InputQ *qptr)
 {
     struct _Z_Hole *hole, *nexthole;
-    
+
     if (qptr->complete)
 	__Q_CompleteLength--;
 
     __Q_Size -= qptr->msg_len;
-    
+
     if (qptr->header)
 	free(qptr->header);
     if (qptr->msg)
 	free(qptr->msg);
     if (qptr->packet)
 	free(qptr->packet);
-    
+
     hole = qptr->holelist;
     while (hole) {
 	nexthole = hole->next;
 	free((char *)hole);
 	hole = nexthole;
     }
-    
+
     if (qptr == __Q_Head && __Q_Head == __Q_Tail) {
 	free ((char *)qptr);
 	__Q_Head = (struct _Z_InputQ *)0;
 	__Q_Tail = (struct _Z_InputQ *)0;
 	return;
     }
-    
+
     if (qptr == __Q_Head) {
 	__Q_Head = qptr->next;
 	__Q_Head->prev = (struct _Z_InputQ *)0;
 	free ((char *)qptr);
 	return;
-    } 
+    }
     if (qptr == __Q_Tail) {
 	__Q_Tail = qptr->prev;
 	__Q_Tail->next = (struct _Z_InputQ *)0;
@@ -1224,15 +1224,15 @@ Z_SendFragmentedNotice(ZNotice_t *notice,
     char multi[64];
     int offset, hdrsize, fragsize, ret_len, message_len, waitforack;
     Code_t retval;
-    
+
     hdrsize = len-notice->z_message_len;
     fragsize = Z_MAXPKTLEN-hdrsize-Z_FRAGFUDGE;
-    
+
     offset = 0;
 
     waitforack = ((notice->z_kind == UNACKED || notice->z_kind == ACKED)
 		  && !__Zephyr_server);
-    
+
     partnotice = *notice;
 
     while (offset < notice->z_message_len || !notice->z_message_len) {
@@ -1245,7 +1245,7 @@ Z_SendFragmentedNotice(ZNotice_t *notice,
 		htonl((u_long) partnotice.z_uid.tv.tv_sec);
 	    partnotice.z_uid.tv.tv_usec =
 		htonl((u_long) partnotice.z_uid.tv.tv_usec);
-	    (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr, 
+	    (void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr,
 			  sizeof(__My_addr));
 	    (void) memset(&notice->z_sender_sockaddr, 0, sizeof(notice->z_sender_sockaddr));
 	    notice->z_sender_sockaddr.ip4.sin_family = AF_INET; /*XXX*/
@@ -1329,8 +1329,9 @@ ZSetDebug(void (*proc) __P((const char *, va_list, void *)),
 #ifdef HAVE_KRB5
 Code_t
 Z_Checksum(krb5_data *cksumbuf,
-	   krb5_keyblock *keyblock, 
-	   krb5_cksumtype cksumtype, 
+	   krb5_keyblock *keyblock,
+	   krb5_cksumtype cksumtype,
+	   krb5_keyusage cksumusage,
 	   char **asn1_data,
 	   unsigned int *asn1_len)
 {
@@ -1343,11 +1344,11 @@ Z_Checksum(krb5_data *cksumbuf,
     Checksum checksum;
     krb5_crypto cryptctx;
 #endif
-    
+
 #ifndef HAVE_KRB5_CRYPTO_INIT
     /* Create the checksum -- MIT crypto API */
     result = krb5_c_make_checksum(Z_krb5_ctx, cksumtype,
-				  keyblock, Z_KEYUSAGE_CLT_CKSUM,
+				  keyblock, cksumusage,
 				  cksumbuf, &checksum);
     if (result)
 	return result;
@@ -1357,14 +1358,14 @@ Z_Checksum(krb5_data *cksumbuf,
     len = checksum.length;
 #else
     /* Create the checksum -- heimdal crypto API */
-    result = krb5_crypto_init(Z_krb5_ctx, keyblock, keyblock->keytype, 
+    result = krb5_crypto_init(Z_krb5_ctx, keyblock, keyblock->keytype,
                               &cryptctx);
     if (result)
 	return result;
 
     /* HOLDING: cryptctx */
     result = krb5_create_checksum(Z_krb5_ctx, cryptctx,
-				  Z_KEYUSAGE_CLT_CKSUM, cksumtype,
+				  cksumusage, cksumtype,
 				  cksumbuf->data, cksumbuf->length,
 				  &checksum);
     krb5_crypto_destroy(Z_krb5_ctx, cryptctx);
@@ -1393,14 +1394,15 @@ Z_Checksum(krb5_data *cksumbuf,
 
 Code_t
 Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
-		      ZNotice_t *notice, 
+		      ZNotice_t *notice,
                       char *buffer,
 		      char *cksum_start,
-		      int cksum_len, 
+		      int cksum_len,
                       char *cstart,
 		      char *cend,
-		      int buffer_len, 
-                      int *length_adjust)
+		      int buffer_len,
+                      int *length_adjust,
+		      int from_server)
 {
      int plain_len;   /* length of part not to be checksummed */
      int cksum0_len;  /* length of part before checksum */
@@ -1412,13 +1414,13 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
      krb5_enctype enctype;
      krb5_cksumtype cksumtype;
      Code_t result;
-     
+
      key_data = Z_keydata(keyblock);
      key_len = Z_keylen(keyblock);
      result = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
      if (result)
           return (ZAUTH_FAILED);
-     
+
      /* Assemble the things to be checksummed */
      plain_len  = cksum_start - buffer;
      cksum0_len = cstart - cksum_start;
@@ -1433,20 +1435,22 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
      memcpy(cksumbuf.data + cksum0_len + cksum1_len,
             notice->z_message, notice->z_message_len);
      /* compute the checksum */
-     result = Z_Checksum(&cksumbuf, keyblock, cksumtype, 
+     result = Z_Checksum(&cksumbuf, keyblock, cksumtype,
+			 from_server ? Z_KEYUSAGE_SRV_CKSUM
+			  : Z_KEYUSAGE_CLT_CKSUM,
                         (char **)&cksum.data, &cksum.length);
      if (result) {
           free(cksumbuf.data);
           return result;
      }
-     
+
      /*
       * OK....  we can zcode to a space starting at 'cstart',
       * with a length of buffer_len - (plain_len + cksum_len).
       * Then we tack on the end part, which is located at
       * cksumbuf.data + cksum0_len and has length cksum1_len
       */
-     
+
      result = ZMakeZcode(cstart, buffer_len - (plain_len + cksum_len),
                          (unsigned char *)cksum.data, cksum.length);
      free(cksum.data);
@@ -1461,11 +1465,11 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
 
 Code_t
 Z_ExtractEncCksum(krb5_keyblock *keyblock,
-		  krb5_enctype *enctype, 
+		  krb5_enctype *enctype,
                   krb5_cksumtype *cksumtype)
 {
-    *enctype  = Z_enctype(keyblock); 
-    return Z_krb5_lookup_cksumtype(*enctype, cksumtype); 
+    *enctype  = Z_enctype(keyblock);
+    return Z_krb5_lookup_cksumtype(*enctype, cksumtype);
 }
 #endif
 
@@ -1473,9 +1477,10 @@ Z_ExtractEncCksum(krb5_keyblock *keyblock,
 /* returns 0 if invalid or losing, 1 if valid, *sigh* */
 int
 Z_krb5_verify_cksum(krb5_keyblock *keyblock,
-		    krb5_data *cksumbuf, 
+		    krb5_data *cksumbuf,
                     krb5_cksumtype cksumtype,
-		    unsigned char *asn1_data, 
+		    krb5_keyusage cksumusage,
+		    unsigned char *asn1_data,
                     int asn1_len)
 {
     krb5_error_code result;
@@ -1495,7 +1500,7 @@ Z_krb5_verify_cksum(krb5_keyblock *keyblock,
     checksum.contents = asn1_data;
     checksum.checksum_type = cksumtype;
     result = krb5_c_verify_checksum(Z_krb5_ctx,
-				    keyblock, Z_KEYUSAGE_SRV_CKSUM,
+				    keyblock, cksumusage,
 				    cksumbuf, &checksum, &valid);
     if (!result && valid)
 	return 1;
@@ -1509,10 +1514,9 @@ Z_krb5_verify_cksum(krb5_keyblock *keyblock,
     result = krb5_crypto_init(Z_krb5_ctx, keyblock, keyblock->keytype, &cryptctx);
     if (result)
 	return result;
-    
+
     /* HOLDING: cryptctx */
-    result = krb5_verify_checksum(Z_krb5_ctx, cryptctx,
-				  Z_KEYUSAGE_SRV_CKSUM,
+    result = krb5_verify_checksum(Z_krb5_ctx, cryptctx, cksumusage,
 				  cksumbuf->data, cksumbuf->length,
 				  &checksum);
     krb5_crypto_destroy(Z_krb5_ctx, cryptctx);

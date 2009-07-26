@@ -126,9 +126,9 @@ Code_t Z_WaitForNotice (ZNotice_t *notice,
 
 Code_t Z_NewFormatHeader (ZNotice_t *, char *, int, int *, Z_AuthProc);
 Code_t Z_NewFormatAuthHeader (ZNotice_t *, char *, int, int *, Z_AuthProc);
-Code_t Z_NewFormatRawHeader (ZNotice_t *, char *, int, int *, char **, 
+Code_t Z_NewFormatRawHeader (ZNotice_t *, char *, int, int *, char **,
                                  int *, char **, char **);
-Code_t Z_AsciiFormatRawHeader (ZNotice_t *, char *, int, int *, char **, 
+Code_t Z_AsciiFormatRawHeader (ZNotice_t *, char *, int, int *, char **,
                                  int *, char **, char **);
 
 void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz);
@@ -137,20 +137,21 @@ void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz);
 int ZGetCreds(krb5_creds **creds_out);
 int ZGetCredsRealm(krb5_creds **creds_out, char *realm);
 Code_t Z_Checksum(krb5_data *cksumbuf, krb5_keyblock *keyblock,
-		  krb5_cksumtype cksumtype, char **asn1_data,
-		  unsigned int *asn1_len);
+		  krb5_cksumtype cksumtype, krb5_keyusage cksumusage,
+		  char **asn1_data, unsigned int *asn1_len);
 Code_t Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype,
 			 krb5_cksumtype *cksumtype);
 int Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf,
-			krb5_cksumtype cksumtype, unsigned char *asn1_data,
-			int asn1_len);
-Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice, 
+			krb5_cksumtype cksumtype, krb5_keyusage cksumusage,
+			unsigned char *asn1_data, int asn1_len);
+Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice,
                              char *buffer,
-                             char *cksum_start, int cksum_len, 
+                             char *cksum_start, int cksum_len,
                              char *cstart, char *cend, int buffer_len,
-                             int *length_ajdust);
+                             int *length_ajdust, int from_server);
 unsigned long z_quad_cksum(const unsigned char *, uint32_t *, long,
 			   int, unsigned char *);
+Code_t ZFormatAuthenticNoticeV5(ZNotice_t*, char*, int, int*, krb5_keyblock *);
 #endif
 
 #ifdef HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
@@ -174,4 +175,3 @@ unsigned long z_quad_cksum(const unsigned char *, uint32_t *, long,
 #endif
 
 #endif /* __INTERNAL_H__ */
-

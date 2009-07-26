@@ -8,7 +8,7 @@
  *
  *	Copyright (c) 1987,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 /* $Header$ */
 
@@ -33,7 +33,7 @@ static const char rcsid_ZCheckAuthentication_c[] =
  */
 Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 				 struct sockaddr_in *from)
-{	
+{
 #ifdef HAVE_KRB5
     krb5_error_code result;
     krb5_creds *creds;
@@ -47,7 +47,7 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
     unsigned char *asn1_data, *key_data;
     int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0;
 #endif
-    
+
     /* If the value is already known, return it. */
     if (notice->z_checked_auth != ZAUTH_UNSET)
         return (notice->z_checked_auth);
@@ -61,11 +61,11 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 
 #ifdef HAVE_KRB5
     result = ZGetCreds(&creds);
-    
+
     if (result)
 	return (ZAUTH_NO);
     /* HOLDING: creds */
-    
+
     /* Figure out what checksum type to use */
     keyblock = Z_credskey(creds);
     key_data = Z_keydata(keyblock);
@@ -76,7 +76,7 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 	return (ZAUTH_FAILED);
     }
     /* HOLDING: creds */
-    
+
     /* Assemble the things to be checksummed */
     /* first part is from start of packet through z_default_format:
      * - z_version
@@ -120,11 +120,11 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 	}
 	cksum1_len  = x + strlen(x) + 1 - cksum1_base; /* charset / extra field */
     }
-    
+
     /* last part is the message body */
     cksum2_base = notice->z_message;
     cksum2_len  = notice->z_message_len;
-    
+
     /* The following code checks for old-style checksums, which will go
        away once Kerberos 4 does. */
     if ((!notice->z_ascii_checksum || *notice->z_ascii_checksum != 'Z') &&
@@ -133,9 +133,9 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 	 enctype == ENCTYPE_DES_CBC_MD4 ||
 	 enctype == ENCTYPE_DES_CBC_MD5)) {
 	/* try old-format checksum (covers cksum0 only) */
-	
+
 	ZChecksum_t our_checksum;
-	
+
 	our_checksum = z_quad_cksum((unsigned char *)cksum0_base, NULL, cksum0_len, 0,
 				    key_data);
 	if (our_checksum == notice->z_checksum) {
@@ -144,7 +144,7 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 	}
     }
     /* HOLDING: creds */
-    
+
     cksumbuf.length = cksum0_len + cksum1_len + cksum2_len;
     cksumbuf.data = malloc(cksumbuf.length);
     if (!cksumbuf.data) {
@@ -152,13 +152,13 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 	return ZAUTH_NO;
     }
     /* HOLDING: creds, cksumbuf.data */
-    
+
     memcpy(cksumbuf.data, cksum0_base, cksum0_len);
     if (cksum1_len)
 	memcpy(cksumbuf.data + cksum0_len, cksum1_base, cksum1_len);
     memcpy(cksumbuf.data + cksum0_len + cksum1_len,
 	   cksum2_base, cksum2_len);
-    
+
     /* decode zcoded checksum */
     /* The encoded form is always longer than the original */
     asn1_len = strlen(notice->z_ascii_checksum) + 1;
@@ -178,14 +178,14 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 	return ZAUTH_FAILED;
     }
     /* HOLDING: creds, asn1_data, cksumbuf.data */
-    
+
     valid = Z_krb5_verify_cksum(keyblock, &cksumbuf, cksumtype,
-				asn1_data, asn1_len);
-    
+				Z_KEYUSAGE_SRV_CKSUM, asn1_data, asn1_len);
+
     free(asn1_data);
     krb5_free_creds(Z_krb5_ctx, creds);
     free(cksumbuf.data);
-    
+
     if (valid)
 	return ZAUTH_YES;
     else

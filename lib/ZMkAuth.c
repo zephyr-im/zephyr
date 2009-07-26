@@ -98,6 +98,7 @@ ZMakeAuthentication(register ZNotice_t *notice,
 #endif
 }
 
+/* only used by server? */
 Code_t
 ZMakeZcodeAuthentication(register ZNotice_t *notice,
 			 char *buffer,
@@ -110,10 +111,10 @@ ZMakeZcodeAuthentication(register ZNotice_t *notice,
 
 Code_t
 ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
-			      char *buffer,
-			      int buffer_len,
-			      int *phdr_len,
-			      char *realm)
+			       char *buffer,
+			       int buffer_len,
+			       int *phdr_len,
+			       char *realm)
 {
 #ifdef HAVE_KRB5
     krb5_error_code result;
@@ -184,7 +185,7 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
     }
     result = Z_InsertZcodeChecksum(keyblock, notice, buffer, cksum_start,
                                    cksum_len, cstart, cend, buffer_len,
-                                   &phdr_adj);
+                                   &phdr_adj, 0);
     krb5_free_creds(Z_krb5_ctx, creds);
     if (result) {
          return result;
@@ -233,12 +234,6 @@ ZGetCredsRealm(krb5_creds **creds_out,
     krb5_cc_close(Z_krb5_ctx, ccache);
     return result;
   }
-
-#ifdef HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
-  creds_in.keyblock.enctype = ENCTYPE_DES_CBC_CRC; /* XXX? */
-#else
-  creds_in.session.keytype = KEYTYPE_DES; /* XXX? */
-#endif
 
   result = krb5_get_credentials(Z_krb5_ctx, 0, ccache, &creds_in, creds_out);
   krb5_cc_close(Z_krb5_ctx, ccache);
