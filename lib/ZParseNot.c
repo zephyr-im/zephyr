@@ -17,20 +17,19 @@ static const char rcsid_ZParseNotice_c[] =
 
 #include <internal.h>
 #include <syslog.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 inline static int
 _bad_packet(int line, char *where, ZNotice_t *notice, char *what) {
     if (__Zephyr_server) {
 	syslog(LOG_ERR, "ZParseNotice: bad packet (%s) from %s.%d at line %d",
-	       what,
-	       inet_ntoa (notice->z_uid.zuid_addr.s_addr),
-	       notice->z_port, line);
+	       what, inet_ntoa(notice->z_uid.zuid_addr), notice->z_port, line);
     } else {
 #ifdef Z_DEBUG
 	Z_debug("ZParseNotice: bad packet (%s) from %s.%d at line %d",
-		what,
-		inet_ntoa (notice->z_uid.zuid_addr.s_addr),
-		notice->z_port, line);
+		what, inet_ntoa(notice->z_uid.zuid_addr), notice->z_port, line);
 #endif
     }
 
