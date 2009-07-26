@@ -16,9 +16,29 @@ static const char rcsid_ZParseNotice_c[] =
 #endif
 
 #include <internal.h>
+#include <syslog.h>
+
+inline static int
+_bad_packet(int line, char *where, ZNotice_t *notice, char *what) {
+    if (__Zephyr_server) {
+	syslog(LOG_ERR, "ZParseNotice: bad packet (%s) from %s.%d at line %d",
+	       what,
+	       inet_ntoa (notice->z_uid.zuid_addr.s_addr),
+	       notice->z_port, line);
+    } else {
+#ifdef Z_DEBUG
+	Z_debug("ZParseNotice: bad packet (%s) from %s.%d at line %d",
+		what,
+		inet_ntoa (notice->z_uid.zuid_addr.s_addr),
+		notice->z_port, line);
+#endif
+    }
+
+    return ZERR_BADPKT;
+}
 
 /* Skip to the next NUL-terminated field in the packet. */
-static char *
+inline static char *
 next_field(char *ptr,
 	   char *end)
 {
@@ -38,19 +58,10 @@ ZParseNotice(char *buffer,
     unsigned long temp;
     int maj, numfields, i;
 
-#ifdef __LINE__
-    int lineno;
-    /* Note: This definition of BAD eliminates lint and compiler
-     * complains about the "while (0)", but require that the macro not
-     * be used as the "then" part of an "if" statement that also has
-     * an "else" clause.
-     */
-#define BAD_PACKET	{lineno=__LINE__;goto badpkt;}
-    /* This one gets lint/compiler complaints.  */
-/*#define BAD	do{lineno=__LINE__;goto badpkt;}while(0)*/
-#else
-#define BAD_PACKET	goto badpkt
+#ifndef __LINE__
+#define __LINE__ -1
 #endif
+#define BAD_PACKET(what)	return _bad_packet(__LINE__, ptr, notice, what)
 
     (void) memset((char *)notice, 0, sizeof(ZNotice_t));
 	
@@ -63,97 +74,77 @@ ZParseNotice(char *buffer,
     if (strncmp(ptr, ZVERSIONHDR, sizeof(ZVERSIONHDR) - 1))
 	return (ZERR_VERS);
     ptr += sizeof(ZVERSIONHDR) - 1;
-    if (!*ptr) {
-#ifdef Z_DEBUG
-	Z_debug ("ZParseNotice: null version string");
-#endif
-	return ZERR_BADPKT;
-    }
+    if (!*ptr)
+	BAD_PACKET("null version string");
+
     maj = atoi(ptr);
     if (maj != ZVERSIONMAJOR)
 	return (ZERR_VERS);
     ptr = next_field(ptr, end);
 
     if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
-	BAD_PACKET;
+	BAD_PACKET("parsing num_hdr_fields");
     numfields = temp;
     notice->z_num_hdr_fields = numfields;
     ptr = next_field(ptr, end);
 
     /*XXX 3 */
     numfields -= 2; /* numfields, version, and checksum */
-    if (numfields < 0) {
-#ifdef __LINE__
-	lineno = __LINE__;
-      badpkt:
-#ifdef Z_DEBUG
-	Z_debug ("ZParseNotice: bad packet from %s/%d (line %d)",
-		 inet_ntoa (notice->z_uid.zuid_addr.s_addr),
-		 notice->z_port, lineno);
-#endif
-#else
-    badpkt:
-#ifdef Z_DEBUG
-	Z_debug ("ZParseNotice: bad packet from %s/%d",
-		 inet_ntoa (notice->z_uid.zuid_addr.s_addr),
-		 notice->z_port);
-#endif
-#endif
-	return ZERR_BADPKT;
-    }
+    if (numfields < 0)
+	BAD_PACKET("no header fields");
 
     if (numfields && ptr < end) {
 	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
-	    BAD_PACKET;
+	    BAD_PACKET("parsing kind");
 	notice->z_kind = (ZNotice_Kind_t)temp;
 	numfields--;
 	ptr = next_field(ptr, end);
     }
     else
-	BAD_PACKET;
+	BAD_PACKET("missing kind");
 	
     if (numfields && ptr < end) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&notice->z_uid,
 		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
-	    BAD_PACKET;
+	    BAD_PACKET("parsing uid");
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_uid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_uid.tv.tv_usec);
 	numfields--;
 	ptr = next_field(ptr, end);
     }
     else
-	BAD_PACKET;
+	BAD_PACKET("missing uid");
 	
     if (numfields && ptr < end) {
 	if (ZReadAscii16(ptr, end-ptr, &notice->z_port) == ZERR_BADFIELD)
-	    BAD_PACKET;
+	    BAD_PACKET("parsing port");
 	notice->z_port = htons(notice->z_port);
 	numfields--;
 	ptr = next_field(ptr, end);
     }
     else
-	BAD_PACKET;
+	BAD_PACKET("missing port");
 
     if (numfields && ptr < end) {
 	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
-	    BAD_PACKET;
+	    BAD_PACKET("parsing auth");
 	notice->z_auth = temp;
 	numfields--;
 	ptr = next_field(ptr, end);
     }
     else
-	BAD_PACKET;
+	BAD_PACKET("missing auth");
     notice->z_checked_auth = ZAUTH_UNSET;
 	
     if (numfields && ptr < end) {
 	if (ZReadAscii32(ptr, end-ptr, &temp) == ZERR_BADFIELD)
-	    BAD_PACKET;
+	    BAD_PACKET("parsing authenticator length");
 	notice->z_authent_len = temp;
 	numfields--;
 	ptr = next_field(ptr, end);
     }
     else
-	BAD_PACKET;
+	BAD_PACKET("missing authenticator length");
 
     if (numfields && ptr < end) {
 	notice->z_ascii_authent = ptr;
@@ -161,7 +152,7 @@ ZParseNotice(char *buffer,
 	ptr = next_field(ptr, end);
     }
     else
-	BAD_PACKET;
+	BAD_PACKET("missing authenticator field");
 
     if (numfields && ptr < end) {
 	notice->z_class = ptr;
@@ -239,7 +230,7 @@ ZParseNotice(char *buffer,
     if (numfields && ptr < end) {
 	if (ZReadAscii(ptr, end-ptr, (unsigned char *)&notice->z_multiuid,
 		       sizeof(ZUnique_Id_t)) == ZERR_BADFIELD)
-	    BAD_PACKET;
+	    BAD_PACKET("parsing multiuid");
 	notice->z_time.tv_sec = ntohl((u_long) notice->z_multiuid.tv.tv_sec);
 	notice->z_time.tv_usec = ntohl((u_long) notice->z_multiuid.tv.tv_usec);
 	numfields--;
@@ -254,19 +245,19 @@ ZParseNotice(char *buffer,
 	unsigned char addrbuf[sizeof(notice->z_sender_sockaddr.ip6.sin6_addr)];
 	int len;
 
-	/* because we're paranoid about naughtily misformated packets */
+	/* because we're paranoid about naughtily misformatted packets */
 	if (memchr(ptr, '\0', end - ptr) == NULL)
-	    BAD_PACKET;
+	    BAD_PACKET("unterminated address field");
 
 	if (*ptr == 'Z') {
 	    if (ZReadZcode((unsigned char *)ptr, addrbuf,
 			   sizeof(addrbuf), &len) == ZERR_BADFIELD)
-		BAD_PACKET;
+		BAD_PACKET("parsing Zcode address");
 	} else {
 	    len = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
 	    if (ZReadAscii(ptr, end - ptr, (unsigned char *)addrbuf,
 			   len) == ZERR_BADFIELD)
-		BAD_PACKET;
+		BAD_PACKET("parsing NetASCII address");
 	}
 
 	if (len == sizeof(notice->z_sender_sockaddr.ip6.sin6_addr)) {
@@ -276,7 +267,7 @@ ZParseNotice(char *buffer,
 	    notice->z_sender_sockaddr.ip4.sin_family = AF_INET;
 	    memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, addrbuf, len);
 	} else
-	    BAD_PACKET;
+	    BAD_PACKET("address claims to be neither IPv4 or IPv6");
 
 	numfields--;
 	ptr = next_field(ptr, end);
@@ -289,7 +280,7 @@ ZParseNotice(char *buffer,
 
     if (numfields && ptr < end) {
 	if (ZReadAscii16(ptr, end-ptr, &notice->z_charset) == ZERR_BADFIELD)
-	    BAD_PACKET;
+	    BAD_PACKET("parsing charset");
 	notice->z_charset = htons(notice->z_charset);
 
 	numfields--;
@@ -307,7 +298,7 @@ ZParseNotice(char *buffer,
 	ptr = next_field(ptr, end);
 
     if (numfields || *(ptr - 1) != '\0')
-	BAD_PACKET;
+	BAD_PACKET("end of headers");
 
     notice->z_message = (caddr_t) ptr;
     notice->z_message_len = len-(ptr-buffer);
