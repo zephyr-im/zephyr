@@ -214,11 +214,7 @@ handle_packet(void)
 	authentic = ZAUTH_YES;
     } else {
 	realm = realm_which_realm(whence);
-	if (realm) {
-	    authentic = ZCheckRealmAuthentication(&new_notice, whence,
-						  realm->name);
-	} else
-	    authentic = ZCheckSrvAuthentication(&new_notice, whence);
+	authentic = ZCheckSrvAuthentication(&new_notice, whence, realm ? realm->name : NULL);
     }
 
     message_notices.val++;

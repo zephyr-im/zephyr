@@ -292,8 +292,7 @@ Code_t xmit_frag(ZNotice_t *notice, char *buf, int len, int waitforack);
 void hostm_shutdown(void);
 
 /* found in kstuff.c */
-Code_t ZCheckSrvAuthentication(ZNotice_t *notice, struct sockaddr_in *from);
-Code_t ZCheckRealmAuthentication(ZNotice_t *, struct sockaddr_in *, char *);
+Code_t ZCheckSrvAuthentication(ZNotice_t *notice, struct sockaddr_in *from, char *realm);
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
 Code_t ReadKerberosData(int, int *, char **, int *);
 void sweep_ticket_hash_table(void *);
