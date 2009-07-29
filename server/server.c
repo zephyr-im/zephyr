@@ -8,7 +8,7 @@
  *
  *	Copyright (c) 1987, 1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #include <zephyr/mit-copyright.h>
@@ -265,7 +265,7 @@ server_reset(void)
 
     memset(ok_list_old, 0, nservers * sizeof(int));
     memset(ok_list_new, 0, num_servers * sizeof(int));
-	
+
     /* reset timers--pointers will move */
     for (j = 1; j < nservers; j++) {	/* skip limbo */
 	if (j == me_server_idx)
@@ -416,13 +416,13 @@ rlm_states[] = {
     "REALM_STARTING"
 };
 
-/* 
+/*
  * A server timout has expired.  If enough hello's have been unanswered,
  * change state and act accordingly. Send a "hello" and reset the timer,
  * incrementing the number of hello's sent.
  *
  * See the FSM in the Zephyr document for a better picture of what's
- * happening here. 
+ * happening here.
  */
 
 void
@@ -489,10 +489,7 @@ server_dispatch(ZNotice_t *notice,
 	return ZERR_NONE;
     }
     /* set up a who for the real origin */
-    memset(&newwho, 0, sizeof(newwho));
-    newwho.sin_family = AF_INET;
-    newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
-    newwho.sin_port = notice->z_port;
+    notice_extract_address(notice, &newwho);
 
     server = server_which_server(who);
 
@@ -552,7 +549,7 @@ server_kill_clt(Client *client)
     pnotice = &notice;
 
     memset (&notice, 0, sizeof(notice));
- 
+
     pnotice->z_kind = ACKED;
 
     pnotice->z_port = srv_addr.sin_port;
@@ -814,7 +811,7 @@ send_stats(struct sockaddr_in *who)
     }
 #endif /* NEW_COMPAT */
     for (realm = otherrealms, i = 0; i < nrealms ; i++, realm++) {
-      sprintf(buf, "%s(%s)/%s", realm->name, 
+      sprintf(buf, "%s(%s)/%s", realm->name,
 	      inet_ntoa((realm->addrs[realm->idx]).sin_addr),
 	      rlm_states[(int) realm->state]);
       responses[num_resp++] = strsave(buf);
@@ -866,7 +863,7 @@ get_server_addrs(int *number)
     i = 0;
     for (cpp = server_hosts; *cpp; cpp++)
 	i++;
-	
+
     addrs = (struct in_addr *) malloc(i * sizeof(struct in_addr));
 
     /* Convert to in_addr's */
@@ -954,7 +951,7 @@ get_single_server(void)
     return ret_list;
 }
 
-/* 
+/*
  * free storage allocated by get_server_list
  */
 static void
@@ -1026,7 +1023,7 @@ hello_respond(struct sockaddr_in *who,
       default:
 	break;
     }
-}    
+}
 
 /*
  * return the server descriptor for server at who
@@ -1277,9 +1274,9 @@ server_forw_reliable(Server *server,
 	syslog(LOG_WARNING, "srv_fwd xmit: %s", error_message(retval));
 	free(pack);
 	return;
-    }			
+    }
     /* now we've sent it, mark it as not ack'ed */
-		
+
     nacked = (Unacked *) malloc(sizeof(Unacked));
     if (!nacked) {
 	/* no space: just punt */
@@ -1365,7 +1362,7 @@ srv_rexmit(void *arg)
     Unacked *packet = (Unacked *) arg;
     Code_t retval;
     /* retransmit the packet */
-	
+
     if (otherservers[packet->dest.srv_idx].state == SERV_DEAD) {
 	Unacked_delete(packet);
 	free(packet->packet);
@@ -1479,7 +1476,7 @@ Pending *
 server_dequeue(Server *server)
 {
     Pending *pending;
-	
+
     if (!server->queue)
 	return NULL;
     pending = server->queue;
@@ -1536,4 +1533,3 @@ server_dump_servers(FILE *fp)
 		otherservers[i].dumping ? " (DUMPING)" : "");
     }
 }
-

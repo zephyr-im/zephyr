@@ -274,6 +274,7 @@ Code_t client_send_clients(void);
 char *strsave(const char *str);
 unsigned long hash (const char *);
 void dump_quote(char *p, FILE *fp);
+void notice_extract_address(ZNotice_t *notice, struct sockaddr_in *addr);
 
 /* found in dispatch.c */
 void handle_packet(void);

@@ -79,7 +79,8 @@ hash(const char *string)
 }
 
 /* Output a name, replacing newlines with \n and single quotes with \q. */
-void dump_quote(char *p, FILE *fp)
+void
+dump_quote(char *p, FILE *fp)
 {
     for (; *p; p++) {
 	if (*p == '\'') {
@@ -94,3 +95,20 @@ void dump_quote(char *p, FILE *fp)
     }
 }
 
+/* Pull the address out of the packet for dispatching.  Doesn't do anything
+ *  special, and will need to change signatures when ipv6 support happens.  But
+ *  it'll be in one place....
+ */
+void
+notice_extract_address(ZNotice_t *notice, struct sockaddr_in *addr)
+{
+    /*
+     * We get the address out of the uid rather than the 
+     * Hopefully by the time a server will actually be speaking ipv6, it won't have
+     * to worry about talking to other <3.0 realms
+     */
+    memset(addr, 0, sizeof(*addr));
+    addr->sin_addr.s_addr = notice->z_uid.zuid_addr.s_addr;
+    addr->sin_port = notice->z_port;
+    addr->sin_family = AF_INET;
+}

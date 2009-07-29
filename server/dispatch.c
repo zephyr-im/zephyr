@@ -195,10 +195,7 @@ handle_packet(void)
 	/* we need to parse twice--once to get
 	   the source addr, second to check
 	   authentication */
-	memset(&input_sin, 0, sizeof(input_sin));
-	input_sin.sin_addr.s_addr = new_notice.z_sender_addr.s_addr;
-	input_sin.sin_port = new_notice.z_port;
-	input_sin.sin_family = AF_INET;
+	notice_extract_address(&new_notice, &input_sin);
         /* Should check to see if packet is from another realm's server,
            or a client */
 	from_server = 1;
@@ -1020,8 +1017,7 @@ control_dispatch(ZNotice_t *notice,
 
     zdbug((LOG_DEBUG, "ctl_disp: opc=%s", opcode));
 
-    newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
-    newwho.sin_port = notice->z_port;
+    notice_extract_address(notice, &newwho);
     realm = realm_which_realm(&newwho);
     if (realm)
 	return(realm_control_dispatch(notice, auth, who, server, realm));

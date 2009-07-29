@@ -30,7 +30,7 @@ int nrealms = 0;                /* number of other realms */
  *
  * int realm_sender_in_realm(char *realm, char *sender)
  * figures out if sender is in realm
- * 
+ *
  * ZRealm *realm_get_realm_by_name(char *name)
  * finds a realm struct from the realm array by name, tries expansion
  *
@@ -40,10 +40,10 @@ int nrealms = 0;                /* number of other realms */
  *
  * void realm_init()
  * sets up the realm module
- * 
+ *
  * void realm_deathgram()
  * tells other realms this server is going down
- * 
+ *
  * void realm_wakeup()
  * tells other realms to resend their idea of their subs to us
  *
@@ -86,7 +86,7 @@ realm_get_idx_by_addr(ZRealm *realm,
     for (addr = realm->addrs, b = 0; b < realm->count; b++, addr++)
 	if (addr->sin_addr.s_addr == who->sin_addr.s_addr)
 	    return(b);
-    
+
     return 0;
 }
 
@@ -127,7 +127,7 @@ realm_get_realm_by_pid(int pid)
     for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
 	if (realm->child_pid == pid)
 	    return(realm);
-   
+
     return 0;
 }
 
@@ -140,7 +140,7 @@ kill_realm_pids(void)
     for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
 	if (realm->child_pid != 0)
 	    kill(realm->child_pid, 9);
-   
+
     return;
 }
 
@@ -152,11 +152,11 @@ get_realm_lists(char *file)
     FILE *fp;
     char buf[REALM_SZ + MAXHOSTNAMELEN + 1]; /* one for newline */
     char realm[REALM_SZ], server[MAXHOSTNAMELEN + 1];
-  
+
     nused = 0;
     if (!(fp = fopen(file, "r")))
 	return((ZRealmname *)0);
-  
+
     /* start with 16, realloc if necessary */
     ntotal = 16;
     rlm_list = (ZRealmname *)malloc(ntotal * sizeof(ZRealmname));
@@ -179,8 +179,8 @@ get_realm_lists(char *file)
 	    rlm = &rlm_list[ii];
 	    if (rlm->nused +1 >= rlm->nservers) {
 		/* make more space */
-		rlm->servers = (char **)realloc((char *)rlm->servers, 
-						(unsigned)rlm->nservers * 2 * 
+		rlm->servers = (char **)realloc((char *)rlm->servers,
+						(unsigned)rlm->nservers * 2 *
 						sizeof(char *));
 		if (!rlm->servers) {
 		    syslog(LOG_CRIT, "get_realm_lists realloc");
@@ -194,7 +194,7 @@ get_realm_lists(char *file)
 	    if (nused + 1 >= ntotal) {
 		/* make more space */
 		rlm_list = (ZRealmname *)realloc((char *)rlm_list,
-						(unsigned)ntotal * 2 * 
+						(unsigned)ntotal * 2 *
 						sizeof(ZRealmname));
 		if (!rlm_list) {
 		    syslog(LOG_CRIT, "get_realm_lists realloc");
@@ -216,7 +216,7 @@ get_realm_lists(char *file)
     }
     if (nused + 1 >= ntotal) {
 	rlm_list = (ZRealmname *)realloc((char *)rlm_list,
-					(unsigned)(ntotal + 1) * 
+					(unsigned)(ntotal + 1) *
 					sizeof(ZRealmname));
 	if (!rlm_list) {
 	    syslog(LOG_CRIT, "get_realm_lists realloc");
@@ -224,12 +224,12 @@ get_realm_lists(char *file)
 	}
     }
     *rlm_list[nused].name = '\0';
-  
+
     fclose(fp);
     return(rlm_list);
 }
 
-Code_t 
+Code_t
 realm_send_realms(void)
 {
     int cnt, retval;
@@ -246,11 +246,11 @@ realm_bound_for_realm(const char *realm, char *recip)
 {
     char *rlm = NULL;
     int remote = strcmp(ZGetRealm(), realm);
-    
+
     if (recip)
       rlm = strchr(recip, '@');
-    
-    if (!rlm && !remote) 
+
+    if (!rlm && !remote)
 	return 1;
 
     if (rlm && strcmp(realm_expand_realm(rlm + 1), realm) == 0)
@@ -305,7 +305,7 @@ realm_which_realm(struct sockaddr_in *who)
 	for (addr = realm->addrs, b = 0; b < realm->count; b++, addr++)
 	    if (addr->sin_addr.s_addr == who->sin_addr.s_addr)
 		return(realm);
-  
+
     return 0;
 }
 
@@ -334,7 +334,7 @@ rlm_nack_cancel(register ZNotice_t *notice,
 {
     register ZRealm *which = realm_which_realm(who);
     register Unacked *nacked;
-  
+
     zdbug((LOG_DEBUG, "rlm_nack_cancel: %s:%08X,%08X",
            inet_ntoa(notice->z_uid.zuid_addr),
            notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
@@ -350,10 +350,10 @@ rlm_nack_cancel(register ZNotice_t *notice,
 	    which->state = REALM_UP;
 	    if (ZCompareUID(&nacked->uid, &notice->z_uid)) {
 		timer_reset(nacked->timer);
-        
+
 		if (nacked->ack_addr.sin_addr.s_addr)
 		    rlm_ack(notice, nacked);
-        
+
 		/* free the data */
 		free(nacked->packet);
 		Unacked_delete(nacked);
@@ -373,14 +373,14 @@ rlm_ack(ZNotice_t *notice,
     ZPacket_t ackpack;
     int packlen;
     Code_t retval;
-  
+
     /* tell the original sender the result */
     acknotice = *notice;
     acknotice.z_message_len = strlen(acknotice.z_message) + 1;
-  
+
     packlen = sizeof(ackpack);
-  
-    if ((retval = ZFormatSmallRawNotice(&acknotice, ackpack, &packlen)) 
+
+    if ((retval = ZFormatSmallRawNotice(&acknotice, ackpack, &packlen))
 	!= ZERR_NONE) {
 	syslog(LOG_ERR, "rlm_ack format: %s",
 	       error_message(retval));
@@ -407,7 +407,6 @@ realm_dispatch(ZNotice_t *notice,
 	       Server *server)
 {
     ZRealm *realm;
-    struct sockaddr_in newwho;
     Code_t status = ZERR_NONE;
     char rlm_recipient[REALM_SZ + 1];
     int external = 0;
@@ -417,17 +416,12 @@ realm_dispatch(ZNotice_t *notice,
 	rlm_nack_cancel(notice, who);
 	return(ZERR_NONE);
     }
-    /* set up a who for the real origin */
-    memset((caddr_t) &newwho, 0, sizeof(newwho));
-    newwho.sin_family = AF_INET;
-    newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
-    newwho.sin_port = hm_port;
-    
+
     /* check if it's a control message */
     realm = realm_which_realm(who);
 
     notice_class = make_string(notice->z_class,1);
-    
+
     if (class_is_admin(notice_class)) {
 	syslog(LOG_WARNING, "%s sending admin opcode %s",
 	       realm->name, notice->z_opcode);
@@ -454,17 +448,17 @@ realm_dispatch(ZNotice_t *notice,
 	    notice->z_recipient = rlm_recipient;
 	    external = 0;
 	} else if (realm_bound_for_realm(ZGetRealm(), notice->z_recipient)
-		   && *notice->z_recipient == '@') 
+		   && *notice->z_recipient == '@')
 	{
 	    /* we're responsible for getting this message out */
 	    external = 1;
 	    notice->z_recipient = "";
 	}
-          
+
 	/* otherwise, send to local subscribers */
 	sendit(notice, auth, who, external);
     }
-        
+
     return(status);
 }
 
@@ -487,9 +481,9 @@ realm_init(void)
 	nrealms = 0;
 	return;
     }
-    
+
     for (nrealms = 0; *rlmnames[nrealms].name; nrealms++);
-    
+
     otherrealms = (ZRealm *)malloc(nrealms * sizeof(ZRealm));
     if (!otherrealms) {
 	syslog(LOG_CRIT, "malloc failed in realm_init");
@@ -499,8 +493,8 @@ realm_init(void)
     for (ii = 0; ii < nrealms; ii++) {
 	rlm = &otherrealms[ii];
 	strcpy(rlm->name, rlmnames[ii].name);
-	
-	addresses = (struct in_addr *)malloc(rlmnames[ii].nused * 
+
+	addresses = (struct in_addr *)malloc(rlmnames[ii].nused *
 					     sizeof(struct in_addr));
 	if (!addresses) {
 	    syslog(LOG_CRIT, "malloc failed in realm_init");
@@ -511,17 +505,17 @@ realm_init(void)
 	for (jj = 0; jj < rlmnames[ii].nused; jj++) {
 	    hp = gethostbyname(rlmnames[ii].servers[jj]);
 	    if (hp) {
-		memmove((caddr_t) &addresses[found], (caddr_t)hp->h_addr, 
+		memmove((caddr_t) &addresses[found], (caddr_t)hp->h_addr,
 			sizeof(struct in_addr));
 		found++;
 	    } else
-		syslog(LOG_WARNING, "hostname failed, %s", 
+		syslog(LOG_WARNING, "hostname failed, %s",
 		       rlmnames[ii].servers[jj]);
 	    /* free the hostname */
 	    free(rlmnames[ii].servers[jj]);
 	}
 	rlm->count = found;
-	rlm->addrs = (struct sockaddr_in *)malloc(found * 
+	rlm->addrs = (struct sockaddr_in *)malloc(found *
 						  sizeof (struct sockaddr_in));
 	if (!rlm->addrs) {
 	    syslog(LOG_CRIT, "malloc failed in realm_init");
@@ -546,7 +540,7 @@ realm_init(void)
 	memset(&client->session_key, 0, sizeof(client->session_key));
 #endif
 #endif
-	snprintf(rlmprinc, MAX_PRINCIPAL_SIZE, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE, 
+	snprintf(rlmprinc, MAX_PRINCIPAL_SIZE, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE,
 		rlm->name);
 	client->principal = make_string(rlmprinc, 0);
 	client->last_send = 0;
@@ -556,7 +550,7 @@ realm_init(void)
 	client->addr.sin_family = 0;
 	client->addr.sin_port = 0;
 	client->addr.sin_addr.s_addr = 0;
-    
+
 	rlm->client = client;
 	rlm->idx = (rlm->count) ? random() % rlm->count : 0;
 	rlm->subs = NULL;
@@ -583,7 +577,7 @@ realm_deathgram(Server *server)
 	char *pack;
 	char rlm_recipient[REALM_SZ + 1];
 	int packlen, retval;
-    
+
 	memset (&snotice, 0, sizeof (snotice));
 
 	snotice.z_kind = ACKED;
@@ -600,20 +594,20 @@ realm_deathgram(Server *server)
 	snotice.z_message = (server) ? server->addr_str : NULL;
 	snotice.z_message_len = (server) ? strlen(server->addr_str) + 1 : 0;
 
-	zdbug((LOG_DEBUG, "rlm_deathgram: suggesting %s to %s", 
+	zdbug((LOG_DEBUG, "rlm_deathgram: suggesting %s to %s",
 	       (server) ? server->addr_str : "nothing", realm->name));
 
 #ifdef HAVE_KRB5
 	if (!ticket_lookup(realm->name))
 	    if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "rlm_deathgram failed: %s", 
+		syslog(LOG_WARNING, "rlm_deathgram failed: %s",
 		       error_message(retval));
 		return;
 	    }
 #endif
 
-	if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZCAUTH)) 
-	    != ZERR_NONE) 
+	if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZCAUTH))
+	    != ZERR_NONE)
 	{
 	    syslog(LOG_WARNING, "rlm_deathgram format: %s",
 		   error_message(retval));
@@ -636,21 +630,21 @@ realm_wakeup(void)
 {
     int jj, found = 0;
     ZRealm *realm;
-    
+
     for (jj = 1; jj < nservers; jj++) {    /* skip limbo server */
 	if (jj != me_server_idx && otherservers[jj].state == SERV_UP)
 	    found++;
     }
-  
+
     if (nservers < 2 || !found) {
-	/* if we're the only server up, send a REALM_BOOT to one of their 
+	/* if we're the only server up, send a REALM_BOOT to one of their
 	   servers here */
 	for (realm = otherrealms, jj = 0; jj < nrealms; jj++, realm++) {
 	    ZNotice_t snotice;
 	    char *pack;
 	    char rlm_recipient[REALM_SZ + 1];
 	    int packlen, retval;
-	    
+
 	    memset (&snotice, 0, sizeof (snotice));
 
 	    snotice.z_opcode = REALM_BOOT;
@@ -671,20 +665,20 @@ realm_wakeup(void)
 #ifdef HAVE_KRB5
 	    if (!ticket_lookup(realm->name))
 		if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
-		    syslog(LOG_WARNING, "rlm_wakeup failed: %s", 
+		    syslog(LOG_WARNING, "rlm_wakeup failed: %s",
 			   error_message(retval));
 		    continue;
 		}
 #endif
 
-	    if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH)) 
-		!= ZERR_NONE) 
+	    if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH))
+		!= ZERR_NONE)
 	    {
 		syslog(LOG_WARNING, "rlm_wakeup format: %s",
 		       error_message(retval));
 		return;
 	    }
-	    if ((retval = ZParseNotice(pack, packlen, &snotice)) 
+	    if ((retval = ZParseNotice(pack, packlen, &snotice))
 		!= ZERR_NONE) {
 		syslog(LOG_WARNING, "rlm_wakeup parse: %s",
 		       error_message(retval));
@@ -694,7 +688,7 @@ realm_wakeup(void)
 
 	    realm_handoff(&snotice, 1, NULL, realm, 0);
 	    free(pack);
-	}      
+	}
     }
 }
 
@@ -706,16 +700,16 @@ realm_ulocate_dispatch(ZNotice_t *notice,
 		       ZRealm *realm)
 {
     register char *opcode = notice->z_opcode;
-  
+
     if (!auth) {
 	syslog(LOG_WARNING, "unauth locate msg from %s (%s/%s/%s)",
-	       inet_ntoa(who->sin_addr), 
-	       notice->z_class, notice->z_class_inst, 
+	       inet_ntoa(who->sin_addr),
+	       notice->z_class, notice->z_class_inst,
 	       notice->z_opcode); /* XXX */
 	clt_ack(notice, who, AUTH_FAILED);
 	return(ZERR_NONE);
     }
-    
+
     if (!strcmp(opcode, REALM_REQ_LOCATE)) {
 	ack(notice, who);
 	ulogin_realm_locate(notice, who, realm);
@@ -727,7 +721,7 @@ realm_ulocate_dispatch(ZNotice_t *notice,
 	       realm->name, opcode);
 	nack(notice, who);
     }
-    
+
     return(ZERR_NONE);
 }
 
@@ -744,8 +738,8 @@ realm_control_dispatch(ZNotice_t *notice,
 
     if (!auth) {
 	syslog(LOG_WARNING, "unauth ctl msg from %s (%s/%s/%s)",
-	       inet_ntoa(who->sin_addr), 
-	       notice->z_class, notice->z_class_inst, 
+	       inet_ntoa(who->sin_addr),
+	       notice->z_class, notice->z_class_inst,
 	       notice->z_opcode); /* XXX */
 	if (server == me_server)
 	    clt_ack(notice, who, AUTH_FAILED);
@@ -823,7 +817,7 @@ realm_new_server(struct sockaddr_in *sin,
 	return ZSRV_NORLM;
 
     srvidx = realm_get_idx_by_addr(realm, sin);
-    zdbug((LOG_DEBUG, "rlm_new_srv: message from %d in %s (%s)", 
+    zdbug((LOG_DEBUG, "rlm_new_srv: message from %d in %s (%s)",
 	   srvidx, realm->name, inet_ntoa(sin->sin_addr)));
     if (realm->idx == srvidx) {
 	if (notice->z_message_len) {
@@ -836,7 +830,7 @@ realm_new_server(struct sockaddr_in *sin,
 	    realm->idx = realm_get_idx_by_addr(realm, &sinaddr);
 	} else {
 	    realm->idx = (realm->idx + 1) % realm->count;
-	} 
+	}
 	zdbug((LOG_DEBUG, "rlm_new_srv: switched servers (%s)", inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
     } else {
       zdbug((LOG_DEBUG, "rlm_new_srv: not switching servers (%s)", inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
@@ -871,21 +865,21 @@ realm_handoff(ZNotice_t *notice,
     Code_t retval;
 
     if (!auth) {
-	zdbug((LOG_DEBUG, "realm_sendit unauthentic to realm %s", 
+	zdbug((LOG_DEBUG, "realm_sendit unauthentic to realm %s",
 	       realm->name));
 	realm_sendit(notice, who, auth, realm, ack_to_sender);
 	return;
     }
-  
+
     if (!ticket_lookup(realm->name))
 	if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
-	    syslog(LOG_WARNING, "rlm_handoff failed: %s", 
+	    syslog(LOG_WARNING, "rlm_handoff failed: %s",
 		   error_message(retval));
 	    realm_sendit(notice, who, auth, realm, ack_to_sender);
 	    return;
 	}
-    
-    zdbug((LOG_DEBUG, "realm_sendit to realm %s auth %d", realm->name, auth)); 
+
+    zdbug((LOG_DEBUG, "realm_sendit to realm %s auth %d", realm->name, auth));
     /* valid ticket available now, send the message */
     retval = realm_sendit_auth(notice, who, auth, realm, ack_to_sender);
 #else /* HAVE_KRB4 */
@@ -906,14 +900,14 @@ realm_sendit(ZNotice_t *notice,
     Unacked *nacked;
 
     notice->z_auth = auth;
-  
+
     /* format the notice */
     if ((retval = ZFormatRawNotice(notice, &pack, &packlen)) != ZERR_NONE) {
 	syslog(LOG_WARNING, "rlm_sendit format: %s",
 	       error_message(retval));
 	return;
     }
-  
+
     /* now send */
     if ((retval = ZSetDestAddr(&realm->addrs[realm->idx])) != ZERR_NONE) {
 	syslog(LOG_WARNING, "rlm_sendit set addr: %s",
@@ -926,9 +920,9 @@ realm_sendit(ZNotice_t *notice,
 	free(pack);
 	return;
     }
-    
+
     /* now we've sent it, mark it as not ack'ed */
-  
+
     if (!(nacked = (Unacked *)malloc(sizeof(Unacked)))) {
 	/* no space: just punt */
 	syslog(LOG_ERR, "rlm_sendit nack malloc");
@@ -991,7 +985,7 @@ rlm_rexmit(void *arg)
 	/* give a server ack that the packet is lost/realm dead */
 	packet_ctl_nack(nackpacket);
 	Unacked_delete(nackpacket);
-	
+
 	zdbug((LOG_DEBUG, "rlm_rexmit: %s appears dead", realm->name));
 	realm->state = REALM_DEAD;
 
@@ -1001,23 +995,23 @@ rlm_rexmit(void *arg)
     }
 
     /* if we've reached our limit, move on to the next server */
-    if ((realm->state == REALM_TARDY) || 
-	(nackpacket->rexmits && 
-	 !((nackpacket->rexmits+1) % (NUM_REXMIT_TIMES/3)))) 
+    if ((realm->state == REALM_TARDY) ||
+	(nackpacket->rexmits &&
+	 !((nackpacket->rexmits+1) % (NUM_REXMIT_TIMES/3))))
     {
 	realm->idx = (realm->idx + 1) % realm->count;
-	zdbug((LOG_DEBUG, "rlm_rexmit: %s switching servers:%d (%s)", 
-	       realm->name, realm->idx, 
+	zdbug((LOG_DEBUG, "rlm_rexmit: %s switching servers:%d (%s)",
+	       realm->name, realm->idx,
 	       inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
     }
 
     /* throttle back if it looks like the realm is down */
-    if ((realm->state != REALM_DEAD) || 
+    if ((realm->state != REALM_DEAD) ||
 	((nackpacket->rexmits % (realm->count+1)) == 1)) {
 	/* do the retransmit */
 	retval = ZSetDestAddr(&realm->addrs[realm->idx]);
 	if (retval != ZERR_NONE) {
-	    syslog(LOG_WARNING, "rlm_rexmit set addr: %s", 
+	    syslog(LOG_WARNING, "rlm_rexmit set addr: %s",
 		   error_message(retval));
 	} else {
 	    retval = ZSendPacket(nackpacket->packet, nackpacket->packsz, 0);
@@ -1036,13 +1030,13 @@ rlm_rexmit(void *arg)
 
     /* reset the timer */
     nackpacket->rexmits++;
-    nackpacket->timer = 
-	timer_set_rel(rexmit_times[nackpacket->rexmits%NUM_REXMIT_TIMES], 
+    nackpacket->timer =
+	timer_set_rel(rexmit_times[nackpacket->rexmits%NUM_REXMIT_TIMES],
 		      rlm_rexmit, nackpacket);
     if (rexmit_times[nackpacket->rexmits%NUM_REXMIT_TIMES] == -1)
-	zdbug((LOG_DEBUG, "rlm_rexmit(%s): would send at -1 to %s", 
+	zdbug((LOG_DEBUG, "rlm_rexmit(%s): would send at -1 to %s",
 	       realm->name, inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
-    
+
     return;
 }
 
@@ -1050,7 +1044,7 @@ void
 realm_dump_realms(FILE *fp)
 {
     register int ii, jj;
-  
+
     for (ii = 0; ii < nrealms; ii++) {
 	(void) fprintf(fp, "%d:%s\n", ii, otherrealms[ii].name);
 	for (jj = 0; jj < otherrealms[ii].count; jj++) {
@@ -1094,7 +1088,7 @@ realm_sendit_auth(ZNotice_t *notice,
     retval = ZMakeZcodeRealmAuthentication(&newnotice, buffer, buffer_len,
 					   &hdrlen, realm->name);
     if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "rlm_sendit_auth make zcksum: %s", 
+	syslog(LOG_WARNING, "rlm_sendit_auth make zcksum: %s",
 	       error_message(retval));
 	return (retval);
     }
@@ -1102,21 +1096,21 @@ realm_sendit_auth(ZNotice_t *notice,
     /* set the dest addr */
     retval = ZSetDestAddr(&realm->addrs[realm->idx]);
     if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s", 
+	syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s",
 	       error_message(retval));
 	return (retval);
     }
-  
-    /* This is not terribly pretty, but it does do its job. 
+
+    /* This is not terribly pretty, but it does do its job.
      * If a packet we get that needs to get sent off to another realm is
      * too big after we slap on our authent, we refragment it further,
      * a la Z_SendFragmentedNotice. This obviates the need for what
      * used to be done in ZFormatAuthenticRealmNotice, as we do it here.
      * At some point it should be pulled back out into its own function,
      * but only the server uses it.
-     */ 
+     */
 
-    if ((notice->z_message_len+hdrlen > buffer_len) || 
+    if ((notice->z_message_len+hdrlen > buffer_len) ||
 	(notice->z_message_len+hdrlen > Z_MAXPKTLEN)) {
 
 	/* Reallocate buffers inside the refragmenter */
@@ -1128,7 +1122,7 @@ realm_sendit_auth(ZNotice_t *notice,
 	origlen = notice->z_message_len;
 
 	if (notice->z_multinotice && strcmp(notice->z_multinotice, ""))
-	    if (sscanf(notice->z_multinotice, "%d/%d", &origoffset, 
+	    if (sscanf(notice->z_multinotice, "%d/%d", &origoffset,
 		       &origlen) != 2) {
 		syslog(LOG_WARNING, "rlm_sendit_auth frag: parse failed");
 		return ZERR_BADFIELD;
@@ -1140,13 +1134,13 @@ realm_sendit_auth(ZNotice_t *notice,
 	    (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
 	    partnotice.z_multinotice = multi;
 	    if (offset > 0) {
-		(void) Z_gettimeofday(&partnotice.z_uid.tv, 
+		(void) Z_gettimeofday(&partnotice.z_uid.tv,
 				      (struct timezone *)0);
-		partnotice.z_uid.tv.tv_sec = htonl((u_long) 
+		partnotice.z_uid.tv.tv_sec = htonl((u_long)
 						   partnotice.z_uid.tv.tv_sec);
-		partnotice.z_uid.tv.tv_usec = 
+		partnotice.z_uid.tv.tv_usec =
 		    htonl((u_long) partnotice.z_uid.tv.tv_usec);
-		(void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr, 
+		(void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr,
 			      sizeof(__My_addr));
 		partnotice.z_sender_sockaddr.ip4.sin_family = AF_INET; /* XXX */
 		(void) memcpy((char *)&partnotice.z_sender_sockaddr.ip4.sin_addr,
@@ -1163,12 +1157,12 @@ realm_sendit_auth(ZNotice_t *notice,
 	    }
 
 	    buffer_len = sizeof(ZPacket_t);
-	    
-	    retval = ZMakeZcodeRealmAuthentication(&partnotice, buffer, 
-						   buffer_len, &hdrlen, 
+
+	    retval = ZMakeZcodeRealmAuthentication(&partnotice, buffer,
+						   buffer_len, &hdrlen,
 						   realm->name);
 	    if (retval != ZERR_NONE) {
-		syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s", 
+		syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s",
 		       error_message(retval));
 		free(buffer);
 		return (retval);
@@ -1182,7 +1176,7 @@ realm_sendit_auth(ZNotice_t *notice,
 
 	    /* now send */
 	    if ((retval = ZSendPacket(buffer, buffer_len, 0)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s", 
+		syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s",
 		       error_message(retval));
 		free(buffer);
 		return(retval);
@@ -1215,7 +1209,7 @@ realm_sendit_auth(ZNotice_t *notice,
 	    Unacked_insert(&rlm_nacklist, nacked);
 
 	    offset += fragsize;
-	    
+
 	    if (!notice->z_message_len)
 		break;
 	}
@@ -1227,17 +1221,17 @@ realm_sendit_auth(ZNotice_t *notice,
 	(void) memcpy(ptr, newnotice.z_message, newnotice.z_message_len);
 
         buffer_len = hdrlen+newnotice.z_message_len;
-    
+
 	/* now send */
 	if ((retval = ZSendPacket(buffer, buffer_len, 0)) != ZERR_NONE) {
-	    syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s", 
+	    syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s",
 		   error_message(retval));
 	    free(buffer);
 	    return(retval);
 	}
 
 	/* now we've sent it, mark it as not ack'ed */
-    
+
 	if (!(nacked = (Unacked *)malloc(sizeof(Unacked)))) {
 	    /* no space: just punt */
 	    syslog(LOG_ERR, "rlm_sendit_auth nack malloc");
@@ -1251,13 +1245,13 @@ realm_sendit_auth(ZNotice_t *notice,
 	nacked->dest.rlm.rlm_srv_idx = realm->idx;
 	nacked->packsz = buffer_len;
 	nacked->uid = notice->z_uid;
-	
+
 	/* Do the ack for the last frag, below */
 	if (ack_to_sender)
 	    nacked->ack_addr = *who;
 	else
 	    nacked->ack_addr.sin_addr.s_addr = 0;
-    
+
 	/* set a timer to retransmit */
 	nacked->timer = timer_set_rel(rexmit_times[0], rlm_rexmit, nacked);
 	/* chain in */
@@ -1271,38 +1265,38 @@ ticket_lookup(char *realm)
 {
     krb5_error_code result;
     krb5_timestamp sec;
-    krb5_ccache ccache; 
-    krb5_creds creds_in, *creds; 
+    krb5_ccache ccache;
+    krb5_creds creds_in, *creds;
 
-    result = krb5_cc_default(Z_krb5_ctx, &ccache); 
-    if (result) 
+    result = krb5_cc_default(Z_krb5_ctx, &ccache);
+    if (result)
       return 0;
 
-    memset(&creds_in, 0, sizeof(creds_in)); 
- 
-    result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client); 
+    memset(&creds_in, 0, sizeof(creds_in));
+
+    result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client);
     if (result) {
       krb5_cc_close(Z_krb5_ctx, ccache);
       return 0;
     }
 
-    result = krb5_build_principal(Z_krb5_ctx, &creds_in.server, 
-                                  strlen(realm), 
-                                  realm, 
+    result = krb5_build_principal(Z_krb5_ctx, &creds_in.server,
+                                  strlen(realm),
+                                  realm,
                                   SERVER_KRB5_SERVICE, SERVER_INSTANCE,
-				  NULL); 
+				  NULL);
     if (result) {
       krb5_cc_close(Z_krb5_ctx, ccache);
       return 0;
     }
 
-    result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache, 
-                                  &creds_in, &creds); 
+    result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache,
+                                  &creds_in, &creds);
     krb5_cc_close(Z_krb5_ctx, ccache);
     /* good ticket? */
 
     krb5_timeofday (Z_krb5_ctx, &sec);
-    krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */ 
+    krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */
     if ((result == 0) && (sec < creds->times.endtime)) {
       krb5_free_creds(Z_krb5_ctx, creds);
       return (1);
@@ -1317,49 +1311,49 @@ ticket_retrieve(ZRealm *realm)
 {
     int pid;
     krb5_ccache ccache;
-    krb5_error_code result; 
-    krb5_creds creds_in, *creds; 
-    
+    krb5_error_code result;
+    krb5_creds creds_in, *creds;
+
     get_tgt();
 
-    if (realm->child_pid) 
+    if (realm->child_pid)
 	/* Right idea. Basically, we haven't gotten it yet */
 	return KRB5KRB_AP_ERR_TKT_EXPIRED;
 
     if (realm->have_tkt) {
-	/* Get a pointer to the default ccache. We don't need to free this. */ 
-	result = krb5_cc_default(Z_krb5_ctx, &ccache); 
+	/* Get a pointer to the default ccache. We don't need to free this. */
+	result = krb5_cc_default(Z_krb5_ctx, &ccache);
 
-	/* GRRR.  There's no allocator or constructor for krb5_creds */ 
-	/* GRRR.  It would be nice if this API were documented at all */ 
-	memset(&creds_in, 0, sizeof(creds_in)); 
- 
-	if (!result) 
-	    result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client); 
-	/* construct the service principal */ 
-	if (!result)  
-	    result = krb5_build_principal(Z_krb5_ctx, &creds_in.server, 
-					  strlen(realm->name), realm->name, 
-					  SERVER_KRB5_SERVICE, SERVER_INSTANCE, 
-					  NULL); 
+	/* GRRR.  There's no allocator or constructor for krb5_creds */
+	/* GRRR.  It would be nice if this API were documented at all */
+	memset(&creds_in, 0, sizeof(creds_in));
 
-	/* HOLDING: creds_in.server */ 
-     
-	/* look up or get the credentials we need */ 
-	if (!result) 
-	    result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache, 
-					  &creds_in, &creds); 
+	if (!result)
+	    result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client);
+	/* construct the service principal */
+	if (!result)
+	    result = krb5_build_principal(Z_krb5_ctx, &creds_in.server,
+					  strlen(realm->name), realm->name,
+					  SERVER_KRB5_SERVICE, SERVER_INSTANCE,
+					  NULL);
+
+	/* HOLDING: creds_in.server */
+
+	/* look up or get the credentials we need */
+	if (!result)
+	    result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache,
+					  &creds_in, &creds);
 	krb5_cc_close(Z_krb5_ctx, ccache);
-	krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */ 
+	krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */
 	if (!result) {
-	    krb5_free_creds(Z_krb5_ctx, creds); 
-	    return 0; 
+	    krb5_free_creds(Z_krb5_ctx, creds);
+	    return 0;
 	}
     } else {
 	syslog(LOG_ERR, "tkt_rtrv: don't have ticket, but have no child");
         result = KRB5KRB_AP_ERR_TKT_EXPIRED;
     }
- 
+
     pid = fork();
     if (pid < 0) {
 	syslog(LOG_ERR, "tkt_rtrv: can't fork");
@@ -1398,38 +1392,38 @@ ticket_retrieve(ZRealm *realm)
 	syslog(LOG_INFO, "tkt_rtrv running for %s", realm->name);
 	while (1) {
 	    /* Get a pointer to the default ccache.
-	       We don't need to free this. */ 
-	    result = krb5_cc_default(Z_krb5_ctx, &ccache); 
+	       We don't need to free this. */
+	    result = krb5_cc_default(Z_krb5_ctx, &ccache);
 
-	    /* GRRR.  There's no allocator or constructor for krb5_creds */ 
-	    /* GRRR.  It would be nice if this API were documented at all */ 
-	    memset(&creds_in, 0, sizeof(creds_in)); 
- 
-	    if (!result) 
+	    /* GRRR.  There's no allocator or constructor for krb5_creds */
+	    /* GRRR.  It would be nice if this API were documented at all */
+	    memset(&creds_in, 0, sizeof(creds_in));
+
+	    if (!result)
 		result = krb5_cc_get_principal(Z_krb5_ctx, ccache,
-					       &creds_in.client); 
-	    /* construct the service principal */ 
-	    if (!result)  
-		result = krb5_build_principal(Z_krb5_ctx, &creds_in.server, 
-					      strlen(realm->name), realm->name, 
+					       &creds_in.client);
+	    /* construct the service principal */
+	    if (!result)
+		result = krb5_build_principal(Z_krb5_ctx, &creds_in.server,
+					      strlen(realm->name), realm->name,
 					      SERVER_KRB5_SERVICE,
-					      SERVER_INSTANCE, 
-					      NULL); 
+					      SERVER_INSTANCE,
+					      NULL);
 
-	    /* HOLDING: creds_in.server */ 
-	    
-	    /* look up or get the credentials we need */ 
-	    if (!result) 
-		result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache, 
-					      &creds_in, &creds); 
+	    /* HOLDING: creds_in.server */
+
+	    /* look up or get the credentials we need */
+	    if (!result)
+		result = krb5_get_credentials(Z_krb5_ctx, 0 /* flags */, ccache,
+					      &creds_in, &creds);
 	    krb5_cc_close(Z_krb5_ctx, ccache);
-	    krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */ 
+	    krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* hope this is OK */
 	    if (!result) {
-		krb5_free_creds(Z_krb5_ctx, creds); 
+		krb5_free_creds(Z_krb5_ctx, creds);
 		syslog(LOG_INFO, "tkt_rtrv succeeded for %s", realm->name);
 		exit(0);
 	    }
-      
+
 	    /* Sleep a little while before retrying */
 	    sleep(30);
 	}
@@ -1443,4 +1437,3 @@ ticket_retrieve(ZRealm *realm)
     }
 }
 #endif /* HAVE_KRB5 */
-

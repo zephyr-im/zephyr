@@ -7,7 +7,7 @@
  *
  *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #include <zephyr/mit-copyright.h>
@@ -58,7 +58,7 @@ static const char rcsid_uloc_c[] =
 
 /* WARNING: make sure this is the same as the number of strings you */
 /* plan to hand back to the user in response to a locate request, */
-/* else you will lose.  See ulogin_locate() and uloc_send_locations() */  
+/* else you will lose.  See ulogin_locate() and uloc_send_locations() */
 #define	NUM_FIELDS	3
 
 typedef enum _Exposure_type {
@@ -134,7 +134,7 @@ ulogin_dispatch(ZNotice_t *notice,
 		if (server == me_server)
 		    clt_ack(notice, who, NOT_FOUND);
 		return ZERR_NONE;
-	    } 
+	    }
 	    syslog(LOG_ERR,"bogus location exposure NONE, %s",
 		   notice->z_sender);
 	    break;
@@ -168,7 +168,7 @@ ulogin_dispatch(ZNotice_t *notice,
 	    server_forward(notice, auth, who);
 	return ZERR_NONE;
     }
-    if (!bdumping && 
+    if (!bdumping &&
 	(!auth || strcmp(notice->z_sender, notice->z_class_inst) != 0))  {
 	zdbug((LOG_DEBUG,"unauthentic ulogin: %d %s %s", auth,
 	       notice->z_sender, notice->z_class_inst));
@@ -239,7 +239,7 @@ ulogin_dispatch(ZNotice_t *notice,
 	}
     } else {
 	if (!strcmp(notice->z_opcode, LOGIN_USER_LOGIN)) {
-	    zdbug((LOG_DEBUG, "ulog opcode from unknown foreign realm %s", 
+	    zdbug((LOG_DEBUG, "ulog opcode from unknown foreign realm %s",
 		   notice->z_opcode));
 	} else {
 	    syslog(LOG_ERR, "unknown ulog opcode %s", notice->z_opcode);
@@ -532,7 +532,7 @@ ulogin_add_user(ZNotice_t *notice,
 
 /*
  * Set up the location locs with the information in the notice.
- */ 
+ */
 
 static int
 ulogin_setup(ZNotice_t *notice,
@@ -590,7 +590,7 @@ ulogin_parse(ZNotice_t *notice,
     locs->tty = make_string(cp, 0);
 
     return 0;
-}	
+}
 
 
 static Location *
@@ -768,7 +768,7 @@ ulogin_flush_user(ZNotice_t *notice)
 	loc[i] = locations[i];
 	i++;
     }
-	
+
     for(j = 0; j < num_match; j++) {
 	free_loc(&locations[i]);
 	i++;
@@ -841,7 +841,7 @@ ulogin_locate(ZNotice_t *notice,
 static char **
 ulogin_marshal_locs(ZNotice_t *notice,
 		    int *found,
-		    int auth) 
+		    int auth)
 {
     Location **matches = (Location **) 0;
     Location *loc;
@@ -900,8 +900,8 @@ ulogin_marshal_locs(ZNotice_t *notice,
 
     /* OK, now we have a list of user@host's to return to the client
        in matches */
-	
-	
+
+
 #ifdef DEBUG
     if (zdebug) {
 	for (i = 0; i < *found ; i++)
@@ -909,7 +909,7 @@ ulogin_marshal_locs(ZNotice_t *notice,
 		   matches[i]->user->string));
     }
 #endif
-	
+
     /* coalesce the location information into a list of char *'s */
     answer = (char **) malloc((*found) * NUM_FIELDS * sizeof(char *));
     if (!answer) {
@@ -921,7 +921,7 @@ ulogin_marshal_locs(ZNotice_t *notice,
 	    answer[i * NUM_FIELDS + 1] = matches[i]->time;
 	    answer[i * NUM_FIELDS + 2] = matches[i]->tty->string;
 	}
-	
+
     if (matches)
 	free(matches);
     return answer;
@@ -986,7 +986,7 @@ ulogin_locate_forward(ZNotice_t *notice,
 
     lnotice = *notice;
     lnotice.z_opcode = REALM_REQ_LOCATE;
-  
+
     realm_handoff(&lnotice, 1, who, realm, 0);
 }
 
@@ -1001,38 +1001,38 @@ ulogin_realm_locate(ZNotice_t *notice,
   ZNotice_t lnotice;
   char *pack;
   int packlen;
-  
+
 #ifdef DEBUG
   if (zdebug)
     zdbug((LOG_DEBUG, "ulogin_realm_locate"));
 #endif
-  
+
   answer = ulogin_marshal_locs(notice, &found, 0/*AUTH*/);
-  
+
   lnotice = *notice;
   lnotice.z_opcode = REALM_ANS_LOCATE;
-  
+
   if ((retval = ZFormatRawNoticeList(&lnotice, answer, found * NUM_FIELDS, &pack, &packlen)) != ZERR_NONE) {
     syslog(LOG_WARNING, "ulog_rlm_loc format: %s",
            error_message(retval));
-    
+
     if (answer)
       free(answer);
     return;
   }
   if (answer)
     free(answer);
-  
+
   if ((retval = ZParseNotice(pack, packlen, &lnotice)) != ZERR_NONE) {
     syslog(LOG_WARNING, "subscr_rlm_sendit parse: %s",
            error_message(retval));
     free(pack);
     return;
   }
-  
+
   realm_handoff(&lnotice, 1, who, realm, 0);
   free(pack);
-  
+
   return;
 }
 
@@ -1045,17 +1045,15 @@ ulogin_relay_locate(ZNotice_t *notice,
   struct sockaddr_in newwho;
   char *pack;
   int packlen;
-  
-  newwho.sin_addr.s_addr = notice->z_sender_addr.s_addr;
-  newwho.sin_port = notice->z_port;
-  newwho.sin_family = AF_INET;
-  
+
+  notice_extract_address(notice, &newwho);
+
   if ((retval = ZSetDestAddr(&newwho)) != ZERR_NONE) {
     syslog(LOG_WARNING, "uloc_relay_loc set addr: %s",
            error_message(retval));
     return;
   }
-  
+
   lnotice = *notice;
   lnotice.z_opcode = LOCATE_LOCATE;
   lnotice.z_kind = ACKED;
@@ -1064,17 +1062,16 @@ ulogin_relay_locate(ZNotice_t *notice,
   lnotice.z_ascii_authent = "";
   lnotice.z_checksum = 0;
   lnotice.z_ascii_checksum = "";
-  
+
   if ((retval = ZFormatRawNotice(&lnotice, &pack, &packlen)) != ZERR_NONE) {
     syslog(LOG_WARNING, "ulog_relay_loc format: %s",
            error_message(retval));
     return;
   }
-  
+
   if ((retval = ZSendPacket(pack, packlen, 0)) != ZERR_NONE) {
     syslog(LOG_WARNING, "ulog_relay_loc xmit: %s",
            error_message(retval));
   }
   free(pack);
 }
-
