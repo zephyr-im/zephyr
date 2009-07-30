@@ -28,12 +28,15 @@ multiple Zephyr servers, each server should have a file "server.list"
 in the configuration directory (which is /etc/athena/zephyr if you
 configured with --enable-athena, or /usr/local/etc/zephyr if you
 installed Zephyr in /usr/local and didn't use --enable-athena).  This
-file should contain a list of the servers, one per line.
+file should contain a list of the servers, one per line.  The server
+will read and use this file if it exists even if the server was built
+with hesiod support.
 
-3. If you configured Zephyr with Kerberos 4 support, make a service
-key "zephyr.zephyr@<your realm>" and install a srvtab for that service
-as "srvtab" in the configuration directory of each of your zephyr
-servers.
+3. If you configured Zephyr with Kerberos 5 support, make a service
+key "zephyr/zephyr@<your realm>" and install a keytab for that service
+as "krb5.keytab" in the configuration directory of each of your zephyr
+servers.  Note that you need to ktadd the keytab only once and copy it
+around; the files on all the servers should be identical.
 
 4. Start zephyrd from the system binary directory (/usr/athena/etc if
 you configured with --enable-athena, /usr/local/sbin if you installed
