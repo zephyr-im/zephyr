@@ -62,20 +62,18 @@ def py_make_zcode(input):
     """reference ZMakeZcode expressed as python..."""
     return "Z" + input.replace("\xff", "\xff\xf1").replace("\0", "\xff\xf0")
 
+def find_libzephyr(builddir='.'):
+    # find the library
+    libzephyr_paths = ['libzephyr.so', 'libzephyr.dylib']
+    libzephyr_paths += [os.path.join('.libs', i) for i in libzephyr_paths]
+    libzephyr_paths = [os.path.join(builddir, i) for i in libzephyr_paths]
+    libzephyr_paths = [i for i in libzephyr_paths if os.path.exists(i)]
+    return libzephyr_paths[0]
 
 class ZephyrTestSuite(TestSuite):
     """Tests for libzephyr"""
     def setup(self):
-        # find the library
-        libzephyr_paths = ['libzephyr.so', 'libzephyr.dylib']
-        libzephyr_paths += [os.path.join('.libs', i) for i in libzephyr_paths]
-        libzephyr_paths = [os.path.join(self.builddir, i) for i in libzephyr_paths]
-        libzephyr_paths = [i for i in libzephyr_paths if os.path.exists(i)]
-        libzephyr_path = libzephyr_paths[0]
-        # check for libtool...
-        if not os.path.exists(libzephyr_path):
-            libzephyr_path = os.path.join(self.builddir, ".libs", "libzephyr.so.4.0.0")
-        self._libzephyr = libZephyr(libzephyr_path)
+        self._libzephyr = libZephyr(find_libzephyr(self.builddir))
 
     def cleanup(self):
         # no cleanup needed yet
