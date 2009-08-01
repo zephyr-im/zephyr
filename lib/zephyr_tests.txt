@@ -14,7 +14,7 @@ comprehensible.)
 
 Generic library setup that should be moved into zephyr_tests.py:
 
-   >>> import os
+   >>> import os, socket
    >>> import zephyr_tests
    >>> buildpath = zephyr_tests.find_buildpath()
    >>> libzephyr_path = zephyr_tests.find_libzephyr()
@@ -108,7 +108,7 @@ Trivial test of ZExpandRealm, using terribly well known hostnames:
    >>> assert _z.ZExpandRealm("") == ""
    >>> if Zauthtype: assert _z.ZExpandRealm("localhost") == ""
    >>> if Zauthtype: assert _z.ZExpandRealm("bitsy.mit.edu") == "ATHENA.MIT.EDU"
-   >>> if not Zauthtype: assert _z.ZExpandRealm("localhost") == "LOCALHOST"
+   >>> if not Zauthtype: assert _z.ZExpandRealm("localhost") == socket.getfqdn("localhost").upper()
    >>> if not Zauthtype: assert _z.ZExpandRealm("bitsy.mit.edu") == "BITSY.MIT.EDU"
 
 ZGetCharsetString is a utility function for clients that need to know the
