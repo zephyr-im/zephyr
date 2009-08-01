@@ -1,6 +1,12 @@
 #!/usr/bin/python
 
-import doctest
+import sys, doctest
 
-print doctest.testfile("zephyr_tests.txt")
+failures, tests = doctest.testfile("zephyr_tests.txt")
+
+print failures, 'failures out of', tests, 'tests.'
+if failures:
+    sys.exit(1)
+
+
 
