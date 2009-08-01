@@ -21,7 +21,6 @@ SUBDIRS=lib libdyn clients server zhm zwgc
 
 build:
 	$(MAKE) all
-	$(MAKE) check
 
 all:
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
