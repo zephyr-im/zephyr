@@ -67,7 +67,11 @@ class ZephyrTestSuite(TestSuite):
     """Tests for libzephyr"""
     def setup(self):
         # find the library
-        libzephyr_path = os.path.join(self.builddir, "libzephyr.so.4.0.0")
+        libzephyr_paths = ['libzephyr.so', 'libzephyr.dylib']
+        libzephyr_paths += [os.path.join('.libs', i) for i in libzephyr_paths]
+        libzephyr_paths = [os.path.join(self.builddir, i) for i in libzephyr_paths]
+        libzephyr_paths = [i for i in libzephyr_paths if os.path.exists(i)]
+        libzephyr_path = libzephyr_paths[0]
         # check for libtool...
         if not os.path.exists(libzephyr_path):
             libzephyr_path = os.path.join(self.builddir, ".libs", "libzephyr.so.4.0.0")
