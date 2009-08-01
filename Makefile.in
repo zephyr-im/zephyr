@@ -22,10 +22,7 @@ SUBDIRS=lib libdyn clients server zhm zwgc
 build:
 	$(MAKE) all
 
-all:
-	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
-
-check clean:
+all check clean:
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
 install:
