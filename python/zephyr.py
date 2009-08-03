@@ -176,7 +176,7 @@ class _ZTimeval_Net(_ZTimeval):
     """When _ZTimeval is used in a ZUnique_Id_t, the time parts are
     stored in network byte order.  Handle this by faking up a different type."""
     def pformat(self):
-        return pformat_timeval(socket.ntohl(self.tv_sec), socket.ntohl(self.tv_usec))
+        return pformat_timeval(socket.ntohl(self.tv_sec & 0xffffffff), socket.ntohl(self.tv_usec & 0xffffffff))
 
 # typedef struct _ZUnique_Id_t {
 class ZUnique_Id_t(Structure):
