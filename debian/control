@@ -5,7 +5,7 @@ Maintainer: Karl Ramm <kcr@debian.org>
 Uploaders: Sam Hartman <hartmans@debian.org>
 Build-Depends: debhelper (>= 5), libc-ares-dev, libkrb5-dev (>= 1.2.2-4), comerr-dev, ss-dev,
                libreadline5-dev, libx11-dev, libxt-dev, x11proto-core-dev, libncurses5-dev,
-	       bison, libhesiod-dev, autotools-dev, python (>= 2.5)
+	       bison, libhesiod-dev, autotools-dev, python (>= 2.5), python-central
 Standards-Version: 3.8.1.0
 Homepage: http://zephyr.1ts.org/
 Vcs-Svn: svn://zephyr.1ts.org/trunk/zephyr
