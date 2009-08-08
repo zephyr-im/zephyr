@@ -38,7 +38,7 @@
 #define ZVERSIONMINOR	2
 
 #define Z_MAXPKTLEN		1024
-#define Z_MAXHEADERLEN		800
+#define Z_MAXHEADERLEN		832
 #define Z_MAXOTHERFIELDS	10	/* Max unknown fields in ZNotice_t */
 #define Z_NUMFIELDS		19
 
