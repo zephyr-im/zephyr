@@ -21,12 +21,16 @@
 #include <signal.h>
 #include <syslog.h>
 #ifdef HAVE_UNISTD_H
+#ifndef __USE_XOPEN_EXTENDED
 #ifdef HAVE_GETSID
 #define __USE_XOPEN_EXTENDED
 #endif
 #include <unistd.h>
 #ifdef __USE_XOPEN_EXTENDED
 #undef __USE_XOPEN_EXTENDED
+#endif
+#else
+#include <unistd.h>
 #endif
 #endif
 #include <sys/types.h>
