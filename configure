@@ -24355,19 +24355,171 @@ fi
       	 CPPFLAGS="$CPPFLAGS -I$krb5/include"
       	 LDFLAGS="$LDFLAGS -L$krb5/lib"
       fi
-      { echo "$as_me:$LINENO: checking for krb5_init_context in -lkrb5" >&5
-echo $ECHO_N "checking for krb5_init_context in -lkrb5... $ECHO_C" >&6; }
-if test "${ac_cv_lib_krb5_krb5_init_context+set}" = set; then
+      KRB5_LIBS="-lkrb5 -lk5crypto -lcom_err"
+   fi
+   if test "${ac_cv_header_krb5_h+set}" = set; then
+  { echo "$as_me:$LINENO: checking for krb5.h" >&5
+echo $ECHO_N "checking for krb5.h... $ECHO_C" >&6; }
+if test "${ac_cv_header_krb5_h+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_header_krb5_h" >&5
+echo "${ECHO_T}$ac_cv_header_krb5_h" >&6; }
 else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lkrb5 -lk5crypto -lcom_err $LIBS"
+  # Is the header compilable?
+{ echo "$as_me:$LINENO: checking krb5.h usability" >&5
+echo $ECHO_N "checking krb5.h usability... $ECHO_C" >&6; }
 cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
+$ac_includes_default
+#include <krb5.h>
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_header_compiler=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_header_compiler=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+{ echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
+echo "${ECHO_T}$ac_header_compiler" >&6; }
+
+# Is the header present?
+{ echo "$as_me:$LINENO: checking krb5.h presence" >&5
+echo $ECHO_N "checking krb5.h presence... $ECHO_C" >&6; }
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <krb5.h>
+_ACEOF
+if { (ac_try="$ac_cpp conftest.$ac_ext"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_cpp conftest.$ac_ext") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null && {
+	 test -z "$ac_c_preproc_warn_flag$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       }; then
+  ac_header_preproc=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  ac_header_preproc=no
+fi
+
+rm -f conftest.err conftest.$ac_ext
+{ echo "$as_me:$LINENO: result: $ac_header_preproc" >&5
+echo "${ECHO_T}$ac_header_preproc" >&6; }
+
+# So?  What about this header?
+case $ac_header_compiler:$ac_header_preproc:$ac_c_preproc_warn_flag in
+  yes:no: )
+    { echo "$as_me:$LINENO: WARNING: krb5.h: accepted by the compiler, rejected by the preprocessor!" >&5
+echo "$as_me: WARNING: krb5.h: accepted by the compiler, rejected by the preprocessor!" >&2;}
+    { echo "$as_me:$LINENO: WARNING: krb5.h: proceeding with the compiler's result" >&5
+echo "$as_me: WARNING: krb5.h: proceeding with the compiler's result" >&2;}
+    ac_header_preproc=yes
+    ;;
+  no:yes:* )
+    { echo "$as_me:$LINENO: WARNING: krb5.h: present but cannot be compiled" >&5
+echo "$as_me: WARNING: krb5.h: present but cannot be compiled" >&2;}
+    { echo "$as_me:$LINENO: WARNING: krb5.h:     check for missing prerequisite headers?" >&5
+echo "$as_me: WARNING: krb5.h:     check for missing prerequisite headers?" >&2;}
+    { echo "$as_me:$LINENO: WARNING: krb5.h: see the Autoconf documentation" >&5
+echo "$as_me: WARNING: krb5.h: see the Autoconf documentation" >&2;}
+    { echo "$as_me:$LINENO: WARNING: krb5.h:     section \"Present But Cannot Be Compiled\"" >&5
+echo "$as_me: WARNING: krb5.h:     section \"Present But Cannot Be Compiled\"" >&2;}
+    { echo "$as_me:$LINENO: WARNING: krb5.h: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: krb5.h: proceeding with the preprocessor's result" >&2;}
+    { echo "$as_me:$LINENO: WARNING: krb5.h: in the future, the compiler will take precedence" >&5
+echo "$as_me: WARNING: krb5.h: in the future, the compiler will take precedence" >&2;}
+
+    ;;
+esac
+{ echo "$as_me:$LINENO: checking for krb5.h" >&5
+echo $ECHO_N "checking for krb5.h... $ECHO_C" >&6; }
+if test "${ac_cv_header_krb5_h+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_cv_header_krb5_h=$ac_header_preproc
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_header_krb5_h" >&5
+echo "${ECHO_T}$ac_cv_header_krb5_h" >&6; }
+
+fi
+if test $ac_cv_header_krb5_h = yes; then
+  :
+else
+  { { echo "$as_me:$LINENO: error: Kerberos 5 headers not found" >&5
+echo "$as_me: error: Kerberos 5 headers not found" >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+
+   local_save_LIBS=$LIBS
+   LIBS="$libs $KRB5_LIBS"
+   { echo "$as_me:$LINENO: checking for krb5_init_context" >&5
+echo $ECHO_N "checking for krb5_init_context... $ECHO_C" >&6; }
+if test "${ac_cv_func_krb5_init_context+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+/* Define krb5_init_context to an innocuous variant, in case <limits.h> declares krb5_init_context.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define krb5_init_context innocuous_krb5_init_context
+
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char krb5_init_context (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+
+#undef krb5_init_context
 
 /* Override any GCC internal prototype to avoid an error.
    Use char because int might match the return type of a GCC
@@ -24376,6 +24528,13 @@ cat >>conftest.$ac_ext <<_ACEOF
 extern "C"
 #endif
 char krb5_init_context ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_krb5_init_context || defined __stub___krb5_init_context
+choke me
+#endif
+
 int
 main ()
 {
@@ -24402,21 +24561,20 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest$ac_exeext &&
        $as_test_x conftest$ac_exeext; then
-  ac_cv_lib_krb5_krb5_init_context=yes
+  ac_cv_func_krb5_init_context=yes
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-	ac_cv_lib_krb5_krb5_init_context=no
+	ac_cv_func_krb5_init_context=no
 fi
 
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
 fi
-{ echo "$as_me:$LINENO: result: $ac_cv_lib_krb5_krb5_init_context" >&5
-echo "${ECHO_T}$ac_cv_lib_krb5_krb5_init_context" >&6; }
-if test $ac_cv_lib_krb5_krb5_init_context = yes; then
+{ echo "$as_me:$LINENO: result: $ac_cv_func_krb5_init_context" >&5
+echo "${ECHO_T}$ac_cv_func_krb5_init_context" >&6; }
+if test $ac_cv_func_krb5_init_context = yes; then
   :
 else
   { { echo "$as_me:$LINENO: error: Kerberos 5 libraries not found" >&5
@@ -24424,8 +24582,7 @@ echo "$as_me: error: Kerberos 5 libraries not found" >&2;}
    { (exit 1); exit 1; }; }
 fi
 
-      KRB5_LIBS="-lkrb5 -lk5crypto -lcom_err"
-   fi
+   LIBS="$local_save_LIBS"
    cat >>confdefs.h <<\_ACEOF
 #define HAVE_KRB5 1
 _ACEOF
@@ -26006,8 +26163,8 @@ fi
 done
 
 
-{ echo "$as_me:$LINENO: checking for krb5_auth_con_getauthenticator taking double pointer" >&5
-echo $ECHO_N "checking for krb5_auth_con_getauthenticator taking double pointer... $ECHO_C" >&6; }
+{ echo "$as_me:$LINENO: checking krb5_auth_con_getauthenticator out argument type" >&5
+echo $ECHO_N "checking krb5_auth_con_getauthenticator out argument type... $ECHO_C" >&6; }
 if test "${ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
@@ -26020,8 +26177,6 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-#define socklen_t int
-#define ssize_t int
 #include <krb5.h>
 krb5_error_code
 krb5_auth_con_getauthenticator(krb5_context context,
@@ -26057,21 +26212,70 @@ else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-	ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer=yes
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <krb5.h>
+krb5_error_code
+krb5_auth_con_getauthenticator(krb5_context context,
+                           krb5_auth_context auth_context,
+                           krb5_authenticator **authenticator);
+int
+main ()
+{
+krb5_error_code foo = krb5_auth_con_getauthenticator(0, 0, 0);
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	{ { echo "$as_me:$LINENO: error: Cannot identify krb5_auth_con_getauthenticator function signature" >&5
+echo "$as_me: error: Cannot identify krb5_auth_con_getauthenticator function signature" >&2;}
+   { (exit 1); exit 1; }; }
+
 fi
 
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+CPPFLAGS="${local_save_CPPFLAGS}"
 
 fi
 
-CPPFLAGS="${local_save_CPPFLAGS}"
+krb5_authent_type='krb5_authenticator *'
 if test "$ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer" = yes; then
         cat >>confdefs.h <<\_ACEOF
 #define KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER 1
 _ACEOF
+        krb5_authent_type='krb5_authenticator **'
 fi
-{ echo "$as_me:$LINENO: result: $ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer" >&5
-echo "${ECHO_T}$ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer" >&6; }
+{ echo "$as_me:$LINENO: result: $krb5_authent_type" >&5
+echo "${ECHO_T}$krb5_authent_type" >&6; }
 
 { echo "$as_me:$LINENO: checking for enc_part2 in struct krb5_ticket" >&5
 echo $ECHO_N "checking for enc_part2 in struct krb5_ticket... $ECHO_C" >&6; }

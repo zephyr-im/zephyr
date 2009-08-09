@@ -128,11 +128,14 @@ if test "$krb5" != no; then
       	 CPPFLAGS="$CPPFLAGS -I$krb5/include"
       	 LDFLAGS="$LDFLAGS -L$krb5/lib"
       fi
-      AC_CHECK_LIB(krb5, krb5_init_context, :,
-	           [AC_MSG_ERROR(Kerberos 5 libraries not found)],
-		   -lk5crypto -lcom_err)
       KRB5_LIBS="-lkrb5 -lk5crypto -lcom_err"
    fi
+   AC_CHECK_HEADER(krb5.h, :, [AC_MSG_ERROR(Kerberos 5 headers not found)])
+   local_save_LIBS=$LIBS
+   LIBS="$libs $KRB5_LIBS"
+   AC_CHECK_FUNC(krb5_init_context, :,
+	           [AC_MSG_ERROR(Kerberos 5 libraries not found)])
+   LIBS="$local_save_LIBS"
    AC_DEFINE(HAVE_KRB5)
    LIBZEPHYR_LIBS="$LIBZEPHYR_LIBS $KRB5_LIBS"
    # the zephyr library needs -lresolv if it's built with krb5
@@ -186,27 +189,36 @@ AC_CHECK_FUNCS(lrand48 gethostid getsid getpgid krb_get_err_text krb_log)
 AC_CHECK_FUNCS(krb5_free_data krb5_c_make_checksum krb5_cc_set_default_name)
 AC_CHECK_FUNCS(krb5_crypto_init krb5_c_decrypt)
 
-AC_MSG_CHECKING(for krb5_auth_con_getauthenticator taking double pointer)
+AC_MSG_CHECKING(krb5_auth_con_getauthenticator out argument type)
 AC_CACHE_VAL(ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer, [
 local_save_CPPFLAGS="$CPPFLAGS"
 CPPFLAGS="${CPPFLAGS} ${KRB5_INC_FLAGS}"
 AC_TRY_COMPILE(
-[#define socklen_t int
-#define ssize_t int
-#include <krb5.h>
+[#include <krb5.h>
 krb5_error_code
 krb5_auth_con_getauthenticator(krb5_context context,
                            krb5_auth_context auth_context,
                            krb5_authenticator *authenticator);],
 [krb5_error_code foo = krb5_auth_con_getauthenticator(0, 0, 0);],
 ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer=no,
-ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer=yes)
-])
+[AC_TRY_COMPILE(
+[#include <krb5.h>
+krb5_error_code
+krb5_auth_con_getauthenticator(krb5_context context,
+                           krb5_auth_context auth_context,
+                           krb5_authenticator **authenticator);],
+[krb5_error_code foo = krb5_auth_con_getauthenticator(0, 0, 0);],
+ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer=yes,
+[AC_MSG_ERROR([Cannot identify krb5_auth_con_getauthenticator function signature])]
+)])
 CPPFLAGS="${local_save_CPPFLAGS}"
+])
+krb5_authent_type='krb5_authenticator *'
 if test "$ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer" = yes; then
         AC_DEFINE(KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER)dnl
+        krb5_authent_type='krb5_authenticator **'
 fi
-AC_MSG_RESULT($ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer)
+AC_MSG_RESULT($krb5_authent_type)
 
 AC_MSG_CHECKING(for enc_part2 in struct krb5_ticket)
 AC_CACHE_VAL(ac_cv_have_krb5_ticket_enc_part2, [
