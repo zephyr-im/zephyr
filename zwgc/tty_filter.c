@@ -378,7 +378,7 @@ convert_desc_to_tty_str_info(desctype *desc)
 	    string_dictionary_binding *b;
 	    b = string_dictionary_Lookup(termcap_dict,"B.bell");
 	    if (b) {
-		temp->str = b->value;
+		temp->str = strdup(b->value);
 		temp->len = string_Length(temp->str);
 	    } else
 		/* shouldn't get here! */
