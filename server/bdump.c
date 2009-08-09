@@ -1666,9 +1666,9 @@ setup_file_pointers (void)
 static int des_service_decrypt(unsigned char *in, unsigned char *out) {
 #ifndef HAVE_KRB4
     krb5_data dout;
+#ifdef HAVE_KRB5_C_DECRYPT
     krb5_enc_data din;
 
-#ifdef HAVE_KRB5_C_DECRYPT
     dout.length = 8;
     dout.data = (char *)out; /*What*/
 
