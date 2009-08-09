@@ -253,10 +253,10 @@ int ZDest_eq(Destination *d1, Destination *d2);
 Code_t triplet_register(Client *client, Destination *dest, ZRealm *realm);
 Code_t triplet_deregister(Client *client, Destination *dest,
 			       ZRealm *realm);
-Code_t class_restrict(char *class, Acl *acl);
-Code_t class_setup_restricted(char *class, Acl *acl);
+Code_t class_restrict(char *class_name, Acl *acl);
+Code_t class_setup_restricted(char *class_name, Acl *acl);
 Client **triplet_lookup(Destination *dest);
-Acl *class_get_acl(String *class);
+Acl *class_get_acl(String *class_name);
 int dest_eq(Destination *d1, Destination *d2);
 int order_dest_strings(Destination *d1, Destination *d2);
 void triplet_dump_subs(FILE *fp);
