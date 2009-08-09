@@ -15,11 +15,11 @@
 #ifndef	__ACL__
 #define	__ACL__
 
-int acl_add __P((char *, char *));
-int acl_check __P((char *, char *));
-int acl_delete __P((char *, char *));
-int acl_initialize __P((char *, int));
-void acl_cache_reset __P((void));
+int acl_add(char *, char *);
+int acl_check(char *, char *);
+int acl_delete(char *, char *);
+int acl_initialize(char *, int);
+void acl_cache_reset(void);
 
 #endif /* __ACL__ */
 

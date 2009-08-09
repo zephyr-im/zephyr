@@ -72,31 +72,31 @@ srv_nacktab_hashval(int which, ZUnique_Id_t uid) {
  * void server_reset();
  */
 
-static void server_flush __P((Server *));
-static void hello_respond __P((struct sockaddr_in *, int, int));
-static void srv_responded __P((struct sockaddr_in *));
-static void send_msg __P((struct sockaddr_in *, char *, int));
-static void send_msg_list __P((struct sockaddr_in *, char *, char **, int,
-			       int));
-static void srv_nack_cancel __P((ZNotice_t *, struct sockaddr_in *));
-static void srv_nack_release __P((Server *));
-static void srv_nack_renumber  __P((int *));
-static void send_stats __P((struct sockaddr_in *));
-static void server_queue __P((Server *, int, void *, int,
-			      struct sockaddr_in *));
-static void server_hello __P((Server *, int));
-static void setup_server __P((Server *, struct in_addr *));
-static void srv_rexmit __P((void *));
-static void server_forw_reliable __P((Server *, caddr_t, int, ZNotice_t *));
-static Code_t admin_dispatch __P((ZNotice_t *, int, struct sockaddr_in *,
-				  Server *));
-static Code_t kill_clt __P((ZNotice_t *, Server *));
-static Code_t extract_addr __P((ZNotice_t *, struct sockaddr_in *));
+static void server_flush(Server *);
+static void hello_respond(struct sockaddr_in *, int, int);
+static void srv_responded(struct sockaddr_in *);
+static void send_msg(struct sockaddr_in *, char *, int);
+static void send_msg_list(struct sockaddr_in *, char *, char **, int,
+			       int);
+static void srv_nack_cancel(ZNotice_t *, struct sockaddr_in *);
+static void srv_nack_release(Server *);
+static void srv_nack_renumber (int *);
+static void send_stats(struct sockaddr_in *);
+static void server_queue(Server *, int, void *, int,
+			      struct sockaddr_in *);
+static void server_hello(Server *, int);
+static void setup_server(Server *, struct in_addr *);
+static void srv_rexmit(void *);
+static void server_forw_reliable(Server *, caddr_t, int, ZNotice_t *);
+static Code_t admin_dispatch(ZNotice_t *, int, struct sockaddr_in *,
+				  Server *);
+static Code_t kill_clt(ZNotice_t *, Server *);
+static Code_t extract_addr(ZNotice_t *, struct sockaddr_in *);
 
-static struct in_addr *get_server_addrs __P((int *number));
-static char **get_server_list __P((char *file));
-static char **get_single_server __P((void));
-static void free_server_list __P((char **list));
+static struct in_addr *get_server_addrs(int *number);
+static char **get_server_list(char *file);
+static char **get_single_server(void);
+static void free_server_list(char **list);
 
 static Unacked *srv_nacktab[SRV_NACKTAB_HASHSIZE];
 Server *otherservers;		/* points to an array of the known

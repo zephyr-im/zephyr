@@ -76,11 +76,11 @@ String *class_control, *class_admin, *class_hm, *class_ulogin, *class_ulocate;
 
 int rexmit_times[] = REXMIT_TIMES;
 
-static void nack_cancel __P((ZNotice_t *, struct sockaddr_in *));
-static void dispatch __P((ZNotice_t *, int, struct sockaddr_in *, int));
-static int send_to_dest __P((ZNotice_t *, int, Destination *dest, int, int));
-static void hostm_deathgram __P((struct sockaddr_in *, Server *));
-static char *hm_recipient __P((void));
+static void nack_cancel(ZNotice_t *, struct sockaddr_in *);
+static void dispatch(ZNotice_t *, int, struct sockaddr_in *, int);
+static int send_to_dest(ZNotice_t *, int, Destination *dest, int, int);
+static void hostm_deathgram(struct sockaddr_in *, Server *);
+static char *hm_recipient(void);
 
 Statistic realm_notices = {0, "inter-realm notices"};
 Statistic interserver_notices = {0, "inter-server notices"};

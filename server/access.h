@@ -31,11 +31,11 @@ typedef struct _Acl {
 } Acl;
 
 /* found in access.c */
-void access_init __P((void));
-void access_reinit __P((void));
+void access_init(void);
+void access_reinit(void);
 
 /* found in acl_files.c */
-int acl_load __P((char *));
+int acl_load(char *);
 
 /* external data relevant */
 extern int zdebug;

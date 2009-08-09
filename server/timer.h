@@ -44,11 +44,11 @@ typedef struct _Timer {
         void		*arg;
 } Timer;
 
-Timer *timer_set_rel __P((long, timer_proc, void *));
-Timer *timer_set_abs __P((long, timer_proc, void *));
-void timer_reset __P((Timer *));
-void timer_process __P((void));
-struct timeval *timer_timeout __P((struct timeval *tvbuf));
+Timer *timer_set_rel(long, timer_proc, void *);
+Timer *timer_set_abs(long, timer_proc, void *);
+void timer_reset(Timer *);
+void timer_process(void);
+struct timeval *timer_timeout(struct timeval *tvbuf);
 
 #endif /* __TIMER_H */
 

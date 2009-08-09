@@ -83,28 +83,27 @@ typedef struct _Location {
 #define QUIET		-1
 #define UNAUTH		-2
 
-static void ulogin_locate __P((ZNotice_t *notice, struct sockaddr_in *who,
-			       int auth)),
-ulogin_flush_user __P((ZNotice_t *notice));
-static Location *ulogin_find __P((char *user, struct in_addr *host,
-				  unsigned int port));
-static Location *ulogin_find_user __P((char *user));
-static int ulogin_setup __P((ZNotice_t *notice, Location *locs,
-			     Exposure_type exposure, struct sockaddr_in *who)),
-ulogin_add_user __P((ZNotice_t *notice, Exposure_type exposure,
-		     struct sockaddr_in *who)),
-ulogin_parse __P((ZNotice_t *notice, Location *locs));
-static Exposure_type ulogin_remove_user __P((ZNotice_t *notice,
-					     struct sockaddr_in *who,
-					     int *err_return));
-static void login_sendit __P((ZNotice_t *notice, int auth,
-			      struct sockaddr_in *who, int external));
-static char **ulogin_marshal_locs __P((ZNotice_t *notice, int *found,
-				       int auth));
+static void ulogin_locate(ZNotice_t *notice, struct sockaddr_in *who,
+			  int auth);
+static void ulogin_flush_user(ZNotice_t *notice);
+static Location *ulogin_find(char *user, struct in_addr *host,
+			     unsigned int port);
+static Location *ulogin_find_user(char *user);
+static int ulogin_setup(ZNotice_t *notice, Location *locs,
+			Exposure_type exposure, struct sockaddr_in *who);
+static int ulogin_add_user(ZNotice_t *notice, Exposure_type exposure,
+			   struct sockaddr_in *who);
+static int ulogin_parse(ZNotice_t *notice, Location *locs);
+static Exposure_type ulogin_remove_user(ZNotice_t *notice,
+					struct sockaddr_in *who,
+					int *err_return);
+static void login_sendit(ZNotice_t *notice, int auth,
+			 struct sockaddr_in *who, int external);
+static char **ulogin_marshal_locs(ZNotice_t *notice, int *found, int auth);
 
-static void free_loc __P((Location *loc));
-static void ulogin_locate_forward __P((ZNotice_t *notice,
-				       struct sockaddr_in *who, ZRealm *realm));
+static void free_loc(Location *loc);
+static void ulogin_locate_forward(ZNotice_t *notice, struct sockaddr_in *who,
+				  ZRealm *realm);
 
 static Location *locations = NULL; /* ptr to first in array */
 static int num_locs = 0;	/* number in array */

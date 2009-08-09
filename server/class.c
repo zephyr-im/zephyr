@@ -80,13 +80,11 @@ static const char rcsid_class_c[] =
 
 static Triplet *triplet_bucket[HASHSIZE]; /* the hash table of pointers */
 
-static Code_t remove_client __P((Triplet *triplet, Client *client,
-				 ZRealm *realm));
-static Code_t insert_client __P((Triplet *triplet, Client *client,
-				 ZRealm *realm));
-static Triplet *triplet_alloc __P((String *classname, String *inst,
-				   String *recipient));
-static void free_triplet __P((Triplet *));
+static Code_t remove_client(Triplet *triplet, Client *client, ZRealm *realm);
+static Code_t insert_client(Triplet *triplet, Client *client, ZRealm *realm);
+static Triplet *triplet_alloc(String *classname, String *inst,
+			      String *recipient);
+static void free_triplet(Triplet *);
 
 /* public routines */
 

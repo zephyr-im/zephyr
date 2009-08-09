@@ -48,9 +48,9 @@ static const char rcsid_access_c[] =
 #define ACL_IWS		4
 #define ACL_IUI		8
 
-static void check_acl __P((Acl *acl));
-static void check_acl_type __P((Acl *acl, Access accesstype, int typeflag));
-static void access_setup __P((int first));
+static void check_acl(Acl *acl);
+static void check_acl_type(Acl *acl, Access accesstype, int typeflag);
+static void access_setup(int first);
 
 /*
  * check access.  return 1 if ok, 0 if not ok.

@@ -22,12 +22,12 @@ typedef struct _String
   struct _String *next, *prev;		/* for linking in hash table */
 } String;
 
-String *make_string __P((char *s, int downcase));
-void free_string __P((String *z));
-String *find_string __P((char *s, int downcase));
-String *dup_string __P((String *z));
-int comp_string __P((String *a, String *b));
-void print_string_table __P((FILE *f));
+String *make_string(char *s, int downcase);
+void free_string(String *z);
+String *find_string(char *s, int downcase);
+String *dup_string(String *z);
+int comp_string(String *a, String *b);
+void print_string_table(FILE *f);
 
 #endif /* __zstring_h */
 
