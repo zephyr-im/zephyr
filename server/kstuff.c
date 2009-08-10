@@ -313,7 +313,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
                         keytab_file, &keytabid);
     if (result) {
       free(authbuf);
-      return (result);
+      return ZAUTH_FAILED;
     }
 
     /* HOLDING: authbuf, keytabid */
@@ -322,14 +322,14 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     if (result) {
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
-        return (result);
+        return ZAUTH_FAILED;
     }
 
     result = krb5_auth_con_getflags(Z_krb5_ctx, authctx, &acflags);
     if (result) {
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
-        return (result);
+        return ZAUTH_FAILED;
     }
 
     acflags &= ~KRB5_AUTH_CONTEXT_DO_TIME;
@@ -338,7 +338,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     if (result) {
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
-        return (result);
+        return ZAUTH_FAILED;
     }
 
     /* HOLDING: authbuf, authctx */
@@ -414,7 +414,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     					     &authenticator);
     if(result) {
         krb5_auth_con_free(Z_krb5_ctx, authctx);
-        return result;
+        return ZAUTH_FAILED;
     }
 
     /* HOLDING: authctx, authenticator */
