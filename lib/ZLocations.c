@@ -99,7 +99,8 @@ ZParseExposureLevel(char *text)
 static int
 wait_for_srvack(ZNotice_t *notice, void *uid)
 {
-    return (notice->z_kind == SERVACK && ZCompareUID(&notice->z_uid, (ZUnique_Id_t *)uid));
+    return ((notice->z_kind == SERVACK || notice->z_kind == SERVNAK)
+	    && ZCompareUID(&notice->z_uid, (ZUnique_Id_t *)uid));
 }
 
 Code_t
