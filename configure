@@ -24347,7 +24347,7 @@ echo "${ECHO_T}no" >&6; }
 fi
 
 
-   if test "$krb5config" == yes; then
+   if test "$krb5config" = yes; then
       CPPFLAGS="$CPPFLAGS $(krb5-config --cflags krb5)"
       KRB5_LIBS="$(krb5-config --libs krb5)"
    else
