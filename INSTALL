@@ -75,5 +75,4 @@ service, read the file OPERATING.
 We have tried to make Zephyr as portable as is reasonably possible,
 but have not taken into account every possible kind of system.  If you
 have any problems building or installing Zephyr according to these
-instructions, please send mail to zephyr-bugs@mit.edu.
-
+instructions, please go to http://zephyr.1ts.org and open a ticket.
