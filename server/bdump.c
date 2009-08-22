@@ -47,43 +47,6 @@ static const char rcsid_bdump_c[] = "$Id$";
  *	int num;
  */
 
-#if defined(HAVE_KRB5) && 0
-int krb5_init_keyblock(krb5_context context,
-        krb5_enctype type,
-        size_t size,
-        krb5_keyblock **akey)
-{
-krb5_error_code ret;
-size_t len;
-krb5_keyblock *key;
-
-*akey=NULL;
-key=malloc(sizeof(*key));
-memset(key, 0, sizeof(*key));
-ret = krb5_enctype_keysize(context, type, &len);
-if (ret)
-return ret;
-
-if (len != size) {
-krb5_set_error_string(context, "Encryption key %d is %lu bytes "
-"long, %lu was passed in",
-type, (unsigned long)len, (unsigned long)size);
-return KRB5_PROG_ETYPE_NOSUPP;
-}
-
-ret = krb5_data_alloc(&key->keyvalue, len);
-if(ret) {
-krb5_set_error_string(context, "malloc failed: %lu",
-(unsigned long)len);
-return ret;
-}
-key->keytype = type;
-*akey=key;
-return 0;
-}
-#endif
-
-
 static void close_bdump(void* arg);
 static Code_t bdump_send_loop(Server *server);
 static Code_t bdump_recv_loop(Server *server);
