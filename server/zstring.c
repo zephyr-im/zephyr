@@ -24,8 +24,8 @@ static String *zhash[STRING_HASH_TABLE_SIZE];
 
 int valid_utf8_p(const char* s)
 {
-    int len;
-    ssize_t uc;
+    ssize_t len;
+    int32_t uc;
 
     while ((len = utf8proc_iterate((const unsigned char *)s, -1, &uc))) {
         if (len <=0) return 0; /* Not valid UTF-8 encoding. */
