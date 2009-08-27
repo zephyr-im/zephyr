@@ -561,6 +561,12 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 				Z_KEYUSAGE_CLT_CKSUM,
 				asn1_data, asn1_len);
 
+    /* XXX compatibility with unreleased interrealm krb5; drop in 3.1 */
+    if (!valid && realm)
+	valid = Z_krb5_verify_cksum(keyblock, &cksumbuf, cksumtype,
+				    Z_KEYUSAGE_SRV_CKSUM,
+				    asn1_data, asn1_len);
+
     free(asn1_data);
     krb5_auth_con_free(Z_krb5_ctx, authctx);
     krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
