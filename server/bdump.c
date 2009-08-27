@@ -1058,7 +1058,6 @@ get_tgt(void)
 					     0,
 					     NULL,
 					     &opt);
-#ifndef HAVE_KRB4
 	if (retval) {
 	    syslog(LOG_ERR, "get_tgt: krb5_get_init_creds_keytab: %s",
 		   error_message(retval));
@@ -1067,6 +1066,7 @@ get_tgt(void)
 	    return 1;
 	}
 
+#ifndef HAVE_KRB4
 	for (i = 0; enctypes[i]; i++) {
 	    retval = krb5_kt_get_entry(Z_krb5_ctx, kt, principal,
 				       0, enctypes[i], &kt_ent);
@@ -1090,16 +1090,9 @@ get_tgt(void)
 	
 	    got_des = 1;
 	}
-#endif
+#endif /* HAVE_KRB4 */
 	krb5_free_principal(Z_krb5_ctx, principal);
 	krb5_kt_close(Z_krb5_ctx, kt);
-#ifdef HAVE_KRB4
-	if (retval) {
-	    syslog(LOG_ERR, "get_tgt: krb5_kt_get_entry: %s",
-		   error_message(retval));
-	    return 1;
-	}
-#endif
 
 	retval = krb5_cc_initialize (Z_krb5_ctx, Z_krb5_ccache, cred.client);
 	if (retval) {
