@@ -1035,15 +1035,21 @@ get_tgt(void)
 				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
 				      NULL); 
 	if (retval) {
-	  krb5_free_principal(Z_krb5_ctx, principal);
-	  return(1);
+	    syslog(LOG_ERR, "get_tgt: krb5_build_principal: %s",
+		   error_message(retval));
+	    return 1;
 	}
 
 	krb5_get_init_creds_opt_init (&opt);
 	krb5_get_init_creds_opt_set_tkt_life (&opt, TKT5LIFETIME);
 
 	retval = krb5_kt_resolve(Z_krb5_ctx, keytab_file, &kt);
-	if (retval) return(1);
+	if (retval) {
+	    syslog(LOG_ERR, "get_tgt: krb5_kt_resolve: %s",
+		   error_message(retval));
+	    krb5_free_principal(Z_krb5_ctx, principal);
+	    return 1;
+	}
 	
 	retval = krb5_get_init_creds_keytab (Z_krb5_ctx,
 					     &cred,
@@ -1054,9 +1060,11 @@ get_tgt(void)
 					     &opt);
 #ifndef HAVE_KRB4
 	if (retval) {
+	    syslog(LOG_ERR, "get_tgt: krb5_get_init_creds_keytab: %s",
+		   error_message(retval));
 	    krb5_free_principal(Z_krb5_ctx, principal);
 	    krb5_kt_close(Z_krb5_ctx, kt);
-	    return(1);
+	    return 1;
 	}
 
 	for (i = 0; enctypes[i]; i++) {
@@ -1073,9 +1081,11 @@ get_tgt(void)
 	    retval = krb5_copy_keyblock(Z_krb5_ctx, &kt_ent.key, &server_key);
 #endif
 	    if (retval) {
+		syslog(LOG_ERR, "get_tgt: krb5_copy_keyblock: %s",
+		       error_message(retval));
 		krb5_free_principal(Z_krb5_ctx, principal);
 		krb5_kt_close(Z_krb5_ctx, kt);
-		return(1);
+		return 1;
 	    }
 	
 	    got_des = 1;
@@ -1083,22 +1093,34 @@ get_tgt(void)
 #endif
 	krb5_free_principal(Z_krb5_ctx, principal);
 	krb5_kt_close(Z_krb5_ctx, kt);
-#ifndef HAVE_KRB4
-	if (retval) return(1);
+#ifdef HAVE_KRB4
+	if (retval) {
+	    syslog(LOG_ERR, "get_tgt: krb5_kt_get_entry: %s",
+		   error_message(retval));
+	    return 1;
+	}
 #endif
 
 	retval = krb5_cc_initialize (Z_krb5_ctx, Z_krb5_ccache, cred.client);
-	if (retval) return(1);
+	if (retval) {
+	    syslog(LOG_ERR, "get_tgt: krb5_cc_initialize: %s",
+		   error_message(retval));
+	    return 1;
+	}
     
 	retval = krb5_cc_store_cred (Z_krb5_ctx, Z_krb5_ccache, &cred);
-	if (retval) return(1);
+	if (retval) {
+	    syslog(LOG_ERR, "get_tgt: krb5_cc_store_cred: %s",
+		   error_message(retval));
+	    return 1;
+	}
 
 	ticket5_time = NOW;
 
 	krb5_free_cred_contents (Z_krb5_ctx, &cred);
     }
 #endif
-    return(0);
+    return 0;
 }
 #endif /* HAVE_KRB4 */
 
