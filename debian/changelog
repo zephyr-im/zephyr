@@ -1,3 +1,9 @@
+zephyr (1:3.0) unstable; urgency=low
+
+  * Might as well let it escape.
+
+ -- Karl Ramm <kcr@1ts.org>  Mon, 05 Oct 2009 19:56:17 -0400
+
 zephyr (1:3.0~rc.HEAD) unstable; urgency=low
 
   * It's Release Candidate Time!
