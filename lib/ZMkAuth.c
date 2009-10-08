@@ -229,13 +229,9 @@ ZGetCredsRealm(krb5_creds **creds_out,
   }
 
   result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client);
-  if (result) {
-    krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* I also hope this is ok */
-    krb5_cc_close(Z_krb5_ctx, ccache);
-    return result;
-  }
+  if (!result)
+      result = krb5_get_credentials(Z_krb5_ctx, 0, ccache, &creds_in, creds_out);
 
-  result = krb5_get_credentials(Z_krb5_ctx, 0, ccache, &creds_in, creds_out);
   krb5_cc_close(Z_krb5_ctx, ccache);
   krb5_free_cred_contents(Z_krb5_ctx, &creds_in); /* I also hope this is ok */
 
