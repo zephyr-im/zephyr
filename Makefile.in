@@ -17,7 +17,7 @@ top_srcdir=@top_srcdir@
 ENSUREDIR=${srcdir}/ensure-dir.sh
 INSTALL=@INSTALL@
 
-SUBDIRS=lib libdyn clients server zhm zwgc
+SUBDIRS=lib clients server zhm zwgc
 
 build:
 	$(MAKE) all
