@@ -80,6 +80,12 @@ extern int rexmit_times[];
 #define use_etext
 #endif
 
+#if defined (__i386__) && defined (__APPLE__)
+/* Pick a var that tends to be near the start of data section.  */
+extern char **environ;
+#define adjust_size(size)	size -= (uintptr_t) &environ
+#endif
+
 #ifdef _AIX
 #ifdef i386
 #define adjust_size(size)	size -= 0x400000
