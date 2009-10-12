@@ -117,7 +117,7 @@ with NULL will get it from $ZEPHYR_CHARSET or the locale.
 Trivial testing of ZGetCharsetString:
 
    >>> os.environ['LANG'] = 'C'
-   >>> assert _z.ZGetCharsetString(None) == 'ANSI_X3.4-1968'
+   >>> assert _z.ZGetCharsetString(None) == 'ANSI_X3.4-1968', "charset is " + _z.ZGetCharsetString(None)
    >>> os.environ['ZEPHYR_CHARSET'] = 'ISO-8859-1'
    >>> assert _z.ZGetCharsetString(None) == 'ISO-8859-1'
    >>> assert _z.ZGetCharsetString('UTF-8') == 'UTF-8'
@@ -161,7 +161,7 @@ it works, it sticks a malloc'd buffer in to **bufp.
    >>> assert _z.ZTransliterate('test', 4, 'ISO-8859-1', 'ANSI_X3.4-1968', byref(bufp), byref(length)) == 0
    >>> assert string_at(bufp, length) == 'test'
    >>> assert _z.ZTransliterate('t\xebst', 4, 'ISO-8859-1', 'ANSI_X3.4-1968', byref(bufp), byref(length)) == 0
-   >>> assert string_at(bufp, length) == 't?st'
+   >>> assert string_at(bufp, length) == 't?st', "transliterated string is " + string_at(bufp, length)
    >>> assert _z.ZTransliterate('t\xebst', 4, 'ISO-8859-1', 'UTF-8', byref(bufp), byref(length)) == 0
    >>> assert string_at(bufp, length) == 't\xc3\xabst'
    >>> assert _z.ZTransliterate('t\xc3\xabst', 5, 'UTF-8', 'ISO-8859-1', byref(bufp), byref(length)) == 0
@@ -179,7 +179,7 @@ Trivial test of ZOpenPort and ZClosePort:
    >>> zsock = zephyr_tests.getsockname(_z.ZGetFD())
    >>> assert zsock
    >>> from socket import AF_INET
-   >>> assert zsock.sa_family.value == AF_INET, zsock.sa_family
+   >>> assert zsock.sa_family.value == AF_INET, zsock.sa_family.value
 
 (Here we're actually using getsockname as an "is that file descriptor
  a socket" test; the wrapper is weak in that it can't check for
