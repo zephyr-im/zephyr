@@ -188,13 +188,12 @@ Trivial test of ZOpenPort and ZClosePort:
  also cast it to sockaddr_in and look at the address and port...)
 
    >>> assert port != 0
-   >>> zephyr_tests.ctypes_pprint(_z.ZGetDestAddr())
-   ... # doctest: +ELLIPSIS
-   sin_family AF_INET(2)
-   sin_port ...
-   sin_addr 127.0.0.1
-   sin_zero [ignored]
-
+   >>> print type(_z.ZGetDestAddr())
+   <class 'zephyr.sockaddr_in'>
+   >>> print _z.ZGetDestAddr().sin_family.pformat()
+   ['AF_INET(2)']
+   >>> print _z.ZGetDestAddr().sin_addr.pformat()
+   ['127.0.0.1']
    >>> assert _z.ZClosePort() == 0
    >>> assert _z.ZGetFD() == -1
 
