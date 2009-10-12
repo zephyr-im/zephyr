@@ -52,6 +52,7 @@ void del_file(short, ZSubscription_t *, int);
 void fix_macros(ZSubscription_t *, ZSubscription_t *, int);
 void fix_macros2(char *, char **);
 int make_exist(char *);
+char *whoami;
 
 int
 main(int argc,
@@ -65,6 +66,7 @@ main(int argc,
 	struct utsname name;
 #endif
 
+	whoami = argv[0];
 	if ((retval = ZInitialize()) != ZERR_NONE) {
 		com_err(argv[0],retval,"while initializing");
 		exit (1);
@@ -175,7 +177,7 @@ flush_locations(int argc,
 	}
 
 	if ((retval = ZFlushMyLocations()) != ZERR_NONE)
-		ss_perror(sci_idx,retval,"while flushing locations");
+		com_err(whoami, retval, "while flushing locations");
 }
 
 void
@@ -195,13 +197,13 @@ wgc_control(int argc,
 	}
 	
 	if ((newport = ZGetWGPort()) == -1) {
-		ss_perror(sci_idx,errno,"while getting WindowGram port");
+		com_err(whoami, errno, "while getting WindowGram port");
 		return;
 	}
 
 	newsin.sin_port = (u_short) newport;
 	if ((retval = ZSetDestAddr(&newsin)) != ZERR_NONE) {
-		ss_perror(sci_idx,retval,"while setting destination address");
+		com_err(whoami, retval, "while setting destination address");
 		return;
 	}
 
@@ -231,10 +233,10 @@ wgc_control(int argc,
 	notice.z_message_len = 0;
 
 	if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE)
-		ss_perror(sci_idx,retval,"while sending notice");
+		com_err(whoami, retval, "while sending notice");
 
 	if ((retval = ZInitialize()) != ZERR_NONE)
-		ss_perror(sci_idx,retval,
+		com_err(whoami, retval,
 			  "while reinitializing");
 } 
 
@@ -271,7 +273,7 @@ hm_control(int argc,
 	notice.z_message_len = 0;
 
 	if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE)
-		ss_perror(sci_idx,retval,"while sending notice");
+		com_err(whoami, retval, "while sending notice");
 } 
 
 void
@@ -354,7 +356,7 @@ set_var(int argc, char *argv[])
 	} 
 
 	if (retval != ZERR_NONE) {
-		ss_perror(sci_idx,retval,"while setting variable value");
+		com_err(whoami, retval, "while setting variable value");
 		return;
 	}
 
@@ -362,7 +364,7 @@ set_var(int argc, char *argv[])
 	
 	if (setting_exp) {
 		if ((retval = ZSetLocation(exp_level)) != ZERR_NONE)
-			ss_perror(sci_idx,retval,"while changing exposure status");
+			com_err(whoami, retval, "while changing exposure status");
 		if (!strcmp(exp_level,EXPOSE_NONE)) {
 			newargv[0] = "wg_shutdown";
 			wgc_control(1,newargv);
@@ -390,7 +392,7 @@ do_hide(int argc,
 	else
 		exp_level = EXPOSE_OPSTAFF;
 	if ((retval = ZSetLocation(exp_level)) != ZERR_NONE)
-		ss_perror(sci_idx,retval,"while changing exposure status");
+		com_err(whoami,retval,"while changing exposure status");
 	return;
 }
 
@@ -408,7 +410,7 @@ unset_var(int argc,
 
 	for (i=1;i<argc;i++)
 		if ((retval = ZUnsetVariable(argv[i])) != ZERR_NONE)
-			ss_perror(sci_idx,retval,
+			com_err(whoami, retval,
 				  "while unsetting variable value");
 }
 
@@ -425,11 +427,11 @@ cancel_subs(int argc,
 	} 
 
  	if ((wgport = ZGetWGPort()) == -1) {
-		ss_perror(sci_idx,errno,"while finding WindowGram port");
+		com_err(whoami, errno, "while finding WindowGram port");
 		return;
 	} 
 	if ((retval = ZCancelSubscriptions((u_short)wgport)) != ZERR_NONE)
-		ss_perror(sci_idx,retval,"while cancelling subscriptions");
+		com_err(whoami, retval, "while cancelling subscriptions");
 }
 
 void
@@ -452,7 +454,7 @@ subscribe(int argc,
 	fix_macros(&sub,&sub2,1);
 	
  	if ((wgport = ZGetWGPort()) == -1) {
-		ss_perror(sci_idx,errno,"while finding WindowGram port");
+		com_err(whoami, errno, "while finding WindowGram port");
 		return;
 	} 
 
@@ -461,7 +463,7 @@ subscribe(int argc,
 		ZUnsubscribeTo(&sub2,1,(u_short)wgport);
 	
 	if (retval != ZERR_NONE)
-		ss_perror(sci_idx,retval,"while subscribing");
+		com_err(whoami, retval, "while subscribing");
 } 
 
 void
@@ -477,7 +479,7 @@ sub_file(int argc,
 	}
 
 	if (argv[1][0] == '!') {
-		ss_perror(sci_idx,0,
+		com_err(whoami, 0,
 			  (!strcmp(argv[0],"add_unsubscription") ||
 			   !strcmp(argv[0],"add_un") ||
 			   !strcmp(argv[0],"delete_unsubscription") ||
@@ -493,7 +495,7 @@ sub_file(int argc,
 	if (make_exist(subsname))
 		return;
  	if ((wgport = ZGetWGPort()) == -1) {
-		ss_perror(sci_idx,errno,"while finding WindowGram port");
+		com_err(whoami, errno, "while finding WindowGram port");
 		return;
 	} 
 
@@ -510,7 +512,7 @@ sub_file(int argc,
 		 !strcmp(argv[0],"del_un")) {
 		del_file(wgport,&sub,1);
 	} else
-		ss_perror(sci_idx,0,"unknown command name");
+		com_err(whoami, 0, "unknown command name");
 	return;
 }
 
@@ -527,7 +529,7 @@ add_file(short wgport,
 	(void) purge_subs(subs,ALL);	/* remove copies in the subs file */
 	if (!(fp = fopen(subsname,"a"))) {
 		(void) sprintf(errbuf,"while opening %s for append",subsname);
-		ss_perror(sci_idx,errno,errbuf);
+		com_err(whoami, errno, errbuf);
 		return;
 	} 
 	fprintf(fp,"%s%s,%s,%s\n",
@@ -535,7 +537,7 @@ add_file(short wgport,
 		subs->zsub_class, subs->zsub_classinst, subs->zsub_recipient);
 	if (fclose(fp) == EOF) {
 		(void) sprintf(errbuf, "while closing %s", subsname);
-		ss_perror(sci_idx, errno, errbuf);
+		com_err(whoami, errno, errbuf);
 		return;
 	}
 	fix_macros(subs,&sub2,1);
@@ -543,7 +545,7 @@ add_file(short wgport,
 		  ? ZUnsubscribeTo(&sub2,1,(u_short)wgport)
 		  : ZSubscribeToSansDefaults(&sub2,1,(u_short)wgport));
 	if (retval)
-		ss_perror(sci_idx,retval,
+		com_err(whoami, retval,
 			  unsub ? "while unsubscribing" :
 			  "while subscribing");
 	return;
@@ -569,7 +571,7 @@ del_file(short wgport,
 	fix_macros(subs,&sub2,1);
 	if ((retval = ZUnsubscribeTo(&sub2,1,(u_short)wgport)) !=
 	    ZERR_NONE)
-		ss_perror(sci_idx,retval,"while unsubscribing");
+		com_err(whoami, retval, "while unsubscribing");
 	return;
 }
 
@@ -589,7 +591,7 @@ purge_subs(register ZSubscription_t *subs,
 	case ALL:
 		break;
 	default:
-		ss_perror(sci_idx,0,"internal error in purge_subs");
+		com_err(whoami, 0, "internal error in purge_subs");
 		return(ERR);
 	}
 
@@ -600,7 +602,7 @@ purge_subs(register ZSubscription_t *subs,
 
 	if (!(fp = fopen(subsname,"r"))) {
 		(void) sprintf(errbuf,"while opening %s for read",subsname);
-		ss_perror(sci_idx,errno,errbuf);
+		com_err(whoami, errno, errbuf);
 		return(ERR);
 	} 
 	(void) strcpy(backup, subsname);
@@ -608,7 +610,7 @@ purge_subs(register ZSubscription_t *subs,
 	(void) unlink(backup);
 	if (!(fpout = fopen(backup,"w"))) {
 		(void) sprintf(errbuf,"while opening %s for writing",backup);
-		ss_perror(sci_idx,errno,errbuf);
+		com_err(whoami, errno, errbuf);
 		(void) fclose(fp);
 		return(ERR);
 	} 
@@ -635,7 +637,7 @@ purge_subs(register ZSubscription_t *subs,
 			if (ferror(fpout) || (fputc('\n', fpout) == EOF)) {
 				(void) sprintf(errbuf, "while writing to %s",
 					       backup);
-				ss_perror(sci_idx, errno, errbuf);
+				com_err(whoami, errno, errbuf);
 			}
 		} else
 			delflag = REMOVED;
@@ -643,13 +645,13 @@ purge_subs(register ZSubscription_t *subs,
 	(void) fclose(fp);		/* open read-only, ignore errs */
 	if (fclose(fpout) == EOF) {
 		(void) sprintf(errbuf, "while closing %s",backup);
-		ss_perror(sci_idx, errno, errbuf);
+		com_err(whoami, errno, errbuf);
 		return(ERR);
 	}
 	if (rename(backup,subsname) == -1) {
 		(void) sprintf(errbuf,"while renaming %s to %s\n",
 			       backup,subsname);
-		ss_perror(sci_idx,errno,errbuf);
+		com_err(whoami, errno, errbuf);
 		return(ERR);
 	}
 	return(delflag);
@@ -684,7 +686,7 @@ load_subs(int argc,
 
 	if (type != LIST) 
 		if ((wgport = ZGetWGPort()) == -1) {
-			ss_perror(sci_idx,errno,
+			com_err(whoami, errno,
 				  "while finding WindowGram port");
 			return;
 		} 
@@ -694,7 +696,7 @@ load_subs(int argc,
 	fp = fopen(file,"r");
 
 	if (fp == NULL) {
-		ss_perror(sci_idx,errno,
+		com_err(whoami, errno,
 			  "while loading subscription file");
 		return;
 	}
@@ -799,7 +801,7 @@ load_subs(int argc,
 			 if (retval = ZPunt(subs2,pind,(u_short)wgport) !=
 			     ZERR_NONE)
 			   {
-			     ss_perror(sci_idx,retval,
+			     com_err(whoami, retval,
 				       "while punting");
 			     goto cleanup;
 			   }
@@ -817,7 +819,7 @@ load_subs(int argc,
 			     ZSubscribeTo(subs2,ind,(u_short)wgport):
 			     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) !=
 			    ZERR_NONE) {
-				ss_perror(sci_idx,retval,(type == SUB)?
+				com_err(whoami, retval, (type == SUB) ?
 					  "while subscribing":
 					  "while unsubscribing");
 				goto cleanup;
@@ -832,7 +834,7 @@ load_subs(int argc,
 		if (unind == SUBSATONCE) {
 			fix_macros(unsubs,subs2,unind);
 			if ((retval = ZUnsubscribeTo(subs2,unind,(u_short)wgport)) != ZERR_NONE) {
-				ss_perror(sci_idx,retval,
+				com_err(whoami, retval,
 					  "while unsubscribing to un-subscriptions");
 				goto cleanup;
 			}
@@ -851,7 +853,7 @@ load_subs(int argc,
 		fix_macros(subs,subs2,ind);
 		if ((retval = (type == SUB)?ZSubscribeTo(subs2,ind,(u_short)wgport):
 		     ZUnsubscribeTo(subs2,ind,(u_short)wgport)) != ZERR_NONE) {
-			ss_perror(sci_idx,retval,(type == SUB)?
+			com_err(whoami, retval, (type == SUB) ?
 				  "while subscribing":
 				  "while unsubscribing");
 			goto cleanup;
@@ -860,7 +862,7 @@ load_subs(int argc,
 			fix_macros(unsubs,subs2,unind);
 			if ((retval =
 			     ZUnsubscribeTo(subs2,unind,(u_short)wgport)) != ZERR_NONE) {
-				ss_perror(sci_idx,retval,
+				com_err(whoami, retval,
 					  "while unsubscribing to un-subscriptions");
 				goto cleanup;
 			}
@@ -871,7 +873,7 @@ load_subs(int argc,
 			if (retval = ZPunt(subs2,pind,(u_short)wgport) !=
 			    ZERR_NONE)
 			{
-			  ss_perror(sci_idx,retval,
+			  com_err(whoami,retval,
 				    "while punting");
 			  goto cleanup;
 			}
@@ -928,7 +930,7 @@ current(int argc,
 
 	if (!defs)
 		if ((wgport = ZGetWGPort()) == -1) {
-			ss_perror(sci_idx,errno,
+			com_err(whoami, errno,
 				  "while finding WindowGram port");
 			return;
 		} 
@@ -947,7 +949,7 @@ current(int argc,
 	}
 	else
 		if (retval != ZERR_NONE) {
-			ss_perror(sci_idx,retval,"retrieving subscriptions");
+			com_err(whoami, retval, "retrieving subscriptions");
 			return;
 		}
 
@@ -958,7 +960,7 @@ current(int argc,
 		if (!(fp = fopen(backup,"w"))) {
 			(void) sprintf(errbuf,"while opening %s for write",
 				       backup);
-			ss_perror(sci_idx,errno,errbuf);
+			com_err(whoami, errno, errbuf);
 			return;
 		}
 	}
@@ -966,7 +968,7 @@ current(int argc,
 	for (i=0;i<nsubs;i++) {
 		one = 1;
 		if ((retval = ZGetSubscriptions(&subs,&one)) != ZERR_NONE) {
-			ss_perror(sci_idx,retval,"while getting subscription");
+			com_err(whoami, retval, "while getting subscription");
 			if (save) {
 				fprintf(stderr,"Subscriptions file not modified\n");
 				(void) fclose(fp);
@@ -986,13 +988,13 @@ current(int argc,
 	if (save) {
 		if (fclose(fp) == EOF) {
 			(void) sprintf(errbuf, "while closing %s", backup);
-			ss_perror(sci_idx, errno, errbuf);
+			com_err(whoami, errno, errbuf);
 			return;
 		}
 		if (rename(backup,file) == -1) {
 			(void) sprintf(errbuf,"while renaming %s to %s",
 				       backup,file);
-			ss_perror(sci_idx,retval,errbuf);
+			com_err(whoami, retval, errbuf);
 			(void) unlink(backup);
 		}
 	}
@@ -1009,13 +1011,13 @@ make_exist(char *filename)
 
 	if (!(fpout = fopen(filename,"w"))) {
 		(void) sprintf(errbuf,"while opening %s for write",filename);
-		ss_perror(sci_idx,errno,errbuf);
+		com_err(whoami, errno, errbuf);
 		return (1);
 	}
 
 	if (fclose(fpout) == EOF) {
 		(void) sprintf(errbuf, "while closing %s", filename);
-		ss_perror(sci_idx, errno, errbuf);
+		com_err(whoami, errno, errbuf);
 		return(1);
 	}
 	return (0);
