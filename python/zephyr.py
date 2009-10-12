@@ -7,6 +7,7 @@ import struct
 import ctypes
 import ctypes.util
 import time
+import sys
 from ctypes import c_int, c_uint, c_ushort, c_char, c_ubyte
 from ctypes import c_uint16, c_uint32
 from ctypes import POINTER, c_void_p, c_char_p
@@ -76,6 +77,13 @@ class Enum_u16(c_uint16):
         except IndexError:
             return ["unknown enum value(%d)" % (self.value)]
 
+class Enum_u8(c_ubyte):
+    def pformat(self):
+        try:
+            return ["%s(%d)" % (self._values_[self.value], self.value)]
+        except IndexError:
+            return ["unknown enum value(%d)" % (self.value)]
+
 # POSIX socket types...
 class in_addr(Structure):
     _fields_ = [
@@ -96,39 +104,59 @@ class in6_addr(Structure):
         ("in6_u", _U_in6_u),
         ]
 
-class AF_(Enum_u16):
+# XXX Ick.
+if sys.platform.startswith("darwin") or sys.platform.lower().find("bsd") >= 0:
+  sa_has_len = True
+elif sys.platform.startswith("linux"):
+  sa_has_len = False
+else:
+  # ??
+  sa_has_len = False
+
+if sa_has_len:
+    af_base_type = Enum_u8
+else:
+    af_base_type = Enum_u16
+
+class AF_(af_base_type):
     _socket_af = dict([(v,n) for n,v in socket.__dict__.items() if n.startswith("AF_")])
     _values_ = [_socket_af.get(k, "unknown address family") for k in range(min(_socket_af), max(_socket_af)+1)]
 
 populate_enum(AF_)
 
+def maybe_add_len_field(len_name, other_fields):
+    if sa_has_len:
+        return [(len_name, c_ubyte)] + other_fields
+    else:
+        return other_fields
+
 class sockaddr(Structure):
-    _fields_ = [
-        ("sa_family", AF_),
-        ("sa_data", c_char * 14),
-        ]
+    _fields_ = maybe_add_len_field("sa_len", [
+            ("sa_family", AF_),
+            ("sa_data", c_char * 14),
+            ])
 
 class sockaddr_in(Structure):
-    _fields_ = [
-        ("sin_family", AF_),
-        ("sin_port", c_uint16),
-        ("sin_addr", in_addr),
-        # hack from linux - do we actually need it?
-        ("sin_zero", c_ubyte * (sizeof(sockaddr)-sizeof(c_uint16)-sizeof(c_uint16)-sizeof(in_addr))),
-        ]
+    _fields_ = maybe_add_len_field("sin_len", [
+            ("sin_family", AF_),
+            ("sin_port", c_uint16),
+            ("sin_addr", in_addr),
+            # hack from linux - do we actually need it?
+            ("sin_zero", c_ubyte * (sizeof(sockaddr)-sizeof(c_uint16)-sizeof(c_uint16)-sizeof(in_addr))),
+            ])
     def pformat_sin_zero(self):
         return ["[ignored]"]
         
 # RFC2553...
 class sockaddr_in6(Structure):
-    _fields_ = [
-        ("sin6_family", AF_),
-        ("sin6_port", c_uint16),
-        ("sin6_flowinfo", c_uint32),
-        ("sin6_addr", in6_addr),
-        ("sin6_scope_id", c_uint32),
-        ]
-        
+    _fields_ = maybe_add_len_field("sin6_len", [
+            ("sin6_family", AF_),
+            ("sin6_port", c_uint16),
+            ("sin6_flowinfo", c_uint32),
+            ("sin6_addr", in6_addr),
+            ("sin6_scope_id", c_uint32),
+            ])
+
 # zephyr/zephyr.h
 #define Z_MAXOTHERFIELDS        10      /* Max unknown fields in ZNotice_t */
 Z_MAXOTHERFIELDS = 10
