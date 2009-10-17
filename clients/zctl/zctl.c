@@ -12,7 +12,9 @@
 
 #include <sysdep.h>
 #include <zephyr/zephyr.h>
+#ifdef HAVE_SS
 #include <ss/ss.h>
+#endif
 #include <pwd.h>
 #include <netdb.h>
 #include <arpa/nameser.h>
@@ -41,11 +43,15 @@ static const char rcsid_zctl_c[] = "$Id$";
 #define	NOT_REMOVED	0
 #define	REMOVED		1
 
+#ifdef HAVE_SS
 int sci_idx;
+#endif
 char subsname[BUFSIZ];
 char ourhost[NS_MAXDNAME], ourhostcanon[NS_MAXDNAME];
 
+#ifdef HAVE_SS
 extern ss_request_table zctl_cmds;
+#endif
 
 int purge_subs(register ZSubscription_t *, int);
 void add_file(short, ZSubscription_t *, int);
@@ -54,6 +60,11 @@ void fix_macros(ZSubscription_t *, ZSubscription_t *, int);
 void fix_macros2(char *, char **);
 int make_exist(char *);
 char *whoami;
+
+#ifndef HAVE_SS
+static void run_command(int, char *[]);
+static void show_commands(int, char *[]);
+#endif
 
 int
 main(int argc,
@@ -125,12 +136,22 @@ main(int argc,
 	} else
 		strncpy(ourhostcanon,hent->h_name,sizeof(ourhostcanon)-1);
 
+#ifdef HAVE_SS
 	sci_idx = ss_create_invocation("zctl","",0,&zctl_cmds,&code);
 	if (code) {
 		ss_perror(sci_idx,code,"while creating invocation");
 		exit(1);
+#else
+	if (argc <= 1) {
+	    printf("ZCTL $Revision$ (Protocol %s%d.%d)\nType '%s help' for a list of subcommands.\n\n",
+		   ZVERSIONHDR,
+		   ZVERSIONMAJOR,ZVERSIONMINOR,
+		   argv[0]);
+	    exit(0);
+#endif
 	}
 
+#ifdef HAVE_SS
 	if (argc > 1) {
 		*ssline = '\0';
 		for (i=1;i<argc;i++)
@@ -148,6 +169,9 @@ main(int argc,
 	       ZVERSIONMAJOR,ZVERSIONMINOR);
 
 	ss_listen(sci_idx);
+#else
+	run_command(argc-1, argv+1);
+#endif
 	exit(0);
 }
 
@@ -1216,3 +1240,122 @@ list_punts(int argc, char **argv)
 #endif /* CMU_ZCTL_PUNT */
   return 0;
 }
+
+#ifndef HAVE_SS
+#define MAXNAMES 3
+static const struct {
+	void (*fptr)(int, char *[]);
+	const char *doc;
+	const char *names[MAXNAMES];
+} commands[] = {
+/* { set_file, "Set default subscriptions file.", "file" }, */
+  { cancel_subs, "Cancel all subscriptions.",
+    { "cancel" } },
+  { load_subs, "Subscribe to a subscriptions file.",
+    { "load", "ld" } },
+  { load_subs, "Unsubscribe to a subscriptions file.",
+    { "unload", "unld" } },
+  { load_subs, "List a subscriptions file.",
+    { "list", "ls" } },
+  { subscribe, "Subscribe to a class/class instance.",
+    { "subscribe", "sub" } },
+  { subscribe, "Unsubscribe to a class/class instance.",
+    { "unsubscribe", "unsub" } },
+  { sub_file, "Subscribe and add to subscriptions file.",
+    { "add" } },
+  { sub_file, "Unsubscribe and add to subscriptions file\nas un-subscription.",
+    { "add_unsubscription", "add_un" } },
+  { sub_file, "Unsubscribe and delete subscription from\nsubscriptions file.",
+    { "delete", "del", "dl" } },
+  { sub_file, "Delete un-subscription from subscriptions file.",
+    { "delete_unsubscription", "del_un" } },
+  { current, "Retrieve current subscriptions.",
+    { "retrieve", "ret" } },
+  { current, "Retrieve system-wide default subscriptions.",
+    { "defaults", "defs" } },
+  { current, "Save current subscriptions (replacing existing file).",
+    { "save" } },
+  { show_var, "Show a variable's value.",
+    { "show" } },
+  { set_var, "Set a variable's value.",
+    { "set" } },
+  { unset_var, "Delete a variable's value.",
+    { "unset" } },
+  { wgc_control, "Get the WindowGram to reread its description file.",
+    { "wg_read" } },
+  { wgc_control, "Tell the WindowGram not to react to incoming notices.",
+    { "wg_shutdown" } },
+  { wgc_control, "Tell the WindowGram to react to incoming notices.",
+    { "wg_startup" } },
+  { wgc_control, "Tell the WindowGram to exit completely.",
+    { "wg_exit" } },
+  { hm_control, "Tell the server to flush information about this host.",
+    { "hm_flush" } },
+  { hm_control, "Tell the HostManager to find a new server.",
+    { "new_server" } },
+  { flush_locations, "Flush all location information.",
+    { "flush_locs" } },
+  { do_hide, "Hide your location.",
+    { "hide" } },
+  { do_hide, "Show (un-hide) your location.",
+    { "unhide" } },
+  { show_commands, "List available commands.",
+    { "help", "?" } },
+#ifdef CMU_BACKWARD_COMPAT
+  { do_punt, "Ignore specified messages.",
+    { "punt" } },
+  { do_punt, "Stop ignoring specified messages.",
+    { "unpunt" } },
+  { list_punts, "List current messages to ignore.",
+    { "list_punts", "lp" } },
+#endif
+};
+#define MAXCOMMAND (sizeof(commands)/sizeof(commands[0]))
+
+#define DOCCOL 25
+
+static void
+show_commands(int argc, char *argv[])
+{
+	int i, j, col, len;
+	const char *str, *s;
+	printf("Available zctl requests:\n\n");
+	for (i = 0; i < MAXCOMMAND; i++) {
+		col = 0;
+		printf("%s", commands[i].names[0]);
+		col += strlen(commands[i].names[0]);
+		for (j = 1; j < MAXNAMES && commands[i].names[j]; j++) {
+			printf(", %s", commands[i].names[j]);
+			col += 2 + strlen(commands[i].names[j]);
+		}
+		if (col > DOCCOL - 2) {
+			printf("\n");
+			col = 0;
+		}
+		printf("%*s", DOCCOL - col, "");
+		str = commands[i].doc;
+		while ((s = strchr(str, '\n')) != NULL) {
+			printf("%.*s\n%*s", (int)(s-str), str, DOCCOL, "");
+			str = s+1;
+		}
+		printf("%s\n", str);
+	}
+}
+
+static void
+run_command(int argc, char *argv[])
+{
+	int i, j;
+	for (i = 0; i < MAXCOMMAND; i++)
+		for (j = 0; j < MAXNAMES; j++)
+			if (commands[i].names[j] != NULL &&
+			    !strcmp(commands[i].names[j], argv[0])) {
+				commands[i].fptr(argc, argv);
+				return;
+			}
+	com_err(whoami, 0,
+		"Unknown command '%s'; use '%s help' for a list of commands.",
+		argv[0], whoami);
+	exit(1);
+}
+#endif
