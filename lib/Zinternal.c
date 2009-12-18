@@ -688,6 +688,9 @@ Z_FormatHeader(ZNotice_t *notice,
 	notice->z_sender_sockaddr.ip4.sin_family = AF_INET; /*XXX*/
 	notice->z_sender_sockaddr.ip4.sin_port = notice->z_port;
 	(void) memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, &__My_addr, sizeof(__My_addr));
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	notice->z_sender_sockaddr.ip4.sin_len = sizeof(notice->z_sender_sockaddr.ip4);
+#endif
     }
 
     notice->z_multiuid = notice->z_uid;
@@ -740,6 +743,9 @@ Z_NewFormatHeader(ZNotice_t *notice,
     notice->z_sender_sockaddr.ip4.sin_family = AF_INET; /*XXX*/
     notice->z_sender_sockaddr.ip4.sin_port = notice->z_port;
     (void) memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, &__My_addr, sizeof(__My_addr));
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+    notice->z_sender_sockaddr.ip4.sin_len = sizeof(notice->z_sender_sockaddr.ip4);
+#endif
 
     notice->z_multiuid = notice->z_uid;
 
@@ -1251,6 +1257,9 @@ Z_SendFragmentedNotice(ZNotice_t *notice,
 	    notice->z_sender_sockaddr.ip4.sin_family = AF_INET; /*XXX*/
 	    notice->z_sender_sockaddr.ip4.sin_port = notice->z_port;
 	    (void) memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, &__My_addr, sizeof(__My_addr));
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	    notice->z_sender_sockaddr.ip4.sin_len = sizeof(notice->z_sender_sockaddr.ip4);
+#endif
 	}
 	message_len = min(notice->z_message_len-offset, fragsize);
 	partnotice.z_message = notice->z_message+offset;

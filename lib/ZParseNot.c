@@ -262,9 +262,15 @@ ZParseNotice(char *buffer,
 	if (len == sizeof(notice->z_sender_sockaddr.ip6.sin6_addr)) {
 	    notice->z_sender_sockaddr.ip6.sin6_family = AF_INET6;
 	    memcpy(&notice->z_sender_sockaddr.ip6.sin6_addr, addrbuf, len);
+#ifdef HAVE_SOCKADDR_IN6_SIN6_LEN
+	    notice->z_sender_sockaddr.ip6.sin6_len = sizeof(notice->z_sender_sockaddr.ip6);
+#endif
 	} else if (len == sizeof(notice->z_sender_sockaddr.ip4.sin_addr)) {
 	    notice->z_sender_sockaddr.ip4.sin_family = AF_INET;
 	    memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, addrbuf, len);
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	    notice->z_sender_sockaddr.ip4.sin_len = sizeof(notice->z_sender_sockaddr.ip4);
+#endif
 	} else
 	    BAD_PACKET("address claims to be neither IPv4 or IPv6");
 
@@ -275,6 +281,9 @@ ZParseNotice(char *buffer,
 	       sizeof notice->z_sender_sockaddr);
 	notice->z_sender_sockaddr.ip4.sin_family = AF_INET;
 	notice->z_sender_sockaddr.ip4.sin_addr = notice->z_uid.zuid_addr;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	notice->z_sender_sockaddr.ip4.sin_len = sizeof(notice->z_sender_sockaddr.ip4);
+#endif
     }
 
     if (numfields && ptr < end) {

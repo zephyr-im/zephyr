@@ -396,9 +396,8 @@ create_punt_reply(int_dictionary_binding *punt)
 void
 notice_handler(ZNotice_t *notice)
 {
-#ifndef HAVE_ARES
+    int ret;
     char node[MAXDNAME];
-#endif
 
 #if defined(CMU_ZWGCPLUS)
     list_add_notice(notice);
@@ -415,10 +414,12 @@ notice_handler(ZNotice_t *notice)
                      notice_callback, notice);
     
 #else
-    getnameinfo((const struct sockaddr *)&(notice->z_sender_sockaddr),
-                sizeof(notice->z_sender_sockaddr),
-                node, sizeof(node), NULL, 0, 0);
-    
+    ret = getnameinfo((const struct sockaddr *)&(notice->z_sender_sockaddr),
+		      sizeof(notice->z_sender_sockaddr),
+		      node, sizeof(node), NULL, 0, 0);
+    if (ret != 0)
+	strcpy(node, "?");
+
     process_notice(notice, node);
 #ifdef CMU_ZWGCPLUS
     /* Let list_del_notice clean up for us. */

@@ -299,3 +299,9 @@
 
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef uid_t
+
+/* Doefine to 1 if sockaddr_in has sin_len member */
+#undef HAVE_SOCKADDR_IN_SIN_LEN
+
+/* Doefine to 1 if sockaddr_in6 has sin6_len member */
+#undef HAVE_SOCKADDR_IN6_SIN6_LEN
