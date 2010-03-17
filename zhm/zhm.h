@@ -68,45 +68,13 @@ int queue_len __P((void));
 struct sockaddr_in serv_sin;
 extern int rexmit_times[];
 
-#ifdef vax
-#define use_etext
-#endif /* vax */
-
-#ifdef ibm032
-#define adjust_size(size)	size -= 0x10000000
-#endif /* ibm032 */
-
-#if defined(sun) && (defined (SUN4_ARCH) || defined (sparc))
-#define use_etext
-#endif
-
-#if defined (__i386__) && defined (__APPLE__)
+#ifdef HAVE_ETEXT
+extern int etext;
+#define adjust_size(size)	size -= (unsigned int) &etext;
+#else
 /* Pick a var that tends to be near the start of data section.  */
 extern char **environ;
 #define adjust_size(size)	size -= (uintptr_t) &environ
-#endif
-
-#ifdef _AIX
-#ifdef i386
-#define adjust_size(size)	size -= 0x400000
-#endif
-#ifdef _IBMR2
-#define	adjust_size(size)	size -= 0x20000000
-#endif
-#endif
-
-#if (defined(ultrix) || defined(sgi)) && defined(mips)
-#define adjust_size(size)	size -= 0x10000000
-#endif /* (ultrix || sgi) && mips */
-
-#if defined(__alpha)
-#define adjust_size(size)	size -= 0x140000000
-#endif /* alpha */
-
-#ifdef use_etext
-extern int etext;
-#define adjust_size(size)	size -= (unsigned int) &etext;
-#undef use_etext
 #endif
 
 #endif
