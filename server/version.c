@@ -48,41 +48,11 @@ get_version(void)
 #endif /* DEBUG */
 
     (void) strcat(vers_buf, "/");
-#ifdef vax
-    (void) strcat(vers_buf, "VAX");
-#endif /* vax */
-#ifdef ibm032
-    (void) strcat(vers_buf, "IBM RT");
-#endif /* ibm032 */
-#ifdef _IBMR2
-    (void) strcat(vers_buf, "IBM RS/6000");
-#endif /* _IBMR2 */
-#ifdef sun
-    (void) strcat(vers_buf, "SUN");
-#ifdef sparc
-    (void) strcat (vers_buf, "-4");
-#endif /* sparc */
-#ifdef sun386
-    (void) strcat (vers_buf, "-386I");
-#endif /* sun386 */
-#endif /* sun */
 
-#ifdef mips
-#ifdef ultrix			/* DECstation */
-    (void) strcat (vers_buf, "DEC-");
-#endif /* ultrix */
-    (void) strcat(vers_buf, "MIPS");
-#endif /* mips */
-#ifdef NeXT
-    (void) strcat(vers_buf, "NeXT");
-#endif /* NeXT */
-
-    if (vers_buf[strlen(vers_buf) - 1] == '/') {
-	uname(&un);
-	(void) strcat(vers_buf, un.machine);
-	(void) strcat(vers_buf, "-");
-	(void) strcat(vers_buf, un.sysname);
-    }
+    uname(&un);
+    (void) strcat(vers_buf, un.machine);
+    (void) strcat(vers_buf, "-");
+    (void) strcat(vers_buf, un.sysname);
   }
   return(vers_buf);
 }
