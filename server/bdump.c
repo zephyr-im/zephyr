@@ -9,7 +9,7 @@
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #include <zephyr/mit-copyright.h>
@@ -52,7 +52,7 @@ static Code_t bdump_send_loop(Server *server);
 static Code_t bdump_recv_loop(Server *server);
 static void bdump_get_v12(ZNotice_t *, int, struct sockaddr_in *,
 			       Server *);
-static Code_t get_packet(void *packet, int len, int *retlen);
+static Code_t get_packet(char **packet, int *len, int *retlen);
 static Code_t extract_sin(ZNotice_t *notice, struct sockaddr_in *target);
 static Code_t send_done(void);
 static Code_t send_list(ZNotice_Kind_t kind, int port, char *class_name,
@@ -67,6 +67,7 @@ static int net_write(FILE *f, char *buf, int len);
 static int setup_file_pointers(void);
 static void shutdown_file_pointers(void);
 static void cleanup(Server *server);
+static Code_t transmit_tcp(char *pack, int packlen);
 
 #ifdef HAVE_KRB5
 static int des_service_decrypt(unsigned char *in, unsigned char *out);
@@ -126,9 +127,9 @@ bdump_offer(struct sockaddr_in *who)
     zdbug((LOG_DEBUG, "bdump_offer"));
 
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
-    /* 
+    /*
      * when using kerberos server-server authentication, we can
-     * use any random local address 
+     * use any random local address
      */
     bdump_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (bdump_socket < 0) {
@@ -139,7 +140,7 @@ bdump_offer(struct sockaddr_in *who)
     memset(&bdump_sin, 0, sizeof(bdump_sin));
     /* a port field of 0 makes the UNIX
      * kernel choose an appropriate port/address pair */
- 
+
     bdump_sin.sin_port = 0;
     bdump_sin.sin_addr = my_addr;
     bdump_sin.sin_family = AF_INET;
@@ -180,7 +181,7 @@ bdump_offer(struct sockaddr_in *who)
 #endif				/* HAVE_KRB4 */
 
     listen(bdump_socket, 1);
- 
+
     bdump_timer = timer_set_rel(20L, close_bdump, NULL);
     FD_SET(bdump_socket, &interesting);
     nfds = max(bdump_socket, srv_socket) + 1;
@@ -189,20 +190,20 @@ bdump_offer(struct sockaddr_in *who)
     sprintf(buf, "%d", ntohs(bdump_sin.sin_port));
     lyst[0] = addr;
     lyst[1] = buf;
- 
+
     retval = ZSetDestAddr(who);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "bdump_offer: ZSetDestAddr: %s",
 	       error_message(retval));
 	return;
     }
- 
+
     /* myname is the hostname */
     /* the class instance is the version number, here it is */
     /* bdump_version, which is set in main */
     send_list(ACKED, srv_addr.sin_port, ZEPHYR_ADMIN_CLASS, bdump_version,
 	      ADMIN_BDUMP, myname, "", lyst, 2);
-	
+
     zdbug((LOG_DEBUG,"bdump_offer: address is %s/%d\n",
 	   inet_ntoa(bdump_sin.sin_addr),
 	   ntohs(bdump_sin.sin_port)));
@@ -244,7 +245,7 @@ bdump_send(void)
 #if !defined(HAVE_KRB4) && !defined(HAVE_KRB5)
     unsigned short fromport;
 #endif /* HAVE_KRB4 */
- 
+
     zdbug((LOG_DEBUG, "bdump_send"));
 
     /* accept the connection, and send the brain dump */
@@ -256,11 +257,11 @@ bdump_send(void)
     if (setsockopt(live_socket, SOL_SOCKET, SO_KEEPALIVE, (char *) &on,
 		   sizeof(on)) < 0)
 	syslog(LOG_WARNING, "bdump_send: setsockopt (SO_KEEPALIVE): %m");
- 
+
 #if !defined(HAVE_KRB4) && !defined(HAVE_KRB5)
     fromport = ntohs(from.sin_port);
 #endif
- 
+
 #ifdef _POSIX_VERSION
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
@@ -270,7 +271,7 @@ bdump_send(void)
 #else
     signal(SIGPIPE, SIG_IGN);	/* so we can detect failures */
 #endif
- 
+
     from.sin_port = srv_addr.sin_port; /* we don't care what port
 					* it came from, and we need to
 					* fake out server_which_server() */
@@ -280,7 +281,7 @@ bdump_send(void)
 	server = limbo_server;
     }
 
-    zdbug((LOG_DEBUG, "bdump_send: connection from %s/%d",
+    zdbug((LOG_INFO, "bdump_send: connection from %s/%d",
 	   inet_ntoa(from.sin_addr), ntohs(from.sin_port)));
 
     bdumping = 1;
@@ -306,30 +307,30 @@ bdump_send(void)
 	return;
     }
 
-    syslog(LOG_INFO, "bdump_send: got %d bytes of authenticator for protocol %d", len, proto);
+    syslog(LOG_DEBUG, "bdump_send: got %d bytes of authenticator for protocol %d", len, proto);
 
     if (get_tgt()) {
 	syslog(LOG_ERR, "bdump_send: get_tgt failed");
 	cleanup(server);
 	return;
     }
- 
+
     switch(proto) {
 #ifdef HAVE_KRB5
     case 5:
 	/* "server" side */
-	retval = krb5_build_principal(Z_krb5_ctx, &principal, 
+	retval = krb5_build_principal(Z_krb5_ctx, &principal,
 				      strlen(ZGetRealm()),
 				      ZGetRealm(),
 				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
-				      NULL); 
+				      NULL);
 	if (retval) {
 	    syslog(LOG_ERR, "bdump_send: krb5_build_principal: %s",
 		   error_message(retval));
 	    cleanup(server);
 	    return;
 	}
-	
+
 
 	retval = krb5_auth_con_init(Z_krb5_ctx, &bdump_ac);
 	if (retval) {
@@ -365,7 +366,7 @@ bdump_send(void)
 	/* resolve keytab */
 	retval = krb5_kt_resolve(Z_krb5_ctx, keytab_file, &kt);
 	if (retval) {
-	    syslog(LOG_ERR, "bdump_send: cannot resolve keytab: %s", 
+	    syslog(LOG_ERR, "bdump_send: cannot resolve keytab: %s",
 		   error_message(retval));
 	    krb5_kt_close(Z_krb5_ctx, kt);
 	    cleanup(server);
@@ -399,10 +400,10 @@ bdump_send(void)
 	     krb5_free_data_contents(Z_krb5_ctx, &k5data);
 	     cleanup(server);
 	     return;
-	}    
+	}
 	krb5_free_data_contents(Z_krb5_ctx, &k5data);
 	break;
-#endif  /* HAVE_KRB5 */  
+#endif  /* HAVE_KRB5 */
 #ifdef HAVE_KRB4
     case 4:
 	/* here to krb_rd_req from GetKerberosData candidate for refactoring
@@ -524,10 +525,10 @@ bdump_get_v12 (ZNotice_t *notice,
 #else  /* !HAVE_KRB4 && !HAVE_KRB5 */
     int reserved_port = IPPORT_RESERVED - 1;
 #endif /* !HAVE_KRB4 && !HAVE_KRB5 */
-    
+
     bdumping = 1;
     server->dumping = 1;
- 
+
 #ifdef _POSIX_VERSION
     action.sa_flags = 0;
     sigemptyset(&action.sa_mask);
@@ -536,7 +537,7 @@ bdump_get_v12 (ZNotice_t *notice,
 #else
     signal(SIGPIPE, SIG_IGN);	/* so we can detect problems */
 #endif /* _POSIX_VRESION */
- 
+
     if (bdump_socket >= 0) {
 	/* We cannot go get a brain dump when someone may
 	   potentially be connecting to us (if that other
@@ -590,11 +591,11 @@ bdump_get_v12 (ZNotice_t *notice,
 	syslog(LOG_WARNING, "bdump_get: setsockopt (SO_KEEPALIVE): %m");
 
     zdbug((LOG_DEBUG, "bdump_get: connected"));
- 
+
     /* Now begin the brain dump. */
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     if (get_tgt()) {
-	syslog(LOG_ERR, "bdump_get: get_tgt failed"); 
+	syslog(LOG_ERR, "bdump_get: get_tgt failed");
 	cleanup(server);
 	return;
     }
@@ -603,11 +604,11 @@ bdump_get_v12 (ZNotice_t *notice,
     case 5: /* "client" side */
  	memset((char *)&creds, 0, sizeof(creds));
 
-	retval = krb5_build_principal(Z_krb5_ctx, &principal, 
+	retval = krb5_build_principal(Z_krb5_ctx, &principal,
 				      strlen(ZGetRealm()),
 				      ZGetRealm(),
 				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
-				      NULL); 
+				      NULL);
 	if (retval) {
 	    syslog(LOG_ERR, "bdump_get: krb5_build_principal: %s",
 		   error_message(retval));
@@ -623,7 +624,7 @@ bdump_get_v12 (ZNotice_t *notice,
 	    cleanup(server);
 	    return;
 	}
-	
+
 	retval = krb5_copy_principal(Z_krb5_ctx, principal, &creds.client);
 	krb5_free_principal(Z_krb5_ctx, principal);
 	if (retval) {
@@ -685,7 +686,7 @@ bdump_get_v12 (ZNotice_t *notice,
              krb5_free_data_contents(Z_krb5_ctx, &data);
              cleanup(server);
              return;
-        }    
+        }
         krb5_free_data_contents(Z_krb5_ctx, &data);
 	memset((char *)&data, 0, sizeof(krb5_data));
         retval = GetKrb5Data(live_socket, &data);
@@ -694,7 +695,7 @@ bdump_get_v12 (ZNotice_t *notice,
                     error_message(retval));
              cleanup(server);
              return;
-        }    
+        }
         retval = krb5_rd_rep(Z_krb5_ctx, bdump_ac, &data, &rep);
         free(data.data);
         memset((char *)&data, 0, sizeof(krb5_data));
@@ -703,7 +704,7 @@ bdump_get_v12 (ZNotice_t *notice,
                     error_message(retval));
              cleanup(server);
              return;
-        }    
+        }
 	break;
 #endif
 #ifdef HAVE_KRB4
@@ -717,7 +718,7 @@ bdump_get_v12 (ZNotice_t *notice,
 	    return;
 	}
 	zdbug((LOG_DEBUG, "bdump_get: SendKerberosData ok"));
-	
+
 	/* get his authenticator */
 	retval = GetKerberosData(live_socket, from.sin_addr, &kdata,
 				 SERVER_SERVICE, srvtab_file);
@@ -738,7 +739,7 @@ bdump_get_v12 (ZNotice_t *notice,
 	break;
 #endif /* HAVE_KRB4 */
     }
-#endif /* defined(HAVE_KRB4) || defined(HAVE_KRB5) */   
+#endif /* defined(HAVE_KRB4) || defined(HAVE_KRB5) */
     retval = setup_file_pointers();
     if (retval != 0) {
 	syslog(LOG_WARNING, "bdump_get: can't set up file pointers: %s",
@@ -816,6 +817,77 @@ bdump_get(ZNotice_t *notice,
 }
 
 /*
+ * Send off a packet via tcp
+ */
+static Code_t
+transmit_tcp(char *pack, int packlen)
+{
+    Code_t retval = ZERR_NONE;
+    u_short length;
+    int count;
+#ifdef HAVE_KRB5
+    krb5_data indata, outmsg;
+#endif
+    /* output and bdump_ac are globals */
+
+    if (packlen > Z_MAXPKTLEN) {
+	syslog(LOG_ERR, "transmit_tcp: packet is too large (%d bytes)", packlen);
+	return ZERR_PKTLEN;
+    }
+
+#ifdef HAVE_KRB5
+    if (bdump_ac) {
+        indata.length = packlen;
+        indata.data = pack;
+        memset(&outmsg, 0, sizeof(krb5_data));
+
+        retval = krb5_mk_priv(Z_krb5_ctx, bdump_ac, &indata, &outmsg, NULL);
+
+        if (retval != ZERR_NONE)
+	    goto cleanup;
+
+        packlen = outmsg.length;
+        pack = outmsg.data;
+    }
+#endif
+
+    syslog(LOG_DEBUG, "transmit_tcp: packet is %d bytes", packlen);
+
+    length = htons((unsigned short) packlen);
+
+    count = net_write(output, (char *) &length, sizeof(length));
+    if (count != sizeof(length)) {
+	if (count < 0) {
+	    syslog(LOG_WARNING, "transmit_tcp: writing length: %m");
+	    retval = errno;
+	} else {
+	    syslog(LOG_WARNING, "transmit_tcp: writing length: %d vs %d", sizeof(length), count);
+	    retval = ZSRV_LEN;
+	}
+	goto cleanup;
+    }
+    count = net_write(output, pack, packlen);
+    if (count != packlen) {
+	if (count < 0) {
+	    syslog(LOG_WARNING, "transmit_tcp: writing data: %m");
+	    retval = errno;
+	} else {
+	    syslog(LOG_WARNING, "transmit_tcp: writing data: %d vs %d", packlen, count);
+	    retval = ZSRV_LEN;
+	}
+	goto cleanup;
+    }
+
+ cleanup:
+#ifdef HAVE_KRB5
+    if (bdump_ac)
+	krb5_free_data_contents(Z_krb5_ctx, &outmsg);
+#endif
+
+    return retval;
+}
+
+/*
  * Send a list off as the specified notice
  */
 
@@ -832,14 +904,13 @@ bdump_send_list_tcp(ZNotice_Kind_t kind,
 {
     ZNotice_t notice;
     char *pack;
-    int packlen, count;
+    int packlen;
     Code_t retval;
-    u_short length;
 
     memset (&notice, 0, sizeof(notice));
- 
+
     notice.z_kind = kind;
- 
+
     notice.z_port = addr->sin_port;
     notice.z_class = class_name;
     notice.z_class_inst = inst;
@@ -850,63 +921,19 @@ bdump_send_list_tcp(ZNotice_Kind_t kind,
     notice.z_num_other_fields = 0;
     if (addr)
 	notice.z_sender_sockaddr.ip4 = *addr; /*XXX*/
- 
+
     retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen, ZNOAUTH);
-    if (retval != ZERR_NONE)
+    if (retval != ZERR_NONE) {
+	syslog(LOG_ERR, "bdump_send_list_tcp: ZFormatNotice: %s", error_message(retval));
 	return retval;
+    }
 
-#ifdef HAVE_KRB5
-    if (bdump_ac) {
-        krb5_data indata, outmsg;
-        indata.length=packlen;
-        indata.data=pack;
-        memset(&outmsg, 0, sizeof(krb5_data));
-        retval = krb5_mk_priv(Z_krb5_ctx, bdump_ac, &indata, &outmsg, NULL);
-        if (retval != ZERR_NONE)
-	    return retval;
-        if (outmsg.length > Z_MAXPKTLEN) {
-	    syslog(LOG_ERR, "bsl: encrypted packet is too large");
-            return ZERR_PKTLEN;
-        }
-        packlen = outmsg.length;
-        free(pack);
-        pack=malloc(packlen);
-        if (!pack)
-	    return ENOMEM;
-        memcpy(pack, outmsg.data, packlen);
-        krb5_free_data_contents(Z_krb5_ctx, &outmsg);
-    }
-#endif
-
-    length = htons((u_short) packlen);
- 
-    count = net_write(output, (char *) &length, sizeof(length));
-    if (count != sizeof(length)) {
-	if (count < 0) {
-	    free(pack);
-	    return(errno);
-	} else {
-	    syslog(LOG_WARNING, "slt (length) xmit: %d vs %d",
-		   sizeof(length), count);
-	    free(pack);
-	    return(ZSRV_PKSHORT);
-	}
-    }
- 
-    count = net_write(output, pack, packlen);
-    if (count != packlen) {
-	if (count < 0) {
-	    free(pack);
-	    return(errno);
-	} else {
-	    syslog(LOG_WARNING, "slt (packet) xmit: %d vs %d",
-		   packlen, count);
-	    free(pack);
-	    return(ZSRV_PKSHORT);
-	}
-    }
+    retval = transmit_tcp(pack, packlen);
     free(pack);
-    return(ZERR_NONE);
+    if (retval != ZERR_NONE)
+	syslog(LOG_ERR, "bdump_send_list_tcp: transmit_tcp: %s", error_message(retval));
+
+    return retval;
 }
 
 static void
@@ -1019,7 +1046,7 @@ get_tgt(void)
 	got_des = 1;
     }
 #endif
-#ifdef HAVE_KRB5	
+#ifdef HAVE_KRB5
     /* XXX */
     if (ticket5_time < NOW - tkt5_lifetime(TKT5LIFETIME) + (15L * 60L)) {
 	krb5_keytab kt;
@@ -1029,11 +1056,11 @@ get_tgt(void)
 
 	memset(&cred, 0, sizeof(cred));
 
-	retval = krb5_build_principal(Z_krb5_ctx, &principal, 
+	retval = krb5_build_principal(Z_krb5_ctx, &principal,
 				      strlen(ZGetRealm()),
 				      ZGetRealm(),
 				      SERVER_KRB5_SERVICE, SERVER_INSTANCE,
-				      NULL); 
+				      NULL);
 	if (retval) {
 	    syslog(LOG_ERR, "get_tgt: krb5_build_principal: %s",
 		   error_message(retval));
@@ -1050,7 +1077,7 @@ get_tgt(void)
 	    krb5_free_principal(Z_krb5_ctx, principal);
 	    return 1;
 	}
-	
+
 	retval = krb5_get_init_creds_keytab (Z_krb5_ctx,
 					     &cred,
 					     principal,
@@ -1087,7 +1114,7 @@ get_tgt(void)
 		krb5_kt_close(Z_krb5_ctx, kt);
 		return 1;
 	    }
-	
+
 	    got_des = 1;
 	}
 #endif /* HAVE_KRB4 */
@@ -1100,7 +1127,7 @@ get_tgt(void)
 		   error_message(retval));
 	    return 1;
 	}
-    
+
 	retval = krb5_cc_store_cred (Z_krb5_ctx, Z_krb5_ccache, &cred);
 	if (retval) {
 	    syslog(LOG_ERR, "get_tgt: krb5_cc_store_cred: %s",
@@ -1120,7 +1147,7 @@ get_tgt(void)
 /*
  * The braindump offer wasn't taken, so we retract it.
  */
- 
+
 /*ARGSUSED*/
 static void
 close_bdump(void *arg)
@@ -1137,17 +1164,18 @@ close_bdump(void *arg)
     }
     return;
 }
- 
+
 /*
  * Start receiving instruction notices from the brain dump socket
  */
- 
+
 static Code_t
 bdump_recv_loop(Server *server)
 {
     ZNotice_t notice;
-    ZPacket_t packet;
+    char *packet = NULL;
     int len;
+    int pblen = Z_MAXPKTLEN;
     Code_t retval;
     Client *client = NULL;
     struct sockaddr_in who;
@@ -1155,7 +1183,7 @@ bdump_recv_loop(Server *server)
     unsigned char buf[512];
     int blen;
 #endif
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)    
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     char *cp;
 #ifndef HAVE_KRB4
     unsigned char cblock[8];
@@ -1164,9 +1192,14 @@ bdump_recv_loop(Server *server)
 #endif
 #endif
     ZRealm *realm = NULL;
- 
-    zdbug((LOG_DEBUG, "bdump recv loop"));
-	
+
+    zdbug((LOG_DEBUG, "bdump_recv_loop"));
+
+    packet = malloc(Z_MAXPKTLEN);
+
+    if (packet == NULL)
+	return ENOMEM;
+
     /* do the inverse of bdump_send_loop, registering stuff on the fly */
     while (1) {
 	if (packets_waiting()) {
@@ -1178,9 +1211,10 @@ bdump_recv_loop(Server *server)
 	    bdumping = 1;
 	}
 	len = sizeof(packet);
-	retval = get_packet(packet, len, &len);
+	retval = get_packet(&packet, &pblen, &len);
 	if (retval != ZERR_NONE) {
-	    syslog(LOG_ERR, "brl get pkt: %s", error_message(retval));
+	    syslog(LOG_ERR, "bdump_recv_loop: get_packet failed: %s", error_message(retval));
+	    free(packet);
 	    return retval;
 	}
 
@@ -1192,7 +1226,8 @@ bdump_recv_loop(Server *server)
 	    memset(&out, 0, sizeof(krb5_data));
 	    retval = krb5_rd_priv(Z_krb5_ctx, bdump_ac, &in, &out, NULL);
 	    if (retval != ZERR_NONE) {
-	        syslog(LOG_ERR, "brl krb5 rd priv: %s", error_message(retval));
+	        syslog(LOG_ERR, "bdump_recv_loop: krb5_rd_priv failed: %s", error_message(retval));
+		free(packet);
 	        return retval;
 	    }
 	    memcpy(packet, out.data, out.length);
@@ -1203,15 +1238,16 @@ bdump_recv_loop(Server *server)
 
 	retval = ZParseNotice(packet, len, &notice);
 	if (retval != ZERR_NONE) {
-	    syslog(LOG_ERR, "brl notice parse: %s", error_message(retval));
+	    syslog(LOG_ERR, "bdump_recv_loop: ZParseNotice failed: %s", error_message(retval));
+	    free(packet);
 	    return retval;
 	}
 #if defined (DEBUG)
 	if (zdebug) {
-	    syslog(LOG_DEBUG, "bdump:%s '%s' '%s' '%s' '%s' '%s'",
-		    ZNoticeKinds[(int) notice.z_kind], notice.z_class,
-		    notice.z_class_inst, notice.z_opcode, notice.z_sender,
-		    notice.z_recipient);
+	    syslog(LOG_DEBUG, "bdump_recv_loop: %s '%s' '%s' '%s' '%s' '%s'",
+		   ZNoticeKinds[(int) notice.z_kind], notice.z_class,
+		   notice.z_class_inst, notice.z_opcode, notice.z_sender,
+		   notice.z_recipient);
 	}
 #endif /* DEBUG */
 	who.sin_family = AF_INET; /*XXX*/
@@ -1220,20 +1256,22 @@ bdump_recv_loop(Server *server)
 
 	if (strcmp(notice.z_opcode, ADMIN_DONE) == 0) {
 	    /* end of brain dump */
+	    free(packet);
 	    return ZERR_NONE;
 	} else if (strcmp(notice.z_opcode, ADMIN_NEWREALM) == 0) {
 	    /* get a realm from the message */
 	    realm = realm_get_realm_by_name(notice.z_message);
 	    if (!realm) {
-		syslog(LOG_ERR, "brl newrlm failed: no realm %s", 
+		syslog(LOG_ERR, "bdump_recv_loop: realm_get_realm_by_name failed: no realm %s",
 		       notice.z_message);
 	    }
 	} else if (strcmp(notice.z_class, LOGIN_CLASS) == 0) {
 	    /* 1 = tell it we are authentic */
 	    retval = ulogin_dispatch(&notice, 1, &who, server);
 	    if (retval != ZERR_NONE) {
-		syslog(LOG_ERR, "brl ul_disp failed: %s",
+		syslog(LOG_ERR, "bdump_recv_loop: ulogin_dispatch failed: %s",
 		       error_message(retval));
+		free(packet);
 		return retval;
 	    }
 	} else if (strcmp(notice.z_opcode, ADMIN_NEWCLT) == 0) {
@@ -1241,7 +1279,8 @@ bdump_recv_loop(Server *server)
 	    notice.z_port = htons((u_short) atoi(notice.z_message));
 	    retval = client_register(&notice, &who.sin_addr, &client, 0);
 	    if (retval != ZERR_NONE) {
-		syslog(LOG_ERR,"brl failed: %s", error_message(retval));
+		syslog(LOG_ERR,"bdump_recv_loop: client_register failed: %s", error_message(retval));
+		free(packet);
 		return retval;
 	    }
 #ifdef HAVE_KRB5
@@ -1257,19 +1296,21 @@ bdump_recv_loop(Server *server)
 						  sizeof(cblock),
 						  &client->session_keyblock);
 		    if (retval) {
-			syslog(LOG_ERR, "brl failed to allocate DES keyblock: %s",
+			syslog(LOG_ERR, "bdump_recv_loop: failed to allocate DES keyblock: %s",
 			       error_message(retval));
+			free(packet);
 			return retval;
 		    }
 		    retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(cblock));
 		    if (retval != ZERR_NONE) {
-			syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
+			syslog(LOG_ERR,"bdump_recv_loop: bad cblock read: %s (%s)",
 			       error_message(retval), cp);
 		    } else {
 			retval = des_service_decrypt(cblock, Z_keydata(client->session_keyblock));
 			if (retval) {
-			    syslog(LOG_ERR, "brl failed to decyrpt DES session key: %s",
+			    syslog(LOG_ERR, "bdump_recv_loop: failed to decyrpt DES session key: %s",
 				   error_message(retval));
+			    free(packet);
 			    return retval;
 			}
 		    }
@@ -1277,7 +1318,7 @@ bdump_recv_loop(Server *server)
 		    /* Zcode! Long live the new flesh! */
 		    retval = ZReadZcode((unsigned char *)cp, buf, sizeof(buf), &blen);
 		    if (retval != ZERR_NONE) {
-			syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
+			syslog(LOG_ERR,"bdump_recv_loop: bad keyblock read: %s (%s)",
 			       error_message(retval), cp);
 		    } else {
 			retval = Z_krb5_init_keyblock(Z_krb5_ctx,
@@ -1285,8 +1326,9 @@ bdump_recv_loop(Server *server)
 						    ntohl(*(uint32_t *)&buf[4]),
 						    &client->session_keyblock);
 			if (retval) {
-			    syslog(LOG_ERR, "brl failed to allocate keyblock: %s",
+			    syslog(LOG_ERR, "bdump_recv_loop: failed to allocate keyblock: %s",
 				   error_message(retval));
+			    free(packet);
 			    return retval;
 			}
 			memcpy(Z_keydata(client->session_keyblock), &buf[8],
@@ -1302,7 +1344,7 @@ bdump_recv_loop(Server *server)
 		cp = notice.z_message + strlen(notice.z_message) + 1;
 		retval = ZReadAscii(cp, strlen(cp), cblock, sizeof(C_Block));
 		if (retval != ZERR_NONE) {
-		    syslog(LOG_ERR,"brl bad cblk read: %s (%s)",
+		    syslog(LOG_ERR,"bdump_recv_loop: bad cblock read: %s (%s)",
 			   error_message(retval), cp);
 		} else {
 		    des_ecb_encrypt((des_cblock *)cblock,
@@ -1312,16 +1354,18 @@ bdump_recv_loop(Server *server)
 	    }
 #endif /* HAVE_KRB4 */
 #endif
-	} else if (strcmp(notice.z_opcode, CLIENT_SUBSCRIBE) == 0) { 
+	} else if (strcmp(notice.z_opcode, CLIENT_SUBSCRIBE) == 0) {
 	    /* a subscription packet */
 	    if (!client) {
-		syslog(LOG_ERR, "brl no client");
+		syslog(LOG_ERR, "bdump_recv_loop: no client");
+		free(packet);
 		return ZSRV_NOCLT;
 	    }
 	    retval = subscr_subscribe(client, &notice, server);
 	    if (retval != ZERR_NONE) {
-		syslog(LOG_WARNING, "brl subscr failed: %s",
+		syslog(LOG_WARNING, "bdump_recv_loop: subscr_subscribe failed: %s",
 		       error_message(retval));
+		free(packet);
 		return retval;
 	    }
 	} else if (strcmp(notice.z_opcode, REALM_SUBSCRIBE) == 0) {
@@ -1329,16 +1373,18 @@ bdump_recv_loop(Server *server)
 	    if (realm) {
 		retval = subscr_realm(realm, &notice);
 		if (retval != ZERR_NONE) {
-		    syslog(LOG_WARNING, "brl subscr failed: %s",
+		    syslog(LOG_WARNING, "bdump_recv_loop: subscr_eralm failed: %s",
 			   error_message(retval));
+		    free(packet);
 		    return retval;
 		}
 	    } /* else */
 		 /* Other side tried to send us subs for a realm we didn't
 		    know about, and so we drop them silently */
-	
+
 	} else {
-	    syslog(LOG_ERR, "brl bad opcode %s",notice.z_opcode);
+	    syslog(LOG_ERR, "bdump_recv_loop: bad opcode %s",notice.z_opcode);
+	    free(packet);
 	    return ZSRV_UNKNOWNOPCODE;
 	}
     }
@@ -1375,7 +1421,7 @@ static Code_t
 send_done(void)
 {
     Code_t retval;
- 
+
     zdbug((LOG_DEBUG, "send_done"));
 
     retval = send_normal_tcp(SERVACK, bdump_sin.sin_port, ZEPHYR_ADMIN_CLASS,
@@ -1403,7 +1449,7 @@ send_list(ZNotice_Kind_t kind,
     char *pack;
     int packlen;
     Code_t retval;
- 
+
     memset (&notice, 0, sizeof(notice));
 
     notice.z_kind = kind;
@@ -1415,13 +1461,13 @@ send_list(ZNotice_Kind_t kind,
     notice.z_recipient = recip;
     notice.z_default_format = "";
     notice.z_num_other_fields = 0;
-	
+
     retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen, ZNOAUTH);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "sl format: %s", error_message(retval));
 	return retval;
     }
-	
+
     retval = ZSendPacket(pack, packlen, 0);
     if (retval != ZERR_NONE)
 	syslog(LOG_WARNING, "sl xmit: %s", error_message(retval));
@@ -1446,10 +1492,9 @@ send_normal_tcp(ZNotice_Kind_t kind,
 {
     ZNotice_t notice;
     char *pack;
-    int packlen, count;
+    int packlen;
     Code_t retval;
-    unsigned short length;
- 
+
     memset (&notice, 0, sizeof(notice));
 
     notice.z_kind = kind;
@@ -1463,64 +1508,19 @@ send_normal_tcp(ZNotice_Kind_t kind,
     notice.z_message = message;
     notice.z_message_len = len;
     notice.z_num_other_fields = 0;
- 
+
     retval = ZFormatNotice(&notice, &pack, &packlen, ZNOAUTH);
     if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "sn format: %s", error_message(retval));
+	syslog(LOG_WARNING, "send_normal_tcp: ZFormatNotice: %s", error_message(retval));
 	return retval;
     }
- 
-#ifdef HAVE_KRB5
-    if (bdump_ac) {
-        krb5_data indata, outmsg;
-        indata.length=packlen;
-        indata.data=pack;
-        memset(&outmsg, 0, sizeof(krb5_data));
-        retval = krb5_mk_priv(Z_krb5_ctx, bdump_ac, &indata, &outmsg, NULL);
-        if (retval != ZERR_NONE)
-	    return retval;
-        if (outmsg.length > Z_MAXPKTLEN) {
-	    syslog(LOG_ERR, "sn: encrypted packet is too large");
-            return ZERR_PKTLEN;
-        }
-        packlen = outmsg.length;
-        free(pack);
-        pack=malloc(packlen);
-        if (!pack)
-	    return ENOMEM;
-        memcpy(pack, outmsg.data, packlen);
-        krb5_free_data_contents(Z_krb5_ctx, &outmsg);
-    }
-#endif
 
-    length = htons((unsigned short) packlen);
- 
-    count = net_write(output, (char *) &length, sizeof(length));
-    if (count != sizeof(length)) {
-	if (count < 0) {
-	    syslog(LOG_WARNING, "snt xmit/len: %m");
-	    free(pack);
-	    return errno;
-	} else {
-	    syslog(LOG_WARNING, "snt xmit: %d vs %d",sizeof(length),count);
-	    free(pack);
-	    return ZSRV_LEN;
-	}
-    }
-    count = net_write(output, pack, packlen);
-    if (count != packlen) {
-	if (count < 0) {
-	    syslog(LOG_WARNING, "snt xmit: %m");
-	    free(pack);
-	    return errno;
-	} else {
-	    syslog(LOG_WARNING, "snt xmit: %d vs %d",packlen, count);
-	    free(pack);
-	    return ZSRV_LEN;
-	}
-    }
+    retval = transmit_tcp(pack, packlen);
     free(pack);
-    return ZERR_NONE;
+    if (retval != ZERR_NONE)
+	syslog(LOG_ERR, "send_normal_tcp: transmit_tcp: %s", error_message(retval));
+
+    return retval;
 }
 
 /*
@@ -1529,26 +1529,37 @@ send_normal_tcp(ZNotice_Kind_t kind,
  */
 
 static Code_t
-get_packet(void *packet, int len, int *retlen)
+get_packet(char **packet, int *buflen, int *retlen)
 {
     unsigned short length;
     int result;
- 
+    char *p;
+
     result = net_read(input, (char *) &length, sizeof(unsigned short));
     if (result < sizeof(short)) {
 	if (result < 0) {
 	    return errno;
 	} else {
-	    syslog(LOG_ERR, "get_pkt len: %d vs %d (%m)", result,
+	    syslog(LOG_ERR, "get_packet: received length: %d vs %d (%m)", result,
 		   sizeof(short));
 	    return ZSRV_LEN;
 	}
     }
-	
+
     length = ntohs(length);
-    if (len < length)
-	return ZSRV_BUFSHORT;
-    result = net_read(input, packet, (int) length);
+    if (*buflen < length) {
+	p = realloc(*packet, length);
+	if (p == NULL) {
+	    syslog(LOG_ERR, "get_packet: failed to expand buffer to %d bytes from %d",
+		   *buflen, length);
+	    return ZSRV_BUFSHORT;
+	}
+	syslog(LOG_DEBUG, "get_packet: expanded buffer from %d bytes to %d",
+	       *buflen, length);
+	*buflen = length;
+	*packet = p;
+    }
+    result = net_read(input, *packet, (int) length);
     if (result < length) {
 	if (result < 0) {
 	    return errno;
@@ -1572,7 +1583,7 @@ extract_sin(ZNotice_t *notice, struct sockaddr_in *target)
 	return ZSRV_PKSHORT;
     }
     target->sin_addr.s_addr = inet_addr(cp);
- 
+
     cp += (strlen(cp) + 1);	/* past the null */
     if ((cp >= notice->z_message + notice->z_message_len) || (*cp == '\0')) {
 	return(ZSRV_PKSHORT);
@@ -1586,7 +1597,7 @@ static int
 net_read(FILE *f, char *buf, int len)
 {
     int cc, len2 = 0;
- 
+
     fflush (output);
     do {
 	errno = 0;
