@@ -459,13 +459,13 @@ do_net_setup(void)
 	return 1;
     }
     hp = gethostbyname(hostname);
-    if (!hp) {
+    if (!hp || hp->h_addrtype != AF_INET) {
 	syslog(LOG_ERR, "no gethostbyname repsonse");
 	strncpy(myname, hostname, MAXHOSTNAMELEN);
 	return 1;
     }
     strncpy(myname, hp->h_name, MAXHOSTNAMELEN);
-    memcpy(&my_addr, hp->h_addr, sizeof(hp->h_addr));
+    memcpy(&my_addr, hp->h_addr_list[0], hp->h_length);
 
     setservent(1);		/* keep file/connection open */
 
