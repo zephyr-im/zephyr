@@ -1,5 +1,6 @@
 *~
 .#*
+\#*#
 autom4te.cache
 *.pyc
 /build-stamp
