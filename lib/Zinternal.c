@@ -114,9 +114,9 @@ static Code_t Z_ZcodeFormatRawHeader(ZNotice_t *, char *, int, int *, char **,
 
 /* Find or insert uid in the old uids buffer.  The buffer is a sorted
  * circular queue.  We make the assumption that most packets arrive in
- * order, so we can usually search for a uid or insert it into the buffer
- * by looking back just a few entries from the end.  Since this code is
- * only executed by the client, the implementation isn't microoptimized. */
+ * order, so we can usually search for a uid or just tack it onto the end.
+ * The first entry at at buffer[start], the last is at
+ * buffer[(start + num - 1) % size] */
 static int
 find_or_insert_uid(ZUnique_Id_t *uid,
 		   ZNotice_Kind_t kind)
@@ -132,7 +132,7 @@ find_or_insert_uid(ZUnique_Id_t *uid,
 
     time_t now;
     struct _filter *new;
-    long i, j, new_size;
+    long i, new_size;
     int result;
 
     /* Initialize the uid buffer if it hasn't been done already. */
@@ -168,14 +168,10 @@ find_or_insert_uid(ZUnique_Id_t *uid,
 	result = memcmp(uid, &buffer[i % size].uid, sizeof(*uid));
 	if (result == 0 && buffer[i % size].kind == kind)
 	    return 1;
-	if (result > 0)
-	    break;
     }
 
-    /* We didn't find it; insert the uid into the buffer after i. */
-    i++;
-    for (j = start + num; j > i; j--)
-	buffer[j % size] = buffer[(j - 1) % size];
+    /* We didn't find it; stick it on the end */
+    i = start + num;
     buffer[i % size].uid = *uid;
     buffer[i % size].kind = kind;
     buffer[i % size].t = now;
