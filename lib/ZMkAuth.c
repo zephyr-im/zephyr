@@ -147,21 +147,30 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
     result = krb5_mk_req_extended(Z_krb5_ctx, &authctx, 0 /* options */,
 				  0 /* in_data */, creds, authent);
     krb5_auth_con_free(Z_krb5_ctx, authctx);
-    if (result) {
-	krb5_free_creds(Z_krb5_ctx, creds);
-	return (result);
-    }
     /* HOLDING: creds, authent */
-
-    /* Encode the authenticator */
-    notice->z_auth = 1;
-    notice->z_authent_len = authent->length;
-    zcode_len = authent->length * 2 + 2; /* 2x growth plus Z and null */
-    notice->z_ascii_authent = (char *)malloc(zcode_len);
-    if (!notice->z_ascii_authent) {
-	krb5_free_data(Z_krb5_ctx, authent);
+    if (result) {
+	free(authent);
+	authent = NULL;
+    }
+    /* HOLDING: creds */
+    if (result == 0 || result == KRB5KRB_AP_ERR_TKT_EXPIRED) {
+	/* Encode the authenticator */
+	notice->z_auth = 1;
+	if (result == 0)
+	    notice->z_authent_len = authent->length;
+	else
+	    notice->z_authent_len = 0;
+	zcode_len = authent->length * 2 + 2; /* 2x growth plus Z and null */
+	notice->z_ascii_authent = (char *)malloc(zcode_len);
+	if (!notice->z_ascii_authent) {
+	    if (authent)
+		krb5_free_data(Z_krb5_ctx, authent);
+	    krb5_free_creds(Z_krb5_ctx, creds);
+	    return (ENOMEM);
+	}
+    } else {
 	krb5_free_creds(Z_krb5_ctx, creds);
-	return (ENOMEM);
+	return result;
     }
     /* HOLDING: creds, authent, notice->z_ascii_authent */
     result = ZMakeZcode(notice->z_ascii_authent, zcode_len,
@@ -210,6 +219,7 @@ ZGetCredsRealm(krb5_creds **creds_out,
 	       char *realm)
 {
   krb5_creds creds_in;
+  krb5_creds creds_tmp;
   krb5_ccache ccache; /* XXX make this a global or static?*/
   int result;
 
@@ -229,7 +239,18 @@ ZGetCredsRealm(krb5_creds **creds_out,
   }
 
   result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client);
-  if (!result)
+  if (!result) {
+      result = krb5_cc_retrieve_cred(Z_krb5_ctx, ccache,
+				     KRB5_TC_SUPPORTED_KTYPES, &creds_in, &creds_tmp);
+      if (!result) {
+	  *creds_out = malloc(sizeof(creds_tmp));
+	  if (*creds_out == NULL)
+	      result = errno;
+	  else
+	      memcpy(*creds_out, &creds_tmp, sizeof(creds_tmp));
+      }
+  }
+  if (result == KRB5_CC_NOTFOUND)
       result = krb5_get_credentials(Z_krb5_ctx, 0, ccache, &creds_in, creds_out);
 
   krb5_cc_close(Z_krb5_ctx, ccache);
