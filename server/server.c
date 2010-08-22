@@ -1243,6 +1243,7 @@ server_forward(ZNotice_t *notice,
 	retval = ZNewFormatSmallRawNotice(notice, pack, &packlen);
 	if (retval != ZERR_NONE) {
 	    syslog(LOG_WARNING, "srv_fwd format: %s", error_message(retval));
+	    free(pack);
 	    continue;
 	}
 	if (otherservers[i].dumping) {
