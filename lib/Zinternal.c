@@ -361,12 +361,11 @@ Z_ReadWait(void)
     if (slash) {
 	part = atoi(notice.z_multinotice);
 	partof = atoi(slash+1);
-	if (part > partof || partof == 0) {
+	if (part < 0 || part > partof || partof <= 0) {
 	    part = 0;
 	    partof = notice.z_message_len;
 	}
-    }
-    else {
+    } else {
 	part = 0;
 	partof = notice.z_message_len;
     }
