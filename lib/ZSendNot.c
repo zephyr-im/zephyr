@@ -23,6 +23,7 @@ ZSendNotice(ZNotice_t *notice,
     return(ZSrvSendNotice(notice, cert_routine, Z_XmitFragment));
 }
 
+/* Despite it's name, this is not used by the server */
 Code_t
 ZSrvSendNotice(ZNotice_t *notice,
 	       Z_AuthProc cert_routine,
