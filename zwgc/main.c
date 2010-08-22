@@ -396,8 +396,10 @@ create_punt_reply(int_dictionary_binding *punt)
 void
 notice_handler(ZNotice_t *notice)
 {
+#ifndef HAVE_ARES
     int ret;
     char node[MAXDNAME];
+#endif
 
 #if defined(CMU_ZWGCPLUS)
     list_add_notice(notice);
