@@ -528,6 +528,10 @@ Z_AddNoticeToEntry(struct _Z_InputQ *qptr,
     struct _Z_Hole *hole, *lasthole;
     struct timeval tv;
 
+    /* Make sure this notice is expirable */
+    (void) gettimeofday(&tv, (struct timezone *)0);
+    qptr->timep = tv.tv_sec;
+
     /* Bounds check. */
     if (part < 0 || notice->z_message_len < 0 || part > qptr->msg_len
 	|| notice->z_message_len > qptr->msg_len - part)
@@ -538,9 +542,6 @@ Z_AddNoticeToEntry(struct _Z_InputQ *qptr,
 	qptr->auth = ZAUTH_FAILED;
     else if (notice->z_checked_auth == ZAUTH_NO && qptr->auth != ZAUTH_FAILED)
 	qptr->auth = ZAUTH_NO;
-
-    (void) gettimeofday(&tv, (struct timezone *)0);
-    qptr->timep = tv.tv_sec;
 
     last = part+notice->z_message_len-1;
 
