@@ -581,15 +581,14 @@ Z_AddNoticeToEntry(struct _Z_InputQ *qptr,
 		hole = hole->next;
 	    }
 	    if (lasthole) {
-		if (!(lasthole->next = (struct _Z_Hole *)
-		      malloc(sizeof(struct _Z_InputQ))))
-		    return (ENOMEM);
+		lasthole->next = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
+		if (lasthole->next == NULL)
+		    return ENOMEM;
 		hole = lasthole->next;
-	    }
-	    else {
-		if (!(qptr->holelist = (struct _Z_Hole *)
-		      malloc(sizeof(struct _Z_InputQ))))
-		    return (ENOMEM);
+	    } else {
+		qptr->holelist = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
+		if (qptr->holelist == NULL)
+		    return ENOMEM;
 		hole = qptr->holelist;
 	    }
 	    hole->next = NULL;
@@ -605,15 +604,14 @@ Z_AddNoticeToEntry(struct _Z_InputQ *qptr,
 		hole = hole->next;
 	    }
 	    if (lasthole) {
-		if (!(lasthole->next = (struct _Z_Hole *)
-		      malloc(sizeof(struct _Z_InputQ))))
-		    return (ENOMEM);
+		lasthole->next = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
+		if (lasthole->next == NULL)
+		    return ENOMEM;
 		hole = lasthole->next;
-	    }
-	    else {
-		if (!(qptr->holelist = (struct _Z_Hole *)
-		      malloc(sizeof(struct _Z_InputQ))))
-		    return (ENOMEM);
+	    } else {
+		qptr->holelist = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
+		if (qptr->holelist == NULL)
+		    return ENOMEM;
 		hole = qptr->holelist;
 	    }
 	    hole->next = (struct _Z_Hole *) 0;
