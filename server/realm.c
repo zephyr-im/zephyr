@@ -1121,14 +1121,18 @@ realm_sendit_auth(ZNotice_t *notice,
 	origoffset = 0;
 	origlen = notice->z_message_len;
 
-	if (notice->z_multinotice && strcmp(notice->z_multinotice, ""))
+	if (notice->z_multinotice && strcmp(notice->z_multinotice, "")) {
 	    if (sscanf(notice->z_multinotice, "%d/%d", &origoffset,
 		       &origlen) != 2) {
 		syslog(LOG_WARNING, "rlm_sendit_auth frag: parse failed");
 		return ZERR_BADFIELD;
 	    }
+	}
 
-	fragsize = Z_MAXPKTLEN-hdrlen-Z_FRAGFUDGE;
+	fragsize = Z_MAXPKTLEN - hdrlen - Z_FRAGFUDGE;
+
+	if (fragsize < 0)
+	    return ZERR_HEADERLEN;
 
 	while (offset < notice->z_message_len || !notice->z_message_len) {
 	    (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
