@@ -631,16 +631,21 @@ xmit(ZNotice_t *notice,
             return;
           }
 
-          if (notice->z_multinotice && strcmp(notice->z_multinotice, ""))
-            if (sscanf(notice->z_multinotice, "%d/%d", &origoffset, &origlen)
-                != 2)
-              {
-                syslog(LOG_WARNING, "xmit unauth refrag: parse failed");
-                free(buffer);
-                return;
-              }
+          if (notice->z_multinotice && strcmp(notice->z_multinotice, "")) {
+	      if (sscanf(notice->z_multinotice, "%d/%d", &origoffset,
+			 &origlen) != 2) {
+		  syslog(LOG_WARNING, "xmit unauth refrag: parse failed");
+		  free(buffer);
+		  return;
+	      }
+	  }
 
-              fragsize = Z_MAXPKTLEN-hdrlen-Z_FRAGFUDGE;
+	  fragsize = Z_MAXPKTLEN - hdrlen - Z_FRAGFUDGE;
+
+	  if (fragsize < 0) {
+	      syslog(LOG_ERR, "xmit: negative fragsize, dropping packet");
+	      return;
+	  }
 
           while (offset < notice->z_message_len || !notice->z_message_len) {
             (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
