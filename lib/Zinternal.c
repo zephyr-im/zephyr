@@ -338,12 +338,12 @@ Z_ReadWait(void)
 	    tmpnotice.z_message_len = 0;
 	    olddest = __HM_addr;
 	    __HM_addr = from;
-	    if ((retval = ZFormatSmallRawNotice(&tmpnotice, pkt, &len))
-		!= ZERR_NONE)
-		return(retval);
-	    if ((retval = ZSendPacket(pkt, len, 0)) != ZERR_NONE)
-		return (retval);
+	    retval = ZFormatSmallRawNotice(&tmpnotice, pkt, &len);
+	    if (retval == ZERR_NONE)
+		retval = ZSendPacket(pkt, len, 0);
 	    __HM_addr = olddest;
+	    if (retval != ZERR_NONE)
+		return retval;
 	}
 	if (find_or_insert_uid(&notice.z_uid, notice.z_kind))
 	    return(ZERR_NONE);
