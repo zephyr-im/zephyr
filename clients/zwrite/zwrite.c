@@ -322,6 +322,8 @@ main(int argc, char *argv[])
 		(void) strcpy(message+msgsize, bfr);
 		msgsize += l;
 	    }
+	    if (ferror(stdin)) /* drop the message */
+		exit(1);
 	    message = realloc(message, (unsigned)(msgsize+1));
 	}
 	else {	/* Use read so you can send binary messages... */
@@ -392,9 +394,7 @@ send_off(ZNotice_t *notice, int real)
 	}
 	if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
 				ZCompareUIDPred, 
-				(char *)&notice->z_uid)) !=
-	    ZERR_NONE) {
-	    ZFreeNotice(&retnotice);
+				(char *)&notice->z_uid)) != ZERR_NONE) {
 	    (void) sprintf(bfr, "while waiting for acknowledgement for %s", 
 		    dest);
 	    com_err(whoami, retval, bfr);
