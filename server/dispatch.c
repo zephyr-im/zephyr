@@ -551,37 +551,20 @@ xmit(ZNotice_t *notice,
 
     packlen = sizeof(ZPacket_t);
 
-    if (auth && client) {	/*
-				   we are distributing authentic and
-				   we have a pointer to auth info
-				   */
-#ifdef HAVE_KRB5
-         retval = ZFormatAuthenticNoticeV5(notice, noticepack, packlen,
-                                           &packlen, client->session_keyblock);
-         if (retval != ZERR_NONE) {
-              syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
-              free(noticepack);
-              return;
-         }
-#else
-#if defined(HAVE_KRB4)
-         retval = ZFormatAuthenticNotice(notice, noticepack, packlen,
-                                           &packlen, client->session_key);
-         if (retval != ZERR_NONE) {
-              syslog(LOG_ERR, "xmit auth format: %s", error_message(retval));
-              free(noticepack);
-              return;
-         }
+    if (auth && client) {
+	/* we are distributing authentic and we have a pointer to auth info */
+#if defined(HAVE_KRB5)
+	retval = ZFormatAuthenticNoticeV5(notice, noticepack, packlen,
+					  &packlen, client->session_keyblock);
+#elif defined(HAVE_KRB4)
+	retval = ZFormatAuthenticNotice(notice, noticepack, packlen,
+					&packlen, client->session_key);
 #else /* !HAVE_KRB4 */
 	notice->z_auth = 1;
 	retval = ZFormatSmallRawNotice(notice, noticepack, &packlen);
-	if (retval != ZERR_NONE) {
-	    syslog(LOG_ERR, "xmit auth/raw format: %s", error_message(retval));
-	    free(noticepack);
-	    return;
-	}
 #endif /* HAVE_KRB4 */
-#endif /* HAVE_KRB5 */
+	if (retval != ZERR_NONE)
+	    syslog(LOG_ERR, "xmit auth/raw format: %s", error_message(retval));
     } else {
 	notice->z_auth = 0;
 	notice->z_authent_len = 0;
@@ -593,49 +576,41 @@ xmit(ZNotice_t *notice,
          * same thing with authentic Zephyrs.
          */
         if (retval == ZERR_PKTLEN) {
-          ZNotice_t partnotice;
           char multi[64];
-          char *buffer, *ptr;
-          int buffer_len, hdrlen, offset, fragsize, message_len;
-          int origoffset, origlen;
+          int hdrlen,  message_len;
+	  ZPacket_t the_packet;
+	  char *buffer = (char *)&the_packet;
+          ZNotice_t partnotice = *notice;
+	  int offset = 0;
+	  int fragsize = 0;
+          int origoffset = 0;
+	  int origlen = notice->z_message_len;
 
           free(noticepack);
 
           retval = ZSetDestAddr(dest);
-          if (retval != ZERR_NONE) {
-            syslog(LOG_WARNING, "xmit set addr: %s", error_message(retval));
+          if (retval) {
+            syslog(LOG_WARNING, "xmit: ZSetDestAddr: %s", error_message(retval));
             return;
           }
-
-          partnotice = *notice;
 
           partnotice.z_auth = 0;
           partnotice.z_authent_len = 0;
           partnotice.z_ascii_authent = (char *)"";
 
-          origoffset = offset = fragsize = 0;
-          origlen = notice->z_message_len;
-
-          buffer = (char *) malloc(sizeof(ZPacket_t));
-          if (!buffer) {
-            syslog(LOG_ERR, "xmit unauth refrag malloc");
-            return;                 /* DON'T put on nack list */
-          }
-          buffer_len = sizeof(ZPacket_t);
-
-          retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len,
+          retval = Z_FormatRawHeader(&partnotice, buffer, sizeof(ZPacket_t),
                                      &hdrlen, NULL, NULL);
-          if (retval != ZERR_NONE) {
-            syslog(LOG_ERR, "xmit unauth refrag fmt: failed");
-            free(buffer);
-            return;
+          if (retval) {
+	      syslog(LOG_ERR, "xmit unauth refrag: Z_FormatRawHeader: %s",
+		     error_message(retval));
+	      return;
           }
 
           if (notice->z_multinotice && strcmp(notice->z_multinotice, "")) {
-	      if (sscanf(notice->z_multinotice, "%d/%d", &origoffset,
-			 &origlen) != 2) {
-		  syslog(LOG_WARNING, "xmit unauth refrag: parse failed");
-		  free(buffer);
+	      if (sscanf(notice->z_multinotice, "%d/%d",
+			 &origoffset, &origlen) != 2) {
+		  syslog(LOG_WARNING,
+			 "xmit unauth refrag: multinotice parse failed");
 		  return;
 	      }
 	  }
@@ -643,8 +618,8 @@ xmit(ZNotice_t *notice,
 	  fragsize = Z_MAXPKTLEN - hdrlen - Z_FRAGFUDGE;
 
 	  if (fragsize < 0) {
-	      syslog(LOG_ERR, "xmit: negative fragsize, dropping packet");
-	      free(buffer);
+	      syslog(LOG_ERR,
+		     "xmit unauth refrag: negative fragsize, dropping packet");
 	      return;
 	  }
 
@@ -663,78 +638,75 @@ xmit(ZNotice_t *notice,
               (void) memcpy((char *)&partnotice.z_sender_sockaddr.ip4.sin_addr,
 			    &__My_addr, sizeof(__My_addr));
             }
-            partnotice.z_message = notice->z_message+offset;
+            partnotice.z_message = notice->z_message + offset;
             message_len = min(notice->z_message_len-offset, fragsize);
             partnotice.z_message_len = message_len;
 
-            retval = Z_FormatRawHeader(&partnotice, buffer, buffer_len,
-                                       &hdrlen, &ptr, NULL);
-            if (retval != ZERR_NONE) {
-              syslog(LOG_WARNING, "xmit unauth refrag raw: %s",
+            retval = Z_FormatRawHeader(&partnotice, buffer, sizeof(ZPacket_t),
+                                       &hdrlen, NULL, NULL);
+            if (retval) {
+              syslog(LOG_WARNING, "xmit unauth refrag: Z_FormatRawHeader: %s",
                      error_message(retval));
-              free(buffer);
               return;
             }
 
-            ptr = buffer+hdrlen;
+            (void) memcpy(buffer + hdrlen, partnotice.z_message,
+			  partnotice.z_message_len);
 
-            (void) memcpy(ptr, partnotice.z_message, partnotice.z_message_len);
-
-            buffer_len = hdrlen+partnotice.z_message_len;
-
-            xmit_frag(&partnotice, buffer, buffer_len, 0);
+            xmit_frag(&partnotice, buffer, hdrlen + partnotice.z_message_len, 0);
 
             offset += fragsize;
 
             if (!notice->z_message_len)
               break;
           }
-          free(buffer);
           return;
         }
         /* End of refrag code */
 
-	if (retval != ZERR_NONE) {
-	    syslog(LOG_ERR, "xmit format: %s", error_message(retval));
-	    free(noticepack);
-	    return;			/* DON'T put on nack list */
-	}
+	if (retval)
+	    syslog(LOG_ERR, "xmit unauth: ZFormatSmallRawNotice: %s",
+		   error_message(retval));
     }
-    retval = ZSetDestAddr(dest);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "xmit set addr: %s", error_message(retval));
-	free(noticepack);
-	return;
+    if (!retval) {
+	retval = ZSetDestAddr(dest);
+	if (retval)
+	    syslog(LOG_WARNING, "xmit: ZSetDestAddr: %s", error_message(retval));
     }
-    retval = ZSendPacket(noticepack, packlen, 0);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "xmit xmit: (%s/%d) %s", inet_ntoa(dest->sin_addr),
-	       ntohs(dest->sin_port), error_message(retval));
-	if (retval != EAGAIN && retval != ENOBUFS) {
-	    free(noticepack);
-	    return;
+    if (!retval) {
+	retval = ZSendPacket(noticepack, packlen, 0);
+	if (retval) {
+	    syslog(LOG_WARNING, "xmit: ZSendPacket: (%s/%d) %s",
+		   inet_ntoa(dest->sin_addr), ntohs(dest->sin_port),
+		   error_message(retval));
+	    if (retval == EAGAIN || retval == ENOBUFS) {
+		retval = ZERR_NONE;
+		sendfail = 1;
+	    }
 	}
-	sendfail = 1;
     }
 
     /* now we've sent it, mark it as not ack'ed */
-
-    nacked = (Unacked *) malloc(sizeof(Unacked));
+    if (!retval)
+	nacked = (Unacked *) malloc(sizeof(Unacked));
     if (!nacked) {
 	/* no space: just punt */
 	syslog(LOG_WARNING, "xmit nack malloc");
-	free(noticepack);
-	return;
+	retval = ENOMEM;
     }
 
-    nacked->client = client;
-    nacked->rexmits = (sendfail) ? -1 : 0;
-    nacked->packet = noticepack;
-    nacked->dest.addr = *dest;
-    nacked->packsz = packlen;
-    nacked->uid = notice->z_uid;
-    nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
-    Unacked_insert(&nacktab[nacktab_hashval(*dest, nacked->uid)], nacked);
+    if (!retval) {
+	nacked->client = client;
+	nacked->rexmits = (sendfail) ? -1 : 0;
+	nacked->packet = noticepack;
+	nacked->dest.addr = *dest;
+	nacked->packsz = packlen;
+	nacked->uid = notice->z_uid;
+	nacked->timer = timer_set_rel(rexmit_times[0], rexmit, nacked);
+	Unacked_insert(&nacktab[nacktab_hashval(*dest, nacked->uid)], nacked);
+    }
+    if (retval)
+	free(noticepack);
 }
 
 /*
