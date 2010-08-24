@@ -61,7 +61,7 @@ access_check(char *sender,
 	     Acl *acl,
 	     Access accesstype)
 {
-    char buf[MAXPATHLEN];	/* holds the real acl name */
+    char buf[1024];	/* holds the real acl name */
     char *prefix;
     int	flag;
     int retval;
@@ -89,7 +89,7 @@ access_check(char *sender,
     }
     if (!(acl->acl_types & flag)) /* no acl ==> no restriction */
 	return 1;
-    sprintf(buf, "%s/%s-%s.acl", acl_dir, prefix, acl->acl_filename);
+    snprintf(buf, sizeof buf, "%s/%s-%s.acl", acl_dir, prefix, acl->acl_filename);
     /*
      * If we can't load it (because it probably doesn't exist),
      * we deny access.
@@ -117,7 +117,7 @@ check_acl_type(Acl *acl,
 	       Access accesstype,
 	       int typeflag)
 {
-    char 	buf[MAXPATHLEN]; /* holds the real acl name */
+    char 	buf[1024]; /* holds the real acl name */
     char	*prefix;
 
     switch (accesstype) {
@@ -137,7 +137,7 @@ check_acl_type(Acl *acl,
 	syslog(LOG_ERR, "unknown access type %d", (int) accesstype);
 	return;
     }
-    sprintf(buf, "%s/%s-%s.acl", acl_dir, prefix, acl->acl_filename);
+    snprintf(buf, sizeof buf, "%s/%s-%s.acl", acl_dir, prefix, acl->acl_filename);
     if (!access(buf, F_OK))
 	acl->acl_types |= typeflag;
 }
@@ -155,7 +155,7 @@ check_acl_type(Acl *acl,
 static void
 access_setup(int first)
 {
-    char buf[MAXPATHLEN];
+    char buf[1024];
     char class_name[512];	/* assume class names <= 511 bytes */
     FILE *registry;
     Acl *acl;
@@ -163,7 +163,7 @@ access_setup(int first)
     char *colon_idx;
     Code_t retval = 0;
 
-    sprintf(buf, "%s/%s", acl_dir, ZEPHYR_CLASS_REGISTRY);
+    snprintf(buf, sizeof buf, "%s/%s", acl_dir, ZEPHYR_CLASS_REGISTRY);
     registry = fopen(buf, "r");
     if (!registry) {
 	syslog(LOG_ERR, "no registry available, all classes are free");
