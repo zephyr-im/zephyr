@@ -644,6 +644,7 @@ xmit(ZNotice_t *notice,
 
 	  if (fragsize < 0) {
 	      syslog(LOG_ERR, "xmit: negative fragsize, dropping packet");
+	      free(packet);
 	      return;
 	  }
 
