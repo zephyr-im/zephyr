@@ -8,7 +8,7 @@
  *
  *	Copyright (c) 1987, 1993 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #include <sysdep.h>
@@ -17,6 +17,7 @@
 
 #include <sys/socket.h>
 #include <netdb.h>
+#include <arpa/nameser.h>
 
 #ifndef lint
 static const char rcsid_zshutdown_notify_c[] =
@@ -48,18 +49,18 @@ main(int argc,
     ZNotice_t notice;
     struct hostent *hp;
     int retval;
-    char hostname[MAXHOSTNAMELEN];
+    char hostname[NS_MAXDNAME];
     char msgbuff[BUFSIZ], message[Z_MAXPKTLEN], *ptr;
     char scratch[BUFSIZ];
     char *msg[N_FIELD_CNT];
 #ifdef HAVE_KRB4
     char tkt_filename[MAXPATHLEN];
     char rlm[REALM_SZ];
-    char hn2[MAXHOSTNAMELEN];
+    char hn2[NS_MAXDNAME];
     char *cp;
 #endif
 
-    if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
+    if (gethostname(hostname, sizeof(hostname)) < 0) {
 	com_err(argv[0], errno, "while finding hostname");
 	exit(1);
     }
@@ -102,7 +103,7 @@ main(int argc,
     if ((retval = ZInitialize()) != ZERR_NONE) {
 	com_err(argv[0], retval, "while initializing");
 	exit(1);
-    } 
+    }
 
     ptr = message;
 
@@ -137,6 +138,6 @@ main(int argc,
     if (retval != ZERR_NONE) {
 	com_err(argv[0], retval, "while sending notice");
 	exit(1);
-    } 
+    }
     return 0;
 }

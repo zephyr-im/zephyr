@@ -24,6 +24,7 @@ static const char rcsid_subscriptions_c[] = "$Id$";
 #include <sysdep.h>
 #include <zephyr/zephyr.h>
 #include <netdb.h>
+#include <arpa/nameser.h>
 #include "new_memory.h"
 #include "new_string.h"
 #include "int_dictionary.h"
@@ -231,7 +232,7 @@ unsubscribe(string class,
 #define	TOKEN_ME	"%me%"
 #define	TOKEN_WILD	"*"
 
-char ourhost[MAXHOSTNAMELEN],ourhostcanon[MAXHOSTNAMELEN];
+char ourhost[NS_MAXDNAME], ourhostcanon[NS_MAXDNAME];
 
 static void
 inithosts(void)
@@ -263,7 +264,7 @@ macro_sub(char *str)
     if (string_Eq(str, TOKEN_ME))
 	strcpy(str, ZGetSender());
     else if (string_Eq(str, TOKEN_HOSTNAME))
-	strcpy(str, ourhost);	
+	strcpy(str, ourhost);
     else if (string_Eq(str, TOKEN_CANONNAME))
 	strcpy(str, ourhostcanon);
 }
@@ -278,7 +279,7 @@ load_subscriptions_from_file(FILE *file)
     char class_buffer[BUFSIZ], instance[BUFSIZ], recipient[BUFSIZ];
     char *class, *temp;
     char c;
-   
+
     while ((!feof(file)) && (!ferror(file))) {
 	if (fgets(line, BUFSIZ, file)) {
 	    class = class_buffer;
@@ -299,12 +300,12 @@ load_subscriptions_from_file(FILE *file)
 	    c = class[0];
 	    if (c==UNSUBSCRIBE_CHARACTER || c==PUNT_CHARACTER)
 	      class++;
-	    
+
 	    /* perform macro substitutions */
 	    macro_sub(class);
 	    macro_sub(instance);
 	    macro_sub(recipient);
-	    
+
 	    /* do the right thing with it */
 	    switch (c) {
 	      case UNSUBSCRIBE_CHARACTER:
@@ -321,7 +322,7 @@ load_subscriptions_from_file(FILE *file)
 	    break;
 	}
     }
-    
+
     if (ferror(file)) {
 	com_err("zwgc", errno, "while reading from subscription file");
 	exit(1);
@@ -329,7 +330,7 @@ load_subscriptions_from_file(FILE *file)
 
     flush_subscriptions();
     flush_unsubscriptions();
-    
+
     fclose(file);
 }
 

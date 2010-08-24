@@ -150,8 +150,8 @@ get_realm_lists(char *file)
     ZRealmname *rlm_list, *rlm;
     int ii, nused, ntotal;
     FILE *fp;
-    char buf[REALM_SZ + MAXHOSTNAMELEN + 1]; /* one for newline */
-    char realm[REALM_SZ], server[MAXHOSTNAMELEN + 1];
+    char buf[REALM_SZ + NS_MAXDNAME + 1]; /* one for newline */
+    char realm[REALM_SZ], server[NS_MAXDNAME + 1];
 
     nused = 0;
     if (!(fp = fopen(file, "r")))
@@ -165,7 +165,7 @@ get_realm_lists(char *file)
 	abort();
     }
 
-    while (fgets(buf, REALM_SZ + MAXHOSTNAMELEN + 1, fp)) {
+    while (fgets(buf, sizeof(buf), fp)) {
 	if (sscanf(buf, "%s %s", realm, server) != 2) {
 	    syslog(LOG_CRIT, "bad format in %s", file);
 	    abort();

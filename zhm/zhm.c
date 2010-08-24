@@ -7,7 +7,7 @@
  *
  *      Copyright (c) 1987,1991 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
- *      "mit-copyright.h". 
+ *      "mit-copyright.h".
  */
 
 #include "zhm.h"
@@ -34,12 +34,12 @@ u_short cli_port;
 struct sockaddr_in cli_sin, serv_sin, from;
 int numserv;
 char **serv_list = NULL;
-char prim_serv[MAXHOSTNAMELEN], cur_serv[MAXHOSTNAMELEN];
+char prim_serv[NS_MAXDNAME], cur_serv[NS_MAXDNAME];
 char *zcluster;
 int deactivating = 0;
 int terminating = 0;
 struct hostent *hp;
-char hostname[MAXHOSTNAMELEN], loopback[4];
+char hostname[NS_MAXDNAME], loopback[4];
 char PidFile[128];
 
 static RETSIGTYPE deactivate(int);
@@ -81,7 +81,7 @@ main(int argc,
 
     sprintf(PidFile, "%szhm.pid", PIDDIR);
 
-    if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
+    if (gethostname(hostname, sizeof(hostname)) < 0) {
 	printf("Can't find my hostname?!\n");
 	exit(-1);
     }
@@ -120,8 +120,8 @@ main(int argc,
 	    break;
 	}
     if (errflg) {
-	fprintf(stderr, "Usage: %s [-d] [-h] [-r] [-n] [-f] [server]\n", 
-		argv[0]);	
+	fprintf(stderr, "Usage: %s [-d] [-h] [-r] [-n] [-f] [server]\n",
+		argv[0]);
 	exit(2);
     }
 
@@ -167,7 +167,7 @@ main(int argc,
 
     DPR2("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
     DPR2("zephyr client port: %u\n", ntohs(cli_port));
-  
+
     /* Main loop */
     for ever {
 	/* Wait for incoming packets or queue timeouts. */
@@ -246,7 +246,7 @@ main(int argc,
 				       "Unknown notice type: %d",
 				       notice.z_kind);
 			    }
-			}	
+			}
 		    }
 		}
 	    }
@@ -264,16 +264,16 @@ choose_server(void)
     if (use_hesiod) {
 
 	/* Free up any previously used resources */
-	if (prim_serv[0]) 
+	if (prim_serv[0])
 	    i = 1;
 	while (i < numserv)
 	    free(serv_list[i++]);
 	if (serv_list)
 	    free(serv_list);
-	
+
 	numserv = 0;
 	prim_serv[0] = '\0';
-	
+
 	if ((clust_info = hes_resolve(hostname, "CLUSTER")) == NULL) {
 	    zcluster = NULL;
 	} else {
@@ -284,7 +284,7 @@ choose_server(void)
 		 */
 		if (!strncasecmp("ZEPHYR", *cpp, 6)) {
 		    register char *c;
-		
+
 		    if ((c = strchr(*cpp, ' ')) == 0) {
 			printf("Hesiod error getting primary server info.\n");
 		    } else {
@@ -295,7 +295,7 @@ choose_server(void)
 		}
 		if (!strncasecmp("ZCLUSTER", *cpp, 9)) {
 		    register char *c;
-		
+
 		    if ((c = strchr(*cpp, ' ')) == 0) {
 			printf("Hesiod error getting zcluster info.\n");
 		    } else {
@@ -354,7 +354,7 @@ choose_server(void)
 	serv_list = cpp;
     }
 #endif
-    
+
     if (!prim_serv[0] && numserv) {
 	srandom(time(NULL));
 	strncpy(prim_serv, serv_list[random() % numserv], sizeof(prim_serv));
@@ -374,7 +374,7 @@ init_hm(void)
 
      starttime = time((time_t *)0);
      OPENLOG("hm", LOG_PID, LOG_DAEMON);
-  
+
      ZSetServerState(1);	/* Aargh!!! */
      if ((ret = ZInitialize()) != ZERR_NONE) {
 	 Zperr(ret);
@@ -388,19 +388,19 @@ init_hm(void)
 	 strncpy(prim_serv, *serv_list, sizeof(prim_serv));
 	 prim_serv[sizeof(prim_serv) - 1] = '\0';
      }
-  
+
      loopback[0] = 127;
      loopback[1] = 0;
      loopback[2] = 0;
      loopback[3] = 1;
-      
+
      if (inetd) {
 	 ZSetFD(0);		/* fd 0 is on the socket, thanks to inetd */
      } else {
 	 /* Open client socket, for receiving client and server notices */
 	 sp = getservbyname(HM_SVCNAME, "udp");
 	 cli_port = (sp) ? sp->s_port : HM_SVC_FALLBACK;
-      
+
 	 if ((ret = ZOpenPort(&cli_port)) != ZERR_NONE) {
 	     Zperr(ret);
 	     com_err("hm", ret, "opening port");
@@ -412,11 +412,11 @@ init_hm(void)
      sp = getservbyname(SERVER_SVCNAME, "udp");
      memset(&serv_sin, 0, sizeof(struct sockaddr_in));
      serv_sin.sin_port = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
-      
+
 #ifndef DEBUG
      if (!inetd && !nofork)
 	 detach();
-  
+
      /* Write pid to file */
      fp = fopen(PidFile, "w");
      if (fp != NULL) {
@@ -433,7 +433,7 @@ init_hm(void)
      /* target is SERVER_SVCNAME port on server machine */
 
      serv_sin.sin_family = AF_INET;
-  
+
      /* who to talk to */
      if ((hp = gethostbyname(prim_serv)) == NULL) {
 	  DPR("gethostbyname failed\n");
@@ -441,7 +441,7 @@ init_hm(void)
      } else {
 	  DPR2("Server = %s\n", prim_serv);
 	  strncpy(cur_serv, prim_serv, sizeof(cur_serv));
-	  cur_serv[sizeof(cur_serv) - 1] = '\0';	
+	  cur_serv[sizeof(cur_serv) - 1] = '\0';
 	  memcpy(&serv_sin.sin_addr, hp->h_addr, 4);
      }
 
@@ -456,7 +456,7 @@ init_hm(void)
      sa.sa_flags = 0;
      sa.sa_handler = deactivate;
      sigaction(SIGHUP, &sa, (struct sigaction *)0);
-     sa.sa_handler = terminate; 
+     sa.sa_handler = terminate;
      sigaction(SIGTERM, &sa, (struct sigaction *)0);
 #else
      signal(SIGHUP, deactivate);
@@ -518,14 +518,14 @@ send_stats(ZNotice_t *notice,
      unsigned long size;
 
      newnotice = *notice;
-     
+
      if ((ret = ZSetDestAddr(sin)) != ZERR_NONE) {
 	  Zperr(ret);
 	  com_err("hm", ret, "setting destination");
      }
      newnotice.z_kind = HMACK;
 
-     list[0] = (char *) malloc(MAXHOSTNAMELEN);
+     list[0] = (char *) malloc(NS_MAXDNAME);
      if (list[0] == NULL) {
        printf("Out of memory.\n");
        exit(-5);
@@ -562,7 +562,7 @@ send_stats(ZNotice_t *notice,
      }
      strncpy(list[5], rcsid_hm_c, 64);
      list[5][63] = '\0';
-     
+
      list[6] = (char *) malloc(64);
      if (list[6] == NULL) {
        printf("Out of memory.\n");

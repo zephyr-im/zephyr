@@ -8,7 +8,7 @@
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #include <zephyr/mit-copyright.h>
@@ -88,7 +88,7 @@ unsigned short hm_port;			/* host manager receiver port */
 unsigned short hm_srv_port;		/* host manager server sending port */
 
 char *programname;			/* set to the basename of argv[0] */
-char myname[MAXHOSTNAMELEN];		/* my host name */
+char myname[NS_MAXDNAME];		/* my host name */
 
 char list_file[128];
 #ifdef HAVE_KRB5
@@ -217,7 +217,7 @@ main(int argc,
        is no possible way we can succeed, so we exit */
 
     if (access(srvtab_file, R_OK)
-#ifdef DEBUG		
+#ifdef DEBUG
 	&& !zalone
 #endif /* DEBUG */
 	) {
@@ -249,7 +249,7 @@ main(int argc,
     if (zdebug)
 	syslog(LOG_DEBUG, "debugging on");
 
-    /* set up sockets & my_addr and myname, 
+    /* set up sockets & my_addr and myname,
        find other servers and set up server table, initialize queues
        for retransmits, initialize error tables,
        set up restricted classes */
@@ -341,7 +341,7 @@ main(int argc,
 
 	/* Initialize t_local for other uses */
 	gettimeofday(&t_local, (struct timezone *)0);
-		
+
 	/* don't flame about EINTR, since a SIGUSR1 or SIGUSR2
 	   can generate it by interrupting the select */
 	if (nfound < 0) {
@@ -395,7 +395,7 @@ initialize(void)
     krb_set_tkt_string(tkt_file);
 #endif
     realm_init();
-    
+
     ZSetServerState(1);
     ZInitialize();		/* set up the library */
 #ifdef HAVE_KRB5
@@ -414,16 +414,16 @@ initialize(void)
 #endif
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
     /* Override what Zinitialize set for ZGetRealm() */
-    if (*my_realm) 
+    if (*my_realm)
       strcpy(__Zephyr_realm, my_realm);
 #endif
 
     /* set up err table */
-#if defined(__APPLE__) && defined(__MACH__) 
-    add_error_table(&et_zsrv_error_table); 
-#else 
-    init_zsrv_err_tbl(); 
-#endif 
+#if defined(__APPLE__) && defined(__MACH__)
+    add_error_table(&et_zsrv_error_table);
+#else
+    init_zsrv_err_tbl();
+#endif
 
     ZSetFD(srv_socket);		/* set up the socket as the input fildes */
 
@@ -442,7 +442,7 @@ initialize(void)
     return 0;
 }
 
-/* 
+/*
  * Set up the server and client sockets, and initialize my_addr and myname
  */
 
@@ -451,20 +451,20 @@ do_net_setup(void)
 {
     struct servent *sp;
     struct hostent *hp;
-    char hostname[MAXHOSTNAMELEN+1];
+    char hostname[NS_MAXDNAME];
     int flags;
 
-    if (gethostname(hostname, MAXHOSTNAMELEN + 1)) {
+    if (gethostname(hostname, sizeof(hostname))) {
 	syslog(LOG_ERR, "no hostname: %m");
 	return 1;
     }
     hp = gethostbyname(hostname);
     if (!hp || hp->h_addrtype != AF_INET) {
 	syslog(LOG_ERR, "no gethostbyname repsonse");
-	strncpy(myname, hostname, MAXHOSTNAMELEN);
+	strncpy(myname, hostname, sizeof(myname));
 	return 1;
     }
-    strncpy(myname, hp->h_name, MAXHOSTNAMELEN);
+    strncpy(myname, hp->h_name, sizeof(myname));
     memcpy(&my_addr, hp->h_addr_list[0], hp->h_length);
 
     setservent(1);		/* keep file/connection open */
@@ -476,15 +476,15 @@ do_net_setup(void)
 
     sp = getservbyname(HM_SVCNAME, "udp");
     hm_port = (sp) ? sp->s_port : HM_SVC_FALLBACK;
-	
+
     sp = getservbyname(HM_SRV_SVCNAME, "udp");
     hm_srv_port = (sp) ? sp->s_port : HM_SRV_SVC_FALLBACK;
-	
+
     srv_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (srv_socket < 0) {
 	syslog(LOG_ERR, "client_sock failed: %m");
 	return 1;
-    } 
+    }
     if (bind(srv_socket, (struct sockaddr *) &srv_addr,
 	     sizeof(srv_addr)) < 0) {
 	syslog(LOG_ERR, "client bind failed: %m");
@@ -502,7 +502,7 @@ do_net_setup(void)
 #endif
 
     return 0;
-}    
+}
 
 
 /*
@@ -665,15 +665,15 @@ reap(int sig)
 
     zdbug((LOG_DEBUG,"reap()"));
 #ifdef _POSIX_VERSION
-    while ((pid = waitpid(-1, &waitb, WNOHANG)) == 0) 
+    while ((pid = waitpid(-1, &waitb, WNOHANG)) == 0)
       { i++; if (i > 10) break; }
 #else
-    while ((pid = wait3 (&waitb, WNOHANG, (struct rusage*) 0)) == 0) 
+    while ((pid = wait3 (&waitb, WNOHANG, (struct rusage*) 0)) == 0)
       { i++; if (i > 10) break; }
 #endif
 
     errno = oerrno;
- 
+
     if (pid) {
       if (WIFSIGNALED(waitb) == 0) {
 	if (WIFEXITED(waitb) != 0) {

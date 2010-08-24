@@ -893,7 +893,7 @@ static char **
 get_server_list(char *file)
 {
     FILE *fp;
-    char buf[MAXHOSTNAMELEN];
+    char buf[NS_MAXDNAME];
     char **ret_list;
     int nused = 0;
     char *newline;
@@ -907,10 +907,10 @@ get_server_list(char *file)
     if (!ret_list)
     	return NULL;
 
-    while (fgets(buf, MAXHOSTNAMELEN, fp)) {
+    while (fgets(buf, sizeof(buf), fp)) {
 	/* nuke the newline, being careful not to overrun
 	   the buffer searching for it with strlen() */
-	buf[MAXHOSTNAMELEN - 1] = '\0';
+	buf[sizeof(buf) - 1] = '\0';
 	newline = strchr(buf, '\n');
 	if (newline)
 	    *newline = '\0';
@@ -935,7 +935,7 @@ get_server_list(char *file)
 static char **
 get_single_server(void)
 {
-    char buf[MAXHOSTNAMELEN];
+    char buf[NS_MAXDNAME];
     char **ret_list;
     int nused = 0;
     nhosts = 2;

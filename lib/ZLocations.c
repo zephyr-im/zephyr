@@ -8,7 +8,7 @@
  *
  *	Copyright (c) 1987,1988,1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #ifndef lint
@@ -20,7 +20,7 @@ static const char rcsid_ZLocations_c[] =
 
 #include <pwd.h>
 
-static char host[MAXHOSTNAMELEN], mytty[MAXPATHLEN];
+static char host[NS_MAXDNAME], mytty[MAXPATHLEN];
 static int location_info_set = 0;
 
 Code_t
@@ -33,7 +33,7 @@ ZInitLocationInfo(char *hostname,
     if (hostname) {
 	strcpy(host, hostname);
     } else {
-	if (gethostname(host, MAXHOSTNAMELEN) < 0)
+	if (gethostname(host, sizeof(host)) < 0)
 	    return (errno);
 	hent = gethostbyname(host);
 	if (hent) {
@@ -59,14 +59,14 @@ ZInitLocationInfo(char *hostname,
 Code_t
 ZSetLocation(char *exposure)
 {
-    return (Z_SendLocation(LOGIN_CLASS, exposure, ZAUTH, 
+    return (Z_SendLocation(LOGIN_CLASS, exposure, ZAUTH,
 			   "$sender logged in to $1 on $3 at $2"));
 }
 
 Code_t
 ZUnsetLocation(void)
 {
-    return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_LOGOUT, ZNOAUTH, 
+    return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_LOGOUT, ZNOAUTH,
 			   "$sender logged out of $1 on $3 at $2"));
 }
 
@@ -158,8 +158,8 @@ Z_SendLocation(char *class,
 	}
 	ZFreeNotice(&retnotice);
 	return (ZERR_SERVNAK);
-    } 
-	
+    }
+
     if (retnotice.z_kind != SERVACK) {
 	ZFreeNotice(&retnotice);
 	return (ZERR_INTERNAL);
@@ -177,6 +177,6 @@ Z_SendLocation(char *class,
     }
 
     ZFreeNotice(&retnotice);
-	
+
     return (ZERR_NONE);
 }

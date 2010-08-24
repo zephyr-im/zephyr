@@ -7,7 +7,7 @@
  *
  *      Copyright (c) 1987 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
- *      "mit-copyright.h". 
+ *      "mit-copyright.h".
  */
 
 #include "zhm.h"
@@ -46,7 +46,7 @@ send_boot_notice(char *op)
 {
      ZNotice_t notice;
      Code_t ret;
-  
+
      /* Set up server notice */
      notice.z_kind = HMCTL;
      notice.z_port = cli_port;
@@ -58,7 +58,7 @@ send_boot_notice(char *op)
      notice.z_default_format = "";
      notice.z_num_other_fields = 0;
      notice.z_message_len = 0;
-  
+
      /* Notify server that this host is here */
      if ((ret = ZSetDestAddr(&serv_sin)) != ZERR_NONE) {
 	  Zperr(ret);
@@ -77,7 +77,7 @@ send_flush_notice(char *op)
 {
      ZNotice_t notice;
      Code_t ret;
-     
+
      /* Set up server notice */
      notice.z_kind = HMCTL;
      notice.z_port = cli_port;
@@ -108,7 +108,7 @@ find_next_server(char *sugg_serv)
      int done = 0;
      char **parse = serv_list;
      char *new_serv;
-  
+
      if (sugg_serv) {
 	  do {
 	       if (!strcmp(*parse, sugg_serv))
@@ -117,13 +117,13 @@ find_next_server(char *sugg_serv)
      }
      if (done) {
 	  if ((hp = gethostbyname(sugg_serv)) != NULL) {
-	       DPR2 ("Server = %s\n", sugg_serv);	
-	       (void)strncpy(cur_serv, sugg_serv, MAXHOSTNAMELEN);
-	       cur_serv[MAXHOSTNAMELEN - 1] = '\0';
+	       DPR2 ("Server = %s\n", sugg_serv);
+	       (void)strncpy(cur_serv, sugg_serv, NS_MAXDNAME);
+	       cur_serv[NS_MAXDNAME - 1] = '\0';
 	       if (hmdebug)
 		    syslog(LOG_DEBUG, "Suggested server: %s\n", sugg_serv);
 	  } else {
-	       done = 0; 
+	       done = 0;
 	  }
      }
      while (!done) {
@@ -131,8 +131,8 @@ find_next_server(char *sugg_serv)
 	     serv_loop = 0;
 	     if ((hp = gethostbyname(prim_serv)) != NULL) {
 		 DPR2 ("Server = %s\n", prim_serv);
-		 (void)strncpy(cur_serv, prim_serv, MAXHOSTNAMELEN);
-		 cur_serv[MAXHOSTNAMELEN - 1] = '\0';
+		 (void)strncpy(cur_serv, prim_serv, NS_MAXDNAME);
+		 cur_serv[NS_MAXDNAME - 1] = '\0';
 		 done = 1;
 		 break;
 	     }
@@ -142,8 +142,8 @@ find_next_server(char *sugg_serv)
 	 case 1:
 	     if ((hp = gethostbyname(*serv_list)) != NULL) {
 		 DPR2 ("Server = %s\n", *serv_list);
-		 (void)strncpy(cur_serv, *serv_list, MAXHOSTNAMELEN);
-		 cur_serv[MAXHOSTNAMELEN - 1] = '\0';
+		 (void)strncpy(cur_serv, *serv_list, NS_MAXDNAME);
+		 cur_serv[NS_MAXDNAME - 1] = '\0';
 		 done = 1;
 		 break;
 	     }
@@ -161,8 +161,8 @@ find_next_server(char *sugg_serv)
 
 	     if ((hp = gethostbyname(new_serv)) != NULL) {
 		 DPR2 ("Server = %s\n", new_serv);
-		 (void)strncpy(cur_serv, new_serv, MAXHOSTNAMELEN);
-		 cur_serv[MAXHOSTNAMELEN - 1] = '\0';
+		 (void)strncpy(cur_serv, new_serv, NS_MAXDNAME);
+		 cur_serv[NS_MAXDNAME - 1] = '\0';
 		 done = 1;
 	     } else
 		 sleep(1);
@@ -210,9 +210,9 @@ hm_control(ZNotice_t *notice)
 {
     Code_t ret;
     struct hostent *hp;
-    char suggested_server[MAXHOSTNAMELEN];
+    char suggested_server[NS_MAXDNAME];
     unsigned long addr;
-     
+
     DPR("Control message!\n");
     if (!strcmp(notice->z_opcode, SERVER_SHUTDOWN)) {
 	if (notice->z_message_len) {
@@ -253,7 +253,7 @@ send_back(ZNotice_t *notice)
     ZNotice_Kind_t kind;
     struct sockaddr_in repl;
     Code_t ret;
-  
+
     if (!strcmp(notice->z_opcode, HM_BOOT) ||
 	!strcmp(notice->z_opcode, HM_ATTACH)) {
 	/* ignore message, just an ack from boot, but exit if we

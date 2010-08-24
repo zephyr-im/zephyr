@@ -7,7 +7,7 @@
  *
  *	Copyright (c) 1987, 1991 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #ifndef lint
@@ -51,7 +51,7 @@ ZInitialize(void)
 {
     struct servent *hmserv;
     struct hostent *hostent;
-    char addr[4], hostname[MAXHOSTNAMELEN];
+    char addr[4], hostname[NS_MAXDNAME];
     struct in_addr servaddr;
     struct sockaddr_in sin;
     unsigned int s, sinsize = sizeof(sin);
@@ -67,8 +67,8 @@ ZInitialize(void)
 #endif
 #endif
 
-    /* On OS X you don't need to initialize the Kerberos error tables 
-       as long as you link with -framework Kerberos */ 
+    /* On OS X you don't need to initialize the Kerberos error tables
+       as long as you link with -framework Kerberos */
 #if !(defined(__APPLE__) && defined(__MACH__))
 #ifdef HAVE_KRB4
     initialize_krb_error_table();
@@ -78,12 +78,12 @@ ZInitialize(void)
 #endif
 #endif
 
-#if defined(__APPLE__) && defined(__MACH__) 
-    add_error_table(&et_zeph_error_table); 
-#else 
+#if defined(__APPLE__) && defined(__MACH__)
+    add_error_table(&et_zeph_error_table);
+#else
     initialize_zeph_error_table();
 #endif
-    
+
     (void) memset((char *)&__HM_addr, 0, sizeof(__HM_addr));
 
     __HM_addr.sin_family = AF_INET;
@@ -104,7 +104,7 @@ ZInitialize(void)
     /* Initialize the input queue */
     __Q_Tail = NULL;
     __Q_Head = NULL;
-    
+
 #ifdef HAVE_KRB5
     if ((code = krb5_init_context(&Z_krb5_ctx)))
         return(code);
@@ -239,10 +239,6 @@ struct sockaddr_in ZGetDestAddr (void) {
 #if defined(HAVE_KRB5) && defined(KRB5_REFERRAL_REALM)
 #include <ctype.h>
 #include <netinet/in.h>
-#include <arpa/nameser.h>
-#ifdef HAVE_ARPA_NAMESER_COMPAT_H
-#include <arpa/nameser_compat.h>
-#endif
 #include <resolv.h>
 
 static int txt_lookup(char *qname, char **result) {
@@ -250,7 +246,7 @@ static int txt_lookup(char *qname, char **result) {
     void *buf = NULL;
     HEADER *hdr;
     unsigned char *p;
-    char dname[MAXDNAME];
+    char dname[NS_MAXDNAME];
     int queries, answers, stored;
 
     ret = res_init();
@@ -261,7 +257,7 @@ static int txt_lookup(char *qname, char **result) {
     do {
 	buflen = buflen ? buflen * 2 : 2048;
 	buf = (buf == NULL) ? malloc(buflen) : realloc(buf, buflen);
-	
+
 	ret = res_search(qname, C_IN, T_TXT, buf, buflen);
     } while (ret > buflen);
 
@@ -292,7 +288,7 @@ static int txt_lookup(char *qname, char **result) {
     stored = 0;
     while (answers--) {
 	int class, type;
-	
+
 	ret = dn_expand(buf, buf + buflen, p, dname, sizeof dname);
 	if (ret < 0 || ret > left)
 	    return -1;
@@ -324,7 +320,7 @@ static int txt_lookup(char *qname, char **result) {
 	p += ret;
     }
     return -1;
-}	
+}
 
 static int
 z_get_host_realm_replacement(char *inhost, char ***krealms) {
@@ -335,7 +331,7 @@ z_get_host_realm_replacement(char *inhost, char ***krealms) {
     char *qname;
     profile_t prof;
     int ret;
-    
+
     host = strdup(inhost);
 
     for (p = host; *p; p++)
@@ -397,9 +393,9 @@ z_get_host_realm_replacement(char *inhost, char ***krealms) {
 	    sprintf(qname, "_kerberos.%s.", p);
 	    ret = txt_lookup(qname, &realm);
 	    free(qname);
-	    
+
 	    p = strchr(p,'.');
-	    if (p) 
+	    if (p)
 		p++;
 	} while (ret && p && p[0]);
     }
@@ -411,7 +407,7 @@ z_get_host_realm_replacement(char *inhost, char ***krealms) {
 		free(host);
 		return errno;
 	    }
-	    
+
 	    for (p = realm; *p; p++)
 		if (islower(*p))
 		    *p = toupper(*p);
@@ -423,7 +419,7 @@ z_get_host_realm_replacement(char *inhost, char ***krealms) {
 	    }
 	}
     }
-    
+
     free(host);
 
     if ((*krealms = calloc(2, sizeof(*krealms))) == NULL) {

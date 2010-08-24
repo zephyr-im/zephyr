@@ -7,7 +7,7 @@
  *
  *      Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *      For copying and distribution information, see the file
- *      "mit-copyright.h". 
+ *      "mit-copyright.h".
  */
 
 /* There should be library interfaces for the operations in zstat; for now,
@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <arpa/nameser.h>
 #include "zserver.h"
 
 #if !defined(lint) && !defined(SABER)
@@ -36,7 +37,7 @@ const char *hm_head[] = {
     "Machine type:"
 };
 #define	HM_SIZE	(sizeof(hm_head) / sizeof (char *))
-const char *srv_head[] = { 
+const char *srv_head[] = {
     "Current server version =",
     "Packets handled:",
     "Uptime:",
@@ -65,7 +66,7 @@ main(int argc,
      char *argv[])
 {
 	Code_t ret;
-	char hostname[MAXHOSTNAMELEN];
+	char hostname[NS_MAXDNAME];
 	int optchar;
 	struct servent *sp;
 	extern char *optarg;
@@ -105,7 +106,7 @@ main(int argc,
 	srv_port = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
 
 	if (optind == argc) {
-		if (gethostname(hostname, MAXHOSTNAMELEN) < 0) {
+	        if (gethostname(hostname, sizeof(hostname)) < 0) {
 			com_err("zstat",errno,"while finding hostname");
 			exit(-1);
 		}
@@ -122,8 +123,8 @@ main(int argc,
 void
 do_stat(char *host)
 {
-	char srv_host[MAXHOSTNAMELEN];
-	
+	char srv_host[NS_MAXDNAME];
+
 	if (serveronly) {
 		(void) srv_stat(host);
 		return;
@@ -149,7 +150,7 @@ hm_stat(char *host,
 	time_t runtime;
 	struct tm *tim;
 	ZNotice_t notice;
-	
+
 	if ((inaddr.s_addr = inet_addr(host)) == (unsigned)(-1)) {
 	    if ((hp = gethostbyname(host)) == NULL) {
 		fprintf(stderr,"Unknown host: %s\n",host);
@@ -161,12 +162,12 @@ hm_stat(char *host,
 	} else {
 	    printf("Hostmanager stats: %s\n", host);
 	}
-	
+
 	if ((code = ZhmStat(&inaddr, &notice)) != ZERR_NONE) {
 	    com_err("zstat", code, "getting hostmanager status");
 	    exit(-1);
 	}
-	
+
 	mp = notice.z_message;
 	for (nf=0;mp<notice.z_message+notice.z_message_len;nf++) {
 		line[nf] = mp;
@@ -192,7 +193,7 @@ hm_stat(char *host,
 	}
 
 	printf("\n");
-	
+
 	ZFreeNotice(&notice);
 	return(0);
 }
@@ -210,7 +211,7 @@ srv_stat(char *host)
 #ifdef _POSIX_VERSION
 	struct sigaction sa;
 #endif
-		
+
 	(void) memset((char *) &sin, 0, sizeof(struct sockaddr_in));
 
 	sin.sin_port = srv_port;
@@ -219,7 +220,7 @@ srv_stat(char *host)
 		perror("socket:");
 		exit(-1);
 	}
-	
+
 	sin.sin_family = AF_INET;
 
 	if ((sin.sin_addr.s_addr = inet_addr(host)) == (unsigned)(-1)) {
@@ -233,7 +234,7 @@ srv_stat(char *host)
 	} else {
 	    printf("Server stats: %s\n", host);
 	}
-	
+
 	(void) memset((char *)&notice, 0, sizeof(notice));
 	notice.z_kind = UNSAFE;
 	notice.z_port = 0;
@@ -245,7 +246,7 @@ srv_stat(char *host)
 	notice.z_recipient = "";
 	notice.z_default_format = "";
 	notice.z_message_len = 0;
-	
+
 	if ((ret = ZSetDestAddr(&sin)) != ZERR_NONE) {
 		com_err("zstat", ret, "setting destination");
 		exit(-1);
@@ -275,8 +276,8 @@ srv_stat(char *host)
 	if (outoftime) {
 		fprintf(stderr,"No response after 10 seconds.\n");
 		return (1);
-	} 
-	
+	}
+
 	mp = notice.z_message;
 	for (nf=0;mp<notice.z_message+notice.z_message_len;nf++) {
 		line[nf] = mp;
@@ -284,7 +285,7 @@ srv_stat(char *host)
 	}
 
 	printf("Server protocol version = %s\n",notice.z_version);
-	
+
 	for (i=0; i < nf; i++) {
 		if (i < 2)
 			printf("%s %s\n",srv_head[i],line[i]);
@@ -303,7 +304,7 @@ srv_stat(char *host)
 		} else printf("%s\n",line[i]);
 	}
 	printf("\n");
-	
+
 	(void) close(sock);
 	ZFreeNotice(&notice);
 	return(0);

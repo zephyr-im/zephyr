@@ -148,7 +148,7 @@ fake_startup_packet(void)
             zwgc_version_string);
     notice->z_message = msgbuf;
     notice->z_message_len = strlen(notice->z_message)+1;
-    
+
 #ifdef CMU_ZWGCPLUS
     list_add_notice(notice);
     set_notice_fake(notice, 1);
@@ -175,7 +175,7 @@ read_in_description_file(void)
       program = parse_file(input_file);
     else
       program = NULL;
-    
+
     fake_startup_packet();
 }
 
@@ -224,10 +224,10 @@ run_initprogs(void)
 
     int status;
     char *progname = ZGetVariable("initprogs");
-    
+
     if (!progname)
       return;
-    
+
     status = system(progname);
     if (status == 127) {
         perror("zwgc initprog exec");
@@ -365,19 +365,19 @@ create_punt_reply(int_dictionary_binding *punt)
     string binding;
     int key_len = strlen(punt->key);
     char *tmp;
-    
+
     if (!punt_reply.z_message) {
         punt_reply.z_message = (char *)malloc(PUNT_INC);
         punt_reply.z_message[0] = 0;
     }
-    
-    if ((punt_reply.z_message_len + key_len + 1) / PUNT_INC > 
+
+    if ((punt_reply.z_message_len + key_len + 1) / PUNT_INC >
         (punt_reply.z_message_len + PUNT_INC - 1) / PUNT_INC) {
         char *new_message = (char *)malloc((punt_reply.z_message_len
                                             / PUNT_INC + 1) * PUNT_INC);
-        
+
         strcpy(new_message, punt_reply.z_message);
-        
+
         free(punt_reply.z_message);
         punt_reply.z_message = new_message;
     }
@@ -385,7 +385,7 @@ create_punt_reply(int_dictionary_binding *punt)
     strcat (punt_reply.z_message, punt->key);
     strcat (punt_reply.z_message, "\n");
     punt_reply.z_message_len += key_len + 1;
-    
+
     while (*tmp != '\001') tmp++;
     *tmp = ',';
     while (*tmp != '\001') tmp++;
@@ -398,7 +398,7 @@ notice_handler(ZNotice_t *notice)
 {
 #ifndef HAVE_ARES
     int ret;
-    char node[MAXDNAME];
+    char node[NS_MAXDNAME];
 #endif
 
 #if defined(CMU_ZWGCPLUS)
@@ -414,7 +414,6 @@ notice_handler(ZNotice_t *notice)
                      sizeof(struct sockaddr_in6) :
                      sizeof(notice->z_sender_sockaddr), ARES_NI_LOOKUPHOST,
                      notice_callback, notice);
-    
 #else
     ret = getnameinfo((const struct sockaddr *)&(notice->z_sender_sockaddr),
 		      sizeof(notice->z_sender_sockaddr),
@@ -511,7 +510,7 @@ process_notice(ZNotice_t *notice,
         } else if (!strcasecmp(control_opcode, USER_LIST_SUPPRESSED)) {
             struct sockaddr_in old, to;
             int retval;
-            
+
             if (!notice->z_port) {
                 printf("zwgc: can't reply to LIST-SUPPRESSED request\n");
                 return;
@@ -527,28 +526,28 @@ process_notice(ZNotice_t *notice,
             punt_reply.z_port = notice->z_port;
             punt_reply.z_message = NULL;
             punt_reply.z_message_len = 0;
-            
+
             if (puntable_addresses_dict) {
                 int_dictionary_Enumerate(puntable_addresses_dict,
                                          create_punt_reply);
             }
-            
+
             old = ZGetDestAddr();
             to = old;
-            
+
             to.sin_port = notice->z_port;
             if ((retval = ZSetDestAddr(&to)) != ZERR_NONE) {
                 com_err("zwgc",retval,"while setting destination address");
                 exit(1);
             }
-            
+
             ZSendNotice(&punt_reply, ZNOAUTH);
-            
+
             if ((retval = ZSetDestAddr(&old)) != ZERR_NONE) {
                 com_err("zwgc",retval,"while resetting destination address");
                 exit(1);
             }
-            
+
             if (punt_reply.z_message) {
                 free(punt_reply.z_message);
                 punt_reply.z_message = NULL;
@@ -567,9 +566,9 @@ process_notice(ZNotice_t *notice,
         if (zwgc_debug)
           printf("NON-ACTIVE: PUNTED <%s>!!!!\n", notice->z_class_inst);
 #endif
-        goto cleanup;   
+        goto cleanup;
     }
-    
+
     if (puntable_address_p(notice->z_class,
                            notice->z_class_inst,
                            notice->z_recipient)) {
@@ -644,7 +643,7 @@ setup_signals(int dofork)
 
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-    
+
     if (dofork) {
         sa.sa_handler = SIG_IGN;
         sigaction(SIGINT, &sa, (struct sigaction *)0);
@@ -682,7 +681,7 @@ setup_signals(int dofork)
         /* clean up on SIGINT; exiting on logout is the user's problem, now. */
         signal(SIGINT, signal_exit);
     }
-    
+
     /* behavior never changes */
     signal(SIGTERM, signal_exit);
     signal(SIGHUP, signal_exit);
@@ -725,4 +724,4 @@ detach(void)
       }
       exit(0);
   }
-}       
+}

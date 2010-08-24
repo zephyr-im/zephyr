@@ -48,7 +48,7 @@ char *realm;
 #else
 	int retval;
 	FILE *rlm_file;
-	char krb_host[MAXHOSTNAMELEN+1];
+	char krb_host[NS_MAXDNAME + 1];
         static char krb_realm[REALM_SZ+1];
 	char linebuf[BUFSIZ];
 	char scratch[64];

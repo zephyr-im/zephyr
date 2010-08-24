@@ -7,7 +7,7 @@
  *
  *	Copyright (c) 1987,1988 by the Massachusetts Institute of Technology.
  *	For copying and distribution information, see the file
- *	"mit-copyright.h". 
+ *	"mit-copyright.h".
  */
 
 #include <sysdep.h>
@@ -15,6 +15,7 @@
 #include <ss/ss.h>
 #include <pwd.h>
 #include <netdb.h>
+#include <arpa/nameser.h>
 #ifndef lint
 static const char rcsid_zctl_c[] = "$Id$";
 #endif
@@ -42,7 +43,7 @@ static const char rcsid_zctl_c[] = "$Id$";
 
 int sci_idx;
 char subsname[BUFSIZ];
-char ourhost[MAXHOSTNAMELEN],ourhostcanon[MAXHOSTNAMELEN];
+char ourhost[NS_MAXDNAME], ourhostcanon[NS_MAXDNAME];
 
 extern ss_request_table zctl_cmds;
 
@@ -76,7 +77,7 @@ main(int argc,
 	 * DISPLAY environment variable for the tty name. */
 #ifndef X_DISPLAY_MISSING
 	tty = getenv("DISPLAY");
-#endif	
+#endif
 	if ((retval = ZInitLocationInfo(NULL, tty)) != ZERR_NONE)
 	    com_err(argv[0], retval, "initializing location information");
 
@@ -110,7 +111,7 @@ main(int argc,
 	uname(&name);
 	strcpy(ourhost, name.nodename);
 #else
-	if (gethostname(ourhost,MAXHOSTNAMELEN) == -1) {
+	if (gethostname(ourhost, sizeof(ourhost)) == -1) {
 		com_err(argv[0],errno,"while getting host name");
 		exit (1);
 	}
@@ -140,12 +141,12 @@ main(int argc,
 		    fprintf (stderr, "%s: %s: %s\n",
 			     argv[0], error_message (code), ssline);
 		exit((code != 0));
-	} 
+	}
 
 	printf("ZCTL $Revision$ (Protocol %s%d.%d) - Type '?' for a list of commands.\n\n",
 	       ZVERSIONHDR,
 	       ZVERSIONMAJOR,ZVERSIONMINOR);
-	
+
 	ss_listen(sci_idx);
 	exit(0);
 }
@@ -170,7 +171,7 @@ flush_locations(int argc,
 		char *argv[])
 {
 	int retval;
-	
+
 	if (argc > 1) {
 		fprintf(stderr,"Usage: %s\n",argv[0]);
 		return;
@@ -195,7 +196,7 @@ wgc_control(int argc,
 		fprintf(stderr,"Usage: %s\n",argv[0]);
 		return;
 	}
-	
+
 	if ((newport = ZGetWGPort()) == -1) {
 		com_err(whoami, errno, "while getting WindowGram port");
 		return;
@@ -238,7 +239,7 @@ wgc_control(int argc,
 	if ((retval = ZInitialize()) != ZERR_NONE)
 		com_err(whoami, retval,
 			  "while reinitializing");
-} 
+}
 
 void
 hm_control(int argc,
@@ -251,7 +252,7 @@ hm_control(int argc,
 		fprintf(stderr,"Usage: %s\n",argv[0]);
 		return;
 	}
-	
+
 	(void) memset((char *)&notice, 0, sizeof(notice));
 	notice.z_kind = HMCTL;
 	notice.z_port = 0;
@@ -282,7 +283,7 @@ show_var(int argc,
 {
 	int i;
 	char *value;
-	
+
 	if (argc < 2) {
 		fprintf(stderr,"Usage: %s <varname> <varname> ...\n",argv[0]);
 		return;
@@ -304,7 +305,7 @@ set_var(int argc, char *argv[])
 	char *exp_level = NULL;
 	char *newargv[1];
 	char varcat[BUFSIZ];
-	
+
 	if (argc < 2) {
 		fprintf(stderr,"Usage: %s <varname> [value]\n",
 			argv[0]);
@@ -343,7 +344,7 @@ set_var(int argc, char *argv[])
 				EXPOSE_NETANN);
 			return;
 		}
-	} 
+	}
 	if (argc == 2)
 		retval = ZSetVariable(argv[1],"");
 	else {
@@ -351,9 +352,9 @@ set_var(int argc, char *argv[])
 		for (i=3;i<argc;i++) {
 			(void) strcat(varcat," ");
 			(void) strcat(varcat,argv[i]);
-		} 
+		}
 		retval = ZSetVariable(argv[1],varcat);
-	} 
+	}
 
 	if (retval != ZERR_NONE) {
 		com_err(whoami, retval, "while setting variable value");
@@ -361,7 +362,7 @@ set_var(int argc, char *argv[])
 	}
 
 	/* Side-effects?  Naw, us? */
-	
+
 	if (setting_exp) {
 		if ((retval = ZSetLocation(exp_level)) != ZERR_NONE)
 			com_err(whoami, retval, "while changing exposure status");
@@ -373,7 +374,7 @@ set_var(int argc, char *argv[])
 			wgc_control(1,newargv);
 		}
 		return;
-	} 
+	}
 }
 
 void
@@ -401,7 +402,7 @@ unset_var(int argc,
 	  char *argv[])
 {
 	int retval,i;
-	
+
 	if (argc < 2) {
 		fprintf(stderr,"Usage: %s <varname> [<varname> ... ]\n",
 			argv[0]);
@@ -424,12 +425,12 @@ cancel_subs(int argc,
 	if (argc != 1) {
 		fprintf(stderr,"Usage: %s\n",argv[0]);
 		return;
-	} 
+	}
 
  	if ((wgport = ZGetWGPort()) == -1) {
 		com_err(whoami, errno, "while finding WindowGram port");
 		return;
-	} 
+	}
 	if ((retval = ZCancelSubscriptions((u_short)wgport)) != ZERR_NONE)
 		com_err(whoami, retval, "while cancelling subscriptions");
 }
@@ -441,27 +442,27 @@ subscribe(int argc,
 	int retval;
 	short wgport;
 	ZSubscription_t sub,sub2;
-	
+
 	if (argc > 4 || argc < 3) {
 		fprintf(stderr,"Usage: %s class instance [*]\n",argv[0]);
 		return;
 	}
-	
+
 	sub.zsub_class = argv[1];
 	sub.zsub_classinst = argv[2];
 	sub.zsub_recipient = (argc == 3)?ZGetSender():argv[3];
 
 	fix_macros(&sub,&sub2,1);
-	
+
  	if ((wgport = ZGetWGPort()) == -1) {
 		com_err(whoami, errno, "while finding WindowGram port");
 		return;
-	} 
+	}
 
 	retval = (*argv[0] == 's') ?
 		ZSubscribeToSansDefaults(&sub2,1,(u_short)wgport) :
 		ZUnsubscribeTo(&sub2,1,(u_short)wgport);
-	
+
 	if (retval != ZERR_NONE)
 		com_err(whoami, retval, "while subscribing");
 } 
@@ -497,7 +498,7 @@ sub_file(int argc,
  	if ((wgport = ZGetWGPort()) == -1) {
 		com_err(whoami, errno, "while finding WindowGram port");
 		return;
-	} 
+	}
 
 	if (!strcmp(argv[0],"add"))
 		add_file(wgport,&sub,0);
@@ -531,7 +532,7 @@ add_file(short wgport,
 		(void) sprintf(errbuf,"while opening %s for append",subsname);
 		com_err(whoami, errno, errbuf);
 		return;
-	} 
+	}
 	fprintf(fp,"%s%s,%s,%s\n",
 		unsub ? "!" : "",
 		subs->zsub_class, subs->zsub_classinst, subs->zsub_recipient);
@@ -558,7 +559,7 @@ del_file(short wgport,
 {
 	ZSubscription_t sub2;
 	int retval;
-	
+
 	retval = purge_subs(subs, unsub ? UNSUBONLY : SUBONLY);
 	if (retval == ERR)
 		return;
@@ -604,7 +605,7 @@ purge_subs(register ZSubscription_t *subs,
 		(void) sprintf(errbuf,"while opening %s for read",subsname);
 		com_err(whoami, errno, errbuf);
 		return(ERR);
-	} 
+	}
 	(void) strcpy(backup, subsname);
 	(void) strcat(backup, ".temp");
 	(void) unlink(backup);
@@ -613,7 +614,7 @@ purge_subs(register ZSubscription_t *subs,
 		com_err(whoami, errno, errbuf);
 		(void) fclose(fp);
 		return(ERR);
-	} 
+	}
 	for (;;) {
 		if (!fgets(subline,sizeof subline,fp))
 			break;
@@ -684,15 +685,15 @@ load_subs(int argc,
 		else
 			type = SUB;
 
-	if (type != LIST) 
+	if (type != LIST)
 		if ((wgport = ZGetWGPort()) == -1) {
 			com_err(whoami, errno,
 				  "while finding WindowGram port");
 			return;
-		} 
+		}
 
 	file = (argc == 1) ? subsname : argv[1];
-	
+
 	fp = fopen(file,"r");
 
 	if (fp == NULL) {
@@ -700,13 +701,13 @@ load_subs(int argc,
 			  "while loading subscription file");
 		return;
 	}
-	
+
 #ifdef CMU_ZCTL_PUNT
 	pind =
 #endif
 	  ind = unind = 0;
 	lineno = 1;
-	
+
 	for (;;lineno++) {
 		if (!fgets(subline,sizeof subline,fp))
 			break;
@@ -727,7 +728,7 @@ load_subs(int argc,
 		*comma = '\0';
 		*comma2 = '\0';
 		if (type == LIST) {
-			if (*subline == '!') 
+			if (*subline == '!')
 				printf("(Un-subscription) Class %s instance %s recipient %s\n",
 				       subline+1, comma+1, comma2+1);
 #ifdef CMU_ZCTL_PUNT
@@ -780,7 +781,7 @@ load_subs(int argc,
 			pind++;
 		} else
 #endif
-		{ 
+		{
 			subs[ind].zsub_class =
 			    (char *)malloc((unsigned)(strlen(subline)+1));
 			/* XXX check malloc return */
@@ -828,7 +829,7 @@ load_subs(int argc,
 				free(subs[i].zsub_class);
 				free(subs[i].zsub_classinst);
 				free(subs[i].zsub_recipient);
-			} 
+			}
 			ind = 0;
 		}
 		if (unind == SUBSATONCE) {
@@ -842,11 +843,11 @@ load_subs(int argc,
 				free(unsubs[i].zsub_class);
 				free(unsubs[i].zsub_classinst);
 				free(unsubs[i].zsub_recipient);
-			} 
+			}
 			unind = 0;
 		}
 	}
-	
+
 	if (type != LIST) {
 		/* even if we have no subscriptions, be sure to send
 		   an empty packet to trigger the default subscriptions */
@@ -885,12 +886,12 @@ cleanup:
 	  free(subs[i].zsub_class);
 	  free(subs[i].zsub_classinst);
 	  free(subs[i].zsub_recipient);
-	} 
+	}
 	for (i=0;i<unind;i++) {
 	  free(unsubs[i].zsub_class);
 	  free(unsubs[i].zsub_classinst);
 	  free(unsubs[i].zsub_recipient);
-	} 
+	}
 #ifdef CMU_ZCTL_PUNT
 	for (i=0;i<pind;i++) {
 	  free(punts[i].zsub_class);
@@ -914,7 +915,7 @@ current(int argc,
 	short wgport;
 	char backup[BUFSIZ];
 	char *file = NULL;
-	
+
 	save = 0;
 	defs = 0;
 
@@ -933,7 +934,7 @@ current(int argc,
 			com_err(whoami, errno,
 				  "while finding WindowGram port");
 			return;
-		} 
+		}
 
 	if (defs)
 		retval = ZRetrieveDefaultSubscriptions(&nsubs);
@@ -964,7 +965,7 @@ current(int argc,
 			return;
 		}
 	}
-	
+
 	for (i=0;i<nsubs;i++) {
 		one = 1;
 		if ((retval = ZGetSubscriptions(&subs,&one)) != ZERR_NONE) {
@@ -975,7 +976,7 @@ current(int argc,
 				(void) unlink(backup);
 			}
 			return;
-		} 
+		}
 		if (save)
 			fprintf(fp,"%s,%s,%s\n",subs.zsub_class,
 				subs.zsub_classinst, subs.zsub_recipient);
@@ -1005,7 +1006,7 @@ make_exist(char *filename)
 {
 	char errbuf[BUFSIZ];
 	FILE *fpout;
-	
+
 	if (!access(filename,F_OK))
 		return (0);
 
@@ -1062,10 +1063,10 @@ do_punt(int argc, char **argv)
   short newport;
   struct sockaddr_in newsin;
   ZNotice_t notice;
-  
+
   if (! strcmp(whoami, "punt")) punt = 1;
   else punt = 0;
-  
+
   switch (argc) {
   case 2:
     class = "message";
@@ -1083,7 +1084,7 @@ do_punt(int argc, char **argv)
     recip = argv[3];
     if (*argv[3] == '*') /* fixed so realm punts would work (vs0r) */
       if (*(argv[3]+1) == '@')
-      if (!strcmp((char *)ZGetRealm(), (char *)ZExpandRealm(argv[3]+2))) 
+      if (!strcmp((char *)ZGetRealm(), (char *)ZExpandRealm(argv[3]+2)))
         /*check local*/
         recip = "";
     break;
@@ -1094,36 +1095,36 @@ do_punt(int argc, char **argv)
     fprintf(stderr, "\t%s class instance recipient\n", whoami);
     return 1;
   }
-  
+
   retval = ZOpenPort((u_short *) 0);
   if(retval != ZERR_NONE) {
     com_err(whoami, retval, "while opening Zephyr port.");
     return 1;
   }
-  
+
   newsin = ZGetDestAddr();
   if ((newport = ZGetWGPort()) == -1) {
     fprintf(stderr, "%s: Can't find windowgram port\n", whoami);
     return 1;
   }
-    
+
   newsin.sin_port = (unsigned short) newport;
   if ((retval = ZSetDestAddr(&newsin)) != ZERR_NONE) {
     com_err(whoami,retval,"while setting destination address");
     return 1;
   }
-  
+
   msg = (char *) malloc(strlen(class) + strlen(inst) + strlen(recip) + 4);
   sprintf(msg, "%s%c%s%c%s", class, '\0', inst, '\0', recip);
 
-  if (*recip == '*') 
+  if (*recip == '*')
     if (*(recip+1) == '@')
-      if (strcmp(recip+2, (char *)ZExpandRealm(recip+2))) 
-        sprintf(msg, "%s%c%s%c%s", class, '\0', inst, '\0', 
+      if (strcmp(recip+2, (char *)ZExpandRealm(recip+2)))
+        sprintf(msg, "%s%c%s%c%s", class, '\0', inst, '\0',
                 (char *)ZExpandRealm(recip+2));
   printf("%s <%s,%s,%s>\n", punt ? "Punting" : "Unpunting",
        class, inst, *recip ? recip : "*");
-  
+
   memset((char *) &notice, 0, sizeof(ZNotice_t));
   notice.z_kind = UNSAFE;
   notice.z_class = WG_CTL_CLASS;
@@ -1134,12 +1135,12 @@ do_punt(int argc, char **argv)
   notice.z_port = 0;
   notice.z_message = msg;
   notice.z_message_len = strlen(class)+strlen(inst)+strlen(recip)+3;
-  
+
   if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE)
     fprintf(stderr,"%s: while sending notice\n",whoami);
-  
+
   free(msg);
-  
+
   ZClosePort();
 #endif
   return 0;
@@ -1155,26 +1156,26 @@ list_punts(int argc, char **argv)
   u_short ourport, zwgcport;
   char *msg;
 
-  ourport=0; 
+  ourport=0;
   retval = ZOpenPort(&ourport);
   if(retval != ZERR_NONE) {
     com_err("zctl", retval, "while opening Zephyr port.");
     return 1;
   }
-  
+
   old = ZGetDestAddr();
   to = old;
   if ((zwgcport = ZGetWGPort()) == (u_short)-1) {
     fprintf(stderr, "zctl: Can't find windowgram port\n");
     return 1;
   }
-  
+
   to.sin_port = (u_short) zwgcport;
   if ((retval = ZSetDestAddr(&to)) != ZERR_NONE) {
     com_err("zctl",retval,"while setting destination address");
     return 1;
   }
-  
+
   memset((char *) &notice, 0, sizeof(ZNotice_t));
   notice.z_kind = UNSAFE;
   notice.z_class = WG_CTL_CLASS;
@@ -1185,25 +1186,25 @@ list_punts(int argc, char **argv)
   notice.z_port = ourport;
   notice.z_message = NULL;
   notice.z_message_len = 0;
-  
+
   if ((retval = ZSendNotice(&notice,ZNOAUTH)) != ZERR_NONE)
     com_err("zctl",retval,"while sending notice");
-  
+
   if ((retval = ZReceiveNotice(&notice,&from)) != ZERR_NONE)
     com_err("zctl",retval,"while receiving ack");
-  
+
   (void) ZFreeNotice(&notice);
-  
+
   if ((retval = ZReceiveNotice(&notice,&from)) != ZERR_NONE)
     com_err("zctl",retval,"while receiving notice");
-  
+
   notice.z_auth = ZCheckAuthentication(&notice, &from);
-  
+
   if ((retval = ZSetDestAddr(&old)) != ZERR_NONE) {
     com_err("zctl",retval,"while resetting destination address");
     return 1;
   }
-  
+
   msg = (char *) malloc((notice.z_message_len+1) * sizeof(char));
   (void) strncpy(msg,notice.z_message, notice.z_message_len);
   msg[notice.z_message_len]=(char)0;
@@ -1211,7 +1212,7 @@ list_punts(int argc, char **argv)
   (void) free(msg);
   (void) ZFreeNotice(&notice);
   (void) ZClosePort();
-  
+
 #endif /* CMU_ZCTL_PUNT */
   return 0;
 }
