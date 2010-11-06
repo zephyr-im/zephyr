@@ -39,7 +39,8 @@ all: zephyrd
 zephyrd: ${OBJS} ${LIBZEPHYR}
 	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS} ${HESIOD_LIBS}
 
-zsrv_err.c zsrv_err.h: zsrv_err.et
+zsrv_err.h: zsrv_err.c
+zsrv_err.c: zsrv_err.et
 	compile_et ${srcdir}/zsrv_err.et
 
 version.o: version.h
