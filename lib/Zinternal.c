@@ -14,7 +14,6 @@
 #include <internal.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include <utmp.h>
 
 #ifndef lint
 static const char rcsid_Zinternal_c[] =
