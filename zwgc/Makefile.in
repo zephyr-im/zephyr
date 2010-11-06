@@ -8,10 +8,10 @@ sbindir=@sbindir@
 lsbindir=@lsbindir@
 datarootdir=@datarootdir@
 
-includedir=${prefix}/include
+includedir=@includedir@
 mandir=@mandir@
-libdir=${exec_prefix}/lib
-bindir=${exec_prefix}/bin
+libdir=@libdir@
+bindir=@bindir@
 top_builddir=..
 
 srcdir=@srcdir@
