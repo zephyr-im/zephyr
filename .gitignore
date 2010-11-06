@@ -1,7 +1,8 @@
 *~
-.#*
+.\#*
 \#*#
 autom4te.cache
+TAGS
 *.pyc
 /build-stamp
 /debian/files
