@@ -1057,6 +1057,40 @@ realm_dump_realms(FILE *fp)
 }
 
 #ifdef HAVE_KRB5
+
+static Code_t
+realm_auth_sendit_nacked(char *buffer, ZRealm *realm,
+			 ZUnique_Id_t uid, int ack_to_sender,
+			 struct sockaddr_in *who)
+{
+    Unacked *nacked;
+
+    nacked = (Unacked *) malloc(sizeof(Unacked));
+    if (nacked == NULL)
+	return ENOMEM;
+
+    nacked->rexmits = 0;
+    nacked->packet = buffer;
+    nacked->dest.rlm.rlm_idx = realm - otherrealms;
+    nacked->dest.rlm.rlm_srv_idx = realm->idx;
+    nacked->packsz = sizeof(ZPacket_t);
+    nacked->uid = uid;
+
+    /* Do the ack for the last frag, below */
+    if (ack_to_sender)
+	nacked->ack_addr = *who;
+    else
+	nacked->ack_addr.sin_addr.s_addr = 0;
+
+    /* set a timer to retransmit */
+    nacked->timer = timer_set_rel(rexmit_times[0], rlm_rexmit, nacked);
+
+    /* chain in */
+    Unacked_insert(&rlm_nacklist, nacked);
+
+    return ZERR_NONE;
+}
+
 static Code_t
 realm_sendit_auth(ZNotice_t *notice,
 		  struct sockaddr_in *who,
@@ -1064,41 +1098,36 @@ realm_sendit_auth(ZNotice_t *notice,
 		  ZRealm *realm,
 		  int ack_to_sender)
 {
-    char *buffer, *ptr;
-    int buffer_len, hdrlen, offset, fragsize, message_len;
+    char *buffer = NULL;
+    int hdrlen, offset, fragsize, message_len;
     int origoffset, origlen;
     Code_t retval;
-    Unacked *nacked;
     char multi[64];
     ZNotice_t partnotice, newnotice;
 
     offset = 0;
 
-    buffer = (char *) malloc(sizeof(ZPacket_t));
+    buffer = (char *)malloc(sizeof(ZPacket_t));
     if (!buffer) {
-        syslog(LOG_ERR, "realm_sendit_auth malloc");
-        return ENOMEM;                 /* DON'T put on nack list */
+	syslog(LOG_ERR, "realm_sendit_auth malloc");
+	return ENOMEM; /* DON'T put on nack list */
     }
-
-    buffer_len = sizeof(ZPacket_t);
 
     newnotice = *notice;
 
     hdrlen = 0;
-    retval = ZMakeZcodeRealmAuthentication(&newnotice, buffer, buffer_len,
+    retval = ZMakeZcodeRealmAuthentication(&newnotice, buffer, sizeof(ZPacket_t),
 					   &hdrlen, realm->name);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "rlm_sendit_auth make zcksum: %s",
+    if (retval)
+	syslog(LOG_WARNING,
+	       "rlm_sendit_auth: ZMakeZcodeRealmAuthentication: %s",
 	       error_message(retval));
-	return (retval);
-    }
 
-    /* set the dest addr */
-    retval = ZSetDestAddr(&realm->addrs[realm->idx]);
-    if (retval != ZERR_NONE) {
-	syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s",
-	       error_message(retval));
-	return (retval);
+    if (!retval) {
+	retval = ZSetDestAddr(&realm->addrs[realm->idx]);
+	if (retval)
+	    syslog(LOG_WARNING, "rlm_sendit_auth: ZSetDestAddr: %s",
+		   error_message(retval));
     }
 
     /* This is not terribly pretty, but it does do its job.
@@ -1110,11 +1139,13 @@ realm_sendit_auth(ZNotice_t *notice,
      * but only the server uses it.
      */
 
-    if ((notice->z_message_len+hdrlen > buffer_len) ||
-	(notice->z_message_len+hdrlen > Z_MAXPKTLEN)) {
+    if (!retval &&
+	((notice->z_message_len+hdrlen > sizeof(ZPacket_t)) ||
+	 (notice->z_message_len+hdrlen > Z_MAXPKTLEN))) {
 
 	/* Reallocate buffers inside the refragmenter */
 	free(buffer);
+	buffer = NULL;
 
 	partnotice = *notice;
 
@@ -1124,144 +1155,103 @@ realm_sendit_auth(ZNotice_t *notice,
 	if (notice->z_multinotice && strcmp(notice->z_multinotice, "")) {
 	    if (sscanf(notice->z_multinotice, "%d/%d", &origoffset,
 		       &origlen) != 2) {
-		syslog(LOG_WARNING, "rlm_sendit_auth frag: parse failed");
-		return ZERR_BADFIELD;
+		syslog(LOG_WARNING,
+		       "rlm_sendit_auth frag: multinotice parse failed");
+		retval = ZERR_BADFIELD;
 	    }
 	}
 
 	fragsize = Z_MAXPKTLEN - hdrlen - Z_FRAGFUDGE;
 
 	if (fragsize < 0)
-	    return ZERR_HEADERLEN;
+	    retval = ZERR_HEADERLEN;
 
-	while (offset < notice->z_message_len || !notice->z_message_len) {
-	    (void) sprintf(multi, "%d/%d", offset+origoffset, origlen);
+	while (!retval &&
+	       (offset < notice->z_message_len || !notice->z_message_len)) {
+	    (void)sprintf(multi, "%d/%d", offset+origoffset, origlen);
 	    partnotice.z_multinotice = multi;
 	    if (offset > 0) {
-		(void) Z_gettimeofday(&partnotice.z_uid.tv,
+		(void)Z_gettimeofday(&partnotice.z_uid.tv,
 				      (struct timezone *)0);
 		partnotice.z_uid.tv.tv_sec = htonl((u_long)
 						   partnotice.z_uid.tv.tv_sec);
 		partnotice.z_uid.tv.tv_usec =
 		    htonl((u_long) partnotice.z_uid.tv.tv_usec);
-		(void) memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr,
+		(void)memcpy((char *)&partnotice.z_uid.zuid_addr, &__My_addr,
 			      sizeof(__My_addr));
 		partnotice.z_sender_sockaddr.ip4.sin_family = AF_INET; /* XXX */
-		(void) memcpy((char *)&partnotice.z_sender_sockaddr.ip4.sin_addr,
+		(void)memcpy((char *)&partnotice.z_sender_sockaddr.ip4.sin_addr,
 			      &__My_addr, sizeof(__My_addr));
 	    }
 	    message_len = min(notice->z_message_len-offset, fragsize);
 	    partnotice.z_message = notice->z_message+offset;
 	    partnotice.z_message_len = message_len;
 
-	    buffer = (char *) malloc(sizeof(ZPacket_t));
+	    buffer = (char *)malloc(sizeof(ZPacket_t));
 	    if (!buffer) {
 		syslog(LOG_ERR, "realm_sendit_auth malloc");
-		return ENOMEM;                 /* DON'T put on nack list */
+		retval = ENOMEM; /* DON'T put on nack list */
 	    }
 
-	    buffer_len = sizeof(ZPacket_t);
-
-	    retval = ZMakeZcodeRealmAuthentication(&partnotice, buffer,
-						   buffer_len, &hdrlen,
-						   realm->name);
-	    if (retval != ZERR_NONE) {
-		syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s",
-		       error_message(retval));
-		free(buffer);
-		return (retval);
+	    if (!retval) {
+		retval = ZMakeZcodeRealmAuthentication(&partnotice, buffer,
+						       sizeof(ZPacket_t),
+						       &hdrlen,
+						       realm->name);
+		if (retval != ZERR_NONE)
+		    syslog(LOG_WARNING, "rlm_sendit_auth set addr: %s",
+			   error_message(retval));
 	    }
 
-	    ptr = buffer+hdrlen;
+	    if (!retval) {
+		(void) memcpy(buffer + hdrlen, partnotice.z_message,
+			      partnotice.z_message_len);
 
-	    (void) memcpy(ptr, partnotice.z_message, partnotice.z_message_len);
-
-	    buffer_len = hdrlen+partnotice.z_message_len;
-
-	    /* now send */
-	    if ((retval = ZSendPacket(buffer, buffer_len, 0)) != ZERR_NONE) {
-		syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s",
-		       error_message(retval));
-		free(buffer);
-		return(retval);
+		retval = ZSendPacket(buffer,
+				     hdrlen + partnotice.z_message_len, 0);
+		if (retval)
+		    syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s",
+			   error_message(retval));
 	    }
 
-	    if (!(nacked = (Unacked *)malloc(sizeof(Unacked)))) {
-		/* no space: just punt */
-		syslog(LOG_ERR, "rlm_sendit_auth nack malloc");
-		free(buffer);
-		return ENOMEM;
+	    if (!retval) {
+		retval = realm_auth_sendit_nacked(buffer, realm,
+						  partnotice.z_uid,
+						  ack_to_sender, who);
+		if (retval) /* no space: just punt */
+		    syslog(LOG_ERR,
+			   "rlm_sendit_auth: realm_auth_sendit_nacked: %s",
+			   error_message(retval));
 	    }
 
-	    nacked->rexmits = 0;
-	    nacked->packet = buffer;
-	    nacked->dest.rlm.rlm_idx = realm - otherrealms;
-	    nacked->dest.rlm.rlm_srv_idx = realm->idx;
-	    nacked->packsz = buffer_len;
-	    nacked->uid = partnotice.z_uid;
-
-	    /* Do the ack for the last frag, below */
-	    if (ack_to_sender)
-		nacked->ack_addr = *who;
-	    else
-		nacked->ack_addr.sin_addr.s_addr = 0;
-
-	    /* set a timer to retransmit */
-	    nacked->timer = timer_set_rel(rexmit_times[0], rlm_rexmit, nacked);
-
-	    /* chain in */
-	    Unacked_insert(&rlm_nacklist, nacked);
-
-	    offset += fragsize;
+	    if (!retval)
+		offset += fragsize;
 
 	    if (!notice->z_message_len)
 		break;
 	}
-    }
-    else {
+    } else if (!retval) {
 	/* This is easy, no further fragmentation needed */
-	ptr = buffer+hdrlen;
+	(void)memcpy(buffer + hdrlen, newnotice.z_message,
+		      newnotice.z_message_len);
 
-	(void) memcpy(ptr, newnotice.z_message, newnotice.z_message_len);
-
-        buffer_len = hdrlen+newnotice.z_message_len;
-
-	/* now send */
-	if ((retval = ZSendPacket(buffer, buffer_len, 0)) != ZERR_NONE) {
+	retval = ZSendPacket(buffer, hdrlen + newnotice.z_message_len, 0);
+	if (retval)
 	    syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s",
 		   error_message(retval));
-	    free(buffer);
-	    return(retval);
+	else {
+	    retval = realm_auth_sendit_nacked(buffer, realm,
+					      partnotice.z_uid,
+					      ack_to_sender, who);
+	    if (retval) /* no space: just punt */
+		syslog(LOG_ERR, "rlm_sendit_auth: realm_auth_sendit_nacked: %s",
+		       error_message(retval));
 	}
-
-	/* now we've sent it, mark it as not ack'ed */
-
-	if (!(nacked = (Unacked *)malloc(sizeof(Unacked)))) {
-	    /* no space: just punt */
-	    syslog(LOG_ERR, "rlm_sendit_auth nack malloc");
-	    free(buffer);
-	    return 0;
-	}
-
-	nacked->rexmits = 0;
-	nacked->packet = buffer;
-	nacked->dest.rlm.rlm_idx = realm - otherrealms;
-	nacked->dest.rlm.rlm_srv_idx = realm->idx;
-	nacked->packsz = buffer_len;
-	nacked->uid = notice->z_uid;
-
-	/* Do the ack for the last frag, below */
-	if (ack_to_sender)
-	    nacked->ack_addr = *who;
-	else
-	    nacked->ack_addr.sin_addr.s_addr = 0;
-
-	/* set a timer to retransmit */
-	nacked->timer = timer_set_rel(rexmit_times[0], rlm_rexmit, nacked);
-	/* chain in */
-	Unacked_insert(&rlm_nacklist, nacked);
     }
-    return 0;
+
+    if (retval && buffer != NULL)
+	free(buffer);
+    return retval;
 }
 
 static int
