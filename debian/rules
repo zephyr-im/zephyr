@@ -30,9 +30,9 @@ export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
 # FOR AUTOCONF 2.52 AND NEWER ONLY
 ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
-  confflags += --build $(DEB_HOST_GNU_TYPE)
+  CONFIGURE_ROOT += --build $(DEB_HOST_GNU_TYPE)
 else
-  confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
+  CONFIGURE_ROOT += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
 endif
 
 BUILD_VARIETALS=$(VARIETALS) no-krb
@@ -61,6 +61,8 @@ configure: configure-stamp autotools
 configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
+	libtoolize -i
+	autoreconf
 	mkdir -p $(BUILD_VARIETALS)
 	$(foreach VARIETY,$(BUILD_VARIETALS),(cd $(VARIETY) && CFLAGS="-g -O" ../configure $(CONFIGURE_$(VARIETY)) $(CONFIGURE_ROOT));)
 	touch configure-stamp
@@ -84,6 +86,9 @@ clean:
 	-rm -f build-stamp configure-stamp
 
 	# Add here commands to clean up after the build process.
+	-rm -rf autom4te.cache m4
+	-rm aclocal.m4 config.guess config.sub configure h/config.h.in \
+		install-sh ltmain.sh
 	-rm -rf $(VARIETALS) no-krb debian/tmp-krb*
 	-rm debian/zephyr-server-krb.files
 	-rm debian/zephyr-server-krb.templates

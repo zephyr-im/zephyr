@@ -32,3 +32,11 @@ TAGS
 /krb5/*
 /no-krb/*
 /debian/libzephyr4-krb5.files
+aclocal.m4
+configure
+h/config.h.in
+ltmain.sh
+m4
+config.guess
+config.sub
+install-sh

@@ -1,4 +1,4 @@
-SHELL = /bin/sh
+SHELL=@SHELL@
 
 prefix=@prefix@
 exec_prefix=@exec_prefix@

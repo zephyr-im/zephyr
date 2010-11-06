@@ -14,7 +14,6 @@ libdir=@libdir@
 
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
-ENSUREDIR=${srcdir}/ensure-dir.sh
 INSTALL=@INSTALL@
 
 SUBDIRS=lib clients server zhm zwgc
@@ -26,21 +25,21 @@ all check clean:
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
 install:
-	${ENSUREDIR} ${DESTDIR}${prefix} 755
-	${ENSUREDIR} ${DESTDIR}${exec_prefix} 755
-	${ENSUREDIR} ${DESTDIR}${bindir} 755
-	${ENSUREDIR} ${DESTDIR}${libdir} 755
-	${ENSUREDIR} ${DESTDIR}${datadir} 755
-	${ENSUREDIR} ${DESTDIR}${datadir}/zephyr 755
-	${ENSUREDIR} ${DESTDIR}${sysconfdir} 755
-	${ENSUREDIR} ${DESTDIR}${sysconfdir}/zephyr/acl 755
-	${ENSUREDIR} ${DESTDIR}${sbindir} 755
-	${ENSUREDIR} ${DESTDIR}${includedir} 755
-	${ENSUREDIR} ${DESTDIR}${includedir}/zephyr 755
-	${ENSUREDIR} ${DESTDIR}${mandir} 755
-	${ENSUREDIR} ${DESTDIR}${mandir}/man1 755
-	${ENSUREDIR} ${DESTDIR}${mandir}/man3 755
-	${ENSUREDIR} ${DESTDIR}${mandir}/man8 755
+	${INSTALL} -d ${DESTDIR}${prefix} 755
+	${INSTALL} -d ${DESTDIR}${exec_prefix} 755
+	${INSTALL} -d ${DESTDIR}${bindir} 755
+	${INSTALL} -d ${DESTDIR}${libdir} 755
+	${INSTALL} -d ${DESTDIR}${datadir} 755
+	${INSTALL} -d ${DESTDIR}${datadir}/zephyr 755
+	${INSTALL} -d ${DESTDIR}${sysconfdir} 755
+	${INSTALL} -d ${DESTDIR}${sysconfdir}/zephyr/acl 755
+	${INSTALL} -d ${DESTDIR}${sbindir} 755
+	${INSTALL} -d ${DESTDIR}${includedir} 755
+	${INSTALL} -d ${DESTDIR}${includedir}/zephyr 755
+	${INSTALL} -d ${DESTDIR}${mandir} 755
+	${INSTALL} -d ${DESTDIR}${mandir}/man1 755
+	${INSTALL} -d ${DESTDIR}${mandir}/man3 755
+	${INSTALL} -d ${DESTDIR}${mandir}/man8 755
 	${INSTALL} -m 644 ${srcdir}/h/zephyr/mit-copyright.h \
 		${DESTDIR}${includedir}/zephyr
 	${INSTALL} -m 644 ${srcdir}/h/zephyr/zephyr.h \

@@ -1,5 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(server/server.c)
+AC_INIT([zephyr],[__DEV__])
+AC_CONFIG_MACRO_DIR([m4])
 
 test -d h || mkdir h
 test -d h/zephyr || mkdir h/zephyr
@@ -11,14 +12,13 @@ AC_SUBST(lsbindir)
 
 AC_CANONICAL_SYSTEM
 AC_CANONICAL_TARGET
-AC_DEFINE_UNQUOTED(MACHINE_TYPE, "$host")
+AC_DEFINE_UNQUOTED(MACHINE_TYPE, "$host", [Define to the type of the host system.])
 
 dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_YACC
 AC_PROG_LEX
 AC_PROG_INSTALL
-AC_PROG_RANLIB
 AC_PROG_LIBTOOL
 
 AC_MSG_CHECKING(location of temporary directory)
@@ -29,7 +29,7 @@ elif test -d /usr/tmp; then
 else
 	found_tmp=/tmp/
 fi
-AC_DEFINE_UNQUOTED(FOUND_TMP, "${found_tmp}")
+AC_DEFINE_UNQUOTED(FOUND_TMP, "${found_tmp}", [Define to a temporary directory on your system.])
 AC_MSG_RESULT(${found_tmp})
 
 dnl Checks for header files.
@@ -64,7 +64,7 @@ else
 	AC_WARN([Can't find 32-bit type, using long])
 	int32=long
 fi
-AC_DEFINE_UNQUOTED(ZEPHYR_INT32, ${int32})
+AC_DEFINE_UNQUOTED(ZEPHYR_INT32, ${int32}, [Define to a signed 32-bit integral type.])
 AC_MSG_RESULT(${int32})
 
 AC_CHECK_LIB(w, wslen)
@@ -96,10 +96,7 @@ AC_CHECK_LIB(44bsd, strerror)
 AC_CHECK_LIB(iconv, iconv_open, [LIBICONV=-liconv; AC_SUBST(LIBICONV)])
 
 AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
-AC_CHECK_LIB(src, srcsrpy, [SLIB=-lsrc; AC_DEFINE(HAVE_SRC)])
 AC_SUBST(TLIB)
-AC_SUBST(RLIB)
-AC_SUBST(SLIB)
 
 AC_ARG_WITH(krb4,
 	[  --with-krb4=PREFIX      Use Kerberos 4],
@@ -122,7 +119,7 @@ if test "$krb4" != no; then
 			   [AC_MSG_ERROR(Kerberos 4 libraries not found)],
 			   -ldes)],
 	     -ldes425 -lkrb5 -lk5crypto -lcom_err)
-	AC_DEFINE(HAVE_KRB4)
+	AC_DEFINE(HAVE_KRB4, 1, [Define to compile with Kerberos support.])
 	LIBZEPHYR_LIBS="$LIBZEPHYR_LIBS $KRB4_LIBS"
 fi
 AC_SUBST(KRB4_LIBS)
@@ -154,7 +151,7 @@ if test "$krb5" != no; then
    AC_CHECK_FUNC(krb5_init_context, :,
 	           [AC_MSG_ERROR(Kerberos 5 libraries not found)])
    LIBS="$local_save_LIBS"
-   AC_DEFINE(HAVE_KRB5)
+   AC_DEFINE(HAVE_KRB5, 1, [Define to compile with Kerberos 5 support.])
    LIBZEPHYR_LIBS="$LIBZEPHYR_LIBS $KRB5_LIBS"
    # the zephyr library needs -lresolv if it's built with krb5
    AC_CHECK_LIB(resolv, res_send, LIBZEPHYR_LIBS="-lresolv $LIBZEPHYR_LIBS",
@@ -168,9 +165,52 @@ AC_SUBST(KRB5_LIBS)
 
 AC_SUBST(LIBZEPHYR_LIBS)
 
-ATHENA_HESIOD
-ATHENA_REGEXP
-ATHENA_UTIL_COM_ERR
+AC_ARG_WITH(hesiod,
+	[  --with-hesiod=PREFIX    Use Hesiod],
+	[hesiod="$withval"], [hesiod=no])
+if test "$hesiod" != no; then
+	AC_CHECK_FUNC(res_send, :, AC_CHECK_LIB(resolv, res_send))
+        if test "$hesiod" != yes; then
+        	CPPFLAGS="$CPPFLAGS -I$hesiod/include"
+        	LDFLAGS="$LDFLAGS -L$hesiod/lib"
+        fi
+        AC_CHECK_LIB(hesiod, hes_resolve, :,
+	     [AC_MSG_ERROR(Hesiod library not found)],$LIBS)
+	HESIOD_LIBS="-lhesiod"
+	AC_DEFINE(HAVE_HESIOD, 1, [Define to compile with Hesiod support.])
+fi
+
+AC_SUBST(HESIOD_LIBS)
+
+AC_ARG_WITH(regex,
+	[  --with-regex=PREFIX     Use installed regex library],
+	[regex="$withval"], [regex=no])
+if test "$regex" != no; then
+	if test "$regex" != yes; then
+		CPPFLAGS="$CPPFLAGS -I$regex/include"
+		LDFLAGS="$LDFLAGS -L$regex/lib"
+	fi
+	AC_CHECK_LIB(regex, regcomp, REGEX_LIBS=-lregex,
+		     [AC_MSG_ERROR(regex library not found)])
+else
+	AC_CHECK_FUNC(regcomp, :,
+		      [AC_MSG_ERROR(can't find POSIX regexp support)])
+fi
+AC_SUBST(REGEX_LIBS)
+
+AC_ARG_WITH(com_err,
+	[  --with-com_err=PREFIX   Specify location of com_err],
+	[com_err="$withval"], [com_err=yes])
+if test "$com_err" != no; then
+	if test "$com_err" != yes; then
+		CPPFLAGS="$CPPFLAGS -I$com_err/include"
+		LDFLAGS="$LDFLAGS -L$com_err/lib"
+	fi
+	AC_CHECK_LIB(com_err, com_err, :,
+		     [AC_MSG_ERROR(com_err library not found)])
+else
+	AC_MSG_ERROR(This package requires com_err.)
+fi
 
 AC_ARG_WITH(ss,
 	[  --with-ss=PREFIX        Specify location of ss (requires com_err)],
@@ -197,7 +237,7 @@ AC_ARG_WITH([cares], AS_HELP_STRING([--with-cares], [Use libcares]))
 if test "x$with_ares" != "xno"; then
    AC_CHECK_LIB(cares, ares_getnameinfo,
 		       [ARES_LIBS="-lcares"
-		       AC_DEFINE(HAVE_ARES)],
+		       AC_DEFINE(HAVE_ARES, 1, [Define to compile with c-ares support.])],
 		       AS_IF([test "x$with_ares" = "xyes"],
 			     AC_MSG_ERROR(libcares not found)))
 fi
@@ -239,7 +279,8 @@ CPPFLAGS="${local_save_CPPFLAGS}"
 ])
 krb5_authent_type='krb5_authenticator *'
 if test "$ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer" = yes; then
-        AC_DEFINE(KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER)dnl
+        AC_DEFINE(KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER, 1,
+                  [Define if `krb5_auth_con_getauthenticator' takes a double pointer third arg.])dnl
         krb5_authent_type='krb5_authenticator **'
 fi
 AC_MSG_RESULT($krb5_authent_type)
@@ -255,7 +296,8 @@ ac_cv_have_krb5_ticket_enc_part2=no)
 ])
 CPPFLAGS="${local_save_CPPFLAGS}"
 if test "$ac_cv_have_krb5_ticket_enc_part2" = yes; then
-	AC_DEFINE(HAVE_KRB5_TICKET_ENC_PART2)dnl
+	AC_DEFINE(HAVE_KRB5_TICKET_ENC_PART2, 1,
+                  [Define to 1 if `enc_part2' is member of `krb5_ticket'.])dnl
 fi
 AC_MSG_RESULT($ac_cv_have_krb5_ticket_enc_part2)
 
@@ -270,35 +312,39 @@ ac_cv_have_krb5_creds_keyblock_enctype=no)
 ])
 CPPFLAGS="${local_save_CPPFLAGS}"
 if test "$ac_cv_have_krb5_creds_keyblock_enctype" = yes; then
-	AC_DEFINE(HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE)dnl
+	AC_DEFINE(HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE, 1,
+                  [Define if `keyblock.enctype' is member of `krb5_creds'.])dnl
 fi
 AC_MSG_RESULT($ac_cv_have_krb5_creds_keyblock_enctype)
 
 AC_ARG_ENABLE(cmu-zwgcplus,
 [  --enable-cmu-zwgcplus   enable CMU zwgcplus extensions],[
 if test "$enableval" = "yes"; then
-        AC_DEFINE(CMU_ZWGCPLUS,1)
+        AC_DEFINE(CMU_ZWGCPLUS, 1, [Define to enable zwgcplus support])
 fi
 ])
 
 AC_ARG_ENABLE(cmu-zctl-punt,
 [  --enable-cmu-zctl-punt  enable CMU zctl punt extensions],[
 if test "$enableval" = "yes"; then
-        AC_DEFINE(CMU_ZCTL_PUNT,1)
+        AC_DEFINE(CMU_ZCTL_PUNT, 1,
+                  [Define to pull in CMU zctl punt backward compat foo])
 fi
 ])
 
 AC_ARG_ENABLE(cmu-hm-flush-restrict,
 [  --enable-cmu-hm-flush-restrict   enable CMU zctl hm flush restriction],[
 if test "$enableval" = "yes"; then
-        AC_DEFINE(HM_FLUSH_RESTRICT,1)
+        AC_DEFINE(HM_FLUSH_RESTRICT, 1,
+                  [Define to get hm_flush restrictions in zctl])
 fi
 ])
 
 AC_ARG_ENABLE(cmu-opstaff-locate-self,
 [  --enable-cmu-opstaff-locate-self enable CMU opstaff locate-self ability],[
 if test "$enableval" = "yes"; then
-        AC_DEFINE(OPSTAFF_LOCATE_SELF,1)
+        AC_DEFINE(OPSTAFF_LOCATE_SELF, 1,
+                  [Define to allow users to locate themselves if they are opstaff])
 fi
 ])
 
