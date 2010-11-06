@@ -17,7 +17,7 @@ PACKAGES:=-plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev -plibzep
 export DH_OPTIONS
 CONFIGURE_ROOT=--prefix=/usr --mandir=\$${prefix}/share/man \
 	--infodir=\$${prefix}/share/info --sysconfdir=/etc --datadir=/etc \
-	--with-ares=/usr --with-hesiod=/usr --enable-cmu-zwgcplus
+	--with-cares=/usr --with-hesiod=/usr --enable-cmu-zwgcplus
 CONFIGURE_krb5=--with-krb5=/usr
 CONFIGURE_krb45=--with-krb4=/usr --with-krb5=/usr
 CONFIGURE_krb=--with-krb4=/usr
@@ -117,7 +117,7 @@ install: build
 	done
 	mkdir -p debian/tmp/usr/lib/python2.5/site-packages
 	install -c -m 644 python/zephyr.py debian/tmp/usr/lib/python2.5/site-packages
-	
+
 # Build architecture-independent files here.
 # Pass -i to all debhelper commands in this target to reduce clutter.
 binary-indep: build install

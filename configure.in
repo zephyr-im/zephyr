@@ -192,10 +192,15 @@ LIBS="$KRB5_LIBS $KRB4_LIBS $LIBS"
 dnl Checks for library functions.
 #XXX more looking for res_send
 #AC_CHECK_FUNC(res_send, :, AC_CHECK_LIB(resolv, res_send))
-AC_CHECK_LIB(cares, ares_getnameinfo,
-		    [ARES_LIBS="-lcares"
-		    AC_DEFINE(HAVE_ARES)],
-		    :)
+
+AC_ARG_WITH([cares], AS_HELP_STRING([--with-cares], [Use libcares]))
+if test "x$with_ares" != "xno"; then
+   AC_CHECK_LIB(cares, ares_getnameinfo,
+		       [ARES_LIBS="-lcares"
+		       AC_DEFINE(HAVE_ARES)],
+		       AS_IF([test "x$with_ares" = "xyes"],
+			     AC_MSG_ERROR(libcares not found)))
+fi
 AC_SUBST(ARES_LIBS)
 		    
 AC_PROG_GCC_TRADITIONAL
