@@ -156,14 +156,14 @@ ZInitialize(void)
       char *p; /* XXX define this somewhere portable */
       /* XXX check ticket file here */
       code = krb5_get_default_realm(Z_krb5_ctx, &p);
+      if (code)
+	return code;
       strcpy(__Zephyr_realm, p);
 #ifdef HAVE_KRB5_FREE_DEFAULT_REALM
       krb5_free_default_realm(Z_krb5_ctx, p);
 #else
       free(p);
 #endif
-      if (code)
-	return code;
     }
 #else
 #ifdef HAVE_KRB4
