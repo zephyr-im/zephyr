@@ -93,13 +93,13 @@ clean:
 	-rm debian/zephyr-server-krb45.*
 	-rm debian/libzephyr4-krb.files debian/libzephyr4-krb5.files debian/libzephyr4-krb45.files
 
-	dh_clean
+	dh_clean -XTAGS
 
 install: DH_OPTIONS=
 install: build
 	dh_testdir
 	dh_testroot
-	dh_clean -k
+	dh_prep -XTAGS
 	-rm -rf debian/tmp-krb*
 	dh_installdirs
 
