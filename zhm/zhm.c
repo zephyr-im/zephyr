@@ -169,7 +169,7 @@ main(int argc,
     DPR2("zephyr client port: %u\n", ntohs(cli_port));
 
     /* Main loop */
-    for ever {
+    for (;;) {
 	/* Wait for incoming packets or queue timeouts. */
 	DPR("Waiting for a packet...");
 	fd = ZGetFD();

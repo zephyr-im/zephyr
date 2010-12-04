@@ -43,8 +43,6 @@
 #define Zperr(e)
 #endif
 
-#define ever (;;)
-
 #define BOOTING 1
 #define NOTICES 2
 
