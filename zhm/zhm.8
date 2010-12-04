@@ -10,9 +10,11 @@
 .SH NAME
 zhm \- Zephyr HostManager
 .SH SYNOPSIS
-.B /etc/athena/zhm
+.B /usr/sbin/zhm
 [
 .BI -d
+] [
+.BI -n
 ] [
 .BI -h
 ] [
@@ -21,6 +23,8 @@ zhm \- Zephyr HostManager
 .BI -i
 ] [
 .BI -f
+] [
+.BI -N
 ] [
 .BI server
 .BI ...
@@ -38,6 +42,10 @@ The
 .I -d
 option turns on debugging mode, and sends its information to syslog
 LOG_DAEMON messages.
+.PP
+The
+.I -n
+option causes zhm to not attempt to put itself in the background.
 .PP
 The
 .I -h
@@ -69,6 +77,12 @@ The
 .I -f
 option disables the "flush" operation which allows any client to flush
 all subscriptions for the host.
+.PP
+The
+.I -N
+option supresses the initial "boot" message that flushes all subscriptions
+for the host, which is useful if you're restarting zhm on a host that
+people are using.
 .PP
 The optional
 .I server
