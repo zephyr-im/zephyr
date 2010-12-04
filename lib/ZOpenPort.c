@@ -28,16 +28,15 @@ ZOpenPort(u_short *port)
 
     if ((__Zephyr_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 	__Zephyr_fd = -1;
-	return (errno);
+	return errno;
     }
 
     bindin.sin_family = AF_INET;
 
     if (port && *port) {
 	bindin.sin_port = *port;
-	if (setsockopt(__Zephyr_fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof val) < 0) {
+	if (setsockopt(__Zephyr_fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof val) < 0)
 	    return errno;
-	}
     } else {
 	bindin.sin_port = 0;
     }
@@ -46,15 +45,22 @@ ZOpenPort(u_short *port)
 
     if (bind(__Zephyr_fd, (struct sockaddr *)&bindin, sizeof(bindin)) < 0) {
 	if (errno == EADDRINUSE && port && *port)
-	    return (ZERR_PORTINUSE);
+	    return ZERR_PORTINUSE;
 	else
-	    return (errno);
+	    return errno;
     }
 
+    if (port && *port) {
+         /* turn SO_REUSEADDR back off so no one else can steal it */
+        val = 0;
+	if (setsockopt(__Zephyr_fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof val) < 0)
+	    return errno;
+    }
+    
     if (!bindin.sin_port) {
 	len = sizeof(bindin);
 	if (getsockname(__Zephyr_fd, (struct sockaddr *)&bindin, &len))
-	    return (errno);
+	    return errno;
     }
     
     __Zephyr_port = bindin.sin_port;
@@ -63,5 +69,5 @@ ZOpenPort(u_short *port)
     if (port)
 	*port = bindin.sin_port;
 
-    return (ZERR_NONE);
+    return ZERR_NONE;
 }
