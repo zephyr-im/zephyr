@@ -20,7 +20,7 @@ static const char rcsid_ZVariables_c[] = "$Id$";
 #include <ctype.h>
 #include <pwd.h>
 
-static int get_localvarfile(char *bfr);
+Code_t get_localvarfile(char *bfr);
 static char *get_varval(char *fn, char *val);
 static int varline(char *bfr, char *var);
 
@@ -28,8 +28,10 @@ char *
 ZGetVariable(char *var)
 {
     char varfile[128], *ret;
+    Code_t code;
 
-    if (get_localvarfile(varfile))
+    code = get_localvarfile(varfile);
+    if (code)
 	return ((char *)0);
 
     if ((ret = get_varval(varfile, var)) != ZERR_NONE)
@@ -45,11 +47,13 @@ ZSetVariable(char *var, char *value)
     int written;
     FILE *fpin, *fpout;
     char varfile[128], varfilebackup[128], varbfr[512];
+    Code_t code;
 
     written = 0;
-	
-    if (get_localvarfile(varfile))
-	return (ZERR_INTERNAL);
+
+    code = get_localvarfile(varfile);
+    if (code)
+	return code;
 
     (void) strcpy(varfilebackup, varfile);
     (void) strcat(varfilebackup, ".backup");
@@ -83,9 +87,11 @@ ZUnsetVariable(char *var)
 {
     FILE *fpin, *fpout;
     char varfile[128], varfilebackup[128], varbfr[512];
+    Code_t code;
 
-    if (get_localvarfile(varfile))
-	return (ZERR_INTERNAL);
+    code = get_localvarfile(varfile);
+    if (code)
+	return code;
 
     (void) strcpy(varfilebackup, varfile);
     (void) strcat(varfilebackup, ".backup");
@@ -108,7 +114,7 @@ ZUnsetVariable(char *var)
     return (ZERR_NONE);
 }	
 
-static int
+Code_t
 get_localvarfile(char *bfr)
 {
     char *envptr;
@@ -122,10 +128,8 @@ get_localvarfile(char *bfr)
 	if (envptr)
 	    (void) strcpy(bfr, envptr);
 	else {
-	    if (!(pwd = getpwuid((int) getuid()))) {
-		fprintf(stderr, "Zephyr internal failure: Can't determine your home directory.\n");
-		return (1);
-	    }
+	    if (!(pwd = getpwuid((int) getuid())))
+		return errno;
 	    (void) strcpy(bfr, pwd->pw_dir);
 	}
 
