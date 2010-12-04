@@ -47,21 +47,21 @@
 #define NOTICES 2
 
 /* main.c */
-void die_gracefully __P((void));
+void die_gracefully(void);
 
 /* zhm_client.c */
-void transmission_tower __P((ZNotice_t *, char *, int));
-Code_t send_outgoing __P((ZNotice_t *));
+void transmission_tower(ZNotice_t *, char *, int);
+Code_t send_outgoing(ZNotice_t *);
 
 /* queue.c */
-void init_queue __P((void));
-Code_t add_notice_to_queue __P((ZNotice_t *, char *, struct sockaddr_in *,
-				int));
-Code_t remove_notice_from_queue __P((ZNotice_t *, ZNotice_Kind_t *,
-				     struct sockaddr_in *));
-void retransmit_queue __P((struct sockaddr_in *));
-void disable_queue_retransmits __P((void));
-int queue_len __P((void));
+void init_queue(void);
+Code_t add_notice_to_queue(ZNotice_t *, char *, struct sockaddr_in *,
+				int);
+Code_t remove_notice_from_queue(ZNotice_t *, ZNotice_Kind_t *,
+				     struct sockaddr_in *);
+void retransmit_queue(struct sockaddr_in *);
+void disable_queue_retransmits(void);
+int queue_len(void);
 
 struct sockaddr_in serv_sin;
 extern int rexmit_times[];
