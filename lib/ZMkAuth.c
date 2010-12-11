@@ -160,7 +160,7 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
     }
     if (!result)
 	result = ZMakeZcode(notice->z_ascii_authent, zcode_len,
-			    (unsigned char *)authent->data, authent->length);
+			    (unsigned char *)authent->data, notice->z_authent_len);
 
     /* format the notice header, with a zero checksum */
     if (!result)
