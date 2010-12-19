@@ -104,10 +104,6 @@ char acl_dir[128];
 char subs_file[128];
 
 int zdebug;
-#ifdef DEBUG_MALLOC
-int dump_malloc_stats = 0;
-unsigned long m_size;
-#endif
 #ifdef DEBUG
 int zalone;
 #endif
@@ -313,9 +309,7 @@ main(int argc,
     uptime = NOW;
 
     realm_wakeup();
-#ifdef DEBUG_MALLOC
-    malloc_inuse(&m_size);
-#endif
+
     for (;;) {
 	if (doreset)
 	    do_reset();
@@ -345,16 +339,6 @@ main(int argc,
 	if (nfound < 0) {
 	    if (errno != EINTR)
 		syslog(LOG_WARNING, "select error: %m");
-#ifdef DEBUG_MALLOC
-	    if (dump_malloc_stats) {
-		unsigned long foo,histid2;
-
-		dump_malloc_stats = 0;
-		foo = malloc_inuse(&histid2);
-		printf("Total inuse: %d\n",foo);
-		malloc_list(2,m_size,histid2);
-	    }
-#endif
 	    continue;
 	}
 
@@ -555,9 +539,6 @@ static RETSIGTYPE
 dbug_on(int sig)
 {
     syslog(LOG_DEBUG, "debugging turned on");
-#ifdef DEBUG_MALLOC
-    dump_malloc_stats = 1;
-#endif
     zdebug = 1;
 }
 
@@ -565,9 +546,6 @@ static RETSIGTYPE
 dbug_off(int sig)
 {
     syslog(LOG_DEBUG, "debugging turned off");
-#ifdef DEBUG_MALLOC
-    malloc_inuse(&m_size);
-#endif
     zdebug = 0;
 }
 
