@@ -50,8 +50,6 @@ static const char rcsid_main_c[] =
   (if the client has not acknowledged a packet after a given timeout).
 */
 
-#define	EVER		(;;)		/* don't stop looping */
-
 static int do_net_setup(void);
 static int initialize(void);
 static void usage(void);
@@ -318,7 +316,7 @@ main(int argc,
 #ifdef DEBUG_MALLOC
     malloc_inuse(&m_size);
 #endif
-    for EVER {
+    for (;;) {
 	if (doreset)
 	    do_reset();
 
