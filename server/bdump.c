@@ -850,9 +850,6 @@ transmit_tcp(char *pack, int packlen)
         pack = outmsg.data;
     }
 #endif
-
-    syslog(LOG_DEBUG, "transmit_tcp: packet is %d bytes", packlen);
-
     length = htons((unsigned short) packlen);
 
     count = net_write(output, (char *) &length, sizeof(length));
