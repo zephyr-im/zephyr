@@ -1373,7 +1373,7 @@ bdump_recv_loop(Server *server)
 	    if (realm) {
 		retval = subscr_realm(realm, &notice);
 		if (retval != ZERR_NONE) {
-		    syslog(LOG_WARNING, "bdump_recv_loop: subscr_eralm failed: %s",
+		    syslog(LOG_WARNING, "bdump_recv_loop: subscr_realm failed: %s",
 			   error_message(retval));
 		    free(packet);
 		    return retval;
