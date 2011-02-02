@@ -50,11 +50,11 @@ static const char rcsid[] =
  * Timer *timer_set_rel (time_rel, proc, arg)
  *      long time_rel;
  *      void (*proc)();
- *      caddr_t arg;
+ *      void *arg;
  * Timer *timer_set_abs (time_abs, proc, arg)
  *      long time_abs;
  *      void (*proc)();
- *      caddr_t arg;
+ *      void *arg;
  *
  * void timer_reset(tmr)
  *      Timer *tmr;

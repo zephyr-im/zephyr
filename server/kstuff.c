@@ -69,7 +69,7 @@ GetKerberosData(int fd, /* file descr. to read from */
 	return(KFAILURE);
     }
     for (i=0; i<ticket.length; i++) {
-	if (read(fd, (caddr_t) &(ticket.dat[i]), 1) != 1) {
+	if (read(fd, &ticket.dat[i], 1) != 1) {
 	    syslog(LOG_WARNING,"bad tkt read");
 	    return(KFAILURE);
 	}
@@ -116,7 +116,7 @@ SendKerberosData(int fd,	/* file descriptor to write onto */
     size_to_write = strlen (p);
     if ((written = write(fd, p, size_to_write)) != size_to_write)
 	return (written < 0) ? errno : ZSRV_PKSHORT;
-    if ((written = write(fd, (caddr_t) (ticket->dat), ticket->length))
+    if ((written = write(fd, ticket->dat, ticket->length))
 	!= ticket->length)
 	return (written < 0) ? errno : ZSRV_PKSHORT;
 

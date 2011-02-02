@@ -495,7 +495,7 @@ detach(void)
 	   * doesn't already have one.  POSIX systems won't include
 	   * <sys/ioctl.h> (see ../h/sysdep.h); if TIOCNOTTY is defined anyway,
 	   * this is unnecessary but won't hurt. */
-	  ioctl(i, TIOCNOTTY, (caddr_t) 0);
+	  ioctl(i, TIOCNOTTY, NULL);
 #endif
 	  close(i);
      }

@@ -308,7 +308,7 @@ ZParseNotice(char *buffer,
     if (numfields || *(ptr - 1) != '\0')
 	BAD_PACKET("end of headers");
 
-    notice->z_message = (caddr_t) ptr;
+    notice->z_message = (void *)ptr;
     notice->z_message_len = len-(ptr-buffer);
 
     return (ZERR_NONE);

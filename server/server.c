@@ -87,7 +87,7 @@ static void server_queue(Server *, int, void *, int,
 static void server_hello(Server *, int);
 static void setup_server(Server *, struct in_addr *);
 static void srv_rexmit(void *);
-static void server_forw_reliable(Server *, caddr_t, int, ZNotice_t *);
+static void server_forw_reliable(Server *, void *, int, ZNotice_t *);
 static Code_t admin_dispatch(ZNotice_t *, int, struct sockaddr_in *,
 				  Server *);
 static Code_t kill_clt(ZNotice_t *, Server *);
@@ -538,7 +538,7 @@ server_kill_clt(Client *client)
     char buf[512], *lyst[2];
     ZNotice_t notice;
     ZNotice_t *pnotice; /* speed hack */
-    caddr_t pack;
+    char *pack;
     int packlen, auth;
     Code_t retval;
 
@@ -1220,7 +1220,7 @@ server_forward(ZNotice_t *notice,
 	       struct sockaddr_in *who)
 {
     int i;
-    caddr_t pack;
+    void *pack;
     int packlen;
     Code_t retval;
 
@@ -1256,7 +1256,7 @@ server_forward(ZNotice_t *notice,
 
 static void
 server_forw_reliable(Server *server,
-		     caddr_t pack,
+		     void *pack,
 		     int packlen,
 		     ZNotice_t *notice)
 {

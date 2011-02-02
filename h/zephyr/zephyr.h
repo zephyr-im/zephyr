@@ -111,7 +111,7 @@ typedef struct _ZNotice_t {
     char                *z_ascii_checksum;
     int			z_num_other_fields;
     char		*z_other_fields[Z_MAXOTHERFIELDS];
-    caddr_t		z_message;
+    char                *z_message;
     int			z_message_len;
     int			z_num_hdr_fields;
     char                **z_hdr_fields;

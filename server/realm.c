@@ -505,7 +505,7 @@ realm_init(void)
 	for (jj = 0; jj < rlmnames[ii].nused; jj++) {
 	    hp = gethostbyname(rlmnames[ii].servers[jj]);
 	    if (hp) {
-		memmove((caddr_t) &addresses[found], (caddr_t)hp->h_addr,
+		memmove(&addresses[found], hp->h_addr,
 			sizeof(struct in_addr));
 		found++;
 	    } else
@@ -894,7 +894,7 @@ realm_sendit(ZNotice_t *notice,
 	     ZRealm *realm,
 	     int ack_to_sender)
 {
-    caddr_t pack;
+    char *pack;
     int packlen;
     Code_t retval;
     Unacked *nacked;

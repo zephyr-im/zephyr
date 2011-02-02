@@ -22,7 +22,7 @@ typedef struct _Queue {
     Timer *timer;
     int retries;
     ZNotice_t notice;
-    caddr_t packet;
+    void *packet;
     struct sockaddr_in reply;
     struct _Queue *next, **prev_p;
 } Queue;
@@ -176,7 +176,7 @@ static Code_t
 dump_queue(void)
 {
     Queue *entry;
-    caddr_t mp;
+    void *mp;
     int ml;
 
     DPR("Dumping queue...\n");

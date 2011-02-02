@@ -602,7 +602,7 @@ xhandleevent(Display *dpy,
 {
     x_gram *gram;
     
-    if (XFindContext(dpy, w, desc_context, (caddr_t *)&gram))
+    if (XFindContext(dpy, w, desc_context, (XPointer *)&gram))
       return;
 
     if (event->type == Expose)

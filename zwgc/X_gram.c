@@ -371,7 +371,7 @@ x_gram_create(Display *dpy,
         XChangeProperty(dpy, w, net_wm_desktop, XA_CARDINAL, 32, PropModeReplace,
                         (unsigned char *) &all_desktops, 1);
 
-    XSaveContext(dpy, w, desc_context, (caddr_t)gram);
+    XSaveContext(dpy, w, desc_context, (XPointer)gram);
 
     gram->can_die.tv_sec = 0;
 

@@ -132,7 +132,7 @@ xunmark(Display *dpy,
 	XContext desc_context)
 {
    if (gram == NULL)
-     if (XFindContext(dpy, w, desc_context, (caddr_t *) &gram))
+     if (XFindContext(dpy, w, desc_context, (XPointer *) &gram))
        return;
 
    xmarkClear();
@@ -206,7 +206,7 @@ xcut(Display *dpy,
      * If event is for a window that's not ours anymore (say we're
      * in the process of deleting it...), ignore it:
      */
-    if (XFindContext(dpy, w, desc_context, (caddr_t *) &gram))
+    if (XFindContext(dpy, w, desc_context, (XPointer *) &gram))
       return;
 
     /*
