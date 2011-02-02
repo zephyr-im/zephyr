@@ -650,8 +650,6 @@ Z_FormatHeader(ZNotice_t *notice,
 {
     Code_t retval;
     static char version[BUFSIZ]; /* default init should be all \0 */
-    struct sockaddr_in name;
-    unsigned int namelen = sizeof(name);
 
     if (!notice->z_sender)
 	notice->z_sender = ZGetSender();
@@ -662,10 +660,7 @@ Z_FormatHeader(ZNotice_t *notice,
 	    if (retval != ZERR_NONE)
 		return (retval);
 	}
-	retval = getsockname(ZGetFD(), (struct sockaddr *) &name, &namelen);
-	if (retval != 0)
-	    return (retval);
-	notice->z_port = name.sin_port;
+	notice->z_port = __Zephyr_port;
     }
 
     notice->z_multinotice = "";
@@ -705,9 +700,7 @@ Z_NewFormatHeader(ZNotice_t *notice,
 {
     Code_t retval;
     static char version[BUFSIZ]; /* default init should be all \0 */
-    struct sockaddr_in name;
     struct timeval tv;
-    unsigned int namelen = sizeof(name);
 
     if (!notice->z_sender)
 	notice->z_sender = ZGetSender();
@@ -718,10 +711,7 @@ Z_NewFormatHeader(ZNotice_t *notice,
 	    if (retval != ZERR_NONE)
 		return (retval);
 	}
-	retval = getsockname(ZGetFD(), (struct sockaddr *) &name, &namelen);
-	if (retval != 0)
-	    return (retval);
-	notice->z_port = name.sin_port;
+	notice->z_port = __Zephyr_port;
     }
 
     notice->z_multinotice = "";
