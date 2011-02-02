@@ -1308,7 +1308,7 @@ Z_debug_stderr(const char *format,
 
 #undef ZSetDebug
 void
-ZSetDebug(void (*proc) __P((const char *, va_list, void *)),
+ZSetDebug(void (*proc)(const char *, va_list, void *),
 	  char *arg)
 {
     __Z_debug_print = proc;

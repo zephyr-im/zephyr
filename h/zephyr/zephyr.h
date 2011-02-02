@@ -257,7 +257,8 @@ struct sockaddr_in ZGetDestAddr (void);
 
 
 #ifdef Z_DEBUG
-void ZSetDebug (void (*)(const char *, va_list, void *), void *);
+void ZSetDebug (void (*)(const char *, va_list, void *), char *);
+void Z_debug_stderr(const char *format, va_list args, void *closure);
 #define ZSetDebug(proc,closure)    (__Z_debug_print=(proc), \
 				    __Z_debug_print_closure=(closure), \
 				    (void) 0)
