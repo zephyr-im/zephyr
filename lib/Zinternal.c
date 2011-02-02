@@ -1273,13 +1273,11 @@ Code_t Z_XmitFragment(ZNotice_t *notice,
     return(ZSendPacket(buf, len, wait));
 }
 
-#ifdef Z_DEBUG
 /* For debugging printing */
 const char *const ZNoticeKinds[] = {
     "UNSAFE", "UNACKED", "ACKED", "HMACK", "HMCTL", "SERVACK", "SERVNAK",
     "CLIENTACK", "STAT"
 };
-#endif
 
 #ifdef Z_DEBUG
 

@@ -59,9 +59,10 @@ typedef char ZPacket_t[Z_MAXPKTLEN];
 
 /* Packet type */
 typedef enum {
-    UNSAFE, UNACKED, ACKED, HMACK, HMCTL, SERVACK, SERVNAK, CLIENTACK, STAT
+    UNSAFE = 0, UNACKED = 1, ACKED = 2, HMACK = 3, HMCTL = 4, SERVACK = 5,
+    SERVNAK = 6, CLIENTACK = 7, STAT = 8
 } ZNotice_Kind_t;
-extern const char *ZNoticeKinds[9];
+extern const char * const ZNoticeKinds[9];
 
 struct _ZTimeval {
 	int tv_sec;
