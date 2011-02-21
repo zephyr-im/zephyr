@@ -221,13 +221,10 @@ ZGetCredsRealm(krb5_creds **creds_out,
   result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client);
   if (!result) {
       result = krb5_cc_retrieve_cred(Z_krb5_ctx, ccache,
-#if defined(KRB5_TC_SUPPORTED_KTYPES)
+#ifdef KRB5_TC_SUPPORTED_KTYPES
 				     KRB5_TC_SUPPORTED_KTYPES, /* MIT */
-#elif defined(KRB5_TC_MATCH_SRV_NAMEONLY)
-                                     KRB5_TC_MATCH_SRV_NAMEONLY, /* Heimdal */
 #else
-                                     0, /* Alien Space Kerberos where we just
-                                           try to do no harm */
+                                     0, /* Heimdal or other Space KRB5 */
 #endif
                                      &creds_in, &creds_tmp);
       if (!result) {
@@ -238,7 +235,7 @@ ZGetCredsRealm(krb5_creds **creds_out,
 	      memcpy(*creds_out, &creds_tmp, sizeof(creds_tmp));
       }
   }
-  if (result == KRB5_CC_NOTFOUND)
+  if (result == KRB5_CC_NOTFOUND || result == KRB5_CC_END)
       result = krb5_get_credentials(Z_krb5_ctx, 0, ccache, &creds_in, creds_out);
 
   krb5_cc_close(Z_krb5_ctx, ccache);
