@@ -416,7 +416,11 @@ notice_handler(ZNotice_t *notice)
                      notice_callback, notice);
 #else
     ret = getnameinfo((const struct sockaddr *)&(notice->z_sender_sockaddr),
-		      sizeof(notice->z_sender_sockaddr),
+		      notice->z_sender_sockaddr.sa.sa_family == AF_INET ?
+                      sizeof(struct sockaddr_in) :
+                      notice->z_sender_sockaddr.sa.sa_family == AF_INET6 ?
+                      sizeof(struct sockaddr_in6) :
+                      sizeof(notice->z_sender_sockaddr),
 		      node, sizeof(node), NULL, 0, 0);
     if (ret != 0)
 	strcpy(node, "?");
