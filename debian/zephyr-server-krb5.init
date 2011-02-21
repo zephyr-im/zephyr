@@ -1,0 +1,78 @@
+#! /bin/sh
+#
+# skeleton	example file to build /etc/init.d/ scripts.
+#		This file should be used to construct scripts for /etc/init.d.
+#
+#		Written by Miquel van Smoorenburg <miquels@cistron.nl>.
+#		Modified for Debian GNU/Linux
+#		by Ian Murdock <imurdock@gnu.ai.mit.edu>.
+#
+# Version:	@(#)skeleton  1.8  03-Mar-1998  miquels@cistron.nl
+#
+# This file was automatically customized by dh-make on Mon,  4 Dec 2000 05:28:22 -0500
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/sbin/zephyrd
+NAME=zephyrd
+DESC="zephyr server"
+
+test -f $DAEMON || exit 0
+
+set -e
+
+case "$1" in
+  start)
+	if test ! -f /etc/zephyr/krb5.keytab
+	then
+		echo 'You need to get a keytab before the kerberized zephyr server will'
+                echo 'function correctly.  Get a keytab for zephyr/zephyr and put it in'
+                echo 'the file "/etc/zephyr/krb5.keytab".'
+		exit 0
+	fi
+	echo -n "Starting $DESC: "
+	start-stop-daemon --start --quiet --exec $DAEMON
+	echo "$NAME."
+	;;
+  stop)
+	echo -n "Stopping $DESC: "
+	start-stop-daemon --oknodo --stop --quiet --exec $DAEMON
+	echo "$NAME."
+	;;
+  restart)
+	#
+	#	If the "reload" option is implemented, move the "force-reload"
+	#	option to the "reload" entry above. If not, "force-reload" is
+	#	just the same as "restart".
+	#
+	echo -n "Restarting $DESC: "
+	start-stop-daemon --oknodo --stop --quiet --exec $DAEMON
+	sleep 1
+	start-stop-daemon --start --quiet --pidfile \
+		/var/run/$NAME.pid --exec $DAEMON -- $zhm_args
+	echo "$NAME."
+	;;
+  reload|force-reload)
+	echo -n "Telling $NAME to reload..."
+	start-stop-daemon --stop --signal HUP --exec $DAEMON
+	echo done.
+	;;
+  *)
+	N=/etc/init.d/$NAME
+	echo "Usage: $N {start|stop|restart|reload|force-reload}" >&2
+	# echo "Usage: $N {start|stop|restart|force-reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0
+
+### BEGIN INIT INFO
+# Provides:          zephyrd
+# Required-Start:    $syslog $network
+# Required-Stop:     $syslog
+# Should-Stop:       $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start the zephyr server.
+# Description:       Start the zephyr server.
+### END INIT INFO

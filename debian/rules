@@ -89,7 +89,10 @@ clean:
 	-rm debian/zephyr-server-krb.templates
 	-rm debian/zephyr-server-krb.config
 	-rm debian/zephyr-server-krb.postinst
-	-rm debian/zephyr-server-krb5.*
+	-rm debian/zephyr-server-krb5.README.Debian \
+		debian/zephyr-server-krb5.docs debian/zephyr-server-krb5.files \
+		debian/zephyr-server-krb5.postinst debian/zephyr-server-krb5.postrm \
+		zephyr-server-krb5.templates
 	-rm debian/zephyr-server-krb45.*
 	-rm debian/libzephyr4-krb.files debian/libzephyr4-krb5.files debian/libzephyr4-krb45.files
 
@@ -133,12 +136,12 @@ binary-arch: build install
 			cp debian/zephyr-server.$$file debian/zephyr-server-$$dir.$$file; \
 		done; \
 	done
-	for file in config; do \
+	for file in config init; do \
 		for dir in $(filter-out krb5,$(VARIETALS)); do \
 			cp debian/zephyr-server.$$file debian/zephyr-server-$$dir.$$file; \
 		done; \
 	done
-	for file in README.Debian docs init postrm; do \
+	for file in README.Debian docs postrm; do \
 		for dir in $(filter-out krb,$(VARIETALS)); do \
 			cp debian/zephyr-server-krb.$$file debian/zephyr-server-$$dir.$$file; \
 		done; \

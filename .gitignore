@@ -24,7 +24,6 @@ TAGS
 /debian/zephyr-server-krb5.README.Debian
 /debian/zephyr-server-krb5.docs
 /debian/zephyr-server-krb5.files
-/debian/zephyr-server-krb5.init
 /debian/zephyr-server-krb5.postinst
 /debian/zephyr-server-krb5.postrm
 /debian/zephyr-server-krb5.templates
