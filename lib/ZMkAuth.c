@@ -221,7 +221,15 @@ ZGetCredsRealm(krb5_creds **creds_out,
   result = krb5_cc_get_principal(Z_krb5_ctx, ccache, &creds_in.client);
   if (!result) {
       result = krb5_cc_retrieve_cred(Z_krb5_ctx, ccache,
-				     KRB5_TC_SUPPORTED_KTYPES, &creds_in, &creds_tmp);
+#if defined(KRB5_TC_SUPPORTED_KTYPES)
+				     KRB5_TC_SUPPORTED_KTYPES, /* MIT */
+#elif defined(KRB5_TC_MATCH_SRV_NAMEONLY)
+                                     KRB5_TC_MATCH_SRV_NAMEONLY, /* Heimdal */
+#else
+                                     0, /* Alien Space Kerberos where we just
+                                           try to do no harm */
+#endif
+                                     &creds_in, &creds_tmp);
       if (!result) {
 	  *creds_out = malloc(sizeof(creds_tmp));
 	  if (*creds_out == NULL)
