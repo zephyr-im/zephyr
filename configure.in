@@ -93,7 +93,7 @@ AC_SEARCH_LIBS(socket, socket)
 
 AC_CHECK_LIB(44bsd, strerror)
 
-AC_CHECK_LIB(iconv, libiconv_open, [LIBICONV=-liconv; AC_SUBST(LIBICONV)])
+AC_CHECK_LIB(iconv, iconv_open, [LIBICONV=-liconv; AC_SUBST(LIBICONV)])
 
 AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
 AC_CHECK_LIB(src, srcsrpy, [SLIB=-lsrc; AC_DEFINE(HAVE_SRC)])
