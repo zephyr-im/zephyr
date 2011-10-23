@@ -67,6 +67,8 @@ configure-stamp:
 	$(foreach VARIETY,$(BUILD_VARIETALS),(cd $(VARIETY) && CFLAGS="-g -O" ../configure $(CONFIGURE_$(VARIETY)) $(CONFIGURE_ROOT));)
 	touch configure-stamp
 
+build-arch: build-stamp
+build-indep: build-stamp
 build: configure-stamp build-stamp
 build-stamp:
 	dh_testdir
@@ -97,9 +99,10 @@ clean:
 	-rm debian/zephyr-server-krb5.README.Debian \
 		debian/zephyr-server-krb5.docs debian/zephyr-server-krb5.files \
 		debian/zephyr-server-krb5.postinst debian/zephyr-server-krb5.postrm \
-		zephyr-server-krb5.templates
+		debian/zephyr-server-krb5.templates
 	-rm debian/zephyr-server-krb45.*
-	-rm debian/libzephyr4-krb.files debian/libzephyr4-krb5.files debian/libzephyr4-krb45.files
+	-rm debian/libzephyr4-krb.files debian/libzephyr4-krb5.files \
+		debian/libzephyr4-krb45.files
 
 	dh_clean -XTAGS
 

@@ -61,8 +61,8 @@ exit 0
 
 ### BEGIN INIT INFO
 # Provides:          zephyrd
-# Required-Start:    $syslog $network
-# Required-Stop:     $syslog
+# Required-Start:    $syslog $network $remote_fs
+# Required-Stop:     $syslog $remote_fs
 # Should-Stop:       $network
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
