@@ -61,7 +61,9 @@ configure: configure-stamp autotools
 configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
-	libtoolize -i
+	libtoolize
+	aclocal
+	automake -a || true # we only want this for install-sh
 	autoreconf
 	mkdir -p $(BUILD_VARIETALS)
 	$(foreach VARIETY,$(BUILD_VARIETALS),(cd $(VARIETY) && CFLAGS="-g -O" ../configure $(CONFIGURE_$(VARIETY)) $(CONFIGURE_ROOT));)
