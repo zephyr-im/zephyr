@@ -457,7 +457,7 @@ server_timo(void *arg)
 	auth = 0;
 	break;
       default:
-	syslog(LOG_ERR,"Bad server state, server 0x%x\n", (int)which);
+	syslog(LOG_ERR,"Bad server state, server 0x%p\n", which);
 	abort();
     }
     /* now he's either TARDY, STARTING, or DEAD
