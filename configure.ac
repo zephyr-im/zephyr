@@ -229,7 +229,7 @@ if test "$ss" != no; then
 	AC_CHECK_LIB(ss, ss_perror, 
                      [SS_LIBS="-lss -lreadline -lcurses"
                      AC_DEFINE(HAVE_SS, 1, [Define if we are building with the ss library])],
-		     AS_IF([test "x$with_ss" != "xmaybe"], AC_MSG_ERROR(ss library not found)),
+		     AS_IF([test "x$ss" != "xmaybe"], AC_MSG_ERROR(ss library not found)),
                      -lcom_err -lreadline -lcurses)
         SS_OBJS='${SS_OBJS}'
 fi
