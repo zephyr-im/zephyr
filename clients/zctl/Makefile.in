@@ -29,7 +29,8 @@ ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h @X_CFLAGS@ ${CPPFLAGS}
 LDFLAGS=@LDFLAGS@
 LIBS=${LIBZEPHYR} @SS_LIBS@ @LIBS@ -lcom_err
 
-OBJS=	zctl.o zctl_cmds.o
+SS_OBJS=zctl_cmds.o
+OBJS=	zctl.o @SS_OBJS@
 
 all: zctl
 
