@@ -93,7 +93,13 @@ AC_SEARCH_LIBS(socket, socket)
 
 AC_CHECK_LIB(44bsd, strerror)
 
-AC_CHECK_LIB(iconv, iconv_open, [LIBICONV=-liconv; AC_SUBST(LIBICONV)])
+AC_ARG_WITH(iconv,
+        [  --with-libiconv=PREFIX  Location for libiconv],
+        [CPPFLAGS="$CPPFLAGS -I$libiconv/include"; LDFLAGS="$LDFLAGS -L$libconv/lib"
+        AC_CHECK_LIB(iconv, iconv_open, [LIBICONV=-liconv; AC_SUBST(LIBICONV)])],
+        AC_CHECK_FUNC(iconv_open, :,
+                      AC_CHECK_LIB(iconv, iconv_open, [LIBICONV=-liconv; AC_SUBST(LIBICONV)])))
+AC_SUBST(LIBICONV)
 
 AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
 AC_SUBST(TLIB)
