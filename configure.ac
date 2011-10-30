@@ -98,7 +98,7 @@ AC_ARG_WITH(libiconv,
         [libiconv="$withval"], [libiconv=no])
 if test "$libiconv" != no; then
         CPPFLAGS="$CPPFLAGS -I$libiconv/include"
-        LDFLAGS="$LDFLAGS -L$libconv/lib"
+        LDFLAGS="$LDFLAGS -L$libiconv/lib"
         AC_CHECK_LIB(iconv, iconv_open, [LIBICONV=-liconv; AC_SUBST(LIBICONV)])
 else
         AC_CHECK_FUNC(iconv_open, :,
