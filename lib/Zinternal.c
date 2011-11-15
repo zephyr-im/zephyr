@@ -369,6 +369,10 @@ Z_ReadWait(void)
     if (partof > Z_MAXNOTICESIZE)
 	return (ZERR_NONE);
 
+    /* Ignore garbage at the end */
+    if (notice.z_message_len > partof - part)
+	notice.z_message_len = partof - part;
+
     /*
      * If we aren't a server and we can find a notice in the queue
      * with the same multiuid field, insert the current fragment as
