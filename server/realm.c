@@ -930,8 +930,7 @@ realm_sendit(ZNotice_t *notice,
 	return;
     }
 
-    nacked->client = NULL;
-    nacked->rexmits = 0;
+    memset(nacked, 0, sizeof(Unacked));
     nacked->packet = pack;
     nacked->dest.rlm.rlm_idx = realm - otherrealms;
     nacked->dest.rlm.rlm_srv_idx = realm->idx;
@@ -1059,7 +1058,7 @@ realm_dump_realms(FILE *fp)
 #ifdef HAVE_KRB5
 
 static Code_t
-realm_auth_sendit_nacked(char *buffer, ZRealm *realm,
+realm_auth_sendit_nacked(char *buffer, int packlen, ZRealm *realm,
 			 ZUnique_Id_t uid, int ack_to_sender,
 			 struct sockaddr_in *who)
 {
@@ -1069,11 +1068,11 @@ realm_auth_sendit_nacked(char *buffer, ZRealm *realm,
     if (nacked == NULL)
 	return ENOMEM;
 
-    nacked->rexmits = 0;
+    memset(nacked, 0, sizeof(Unacked));
     nacked->packet = buffer;
     nacked->dest.rlm.rlm_idx = realm - otherrealms;
     nacked->dest.rlm.rlm_srv_idx = realm->idx;
-    nacked->packsz = sizeof(ZPacket_t);
+    nacked->packsz = packlen;
     nacked->uid = uid;
 
     /* Do the ack for the last frag, below */
@@ -1215,7 +1214,8 @@ realm_sendit_auth(ZNotice_t *notice,
 	    }
 
 	    if (!retval) {
-		retval = realm_auth_sendit_nacked(buffer, realm,
+		retval = realm_auth_sendit_nacked(buffer, hdrlen +
+                                                partnotice.z_message_len,realm,
 						  partnotice.z_uid,
 						  ack_to_sender, who);
 		if (retval) /* no space: just punt */
@@ -1240,8 +1240,9 @@ realm_sendit_auth(ZNotice_t *notice,
 	    syslog(LOG_WARNING, "rlm_sendit_auth xmit: %s",
 		   error_message(retval));
 	else {
-	    retval = realm_auth_sendit_nacked(buffer, realm,
-					      partnotice.z_uid,
+	    retval = realm_auth_sendit_nacked(buffer,
+                                              hdrlen + newnotice.z_message_len,
+                                              realm, newnotice.z_uid,
 					      ack_to_sender, who);
 	    if (retval) /* no space: just punt */
 		syslog(LOG_ERR, "rlm_sendit_auth: realm_auth_sendit_nacked: %s",
