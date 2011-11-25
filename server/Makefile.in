@@ -43,11 +43,6 @@ zsrv_err.h: zsrv_err.c
 zsrv_err.c: zsrv_err.et
 	compile_et ${srcdir}/zsrv_err.et
 
-version.o: version.h
-
-version.h: always
-	sh ${srcdir}/new_vers.sh
-
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<
 
@@ -65,12 +60,11 @@ clean:
 	${LIBTOOL} --mode=clean rm -f zephyrd
 	rm -f ${OBJS} zsrv_err.[ch]
 
-always:
-
 ${OBJS}: zserver.h zsrv_err.h timer.h zsrv_conf.h zstring.h access.h acl.h
 ${OBJS}: ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
 ${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h
 ${OBJS}: ${BUILDTOP}/h/zephyr/zephyr_err.h
+version.o: ${BUILDTOP}/h/zephyr_version.h
 
-.PHONY: all check install clean always
+.PHONY: all check install clean
 

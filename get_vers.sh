@@ -1,0 +1,14 @@
+#!/bin/sh
+
+top_srcdir=${1:-`pwd`}
+
+if test -f ${top_srcdir}/VERSION; then
+    VERSION=`cat ${top_srcdir}/VERSION`
+elif test -d ${top_srcdir}/.git; then
+    VERSION=`(cd $top_srcdir; git describe)`
+fi
+
+if test -z "$VERSION"; then
+    VERSION='FROM SPACE'
+
+echo $VERSION

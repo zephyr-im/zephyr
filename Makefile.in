@@ -21,6 +21,16 @@ SUBDIRS=lib clients server zhm zwgc
 build:
 	$(MAKE) all
 
+h/zephyr_version.h: always
+	sh -x ${srcdir}/new_vers.sh $(top_srcdir)
+
+clean: clean_version
+
+clean_version:
+	$(RM) h/zephyr_version.h
+
+all: h/zephyr_version.h
+
 all check clean:
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
@@ -47,5 +57,7 @@ install:
 	${INSTALL} -m 644 h/zephyr/zephyr_err.h ${DESTDIR}${includedir}/zephyr
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
-.PHONY: all check install clean
+always:
+
+.PHONY: all check install clean clean_version always
 

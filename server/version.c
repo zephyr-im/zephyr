@@ -15,19 +15,17 @@
 #include <sys/utsname.h>
 
 #include "zserver.h"
-#include "version.h"
+#include <zephyr_version.h>
 
-const char zephyr_version[] = "Zephyr system version 2.0";
+const char zephyr_version[] = "Zephyr system version" ZEPHYR_VERSION_STRING;
 
 #ifdef DEBUG
-const char version[] = "Zephyr server (DEBUG) $Revision$";
+const char version[] = "Zephyr Server (DEBUG) " ZEPHYR_VERSION_STRING;
 #else
-const char version[] = "Zephyr server $Revision$";
+const char version[] = "Zephyr Server " ZEPHYR_VERSION_STRING;
 #endif
 
 #if !defined (lint) && !defined (SABER)
-static const char rcsid_version_c[] =
-    "$Id$";
 static const char copyright[] =
     "Copyright (c) 1987,1988,1989,1990 Massachusetts Institute of Technology.\n";
 #endif
@@ -39,20 +37,15 @@ get_version(void)
   struct utsname un;
 
   if (vers_buf[0] == '\0') {
-#ifdef DEBUG
-    sprintf(vers_buf,"Zephyr Server (DEBUG) $Revision$: %s",
-	    ZSERVER_VERSION_STRING);
-#else
-    sprintf(vers_buf,"Zephyr Server $Revision$: %s",
-	    ZSERVER_VERSION_STRING);
-#endif /* DEBUG */
+      strcpy(vers_buf, version);
 
-    (void) strcat(vers_buf, "/");
+      (void) strcat(vers_buf, "/");
 
-    uname(&un);
-    (void) strcat(vers_buf, un.machine);
-    (void) strcat(vers_buf, "-");
-    (void) strcat(vers_buf, un.sysname);
+      uname(&un);
+      (void) strcat(vers_buf, un.machine);
+      (void) strcat(vers_buf, "-");
+      (void) strcat(vers_buf, un.sysname);
   }
+
   return(vers_buf);
 }

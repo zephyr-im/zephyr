@@ -11,6 +11,7 @@
  */
 
 #include "zhm.h"
+#include <zephyr_version.h>
 
 static const char rcsid_hm_c[] = "$Id$";
 
@@ -506,6 +507,19 @@ detach(void)
 
 static char version[BUFSIZ];
 
+static char *
+stats_malloc(size_t size)
+{
+    char *p = malloc(size);
+
+    if (p == NULL) {
+        printf("Out of memory.\n"); /*XXXXXXXXXXX ? */
+        exit(-5);
+    }
+
+    return p;
+}
+
 static void
 send_stats(ZNotice_t *notice,
 	   struct sockaddr_in *sin)
@@ -516,6 +530,7 @@ send_stats(ZNotice_t *notice,
      char *list[20];
      int len, i, nitems = 10;
      unsigned long size;
+     extern int Zauthtype; /* XXX this may be changing in the future */
 
      newnotice = *notice;
 
@@ -525,76 +540,44 @@ send_stats(ZNotice_t *notice,
      }
      newnotice.z_kind = HMACK;
 
-     list[0] = (char *) malloc(NS_MAXDNAME);
-     if (list[0] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
+     list[0] = stats_malloc(NS_MAXDNAME);
      strcpy(list[0], cur_serv);
-     list[1] = (char *) malloc(64);
-     if (list[1] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
-     sprintf(list[1], "%d", queue_len());
-     list[2] = (char *) malloc(64);
-     if (list[2] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
-     sprintf(list[2], "%d", nclt);
-     list[3] = (char *) malloc(64);
-     if (list[3] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
-     sprintf(list[3], "%d", nserv);
-     list[4] = (char *) malloc(64);
-     if (list[4] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
-     sprintf(list[4], "%d", nservchang);
-     list[5] = (char *) malloc(64);
-     if (list[5] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
-     strncpy(list[5], rcsid_hm_c, 64);
-     list[5][63] = '\0';
 
-     list[6] = (char *) malloc(64);
-     if (list[6] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
+     list[1] = stats_malloc(64);
+     sprintf(list[1], "%d", queue_len());
+
+     list[2] = stats_malloc(64);
+     sprintf(list[2], "%d", nclt);
+
+     list[3] = stats_malloc(64);
+     sprintf(list[3], "%d", nserv);
+
+     list[4] = stats_malloc(64);
+     sprintf(list[4], "%d", nservchang);
+
+     list[5] = stats_malloc(256);
+     snprintf(list[5], 256, "%s (%d)", ZEPHYR_VERSION_STRING, Zauthtype);
+     list[5][255] = '\0';
+
+     list[6] = stats_malloc(64);
      if (no_server)
 	  sprintf(list[6], "yes");
      else
 	  sprintf(list[6], "no");
-     list[7] = (char *) malloc(64);
-     if (list[7] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
+
+     list[7] = stats_malloc(64);
      sprintf(list[7], "%ld", time((time_t *)0) - starttime);
+
 #ifdef adjust_size
      size = (unsigned long)sbrk(0);
      adjust_size (size);
 #else
      size = -1;
 #endif
-     list[8] = (char *)malloc(64);
-     if (list[8] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
+     list[8] = stats_malloc(64);
      sprintf(list[8], "%ld", size);
-     list[9] = (char *)malloc(32);
-     if (list[9] == NULL) {
-       printf("Out of memory.\n");
-       exit(-5);
-     }
+
+     list[9] = stats_malloc(32);
      strncpy(list[9], MACHINE_TYPE, 32);
      list[9][31] = '\0';
 
