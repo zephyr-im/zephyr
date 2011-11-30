@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 5), libc-ares-dev, libkrb5-dev (>= 1.2.2-4),
                comerr-dev, ss-dev, libreadline-dev | libreadline5-dev,
                libx11-dev, libxt-dev, x11proto-core-dev, libncurses5-dev,
 	       bison, libhesiod-dev, autotools-dev, python (>= 2.5), python-central,
-               autoconf, libtool, automake
+               autoconf, libtool, automake, git-core | git, devscripts
 Build-Conflicts: autoconf2.13
 Standards-Version: 3.9.2.0
 Homepage: http://zephyr.1ts.org/
