@@ -25,7 +25,3 @@ itself.  Thus, we use __STDC__ (both in h/sysdep.h and in zephyr.h) to
 guess whether the compiler will handle const, prototypes, and stdarg.
 This is unfortunately not as reliable as using autoconf features like
 AC_C_CONST.
-
-The Zephyr system version number is kept in server/version.c, and
-should be updated when releases are made.
-
