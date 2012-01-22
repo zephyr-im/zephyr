@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh -ex
 
 VERSION=$1
 if test -z "$VERSION"; then
@@ -10,7 +10,10 @@ if test -n "$(git status --porcelain)"; then
    echo $0: git status is wordy, you probably want to stash and note your branch
    exit 2
 fi
-git tag $VERSION -m 'release $VERSION'
+dch -v 1:${VERSION}-trunk release $VERSION
+git add debian/changelog
+git commit -m "release $VERSION"
+git tag $VERSION -m "release $VERSION"
 git checkout --detach
 git clean -fxd
 git rm .gitignore
@@ -19,10 +22,14 @@ git rm release
 echo $VERSION > VERSION
 sed -e "s/@VERSION@/$VERSION/" README.in > README
 git rm README.in
+sed -i -e "s/__DEV__/$VERSION/" configure.ac
 libtoolize -ic
 autoreconf
 git add -A
-git commit -m "release $VERSION"
-git tag release/$VERSION -m "release $VERSION processed for git archive"
-
+#git commit -m "release $VERSION"
+TREE=$(git write-tree)
+COMMIT=$(echo release artifact for $VERSION | git commit-tree $TREE -p HEAD -p release/artifact)
+git tag release/$VERSION -m "release $VERSION processed for git archive" $COMMIT
+git push . $COMMIT:release/artifact
+git reset --hard master
 git checkout master
