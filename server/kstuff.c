@@ -524,10 +524,12 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
       krb5_auth_con_free(Z_krb5_ctx, authctx);
       krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
 
-      if (our_checksum == notice->z_checksum)
+      if (our_checksum == notice->z_checksum) {
           return ZAUTH_YES;
-      else
+      } else {
+          syslog(LOG_DEBUG, "ZCheckSrvAuthentication: des quad checksum mismatch");
           return ZAUTH_FAILED;
+      }
     }
 
     /* HOLDING: authctx, authenticator */
