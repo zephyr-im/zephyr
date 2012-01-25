@@ -1019,6 +1019,8 @@ control_dispatch(ZNotice_t *notice,
 	subscr_sendlist(notice, auth, who);
 	return ZERR_NONE;
     } else if (!auth) {
+        syslog(LOG_INFO, "unauthenticated %s message purportedly from %s",
+               opcode, notice->z_sender);
 	if (server == me_server)
 	    clt_ack(notice, who, AUTH_FAILED);
 	return ZERR_NONE;
@@ -1042,6 +1044,10 @@ control_dispatch(ZNotice_t *notice,
 	}
 	if (strcmp(client->principal->string, notice->z_sender) != 0) {
 	    /* you may only subscribe for your own clients */
+            syslog(LOG_NOTICE,
+                   "subscr request from %s on port used by %s (%s.%d)",
+                   notice->z_sender, client->principal->string,
+                   inet_ntoa(who->sin_addr), ntohs(notice->z_port)); /* XXX */
 	    if (server == me_server)
 		clt_ack(notice, who, AUTH_FAILED);
 	    return ZERR_NONE;
@@ -1080,6 +1086,10 @@ control_dispatch(ZNotice_t *notice,
 	if (client != NULL) {
 	    if (strcmp(client->principal->string, notice->z_sender) != 0) {
 		/* you may only cancel for your own clients */
+                syslog(LOG_NOTICE,
+                       "unsubscr request from %s on port used by %s (%s.%d)",
+                       notice->z_sender, client->principal->string,
+                       inet_ntoa(who->sin_addr), ntohs(notice->z_port)); /*XXX*/
 		if (server == me_server)
 		    clt_ack(notice, who, AUTH_FAILED);
 		return ZERR_NONE;
@@ -1099,6 +1109,10 @@ control_dispatch(ZNotice_t *notice,
 	}
 	if (strcmp(client->principal->string, notice->z_sender) != 0) {
 	    /* you may only cancel for your own clients */
+            syslog(LOG_NOTICE,
+                   "cancel request from %s on port used by %s (%s.%d)",
+                   notice->z_sender, client->principal->string,
+                   inet_ntoa(who->sin_addr), ntohs(notice->z_port)); /* XXX */
 	    if (server == me_server)
 		clt_ack(notice, who, AUTH_FAILED);
 	    return ZERR_NONE;

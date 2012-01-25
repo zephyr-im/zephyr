@@ -280,8 +280,10 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         return ZAUTH_NO;
 
     /* Check for bogus authentication data length. */
-    if (notice->z_authent_len <= 0)
+    if (notice->z_authent_len <= 0) {
+        syslog(LOG_DEBUG, "ZCheckSrvAuthentication: bogus authenticator length");
         return ZAUTH_FAILED;
+    }
 
 #ifdef HAVE_KRB4
     if (notice->z_ascii_authent[0] != 'Z' && realm == NULL)
@@ -295,6 +297,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     if (ZReadZcode((unsigned char *)notice->z_ascii_authent,
                    authbuf,
                    len, &len) == ZERR_BADFIELD) {
+        syslog(LOG_DEBUG, "ZCheckSrvAuthentication: ZReadZcode: Improperly formatted field");
         return ZAUTH_FAILED;
     }
 
@@ -313,6 +316,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
                         keytab_file, &keytabid);
     if (result) {
       free(authbuf);
+      syslog(LOG_DEBUG, "ZCheckSrvAuthentication: krb5_kt_resolve: %s", error_message(result));
       return ZAUTH_FAILED;
     }
 
@@ -322,6 +326,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     if (result) {
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
+        syslog(LOG_DEBUG, "ZCheckSrvAuthentication: krb5_auth_con_init: %s", error_message(result));
         return ZAUTH_FAILED;
     }
 
@@ -329,6 +334,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     if (result) {
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
+        syslog(LOG_DEBUG, "ZCheckSrvAuthentication: krb5_auth_con_getflags: %s", error_message(result));
         return ZAUTH_FAILED;
     }
 
@@ -338,6 +344,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     if (result) {
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
+        syslog(LOG_DEBUG, "ZCheckSrvAuthentication: krb5_auth_con_setflags: %s", error_message(result));
         return ZAUTH_FAILED;
     }
 
@@ -371,6 +378,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 	   krb5_free_ticket(Z_krb5_ctx, tkt);
        free(authbuf);
        krb5_auth_con_free(Z_krb5_ctx, authctx);
+       syslog(LOG_WARNING, "ZCheckSrvAuthentication: No Ticket");
        return ZAUTH_FAILED;
     }
 
@@ -380,13 +388,14 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         krb5_free_ticket(Z_krb5_ctx, tkt);
         free(authbuf);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
+        syslog(LOG_WARNING, "ZCheckSrvAuthentication: No... Ticket?");
         return ZAUTH_FAILED;
     }
 
     /* HOLDING: authbuf, authctx, tkt */
     result = krb5_unparse_name(Z_krb5_ctx, princ, &name);
     if (result) {
-        syslog(LOG_WARNING, "k5 unparse_name failed: %s",
+        syslog(LOG_WARNING, "ZCheckSrvAuthentication: krb5_unparse_name failed: %s",
                error_message(result));
         free(authbuf);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
@@ -398,7 +407,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 
     /* HOLDING: authbuf, authctx, name */
     if (strcmp(name, sender)) {
-        syslog(LOG_WARNING, "k5 name mismatch: '%s' vs '%s'",
+        syslog(LOG_WARNING, "ZCheckSrvAuthentication: name mismatch: '%s' vs '%s'",
                name, sender);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         free(name);
@@ -414,6 +423,8 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     					     &authenticator);
     if(result) {
         krb5_auth_con_free(Z_krb5_ctx, authctx);
+        syslog(LOG_WARNING, "ZCheckSrvAuthentication: krb5_auth_con_getauthenticator failed: %s",
+               error_message(result));
         return ZAUTH_FAILED;
     }
 
@@ -422,6 +433,8 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     if (result) {
       krb5_auth_con_free(Z_krb5_ctx, authctx);
       krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
+      syslog(LOG_WARNING, "ZCheckSrvAuthentication: krb5_auth_con_getkey failed: %s",
+             error_message(result));
       return (ZAUTH_FAILED);
     }
 
@@ -434,6 +447,8 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
+        syslog(LOG_WARNING, "ZCheckSrvAuthentication: Z_ExtractEncCksum failed: %s",
+               error_message(result));
         return (ZAUTH_FAILED);
     }
     /* HOLDING: authctx, authenticator, keyblock */
@@ -523,6 +538,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
+        syslog(LOG_ERR, "ZCheckSrvAuthentication: malloc(cksumbuf.data): %m");
         return ZAUTH_FAILED;
     }
     /* HOLDING: authctx, authenticator, cksumbuf.data */
@@ -542,6 +558,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         krb5_auth_con_free(Z_krb5_ctx, authctx);
         krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
         free(cksumbuf.data);
+        syslog(LOG_ERR, "ZCheckSrvAuthentication: malloc(asn1_data): %m");
         return ZAUTH_FAILED;
     }
     /* HOLDING: authctx, authenticator, cksumbuf.data, asn1_data */
@@ -553,6 +570,8 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
         free(asn1_data);
         free(cksumbuf.data);
+        syslog(LOG_WARNING, "ZCheckSrvAuthentication: ZReadZcode: %s",
+               error_message(result));
         return ZAUTH_FAILED;
     }
     /* HOLDING: asn1_data, cksumbuf.data, authctx, authenticator */
@@ -573,10 +592,12 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     krb5_free_keyblock(Z_krb5_ctx, keyblock);
     free(cksumbuf.data);
 
-    if (valid)
-        return (ZAUTH_YES);
-    else
-        return (ZAUTH_FAILED);
+    if (valid) {
+        return ZAUTH_YES;
+    } else {
+        syslog(LOG_DEBUG, "ZCheckSrvAuthentication: Z_krb5_verify_cksum: failed");
+        return ZAUTH_FAILED;
+    }
 #else
     return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
 #endif
