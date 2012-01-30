@@ -25,6 +25,7 @@ git rm README.in
 sed -i -e "s/__DEV__/$VERSION/" configure.ac
 libtoolize -ic
 autoreconf
+rm -rf autom4te.cache
 git add -A
 #git commit -m "release $VERSION"
 TREE=$(git write-tree)
