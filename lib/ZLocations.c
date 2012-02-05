@@ -20,7 +20,7 @@ static const char rcsid_ZLocations_c[] =
 
 #include <pwd.h>
 
-static char host[NS_MAXDNAME], mytty[MAXPATHLEN];
+static char host[NS_MAXDNAME], *mytty = "space";
 static int location_info_set = 0;
 
 Code_t
@@ -42,16 +42,18 @@ ZInitLocationInfo(char *hostname,
 	}
     }
     if (tty) {
-	strcpy(mytty, tty);
+        mytty = strdup(tty);
     } else {
 	ttyp = ttyname(0);
 	if (ttyp && *ttyp) {
 	    p = strchr(ttyp + 1, '/');
-	    strcpy(mytty, (p) ? p + 1 : ttyp);
+            mytty = strdup(p ? p + 1 : ttyp);
 	} else {
-	    strcpy(mytty, "unknown");
+            mytty = strdup("unknown");
 	}
     }
+    if (mytty == NULL)
+        return errno;
     location_info_set = 1;
     return (ZERR_NONE);
 }
