@@ -112,17 +112,6 @@ long timo_up = TIMO_UP;
 long timo_tardy = TIMO_TARDY;
 long timo_dead = TIMO_DEAD;
 
-/* counters to measure old protocol use */
-#ifdef OLD_COMPAT
-int old_compat_count_uloc = 0;
-int old_compat_count_ulocate = 0;
-int old_compat_count_subscr = 0;
-#endif /* OLD_COMPAT */
-#ifdef NEW_COMPAT
-int new_compat_count_uloc = 0;
-int new_compat_count_subscr = 0;
-#endif /* NEW_COMPAT */
-
 #ifdef DEBUG
 int zalone;
 #endif /* DEBUG */
@@ -756,20 +745,6 @@ send_stats(struct sockaddr_in *who)
     sprintf(buf, "%ld seconds operational",NOW - uptime);
     upt = strsave(buf);
 
-#ifdef OLD_COMPAT
-    if (old_compat_count_uloc)
-	extrafields++;
-    if (old_compat_count_ulocate)
-	extrafields++;
-    if (old_compat_count_subscr)
-	extrafields++;
-#endif /* OLD_COMPAT */
-#ifdef NEW_COMPAT
-    if (new_compat_count_uloc)
-	extrafields++;
-    if (new_compat_count_subscr)
-	extrafields++;
-#endif /* NEW_COMPAT */
     extrafields += nrealms;
     responses = (char **) malloc((NUM_FIXED + nservers + extrafields) *
 				 sizeof(char *));
@@ -785,31 +760,6 @@ send_stats(struct sockaddr_in *who)
 		otherservers[i].dumping ? " (DUMPING)" : "");
 	responses[num_resp++] = strsave(buf);
     }
-#ifdef OLD_COMPAT
-    if (old_compat_count_uloc) {
-	sprintf(buf, "%d old old location requests", old_compat_count_uloc);
-	responses[num_resp++] = strsave(buf);
-    }
-    if (old_compat_count_ulocate) {
-	sprintf(buf, "%d old old loc lookup requests",
-		old_compat_count_ulocate);
-	responses[num_resp++] = strsave(buf);
-    }
-    if (old_compat_count_subscr) {
-	sprintf(buf, "%d old old subscr requests", old_compat_count_subscr);
-	responses[num_resp++] = strsave(buf);
-    }
-#endif /* OLD_COMPAT */
-#ifdef NEW_COMPAT
-    if (new_compat_count_uloc) {
-	sprintf(buf, "%d new old location requests", new_compat_count_uloc);
-	responses[num_resp++] = strsave(buf);
-    }
-    if (new_compat_count_subscr) {
-	sprintf(buf, "%d new old subscr requests", new_compat_count_subscr);
-	responses[num_resp++] = strsave(buf);
-    }
-#endif /* NEW_COMPAT */
     for (realm = otherrealms, i = 0; i < nrealms ; i++, realm++) {
       sprintf(buf, "%s(%s)/%s", realm->name,
 	      inet_ntoa((realm->addrs[realm->idx]).sin_addr),

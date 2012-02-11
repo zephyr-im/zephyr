@@ -889,11 +889,6 @@ nack_cancel(ZNotice_t *notice,
 	   notice->z_uid.tv.tv_sec, notice->z_uid.tv.tv_usec));
 }
 
-/* for compatibility when sending subscription information to old clients */
-#ifdef OLD_COMPAT
-#define	OLD_ZEPHYR_VERSION	"ZEPH0.0"
-#endif /* OLD_COMPAT */
-
 /* Dispatch an HM_CTL notice. */
 
 Code_t
@@ -1008,14 +1003,6 @@ control_dispatch(ZNotice_t *notice,
 	   someone who has no subscriptions does NOT get a SERVNAK
 	   but rather an empty list.  Note we must therefore
 	   check authentication inside subscr_sendlist */
-#ifdef OLD_COMPAT
-	/* only acknowledge if *not* old version; the old version
-	   acknowledges the packet with the reply */
-	if (strcmp(notice->z_version, OLD_ZEPHYR_VERSION) != 0)
-	    ack(notice, who);
-#else /* !OLD_COMPAT */
-	ack(notice, who);
-#endif /* OLD_COMPAT */
 	subscr_sendlist(notice, auth, who);
 	return ZERR_NONE;
     } else if (!auth) {
