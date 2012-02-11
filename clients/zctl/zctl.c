@@ -1301,7 +1301,7 @@ static const struct {
     { "unhide" } },
   { show_commands, "List available commands.",
     { "help", "?" } },
-#ifdef CMU_BACKWARD_COMPAT
+#ifdef CMU_ZCTL_PUNT
   { do_punt, "Ignore specified messages.",
     { "punt" } },
   { do_punt, "Stop ignoring specified messages.",

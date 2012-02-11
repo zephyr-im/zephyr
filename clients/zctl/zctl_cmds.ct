@@ -84,7 +84,7 @@
 
 	request		ss_quit, "Quit.",
 			quit, exit, q;
-#ifdef CMU_BACKWARD_COMPAT
+#ifdef CMU_ZCTL_PUNT
 	request		do_punt, "Ignore specified messages.",
 			punt;
 
