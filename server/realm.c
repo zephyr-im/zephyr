@@ -900,6 +900,9 @@ realm_sendit(ZNotice_t *notice,
     Unacked *nacked;
 
     notice->z_auth = auth;
+    notice->z_authent_len = 0;
+    notice->z_ascii_authent = "";
+    notice->z_checksum = 0;
 
     /* format the notice */
     if ((retval = ZFormatRawNotice(notice, &pack, &packlen)) != ZERR_NONE) {
