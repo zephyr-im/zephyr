@@ -957,6 +957,7 @@ subscr_unsub_sendit(Client *who,
   list[1] = subs->dest.inst->string;
   list[2] = "";
 
+  memset(&unotice, 0, sizeof(unotice));
   unotice.z_class = ZEPHYR_CTL_CLASS;
   unotice.z_class_inst = ZEPHYR_CTL_REALM;
   unotice.z_opcode = REALM_UNSUBSCRIBE;
@@ -1050,6 +1051,7 @@ subscr_realm_subs(ZRealm *realm)
     text[4] = subs->dest.recip->string;
 
     /* format snotice */
+    memset (&snotice, 0, sizeof(snotice));
     snotice.z_class_inst = ZEPHYR_CTL_REALM;
     snotice.z_opcode = REALM_REQ_SUBSCRIBE;
     snotice.z_port = 0;
