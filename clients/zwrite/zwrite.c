@@ -237,19 +237,8 @@ main(int argc, char *argv[])
     notice.z_charset = ZGetCharset(charset);
     if (format)
 	    notice.z_default_format = format;
-    else if (filsys == 1)
-	    notice.z_default_format = "@b(Filesystem Info Message for $instance)\nFrom: @b($sender) @ $time $date\n$message";
-    else if (auth == ZAUTH) {
-	if (signature)
-	    notice.z_default_format = "Class $class Instance $instance\nTo @b($recipient) @ $time $date\nFrom @b($1) <$sender>\n\n$2";
-	else
-	    notice.z_default_format = "Class $class Instance $instance\nTo @b($recipient) @ $time $date\n$message";
-    } else {
-	if (signature)
-	    notice.z_default_format = "@b(UNAUTHENTIC) Class $class Instance $instance @ $time $date\nFrom @b($1) <$sender>\n\n$2";
-	else
-	    notice.z_default_format = "@b(UNAUTHENTIC) Class $class Instance $instance @ $time $date\n$message";
-    }
+    else
+	    notice.z_default_format = "http://zephyr.1ts.org/wiki/df";
     if (!nocheck && nrecips)
 	send_off(&notice, 0);
 	
