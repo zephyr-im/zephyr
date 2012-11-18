@@ -78,6 +78,8 @@ static struct cksum_map_s {
   /* per draft-brezak-win2k-krb-rc4-hmac-04.txt */
   { 23 /* rc4-hmac */,                -138 /* hmac-md5 */ },
   { 24 /* rc4-hmac-exp */,            -138 /* hmac-md5 */ },
+  { 25 /* camellia128-cts-cmac */,    17 /* cmac-camellia128 */ },
+  { 26 /* camellia256-cts-cmac */,    18 /* cmac-camellia256 */ },
 };
 #define N_CKSUM_MAP (sizeof(cksum_map) / sizeof(struct cksum_map_s))
 
