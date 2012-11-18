@@ -1387,7 +1387,7 @@ Z_krb5_verify_cksum(krb5_keyblock *keyblock,
 
     result = krb5_crypto_init(Z_krb5_ctx, keyblock, keyblock->keytype, &cryptctx);
     if (result)
-	return result;
+	return 0;
 
     /* HOLDING: cryptctx */
     result = krb5_verify_checksum(Z_krb5_ctx, cryptctx, cksumusage,
