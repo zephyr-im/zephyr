@@ -160,13 +160,12 @@ add_subscriptions(Client *who,
 	    }
 	}
 	if (realm && !bdumping) {
-	        retval = subscr_realm_sendit(who, subs, notice, realm);
-	        if (retval != ZERR_NONE) {
-		    free_subscription(subs);
-		    continue; /* the for loop */
+	    retval = subscr_realm_sendit(who, subs, notice, realm);
+	    if (retval != ZERR_NONE) {
+		free_subscription(subs);
+		continue; /* the for loop */
 	    } else {
-	            /* Indicates we leaked traffic back to our realm */
-		    free_subscription(subs); /* free this one, wil get from
+		free_subscription(subs); /* free this one, wil get from
 						ADD */
 	    }
 	} else {
