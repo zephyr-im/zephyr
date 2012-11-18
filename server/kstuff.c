@@ -330,8 +330,10 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         return ZAUTH_FAILED;
     }
 
+    /* HOLDING: authbuf, keytabid, authctx */
     result = krb5_auth_con_getflags(Z_krb5_ctx, authctx, &acflags);
     if (result) {
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
         syslog(LOG_DEBUG, "ZCheckSrvAuthentication: krb5_auth_con_getflags: %s", error_message(result));
@@ -342,13 +344,13 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 
     result = krb5_auth_con_setflags(Z_krb5_ctx, authctx, acflags);
     if (result) {
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
         krb5_kt_close(Z_krb5_ctx, keytabid);
         free(authbuf);
         syslog(LOG_DEBUG, "ZCheckSrvAuthentication: krb5_auth_con_setflags: %s", error_message(result));
         return ZAUTH_FAILED;
     }
 
-    /* HOLDING: authbuf, authctx */
     result = krb5_build_principal(Z_krb5_ctx, &server, strlen(__Zephyr_realm),
 				  __Zephyr_realm, SERVER_SERVICE,
 				  SERVER_INSTANCE, NULL);
@@ -359,6 +361,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     }
     krb5_kt_close(Z_krb5_ctx, keytabid);
 
+    /* HOLDING: authbuf, authctx */
     if (result) {
         if (result == KRB5KRB_AP_ERR_REPEAT)
             syslog(LOG_DEBUG, "ZCheckSrvAuthentication: k5 auth failed: %s",
