@@ -186,6 +186,7 @@ get_realm_lists(char *file)
     FILE *fp;
     char buf[REALM_SZ + NS_MAXDNAME + 1]; /* one for newline */
     char realm[REALM_SZ], server[NS_MAXDNAME + 1];
+    String *realm_name;
 
     nused = 0;
     if (!(fp = fopen(file, "r")))
@@ -204,12 +205,14 @@ get_realm_lists(char *file)
 	    syslog(LOG_CRIT, "bad format in %s", file);
 	    abort();
 	}
+	realm_name = make_string(realm, 0);
 	for (ii = 0; ii < nused; ii++) {
 	    /* look for this realm */
-	    if (!strcmp(rlm_list[ii].name, realm))
+	    if (rlm_list[ii].name == realm_name)
 		break;
 	}
 	if (ii < nused) {
+	    free_string(realm_name);
 	    rlm = &rlm_list[ii];
 	    if (rlm->nused +1 >= rlm->nservers) {
 		/* make more space */
@@ -237,7 +240,7 @@ get_realm_lists(char *file)
 		ntotal *= 2;
 	    }
 	    rlm = &rlm_list[nused++];
-	    strcpy(rlm->name, realm);
+	    rlm->name = realm_name;
 	    rlm->nused = 0;
 	    rlm->nservers = 16;
 	    rlm->servers = (struct _ZRealm_server *)
@@ -249,10 +252,10 @@ get_realm_lists(char *file)
 	}
 	memset(&rlm->servers[rlm->nused], 0, sizeof(struct _ZRealm_server));
 	if (*server == '/') {
-	    rlm->servers[rlm->nused].name = strsave(server + 1);
+	    rlm->servers[rlm->nused].name = make_string(server + 1, 1);
 	    rlm->servers[rlm->nused].dontsend = 1;
 	} else {
-	    rlm->servers[rlm->nused].name = strsave(server);
+	    rlm->servers[rlm->nused].name = make_string(server, 1);
 	}
 	rlm->nused++;
     }
@@ -265,7 +268,7 @@ get_realm_lists(char *file)
 	    abort();
 	}
     }
-    *rlm_list[nused].name = '\0';
+    rlm_list[nused].name = 0;
 
     fclose(fp);
     return(rlm_list);
@@ -515,7 +518,7 @@ realm_init(void)
 	return;
     }
 
-    for (nrealms = 0; *rlmnames[nrealms].name; nrealms++);
+    for (nrealms = 0; rlmnames[nrealms].name; nrealms++);
 
     otherrealms = (ZRealm *)malloc(nrealms * sizeof(ZRealm));
     if (!otherrealms) {
@@ -526,13 +529,14 @@ realm_init(void)
 
     for (ii = 0; ii < nrealms; ii++) {
 	rlm = &otherrealms[ii];
-	strcpy(rlm->name, rlmnames[ii].name);
+	rlm->namestr = rlmnames[ii].name;
+	rlm->name = rlm->namestr->string;
 
 	/* convert names to addresses */
 	rlm->count = rlmnames[ii].nused;
 	rlm->srvrs = rlmnames[ii].servers;
 	for (srvr = rlm->srvrs, jj = 0; jj < rlm->count; jj++, srvr++) {
-	    hp = gethostbyname(srvr->name);
+	    hp = gethostbyname(srvr->name->string);
 	    if (hp) {
 		memmove(&srvr->addr.sin_addr, hp->h_addr,
 			sizeof(struct in_addr));
@@ -541,7 +545,7 @@ realm_init(void)
 		srvr->addr.sin_family = AF_INET;
 		srvr->usable = 1;
 	    } else
-		syslog(LOG_WARNING, "hostname failed, %s", srvr->name);
+		syslog(LOG_WARNING, "hostname failed, %s", srvr->name->string);
 	}
 
 	client = (Client *) malloc(sizeof(Client));

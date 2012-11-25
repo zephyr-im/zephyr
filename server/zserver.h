@@ -112,14 +112,15 @@ struct _Destlist {
 };
 
 struct _ZRealm_server {
-    char *name;				/* server's hostname */
+    String *name;			/* server's hostname */
     struct sockaddr_in addr;		/* server's address */
     unsigned int usable :1;             /* set once entry is usable */
     unsigned int dontsend :1;		/* private server, do not send */
 };
 
 struct _ZRealm {
-    char name[REALM_SZ];
+    String *namestr;			/* realm's name */
+    char *name;				/* always namestr->string */
     int count;
     ZRealm_server *srvrs;
     int idx;				/* which server we are connected to */
@@ -132,7 +133,7 @@ struct _ZRealm {
 };
 
 struct _ZRealmname {
-    char name[REALM_SZ];
+    String *name;
     struct _ZRealm_server *servers;
     int nused;
     int nservers;
