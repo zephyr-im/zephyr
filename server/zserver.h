@@ -113,6 +113,7 @@ struct _Destlist {
 
 struct _ZRealm_server {
     struct sockaddr_in addr;		/* server's address */
+    unsigned int usable :1;             /* set once entry is usable */
     unsigned int dontsend :1;		/* private server, do not send */
 };
 

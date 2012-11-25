@@ -83,9 +83,12 @@ realm_get_idx_by_addr(ZRealm *realm,
     int b;
 
     /* loop through the realms */
-    for (srvr = realm->srvrs, b = 0; b < realm->count; b++, srvr++)
+    for (srvr = realm->srvrs, b = 0; b < realm->count; b++, srvr++) {
+	if (!srvr->usable)
+	    continue;
 	if (srvr->addr.sin_addr.s_addr == who->sin_addr.s_addr)
 	    return(b);
+    }
 
     return 0;
 }
@@ -102,15 +105,21 @@ realm_next_idx_by_idx(realm, idx)
     srvr = realm->srvrs; a = idx;
     while (a > 0) { a--; srvr++; }
 
-    for (srvr, b = idx; b < realm->count; b++, srvr++)
+    for (srvr, b = idx; b < realm->count; b++, srvr++) {
+	if (!srvr->usable)
+	    continue;
 	if (!srvr->dontsend)
 	    return(b);
+    }
 
     /* recycle */
     if (idx != 0)
-	for (srvr = realm->srvrs, b = 0; b < idx; b++, srvr++)
+	for (srvr = realm->srvrs, b = 0; b < idx; b++, srvr++) {
+	    if (!srvr->usable)
+		continue;
 	    if (!srvr->dontsend)
-	    return(b);
+		return(b);
+	}
 
     return 0;
 }
@@ -315,9 +324,12 @@ realm_which_realm(struct sockaddr_in *who)
     /* loop through the realms */
     for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
 	/* loop through the addresses for the realm */
-	for (srvr = realm->srvrs, b = 0; b < realm->count; b++, srvr++)
+	for (srvr = realm->srvrs, b = 0; b < realm->count; b++, srvr++) {
+	    if (!srvr->usable)
+		continue;
 	    if (srvr->addr.sin_addr.s_addr == who->sin_addr.s_addr)
 		return(realm);
+	}
 
     return 0;
 }
@@ -550,6 +562,7 @@ realm_init(void)
 	    /* use the server port */
 	    srvr->addr.sin_port = srv_addr.sin_port;
 	    srvr->addr.sin_family = AF_INET;
+	    srvr->usable = 1;
 	    srvr->dontsend = nosend[jj];
 	}
 	client = (Client *) malloc(sizeof(Client));
