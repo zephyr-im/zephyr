@@ -112,6 +112,7 @@ struct _Destlist {
 };
 
 struct _ZRealm_server {
+    char *name;				/* server's hostname */
     struct sockaddr_in addr;		/* server's address */
     unsigned int usable :1;             /* set once entry is usable */
     unsigned int dontsend :1;		/* private server, do not send */
@@ -132,7 +133,7 @@ struct _ZRealm {
 
 struct _ZRealmname {
     char name[REALM_SZ];
-    char **servers;
+    struct _ZRealm_server *servers;
     int nused;
     int nservers;
 };
