@@ -3,9 +3,10 @@
 
 Unacked *rlm_nacklist = NULL;   /* not acked list for realm-realm
                                    packets */
-ZRealm **otherrealms;            /* points to an array of the known
+ZRealm **otherrealms = NULL;    /* points to an array of the known
                                    servers */
 int nrealms = 0;                /* number of other realms */
+int n_realm_slots = 0;          /* size of malloc'd otherrealms */
 
 /*
  * External Routines:
@@ -514,7 +515,7 @@ realm_init(void)
     ZRealm_server *srvr;
     ZRealmname *rlmnames;
     ZRealm *rlm;
-    int ii, jj;
+    int ii, jj, nrlmnames;
     struct hostent *hp;
     char realm_list_file[128];
     char rlmprinc[MAX_PRINCIPAL_SIZE];
@@ -523,27 +524,53 @@ realm_init(void)
     rlmnames = get_realm_lists(realm_list_file);
     if (!rlmnames) {
 	zdbug((LOG_DEBUG, "No other realms"));
-	nrealms = 0;
+	/* should we nuke all existing server records? */
 	return;
     }
 
-    for (nrealms = 0; rlmnames[nrealms].name; nrealms++);
+    for (nrlmnames = 0; rlmnames[nrlmnames].name; nrlmnames++);
 
-    otherrealms = (ZRealm **)malloc(nrealms * sizeof(ZRealm *));
+    /*
+     * This happens only when we first start up.  Otherwise, otherrealms
+     * is grown as needed.
+     */
     if (!otherrealms) {
-	syslog(LOG_CRIT, "malloc failed in realm_init");
-	abort();
+	otherrealms = (ZRealm **)malloc(nrlmnames * sizeof(ZRealm *));
+	if (!otherrealms) {
+	    syslog(LOG_CRIT, "malloc failed in realm_init");
+	    abort();
+	}
+	memset(otherrealms, 0, (nrlmnames * sizeof(ZRealm *)));
+	n_realm_slots = nrlmnames;
     }
-    memset(otherrealms, 0, (nrealms * sizeof(ZRealm *)));
 
-    for (ii = 0; ii < nrealms; ii++) {
+    for (ii = 0; ii < nrlmnames; ii++) {
+	rlm = realm_get_realm_by_name_string(rlmnames[ii].name);
+	if (rlm) {
+	    // XXX update existing realm
+	    free(rlmnames[ii].servers);
+	    continue;
+	}
+
+	if (nrealms >= n_realm_slots) {
+	    otherrealms = realloc(otherrealms,
+				  n_realm_slots * 2 * sizeof(ZRealm *));
+	    if (!otherrealms) {
+		syslog(LOG_CRIT, "realloc failed in realm_init");
+		abort();
+	    }
+	    memset(otherrealms + n_realm_slots, 0,
+		   n_realm_slots * sizeof(ZRealm *));
+	    n_realm_slots *= 2;
+	}
+
 	rlm = (ZRealm *) malloc(sizeof(ZRealm));
 	if (!rlm) {
 	    syslog(LOG_CRIT, "malloc failed in realm_init");
 	    abort();
 	}
 	memset(rlm, 0, sizeof(ZRealm));
-	otherrealms[ii] = rlm;
+	otherrealms[nrealms++] = rlm;
 
 	rlm->namestr = rlmnames[ii].name;
 	rlm->name = rlm->namestr->string;
