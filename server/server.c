@@ -760,7 +760,8 @@ send_stats(struct sockaddr_in *who)
 		otherservers[i].dumping ? " (DUMPING)" : "");
 	responses[num_resp++] = strsave(buf);
     }
-    for (realm = otherrealms, i = 0; i < nrealms ; i++, realm++) {
+    for (i = 0; i < nrealms ; i++) {
+      realm = otherrealms[i];
       sprintf(buf, "%s(%s)/%s", realm->name,
 	      inet_ntoa((realm->srvrs[realm->idx].addr).sin_addr),
 	      rlm_states[(int) realm->state]);

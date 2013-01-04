@@ -3,7 +3,7 @@
 
 Unacked *rlm_nacklist = NULL;   /* not acked list for realm-realm
                                    packets */
-ZRealm *otherrealms;             /* points to an array of the known
+ZRealm **otherrealms;            /* points to an array of the known
                                    servers */
 int nrealms = 0;                /* number of other realms */
 
@@ -127,7 +127,6 @@ realm_next_idx_by_idx(realm, idx)
 const char *
 realm_expand_realm(char *realmname)
 {
-    ZRealm *realm;
     int a;
 
     /* First, look for an exact match (case insensitive) */
@@ -136,9 +135,9 @@ realm_expand_realm(char *realmname)
 	return(ZGetRealm());
 #endif
 
-    for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
-      if (!strcasecmp(realm->name, realmname))
-	return(realm->name);
+    for (a = 0; a < nrealms; a++)
+      if (!strcasecmp(otherrealms[a]->name, realmname))
+	return(otherrealms[a]->name);
 
     /* No exact match. See if there's a partial match */
 #if defined(HAVE_KRB4) || defined(HAVE_KRB5)
@@ -146,21 +145,20 @@ realm_expand_realm(char *realmname)
 	return(ZGetRealm());
 #endif
 
-    for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
-	if (!strncasecmp(realm->name, realmname, strlen(realmname)))
-	    return(realm->name);
+    for (a = 0; a < nrealms; a++)
+	if (!strncasecmp(otherrealms[a]->name, realmname, strlen(realmname)))
+	    return(otherrealms[a]->name);
     return(realmname);
 }
 
 ZRealm *
 realm_get_realm_by_pid(int pid)
 {
-    ZRealm *realm;
     int a;
 
-    for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
-	if (realm->child_pid == pid)
-	    return(realm);
+    for (a = 0; a < nrealms; a++)
+	if (otherrealms[a]->child_pid == pid)
+	    return(otherrealms[a]);
 
     return 0;
 }
@@ -168,12 +166,11 @@ realm_get_realm_by_pid(int pid)
 void
 kill_realm_pids(void)
 {
-    ZRealm *realm;
     int a;
 
-    for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
-	if (realm->child_pid != 0)
-	    kill(realm->child_pid, 9);
+    for (a = 0; a < nrealms; a++)
+	if (otherrealms[a]->child_pid != 0)
+	    kill(otherrealms[a]->child_pid, 9);
 
     return;
 }
@@ -279,7 +276,7 @@ realm_send_realms(void)
 {
     int cnt, retval;
     for (cnt = 0; cnt < nrealms; cnt++) {
-	retval = subscr_send_realm_subs(&otherrealms[cnt]);
+	retval = subscr_send_realm_subs(otherrealms[cnt]);
 	if (retval != ZERR_NONE)
 	    return(retval);
     }
@@ -325,7 +322,6 @@ realm_sender_in_realm(const char *realm, char *sender)
 ZRealm *
 realm_which_realm(struct sockaddr_in *who)
 {
-    ZRealm *realm;
     ZRealm_server *srvr;
     int a, b;
 
@@ -333,13 +329,15 @@ realm_which_realm(struct sockaddr_in *who)
 	return 0;
 
     /* loop through the realms */
-    for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
+    for (a = 0; a < nrealms; a++)
 	/* loop through the addresses for the realm */
-	for (srvr = realm->srvrs, b = 0; b < realm->count; b++, srvr++) {
+	for (srvr = otherrealms[a]->srvrs, b = 0;
+	     b < otherrealms[a]->count;
+	     b++, srvr++) {
 	    if (!srvr->usable)
 		continue;
 	    if (srvr->addr.sin_addr.s_addr == who->sin_addr.s_addr)
-		return(realm);
+		return(otherrealms[a]);
 	}
 
     return 0;
@@ -349,17 +347,16 @@ ZRealm *
 realm_get_realm_by_name(char *name)
 {
     int a;
-    ZRealm *realm;
 
     /* First, look for an exact match (case insensitive) */
-    for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
-	if (!strcasecmp(realm->name, name))
-	    return(realm);
+    for (a = 0; a < nrealms; a++)
+	if (!strcasecmp(otherrealms[a]->name, name))
+	    return(otherrealms[a]);
 
     /* Failing that, look for an inexact match */
-    for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
-	if (!strncasecmp(realm->name, name, strlen(name)))
-	    return(realm);
+    for (a = 0; a < nrealms; a++)
+	if (!strncasecmp(otherrealms[a]->name, name, strlen(name)))
+	    return(otherrealms[a]);
 
     return 0;
 }
@@ -368,10 +365,10 @@ ZRealm *
 realm_get_realm_by_name_string(String *z)
 {
     int a;
-    ZRealm *realm;
 
-    for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
-	if (realm->namestr == z) return realm;
+    for (a = 0; a < nrealms; a++)
+	if (otherrealms[a]->namestr == z)
+	    return otherrealms[a];
 
     return 0;
 }
@@ -393,7 +390,7 @@ rlm_nack_cancel(register ZNotice_t *notice,
     }
 
     for (nacked = rlm_nacklist; nacked; nacked = nacked->next) {
-	if (&otherrealms[nacked->dest.rlm.rlm_idx] == which) {
+	if (nacked->dest.rlm.realm == which) {
 	    /* First, note the realm appears to be up */
 	    which->state = REALM_UP;
 	    if (ZCompareUID(&nacked->uid, &notice->z_uid)) {
@@ -532,15 +529,22 @@ realm_init(void)
 
     for (nrealms = 0; rlmnames[nrealms].name; nrealms++);
 
-    otherrealms = (ZRealm *)malloc(nrealms * sizeof(ZRealm));
+    otherrealms = (ZRealm **)malloc(nrealms * sizeof(ZRealm *));
     if (!otherrealms) {
 	syslog(LOG_CRIT, "malloc failed in realm_init");
 	abort();
     }
-    memset(otherrealms, 0, (nrealms * sizeof(ZRealm)));
+    memset(otherrealms, 0, (nrealms * sizeof(ZRealm *)));
 
     for (ii = 0; ii < nrealms; ii++) {
-	rlm = &otherrealms[ii];
+	rlm = (ZRealm *) malloc(sizeof(ZRealm));
+	if (!rlm) {
+	    syslog(LOG_CRIT, "malloc failed in realm_init");
+	    abort();
+	}
+	memset(rlm, 0, sizeof(ZRealm));
+	otherrealms[ii] = rlm;
+
 	rlm->namestr = rlmnames[ii].name;
 	rlm->name = rlm->namestr->string;
 
@@ -604,12 +608,13 @@ realm_deathgram(Server *server)
     int jj = 0;
 
     /* Get it out once, and assume foreign servers will share */
-    for (realm = otherrealms, jj = 0; jj < nrealms; jj++, realm++) {
+    for (jj = 0; jj < nrealms; jj++) {
 	ZNotice_t snotice;
 	char *pack;
 	char rlm_recipient[REALM_SZ + 1];
 	int packlen, retval;
 
+	realm = otherrealms[jj];
 	memset (&snotice, 0, sizeof (snotice));
 
 	snotice.z_kind = ACKED;
@@ -671,12 +676,13 @@ realm_wakeup(void)
     if (nservers < 2 || !found) {
 	/* if we're the only server up, send a REALM_BOOT to one of their
 	   servers here */
-	for (realm = otherrealms, jj = 0; jj < nrealms; jj++, realm++) {
+	for (jj = 0; jj < nrealms; jj++) {
 	    ZNotice_t snotice;
 	    char *pack;
 	    char rlm_recipient[REALM_SZ + 1];
 	    int packlen, retval;
 
+	    realm = otherrealms[jj];
 	    memset (&snotice, 0, sizeof (snotice));
 
 	    snotice.z_opcode = REALM_BOOT;
@@ -979,7 +985,7 @@ realm_sendit(ZNotice_t *notice,
 
     memset(nacked, 0, sizeof(Unacked));
     nacked->packet = pack;
-    nacked->dest.rlm.rlm_idx = realm - otherrealms;
+    nacked->dest.rlm.realm = realm;
     nacked->dest.rlm.rlm_srv_idx = realm->idx;
     nacked->packsz = packlen;
     nacked->uid = notice->z_uid;
@@ -1018,7 +1024,7 @@ rlm_rexmit(void *arg)
 
     zdbug((LOG_DEBUG,"rlm_rexmit"));
 
-    realm = &otherrealms[nackpacket->dest.rlm.rlm_idx];
+    realm = nackpacket->dest.rlm.realm;
 
     zdbug((LOG_DEBUG, "rlm_rexmit: sending to %s:%d (%d)",
 	   realm->name, realm->idx, nackpacket->rexmits));
@@ -1094,13 +1100,13 @@ realm_dump_realms(FILE *fp)
     register int ii, jj;
 
     for (ii = 0; ii < nrealms; ii++) {
-	(void) fprintf(fp, "%d:%s\n", ii, otherrealms[ii].name);
-	for (jj = 0; jj < otherrealms[ii].count; jj++) {
+	(void) fprintf(fp, "%d:%s\n", ii, otherrealms[ii]->name);
+	for (jj = 0; jj < otherrealms[ii]->count; jj++) {
 	    (void) fprintf(fp, "\t%s\n",
-			   inet_ntoa(otherrealms[ii].srvrs[jj].addr.sin_addr));
+			   inet_ntoa(otherrealms[ii]->srvrs[jj].addr.sin_addr));
 	}
 	/* dump the subs */
-	subscr_dump_subs(fp, otherrealms[ii].subs);
+	subscr_dump_subs(fp, otherrealms[ii]->subs);
     }
 }
 
@@ -1119,7 +1125,7 @@ realm_auth_sendit_nacked(char *buffer, int packlen, ZRealm *realm,
 
     memset(nacked, 0, sizeof(Unacked));
     nacked->packet = buffer;
-    nacked->dest.rlm.rlm_idx = realm - otherrealms;
+    nacked->dest.rlm.realm = realm;
     nacked->dest.rlm.rlm_srv_idx = realm->idx;
     nacked->packsz = packlen;
     nacked->uid = uid;

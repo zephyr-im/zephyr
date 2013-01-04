@@ -176,7 +176,7 @@ struct _Unacked {
 	struct sockaddr_in addr;	/* client address */
 	int	srv_idx;		/* index of server */
 	struct {
-	    int rlm_idx;		/* index of realm */
+	    ZRealm *realm;		/* pointer to realm */
 	    int rlm_srv_idx;		/* index of server in realm */
 	} rlm;
     } dest;
@@ -442,7 +442,7 @@ extern int nservers;			/* number of other servers*/
 extern String *empty;
 extern String *wildcard_instance;
 
-extern ZRealm *otherrealms;
+extern ZRealm **otherrealms;
 extern int nrealms;
 
 
