@@ -364,6 +364,18 @@ realm_get_realm_by_name(char *name)
     return 0;
 }
 
+ZRealm *
+realm_get_realm_by_name_string(String *z)
+{
+    int a;
+    ZRealm *realm;
+
+    for (realm = otherrealms, a = 0; a < nrealms; a++, realm++)
+	if (realm->namestr == z) return realm;
+
+    return 0;
+}
+
 static void
 rlm_nack_cancel(register ZNotice_t *notice,
 		struct sockaddr_in *who)
