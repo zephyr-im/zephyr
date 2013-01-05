@@ -114,8 +114,8 @@ struct _Destlist {
 struct _ZRealm_server {
     String *name;			/* server's hostname */
     struct sockaddr_in addr;		/* server's address */
-    unsigned int usable :1;             /* set once entry is usable */
     unsigned int dontsend :1;		/* private server, do not send */
+    unsigned int got_addr :1;		/* IP address is valid */
 };
 
 struct _ZRealm {

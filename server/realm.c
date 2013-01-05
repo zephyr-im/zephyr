@@ -77,6 +77,12 @@ static int ticket_lookup(char *realm);
 #endif
 
 static int
+is_usable(ZRealm_server *srvr)
+{
+    return srvr->got_addr;
+}
+
+static int
 realm_get_idx_by_addr(ZRealm *realm,
 		      struct sockaddr_in *who)
 {
@@ -85,7 +91,7 @@ realm_get_idx_by_addr(ZRealm *realm,
 
     /* loop through the realms */
     for (srvr = realm->srvrs, b = 0; b < realm->count; b++, srvr++) {
-	if (!srvr->usable)
+	if (!is_usable(srvr))
 	    continue;
 	if (srvr->addr.sin_addr.s_addr == who->sin_addr.s_addr)
 	    return(b);
@@ -107,7 +113,7 @@ realm_next_idx_by_idx(realm, idx)
     while (a > 0) { a--; srvr++; }
 
     for (srvr, b = idx; b < realm->count; b++, srvr++) {
-	if (!srvr->usable)
+	if (!is_usable(srvr))
 	    continue;
 	if (!srvr->dontsend)
 	    return(b);
@@ -116,7 +122,7 @@ realm_next_idx_by_idx(realm, idx)
     /* recycle */
     if (idx != 0)
 	for (srvr = realm->srvrs, b = 0; b < idx; b++, srvr++) {
-	    if (!srvr->usable)
+	    if (!is_usable(srvr))
 		continue;
 	    if (!srvr->dontsend)
 		return(b);
@@ -335,7 +341,7 @@ realm_which_realm(struct sockaddr_in *who)
 	for (srvr = otherrealms[a]->srvrs, b = 0;
 	     b < otherrealms[a]->count;
 	     b++, srvr++) {
-	    if (!srvr->usable)
+	    if (!is_usable(srvr))
 		continue;
 	    if (srvr->addr.sin_addr.s_addr == who->sin_addr.s_addr)
 		return(otherrealms[a]);
@@ -586,7 +592,7 @@ realm_init(void)
 		/* use the server port */
 		srvr->addr.sin_port = srv_addr.sin_port;
 		srvr->addr.sin_family = AF_INET;
-		srvr->usable = 1;
+		srvr->got_addr = 1;
 	    } else
 		syslog(LOG_WARNING, "hostname failed, %s", srvr->name->string);
 	}
