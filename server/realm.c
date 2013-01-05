@@ -79,7 +79,7 @@ static int ticket_lookup(char *realm);
 static int
 is_usable(ZRealm_server *srvr)
 {
-    return srvr->got_addr;
+    return !srvr->deleted && srvr->got_addr;
 }
 
 static void
@@ -537,7 +537,7 @@ realm_init(void)
     ZRealm_server *srvr;
     ZRealmname *rlmnames;
     ZRealm *rlm;
-    int ii, jj, nrlmnames;
+    int ii, jj, kk, nrlmnames;
     char realm_list_file[128];
     char rlmprinc[MAX_PRINCIPAL_SIZE];
 
@@ -565,10 +565,46 @@ realm_init(void)
 	n_realm_slots = nrlmnames;
     }
 
+    /* ii: entry in rlmnames */
     for (ii = 0; ii < nrlmnames; ii++) {
 	rlm = realm_get_realm_by_name_string(rlmnames[ii].name);
 	if (rlm) {
-	    // XXX update existing realm
+	    /* jj: server entry in otherrealms */
+	    /* kk: server entry in rlmnames */
+	    for (jj = 0; jj < rlm->count; jj++) {
+		rlm->srvrs[jj].deleted = 1;
+		for (kk = 0; kk < rlmnames[ii].nused; kk++) {
+		    if (rlmnames[ii].servers[kk].name != rlm->srvrs[jj].name)
+			continue;
+		    /* update existing server */
+		    rlm->srvrs[jj].dontsend = rlmnames[ii].servers[kk].dontsend;
+		    rlm->srvrs[jj].deleted = 0;
+		    rlm_lookup_server_address(&rlm->srvrs[jj]);
+
+		    /* mark realm.list server entry used */
+		    rlmnames[ii].servers[kk].deleted = 1;
+		    break;
+		}
+	    }
+	    for (jj = kk = 0; kk < rlmnames[ii].nused; kk++)
+		if (!rlmnames[ii].servers[kk].deleted) jj++;
+
+	    rlm->srvrs = realloc(rlm->srvrs,
+				 (rlm->count + jj) * sizeof(ZRealm_server));
+	    if (!rlm->srvrs) {
+		syslog(LOG_CRIT, "realloc failed in realm_init");
+		abort();
+	    }
+	    for (kk = 0; kk < rlmnames[ii].nused; kk++) {
+		if (rlmnames[ii].servers[kk].deleted) continue;
+		rlm->srvrs[rlm->count] = rlmnames[ii].servers[kk];
+		rlm_lookup_server_address(&rlm->srvrs[rlm->count]);
+		rlm->count++;
+	    }
+	    /* The current server might have been deleted or marked dontsend.
+	       Advance to one we can use, if necessary. */
+	    rlm->idx = (rlm->count) ?
+		realm_next_idx_by_idx(rlm, rlm->idx) : 0;
 	    free(rlmnames[ii].servers);
 	    continue;
 	}
