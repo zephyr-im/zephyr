@@ -82,6 +82,22 @@ is_usable(ZRealm_server *srvr)
     return srvr->got_addr;
 }
 
+static void
+rlm_lookup_server_address(ZRealm_server *srvr)
+{
+    struct hostent *hp;
+
+    hp = gethostbyname(srvr->name->string);
+    if (hp) {
+	memmove(&srvr->addr.sin_addr, hp->h_addr, sizeof(struct in_addr));
+	/* use the server port */
+	srvr->addr.sin_port = srv_addr.sin_port;
+	srvr->addr.sin_family = AF_INET;
+	srvr->got_addr = 1;
+    } else
+	syslog(LOG_WARNING, "hostname failed, %s", srvr->name->string);
+}
+
 static int
 realm_get_idx_by_addr(ZRealm *realm,
 		      struct sockaddr_in *who)
@@ -522,7 +538,6 @@ realm_init(void)
     ZRealmname *rlmnames;
     ZRealm *rlm;
     int ii, jj, nrlmnames;
-    struct hostent *hp;
     char realm_list_file[128];
     char rlmprinc[MAX_PRINCIPAL_SIZE];
 
@@ -584,18 +599,8 @@ realm_init(void)
 	/* convert names to addresses */
 	rlm->count = rlmnames[ii].nused;
 	rlm->srvrs = rlmnames[ii].servers;
-	for (srvr = rlm->srvrs, jj = 0; jj < rlm->count; jj++, srvr++) {
-	    hp = gethostbyname(srvr->name->string);
-	    if (hp) {
-		memmove(&srvr->addr.sin_addr, hp->h_addr,
-			sizeof(struct in_addr));
-		/* use the server port */
-		srvr->addr.sin_port = srv_addr.sin_port;
-		srvr->addr.sin_family = AF_INET;
-		srvr->got_addr = 1;
-	    } else
-		syslog(LOG_WARNING, "hostname failed, %s", srvr->name->string);
-	}
+	for (srvr = rlm->srvrs, jj = 0; jj < rlm->count; jj++, srvr++)
+	    rlm_lookup_server_address(srvr);
 
 	client = (Client *) malloc(sizeof(Client));
 	if (!client) {
