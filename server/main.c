@@ -686,6 +686,7 @@ do_reset(void)
     /* reset various things in the server's state */
     subscr_reset();
     server_reset();
+    realm_init();
     access_reinit();
     syslog(LOG_INFO, "restart completed");
     doreset = 0;
