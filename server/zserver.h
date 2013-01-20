@@ -286,6 +286,7 @@ char *strsave(const char *str);
 unsigned long hash (const char *);
 void dump_quote(char *p, FILE *fp);
 void notice_extract_address(ZNotice_t *notice, struct sockaddr_in *addr);
+int packets_waiting(void);
 
 /* found in dispatch.c */
 void handle_packet(void);
@@ -396,8 +397,7 @@ int opstaff_check(char *);
 
 /* global identifiers */
 
-/* found in main.c */
-int packets_waiting(void);
+/* found in global.c */
 extern struct sockaddr_in srv_addr;	/* server socket address */
 extern unsigned short hm_port;		/* host manager receiver port */
 extern unsigned short hm_srv_port;	/* host manager server sending port */
@@ -418,7 +418,6 @@ extern krb5_ccache Z_krb5_ccache;
 #endif
 #ifdef HAVE_KRB4
 extern char srvtab_file[];
-extern char my_realm[];
 #endif
 extern char acl_dir[];
 extern char subs_file[];
@@ -427,6 +426,8 @@ extern u_long npackets;			/* num of packets processed */
 extern time_t uptime;			/* time we started */
 extern struct in_addr my_addr;		/* my inet address */
 extern struct timeval t_local;		/* current time */
+extern char *bdump_version;
+extern int bdump_auth_proto;
 
 /* found in bdump.c */
 extern int bdumping;			/* are we processing a bdump packet? */

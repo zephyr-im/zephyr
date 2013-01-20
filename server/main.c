@@ -71,71 +71,22 @@ static void detach(void);
 static short doreset = 0;		/* if it becomes 1, perform
 					   reset functions */
 
-int nfds;				/* max file descriptor for select() */
-int srv_socket;				/* dgram socket for clients
-					   and other servers */
-int bdump_socket = -1;			/* brain dump socket fd
-					   (closed most of the time) */
-fd_set interesting;			/* the file descrips we are listening
-					   to right now */
-struct sockaddr_in srv_addr;		/* address of the socket */
+static char *programname;               /* set to the basename of argv[0] */
 
-Unacked *nacklist = NULL;		/* list of packets waiting for ack's */
-
-unsigned short hm_port;			/* host manager receiver port */
-unsigned short hm_srv_port;		/* host manager server sending port */
-
-char *programname;			/* set to the basename of argv[0] */
-char myname[NS_MAXDNAME];		/* my host name */
-
-char list_file[128];
 #ifdef HAVE_KRB5
-char keytab_file[128];
 static char tkt5_file[256];
 #endif
 #ifdef HAVE_KRB4
-char srvtab_file[128];
 static char tkt_file[128];
 #endif
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
-char my_realm[REALM_SZ];
-#endif
-char acl_dir[128];
-char subs_file[128];
-
-int zdebug;
-#ifdef DEBUG
-int zalone;
-#endif
-
-struct timeval t_local;			/* store current time for other uses */
 
 static int dump_db_flag = 0;
 static int dump_strings_flag = 0;
 
-u_long npackets;			/* number of packets processed */
-time_t uptime;				/* when we started operations */
 static int nofork;
-struct in_addr my_addr;
-char *bdump_version = "1.2";
 
-#ifdef HAVE_KRB5
-int bdump_auth_proto = 5;
-#else /* HAVE_KRB5 */
-#ifdef HAVE_KRB4
-int bdump_auth_proto = 4;
-#else /* HAVE_KRB4 */
-int bdump_auth_proto = 0;
-#endif /* HAVE_KRB4 */
-#endif /* HAVE_KRB5 */
-
-#ifdef HAVE_KRB5
-krb5_ccache Z_krb5_ccache;
-krb5_keyblock *__Zephyr_keyblock;
-#else
-#ifdef HAVE_KRB4
-C_Block __Zephyr_session;
-#endif
+#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+static char my_realm[REALM_SZ];
 #endif
 
 int
@@ -441,10 +392,10 @@ do_net_setup(void)
     hp = gethostbyname(hostname);
     if (!hp || hp->h_addrtype != AF_INET) {
 	syslog(LOG_ERR, "no gethostbyname repsonse");
-	strncpy(myname, hostname, sizeof(myname));
+	strncpy(myname, hostname, NS_MAXDNAME);
 	return 1;
     }
-    strncpy(myname, hp->h_name, sizeof(myname));
+    strncpy(myname, hp->h_name, NS_MAXDNAME);
     memcpy(&my_addr, hp->h_addr_list[0], hp->h_length);
 
     setservent(1);		/* keep file/connection open */
@@ -500,21 +451,6 @@ usage(void)
 		programname);
 #endif /* DEBUG */
 	exit(2);
-}
-
-int
-packets_waiting(void)
-{
-    fd_set readable, initial;
-    struct timeval tv;
-
-    if (msgs_queued())
-	return 1;
-    FD_ZERO(&initial);
-    FD_SET(srv_socket, &initial);
-    readable = initial;
-    tv.tv_sec = tv.tv_usec = 0;
-    return (select(srv_socket + 1, &readable, NULL, NULL, &tv) > 0);
 }
 
 static RETSIGTYPE

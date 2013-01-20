@@ -105,8 +105,6 @@ static Z_AuthProc bdump_auth_proc;
 
 int bdumping;
 int bdump_concurrent;
-extern char *bdump_version;
-extern int bdump_auth_proto;
 
 /*
  * Functions for performing a brain dump between servers.
@@ -201,7 +199,7 @@ bdump_offer(struct sockaddr_in *who)
 
     /* myname is the hostname */
     /* the class instance is the version number, here it is */
-    /* bdump_version, which is set in main */
+    /* bdump_version, which is set in global.c */
     send_list(ACKED, srv_addr.sin_port, ZEPHYR_ADMIN_CLASS, bdump_version,
 	      ADMIN_BDUMP, myname, "", lyst, 2);
 

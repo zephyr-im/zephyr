@@ -112,3 +112,19 @@ notice_extract_address(ZNotice_t *notice, struct sockaddr_in *addr)
     addr->sin_port = notice->z_port;
     addr->sin_family = AF_INET;
 }
+
+
+int
+packets_waiting(void)
+{
+    fd_set readable, initial;
+    struct timeval tv;
+
+    if (msgs_queued())
+	return 1;
+    FD_ZERO(&initial);
+    FD_SET(srv_socket, &initial);
+    readable = initial;
+    tv.tv_sec = tv.tv_usec = 0;
+    return (select(srv_socket + 1, &readable, NULL, NULL, &tv) > 0);
+}
