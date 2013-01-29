@@ -232,10 +232,10 @@ if test "$ss" != no; then
 		LDFLAGS="$LDFLAGS -L$ss/lib"
 	fi
 	AC_CHECK_LIB(ss, ss_perror, 
-                     [SS_LIBS="-lss -lreadline -lcurses"
+                     [SS_LIBS="-lss"
                      AC_DEFINE(HAVE_SS, 1, [Define if we are building with the ss library])],
 		     AS_IF([test "x$ss" != "xmaybe"], AC_MSG_ERROR(ss library not found)),
-                     -lcom_err -lreadline -lcurses)
+                     -lcom_err)
         SS_OBJS='${SS_OBJS}'
 fi
 AC_SUBST(SS_LIBS)
