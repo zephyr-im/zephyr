@@ -16,6 +16,10 @@ static const char rcsid_ZGetSubscriptions_c[] = "$Id$";
 
 #include <internal.h>
 
+#ifndef MIN
+#define MIN(x, y)               ((x) < (y) ? (x) : (y))
+#endif
+
 Code_t
 ZGetSubscriptions(ZSubscription_t *subscription,
 		  int *numsubs)
