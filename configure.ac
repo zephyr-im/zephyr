@@ -125,10 +125,12 @@ if test "$krb4" != no; then
 	fi
 	AC_CHECK_LIB(krb4, krb_rd_req,
 	     [KRB4_LIBS="-lkrb4 -ldes425 -lkrb5 -lk5crypto -lcom_err"],
-	     [AC_CHECK_LIB(krb, krb_rd_req,
-			   [KRB4_LIBS="-lkrb -ldes"],
+	     [AC_CHECK_LIB(des, des_quad_cksum,
+			   [KRB4_DES_LIBS="-ldes"],,,)
+	     AC_CHECK_LIB(krb, krb_rd_req,
+			   [KRB4_LIBS="-lkrb $KRB4_DES_LIBS"],
 			   [AC_MSG_ERROR(Kerberos 4 libraries not found)],
-			   -ldes)],
+			   $KRB4_DES_LIBS)],
 	     -ldes425 -lkrb5 -lk5crypto -lcom_err)
 	AC_DEFINE(HAVE_KRB4, 1, [Define to compile with Kerberos support.])
 	LIBZEPHYR_LIBS="$LIBZEPHYR_LIBS $KRB4_LIBS"
