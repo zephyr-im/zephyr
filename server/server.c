@@ -24,7 +24,7 @@ static const char rcsid_server_c[] = "$Id$";
 enum {
     SRV_NACKTAB_HASHSIZE = 1023
 };
-inline unsigned int
+inline static unsigned int
 srv_nacktab_hashval(int which, ZUnique_Id_t uid) {
     return (which ^
 	    uid.zuid_addr.s_addr ^ uid.tv.tv_sec ^ uid.tv.tv_usec)

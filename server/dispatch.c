@@ -25,7 +25,7 @@ static const char rcsid_dispatch_c[] =
 enum {
     NACKTAB_HASHSIZE = 1023
 };
-inline unsigned int
+inline static unsigned int
 nacktab_hashval(struct sockaddr_in sa, ZUnique_Id_t uid) {
     return (sa.sin_addr.s_addr ^
 	    sa.sin_port ^
