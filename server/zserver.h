@@ -211,6 +211,24 @@ struct _Statistic {
     char		*str;
 };
 
+typedef enum _Exposure_type {
+    NONE,
+    OPSTAFF_VIS,
+    REALM_VIS,
+    REALM_ANN,
+    NET_VIS,
+    NET_ANN
+} Exposure_type;
+
+typedef struct _Location {
+    String *user;
+    String *machine;
+    char *time;			/* in ctime format */
+    String *tty;
+    struct sockaddr_in addr;	/* IP address and port of location */
+    Exposure_type exposure;
+} Location;
+
 /* Function declarations */
 
 /* These macros instantiate inline functions that do the work of the formder

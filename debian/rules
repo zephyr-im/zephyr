@@ -22,6 +22,7 @@ CONFIGURE_krb5=--with-krb5=/usr
 CONFIGURE_krb45=--with-krb4=/usr --with-krb5=/usr
 CONFIGURE_krb=--with-krb4=/usr
 CONFIGURE_no-krb=
+CFLAGS=-g -O
 CHECK=check
 
 # see /usr/share/doc/autotools-dev/README.Debian.gz
@@ -66,7 +67,7 @@ configure-stamp:
 	automake -a || true # we only want this for install-sh
 	autoreconf
 	mkdir -p $(BUILD_VARIETALS)
-	$(foreach VARIETY,$(BUILD_VARIETALS),(cd $(VARIETY) && CFLAGS="-g -O" ../configure $(CONFIGURE_$(VARIETY)) $(CONFIGURE_ROOT));)
+	$(foreach VARIETY,$(BUILD_VARIETALS),(cd $(VARIETY) && CFLAGS="$(CFLAGS)" ../configure $(CONFIGURE_$(VARIETY)) $(CONFIGURE_ROOT));)
 	touch configure-stamp
 
 build-arch: build-stamp

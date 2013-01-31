@@ -36,14 +36,21 @@ LDFLAGS=@LDFLAGS@
 LIBS=${LIBZEPHYR} @LIBS@ -lcom_err
 HESIOD_LIBS=@HESIOD_LIBS@
 
-OBJS=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \
-	dispatch.o kstuff.o main.o server.o subscr.o timer.o uloc.o \
+NMOBJS=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \
+	dispatch.o kstuff.o global.o server.o subscr.o timer.o uloc.o \
 	zstring.o realm.o version.o utf8proc.o
 
-all: zephyrd zephyrd.8
+OBJS= main.o $(NMOBJS)
+
+TESTOBJS = test_server.o $(NMOBJS)
+
+all: zephyrd zephyrd.8 test_server
 
 zephyrd: ${OBJS} ${LIBZEPHYR}
 	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS} ${HESIOD_LIBS}
+
+test_server: $(TESTOBJS)
+	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${TESTOBJS} ${LIBS} ${HESIOD_LIBS}
 
 zsrv_err.h: zsrv_err.c
 zsrv_err.c: zsrv_err.et
@@ -56,7 +63,8 @@ zephyrd.8: ${srcdir}/zephyrd.8.in Makefile
 	${editman} ${srcdir}/$@.in > $@.tmp
 	mv $@.tmp $@
 
-check:
+check: test_server
+	./test_server
 
 # No dependency on zephyrd, to avoid rebuilding version.o.
 install: zephyrd.8 zephyrd
@@ -67,7 +75,7 @@ install: zephyrd.8 zephyrd
 		${DESTDIR}${sysconfdir}/zephyr
 
 clean:
-	${LIBTOOL} --mode=clean rm -f zephyrd
+	${LIBTOOL} --mode=clean rm -f zephyrd test_server
 	rm -f ${OBJS} zsrv_err.[ch]
 	rm -f zephyrd.8
 

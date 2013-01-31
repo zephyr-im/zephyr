@@ -61,42 +61,24 @@ static const char rcsid_uloc_c[] =
 /* else you will lose.  See ulogin_locate() and uloc_send_locations() */
 #define	NUM_FIELDS	3
 
-typedef enum _Exposure_type {
-    NONE,
-    OPSTAFF_VIS,
-    REALM_VIS,
-    REALM_ANN,
-    NET_VIS,
-    NET_ANN
-} Exposure_type;
-
-typedef struct _Location {
-    String *user;
-    String *machine;
-    char *time;			/* in ctime format */
-    String *tty;
-    struct sockaddr_in addr;	/* IP address and port of location */
-    Exposure_type exposure;
-} Location;
-
 #define NOLOC		1
 #define QUIET		-1
 #define UNAUTH		-2
 
 static void ulogin_locate(ZNotice_t *notice, struct sockaddr_in *who,
 			  int auth);
-static void ulogin_flush_user(ZNotice_t *notice);
-static Location *ulogin_find(char *user, struct in_addr *host,
-			     unsigned int port);
-static Location *ulogin_find_user(char *user);
+void ulogin_flush_user(ZNotice_t *notice);
+Location *ulogin_find(char *user, struct in_addr *host,
+                      unsigned int port);
+Location *ulogin_find_user(char *user);
 static int ulogin_setup(ZNotice_t *notice, Location *locs,
 			Exposure_type exposure, struct sockaddr_in *who);
-static int ulogin_add_user(ZNotice_t *notice, Exposure_type exposure,
+int ulogin_add_user(ZNotice_t *notice, Exposure_type exposure,
 			   struct sockaddr_in *who);
 static int ulogin_parse(ZNotice_t *notice, Location *locs);
-static Exposure_type ulogin_remove_user(ZNotice_t *notice,
-					struct sockaddr_in *who,
-					int *err_return);
+Exposure_type ulogin_remove_user(ZNotice_t *notice,
+                                 struct sockaddr_in *who,
+                                 int *err_return);
 static void login_sendit(ZNotice_t *notice, int auth,
 			 struct sockaddr_in *who, int external);
 static char **ulogin_marshal_locs(ZNotice_t *notice, int *found, int auth);
@@ -457,7 +439,7 @@ uloc_send_locations(void)
  * Add the user to the internal table of locations.
  */
 
-static int
+int
 ulogin_add_user(ZNotice_t *notice,
 		Exposure_type exposure,
 		struct sockaddr_in *who)
@@ -593,7 +575,7 @@ ulogin_parse(ZNotice_t *notice,
 }
 
 
-static Location *
+Location *
 ulogin_find(char *user,
 	    struct in_addr *host,
 	    unsigned int port)
@@ -626,7 +608,7 @@ ulogin_find(char *user,
  * table.
  */
 
-static Location *
+Location *
 ulogin_find_user(char *user)
 {
     int i, rlo, rhi;
@@ -668,7 +650,7 @@ ulogin_find_user(char *user)
  * remove the user specified in notice from the internal table
  */
 
-static Exposure_type
+Exposure_type
 ulogin_remove_user(ZNotice_t *notice,
 		   struct sockaddr_in *who,
 		   int *err_return)
@@ -727,7 +709,7 @@ ulogin_remove_user(ZNotice_t *notice,
  * remove all locs of the user specified in notice from the internal table
  */
 
-static void
+void
 ulogin_flush_user(ZNotice_t *notice)
 {
     Location *loc, *loc2;
