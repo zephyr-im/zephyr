@@ -117,9 +117,7 @@ realm_get_idx_by_addr(ZRealm *realm,
 }
 
 static int
-realm_next_idx_by_idx(realm, idx)
-    ZRealm *realm;
-    int idx;
+realm_next_idx_by_idx(ZRealm *realm, int idx)
 {
     ZRealm_server *srvr;
     int a, b;
@@ -128,7 +126,7 @@ realm_next_idx_by_idx(realm, idx)
     srvr = realm->srvrs; a = idx;
     while (a > 0) { a--; srvr++; }
 
-    for (srvr, b = idx; b < realm->count; b++, srvr++) {
+    for (b = idx; b < realm->count; b++, srvr++) {
 	if (!is_usable(srvr))
 	    continue;
 	if (!srvr->dontsend)
@@ -385,12 +383,12 @@ realm_get_realm_by_name(char *name)
 }
 
 ZRealm *
-realm_get_realm_by_name_string(String *z)
+realm_get_realm_by_name_string(String *namestr)
 {
     int a;
 
     for (a = 0; a < nrealms; a++)
-	if (otherrealms[a]->namestr == z)
+	if (otherrealms[a]->namestr == namestr)
 	    return otherrealms[a];
 
     return 0;

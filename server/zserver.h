@@ -369,6 +369,7 @@ int realm_sender_in_realm(const char *realm, char *sender);
 int realm_bound_for_realm(const char *realm, char *recip);
 ZRealm *realm_which_realm(struct sockaddr_in *who);
 ZRealm *realm_get_realm_by_name(char *name);
+ZRealm *realm_get_realm_by_name_string(String *namestr);
 ZRealm *realm_get_realm_by_pid(int);
 void realm_handoff(ZNotice_t *, int, struct sockaddr_in *, ZRealm *, int);
 const char *realm_expand_realm(char *);
