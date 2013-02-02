@@ -411,7 +411,7 @@ bdump_send(void)
 	(void) strcpy(instance, "*"); 		/* let Kerberos fill it in */
 
 	ticket.length = len;
-	memcpy(&ticket.dat, data, MIN(len, sizeof(ticket.dat)));
+	memcpy(&ticket.dat, data, MIN(len, (int)sizeof(ticket.dat)));
 	retval = krb_rd_req(&ticket, SERVER_SERVICE, instance,
 			    from.sin_addr.s_addr, &kdata, srvtab_file);
 	/*
@@ -858,7 +858,8 @@ transmit_tcp(char *pack, int packlen)
 	    syslog(LOG_WARNING, "transmit_tcp: writing length: %m");
 	    retval = errno;
 	} else {
-	    syslog(LOG_WARNING, "transmit_tcp: writing length: %d vs %d", sizeof(length), count);
+	    syslog(LOG_WARNING, "transmit_tcp: writing length: %lu vs %d",
+		   (unsigned long)sizeof(length), count);
 	    retval = ZSRV_LEN;
 	}
 	goto cleanup;
@@ -1177,6 +1178,8 @@ bdump_recv_loop(Server *server)
     Client *client = NULL;
     struct sockaddr_in who;
 #ifdef HAVE_KRB5
+    uint32_t client_enctype;
+    uint32_t client_keysize;
     unsigned char buf[512];
     int blen;
 #endif
@@ -1318,9 +1321,11 @@ bdump_recv_loop(Server *server)
 			syslog(LOG_ERR,"bdump_recv_loop: bad keyblock read: %s (%s)",
 			       error_message(retval), cp);
 		    } else {
+			memcpy(&client_enctype, &buf[0], sizeof(uint32_t));
+			memcpy(&client_keysize, &buf[4], sizeof(uint32_t));
 			retval = Z_krb5_init_keyblock(Z_krb5_ctx,
-						    ntohl(*(krb5_enctype *)&buf[0]),
-						    ntohl(*(uint32_t *)&buf[4]),
+						    ntohl(client_enctype),
+						    ntohl(client_keysize),
 						    &client->session_keyblock);
 			if (retval) {
 			    syslog(LOG_ERR, "bdump_recv_loop: failed to allocate keyblock: %s",
@@ -1533,12 +1538,12 @@ get_packet(char **packet, int *buflen, int *retlen)
     char *p;
 
     result = net_read(input, (char *) &length, sizeof(unsigned short));
-    if (result < sizeof(short)) {
+    if (result < (int)sizeof(short)) {
 	if (result < 0) {
 	    return errno;
 	} else {
-	    syslog(LOG_ERR, "get_packet: received length: %d vs %d (%m)", result,
-		   sizeof(short));
+	    syslog(LOG_ERR, "get_packet: received length: %d vs %lu (%m)",
+		   result, (unsigned long)sizeof(short));
 	    return ZSRV_LEN;
 	}
     }

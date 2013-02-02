@@ -88,16 +88,16 @@ int puntable_address_p(string class,
 		       string recipient)
 {
     string temp;
-    int ret;
 
     if (!puntable_addresses_dict)
       init_puntable_dict();
 
     temp = address_to_string(class, instance, recipient);
-    ret = (int)int_dictionary_Lookup(puntable_addresses_dict, temp);
+    if (int_dictionary_Lookup(puntable_addresses_dict, temp)) {
+	free(temp);
+	return 1;
+    }
     free(temp);
-    if (ret)
-        return 1;;
 
     /* This kludge is to allow punts of wildcard instance to work */
     temp = address_to_string(class, "*", recipient);

@@ -54,16 +54,16 @@ ZMakeZcode(register char *ptr,
             case 0x00:
                 if (len < 3)
                     return ZERR_FIELDLEN;
-                *ptr++ = 0xff;
-                *ptr++ = 0xf0;
+                *(unsigned char *)ptr++ = 0xff;
+                *(unsigned char *)ptr++ = 0xf0;
                 len -= 2;
                 continue;
 
             case 0xff:
                 if (len < 3)
                     return ZERR_FIELDLEN;
-                *ptr++ = 0xff;
-                *ptr++ = 0xf1;
+                *(unsigned char *)ptr++ = 0xff;
+                *(unsigned char *)ptr++ = 0xf1;
                 len -= 2;
                 continue;
 

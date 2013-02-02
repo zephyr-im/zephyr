@@ -22,7 +22,8 @@ static const char rcsid_zstring_c[] =
 
 static String *zhash[STRING_HASH_TABLE_SIZE];
 
-int valid_utf8_p(const char* s)
+static int
+valid_utf8_p(const char* s)
 {
     ssize_t len;
     int32_t uc;
@@ -38,16 +39,18 @@ int valid_utf8_p(const char* s)
 
 static char *zdowncase(const char* s)
 {
+    unsigned char *new_s_u; /* Avoid strict aliasing violation */
     char *new_s, *p;
 
     if (valid_utf8_p(s)) {
         /* Use utf8proc if we're dealing with UTF-8.
          * Rather than downcase, casefold and normalize to NFKC.
          */
-        utf8proc_map((const unsigned char *)s, 0, (unsigned char **)&new_s,
+        utf8proc_map((const unsigned char *)s, 0, (unsigned char **)&new_s_u,
                      UTF8PROC_NULLTERM   | UTF8PROC_STABLE
                      | UTF8PROC_CASEFOLD | UTF8PROC_COMPAT
                      | UTF8PROC_COMPOSE);
+        new_s = (char *)new_s_u;
     } else {
         /* If not, fall back to old methods. */
         new_s = strsave(s);

@@ -24,6 +24,7 @@ static const char rcsid_xrevstack_c[] = "$Id$";
 #ifndef TRUEREVSTACK
 #include <zephyr/zephyr.h>
 #include "X_gram.h"
+#include "xrevstack.h"
 
 x_gram *bottom_gram = NULL;
 x_gram *unlinked = NULL;

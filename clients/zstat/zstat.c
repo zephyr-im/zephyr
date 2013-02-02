@@ -55,7 +55,7 @@ void do_stat(char *);
 int srv_stat(char *);
 int hm_stat(char *, char *);
 
-RETSIGTYPE
+static RETSIGTYPE
 timeout(int ignored)
 {
 	outoftime = 1;
@@ -69,8 +69,6 @@ main(int argc,
 	char hostname[NS_MAXDNAME];
 	int optchar;
 	struct servent *sp;
-	extern char *optarg;
-	extern int optind;
 
 	if ((ret = ZInitialize()) != ZERR_NONE) {
 		com_err("zstat", ret, "initializing");
@@ -145,7 +143,7 @@ hm_stat(char *host,
 	Code_t code;
 
 	char *line[20],*mp;
-	int i,nf;
+	unsigned int i,nf;
 	struct hostent *hp;
 	time_t runtime;
 	struct tm *tim;

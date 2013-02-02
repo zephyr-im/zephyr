@@ -66,6 +66,27 @@ static void run_command(int, char *[]);
 static void show_commands(int, char *[]);
 #endif
 
+/* Prototype all of the commands.
+ * These really should be in a header also visible to zctl_cmds.c,
+ * but mk_cmds doesn't make that easy.
+ */
+void cancel_subs(int argc, char *argv[]);
+void current(int argc, char *argv[]);
+void do_hide(int argc, char *argv[]);
+void do_punt(int argc, char *argv[]);
+void flush_locations(int argc, char *argv[]);
+void hm_control(int argc, char *argv[]);
+void list_punts(int argc, char *argv[]);
+void load_subs(int argc, char *argv[]);
+void set_file(int argc, char *argv[]);
+void set_var(int argc, char *argv[]);
+void show_var(int argc, char *argv[]);
+void sub_file(int argc, char *argv[]);
+void subscribe(int argc, char *argv[]);
+void unset_var(int argc, char *argv[]);
+void wgc_control(int argc, char *argv[]);
+
+
 int
 main(int argc,
      char *argv[])
@@ -547,22 +568,19 @@ add_file(short wgport,
 	 int unsub)
 {
 	FILE *fp;
-	char errbuf[BUFSIZ];
 	ZSubscription_t sub2;
 	Code_t retval;
 
 	(void) purge_subs(subs,ALL);	/* remove copies in the subs file */
 	if (!(fp = fopen(subsname,"a"))) {
-		(void) sprintf(errbuf,"while opening %s for append",subsname);
-		com_err(whoami, errno, errbuf);
+		com_err(whoami, errno, "while opening %s for append", subsname);
 		return;
 	}
 	fprintf(fp,"%s%s,%s,%s\n",
 		unsub ? "!" : "",
 		subs->zsub_class, subs->zsub_classinst, subs->zsub_recipient);
 	if (fclose(fp) == EOF) {
-		(void) sprintf(errbuf, "while closing %s", subsname);
-		com_err(whoami, errno, errbuf);
+		com_err(whoami, errno, "while closing %s", subsname);
 		return;
 	}
 	fix_macros(subs,&sub2,1);
@@ -605,7 +623,7 @@ purge_subs(register ZSubscription_t *subs,
 	   int which)
 {
 	FILE *fp,*fpout;
-	char errbuf[BUFSIZ],subline[BUFSIZ];
+	char subline[BUFSIZ];
 	char backup[BUFSIZ],ourline[BUFSIZ];
 	int delflag = NOT_REMOVED;
 	int keep = 0;
@@ -626,16 +644,14 @@ purge_subs(register ZSubscription_t *subs,
 		       subs->zsub_recipient);
 
 	if (!(fp = fopen(subsname,"r"))) {
-		(void) sprintf(errbuf,"while opening %s for read",subsname);
-		com_err(whoami, errno, errbuf);
+		com_err(whoami, errno, "while opening %s for read", subsname);
 		return(ERR);
 	}
 	(void) strcpy(backup, subsname);
 	(void) strcat(backup, ".temp");
 	(void) unlink(backup);
 	if (!(fpout = fopen(backup,"w"))) {
-		(void) sprintf(errbuf,"while opening %s for writing",backup);
-		com_err(whoami, errno, errbuf);
+		com_err(whoami, errno, "while opening %s for writing", backup);
 		(void) fclose(fp);
 		return(ERR);
 	}
@@ -660,23 +676,20 @@ purge_subs(register ZSubscription_t *subs,
 		if (keep) {
 			fputs(subline, fpout);
 			if (ferror(fpout) || (fputc('\n', fpout) == EOF)) {
-				(void) sprintf(errbuf, "while writing to %s",
-					       backup);
-				com_err(whoami, errno, errbuf);
+				com_err(whoami, errno, "while writing to %s",
+					backup);
 			}
 		} else
 			delflag = REMOVED;
 	}
 	(void) fclose(fp);		/* open read-only, ignore errs */
 	if (fclose(fpout) == EOF) {
-		(void) sprintf(errbuf, "while closing %s",backup);
-		com_err(whoami, errno, errbuf);
+		com_err(whoami, errno, "while closing %s", backup);
 		return(ERR);
 	}
 	if (rename(backup,subsname) == -1) {
-		(void) sprintf(errbuf,"while renaming %s to %s\n",
-			       backup,subsname);
-		com_err(whoami, errno, errbuf);
+		com_err(whoami, errno, "while renaming %s to %s\n",
+			backup, subsname);
 		return(ERR);
 	}
 	return(delflag);
@@ -823,8 +836,8 @@ load_subs(int argc,
 #ifdef CMU_ZCTL_PUNT
 		if (pind == SUBSATONCE) {
 			 fix_macros(punts,subs2,pind);
-			 if (retval = ZPunt(subs2,pind,(u_short)wgport) !=
-			     ZERR_NONE)
+			 if ((retval = ZPunt(subs2,pind,(u_short)wgport) !=
+			     ZERR_NONE))
 			   {
 			     com_err(whoami, retval,
 				       "while punting");
@@ -895,8 +908,8 @@ load_subs(int argc,
 #ifdef CMU_ZCTL_PUNT
 		if (pind) {
 			fix_macros(punts,subs2,pind);
-			if (retval = ZPunt(subs2,pind,(u_short)wgport) !=
-			    ZERR_NONE)
+			if ((retval = ZPunt(subs2,pind,(u_short)wgport) !=
+			    ZERR_NONE))
 			{
 			  com_err(whoami,retval,
 				    "while punting");
@@ -933,7 +946,6 @@ current(int argc,
 	char *argv[])
 {
 	FILE *fp = NULL;
-	char errbuf[BUFSIZ];
 	ZSubscription_t subs;
 	int i,nsubs,retval,save,one,defs;
 	short wgport;
@@ -983,9 +995,8 @@ current(int argc,
 		(void) strcpy(backup,file);
 		(void) strcat(backup,".temp");
 		if (!(fp = fopen(backup,"w"))) {
-			(void) sprintf(errbuf,"while opening %s for write",
-				       backup);
-			com_err(whoami, errno, errbuf);
+			com_err(whoami, errno, "while opening %s for write",
+				backup);
 			return;
 		}
 	}
@@ -1012,14 +1023,12 @@ current(int argc,
 
 	if (save) {
 		if (fclose(fp) == EOF) {
-			(void) sprintf(errbuf, "while closing %s", backup);
-			com_err(whoami, errno, errbuf);
+			com_err(whoami, errno, "while closing %s", backup);
 			return;
 		}
 		if (rename(backup,file) == -1) {
-			(void) sprintf(errbuf,"while renaming %s to %s",
-				       backup,file);
-			com_err(whoami, retval, errbuf);
+			com_err(whoami, retval, "while renaming %s to %s",
+				backup, file);
 			(void) unlink(backup);
 		}
 	}
@@ -1028,21 +1037,18 @@ current(int argc,
 int
 make_exist(char *filename)
 {
-	char errbuf[BUFSIZ];
 	FILE *fpout;
 
 	if (!access(filename,F_OK))
 		return (0);
 
 	if (!(fpout = fopen(filename,"w"))) {
-		(void) sprintf(errbuf,"while opening %s for write",filename);
-		com_err(whoami, errno, errbuf);
+		com_err(whoami, errno,"while opening %s for write", filename);
 		return (1);
 	}
 
 	if (fclose(fpout) == EOF) {
-		(void) sprintf(errbuf, "while closing %s", filename);
-		com_err(whoami, errno, errbuf);
+		com_err(whoami, errno, "while closing %s", filename);
 		return(1);
 	}
 	return (0);
@@ -1078,17 +1084,17 @@ fix_macros2(char *src, char **dest)
 		*dest = ZGetSender();
 }
 
-int
-do_punt(int argc, char **argv)
+void
+do_punt(int argc, char *argv[])
 {
 #ifdef CMU_ZCTL_PUNT
-  char *class, *inst, *recip, *msg, *whoami = argv[0];
+  char *class, *inst, *recip, *msg, *cmd = argv[0];
   int retval, punt;
   short newport;
   struct sockaddr_in newsin;
   ZNotice_t notice;
 
-  if (! strcmp(whoami, "punt")) punt = 1;
+  if (! strcmp(cmd, "punt")) punt = 1;
   else punt = 0;
 
   switch (argc) {
@@ -1114,28 +1120,28 @@ do_punt(int argc, char **argv)
     break;
   default:
     fprintf(stderr, "Usages:\n");
-    fprintf(stderr, "\t%s instance\n", whoami);
-    fprintf(stderr, "\t%s class instance\n", whoami);
-    fprintf(stderr, "\t%s class instance recipient\n", whoami);
-    return 1;
+    fprintf(stderr, "\t%s instance\n", cmd);
+    fprintf(stderr, "\t%s class instance\n", cmd);
+    fprintf(stderr, "\t%s class instance recipient\n", cmd);
+    return;
   }
 
   retval = ZOpenPort((u_short *) 0);
   if(retval != ZERR_NONE) {
     com_err(whoami, retval, "while opening Zephyr port.");
-    return 1;
+    return;
   }
 
   newsin = ZGetDestAddr();
   if ((newport = ZGetWGPort()) == -1) {
     fprintf(stderr, "%s: Can't find windowgram port\n", whoami);
-    return 1;
+    return;
   }
 
   newsin.sin_port = (unsigned short) newport;
   if ((retval = ZSetDestAddr(&newsin)) != ZERR_NONE) {
     com_err(whoami,retval,"while setting destination address");
-    return 1;
+    return;
   }
 
   msg = (char *) malloc(strlen(class) + strlen(inst) + strlen(recip) + 4);
@@ -1167,15 +1173,15 @@ do_punt(int argc, char **argv)
 
   ZClosePort();
 #endif
-  return 0;
+  return;
 }
 
-int
-list_punts(int argc, char **argv)
+void
+list_punts(int argc, char *argv[])
 {
 #ifdef CMU_ZCTL_PUNT
   ZNotice_t notice;
-  int retval, lensofar;
+  int retval;
   struct sockaddr_in old, to, from;
   u_short ourport, zwgcport;
   char *msg;
@@ -1184,20 +1190,20 @@ list_punts(int argc, char **argv)
   retval = ZOpenPort(&ourport);
   if(retval != ZERR_NONE) {
     com_err("zctl", retval, "while opening Zephyr port.");
-    return 1;
+    return;
   }
 
   old = ZGetDestAddr();
   to = old;
   if ((zwgcport = ZGetWGPort()) == (u_short)-1) {
     fprintf(stderr, "zctl: Can't find windowgram port\n");
-    return 1;
+    return;
   }
 
   to.sin_port = (u_short) zwgcport;
   if ((retval = ZSetDestAddr(&to)) != ZERR_NONE) {
     com_err("zctl",retval,"while setting destination address");
-    return 1;
+    return;
   }
 
   memset((char *) &notice, 0, sizeof(ZNotice_t));
@@ -1226,7 +1232,7 @@ list_punts(int argc, char **argv)
 
   if ((retval = ZSetDestAddr(&old)) != ZERR_NONE) {
     com_err("zctl",retval,"while resetting destination address");
-    return 1;
+    return;
   }
 
   msg = (char *) malloc((notice.z_message_len+1) * sizeof(char));
@@ -1238,7 +1244,7 @@ list_punts(int argc, char **argv)
   (void) ZClosePort();
 
 #endif /* CMU_ZCTL_PUNT */
-  return 0;
+  return;
 }
 
 #ifndef HAVE_SS

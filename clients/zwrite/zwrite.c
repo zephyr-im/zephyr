@@ -344,7 +344,7 @@ void
 send_off(ZNotice_t *notice, int real)
 {
     int i, success, retval;
-    char bfr[BUFSIZ], realm_recip[BUFSIZ], dest[3 * BUFSIZ];
+    char realm_recip[BUFSIZ], dest[3 * BUFSIZ];
     ZNotice_t retnotice;
 
     success = 0;
@@ -370,8 +370,7 @@ send_off(ZNotice_t *notice, int real)
 		   class, inst, 
 		   nrecips?notice->z_recipient:"everyone");
 	if ((retval = ZSendNotice(notice, auth)) != ZERR_NONE) {
-	    (void) sprintf(bfr, "while sending notice to %s", dest);
-	    com_err(whoami, retval, bfr);
+	    com_err(whoami, retval, "while sending notice to %s", dest);
 	    break;
 	}
 	if (real && !quiet) {
@@ -384,9 +383,8 @@ send_off(ZNotice_t *notice, int real)
 	if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *) 0,
 				ZCompareUIDPred, 
 				(char *)&notice->z_uid)) != ZERR_NONE) {
-	    (void) sprintf(bfr, "while waiting for acknowledgement for %s", 
+	    com_err(whoami, retval, "while waiting for acknowledgement for %s",
 		    dest);
-	    com_err(whoami, retval, bfr);
 	    continue;
 	}
 	if (retnotice.z_kind == SERVNAK) {

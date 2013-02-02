@@ -20,6 +20,10 @@ static const char rcsid_subscr_c[] = "$Id$";
 #endif
 #endif
 
+#ifndef INADDR_NONE
+#define INADDR_NONE 0xffffffff
+#endif
+
 /*
  * The subscription manager.
  *
@@ -347,7 +351,6 @@ subscr_realm_cancel(struct sockaddr_in *sin,
 		    ZRealm *realm)
 {
     Destlist *cancel_subs, *subs, *client_subs, *next, *next2;
-    Code_t retval;
     int found = 0;
 
     if (!realm)
@@ -366,7 +369,7 @@ subscr_realm_cancel(struct sockaddr_in *sin,
             next2 = client_subs->next;
             if (ZDest_eq(&client_subs->dest, &subs->dest)) {
                 Destlist_delete(client_subs);
-                retval = triplet_deregister(realm->client, &client_subs->dest, realm);
+                triplet_deregister(realm->client, &client_subs->dest, realm);
 		free_subscription(client_subs);
                 found = 1;
                 break;
@@ -1235,19 +1238,24 @@ Code_t subscr_foreign_user(ZNotice_t *notice,
   Client *client;
   ZNotice_t snotice;
   struct sockaddr_in newwho;
-  char *cp, *tp0, *tp1;
+  char *cp, *tp0;
+#ifdef DEBUG
+  char *tp1;
+#endif
   char rlm_recipient[REALM_SZ + 1];
 
   tp0 = cp = notice->z_message;
 
   newwho.sin_addr.s_addr = inet_addr(cp);
-  if (newwho.sin_addr.s_addr == -1) {
+  if (newwho.sin_addr.s_addr == INADDR_NONE) {
     syslog(LOG_ERR, "malformed addr from %s", notice->z_sender);
     return(ZERR_NONE);
   }
 
   I_ADVANCE(0);
+#ifdef DEBUG
   tp1 = cp;
+#endif
 
   snotice = *notice;
 

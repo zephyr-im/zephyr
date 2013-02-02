@@ -3,8 +3,7 @@
 #include <ctype.h>
 
 char *
-ZExpandRealm(realm)
-char *realm;
+ZExpandRealm(char *realm)
 {
         char *cp1, *cp2;
         static char expand[REALM_SZ];

@@ -23,10 +23,12 @@ static const char rcsid_zaway_c[] = "$Id$";
 #define DEFAULT_MSG "I'm sorry, but I am currently away from the terminal and am\nnot able to receive your message.\n"
 #define RESPONSE_OPCODE ""
 
+static char *find_message(ZNotice_t *, FILE *);
+
 RETSIGTYPE cleanup(int);
 u_short port;
 
-void
+static void
 usage(char *name)
 {
 	printf("Usage: %s [OPTIONS] [FILE]\n"
@@ -51,7 +53,6 @@ main(int argc,
 	int optchar, watch_location;
 	char *cmdline_msg;
 	int nlocs;
-	char *find_message(ZNotice_t *, FILE *);
 	char *charset = NULL;
 	unsigned short zcharset;
 	    

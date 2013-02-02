@@ -91,17 +91,17 @@ static Atom net_wm_window_type_utility = None;
  */
 
 /*ARGSUSED*/
-void
+static void
 x_set_icccm_hints(Display *dpy,
                   Window w,
                   char *name,
-                  char *icon_name,
+                  char *wm_icon_name,
                   XSizeHints *psizehints,
                   XWMHints *pwmhints,
                   Window main_window)
 {
    XStoreName(dpy,w,name);
-   XSetIconName(dpy,w,icon_name);
+   XSetIconName(dpy,w,wm_icon_name);
    XSetWMNormalHints(dpy,w,psizehints);
    XSetWMHints(dpy,w,pwmhints);
    XSetClassHint(dpy,w,&classhint);
@@ -279,7 +279,7 @@ x_gram_init(Display *dpy)
     }
 }
 
-int
+static int
 x_calc_gravity(int xalign,
                int yalign)
 {
@@ -424,7 +424,7 @@ SetFG(Display *dpy, GC gc, unsigned long foreground) {
     XChangeGC(dpy, gc, GCForeground, &gcvals);
 }
 
-void
+static void
 x_gram_draw(Display *dpy, Window w, x_gram *gram, Region region)
 {
    int i;
@@ -509,7 +509,7 @@ x_gram_draw(Display *dpy, Window w, x_gram *gram, Region region)
 #ifdef X_HAVE_UTF8_STRING
           text.chars = xb->wstr;
 #else
-          text.chars = (XChar2b *)xb->wstr;
+          text.chars = (wchar_t *)xb->wstr;
 #endif
           text.nchars = xb->wlen;
           text.delta = 0;

@@ -33,8 +33,6 @@ static int retransmits_enabled = 0;
 static Queue *find_notice_in_queue(ZNotice_t *notice);
 static void queue_timeout(void *arg);
 
-extern void new_server(char *);
-
 int rexmit_times[] = { 2, 2, 4, 4, 8, -1 };
 
 #ifdef DEBUG

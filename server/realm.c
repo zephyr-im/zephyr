@@ -144,7 +144,7 @@ kill_realm_pids(void)
     return;
 }
 
-ZRealmname *
+static ZRealmname *
 get_realm_lists(char *file)
 {
     ZRealmname *rlm_list, *rlm;
@@ -275,18 +275,6 @@ realm_sender_in_realm(const char *realm, char *sender)
 	return 1;
 
     return 0;
-}
-
-int sender_in_realm(ZNotice_t *notice)
-{
-  char *realm;
-
-  realm = strchr(notice->z_sender, '@');
-
-  if (!realm || !strcmp(realm + 1, ZGetRealm()))
-    return 1;
-
-  return 0;
 }
 
 ZRealm *
@@ -471,11 +459,11 @@ realm_init(void)
     int ii, jj, found;
     struct in_addr *addresses;
     struct hostent *hp;
-    char list_file[128];
+    char realm_list_file[128];
     char rlmprinc[MAX_PRINCIPAL_SIZE];
 
-    sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, REALM_LIST_FILE);
-    rlmnames = get_realm_lists(list_file);
+    sprintf(realm_list_file, "%s/zephyr/%s", SYSCONFDIR, REALM_LIST_FILE);
+    rlmnames = get_realm_lists(realm_list_file);
     if (!rlmnames) {
 	zdbug((LOG_DEBUG, "No other realms"));
 	nrealms = 0;
@@ -1035,9 +1023,10 @@ rlm_rexmit(void *arg)
     nackpacket->timer =
 	timer_set_rel(rexmit_times[nackpacket->rexmits%NUM_REXMIT_TIMES],
 		      rlm_rexmit, nackpacket);
-    if (rexmit_times[nackpacket->rexmits%NUM_REXMIT_TIMES] == -1)
+    if (rexmit_times[nackpacket->rexmits%NUM_REXMIT_TIMES] == -1) {
 	zdbug((LOG_DEBUG, "rlm_rexmit(%s): would send at -1 to %s",
 	       realm->name, inet_ntoa((realm->addrs[realm->idx]).sin_addr)));
+    }
 
     return;
 }
@@ -1142,7 +1131,7 @@ realm_sendit_auth(ZNotice_t *notice,
      */
 
     if (!retval &&
-	((notice->z_message_len+hdrlen > sizeof(ZPacket_t)) ||
+	((notice->z_message_len+hdrlen > (int)sizeof(ZPacket_t)) ||
 	 (notice->z_message_len+hdrlen > Z_MAXPKTLEN))) {
 
 	/* Reallocate buffers inside the refragmenter */

@@ -121,7 +121,7 @@ xmarkSetBound(x_gram *gram,
          Xutf8TextPerCharExtents(font, xb->wstr, xb->wlen,
                                  NULL, NULL, -1, &num_chars, NULL, NULL);
 #else
-         XwcTextPerCharExtents(font, (XChar2b *)xb->wstr, xb->wlen,
+         XwcTextPerCharExtents(font, (wchar_t *)xb->wstr, xb->wlen,
                                NULL, NULL, -1, &num_chars, NULL, NULL);
 #endif
          ink = malloc(num_chars * sizeof(XRectangle));
@@ -130,7 +130,7 @@ xmarkSetBound(x_gram *gram,
          Xutf8TextPerCharExtents(font, xb->wstr, xb->wlen,
                                  ink, logical, num_chars, &num_chars, NULL, NULL);
 #else
-         XwcTextPerCharExtents(font, (XChar2b *)xb->wstr, xb->wlen,
+         XwcTextPerCharExtents(font, (wchar_t *)xb->wstr, xb->wlen,
                                ink, logical, num_chars, &num_chars, NULL, NULL);
 #endif
          for (i=0;i<num_chars;i++) {
@@ -177,7 +177,7 @@ xmarkNearest(int x,
    }
 }
 
-void
+static void
 xmarkExpose(Display *dpy,
             Window w,
             x_gram *gram,
@@ -187,11 +187,12 @@ xmarkExpose(Display *dpy,
             unsigned int p2)
 {
 #define swap(x,y) temp=(x); (x)=(y); (y)=temp
-   int i,temp;
+   unsigned int i,temp;
    XEvent event;
 #define expose (event.xexpose)
 
-   if ((b1==-1) || (p1==-1) || (b2==-1) || (p2==-1)) return;
+   if (((int)b1==-1) || ((int)p1==-1) || ((int)b2==-1) || ((int)p2==-1))
+      return;
 
    if ((b1 > b2) || ((b1 == b2) && (p1 > p2))) {
       swap(b1,b2);
@@ -371,7 +372,7 @@ xmarkExtendFromNearest(x_gram *gram,
 char *
 xmarkGetText(void)
 {
-    int i, index, len;
+    int i, idx, len;
     int last_y = -1;
     string temp;
     string text_so_far = string_Copy("");
@@ -394,17 +395,17 @@ xmarkGetText(void)
        for (i=startblock; i<=endblock; i++) {
           if (last_y != -1 && last_y != markgram->blocks[i].y)
             text_so_far = string_Concat2(text_so_far, "\n");
-          index = markgram->blocks[i].strindex;
+          idx = markgram->blocks[i].strindex;
           len = markgram->blocks[i].strlen;
           if (startblock == endblock)
-            temp = string_CreateFromData(text+index+startchar,
+            temp = string_CreateFromData(text+idx+startchar,
                                          endchar-startchar);
           else if (i==startblock)
-            temp = string_CreateFromData(text+index+startchar,len-startchar);
+            temp = string_CreateFromData(text+idx+startchar,len-startchar);
           else if (i==endblock)
-            temp = string_CreateFromData(text+index,endchar);
+            temp = string_CreateFromData(text+idx,endchar);
           else
-            temp = string_CreateFromData(text+index,len);
+            temp = string_CreateFromData(text+idx,len);
           text_so_far = string_Concat2(text_so_far, temp);
           free(temp);
           last_y = markgram->blocks[i].y;

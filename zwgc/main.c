@@ -223,20 +223,20 @@ run_initprogs(void)
      */
 
     int status;
-    char *progname = ZGetVariable("initprogs");
+    char *iprogname = ZGetVariable("initprogs");
 
-    if (!progname)
+    if (!iprogname)
       return;
 
-    status = system(progname);
+    status = system(iprogname);
     if (status == 127) {
         perror("zwgc initprog exec");
         fprintf(stderr,"zwgc initprog of <%s> failed: no shell.\n",
-                progname);
+                iprogname);
     } else if (status!=-1 && status>>8) {
         perror("zwgc initprog exec");
         fprintf(stderr,"zwgc initprog of <%s> failed with status [%d].\n",
-                progname, status>>8);
+                iprogname, status>>8);
     }
 }
 
@@ -359,11 +359,10 @@ main(int argc, char **argv)
 extern int_dictionary puntable_addresses_dict;
 ZNotice_t punt_reply;
 
-void
-create_punt_reply(int_dictionary_binding *punt)
+static void
+create_punt_reply(int_dictionary_binding *punt_ent)
 {
-    string binding;
-    int key_len = strlen(punt->key);
+    int key_len = strlen(punt_ent->key);
     char *tmp;
 
     if (!punt_reply.z_message) {
@@ -382,7 +381,7 @@ create_punt_reply(int_dictionary_binding *punt)
         punt_reply.z_message = new_message;
     }
     tmp = punt_reply.z_message + strlen(punt_reply.z_message);
-    strcat (punt_reply.z_message, punt->key);
+    strcat (punt_reply.z_message, punt_ent->key);
     strcat (punt_reply.z_message, "\n");
     punt_reply.z_message_len += key_len + 1;
 

@@ -186,7 +186,7 @@ lex_open(FILE *file)
      * Initialize keyword_dict from keywords if needed:
      */
     if (!keyword_dict) {
-	int i;
+	unsigned int i;
 
 	keyword_dict = int_dictionary_Create(101);
 

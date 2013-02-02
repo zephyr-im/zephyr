@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <com_err.h>
 
 #include <zephyr/zephyr_err.h>
 
@@ -154,6 +155,7 @@ typedef Code_t (*Z_AuthProc)(ZNotice_t*, char *, int, int *);
 Code_t ZMakeAuthentication(ZNotice_t*, char *,int, int*);
 Code_t ZMakeZcodeAuthentication(ZNotice_t*, char *,int, int*);
 Code_t ZMakeZcodeRealmAuthentication(ZNotice_t*, char *,int, int*, char*);
+Code_t ZResetAuthentication(void);
 
 char *ZGetSender(void);
 char *ZGetVariable(char *);
@@ -161,8 +163,6 @@ Code_t ZSetVariable(char *var, char *value);
 Code_t ZUnsetVariable(char *var);
 int ZGetWGPort(void);
 Code_t ZSetDestAddr(struct sockaddr_in *);
-Code_t ZFormatNoticeList(ZNotice_t*, char**, int,
-			 char **, int*, Z_AuthProc);
 Code_t ZParseNotice(char*, int, ZNotice_t *);
 Code_t ZReadAscii(char*, int, unsigned char*, int);
 Code_t ZReadAscii32(char *, int, unsigned long *);
@@ -172,14 +172,20 @@ Code_t ZSendPacket(char*, int, int);
 Code_t ZSendList(ZNotice_t*, char *[], int, Z_AuthProc);
 Code_t ZSrvSendList(ZNotice_t*, char*[], int, Z_AuthProc,
 		    Code_t (*)(ZNotice_t *, char *, int, int));
+Code_t ZSendRawList(ZNotice_t*, char *[], int);
 Code_t ZSendNotice(ZNotice_t *, Z_AuthProc);
+Code_t ZSendRawNotice(ZNotice_t *);
 Code_t ZSrvSendNotice(ZNotice_t*, Z_AuthProc,
 		      Code_t (*)(ZNotice_t *, char *, int, int));
 Code_t ZFormatNotice(ZNotice_t*, char**, int*, Z_AuthProc);
-Code_t ZFormatSmallNotice(ZNotice_t*, ZPacket_t, int*, Z_AuthProc);
+Code_t ZNewFormatNotice(ZNotice_t*, char**, int*, Z_AuthProc);
+Code_t ZFormatNoticeList(ZNotice_t*, char**, int,
+			 char **, int*, Z_AuthProc);
 Code_t ZFormatRawNoticeList(ZNotice_t *, char *[], int, char **, int *);
+Code_t ZFormatSmallNotice(ZNotice_t*, ZPacket_t, int*, Z_AuthProc);
 Code_t ZFormatSmallRawNotice(ZNotice_t *, ZPacket_t, int *);
 Code_t ZNewFormatSmallRawNotice(ZNotice_t *, ZPacket_t, int *);
+Code_t ZFormatSmallRawNoticeList(ZNotice_t *, char *[], int, ZPacket_t, int *);
 Code_t ZLocateUser(char *, int *, Z_AuthProc);
 Code_t ZRequestLocations(char *, ZAsyncLocateData_t *,
 			 ZNotice_Kind_t, Z_AuthProc);
@@ -187,7 +193,6 @@ Code_t ZhmStat(struct in_addr *, ZNotice_t *);
 Code_t ZInitialize(void);
 Code_t ZSetServerState(int);
 Code_t ZSetFD(int);
-Code_t ZFormatSmallRawNotice(ZNotice_t*, ZPacket_t, int*);
 int ZCompareUID(ZUnique_Id_t*, ZUnique_Id_t*);
 Code_t ZSrvSendRawList(ZNotice_t*, char*[], int,
 		       Code_t (*)(ZNotice_t *, char *, int, int));
@@ -228,6 +233,9 @@ Code_t ZPeekPacket(char **buffer, int *ret_len,
 Code_t ZPeekNotice(ZNotice_t *notice, struct sockaddr_in *from);
 Code_t ZIfNotice(ZNotice_t *notice, struct sockaddr_in *from,
 		 int (*predicate)(ZNotice_t *, void *), void *args);
+Code_t ZPeekIfNotice(ZNotice_t *notice, struct sockaddr_in *from,
+		 int (*predicate)(ZNotice_t *, char *), char *args);
+Code_t ZPunt(ZSubscription_t *sublist, int nitems, unsigned int port);
 Code_t ZSubscribeTo(ZSubscription_t *sublist, int nitems,
 		    unsigned int port);
 Code_t ZSubscribeToSansDefaults(ZSubscription_t *sublist, int nitems,

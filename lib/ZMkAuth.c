@@ -123,7 +123,7 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
     krb5_auth_context authctx;
     krb5_data *authent;
     char *cksum_start, *cstart, *cend;
-    int cksum_len, zcode_len, phdr_adj;
+    int cksum_len, zcode_len = 0, phdr_adj;
 
     notice->z_ascii_authent = NULL;
 

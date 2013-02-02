@@ -56,7 +56,7 @@ TimeNode *timeq_head = NULL;
 
 int list_hash_fun(ZNotice_t *notice);
 
-TimeNode *
+static TimeNode *
 addtimenode(TimeNode *head, TimeNode *node)
 {
   if(head == NULL) {
@@ -79,7 +79,7 @@ addtimenode(TimeNode *head, TimeNode *node)
   return head;
 }
 
-void 
+static void 
 handle_timeq_event(TimeNode *event)
 {
   char buf[128];
@@ -112,7 +112,7 @@ handle_timeq_event(TimeNode *event)
 #endif
 }
 
-void 
+static void 
 schedule_event(long secs, char *name, ZNotice_t *notice)
 {
   time_t eventtime = (time(NULL)) + secs;
@@ -146,7 +146,7 @@ schedule_event(long secs, char *name, ZNotice_t *notice)
 #endif
 }
 
-void 
+static void 
 free_timenode(TimeNode *node)
 {
 #ifdef DEBUG_TIMEQUEUE
@@ -158,7 +158,7 @@ free_timenode(TimeNode *node)
 }
 
 /* returns the number of notices destroyed */
-int 
+static int 
 destroy_timeq_notice(ZNotice_t *notice, char *name)
 {
   TimeNode *curr = timeq_head;
@@ -274,7 +274,7 @@ plus_queue_notice(ZNotice_t *notice)
 int 
 list_hash_fun(ZNotice_t *notice)
 {
-    int ix;
+    unsigned int ix;
     int res = 0, val = 1, ptval;
     char *pt = (char *)(notice);
 
@@ -310,7 +310,8 @@ dump_noticelist(void)
 
     for (bx=0; bx<HASHSIZE; bx++) {
 	for (pt=notlist[bx]; pt; pt=pt->next) {
-	    fprintf(stderr, "Not %p: %d [%d]\n", pt->notice, pt->refcount, bx);
+	    fprintf(stderr, "Not %p: %d [%d]\n", (void *)pt->notice,
+		    pt->refcount, bx);
 	}
     }
 }

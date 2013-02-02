@@ -21,8 +21,10 @@
 
 #include "new_string.h"
 
-extern Display *dpy;
+extern Display *x_dpy;
 
+extern char *X_driver(string);
+extern int X_driver_init(char *, char, int *, char **);
 extern char *get_string_resource(string, string);
 extern int get_bool_resource(string, string, int);
 extern unsigned long x_string_to_color(char *, unsigned long);

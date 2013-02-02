@@ -23,6 +23,7 @@ static const char rcsid_file_c[] = "$Id$";
 #include "new_memory.h"
 #include "new_string.h"
 #include "error.h"
+#include "file.h"
 
 /*
  *    char *get_home_directory()
@@ -38,7 +39,8 @@ static const char rcsid_file_c[] = "$Id$";
  *               if necessary.
  */
 
-char *get_home_directory(void)
+static char
+*get_home_directory(void)
 {
     char *result;
     struct passwd *passwd_entry;

@@ -242,7 +242,7 @@ ZParseNotice(char *buffer,
 	/* we will take it on faith that ipv6 addresses are longer than ipv4
 	   addresses */
 	unsigned char addrbuf[sizeof(notice->z_sender_sockaddr.ip6.sin6_addr)];
-	int len;
+	int alen;
 
 	/* because we're paranoid about naughtily misformatted packets */
 	if (memchr(ptr, '\0', end - ptr) == NULL)
@@ -250,24 +250,24 @@ ZParseNotice(char *buffer,
 
 	if (*ptr == 'Z') {
 	    if (ZReadZcode((unsigned char *)ptr, addrbuf,
-			   sizeof(addrbuf), &len) == ZERR_BADFIELD)
+			   sizeof(addrbuf), &alen) == ZERR_BADFIELD)
 		BAD_PACKET("parsing Zcode address");
 	} else {
-	    len = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
+	    alen = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
 	    if (ZReadAscii(ptr, end - ptr, (unsigned char *)addrbuf,
-			   len) == ZERR_BADFIELD)
+			   alen) == ZERR_BADFIELD)
 		BAD_PACKET("parsing NetASCII address");
 	}
 
-	if (len == sizeof(notice->z_sender_sockaddr.ip6.sin6_addr)) {
+	if (alen == sizeof(notice->z_sender_sockaddr.ip6.sin6_addr)) {
 	    notice->z_sender_sockaddr.ip6.sin6_family = AF_INET6;
-	    memcpy(&notice->z_sender_sockaddr.ip6.sin6_addr, addrbuf, len);
+	    memcpy(&notice->z_sender_sockaddr.ip6.sin6_addr, addrbuf, alen);
 #ifdef HAVE_SOCKADDR_IN6_SIN6_LEN
 	    notice->z_sender_sockaddr.ip6.sin6_len = sizeof(notice->z_sender_sockaddr.ip6);
 #endif
-	} else if (len == sizeof(notice->z_sender_sockaddr.ip4.sin_addr)) {
+	} else if (alen == sizeof(notice->z_sender_sockaddr.ip4.sin_addr)) {
 	    notice->z_sender_sockaddr.ip4.sin_family = AF_INET;
-	    memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, addrbuf, len);
+	    memcpy(&notice->z_sender_sockaddr.ip4.sin_addr, addrbuf, alen);
 #ifdef HAVE_SOCKADDR_IN_SIN_LEN
 	    notice->z_sender_sockaddr.ip4.sin_len = sizeof(notice->z_sender_sockaddr.ip4);
 #endif

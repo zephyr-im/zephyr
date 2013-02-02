@@ -96,17 +96,18 @@ xselSetProperties(Display *dpy,
    } else if (target==ZA_MULTIPLE) {
       Atom atype;
       int aformat;
+      unsigned char *alistp; /* Avoid strict aliasing violation, we hope */
       Atom *alist;
       unsigned long alistsize,i;
 
       XGetWindowProperty(dpy,w,property,0L,0L,False,ZA_ATOM_PAIR,&atype,
-			 &aformat,&i,&alistsize,(unsigned char **) &alist);
+			 &aformat,&i,&alistsize,&alistp);
 
       if (alistsize)
 	XGetWindowProperty(dpy,w,property,0L,alistsize/sizeof(Atom),False,
-			   ZA_ATOM_PAIR,&atype,&aformat,&alistsize,&i,
-			   (unsigned char **) &alist);
+			   ZA_ATOM_PAIR,&atype,&aformat,&alistsize,&i, &alistp);
 
+      alist = (Atom *)alistp;
       alistsize/=(sizeof(Atom)/4);
       for (i=0;i<alistsize;i+=2)
 	xselSetProperties(dpy,w,alist[i+1],alist[i],selreq);
@@ -141,7 +142,7 @@ xselSetProperties(Display *dpy,
 void
 xicccmInitAtoms(Display *dpy)
 {
-   int i;
+   unsigned int i;
 
    for (i=0;i<NumZAtoms;i++)
      *(ZAtom[i].patom)=XInternAtom(dpy,ZAtom[i].name,False);
@@ -153,15 +154,15 @@ xicccmInitAtoms(Display *dpy)
 int
 xselGetOwnership(Display *dpy,
 		 Window w,
-		 Time time)
+		 Time when)
 {
    int temp;
 
-   XSetSelectionOwner(dpy,XA_PRIMARY,w,time);
+   XSetSelectionOwner(dpy,XA_PRIMARY,w,when);
    temp=(w == XGetSelectionOwner(dpy,XA_PRIMARY));
 
    if (temp)
-     ownership_start = time;
+     ownership_start = when;
 
    return(temp);
 }
@@ -194,9 +195,9 @@ xselProcessSelection(Display *dpy,
 }
 
 void
-xselOwnershipLost(Time time)
+xselOwnershipLost(Time when)
 {
-   ownership_end = time;
+   ownership_end = when;
 }
 
 /*ARGSUSED*/

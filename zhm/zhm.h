@@ -63,12 +63,26 @@ void retransmit_queue(struct sockaddr_in *);
 void disable_queue_retransmits(void);
 int queue_len(void);
 
-struct sockaddr_in serv_sin;
+/* zhm.c */
+extern void new_server(char *sugg_serv);
+extern void send_boot_notice(char *);
+extern void send_flush_notice(char *);
+
+/* zhm_server.c */
+extern void find_next_server(char *);
+extern void server_manager(ZNotice_t *);
+
+extern u_short cli_port;
+extern char **serv_list;
+extern char cur_serv[], prim_serv[];
+extern struct sockaddr_in cli_sin, serv_sin, from;
+extern int no_server, deactivated, noflushflag, rebootflag;
+extern int timeout_type, hmdebug, nservchang, booting, nclt, nserv, numserv;
 extern int rexmit_times[];
 
 #ifdef HAVE_ETEXT
 extern int etext;
-#define adjust_size(size)	size -= (unsigned int) &etext;
+#define adjust_size(size)	size -= (unsigned long) &etext;
 #else
 /* Pick a var that tends to be near the start of data section.  */
 extern char **environ;

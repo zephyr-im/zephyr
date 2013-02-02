@@ -26,18 +26,9 @@ static int serv_rexmit_times[] = { 5, 10, 20, 40 };
 static int serv_timeouts = 0;
 
 int serv_loop = 0;
-extern u_short cli_port;
-extern struct sockaddr_in serv_sin, from;
-extern int timeout_type, hmdebug, nservchang, booting, nserv, no_server;
-extern int deactivated, rebootflag;
-extern int numserv;
-extern char **serv_list;
-extern char cur_serv[], prim_serv[];
-extern void die_gracefully(void);
 
 void hm_control(ZNotice_t *);
 void send_back(ZNotice_t *);
-void new_server(char *);
 
 /* Argument is whether we are actually booting, or just attaching
  * after a server switch */
@@ -104,7 +95,7 @@ send_flush_notice(char *op)
 void
 find_next_server(char *sugg_serv)
 {
-     struct hostent *hp;
+     struct hostent *hp = 0;
      int done = 0;
      char **parse = serv_list;
      char *new_serv;

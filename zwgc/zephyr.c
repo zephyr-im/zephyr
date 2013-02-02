@@ -100,8 +100,12 @@ write_wgfile(void)
  *
  */
 
+struct notice_handler_ptr {
+    void (*notice_handler)(ZNotice_t *);
+};
+
 static void
-handle_zephyr_input(void (*notice_handler)(ZNotice_t *))
+handle_zephyr_input(struct notice_handler_ptr *nhp)
 {
     ZNotice_t *notice;
     struct sockaddr_in from;
@@ -120,7 +124,7 @@ handle_zephyr_input(void (*notice_handler)(ZNotice_t *))
 	TRAP( ZReceiveNotice(notice, &from), "while getting zephyr notice" );
 	if (!error_code) {
 	    notice->z_auth = ZCheckAuthentication(notice, &from);
-	    notice_handler(notice);
+	    nhp->notice_handler(notice);
 	}
 #ifdef CMU_ZWGCPLUS
 	if (get_list_refcount(notice) <= 0) {
@@ -138,6 +142,7 @@ handle_zephyr_input(void (*notice_handler)(ZNotice_t *))
 
 void zephyr_init(void (*notice_handler)(ZNotice_t *))
 {
+    struct notice_handler_ptr *nhp;
     char *temp;
     char *exposure;
     char *tty = NULL;
@@ -146,6 +151,11 @@ void zephyr_init(void (*notice_handler)(ZNotice_t *))
     /*
      * Initialize zephyr.  If error, print error message & exit.
      */
+    nhp = malloc(sizeof(struct notice_handler_ptr));
+    if (!nhp) {
+	fprintf(stderr, "Out of memory setting up zephyr notice handler.\n");
+	exit(3);
+    }
     FATAL_TRAP( ZInitialize(), "while initializing Zephyr" );
     FATAL_TRAP( ZOpenPort(&zephyr_port), "while opening Zephyr port" );
 
@@ -168,8 +178,8 @@ void zephyr_init(void (*notice_handler)(ZNotice_t *))
     if (location_override)
 	tty = location_override;
 #ifndef X_DISPLAY_MISSING
-    else if (dpy)
-	tty = DisplayString(dpy);
+    else if (x_dpy)
+	tty = DisplayString(x_dpy);
 #endif
     error_code = ZInitLocationInfo(NULL, tty);
     TRAP( error_code, "while initializing location information" );
@@ -210,8 +220,8 @@ void zephyr_init(void (*notice_handler)(ZNotice_t *))
     /*
      * <<<>>>
      */
-    mux_add_input_source(ZGetFD(), (void (*)(void *))handle_zephyr_input,
-			 notice_handler);
+    nhp->notice_handler = notice_handler;
+    mux_add_input_source(ZGetFD(), (void (*)(void *))handle_zephyr_input, nhp);
     zephyr_inited = 1;
     return;
 }

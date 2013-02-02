@@ -105,6 +105,7 @@ typedef Code_t (*Z_SendProc) (ZNotice_t *, char *, int, int);
 
 struct _Z_InputQ *Z_GetFirstComplete (void);
 struct _Z_InputQ *Z_GetNextComplete (struct _Z_InputQ *);
+struct _Z_InputQ *Z_SearchQueue (ZUnique_Id_t *, ZNotice_Kind_t);
 Code_t Z_XmitFragment (ZNotice_t*, char *,int,int);
 void Z_RemQueue (struct _Z_InputQ *);
 Code_t Z_AddNoticeToEntry (struct _Z_InputQ*, ZNotice_t*, int);
@@ -114,6 +115,7 @@ Code_t Z_FormatRawHeader (ZNotice_t *, char*, int,
 			      int*, char **, char **);
 Code_t Z_ReadEnqueue (void);
 Code_t Z_ReadWait (void);
+int Z_PacketWaiting (void);
 Code_t Z_SendLocation (char*, char*, Z_AuthProc, char*);
 Code_t Z_SendFragmentedNotice (ZNotice_t *notice, int len,
 				   Z_AuthProc cert_func,
@@ -152,6 +154,9 @@ Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice,
 unsigned long z_quad_cksum(const unsigned char *, uint32_t *, long,
 			   int, unsigned char *);
 Code_t ZFormatAuthenticNoticeV5(ZNotice_t*, char*, int, int*, krb5_keyblock *);
+#endif
+#ifdef HAVE_KRB4
+Code_t ZFormatAuthenticNotice(ZNotice_t*, char*, int, int*, C_Block);
 #endif
 
 #ifdef HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE

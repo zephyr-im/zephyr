@@ -38,7 +38,7 @@ ZFormatAuthenticNotice(ZNotice_t *notice,
 	return (retval);
 
     newnotice.z_checksum =
-	(ZChecksum_t)des_quad_cksum((unsigned char *)buffer, NULL, ptr - buffer, 0, (C_Block *)session);
+	(ZChecksum_t)des_quad_cksum((void *)buffer, NULL, ptr - buffer, 0, (C_Block *)session);
 
     if ((retval = Z_FormatRawHeader(&newnotice, buffer, buffer_len,
 				    &hdrlen, NULL, NULL)) != ZERR_NONE)
@@ -73,19 +73,23 @@ ZFormatAuthenticNoticeV5(ZNotice_t *notice,
     int retval, hdrlen, hdr_adj;
     krb5_enctype enctype;
     krb5_cksumtype cksumtype;
+#ifdef HAVE_KRB4
     int key_len;
+#endif
     char *cksum_start, *cstart, *cend;
     int cksum_len;
 
+#ifdef HAVE_KRB4
     key_len = Z_keylen(keyblock);
+#endif
     retval = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
     if (retval)
 	return (ZAUTH_FAILED);
 
 #ifdef HAVE_KRB4
-    if (key_len == 8 && (enctype == ENCTYPE_DES_CBC_CRC ||
-                         enctype == ENCTYPE_DES_CBC_MD4 ||
-                         enctype == ENCTYPE_DES_CBC_MD5)) {
+    if (key_len == 8 && (enctype == (krb5_enctype)ENCTYPE_DES_CBC_CRC ||
+                         enctype == (krb5_enctype)ENCTYPE_DES_CBC_MD4 ||
+                         enctype == (krb5_enctype)ENCTYPE_DES_CBC_MD5)) {
          C_Block tmp;
          memcpy(&tmp, Z_keydata(keyblock), key_len);
          return ZFormatAuthenticNotice(notice, buffer, buffer_len, len,

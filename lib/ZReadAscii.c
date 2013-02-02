@@ -28,7 +28,7 @@ ZReadAscii(char *ptr,
     int i;
     unsigned int hexbyte;
     register int c1, c2;
-    register unsigned int temp;
+    register int temp;
 
     for (i=0;i<num;i++) {
 	if (len >= 1 && *ptr == ' ') {

@@ -44,10 +44,10 @@ static const char rcsid_X_driver_c[] = "$Id$";
 char *app_instance;
 
 /*
- * dpy - the display we are outputting to
+ * x_dpy - the display we are outputting to
  */
 
-Display *dpy = NULL;
+Display *x_dpy = NULL;
 
 /****************************************************************************/
 /*                                                                          */
@@ -184,10 +184,11 @@ x_string_to_color(char *name,
    if (exists) {
       return((unsigned long) binding->value);
    } else {
-      if (XParseColor(dpy,DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
+      if (XParseColor(x_dpy,
+		      DefaultColormapOfScreen(DefaultScreenOfDisplay(x_dpy)),
 		      name,&xc)) {
-	 if (XAllocColor(dpy,
-			 DefaultColormapOfScreen(DefaultScreenOfDisplay(dpy)),
+	 if (XAllocColor(x_dpy,
+			 DefaultColormapOfScreen(DefaultScreenOfDisplay(x_dpy)),
 			 &xc)) {
 	    binding->value = (unsigned long) xc.pixel;
 	    return(xc.pixel);
@@ -242,7 +243,7 @@ static XrmOptionDescRec cmd_options[] = {
  *
  */
 
-int
+static int
 open_display_and_load_resources(int *pargc,
 				char **argv)
 {
@@ -264,8 +265,8 @@ open_display_and_load_resources(int *pargc,
      * Try and open the display using the display specified if given.
      * If can't open the display, return an error code.
      */
-    dpy = XOpenDisplay(get_string_resource("display", "display"));
-    if (!dpy)
+    x_dpy = XOpenDisplay(get_string_resource("display", "display"));
+    if (!x_dpy)
       return(1);
 
     /* Read in our application-specific resources: */
@@ -275,7 +276,7 @@ open_display_and_load_resources(int *pargc,
     /*
      * Get resources from the just opened display:
      */
-    xdef = XResourceManagerString(dpy);
+    xdef = XResourceManagerString(x_dpy);
     if (xdef)
 	temp_db2 = XrmGetStringDatabase(xdef);
     else
@@ -291,7 +292,7 @@ open_display_and_load_resources(int *pargc,
 
 #if XlibSpecificationRelease > 4
     /* X11 R5 per-screen resources */
-    res = XScreenResourceString (DefaultScreenOfDisplay (dpy));
+    res = XScreenResourceString (DefaultScreenOfDisplay (x_dpy));
     if (res != NULL)
 	XrmMergeDatabases(XrmGetStringDatabase(res), &temp_db1);
 #endif
@@ -322,12 +323,13 @@ open_display_and_load_resources(int *pargc,
  *
  */
 
-int
+static int
 X_driver_ioerror(Display *display)
 {
     ERROR2("X IO error on display '%s'--exiting\n", DisplayString(display));
     finalize_zephyr();
     exit(1);
+    return 1;
 }
 /****************************************************************************/
 /*                                                                          */
@@ -343,7 +345,7 @@ X_driver_init(char *drivername,
 	      char **argv)
 {
     string temp;
-    int sync;
+    int is_sync;
 
     /*
      * Attempt to open display and read resources, including from the
@@ -360,9 +362,9 @@ X_driver_init(char *drivername,
     /*
      * For now, set some useful variables using resources:
      */
-    sync = get_bool_resource("synchronous", "Synchronous", 0);
-    if (sync)
-      XSynchronize(dpy, sync);
+    is_sync = get_bool_resource("synchronous", "Synchronous", 0);
+    if (is_sync)
+      XSynchronize(x_dpy, is_sync);
     temp = get_string_resource("geometry", "Geometry");
     if (temp)
       var_set_variable("default_X_geometry", temp);
@@ -374,17 +376,13 @@ X_driver_init(char *drivername,
     color_dict = unsigned_long_dictionary_Create(37);
 
     xshowinit();
-    x_gram_init(dpy);
-    xicccmInitAtoms(dpy);
+    x_gram_init(x_dpy);
+    xicccmInitAtoms(x_dpy);
     
-    mux_add_input_source(ConnectionNumber(dpy), (void(*)(void *))x_get_input, dpy);
+    mux_add_input_source(ConnectionNumber(x_dpy),
+			 (void(*)(void *))x_get_input, x_dpy);
 
     return(0);
-}
-
-void
-X_driver_reset(void)
-{
 }
 
 /****************************************************************************/
@@ -403,7 +401,7 @@ X_driver(string text)
     text_copy = string_Copy(text);
     desc = disp_get_cmds(text_copy, &numstr, &numnl);
     
-    xshow(dpy, desc, numstr, numnl);
+    xshow(x_dpy, desc, numstr, numnl);
     
     free(text_copy);
     free_desc(desc);

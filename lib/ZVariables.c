@@ -168,7 +168,7 @@ static int
 varline(char *bfr, char *var)
 {
     register char *cp;
-	
+    size_t namelen;
 
     if (!bfr[0] || bfr[0] == '#')	/* comment or null line */
 	return (0);
@@ -179,7 +179,8 @@ varline(char *bfr, char *var)
 
 #define max(a,b) ((a > b) ? (a) : (b))
 
-    if (strncasecmp(bfr, var, max(strlen(var),cp - bfr)))
+    namelen = cp - bfr;
+    if (strncasecmp(bfr, var, max(strlen(var), namelen)))
 	return(0);			/* var is not the var in
 					   bfr ==> no match */
 

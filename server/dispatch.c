@@ -230,7 +230,6 @@ dispatch(ZNotice_t *notice,
 {
     Code_t status;
     String *notice_class;
-    struct sockaddr_in who2;
     int authflag;
     ZRealm *realm;
     char *cp;
@@ -251,8 +250,6 @@ dispatch(ZNotice_t *notice,
 	nack_cancel(notice, who);
 	return;
     }
-
-    who2 = *who;
 
     notice_class = make_string(notice->z_class,1);
 
@@ -681,12 +678,13 @@ xmit(ZNotice_t *notice,
     }
 
     /* now we've sent it, mark it as not ack'ed */
-    if (!retval)
+    if (!retval) {
 	nacked = (Unacked *) malloc(sizeof(Unacked));
-    if (!nacked) {
-	/* no space: just punt */
-	syslog(LOG_WARNING, "xmit nack malloc");
-	retval = ENOMEM;
+	if (!nacked) {
+	    /* no space: just punt */
+	    syslog(LOG_WARNING, "xmit nack malloc");
+	    retval = ENOMEM;
+	}
     }
 
     if (!retval) {
@@ -777,7 +775,6 @@ clt_ack(ZNotice_t *notice,
     ZNotice_t acknotice;
     ZPacket_t ackpack;
     int packlen;
-    char *sent_name;
     Code_t retval;
 
     if (bdumping) {		/* don't ack while dumping */
@@ -791,21 +788,17 @@ clt_ack(ZNotice_t *notice,
     switch (sent) {
       case SENT:
 	acknotice.z_message = ZSRVACK_SENT;
-	sent_name = "sent";
 	break;
       case NOT_FOUND:
 	acknotice.z_message = ZSRVACK_FAIL;
 	acknotice.z_kind = SERVNAK;
-	sent_name = "fail";
 	break;
       case AUTH_FAILED:
 	acknotice.z_kind = SERVNAK;
 	acknotice.z_message = ZSRVACK_NOTSENT;
-	sent_name = "nak/not_sent";
 	break;
       case NOT_SENT:
 	acknotice.z_message = ZSRVACK_NOTSENT;
-	sent_name = "not_sent";
 	break;
       default:
 	abort ();
@@ -892,7 +885,7 @@ hostm_dispatch(ZNotice_t *notice,
 	       Server *server)
 {
     char *opcode = notice->z_opcode;
-    int i, add = 0, remove = 0;
+    int i, add_it = 0, remove_it = 0;
 
     if (notice->z_kind == HMACK) {
 	/* Ignore. */
@@ -908,23 +901,23 @@ hostm_dispatch(ZNotice_t *notice,
 	if (server == me_server) {
 	    server_forward(notice, auth, who);
 	    ack(notice, who);
-	    add = 1;
+	    add_it = 1;
 	}
     } else if (strcmp(opcode, HM_ATTACH) == 0) {
 	if (server == me_server) {
 	    server_forward(notice, auth, who);
 	    ack(notice, who);
-	    add = 1;
+	    add_it = 1;
 	} else {
-	    remove = 1;
+	    remove_it = 1;
 	}
     } else if (strcmp(opcode, HM_DETACH) == 0) {
-	remove = 1;
+	remove_it = 1;
     } else {
 	syslog(LOG_WARNING, "hm_dispatch: unknown opcode %s", opcode);
     }
 
-    if (add) {
+    if (add_it) {
 	for (i = 0; i < num_hosts; i++) {
 	    if (hosts[i].s_addr == who->sin_addr.s_addr)
 		break;
@@ -945,7 +938,7 @@ hostm_dispatch(ZNotice_t *notice,
 	    }
 	    hosts[num_hosts++] = who->sin_addr;
 	}
-    } else if (remove) {
+    } else if (remove_it) {
 	for (i = 0; i < num_hosts; i++) {
 	    if (hosts[i].s_addr == who->sin_addr.s_addr) {
 		memmove(&hosts[i], &hosts[i + 1], num_hosts - (i + 1));

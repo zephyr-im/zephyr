@@ -151,8 +151,6 @@ main(int argc,
     struct sigaction action;
 #endif
     int optchar;			/* option processing */
-    extern char *optarg;
-    extern int optind;
 
     sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, SERVER_LIST_FILE);
 #ifdef HAVE_KRB4

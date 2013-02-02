@@ -60,8 +60,8 @@ static const char rcsid_acl_files_c[] = "$Id$";
 /* If realm is missing, it becomes the local realm */
 /* Canonicalized form is put in canon, which must be big enough to hold
    MAX_PRINCIPAL_SIZE characters */
-void acl_canonicalize_principal(char *principal,
-				char *canon)
+static void
+acl_canonicalize_principal(char *principal, char *canon)
 {
     char *end;
     char *dot, *atsign;
@@ -240,7 +240,8 @@ add_host(struct host_ace **list,
 {
     struct host_ace *e;
     struct in_addr addr;
-    unsigned long mask = 0, i;
+    unsigned long mask = 0;
+    long i;
     char *m, *x;
 
     m = strchr(buf, '/');
@@ -395,7 +396,7 @@ acl_cache_reset(void)
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Principal is not canonicalized, and no wildcarding is done */
 /* If neg is nonzero, we look for negative entries */
-int
+static int
 acl_exact_match(char *acl,
 		char *principal,
 		int neg)
@@ -412,7 +413,7 @@ acl_exact_match(char *acl,
 
 /* Returns nonzero if it can be determined that acl contains who */
 /* If neg is nonzero, we look for negative entries */
-int
+static int
 acl_host_match(char *acl,
                unsigned long who,
                int neg)
@@ -442,7 +443,6 @@ acl_check(char *acl,
     char buf[MAX_PRINCIPAL_SIZE];
     char canon[MAX_PRINCIPAL_SIZE];
     char *instance, *realm;
-    unsigned long mask;
     int p, i, r, result = 0;
 
     if (principal) {

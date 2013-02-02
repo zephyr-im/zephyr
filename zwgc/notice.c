@@ -257,10 +257,7 @@ decode_notice(ZNotice_t *notice,
 	      char *hostname)
 {
     char *temp;
-    string time, notyear, year, date_string, time_string;
-#ifdef CMU_ZWGCPLUS
-    extern char *getSelectedText();
-#endif
+    string when, notyear, year, date_string, time_string;
 
     /*
      * Convert useful notice fields to ascii and store away in
@@ -319,12 +316,12 @@ decode_notice(ZNotice_t *notice,
       /* the fields of struct timeval might not be the right type to pass
 	 to ctime, so use a temporary */
       time_t sec = notice->z_time.tv_sec;
-      time = ctime(&sec);
+      when = ctime(&sec);
     }
-    time_string = string_CreateFromData(time+11,8);
+    time_string = string_CreateFromData(when+11,8);
     var_set_variable_then_free_value("time", time_string);
-    date_string = string_Concat(notyear=string_CreateFromData(time,11),
-				year=string_CreateFromData(time+20,4));
+    date_string = string_Concat(notyear=string_CreateFromData(when,11),
+				year=string_CreateFromData(when+20,4));
     var_set_variable_then_free_value("date", date_string);
     free(notyear);
     free(year);

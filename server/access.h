@@ -36,7 +36,3 @@ void access_reinit(void);
 
 /* found in acl_files.c */
 int acl_load(char *);
-
-/* external data relevant */
-extern int zdebug;
-

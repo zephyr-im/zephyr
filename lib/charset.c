@@ -104,32 +104,33 @@ ZTransliterate(char *in, int inlen, char *inset, char *outset, char **out, int *
 
     free(outset_t);
 
-    if (ih != (iconv_t)-1) {
-	size = inlen; /* doubling this should be enough, but.. */
-	do {
-	    size = size * 2;
-	    
-	    *out = malloc(size);
-	    if (*out == NULL) {
-		iconv_close(ih);
-		return errno;
-	    }
-	    
-	    inleft = inlen;
-	    outleft = size;
-	    
-	    inp = in;
-	    outp = *out;
-	    
-	    retval = iconv(ih, &inp, &inleft, &outp, &outleft);
-	    if (retval < 0)
-		free(*out);
-	} while (retval < 0 && errno == E2BIG);
+    if (ih == (iconv_t)-1)
+	return errno;
 
-	iconv_close(ih);
-    }
+    size = inlen; /* doubling this should be enough, but.. */
+    do {
+	size = size * 2;
 
-    if (ih == (iconv_t)-1 || retval < 0)
+	*out = malloc(size);
+	if (*out == NULL) {
+	    iconv_close(ih);
+	    return errno;
+	}
+
+	inleft = inlen;
+	outleft = size;
+
+	inp = in;
+	outp = *out;
+
+	retval = iconv(ih, &inp, &inleft, &outp, &outleft);
+	if (retval < 0)
+	    free(*out);
+    } while (retval < 0 && errno == E2BIG);
+
+    iconv_close(ih);
+
+    if (retval < 0)
 	return errno;
 
     *outlen = size - outleft;

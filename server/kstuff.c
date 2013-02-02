@@ -45,7 +45,7 @@ GetKerberosData(int fd, /* file descr. to read from */
 {
     char p[20];
     KTEXT_ST ticket;		/* will get Kerberos ticket from client */
-    int i;
+    unsigned int i;
     char instance[INST_SZ];
 
     /*
@@ -105,8 +105,8 @@ SendKerberosData(int fd,	/* file descriptor to write onto */
 {
     int rem;
     char p[32];
-    int written;
-    int size_to_write;
+    size_t written;
+    size_t size_to_write;
 
     rem = krb_mk_req(ticket, service, host, (char *)ZGetRealm(), (u_long) 0);
     if (rem != KSUCCESS)
@@ -115,10 +115,10 @@ SendKerberosData(int fd,	/* file descriptor to write onto */
     (void) sprintf(p,"%d ",ticket->length);
     size_to_write = strlen (p);
     if ((written = write(fd, p, size_to_write)) != size_to_write)
-	return (written < 0) ? errno : ZSRV_PKSHORT;
+	return ((ssize_t)written < 0) ? errno : ZSRV_PKSHORT;
     if ((written = write(fd, ticket->dat, ticket->length))
 	!= ticket->length)
-	return (written < 0) ? errno : ZSRV_PKSHORT;
+	return ((ssize_t)written < 0) ? errno : ZSRV_PKSHORT;
 
     return 0;
 }
@@ -190,7 +190,7 @@ ReadKerberosData(int fd, int *size, char **data, int *proto) {
 Code_t
 GetKrb5Data(int fd, krb5_data *data) {
     char p[20];
-    int i;
+    unsigned int i;
     char *dst;
 
     for (i=0; i<20; i++) {
@@ -229,12 +229,12 @@ GetKrb5Data(int fd, krb5_data *data) {
 Code_t
 SendKrb5Data(int fd, krb5_data *data) {
     char p[32];
-    int written, size_to_write;
-    sprintf(p, "V5-%d ", data->length);
+    size_t written, size_to_write;
+    sprintf(p, "V5-%lu ", (unsigned long)data->length);
     size_to_write = strlen (p);
     if (size_to_write != (written = write(fd, p, size_to_write)) ||
         data->length != (written = write(fd, data->data, data->length))) {
-        return (written < 0) ? errno : ZSRV_PKSHORT;
+        return ((ssize_t)written < 0) ? errno : ZSRV_PKSHORT;
     }
     return 0;
 }
@@ -262,9 +262,9 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     int valid;
     char *cksum0_base, *cksum1_base = NULL, *cksum2_base;
     char *x;
-    unsigned char *asn1_data, *key_data;
+    unsigned char *asn1_data, *key_data, *cksum_data;
     int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0;
-    krb5_flags acflags;
+    KRB5_AUTH_CON_FLAGS_TYPE acflags;
 #ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
     krb5_authenticator *authenticator;
 #define KRB5AUTHENT authenticator
@@ -511,9 +511,9 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     /*XXX we may wish to ditch this code someday?*/
     if ((!notice->z_ascii_checksum || *notice->z_ascii_checksum != 'Z') &&
         key_len == 8 &&
-        (enctype == ENCTYPE_DES_CBC_CRC ||
-         enctype == ENCTYPE_DES_CBC_MD4 ||
-         enctype == ENCTYPE_DES_CBC_MD5)) {
+        (enctype == (krb5_enctype)ENCTYPE_DES_CBC_CRC ||
+         enctype == (krb5_enctype)ENCTYPE_DES_CBC_MD4 ||
+         enctype == (krb5_enctype)ENCTYPE_DES_CBC_MD5)) {
       /* try old-format checksum (covers cksum0 only) */
 
       ZChecksum_t our_checksum;
@@ -548,10 +548,11 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     }
     /* HOLDING: authctx, authenticator, cksumbuf.data */
 
-    memcpy(cksumbuf.data, cksum0_base, cksum0_len);
+    cksum_data = (unsigned char *)cksumbuf.data;
+    memcpy(cksum_data, cksum0_base, cksum0_len);
     if (cksum1_len)
-	memcpy(cksumbuf.data + cksum0_len, cksum1_base, cksum1_len);
-    memcpy(cksumbuf.data + cksum0_len + cksum1_len,
+	memcpy(cksum_data + cksum0_len, cksum1_base, cksum1_len);
+    memcpy(cksum_data + cksum0_len + cksum1_len,
            cksum2_base, cksum2_len);
 
     /* decode zcoded checksum */
@@ -685,10 +686,9 @@ static ZChecksum_t compute_rlm_checksum(ZNotice_t *notice,
 					unsigned char *session_key)
 {
     ZChecksum_t checksum;
-    char *cstart, *cend, *hstart = notice->z_packet;
+    char *cstart, *hstart = notice->z_packet;
 
     cstart = notice->z_default_format + strlen(notice->z_default_format) + 1;
-    cend = cstart + strlen(cstart) + 1;
     checksum = z_quad_cksum((unsigned char *)hstart, NULL,
 			    cstart - hstart, 0, session_key);
 
@@ -734,7 +734,7 @@ ZSetSession(krb5_keyblock *keyblock) {
     }
 
     if (result) /*XXX we're out of memory? */
-	;
+	return;
 }
 #endif
 #ifdef HAVE_KRB4

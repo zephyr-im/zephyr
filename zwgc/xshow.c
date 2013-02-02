@@ -109,7 +109,7 @@ static struct res_dict_type fgcolor_resources = {
 };
 
 /*ARGSUSED*/
-char *
+static char *
 mode_to_colorname (Display *dpy,
                    char *style,
                    xmode *mode)
@@ -123,7 +123,7 @@ mode_to_colorname (Display *dpy,
     return result;
 }
 
-void
+static void
 fixup_and_draw(Display *dpy,
                char *style,
                xauxblock *auxblocks,
@@ -171,7 +171,7 @@ fixup_and_draw(Display *dpy,
                                         blocks[block].wlen);
 #else
             ssize = XwcTextEscapement(auxblocks[block].font,
-                                      (XChar2b *)blocks[block].wstr,
+                                      (wchar_t *)blocks[block].wstr,
                                       blocks[block].wlen);
 #endif
             auxblocks[block].width = ssize;
@@ -361,7 +361,7 @@ fixup_and_draw(Display *dpy,
 }
 
 /* Silly almost-but-not-quite-useless helper function */
-char *
+static char *
 no_dots_downcase_var(char *str)
 {
    register char *var, *var2;
@@ -412,6 +412,7 @@ xshow(Display *dpy, desctype *desc, int numstr, int numnl)
     blocks = (xblock *)malloc(sizeof(xblock) * numstr);
     auxblocks = (xauxblock *)malloc(sizeof(xauxblock) * numstr);
 
+    memset(&curmode, 0, sizeof(curmode));
     curmode.bold = 0;
     curmode.italic = 0;
     curmode.size = MEDIUM_SIZE;
@@ -600,10 +601,12 @@ xhandleevent(Display *dpy,
              Window w,
              XEvent *event)
 {
+    XPointer gramp; /* Avoid strict aliasing violation */
     x_gram *gram;
     
-    if (XFindContext(dpy, w, desc_context, (XPointer *)&gram))
+    if (XFindContext(dpy, w, desc_context, &gramp))
       return;
+    gram = (x_gram *)gramp;
 
     if (event->type == Expose)
       x_gram_expose(dpy, w, gram,&(event->xexpose));
@@ -645,7 +648,7 @@ plus_window_deletions(ZNotice_t *notice)
   int done;
   static char class_nm[NAMESIZE], instance_nm[NAMESIZE], recip_nm[NAMESIZE];
   
-  if (!dpy)
+  if (!x_dpy)
     return;
 
   val = var_get_variable("delete_window");
@@ -662,7 +665,7 @@ plus_window_deletions(ZNotice_t *notice)
           if (tmp->notice == notice) {
             fry = tmp;
             tmp = tmp->above;
-            xdestroygram(dpy, fry->w, desc_context, fry);
+            xdestroygram(x_dpy, fry->w, desc_context, fry);
             done = 0;
           } else {
             tmp = tmp->above;
@@ -680,7 +683,7 @@ plus_window_deletions(ZNotice_t *notice)
           if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_sender, class_nm)) {
             fry = tmp;
             tmp = tmp->above;
-            xdestroygram(dpy, fry->w, desc_context, fry);
+            xdestroygram(x_dpy, fry->w, desc_context, fry);
             done = 0;
           } else {
             tmp = tmp->above;
@@ -698,7 +701,7 @@ plus_window_deletions(ZNotice_t *notice)
           if (!!strcasecmp(((ZNotice_t *)(tmp->notice))->z_sender, class_nm)) {
             fry = tmp;
             tmp = tmp->above;
-            xdestroygram(dpy, fry->w, desc_context, fry);
+            xdestroygram(x_dpy, fry->w, desc_context, fry);
             done = 0;
           } else {
             tmp = tmp->above;
@@ -715,7 +718,7 @@ plus_window_deletions(ZNotice_t *notice)
           if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) {
             fry = tmp;
             tmp = tmp->above;
-            xdestroygram(dpy, fry->w, desc_context, fry);
+            xdestroygram(x_dpy, fry->w, desc_context, fry);
             done = 0;
           } else {
             tmp = tmp->above;
@@ -732,7 +735,7 @@ plus_window_deletions(ZNotice_t *notice)
           if (!!strcasecmp(((ZNotice_t *)(tmp->notice))->z_recipient, recip_nm)) {
             fry = tmp;
             tmp = tmp->above;
-            xdestroygram(dpy, fry->w, desc_context, fry);
+            xdestroygram(x_dpy, fry->w, desc_context, fry);
             done = 0;
           } else {
             tmp = tmp->above;
@@ -754,7 +757,7 @@ plus_window_deletions(ZNotice_t *notice)
             {
               fry = tmp;
               tmp = tmp->above;
-              xdestroygram(dpy, fry->w, desc_context, fry);
+              xdestroygram(x_dpy, fry->w, desc_context, fry);
               done = 0;
             } else {
               tmp = tmp->above;
@@ -774,7 +777,7 @@ plus_window_deletions(ZNotice_t *notice)
             {
               fry = tmp;
               tmp = tmp->above;
-              xdestroygram(dpy, fry->w, desc_context, fry);
+              xdestroygram(x_dpy, fry->w, desc_context, fry);
               done = 0;
             } else {
               tmp = tmp->above;
@@ -794,7 +797,7 @@ plus_window_deletions(ZNotice_t *notice)
             {
               fry = tmp;
               tmp = tmp->above;
-              xdestroygram(dpy, fry->w, desc_context, fry);
+              xdestroygram(x_dpy, fry->w, desc_context, fry);
               done = 0;
             } else {
               tmp = tmp->above;
@@ -811,7 +814,7 @@ plus_window_deletions(ZNotice_t *notice)
           if (!strcasecmp(((ZNotice_t *)(tmp->notice))->z_class, class_nm)) {
             fry = tmp;
             tmp = tmp->above;
-            xdestroygram(dpy, fry->w, desc_context, fry);
+            xdestroygram(x_dpy, fry->w, desc_context, fry);
             done = 0;
           } else {
             tmp = tmp->above;
@@ -821,7 +824,7 @@ plus_window_deletions(ZNotice_t *notice)
     }
     else if (!strcmp(val, "all")) {
       while (bottom_gram) {
-        xdestroygram(dpy, bottom_gram->w, desc_context, bottom_gram);
+        xdestroygram(x_dpy, bottom_gram->w, desc_context, bottom_gram);
       }
     }
   }

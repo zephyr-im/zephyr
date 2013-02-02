@@ -23,6 +23,7 @@ static const char rcsid_xerror_c[] = "$Id$";
 
 #include <X11/Xlib.h>
 #include "mux.h"
+#include "xerror.h"
 
 int xerror_happened;
 

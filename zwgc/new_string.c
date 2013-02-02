@@ -12,6 +12,7 @@
  */
 
 #include <sysdep.h>
+#include "new_string.h"
 
 #if (!defined(lint) && !defined(SABER))
 static const char rcsid_new_string_c[] = "$Id$";
@@ -42,9 +43,6 @@ static const char rcsid_new_string_c[] = "$Id$";
 #endif
 
 #include "new_memory.h"
-
-#define string_Length(s) strlen(s)
-typedef char *string;
 
 /*
  *    string string_CreateFromData(char *data, int length):

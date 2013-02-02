@@ -51,12 +51,6 @@ static void detach(void);
 static void send_stats(ZNotice_t *, struct sockaddr_in *);
 static char *strsave(const char *);
 
-extern void send_flush_notice(char *);
-extern void server_manager(ZNotice_t *);
-extern void send_boot_notice(char *);
-extern void find_next_server(char *);
-extern int optind;
-
 static RETSIGTYPE
 deactivate(int ignored)
 {
@@ -258,10 +252,10 @@ main(int argc,
 static void
 choose_server(void)
 {
+#ifdef HAVE_HESIOD
     int i = 0;
     char **clust_info, **cpp;
 
-#ifdef HAVE_HESIOD
     if (use_hesiod) {
 
 	/* Free up any previously used resources */

@@ -87,7 +87,7 @@ Code_t
 Z_krb5_lookup_cksumtype(krb5_enctype e,
 			krb5_cksumtype *c)
 {
-  int i;
+  unsigned int i;
 
   for (i = 0; i < N_CKSUM_MAP; i++) {
     if (cksum_map[i].e == e) {
@@ -188,12 +188,12 @@ int
 Z_PacketWaiting(void)
 {
     struct timeval tv;
-    fd_set read;
+    fd_set readfds;
 
     tv.tv_sec = tv.tv_usec = 0;
-    FD_ZERO(&read);
-    FD_SET(ZGetFD(), &read);
-    return (select(ZGetFD() + 1, &read, NULL, NULL, &tv));
+    FD_ZERO(&readfds);
+    FD_SET(ZGetFD(), &readfds);
+    return (select(ZGetFD() + 1, &readfds, NULL, NULL, &tv));
 }
 
 
@@ -254,7 +254,8 @@ Z_SearchQueue(ZUnique_Id_t *uid,
 	if (ZCompareUID(uid, &qptr->uid) && qptr->kind == kind)
 	    return (qptr);
 	next = qptr->next;
-	if (qptr->timep && (qptr->timep+Z_NOTICETIMELIMIT < tv.tv_sec))
+	if (qptr->timep &&
+            (qptr->timep+Z_NOTICETIMELIMIT < (unsigned long)tv.tv_sec))
 	    Z_RemQueue(qptr);
 	qptr = next;
     }
@@ -1154,9 +1155,9 @@ Z_SendFragmentedNotice(ZNotice_t *notice,
 Code_t Z_XmitFragment(ZNotice_t *notice,
 		      char *buf,
 		      int len,
-		      int wait)
+		      int waitforack)
 {
-    return(ZSendPacket(buf, len, wait));
+    return(ZSendPacket(buf, len, waitforack));
 }
 
 /* For debugging printing */
@@ -1285,14 +1286,13 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
      int cksum1_len;  /* length of part after checksum */
      krb5_data cksumbuf;
      krb5_data cksum;
-     unsigned char *key_data;
-     int key_len;
+     unsigned char *cksum_data;
+     unsigned int cksum_data_len;
+     char *cksum_out_data;
      krb5_enctype enctype;
      krb5_cksumtype cksumtype;
      Code_t result;
 
-     key_data = Z_keydata(keyblock);
-     key_len = Z_keylen(keyblock);
      result = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
      if (result)
           return (ZAUTH_FAILED);
@@ -1306,19 +1306,22 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
      cksumbuf.data = malloc(cksumbuf.length);
      if (!cksumbuf.data)
           return ENOMEM;
-     memcpy(cksumbuf.data, cksum_start, cksum0_len);
-     memcpy(cksumbuf.data + cksum0_len, cend, cksum1_len);
-     memcpy(cksumbuf.data + cksum0_len + cksum1_len,
+     cksum_data = (unsigned char *)cksumbuf.data;
+     memcpy(cksum_data, cksum_start, cksum0_len);
+     memcpy(cksum_data + cksum0_len, cend, cksum1_len);
+     memcpy(cksum_data + cksum0_len + cksum1_len,
             notice->z_message, notice->z_message_len);
      /* compute the checksum */
      result = Z_Checksum(&cksumbuf, keyblock, cksumtype,
 			 from_server ? Z_KEYUSAGE_SRV_CKSUM
 			  : Z_KEYUSAGE_CLT_CKSUM,
-                        (char **)&cksum.data, &cksum.length);
+			  &cksum_out_data, &cksum_data_len);
      if (result) {
           free(cksumbuf.data);
           return result;
      }
+     cksum.data = cksum_out_data;
+     cksum.length = cksum_data_len;
 
      /*
       * OK....  we can zcode to a space starting at 'cstart',
@@ -1332,7 +1335,7 @@ Z_InsertZcodeChecksum(krb5_keyblock *keyblock,
      free(cksum.data);
      if (!result) {
           int zcode_len = strlen(cstart) + 1;
-          memcpy(cstart + zcode_len, cksumbuf.data + cksum0_len, cksum1_len);
+          memcpy(cstart + zcode_len, cksum_data + cksum0_len, cksum1_len);
           *length_adjust = zcode_len - cksum_len + (cksum0_len + cksum1_len);
      }
      free(cksumbuf.data);
@@ -1366,7 +1369,6 @@ Z_krb5_verify_cksum(krb5_keyblock *keyblock,
 #else
     krb5_crypto cryptctx;
     Checksum checksum;
-    size_t xlen;
 #endif
 
     memset(&checksum, 0, sizeof(checksum));

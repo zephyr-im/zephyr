@@ -92,7 +92,7 @@ main(int argc,
     }
     retval = krb_get_svc_in_tkt(SVC_NAME, hn2, rlm,
 				SERVER_SERVICE, SERVER_INSTANCE, 1,
-				KEYFILE);
+				(char *)KEYFILE);
     if (retval) {
 	fprintf(stderr, "%s: can't get tickets: %s\n",
 		argv[0], krb_get_err_text(retval));

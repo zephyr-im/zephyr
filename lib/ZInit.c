@@ -24,9 +24,6 @@ static const char rcsid_ZInitialize_c[] =
 #ifdef HAVE_KRB5
 #include <krb5.h>
 #endif
-#ifdef HAVE_KRB5_ERR_H
-#include <krb5_err.h>
-#endif
 
 #ifndef INADDR_NONE
 #define INADDR_NONE 0xffffffff
@@ -54,7 +51,8 @@ ZInitialize(void)
     char addr[4], hostname[NS_MAXDNAME];
     struct in_addr servaddr;
     struct sockaddr_in sin;
-    unsigned int s, sinsize = sizeof(sin);
+    unsigned int sinsize = sizeof(sin);
+    int s;
     Code_t code;
     ZNotice_t notice;
 #ifdef HAVE_KRB5
@@ -244,10 +242,11 @@ struct sockaddr_in ZGetDestAddr (void) {
 static int txt_lookup(char *qname, char **result) {
     int ret, buflen, left;
     void *buf = NULL;
+    void *bufend = NULL;
     HEADER *hdr;
     unsigned char *p;
     char dname[NS_MAXDNAME];
-    int queries, answers, stored;
+    int queries, answers;
 
     ret = res_init();
     if (ret < 0)
@@ -266,6 +265,7 @@ static int txt_lookup(char *qname, char **result) {
 
     buflen = ret;
     left = ret;
+    bufend = buflen + (unsigned char *)buf;
 
     hdr = (HEADER *)buf;
     p = buf;
@@ -275,7 +275,7 @@ static int txt_lookup(char *qname, char **result) {
     left -= sizeof (HEADER);
 
     while (queries--) {
-	ret = dn_expand(buf, buf + buflen, p, dname, sizeof dname);
+	ret = dn_expand(buf, bufend, p, dname, sizeof dname);
 	if (ret < 0 || (ret + 4) > left)
 	    return -1;
 	p += ret + 4;
@@ -285,11 +285,10 @@ static int txt_lookup(char *qname, char **result) {
     if (!ret || !answers)
 	return -1;
 
-    stored = 0;
     while (answers--) {
 	int class, type;
 
-	ret = dn_expand(buf, buf + buflen, p, dname, sizeof dname);
+	ret = dn_expand(buf, bufend, p, dname, sizeof dname);
 	if (ret < 0 || ret > left)
 	    return -1;
 	p += ret;

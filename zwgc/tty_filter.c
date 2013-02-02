@@ -48,6 +48,7 @@ static const char rcsid_tty_filter_c[] = "$Id$";
 #include "formatter.h"
 #include "zwgc.h"
 #include "error.h"
+#include "tty_filter.h"
 
 /***************************************************************************/
 #ifndef HAVE_TERMCAP_H

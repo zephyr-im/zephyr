@@ -34,6 +34,7 @@ static const char rcsid_string_dictionary_aux_c[] = "$Id$";
 #include <sysdep.h>
 #include "new_memory.h"
 #include "string_dictionary.h"
+#include "string_dictionary_aux.h"
 
 /*
  *    void string_dictionary_Set(string_dictionary d, string key,string value):

@@ -235,7 +235,8 @@ verbatim(string str, int bracketsonly)
    char *temp,*temp2;
    int bracketnum,len;
 
-   if (strlen(str) == pure_text_length(str,0)) {
+   len = strlen(str);
+   if (len == pure_text_length(str,0)) {
       /* No environments, so consider the fast-and-easy methods */
 
       if (not_contains(str,allbracket_set)) {

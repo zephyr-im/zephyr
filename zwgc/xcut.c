@@ -91,8 +91,9 @@ x_gram_to_string(x_gram *gram)
  *
  */
 
+#if 0
 /*ARGSUSED*/
-Bool
+static Bool
 isShiftButton1(Display *dpy,
 	       XEvent *event,
 	       char *arg)
@@ -101,7 +102,7 @@ isShiftButton1(Display *dpy,
 }
 
 /*ARGSUSED*/
-Bool
+static Bool
 isShiftButton3(Display *dpy,
 	       XEvent *event,
 	       char *arg)
@@ -109,7 +110,7 @@ isShiftButton3(Display *dpy,
    return(event->xbutton.state & (ShiftMask|Button3Mask));
 }
 
-void
+static void
 getLastEvent(Display *dpy,
 	     unsigned int state,
 	     XEvent *event)
@@ -124,16 +125,21 @@ getLastEvent(Display *dpy,
 	 *event=xev;
    }
 }
+#endif
 
-void
+static void
 xunmark(Display *dpy,
 	Window w,
 	x_gram *gram,
 	XContext desc_context)
 {
-   if (gram == NULL)
-     if (XFindContext(dpy, w, desc_context, (XPointer *) &gram))
+   XPointer gramp; /* Avoid strict aliasing violation */
+
+   if (gram == NULL) {
+     if (XFindContext(dpy, w, desc_context, &gramp))
        return;
+     gram = (x_gram *)gramp;
+   }
 
    xmarkClear();
    xmarkRedraw(dpy,w,gram,XMARK_REDRAW_OLD);
@@ -198,6 +204,7 @@ xcut(Display *dpy,
      XEvent *event,
      XContext desc_context)
 {
+    XPointer gramp; /* Avoid strict aliasing violation */
     x_gram *gram;
     Window w = event->xany.window;
     int changedbound;
@@ -206,8 +213,9 @@ xcut(Display *dpy,
      * If event is for a window that's not ours anymore (say we're
      * in the process of deleting it...), ignore it:
      */
-    if (XFindContext(dpy, w, desc_context, (XPointer *) &gram))
+    if (XFindContext(dpy, w, desc_context, &gramp))
       return;
+    gram = (x_gram *)gramp;
 
     /*
      * Dispatch on the event type:
@@ -247,7 +255,7 @@ xcut(Display *dpy,
       case ClientMessage:
 	if ((event->xclient.message_type == XA_WM_PROTOCOLS) &&
 	    (event->xclient.format == 32) &&
-	    (event->xclient.data.l[0] == XA_WM_DELETE_WINDOW))
+	    (event->xclient.data.l[0] == (long)XA_WM_DELETE_WINDOW))
 	    xdestroygram(dpy,w,desc_context,gram);
 	break;
 

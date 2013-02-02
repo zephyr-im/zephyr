@@ -31,14 +31,14 @@ static const char rcsid_standard_ports_c[] = "$Id$";
 #include "variables.h"
 #include "error.h"
 #include "main.h"
+#include "tty_filter.h"
+#ifndef X_DISPLAY_MISSING
+#include "X_driver.h"
+#endif
+
 
 extern char *tty_filter(string, int);
 extern int tty_filter_init(char *, char, int *, char **);
-
-#ifndef X_DISPLAY_MISSING
-extern char *X_driver(string);
-extern int X_driver_init(char *, char, int *, char **);
-#endif
 
 extern void usage(void);
 
@@ -46,7 +46,7 @@ extern void usage(void);
  *
  */
 
-char *
+static char *
 plain_driver(string input)
 {
     string processed_input = tty_filter(input, 0);
@@ -61,7 +61,7 @@ plain_driver(string input)
  *
  */
 
-char *
+static char *
 tty_driver(string input)
 {
     string processed_input = tty_filter(input, 1);
@@ -76,7 +76,7 @@ tty_driver(string input)
  *
  */
 
-string
+static string
 noop_filter(string input)
 {
     return(input);
@@ -86,7 +86,7 @@ noop_filter(string input)
  *
  */
 
-string
+static string
 plain_filter(string input)
 {
     return(tty_filter(input, 0));
@@ -96,7 +96,7 @@ plain_filter(string input)
  *
  */
 
-string
+static string
 fancy_filter(string input)
 {
     return(tty_filter(input, 1));

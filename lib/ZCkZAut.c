@@ -44,7 +44,7 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
     int valid;
     char *cksum0_base, *cksum1_base = NULL, *cksum2_base;
     char *x;
-    unsigned char *asn1_data, *key_data;
+    unsigned char *asn1_data, *key_data, *cksum_data;
     int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0;
 #endif
 
@@ -129,9 +129,9 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
        away once Kerberos 4 does. */
     if ((!notice->z_ascii_checksum || *notice->z_ascii_checksum != 'Z') &&
 	key_len == 8 &&
-	(enctype == ENCTYPE_DES_CBC_CRC ||
-	 enctype == ENCTYPE_DES_CBC_MD4 ||
-	 enctype == ENCTYPE_DES_CBC_MD5)) {
+	(enctype == (krb5_enctype)ENCTYPE_DES_CBC_CRC ||
+	 enctype == (krb5_enctype)ENCTYPE_DES_CBC_MD4 ||
+	 enctype == (krb5_enctype)ENCTYPE_DES_CBC_MD5)) {
 	/* try old-format checksum (covers cksum0 only) */
 
 	ZChecksum_t our_checksum;
@@ -153,10 +153,11 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
     }
     /* HOLDING: creds, cksumbuf.data */
 
-    memcpy(cksumbuf.data, cksum0_base, cksum0_len);
+    cksum_data = (unsigned char *)cksumbuf.data;
+    memcpy(cksum_data, cksum0_base, cksum0_len);
     if (cksum1_len)
-	memcpy(cksumbuf.data + cksum0_len, cksum1_base, cksum1_len);
-    memcpy(cksumbuf.data + cksum0_len + cksum1_len,
+	memcpy(cksum_data + cksum0_len, cksum1_base, cksum1_len);
+    memcpy(cksum_data + cksum0_len + cksum1_len,
 	   cksum2_base, cksum2_len);
 
     /* decode zcoded checksum */

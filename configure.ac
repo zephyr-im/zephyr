@@ -36,10 +36,15 @@ dnl Checks for header files.
 AC_PATH_XTRA
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h paths.h sgtty.h unistd.h malloc.h term.h)
+AC_CHECK_HEADERS(fcntl.h paths.h sgtty.h unistd.h malloc.h)
 AC_CHECK_HEADERS(sys/filio.h sys/ioctl.h sys/time.h sys/file.h sys/utsname.h)
 AC_CHECK_HEADERS(sys/select.h sys/msgbuf.h sys/cdefs.h krb5_err.h termcap.h)
 AC_CHECK_HEADERS(arpa/nameser_compat.h stdbool.h termio.h curses.h)
+AC_CHECK_HEADERS([term.h], [], [],
+[#ifdef HAVE_CURSES_H
+#include <curses.h>
+#endif
+])
 
 if test "$no_x" != "yes"; then
 	ZWGC_LIBX11=-lX11
@@ -300,6 +305,27 @@ if test "$ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer" = yes; then
         krb5_authent_type='krb5_authenticator **'
 fi
 AC_MSG_RESULT($krb5_authent_type)
+
+AC_CACHE_CHECK([krb5_auth_con_getflags out argument type],
+	       [ac_cv_krb5_auth_con_flags_type], [
+local_save_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="${CPPFLAGS} ${KRB5_INC_FLAGS}"
+for t in krb5_flags int32_t ; do
+   AC_TRY_COMPILE(
+      [#include <krb5.h>
+       extern krb5_error_code
+       krb5_auth_con_getflags(krb5_context, krb5_auth_context, $t *);],
+       [krb5_error_code foo = krb5_auth_con_getflags(0, 0, 0);],
+       [ac_cv_krb5_auth_con_flags_type=$t; break])
+done
+CPPFLAGS="${local_save_CPPFLAGS}"
+if test "x$ac_cv_krb5_auth_con_flags_type" = x ; then
+   AC_MSG_ERROR([Cannot identify krb5_auth_con_getflags function signature])
+fi
+])
+AC_DEFINE_UNQUOTED([KRB5_AUTH_CON_FLAGS_TYPE],
+		   [$ac_cv_krb5_auth_con_flags_type],
+		   [krb5_auth_con_getflags() output arg type])
 
 AC_MSG_CHECKING(for enc_part2 in struct krb5_ticket)
 AC_CACHE_VAL(ac_cv_have_krb5_ticket_enc_part2, [
