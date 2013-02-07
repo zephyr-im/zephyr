@@ -28,7 +28,6 @@ int use_hesiod = 0;
 int hmdebug, rebootflag, noflushflag, errflg, dieflag, inetd, oldpid, nofork;
 int no_server = 1, nservchang, nserv, nclt;
 int booting = 1, timeout_type, deactivated = 1;
-int bootflag = 1;
 int started = 0;
 long starttime;
 u_short cli_port;
@@ -106,9 +105,9 @@ main(int argc,
 	  case 'f':
 	    noflushflag = 1;
 	    break;
-          case 'N':
-            bootflag = 0;
-            break;
+	  case 'N':
+	    booting = 0;
+	    break;
 	  case '?':
 	  default:
 	    errflg++;
@@ -440,7 +439,7 @@ init_hm(void)
 	  memcpy(&serv_sin.sin_addr, hp->h_addr, 4);
      }
 
-     if (bootflag)
+     if (booting)
           send_boot_notice(HM_BOOT);
      else
           send_boot_notice(HM_ATTACH);

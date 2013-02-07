@@ -283,7 +283,7 @@ new_server(char *sugg_serv)
     syslog (LOG_INFO, "Server went down, finding new server.");
     send_flush_notice(HM_DETACH);
     find_next_server(sugg_serv);
-    if (booting) {
+    if (booting || deactivated) {
 	send_boot_notice(HM_BOOT);
 	deactivated = 0;
     } else {
