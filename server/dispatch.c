@@ -990,6 +990,7 @@ control_dispatch(ZNotice_t *notice,
 	   someone who has no subscriptions does NOT get a SERVNAK
 	   but rather an empty list.  Note we must therefore
 	   check authentication inside subscr_sendlist */
+	ack(notice, who);
 	subscr_sendlist(notice, auth, who);
 	return ZERR_NONE;
     } else if (!auth) {
