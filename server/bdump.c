@@ -966,9 +966,10 @@ cleanup(Server *server)
     zdbug((LOG_DEBUG, "bdump cleanup"));
 
     if (server != limbo_server) {
-	server->state = SERV_DEAD;
+	if (server->state != SERV_STARTING)
+	    server->state = SERV_DEAD;
 	timer_reset(server->timer);
-	server->timer = timer_set_rel(0L, server_timo, server);
+	server->timer = timer_set_rel(server->timeout, server_timo, server);
     }
     shutdown_file_pointers ();
 #ifdef _POSIX_VERSION
