@@ -205,6 +205,12 @@ handle_packet(void)
 	whence = &whoisit;
     }
 
+    /* Don't bother checking authentication on client ACKs */
+    if (new_notice.z_kind == CLIENTACK) {
+	nack_cancel(&new_notice, &whoisit);
+	return;
+    }
+
     /* Clients don't check auth of acks, nor do we make it so they
        can in general, so this is safe. */
     if (new_notice.z_kind == SERVACK || new_notice.z_kind == SERVNAK) {
