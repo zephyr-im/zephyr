@@ -23,6 +23,7 @@ typedef struct _Queue {
     int retries;
     ZNotice_t notice;
     void *packet;
+    int len;
     struct sockaddr_in reply;
     struct _Queue *next, **prev_p;
 } Queue;
@@ -76,6 +77,7 @@ add_notice_to_queue(ZNotice_t *notice,
 	    return(ZERR_NONOTICE);
 	}
 	memcpy(entry->packet, packet, Z_MAXPKTLEN);
+	entry->len = len;
 	if (ZParseNotice(entry->packet, len, &entry->notice) != ZERR_NONE) {
 	    syslog(LOG_ERR, "ZParseNotice failed, but succeeded before");
 	    free(entry->packet);
@@ -144,7 +146,7 @@ retransmit_queue(struct sockaddr_in *sin)
 	DPR2("\tz_opcode: %s\n", entry->notice.z_opcode);
 	DPR2("\tz_sender: %s\n", entry->notice.z_sender);
 	DPR2("\tz_recip: %s\n", entry->notice.z_recipient);
-	ret = send_outgoing(&entry->notice);
+	ret = ZSendPacket(entry->packet, entry->len, 0);
 	if (ret != ZERR_NONE) {
 	    Zperr(ret);
 	    com_err("queue", ret, "sending raw notice");
@@ -251,7 +253,7 @@ queue_timeout(void *arg)
     DPR2("\tz_opcode: %s\n", entry->notice.z_opcode);
     DPR2("\tz_sender: %s\n", entry->notice.z_sender);
     DPR2("\tz_recip: %s\n", entry->notice.z_recipient);
-    ret = send_outgoing(&entry->notice);
+    ret = ZSendPacket(entry->packet, entry->len, 0);
     if (ret != ZERR_NONE) {
 	Zperr(ret);
 	com_err("queue", ret, "sending raw notice");
