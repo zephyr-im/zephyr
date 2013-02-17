@@ -110,6 +110,7 @@ Code_t Z_XmitFragment (ZNotice_t*, char *,int,int);
 void Z_RemQueue (struct _Z_InputQ *);
 Code_t Z_AddNoticeToEntry (struct _Z_InputQ*, ZNotice_t*, int);
 Code_t Z_FormatAuthHeader (ZNotice_t *, char *, int, int *, Z_AuthProc);
+Code_t Z_FormatAuthHeaderWithASCIIAddress (ZNotice_t *, char *, int, int *);
 Code_t Z_FormatHeader (ZNotice_t *, char *, int, int *, Z_AuthProc);
 Code_t Z_FormatRawHeader (ZNotice_t *, char*, int,
 			      int*, char **, char **);

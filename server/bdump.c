@@ -101,6 +101,7 @@ static struct sockaddr_in bdump_sin;
 #ifdef HAVE_KRB5
 static krb5_auth_context bdump_ac;
 #endif
+static Z_AuthProc bdump_auth_proc;
 
 int bdumping;
 int bdump_concurrent;
@@ -286,6 +287,7 @@ bdump_send(void)
 
     bdumping = 1;
     server->dumping = 1;
+    bdump_auth_proc = ZNOAUTH;
 
     if (bdump_socket >= 0) {
 	/* shut down the listening socket and the timer. */
@@ -406,6 +408,7 @@ bdump_send(void)
 #endif  /* HAVE_KRB5 */
 #ifdef HAVE_KRB4
     case 4:
+	bdump_auth_proc = Z_FormatAuthHeaderWithASCIIAddress;
 	/* here to krb_rd_req from GetKerberosData candidate for refactoring
 	   back into kstuff.c */
 	(void) strcpy(instance, "*"); 		/* let Kerberos fill it in */
@@ -528,6 +531,7 @@ bdump_get_v12 (ZNotice_t *notice,
 
     bdumping = 1;
     server->dumping = 1;
+    bdump_auth_proc = ZNOAUTH;
 
 #ifdef _POSIX_VERSION
     action.sa_flags = 0;
@@ -709,6 +713,7 @@ bdump_get_v12 (ZNotice_t *notice,
 #endif
 #ifdef HAVE_KRB4
     case 4:
+	bdump_auth_proc = Z_FormatAuthHeaderWithASCIIAddress;
 	/* send an authenticator */
 	retval = SendKerberosData(live_socket, &ticket, SERVER_SERVICE,
 				  SERVER_INSTANCE);
@@ -920,7 +925,8 @@ bdump_send_list_tcp(ZNotice_Kind_t kind,
     if (addr)
 	notice.z_sender_sockaddr.ip4 = *addr; /*XXX*/
 
-    retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen, ZNOAUTH);
+    retval = ZFormatNoticeList(&notice, lyst, num, &pack, &packlen,
+			       bdump_auth_proc);
     if (retval != ZERR_NONE) {
 	syslog(LOG_ERR, "bdump_send_list_tcp: ZFormatNotice: %s", error_message(retval));
 	return retval;
@@ -1512,7 +1518,7 @@ send_normal_tcp(ZNotice_Kind_t kind,
     notice.z_message_len = len;
     notice.z_num_other_fields = 0;
 
-    retval = ZFormatNotice(&notice, &pack, &packlen, ZNOAUTH);
+    retval = ZFormatNotice(&notice, &pack, &packlen, bdump_auth_proc);
     if (retval != ZERR_NONE) {
 	syslog(LOG_WARNING, "send_normal_tcp: ZFormatNotice: %s", error_message(retval));
 	return retval;

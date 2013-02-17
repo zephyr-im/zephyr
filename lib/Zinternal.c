@@ -111,7 +111,8 @@ void *__Z_debug_print_closure;
 static int Z_AddField(char **ptr, char *field, char *end);
 static int find_or_insert_uid(ZUnique_Id_t *uid, ZNotice_Kind_t kind);
 static Code_t Z_ZcodeFormatRawHeader(ZNotice_t *, char *, int, int *, char **,
-				     int *, char **, char **, int cksumtype);
+				     int *, char **, char **, int cksumstyle,
+				     int addrstyle);
 
 /* Find or insert uid in the old uids buffer.  The buffer is a sorted
  * circular queue.  We make the assumption that most packets arrive in
@@ -748,6 +749,24 @@ Z_NewFormatHeader(ZNotice_t *notice,
 }
 
 Code_t
+Z_FormatAuthHeaderWithASCIIAddress(ZNotice_t *notice,
+				   char *buffer,
+				   int buffer_len,
+				   int *len)
+{
+    notice->z_auth = 0;
+    notice->z_authent_len = 0;
+    notice->z_ascii_authent = "";
+    notice->z_checksum = 0;
+    if (!(notice->z_sender_sockaddr.sa.sa_family == AF_INET ||
+	  notice->z_sender_sockaddr.sa.sa_family == AF_INET6))
+	notice->z_sender_sockaddr.sa.sa_family = AF_INET; /* \/\/hatever *//*XXX*/
+
+    return Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, len,
+				  NULL, NULL, NULL, NULL, 0, 1);
+}
+
+Code_t
 Z_FormatAuthHeader(ZNotice_t *notice,
 		   char *buffer,
 		   int buffer_len,
@@ -796,7 +815,7 @@ Z_NewFormatRawHeader(ZNotice_t *notice,
 		     char **cend)
 {
    return(Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len,
-				 cksum_start, cksum_len, cstart, cend, 0));
+				 cksum_start, cksum_len, cstart, cend, 0, 0));
 }
 
 Code_t
@@ -810,7 +829,7 @@ Z_AsciiFormatRawHeader(ZNotice_t *notice,
 		       char **cend)
 {
    return(Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, hdr_len,
-				 cksum_start, cksum_len, cstart, cend, 1));
+				 cksum_start, cksum_len, cstart, cend, 1, 0));
 }
 
 static Code_t
@@ -822,7 +841,8 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
 		       int *cksum_len,
 		       char **cstart,
 		       char **cend,
-		       int cksumstyle)
+		       int cksumstyle,
+		       int addrstyle)
 {
     static char version_nogalaxy[BUFSIZ]; /* default init should be all \0 */
     char newrecip[BUFSIZ];
@@ -952,8 +972,13 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
 	    addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip6.sin6_addr;
 	}
 
-	if (ZMakeZcode(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
-	    return ZERR_HEADERLEN;
+	if (notice->z_sender_sockaddr.sa.sa_family == AF_INET && addrstyle) {
+	    if (ZMakeAscii(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
+		return ZERR_HEADERLEN;
+	} else {
+	    if (ZMakeZcode(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
+		return ZERR_HEADERLEN;
+	}
 	ptr += strlen(ptr) + 1;
     }
 
@@ -988,7 +1013,8 @@ Z_FormatRawHeader(ZNotice_t *notice,
 	  notice->z_sender_sockaddr.sa.sa_family == AF_INET6))
 	notice->z_sender_sockaddr.sa.sa_family = AF_INET; /* \/\/hatever *//*XXX*/
 
-    return Z_NewFormatRawHeader(notice, buffer, buffer_len, len, NULL, NULL, cstart, cend);
+    return Z_ZcodeFormatRawHeader(notice, buffer, buffer_len, len,
+				  NULL, NULL, cstart, cend, 0, 0);
 }
 
 static int
