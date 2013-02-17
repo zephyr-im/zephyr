@@ -947,15 +947,13 @@ Z_ZcodeFormatRawHeader(ZNotice_t *notice,
 	if (notice->z_sender_sockaddr.sa.sa_family == AF_INET) {
 	    addrlen = sizeof(notice->z_sender_sockaddr.ip4.sin_addr);
 	    addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip4.sin_addr;
-	    if (ZMakeAscii(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
-		return ZERR_HEADERLEN;
 	} else if (notice->z_sender_sockaddr.sa.sa_family == AF_INET6) {
 	    addrlen = sizeof(notice->z_sender_sockaddr.ip6.sin6_addr);
 	    addraddr = (unsigned char *)&notice->z_sender_sockaddr.ip6.sin6_addr;
-	    if (ZMakeZcode(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
-		return ZERR_HEADERLEN;
 	}
 
+	if (ZMakeZcode(ptr, end-ptr, addraddr, addrlen) == ZERR_FIELDLEN)
+	    return ZERR_HEADERLEN;
 	ptr += strlen(ptr) + 1;
     }
 
