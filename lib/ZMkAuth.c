@@ -123,7 +123,7 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
     krb5_auth_context authctx;
     krb5_data *authent;
     char *cksum_start, *cstart, *cend;
-    int cksum_len, zcode_len = 0, phdr_adj;
+    int cksum_len, zcode_len = 0, phdr_adj = 0;
 
     notice->z_ascii_authent = NULL;
 
@@ -167,7 +167,7 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
 	result = Z_NewFormatRawHeader(notice, buffer, buffer_len, phdr_len,
 				      &cksum_start, &cksum_len, &cstart, &cend);
     notice->z_authent_len = 0;
-    if (!result)
+    if (!result && creds != NULL)
 	result = Z_InsertZcodeChecksum(keyblock, notice, buffer, cksum_start,
 				       cksum_len, cstart, cend, buffer_len,
 				       &phdr_adj, 0);
