@@ -172,9 +172,10 @@ if test "$krb5" != no; then
    AC_DEFINE(HAVE_KRB5, 1, [Define to compile with Kerberos 5 support.])
    LIBZEPHYR_LIBS="$LIBZEPHYR_LIBS $KRB5_LIBS"
    # the zephyr library needs -lresolv if it's built with krb5
-   AC_CHECK_LIB(resolv, res_send, LIBZEPHYR_LIBS="-lresolv $LIBZEPHYR_LIBS",
-   		AC_CHECK_LIB(resolv, __res_send, LIBZEPHYR_LIBS="-lresolv $LIBZEPHYR_LIBS",
-			     AC_MSG_ERROR(Zephyr requires libresolv along with Kerberos V.)))
+   AC_CHECK_FUNC(res_send, :,
+                 AC_CHECK_LIB(resolv, res_send, LIBZEPHYR_LIBS="-lresolv $LIBZEPHYR_LIBS",
+                              AC_CHECK_LIB(resolv, __res_send, LIBZEPHYR_LIBS="-lresolv $LIBZEPHYR_LIBS",
+                                           AC_MSG_ERROR(Zephyr requires libresolv along with Kerberos V.))))
    case "$target_os" in 
       darwin*) KRB5_LIBS="$KRB5_LIBS -framework Kerberos" ;;
    esac 
@@ -192,9 +193,9 @@ if test "$hesiod" != no; then
         	CPPFLAGS="$CPPFLAGS -I$hesiod/include"
         	LDFLAGS="$LDFLAGS -L$hesiod/lib"
         fi
-        AC_CHECK_LIB(hesiod, hes_resolve, :,
-	     [AC_MSG_ERROR(Hesiod library not found)],$LIBS)
-	HESIOD_LIBS="-lhesiod"
+        AC_CHECK_FUNC(hes_resolve, :,
+                      AC_CHECK_LIB(hesiod, hes_resolve, HESIOD_LIBS="-lhesiod",
+                                   [AC_MSG_ERROR(Hesiod library not found)],$LIBS))
 	AC_DEFINE(HAVE_HESIOD, 1, [Define to compile with Hesiod support.])
 fi
 
