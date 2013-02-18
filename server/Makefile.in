@@ -33,7 +33,7 @@ CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -DSYSCONFDIR=\"${sysconfdir}\" -I${top_srcdir}/h \
 	-I${BUILDTOP}/h -I. ${CPPFLAGS}
 LDFLAGS=@LDFLAGS@
-LIBS=${LIBZEPHYR} @LIBS@ -lcom_err
+LIBS=${LIBZEPHYR} @LIBS@ -lcom_err @ARES_LIBS@
 HESIOD_LIBS=@HESIOD_LIBS@
 
 NMOBJS=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \

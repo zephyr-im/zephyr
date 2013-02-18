@@ -18,6 +18,9 @@ int srv_socket;				/* dgram socket for clients
 					   and other servers */
 int bdump_socket = -1;			/* brain dump socket fd
 					   (closed most of the time) */
+#ifdef HAVE_ARES
+ares_channel achannel;			/* C-ARES resolver channel */
+#endif
 fd_set interesting;			/* the file descrips we are listening
 					   to right now */
 struct sockaddr_in srv_addr;		/* address of the socket */

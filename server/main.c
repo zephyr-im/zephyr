@@ -93,9 +93,10 @@ int
 main(int argc,
      char **argv)
 {
+    int nselect;		/* #fildes to select on */
     int nfound;			/* #fildes ready on select */
-    fd_set readable;
-    struct timeval tv;
+    fd_set readable, writable;
+    struct timeval tv, *tvp;
     int init_from_dump = 0;
     char *dumpfile;
 #ifdef _POSIX_VERSION
@@ -271,13 +272,24 @@ main(int argc,
 	timer_process();
 
 	readable = interesting;
+	FD_ZERO(&writable);
+	tvp = timer_timeout(&tv);
+#ifdef HAVE_ARES
+	nselect = ares_fds(achannel, &readable, &writable);
+	if (nselect < nfds)
+	    nselect = nfds;
+	tvp = ares_timeout(achannel, tvp, &tv);
+#else
+	nselect = nfds;
+#endif
 	if (msgs_queued()) {
 	    /* when there is input in the queue, we
 	       artificially set up to pick up the input */
 	    nfound = 1;
 	    FD_ZERO(&readable);
+	    FD_ZERO(&writable);
 	} else  {
-	    nfound = select(nfds, &readable, NULL, NULL, timer_timeout(&tv));
+	    nfound = select(nselect, &readable, &writable, NULL, tvp);
 	}
 
 	/* Initialize t_local for other uses */
@@ -291,6 +303,10 @@ main(int argc,
 	    continue;
 	}
 
+#ifdef HAVE_ARES
+	ares_process(achannel, &readable, &writable);
+#endif
+
 	if (nfound == 0) {
 	    /* either we timed out or we were just
 	       polling for input.  Either way we want to continue
@@ -301,8 +317,6 @@ main(int argc,
 		bdump_send();
 	    else if (msgs_queued() || FD_ISSET(srv_socket, &readable))
 		handle_packet();
-	    else
-		syslog(LOG_ERR, "select weird?!?!");
 	}
     }
 }
@@ -384,6 +398,17 @@ do_net_setup(void)
     struct hostent *hp;
     char hostname[NS_MAXDNAME];
     int flags;
+#ifdef HAVE_ARES
+    int status;
+#endif
+
+#ifdef HAVE_ARES
+    status = ares_init(&achannel);
+    if (status != ARES_SUCCESS) {
+	syslog(LOG_ERR, "resolver init failed: %s", ares_strerror(status));
+	return 1;
+    }
+#endif
 
     if (gethostname(hostname, sizeof(hostname))) {
 	syslog(LOG_ERR, "no hostname: %m");

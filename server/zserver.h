@@ -15,6 +15,9 @@
 #include <zephyr/mit-copyright.h>
 
 #include <internal.h>
+#ifdef HAVE_ARES
+#include <ares.h>
+#endif
 
 #include <arpa/inet.h>
 
@@ -423,6 +426,9 @@ extern int srv_socket;			/* dgram sockets for clients
 					   and other servers */
 extern int bdump_socket;		/* brain dump socket
 					   (closed most of the time) */
+#ifdef HAVE_ARES
+extern ares_channel achannel;
+#endif
 
 extern fd_set interesting;		/* the file descrips we are listening
 					 to right now */
