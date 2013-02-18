@@ -83,20 +83,86 @@ is_usable(ZRealm_server *srvr)
 }
 
 static void
+rlm_set_server_address(ZRealm_server *srvr, struct hostent *hp)
+{
+    memmove(&srvr->addr.sin_addr, hp->h_addr, sizeof(struct in_addr));
+    /* use the server port */
+    srvr->addr.sin_port = srv_addr.sin_port;
+    srvr->addr.sin_family = AF_INET;
+    srvr->got_addr = 1;
+}
+
+#ifdef HAVE_ARES
+
+static void rlm_server_address_timer_cb(void *srvr);
+static void rlm_server_address_lookup_cb(void *, int, int, struct hostent *);
+
+static void
+rlm_lookup_server_address(ZRealm_server *srvr)
+{
+    /* Cancel any pending future lookup. */
+    if (srvr->timer) {
+	timer_reset(srvr->timer);
+	srvr->timer = NULL;
+    }
+    ares_gethostbyname(achannel, srvr->name->string, AF_INET,
+		       rlm_server_address_lookup_cb, srvr);
+}
+
+static void
+rlm_server_address_timer_cb(void *arg)
+{
+    ZRealm_server *srvr = arg;
+
+    srvr->timer = NULL;
+    ares_gethostbyname(achannel, srvr->name->string, AF_INET,
+		       rlm_server_address_lookup_cb, arg);
+}
+
+static void
+rlm_server_address_lookup_cb(void *arg, int status, int timeouts,
+			     struct hostent *hp)
+{
+    ZRealm_server *srvr = arg;
+
+    if (status == ARES_SUCCESS) {
+	rlm_set_server_address(srvr, hp);
+	return;
+    }
+
+    syslog(LOG_WARNING, "%s: hostname lookup failed: %s",
+	   srvr->name->string, ares_strerror(status));
+
+    /*
+     * Set a timer to trigger another lookup.
+     * But, not if the server is deleted, which may have happened
+     * while we were waiting for ARES to finish the last lookup.
+     * Also, not if there is already a timer, which is possible if
+     * there were two outstanding lookups and we are the second to
+     * complete.  This can happen if we are asked to refresh the
+     * server list while a previous lookup is still in progress,
+     * since there is no convenient way to tell whether there is a
+     * lookup in progress.
+     */
+    if (!srvr->timer && !srvr->deleted)
+	srvr->timer = timer_set_rel(30, rlm_server_address_timer_cb, arg);
+}
+
+#else
+
+static void
 rlm_lookup_server_address(ZRealm_server *srvr)
 {
     struct hostent *hp;
 
     hp = gethostbyname(srvr->name->string);
-    if (hp) {
-	memmove(&srvr->addr.sin_addr, hp->h_addr, sizeof(struct in_addr));
-	/* use the server port */
-	srvr->addr.sin_port = srv_addr.sin_port;
-	srvr->addr.sin_family = AF_INET;
-	srvr->got_addr = 1;
-    } else
+    if (hp)
+	rlm_set_server_address(srvr, hp);
+    else
 	syslog(LOG_WARNING, "hostname failed, %s", srvr->name->string);
 }
+
+#endif
 
 static int
 realm_get_idx_by_addr(ZRealm *realm,
@@ -580,6 +646,10 @@ realm_init(void)
 		    /* mark realm.list server entry used */
 		    rlmnames[ii].servers[kk].deleted = 1;
 		    break;
+		}
+		if (rlm->srvrs[jj]->deleted && rlm->srvrs[jj]->timer) {
+		    timer_reset(rlm->srvrs[jj]->timer);
+		    rlm->srvrs[jj]->timer = NULL;
 		}
 	    }
 	    for (jj = kk = 0; kk < rlmnames[ii].nused; kk++)

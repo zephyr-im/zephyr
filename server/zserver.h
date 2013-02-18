@@ -117,6 +117,7 @@ struct _Destlist {
 struct _ZRealm_server {
     String *name;			/* server's hostname */
     struct sockaddr_in addr;		/* server's address */
+    Timer *timer;			/* timer for name lookup */
     unsigned int dontsend :1;		/* private server, do not send */
     unsigned int got_addr :1;		/* IP address is valid */
     unsigned int deleted :1;		/* server no longer exists */
