@@ -314,7 +314,7 @@ Z_ReadWait(void)
     zvlen = sizeof(ZVERSIONHDR) - 1;
     if (packet_len < zvlen || memcmp(packet, ZVERSIONHDR, zvlen) != 0) {
 	Z_discarded_packets++;
-	return (ZERR_NONE);
+	return (ZERR_BADPKT);
     }
 
     /* Parse the notice */
