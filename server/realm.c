@@ -1174,8 +1174,11 @@ realm_dump_realms(FILE *fp)
     for (ii = 0; ii < nrealms; ii++) {
 	(void) fprintf(fp, "%d:%s\n", ii, otherrealms[ii]->name);
 	for (jj = 0; jj < otherrealms[ii]->count; jj++) {
-	    (void) fprintf(fp, "\t%s\n",
-			   inet_ntoa(otherrealms[ii]->srvrs[jj].addr.sin_addr));
+	    (void) fprintf(fp, "\t%s%s%s%s\n",
+			   inet_ntoa(otherrealms[ii]->srvrs[jj].addr.sin_addr),
+			   otherrealms[ii]->srvrs[jj].dontsend ? " nosend" : "",
+			   otherrealms[ii]->srvrs[jj].got_addr ? " gotaddr" : "",
+			   otherrealms[ii]->srvrs[jj].deleted ? " deleted" : "");
 	}
 	/* dump the subs */
 	subscr_dump_subs(fp, otherrealms[ii]->subs);
