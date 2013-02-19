@@ -19,8 +19,7 @@
 
 #include <zephyr/mit-copyright.h>
 #include "zserver.h"
-/* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX */
-/* this needs to be rethought for a world without krb4 */
+#include <fnmatch.h>
 
 #ifndef SABER
 #ifndef lint
@@ -30,97 +29,11 @@ static const char rcsid_acl_files_c[] = "$Id$";
 
 /*** Routines for manipulating access control list files ***/
 
-#ifndef ANAME_SZ
-#define ANAME_SZ 40
-#define INST_SZ 40
-#endif /* XXX */
-
-/* "aname.inst@realm" */
-#ifndef MAX_PRINCIPAL_SIZE
-#define MAX_PRINCIPAL_SIZE  (ANAME_SZ + INST_SZ + REALM_SZ + 3)
-#endif
-#define INST_SEP '.'
 #define REALM_SEP '@'
+#define ESCAPE '\\'
 
-#define LINESIZE 2048		/* Maximum line length in an acl file */
-
-#define NEW_FILE "%s.~NEWACL~"	/* Format for name of altered acl file */
-#define WAIT_TIME 300		/* Maximum time allowed write acl file */
-
-#define CACHED_ACLS 64		/* How many acls to cache */
+#define CACHED_ACLS 256		/* How many acls to cache */
 #define ACL_LEN 256		/* Twice a reasonable acl length */
-
-#define MAX(a,b) (((a)>(b))?(a):(b))
-#define MIN(a,b) (((a)<(b))?(a):(b))
-
-#define COR(a,b) ((a!=NULL)?(a):(b))
-
-/* Canonicalize a principal name */
-/* If instance is missing, it becomes "" */
-/* If realm is missing, it becomes the local realm */
-/* Canonicalized form is put in canon, which must be big enough to hold
-   MAX_PRINCIPAL_SIZE characters */
-static void
-acl_canonicalize_principal(char *principal, char *canon)
-{
-    char *end;
-    char *dot, *atsign;
-    int len;
-
-    dot = strchr(principal, INST_SEP);
-    atsign = strchr(principal, REALM_SEP);
-
-    /* Maybe we're done already */
-    if (dot != NULL && atsign != NULL) {
-	if (dot < atsign) {
-	    /* It's for real */
-	    /* Copy into canon */
-	    strncpy(canon, principal, MAX_PRINCIPAL_SIZE);
-	    canon[MAX_PRINCIPAL_SIZE-1] = '\0';
-	    return;
-	} else {
-	    /* Nope, it's part of the realm */
-	    dot = NULL;
-	}
-    }
-    
-    /* No such luck */
-    end = principal + strlen(principal);
-
-    /* Get the principal name */
-    len = MIN(ANAME_SZ, COR(dot, COR(atsign, end)) - principal);
-    strncpy(canon, principal, len);
-    canon += len;
-
-    /* Add INST_SEP */
-    *canon++ = INST_SEP;
-
-    /* Get the instance, if it exists */
-    if (dot != NULL) {
-	++dot;
-	len = MIN(INST_SZ, COR(atsign, end) - dot);
-	strncpy(canon, dot, len);
-	canon += len;
-    }
-
-    /* Add REALM_SEP */
-    *canon++ = REALM_SEP;
-
-    /* Get the realm, if it exists */
-    /* Otherwise, default to local realm */
-    if (atsign != NULL) {
-	++atsign;
-	len = MIN(REALM_SZ, end - atsign);
-	strncpy(canon, atsign, len);
-	canon += len;
-	*canon++ = '\0';
-    } 
-#ifdef HAVE_KRB4
-    else if (krb_get_lrealm(canon, 1) != KSUCCESS) {
-	strcpy(canon, KRB_REALM);
-    }
-#endif
-}
 
 /* Eliminate all whitespace character in buf */
 /* Modifies its argument */
@@ -134,107 +47,12 @@ nuke_whitespace(char *buf)
     *pout = '\0';		/* Terminate the string */
 }
 
-/* Hash table stuff */
-
-struct hashtbl {
-    int size;			/* Max number of entries */
-    int entries;		/* Actual number of entries */
-    char **tbl;			/* Pointer to start of table */
-};
-
-/* Make an empty hash table of size s */
-static struct hashtbl *
-make_hash(int size)
-{
-    struct hashtbl *h;
-
-    if (size < 1) size = 1;
-    h = (struct hashtbl *) malloc(sizeof(struct hashtbl));
-    h->size = size;
-    h->entries = 0;
-    h->tbl = (char **) calloc(size, sizeof(char *));
-    return(h);
-}
-
-/* Destroy a hash table */
-static void
-destroy_hash(struct hashtbl *h)
-{
-    int i;
-
-    for (i = 0; i < h->size; i++) {
-	if (h->tbl[i] != NULL) free(h->tbl[i]);
-    }
-    free(h->tbl);
-    free(h);
-}
-
-/* Compute hash value for a string */
-static unsigned int
-hashval(char *s)
-{
-    unsigned hv;
-
-    for (hv = 0; *s != '\0'; s++) {
-	hv ^= ((hv << 3) ^ *s);
-    }
-    return(hv);
-}
-
-/* Add an element to a hash table */
-static void
-add_hash(struct hashtbl *h,
-	 char *el)
-{
-    unsigned hv;
-    char *s;
-    char **old;
-    int i;
-
-    /* Make space if it isn't there already */
-    if (h->entries + 1 > (h->size >> 1)) {
-	old = h->tbl;
-	h->tbl = (char **) calloc(h->size << 1, sizeof(char *));
-	for (i = 0; i < h->size; i++) {
-	    if (old[i] != NULL) {
-		hv = hashval(old[i]) % (h->size << 1);
-		while(h->tbl[hv] != NULL) hv = (hv+1) % (h->size << 1);
-		h->tbl[hv] = old[i];
-	    }
-	}
-	h->size = h->size << 1;
-	free(old);
-    }
-
-    hv = hashval(el) % h->size;
-    while(h->tbl[hv] != NULL && strcmp(h->tbl[hv], el)) hv = (hv+1) % h->size;
-    s = (char *) malloc(strlen(el)+1);
-    strcpy(s, el);
-    h->tbl[hv] = s;
-    h->entries++;
-}
-
-/* Returns nonzero if el is in h */
-static int
-check_hash(struct hashtbl *h,
-	   char *el)
-{
-    unsigned hv;
-
-    for (hv = hashval(el) % h->size; h->tbl[hv]; hv = (hv + 1) % h->size) {
-	if (!strcmp(h->tbl[hv], el)) {
-	    return 1;
-	}
-    }
-    return 0;
-}
-
 struct host_ace {
     struct host_ace *next;
     unsigned long addr, mask;
 };
 
-static void
+static int
 add_host(struct host_ace **list,
 	 char *buf)
 {
@@ -262,13 +80,16 @@ add_host(struct host_ace **list,
 	return;
 
     e = (struct host_ace *)malloc(sizeof(struct host_ace));
+    if (e == NULL)
+        return errno;
     memset(e, 0, sizeof(struct host_ace));
     e->addr = addr.s_addr;
     e->mask = htonl(mask);
     e->next = *list;
     *list = e;
-}
 
+    return 0;
+}
 
 static void
 destroy_hosts(struct host_ace **list)
@@ -281,18 +102,118 @@ destroy_hosts(struct host_ace **list)
     }
 }
 
+static char *
+split_name(char *princ) {
+    int i;
+    int len = strlen(princ);
+
+    for (i = 0; i < len && princ[i] != REALM_SEP; i++)
+        if (princ[i] == ESCAPE && (i + 1) < len)
+            i++;
+    if (i != len) { /* yay found an @ */
+        princ[i] = 0;
+        return &princ[i + 1];
+    }
+    return &princ[i]; /* failure, just return a pointer empty string */
+}
+
+struct user_ace {
+    struct user_ace *next;
+    char *princ;
+    char *realm;
+};
+
+static int
+add_user(struct user_ace **list, char *princ) {
+    struct user_ace *e;
+    char *realm = split_name(princ);
+
+    e = (struct user_ace *)malloc(sizeof(struct user_ace));
+    if (e == NULL)
+        return errno;
+    memset(e, 0, sizeof(struct user_ace));
+
+    if (!strcmp(princ, "*.*"))     /* #ifdef KRB4_COMPAT */
+        e->princ = strdup("*");
+    else                           /* #endif */
+        e->princ = strdup(princ);
+    if (e->princ == NULL) {
+        free(e);
+        return errno;
+    }
+
+    e->realm = strdup(realm);
+    if (e->realm == NULL) {
+        free(e->princ);
+        free(e);
+        return errno;
+    }
+    e->next = *list;
+    *list = e;
+
+    return 0;
+}
+
+static void
+destroy_user(struct user_ace **list) {
+    struct user_ace *e;
+    while ((e = *list)) {
+        *list = e->next;
+        free(e->princ);
+        free(e->realm);
+        free(e);
+    }
+}
+
+static int
+check_user(struct user_ace *list, char *princ, char *realm) {
+    struct user_ace *e;
+
+    e = list;
+    while (e) {
+        if (fnmatch(e->princ, princ, 0) == 0
+            && fnmatch(e->realm, realm, 0) == 0)
+            return 1;
+        e = e->next;
+    }
+
+    return 0;
+}
+
 struct acl {
-    char filename[LINESIZE];	/* Name of acl file */
-    struct hashtbl *acl;	/* Positive acl entries */
-    struct hashtbl *negacl;	/* Negative acl entries */
-    struct host_ace *hosts;	/* Positive host entries */
-    struct host_ace *neghosts;	/* Negative host entries */
+    String *filename;	        /* Name of acl file */
+    int loaded;
+    struct user_ace *acl;       /* Positive acl entries */
+    struct user_ace *negacl;    /* Negative acl entries */
+    struct host_ace *hosts;     /* Positive host entries */
+    struct host_ace *neghosts;  /* Negative host entries */
 };
 
 static struct acl acl_cache[CACHED_ACLS];
 
 static int acl_cache_count = 0;
 static int acl_cache_next = 0;
+
+/* wipe an entry in the acl cache */
+static void
+destroy_acl(int i) {
+    if (acl_cache[i].filename)
+        free_string(acl_cache[i].filename);
+    if (acl_cache[i].acl)
+        destroy_user(&acl_cache[i].acl);
+    if (acl_cache[i].negacl)
+        destroy_user(&acl_cache[i].negacl);
+    if (acl_cache[i].hosts)
+        destroy_hosts(&acl_cache[i].hosts);
+    if (acl_cache[i].neghosts)
+        destroy_hosts(&acl_cache[i].neghosts);
+    acl_cache[i].filename = NULL;
+    acl_cache[i].acl = (struct user_ace *) 0;
+    acl_cache[i].negacl = (struct user_ace *) 0;
+    acl_cache[i].hosts = (struct host_ace *) 0;
+    acl_cache[i].neghosts = (struct host_ace *) 0;
+    acl_cache[i].loaded = 0;
+}
 
 /* Returns < 0 if unsuccessful in loading acl */
 /* Returns index into acl_cache otherwise */
@@ -301,12 +222,15 @@ int acl_load(char *name)
 {
     int i;
     FILE *f;
-    char buf[MAX_PRINCIPAL_SIZE];
-    char canon[MAX_PRINCIPAL_SIZE];
+    char buf[BUFSIZ];
+    int ret = 0;
+    String *interned_name;
 
+    syslog(LOG_DEBUG, "acl_load(%s)", name);
     /* See if it's there already */
+    interned_name = make_string(name, 0);
     for (i = 0; i < acl_cache_count; i++) {
-	if (!strcmp(acl_cache[i].filename, name))
+	if (acl_cache[i].filename == interned_name)
 	    goto got_it;
     }
 
@@ -318,53 +242,52 @@ int acl_load(char *name)
 	/* No room, clean one out */
 	i = acl_cache_next;
 	acl_cache_next = (acl_cache_next + 1) % CACHED_ACLS;
-	if (acl_cache[i].acl) {
-	    destroy_hash(acl_cache[i].acl);
-	    acl_cache[i].acl = (struct hashtbl *) 0;
-	}
+        destroy_acl(i);
     }
 
     /* Set up the acl */
-    strcpy(acl_cache[i].filename, name);
+    acl_cache[i].filename = interned_name;
     /* Force reload */
-    acl_cache[i].acl = (struct hashtbl *) 0;
-    acl_cache[i].negacl = (struct hashtbl *)0;
-    acl_cache[i].hosts = (struct host_ace *)0;
-    acl_cache[i].neghosts = (struct host_ace *)0;
+    acl_cache[i].loaded = 0;
 
   got_it:
     /*
      * See if we need to reload the ACL
      */
-    if (acl_cache[i].acl == (struct hashtbl *)0
-        || acl_cache[i].negacl == (struct hashtbl *)0) {
+    if (!acl_cache[i].loaded) {
+        syslog(LOG_DEBUG, "acl_load(%s) actually loading", name);
 	/* Gotta reload */
 	if ((f = fopen(name, "r")) == NULL) {
 	    syslog(LOG_ERR, "Error loading acl file %s: %m", name);
-	    return -1;
+	    return -errno;
 	}
-	if (acl_cache[i].acl) destroy_hash(acl_cache[i].acl);
+	if (acl_cache[i].acl)
+            destroy_user(&acl_cache[i].acl);
 	if (acl_cache[i].negacl)
-            destroy_hash(acl_cache[i].negacl);
-	acl_cache[i].acl = make_hash(ACL_LEN);
-	acl_cache[i].negacl = make_hash(ACL_LEN);
-	while(fgets(buf, sizeof(buf), f) != NULL) {
+            destroy_user(&acl_cache[i].negacl);
+	acl_cache[i].acl = (struct user_ace *)0;
+	acl_cache[i].negacl = (struct user_ace *)0;
+	while(fgets(buf, sizeof(buf), f) != NULL && ret == 0) {
 	    nuke_whitespace(buf);
-	    if (buf[0] == '!' && buf[1] == '@') {
-		add_host(&acl_cache[i].neghosts, buf + 2);
-	    } else if (buf[0] == '@') {
-		add_host(&acl_cache[i].hosts, buf + 1);
-	    } else if (buf[0] == '!') {
-		acl_canonicalize_principal(buf + 1, canon);
-		add_hash(acl_cache[i].negacl, canon);
-	    } else {
-		acl_canonicalize_principal(buf, canon);
-		add_hash(acl_cache[i].acl, canon);
-	    }
+            if (!buf[0])
+                continue;
+	    if (buf[0] == '!' && buf[1] == '@')
+		ret = add_host(&acl_cache[i].neghosts, buf + 2);
+	    else if (buf[0] == '@')
+		ret = add_host(&acl_cache[i].hosts, buf + 1);
+	    else if (buf[0] == '!')
+		ret = add_user(&acl_cache[i].negacl, buf + 1);
+	    else
+		ret = add_user(&acl_cache[i].acl, buf);
 	}
 	fclose(f);
+        if (ret) {
+            destroy_acl(i);
+            return -ret;
+        }
+        acl_cache[i].loaded = 1;
     }
-    return(i);
+    return i;
 }
 
 /*
@@ -374,41 +297,29 @@ int acl_load(char *name)
 void
 acl_cache_reset(void)
 {
-	int	i;
-	
-	/* See if it's there already */
-	for (i = 0; i < acl_cache_count; i++)
-	    if (acl_cache[i].acl) {
-		destroy_hash(acl_cache[i].acl);
-		destroy_hash(acl_cache[i].negacl);
-		destroy_hosts(&acl_cache[i].hosts);
-		destroy_hosts(&acl_cache[i].neghosts);
-		acl_cache[i].acl = (struct hashtbl *) 0;
-		acl_cache[i].negacl = (struct hashtbl *) 0;
-		acl_cache[i].hosts = (struct host_ace *) 0;
-		acl_cache[i].neghosts = (struct host_ace *) 0;
-	    }
-	acl_cache_count = 0;
-	acl_cache_next = 0;
-    }
+    int	i;
 
+    syslog(LOG_DEBUG, "acl_cache_reset()");
+    for (i = 0; i < acl_cache_count; i++)
+        destroy_acl(i);
+    acl_cache_count = 0;
+    acl_cache_next = 0;
+}
 
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Principal is not canonicalized, and no wildcarding is done */
 /* If neg is nonzero, we look for negative entries */
 static int
-acl_exact_match(char *acl,
-		char *principal,
-		int neg)
+acl_match(char *acl, char *princ, char *realm, int neg)
 {
     int idx;
 
     if ((idx = acl_load(acl)) < 0)
         return 0;
     if (neg)
-        return check_hash(acl_cache[idx].negacl, principal);
+        return check_user(acl_cache[idx].negacl, princ, realm);
     else
-        return check_hash(acl_cache[idx].acl, principal);
+        return check_user(acl_cache[idx].acl, princ, realm);
 }
 
 /* Returns nonzero if it can be determined that acl contains who */
@@ -435,36 +346,19 @@ acl_host_match(char *acl,
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Recognizes wildcards in acl. */
 /* Also checks for IP address entries and applies negative ACL's */
-int
-acl_check(char *acl,
-	  char *principal,
-	  struct sockaddr_in *who)
+static int
+acl_check_internal(char *acl, char *princ, struct sockaddr_in *who)
 {
-    char buf[MAX_PRINCIPAL_SIZE];
-    char canon[MAX_PRINCIPAL_SIZE];
-    char *instance, *realm;
+    char *realm;
     int p, i, r, result = 0;
 
-    if (principal) {
-        /* Parse into principal, instance, and realm. */
-        acl_canonicalize_principal(principal, canon);
-        instance = (char *)strchr(canon, INST_SEP);
-        *instance++ = 0;
-        realm = (char *)strchr(instance, REALM_SEP);
-        *realm++ = 0;
+    if (princ) {
+        realm = split_name(princ);
 
-        for (p = 0; p <= 1; p++) {
-            for (i = 0; i <= 1; i++) {
-                for (r = 0; r <= 1; r++) {
-                    sprintf(buf, "%s%c%s%c%s", (p) ? canon : "*", INST_SEP,
-                            (i) ? instance : "*", REALM_SEP, (r) ? realm : "*");
-                    if (acl_exact_match(acl, buf, 1))
-                        return 0;
-                    if (acl_exact_match(acl, buf, 0))
-                        result = 1;
-                }
-            }
-        }
+        if (acl_match(acl, princ, realm, 1))
+            return 0;
+        if (acl_match(acl, princ, realm, 0))
+            result = 1;
     }
 
     if (who) {
@@ -473,6 +367,21 @@ acl_check(char *acl,
 	if (acl_host_match(acl, who->sin_addr.s_addr, 0))
             result = 1;
     }
+
+    return result;
+}
+
+int acl_check(char *acl, char *name, struct sockaddr_in *who) {
+    char *pname = strdup(name);
+    int result;
+
+    if (pname == NULL)
+        return 0; /* oops */
+
+    result = acl_check_internal(acl, pname, who);
+    syslog(LOG_DEBUG, "acl_check(%s, %s, ?) = %d", acl, name, result);
+
+    free(pname);
 
     return result;
 }
