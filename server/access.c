@@ -22,11 +22,14 @@ static const char rcsid_access_c[] =
  *
  * External routines:
  *
- * int access_check(notice, who, acl, accesstype)
- *    ZNotice_t *notice;
+ * int access_check(sender, who, acl, accesstype)
+ *    char *sender;
  *    struct sockaddr_in *who;
  *    Acl *acl;
  *    Access accesstype;
+ *
+ * int opstaff_check(sender)
+ *    char *sender;
  *
  * void access_init();
  *
@@ -103,6 +106,26 @@ access_check(char *sender,
 	return 0;
     }
     return acl_check(buf, sender, who);
+}
+
+int
+opstaff_check(char *sender)
+{
+    char buf[1024];	/* holds the real acl name */
+    int retval;
+
+    snprintf(buf, sizeof buf, "%s/opstaff.acl", acl_dir);
+    /*
+     * If we can't load it (because it probably doesn't exist),
+     * we deny access.
+     */
+    retval = acl_load(buf);
+    if (retval < 0) {
+	syslog(LOG_DEBUG, "Error in acl_load of %s for %s",
+		buf, sender ? sender : "unauth client");
+	return 0;
+    }
+    return acl_check(buf, sender, NULL);
 }
 
 static void

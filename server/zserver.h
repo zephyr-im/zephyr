@@ -391,6 +391,7 @@ char *get_version(void);
 
 /* found in access.c */
 int access_check(char *, struct sockaddr_in *, Acl *, Access);
+int opstaff_check(char *);
 
 /* global identifiers */
 
