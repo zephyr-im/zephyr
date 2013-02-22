@@ -24,6 +24,12 @@ YACC=@YACC@
 INSTALL=@INSTALL@
 INSTANTIATE=${srcdir}/instantiate
 
+editman = sed \
+          -e 's|@datadir[@]|${datadir}|g' \
+          -e 's|@sysconfdir[@]|${sysconfdir}|g' \
+          -e 's|@sbindir[@]|${sbindir}|g' \
+          -e 's|@lsbindir[@]|${lsbindir}|g'
+
 LIBZEPHYR=${BUILDTOP}/lib/libzephyr.la
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
@@ -43,7 +49,7 @@ OBJS=	port_dictionary.o pointer_dictionary.o unsigned_long_dictionary.o \
 	standard_ports.o xselect.o xmark.o xrevstack.o xerror.o \
 	new_string.o new_memory.o plus.o
 
-all: zwgc
+all: zwgc zwgc.1
 
 zwgc: ${OBJS} ${LIBZEPHYR}
 	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
@@ -84,6 +90,10 @@ y.tab.c y.tab.h: ${srcdir}/parser.y
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<
 
+zwgc.1: ${srcdir}/zwgc.1.in Makefile
+	${editman} ${srcdir}/$@.in > $@.tmp
+	mv $@.tmp $@
+
 check:
 
 install: zwgc
@@ -98,6 +108,7 @@ clean:
 	rm -f unsigned_long_dictionary.[ch] string_dictionary.[ch]
 	rm -f int_dictionary.[ch] char_stack.h string_stack.h xmode_stack.h
 	rm -f y.tab.[ch]
+	rm -f zwgc.1
 
 ${OBJS}: ${top_srcdir}/h/sysdep.h ${BUILDTOP}/h/config.h
 zephyr.o: ${BUILDTOP}/h/zephyr/zephyr.h ${BUILDTOP}/h/zephyr/zephyr_err.h

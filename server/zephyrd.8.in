@@ -9,7 +9,7 @@
 .SH NAME
 zephyrd \- Zephyr server daemon
 .SH SYNOPSIS
-.I /usr/etc/zephyrd
+.I @sbindir@/zephyrd
 [
 .BI \-d
 ]
@@ -79,29 +79,32 @@ class must be authenticated.
 The class registry lists all classes which are restricted.
 .SH FILES
 .TP 10
-.I /etc/zephyr/acl/class-registry.acl:
+.I @sysconfdir@/zephyr/acl/class-registry.acl:
 List of classes which are restricted
 .TP
-.I /etc/zephyr/acl/iws-*.acl:
+.I @sysconfdir@/zephyr/acl/iws-*.acl:
 Access Control Lists for instance-wildcard restrictions
 .TP
-.I /etc/zephyr/acl/iui-*.acl:
+.I @sysconfdir@/zephyr/acl/iui-*.acl:
 Access Control Lists for instance-identity restrictions
 .TP
-.I /etc/zephyr/acl/sub-*.acl:
+.I @sysconfdir@/zephyr/acl/sub-*.acl:
 Access Control Lists for subscribing
 .TP
-.I /etc/zephyr/acl/xmt-*.acl:
+.I @sysconfdir@/zephyr/acl/xmt-*.acl:
 Access Control Lists for transmitting
 .TP
-.I /etc/zephyr/srvtab:
+.I @sysconfdir@/zephyr/srvtab:
 Kerberos 4 Service keys
 .TP
-.I /etc/zephyr/krb5.keytab:
+.I @sysconfdir@/zephyr/krb5.keytab:
 Kerberos V Service keys
 .TP
-.I /etc/zephyr/ztkts:
-Current Kerberos tickets for exchange with other servers 
+.I /var/run/zephyrd.tkt4:
+Current Kerberos 4 tickets for exchange with other servers 
+.TP
+.I /var/run/zephyrd.tkt:
+Current Kerberos 5 tickets for exchange with other servers 
 .TP
 .I /var/tmp/zephyr.db:
 File containing an ASCII dump of the database.

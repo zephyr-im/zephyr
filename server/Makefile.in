@@ -21,6 +21,12 @@ LIBTOOL=@LIBTOOL@
 CC=@CC@
 INSTALL=@INSTALL@
 
+editman = sed \
+          -e 's|@datadir[@]|${datadir}|g' \
+          -e 's|@sysconfdir[@]|${sysconfdir}|g' \
+          -e 's|@sbindir[@]|${sbindir}|g' \
+          -e 's|@lsbindir[@]|${lsbindir}|g'
+
 LIBZEPHYR=${BUILDTOP}/lib/libzephyr.la
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
@@ -34,7 +40,7 @@ OBJS=	zsrv_err.o access.o acl_files.o bdump.o class.o client.o common.o \
 	dispatch.o kstuff.o main.o server.o subscr.o timer.o uloc.o \
 	zstring.o realm.o version.o utf8proc.o
 
-all: zephyrd
+all: zephyrd zephyrd.8
 
 zephyrd: ${OBJS} ${LIBZEPHYR}
 	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBS} ${HESIOD_LIBS}
@@ -45,6 +51,10 @@ zsrv_err.c: zsrv_err.et
 
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<
+
+zephyrd.8: ${srcdir}/zephyrd.8.in Makefile
+	${editman} ${srcdir}/$@.in > $@.tmp
+	mv $@.tmp $@
 
 check:
 
@@ -59,6 +69,7 @@ install:
 clean:
 	${LIBTOOL} --mode=clean rm -f zephyrd
 	rm -f ${OBJS} zsrv_err.[ch]
+	rm -f zephyrd.8
 
 ${OBJS}: zserver.h zsrv_err.h timer.h zsrv_conf.h zstring.h access.h acl.h
 ${OBJS}: ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h

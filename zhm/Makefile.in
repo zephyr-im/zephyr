@@ -21,6 +21,12 @@ LIBTOOL=@LIBTOOL@
 CC=@CC@
 INSTALL=@INSTALL@
 
+editman = sed \
+          -e 's|@datadir[@]|${datadir}|g' \
+          -e 's|@sysconfdir[@]|${sysconfdir}|g' \
+          -e 's|@sbindir[@]|${sbindir}|g' \
+          -e 's|@lsbindir[@]|${lsbindir}|g'
+
 LIBZEPHYR=${BUILDTOP}/lib/libzephyr.la
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=@CFLAGS@
@@ -30,10 +36,14 @@ HESIOD_LIBS=@HESIOD_LIBS@
 
 OBJS=	timer.o queue.o zhm.o zhm_client.o zhm_server.o
 
-all: zhm
+all: zhm zhm.8
 
 zhm: ${OBJS} ${LIBZEPHYR}
 	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBZEPHYR} ${HESIOD_LIBS} -lcom_err
+
+zhm.8: ${srcdir}/zhm.8.in Makefile
+	${editman} ${srcdir}/$@.in > $@.tmp
+	mv $@.tmp $@
 
 .c.o:
 	${CC} -c ${ALL_CFLAGS} $<
@@ -47,6 +57,7 @@ install: zhm
 clean:
 	${LIBTOOL} --mode=clean rm -f zhm
 	rm -f ${OBJS}
+	rm -f zhm.8
 
 ${OBJS}: zhm.h timer.h ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
 ${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h

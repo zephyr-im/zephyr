@@ -913,10 +913,7 @@ used by reverseStack.
 .SH COMMAND LINE
 .I zwgc
 is normally invoked from 
-.IR /usr/athena/lib/init/login ,
-.IR $HOME/.xsession ,
-or 
-.I /usr/athena/lib/init/xsession
+.IR $HOME/.xsession
 in the foreground. When it has successfully set your location and
 obtained subscriptions, it will put itself into the background (unless
 the \-nofork option has been specified). At this point it is safe to
@@ -1013,9 +1010,9 @@ Other control messages may be implemented in the future.
 
 .SH EXAMPLES
 For an example of a description file, see
-.IR /usr/athena/share/zephyr/zwgc.desc .
+.IR @datadir@/zephyr/zwgc.desc .
 For an example of X resources, see
-.IR /usr/athena/share/zephyr/zwgc_resources .
+.IR @datadir@/zephyr/zwgc_resources .
 
 .SH BUGS
 The X selection code can highlight the wrong portions of messages
@@ -1034,10 +1031,10 @@ which case you must get new tickets and then run ``zctl load
 $HOME/.zwgc.desc
 Default location of user's description file
 .TP
-/usr/athena/share/zephyr/zwgc.desc
+@datadir@/zephyr/zwgc.desc
 System-wide description file
 .TP
-/usr/athena/share/zephyr/zwgc_resources
+@datadir@/zephyr/zwgc_resources
 Default X application resources.
 .TP
 $ZEPHYR_VARS or $HOME/.zephyr.vars

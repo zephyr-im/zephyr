@@ -10,7 +10,7 @@
 .SH NAME
 zhm \- Zephyr HostManager
 .SH SYNOPSIS
-.B /usr/sbin/zhm
+.B @lsbindir@/zhm
 [
 .BI -d
 ] [
