@@ -848,6 +848,7 @@ ulogin_marshal_locs(ZNotice_t *notice,
     int i = 0;
     String *inst;
     int local = (auth && realm_sender_in_realm(ZGetRealm(), notice->z_sender));
+    int opstaff = (auth && opstaff_check(notice->z_sender));
 
     *found = 0;			/* # of matches */
 
@@ -862,8 +863,10 @@ ulogin_marshal_locs(ZNotice_t *notice,
 	/* these locations match */
 	switch (locations[i].exposure) {
 	  case OPSTAFF_VIS:
-	    i++;
-	    continue;
+	    if (!opstaff) {
+		i++;
+		continue;
+	    }
 	  case REALM_VIS:
 	  case REALM_ANN:
 	    if (!local) {
