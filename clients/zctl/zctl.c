@@ -217,12 +217,17 @@ flush_locations(int argc,
 {
 	int retval;
 
-	if (argc > 1) {
-		fprintf(stderr,"Usage: %s\n",argv[0]);
+	if (argc > 2) {
+		fprintf(stderr,"Usage: %s [user]\n",argv[0]);
 		return;
 	}
 
-	if ((retval = ZFlushMyLocations()) != ZERR_NONE)
+	if (argc > 1)
+		retval = ZFlushUserLocations(argv[1]);
+	else
+		retval = ZFlushMyLocations();
+
+	if (retval != ZERR_NONE)
 		com_err(whoami, retval, "while flushing locations");
 }
 

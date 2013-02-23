@@ -61,21 +61,28 @@ ZInitLocationInfo(char *hostname,
 Code_t
 ZSetLocation(char *exposure)
 {
-    return (Z_SendLocation(LOGIN_CLASS, exposure, ZAUTH,
+    return (Z_SendLocation(LOGIN_CLASS, exposure, ZGetSender(), ZAUTH,
 			   "$sender logged in to $1 on $3 at $2"));
 }
 
 Code_t
 ZUnsetLocation(void)
 {
-    return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_LOGOUT, ZNOAUTH,
-			   "$sender logged out of $1 on $3 at $2"));
+    return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_LOGOUT, ZGetSender(),
+			   ZNOAUTH, "$sender logged out of $1 on $3 at $2"));
 }
 
 Code_t
 ZFlushMyLocations(void)
 {
-    return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_FLUSH, ZAUTH, ""));
+    return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_FLUSH, ZGetSender(),
+			   ZAUTH, ""));
+}
+
+Code_t
+ZFlushUserLocations(char *target)
+{
+    return (Z_SendLocation(LOGIN_CLASS, LOGIN_USER_FLUSH, target, ZAUTH, ""));
 }
 
 char *
@@ -108,6 +115,7 @@ wait_for_srvack(ZNotice_t *notice, void *uid)
 Code_t
 Z_SendLocation(char *class,
 	       char *opcode,
+	       char *target,
 	       Z_AuthProc auth,
 	       char *format)
 {
@@ -124,7 +132,7 @@ Z_SendLocation(char *class,
     notice.z_kind = ACKED;
     notice.z_port = (u_short) ((wg_port == -1) ? 0 : wg_port);
     notice.z_class = class;
-    notice.z_class_inst = ZGetSender();
+    notice.z_class_inst = target;
     notice.z_opcode = opcode;
     notice.z_sender = 0;
     notice.z_recipient = "";

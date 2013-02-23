@@ -209,6 +209,7 @@ Code_t ZInitLocationInfo(char *hostname, char *tty);
 Code_t ZSetLocation(char *exposure);
 Code_t ZUnsetLocation(void);
 Code_t ZFlushMyLocations(void);
+Code_t ZFlushUserLocations(char *);
 char *ZParseExposureLevel(char *text);
 Code_t ZFormatRawNotice(ZNotice_t *, char**, int *);
 Code_t ZRetrieveSubscriptions(unsigned short, int*);

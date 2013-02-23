@@ -66,10 +66,12 @@ from the subscriptions file as an un-subscription.
 Set default subscriptions file to \fIfile\fR.  If \fIfile\fR isn't specified,
 show what the current subscriptions file is.
 .TP
-.B flush_locs
+.B flush_locs \fR[ \fIuser\fR ]
 Tell the Zephyr servers to flush all location information associated with
-the user.  This should only be used to remove any incorrect data that may have
-been left after a system crash.
+\fIuser\fR, or with the user running the command if none is given.  This
+should only be used to remove any incorrect data that may have been left
+after a system crash.  Note that only Operations staff may flush location
+information associated with another user.
 .TP
 .B hide
 Hide your location as maintained by the Zephyr server.  This does not
