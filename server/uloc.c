@@ -168,7 +168,8 @@ ulogin_dispatch(ZNotice_t *notice,
 	return ZERR_NONE;
     }
     if (!bdumping &&
-	(!auth || strcmp(notice->z_sender, notice->z_class_inst) != 0))  {
+	(!auth || strcmp(notice->z_sender, notice->z_class_inst) != 0) &&
+	(!auth || !opstaff_check(notice->z_sender)))  {
 	zdbug((LOG_DEBUG,"unauthentic ulogin: %d %s %s", auth,
 	       notice->z_sender, notice->z_class_inst));
 	if (server == me_server)
