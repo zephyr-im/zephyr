@@ -146,6 +146,24 @@ client_flush_host(struct in_addr *host)
     uloc_hflush(host);
 }
 
+/* Unlike client_flush_host, this flushes only subs, not locations */
+void
+client_flush_princ(char *target)
+{
+    int i;
+    Client *client, *next;
+    String *principal = make_string(target, 0);
+
+    for (i = 0; i < HASHSIZE; i++) {
+	for (client = client_bucket[i]; client; client = next) {
+	    next = client->next;
+	    if (client->principal == principal)
+		client_deregister(client, 0);
+	}
+    }
+    free_string(principal);
+}
+
 Code_t
 client_send_clients(void)
 {

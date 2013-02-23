@@ -316,6 +316,7 @@ void Z_debug_stderr(const char *format, va_list args, void *closure);
 #define CLIENT_GIMMESUBS	"GIMME"		/* Opcode: Give me subs */
 #define	CLIENT_GIMMEDEFS	"GIMMEDEFS"	/* Opcode: Give me default
 						 * subscriptions */
+#define CLIENT_FLUSHSUBS	"FLUSHSUBS"	/* Opcode: Clear subs for princ */
 
 #define ZEPHYR_CTL_HM		"HM"		/* Inst: From HM */
 #define HM_BOOT			"BOOT"		/* Opcode: Boot msg */

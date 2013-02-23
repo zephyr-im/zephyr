@@ -276,6 +276,7 @@ Code_t client_register(ZNotice_t *notice, struct in_addr *host,
 			    Client **client_p, int wantdefaults);
 void client_deregister(Client *client, int flush);
 void client_flush_host(struct in_addr *host);
+void client_flush_princ(char *target);
 void client_dump_clients(FILE *fp);
 Client *client_find(struct in_addr *host, unsigned int port);
 Code_t client_send_clients(void);

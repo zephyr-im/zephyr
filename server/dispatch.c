@@ -966,7 +966,7 @@ control_dispatch(ZNotice_t *notice,
 		 struct sockaddr_in *who,
 		 Server *server)
 {
-    char *opcode = notice->z_opcode;
+    char *target, *opcode = notice->z_opcode;
     Client *client;
     Code_t retval;
     int wantdefs;
@@ -1100,6 +1100,26 @@ control_dispatch(ZNotice_t *notice,
 	}
 	/* don't flush locations here, let him do it explicitly */
 	client_deregister(client, 0);
+    } else if (strcmp(opcode, CLIENT_FLUSHSUBS) == 0) {
+	target = notice->z_sender;
+	if (notice->z_message_len > 0 && *notice->z_message != 0) {
+	    target = notice->z_message;
+	    if (memchr(target, '\0', notice->z_message_len) == NULL) {
+		syslog(LOG_WARNING, "malformed flushsubs");
+		if (server == me_server)
+		    nack(notice, who);
+		return ZERR_NONE;
+	    }
+	    if (strcmp(target, notice->z_sender) != 0 &&
+		!opstaff_check(notice->z_sender)) {
+		syslog(LOG_NOTICE, "unauth flushsubs for %s by %s",
+		       target, notice->z_sender);
+		if (server == me_server)
+		    clt_ack(notice, who, AUTH_FAILED);
+		return ZERR_NONE;
+	    }
+	}
+	client_flush_princ(target);
     } else {
 	syslog(LOG_WARNING, "unknown ctl opcode %s", opcode);
 	if (server == me_server) {
