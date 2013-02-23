@@ -73,6 +73,9 @@
 	request		flush_locations, "Flush all location information.",
 			flush_locs;
 
+	request		flush_subscr, "Flush all subscription information.",
+			flush_subs;
+
 	request		do_hide, "Hide your location.",
 			hide;
 

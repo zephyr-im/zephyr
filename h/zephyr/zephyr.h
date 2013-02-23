@@ -244,6 +244,7 @@ Code_t ZSubscribeToSansDefaults(ZSubscription_t *sublist, int nitems,
 Code_t ZUnsubscribeTo(ZSubscription_t *sublist, int nitems,
 		      unsigned int port);
 Code_t ZCancelSubscriptions(unsigned int port);
+Code_t ZFlushUserSubscriptions(char *recip);
 int ZPending(void);
 Code_t ZReceiveNotice(ZNotice_t *notice, struct sockaddr_in *from);
 const char *ZGetCharsetString(char *charset);

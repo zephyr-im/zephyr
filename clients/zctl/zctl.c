@@ -75,6 +75,7 @@ void current(int argc, char *argv[]);
 void do_hide(int argc, char *argv[]);
 void do_punt(int argc, char *argv[]);
 void flush_locations(int argc, char *argv[]);
+void flush_subscr(int argc, char *argv[]);
 void hm_control(int argc, char *argv[]);
 void list_punts(int argc, char *argv[]);
 void load_subs(int argc, char *argv[]);
@@ -229,6 +230,22 @@ flush_locations(int argc,
 
 	if (retval != ZERR_NONE)
 		com_err(whoami, retval, "while flushing locations");
+}
+
+void
+flush_subscr(int argc,
+	     char *argv[])
+{
+    int retval;
+
+    if (argc > 2) {
+	fprintf(stderr,"Usage: %s [recipient]\n",argv[0]);
+	return;
+    }
+
+    retval = ZFlushUserSubscriptions((argc > 1) ? argv[1] : NULL);
+    if (retval != ZERR_NONE)
+	com_err(whoami, retval, "while flushing subscriptions");
 }
 
 void
@@ -1306,6 +1323,8 @@ static const struct {
     { "new_server" } },
   { flush_locations, "Flush all location information.",
     { "flush_locs" } },
+  { flush_subscr, "Flush all subscription information.",
+    { "flush_subs" } },
   { do_hide, "Hide your location.",
     { "hide" } },
   { do_hide, "Show (un-hide) your location.",

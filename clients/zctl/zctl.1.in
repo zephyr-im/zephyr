@@ -73,6 +73,12 @@ should only be used to remove any incorrect data that may have been left
 after a system crash.  Note that only Operations staff may flush location
 information associated with another user.
 .TP
+.B flush_subs \fR[ \fIrecipient\fR ]
+Tell the Zephyr servers to flush all of \fIrecipient\fR's subscriptions,
+This differs from the cancel command in that it affects subscriptions for
+all of \fIrecipient\fR's clients.  Note that only Operations staff may flush
+the subscriptions of another user.
+.TP
 .B hide
 Hide your location as maintained by the Zephyr server.  This does not
 affect the value of the exposure variable (see below, under

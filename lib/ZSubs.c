@@ -205,3 +205,42 @@ subscr_sendoff(ZNotice_t *notice,
     ZFreeNotice(&retnotice);
     return (ZERR_NONE);
 }
+
+Code_t
+ZFlushUserSubscriptions(char *recip)
+{
+    register Code_t retval;
+    ZNotice_t notice, retnotice;
+
+    (void)memset((char *)&notice, 0, sizeof(notice));
+    notice.z_kind = ACKED;
+    notice.z_class = ZEPHYR_CTL_CLASS;
+    notice.z_class_inst = ZEPHYR_CTL_CLIENT;
+    notice.z_opcode = CLIENT_FLUSHSUBS;
+    notice.z_recipient = "";
+    notice.z_default_format = "";
+    if (recip) {
+	notice.z_message = recip;
+	notice.z_message_len = strlen(recip) + 1;
+    } else {
+	notice.z_message_len = 0;
+    }
+
+    if ((retval = ZSendNotice(&notice, ZAUTH)) != ZERR_NONE)
+	return (retval);
+
+    if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *)0,
+			    ZCompareUIDPred, (char *)&notice.z_uid)) !=
+	ZERR_NONE)
+	return (retval);
+    if (retnotice.z_kind == SERVNAK) {
+	ZFreeNotice(&retnotice);
+	return (ZERR_SERVNAK);
+    }
+    if (retnotice.z_kind != SERVACK) {
+	ZFreeNotice(&retnotice);
+	return (ZERR_INTERNAL);
+    }
+    ZFreeNotice(&retnotice);
+    return (ZERR_NONE);
+}
