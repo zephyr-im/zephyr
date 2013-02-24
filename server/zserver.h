@@ -126,7 +126,7 @@ struct _ZRealm {
     String *namestr;			/* realm's name */
     char *name;				/* always namestr->string */
     int count;
-    ZRealm_server *srvrs;
+    ZRealm_server **srvrs;
     int idx;				/* which server we are connected to */
     Destlist *subs;                     /* what their clients sub to */
     Destlist *remsubs;                  /* our subs on their end */
