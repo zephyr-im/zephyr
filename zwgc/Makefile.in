@@ -96,9 +96,9 @@ zwgc.1: ${srcdir}/zwgc.1.in Makefile
 
 check:
 
-install: zwgc
+install: zwgc zwgc.1
 	${LIBTOOL} --mode=install ${INSTALL} -m 755 zwgc ${DESTDIR}${bindir}
-	${INSTALL} -m 644 ${srcdir}/zwgc.1 ${DESTDIR}${mandir}/man1
+	${INSTALL} -m 644 zwgc.1 ${DESTDIR}${mandir}/man1
 	${INSTALL} -m 644 ${srcdir}/zwgc.desc ${DESTDIR}${datadir}/zephyr
 	${INSTALL} -m 644 ${srcdir}/zwgc_resources ${DESTDIR}${datadir}/zephyr
 

@@ -59,10 +59,10 @@ zephyrd.8: ${srcdir}/zephyrd.8.in Makefile
 check:
 
 # No dependency on zephyrd, to avoid rebuilding version.o.
-install:
+install: zephyrd.8 zephyrd
 	${LIBTOOL} --mode=install ${INSTALL} -m 755 zephyrd \
 	  ${DESTDIR}${sbindir}
-	${INSTALL} -m 644 ${srcdir}/zephyrd.8 ${DESTDIR}${mandir}/man8
+	${INSTALL} -m 644 zephyrd.8 ${DESTDIR}${mandir}/man8
 	${INSTALL} -m 644 ${srcdir}/default.subscriptions \
 		${DESTDIR}${sysconfdir}/zephyr
 

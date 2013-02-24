@@ -50,9 +50,9 @@ zhm.8: ${srcdir}/zhm.8.in Makefile
 
 check:
 
-install: zhm
+install: zhm zhm.8
 	${LIBTOOL} --mode=install ${INSTALL} -m 755 zhm ${DESTDIR}${lsbindir}
-	${INSTALL} -m 644 ${srcdir}/zhm.8 ${DESTDIR}${mandir}/man8
+	${INSTALL} -m 644 zhm.8 ${DESTDIR}${mandir}/man8
 
 clean:
 	${LIBTOOL} --mode=clean rm -f zhm

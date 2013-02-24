@@ -55,9 +55,9 @@ zctl.1: ${srcdir}/zctl.1.in Makefile
 
 check:
 
-install: zctl
+install: zctl zctl.1
 	${LIBTOOL} --mode=install ${INSTALL} -m 755 zctl ${DESTDIR}${bindir}
-	${INSTALL} -m 644 ${srcdir}/zctl.1 ${DESTDIR}${mandir}/man1
+	${INSTALL} -m 644 zctl.1 ${DESTDIR}${mandir}/man1
 
 clean:
 	${LIBTOOL} --mode=clean rm -f zctl
