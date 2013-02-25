@@ -68,6 +68,7 @@ typedef struct {
 #endif
 
 enum _ZRealm_state {
+    REALM_NEW,				/* New realm; no servers yet */
     REALM_UP,				/* ZRealm is up */
     REALM_TARDY,			/* ZRealm due for a hello XXX */
     REALM_DEAD,				/* ZRealm is considered dead */
@@ -117,6 +118,7 @@ struct _Destlist {
 struct _ZRealm_server {
     String *name;			/* server's hostname */
     struct sockaddr_in addr;		/* server's address */
+    ZRealm *realm;			/* realm this server belongs to */
     Timer *timer;			/* timer for name lookup */
     unsigned int dontsend :1;		/* private server, do not send */
     unsigned int got_addr :1;		/* IP address is valid */
@@ -406,7 +408,6 @@ void realm_shutdown(void);
 void realm_deathgram(Server *);
 Code_t realm_send_realms(void);
 Code_t realm_dispatch(ZNotice_t *, int, struct sockaddr_in *, Server *);
-void realm_wakeup(void);
 void kill_realm_pids(void);
 void realm_dump_realms(FILE *);
 

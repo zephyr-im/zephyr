@@ -258,8 +258,6 @@ main(int argc,
     gettimeofday(&t_local, NULL);
     uptime = NOW;
 
-    realm_wakeup();
-
     for (;;) {
 	if (doreset)
 	    do_reset();

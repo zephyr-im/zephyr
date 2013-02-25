@@ -45,9 +45,6 @@ int n_realm_slots = 0;          /* size of malloc'd otherrealms */
  * void realm_deathgram()
  * tells other realms this server is going down
  *
- * void realm_wakeup()
- * tells other realms to resend their idea of their subs to us
- *
  * Code_t realm_control_dispatch(ZNotice_t *notice, int auth,
  *                               struct sockaddr_in *who, Server *server,
  *				 ZRealm *realm)
@@ -61,6 +58,7 @@ int n_realm_slots = 0;          /* size of malloc'd otherrealms */
  * do a database dump of foreign realm info
  *
  */
+static int realm_next_idx_by_idx(ZRealm *realm, int idx);
 static void realm_sendit(ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender);
 #ifdef HAVE_KRB5
 static Code_t realm_sendit_auth(ZNotice_t *notice, struct sockaddr_in *who, int auth, ZRealm *realm, int ack_to_sender);
@@ -82,6 +80,66 @@ is_usable(ZRealm_server *srvr)
     return !srvr->deleted && srvr->got_addr;
 }
 
+static int
+is_sendable(ZRealm_server *srvr)
+{
+    return !srvr->deleted && srvr->got_addr && !srvr->dontsend;
+}
+
+static void
+rlm_wakeup_cb(void *arg)
+{
+    ZRealm *realm = arg;
+    ZNotice_t snotice;
+    char *pack;
+    char rlm_recipient[REALM_SZ + 1];
+    int packlen, retval;
+
+    memset (&snotice, 0, sizeof (snotice));
+
+    snotice.z_opcode = REALM_BOOT;
+    snotice.z_port = srv_addr.sin_port;
+    snotice.z_class_inst = ZEPHYR_CTL_REALM;
+    snotice.z_class = ZEPHYR_CTL_CLASS;
+    snotice.z_recipient = "";
+    snotice.z_kind = ACKED;
+    snotice.z_num_other_fields = 0;
+    snotice.z_default_format = "";
+    snotice.z_sender = myname; /* my host name */
+    sprintf(rlm_recipient, "@%s", realm->name);
+    snotice.z_recipient = rlm_recipient;
+    snotice.z_default_format = "";
+    snotice.z_message = NULL;
+    snotice.z_message_len = 0;
+
+#ifdef HAVE_KRB5
+    if (!ticket_lookup(realm->name))
+	if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
+	    syslog(LOG_WARNING, "rlm_wakeup failed: %s",
+		   error_message(retval));
+	    return;
+	}
+#endif
+
+    if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH))
+	!= ZERR_NONE)
+    {
+	syslog(LOG_WARNING, "rlm_wakeup format: %s",
+	       error_message(retval));
+	return;
+    }
+    if ((retval = ZParseNotice(pack, packlen, &snotice))
+	!= ZERR_NONE) {
+	syslog(LOG_WARNING, "rlm_wakeup parse: %s",
+	       error_message(retval));
+	free(pack);
+	return;
+    }
+
+    realm_handoff(&snotice, 1, NULL, realm, 0);
+    free(pack);
+}
+
 static void
 rlm_set_server_address(ZRealm_server *srvr, struct hostent *hp)
 {
@@ -90,6 +148,17 @@ rlm_set_server_address(ZRealm_server *srvr, struct hostent *hp)
     srvr->addr.sin_port = srv_addr.sin_port;
     srvr->addr.sin_family = AF_INET;
     srvr->got_addr = 1;
+    if (is_sendable(srvr) && srvr->realm->state == REALM_NEW) {
+	srvr->realm->idx = realm_next_idx_by_idx(srvr->realm, srvr->realm->idx);
+	srvr->realm->state = REALM_TARDY;
+	/*
+	 * Set a timer to send a wakeup to this realm.  We do this rather
+	 * than just sending the notice now because, if we are not using
+	 * C-ARES, then we might be called during server startup before
+	 * the server is prepared to send notices.
+	 */
+	timer_set_rel(0, rlm_wakeup_cb, srvr->realm);
+    }
 }
 
 #ifdef HAVE_ARES
@@ -192,9 +261,7 @@ realm_next_idx_by_idx(ZRealm *realm, int idx)
     /* loop through the servers */
     for (b = idx; b < realm->count; b++) {
 	srvr = realm->srvrs[b];
-	if (!is_usable(srvr))
-	    continue;
-	if (!srvr->dontsend)
+	if (is_sendable(srvr))
 	    return(b);
     }
 
@@ -202,9 +269,7 @@ realm_next_idx_by_idx(ZRealm *realm, int idx)
     if (idx != 0)
 	for (b = 0; b < idx; b++) {
 	    srvr = realm->srvrs[b];
-	    if (!is_usable(srvr))
-		continue;
-	    if (!srvr->dontsend)
+	    if (is_sendable(srvr))
 		return(b);
 	}
 
@@ -599,7 +664,7 @@ realm_init(void)
     Client *client;
     ZRealmname *rlmnames;
     ZRealm *rlm;
-    int ii, jj, kk, nrlmnames;
+    int ii, jj, kk, nrlmnames, nsendable;
     char realm_list_file[128];
     char rlmprinc[MAX_PRINCIPAL_SIZE];
 
@@ -629,6 +694,7 @@ realm_init(void)
 
     /* ii: entry in rlmnames */
     for (ii = 0; ii < nrlmnames; ii++) {
+	nsendable = 0;
 	rlm = realm_get_realm_by_name_string(rlmnames[ii].name);
 	if (rlm) {
 	    /* jj: server entry in otherrealms */
@@ -642,6 +708,7 @@ realm_init(void)
 		    rlm->srvrs[jj]->dontsend = rlmnames[ii].servers[kk].dontsend;
 		    rlm->srvrs[jj]->deleted = 0;
 		    rlm_lookup_server_address(rlm->srvrs[jj]);
+		    if (is_sendable(rlm->srvrs[jj])) nsendable++;
 
 		    /* mark realm.list server entry used */
 		    rlmnames[ii].servers[kk].deleted = 1;
@@ -669,13 +736,19 @@ realm_init(void)
 		    abort();
 		}
 		*(rlm->srvrs[rlm->count]) = rlmnames[ii].servers[kk];
+		rlm->srvrs[rlm->count]->realm = rlm;
 		rlm_lookup_server_address(rlm->srvrs[rlm->count]);
+		if (is_sendable(rlm->srvrs[rlm->count])) nsendable++;
 		rlm->count++;
 	    }
 	    /* The current server might have been deleted or marked dontsend.
 	       Advance to one we can use, if necessary. */
-	    rlm->idx = (rlm->count) ?
-		realm_next_idx_by_idx(rlm, rlm->idx) : 0;
+	    if (nsendable) {
+		rlm->idx = realm_next_idx_by_idx(rlm, rlm->idx);
+	    } else {
+		rlm->idx = 0;
+		rlm->state = REALM_NEW;
+	    }
 	    free(rlmnames[ii].servers);
 	    continue;
 	}
@@ -702,6 +775,7 @@ realm_init(void)
 
 	rlm->namestr = rlmnames[ii].name;
 	rlm->name = rlm->namestr->string;
+	rlm->state = REALM_NEW;
 
 	/* convert names to addresses */
 	rlm->count = rlmnames[ii].nused;
@@ -712,7 +786,9 @@ realm_init(void)
 	}
 	for (jj = 0; jj < rlm->count; jj++) {
 	    rlm->srvrs[jj] = &rlmnames[ii].servers[jj];
+	    rlm->srvrs[jj]->realm = rlm;
 	    rlm_lookup_server_address(rlm->srvrs[jj]);
+	    if (is_sendable(rlm->srvrs[jj])) nsendable++;
 	}
 
 	client = (Client *) malloc(sizeof(Client));
@@ -740,13 +816,11 @@ realm_init(void)
 	client->addr.sin_addr.s_addr = 0;
 
 	rlm->client = client;
-	rlm->idx = (rlm->count) ?
+	rlm->idx = (nsendable) ?
 	    realm_next_idx_by_idx(rlm, (random() % rlm->count)) : 0;
 	rlm->subs = NULL;
 	rlm->remsubs = NULL;
 	rlm->child_pid = 0;
-	/* Assume the best */
-	rlm->state = REALM_TARDY;
 	rlm->have_tkt = 1;
     }
     free(rlmnames);
@@ -810,74 +884,6 @@ realm_deathgram(Server *server)
 
 	realm_handoff(&snotice, 1, NULL, realm, 0);
 	free(pack);
-    }
-}
-
-void
-realm_wakeup(void)
-{
-    int jj, found = 0;
-    ZRealm *realm;
-
-    for (jj = 1; jj < nservers; jj++) {    /* skip limbo server */
-	if (jj != me_server_idx && otherservers[jj].state == SERV_UP)
-	    found++;
-    }
-
-    if (nservers < 2 || !found) {
-	/* if we're the only server up, send a REALM_BOOT to one of their
-	   servers here */
-	for (jj = 0; jj < nrealms; jj++) {
-	    ZNotice_t snotice;
-	    char *pack;
-	    char rlm_recipient[REALM_SZ + 1];
-	    int packlen, retval;
-
-	    realm = otherrealms[jj];
-	    memset (&snotice, 0, sizeof (snotice));
-
-	    snotice.z_opcode = REALM_BOOT;
-	    snotice.z_port = srv_addr.sin_port;
-	    snotice.z_class_inst = ZEPHYR_CTL_REALM;
-	    snotice.z_class = ZEPHYR_CTL_CLASS;
-	    snotice.z_recipient = "";
-	    snotice.z_kind = ACKED;
-	    snotice.z_num_other_fields = 0;
-	    snotice.z_default_format = "";
-	    snotice.z_sender = myname; /* my host name */
-	    sprintf(rlm_recipient, "@%s", realm->name);
-	    snotice.z_recipient = rlm_recipient;
-	    snotice.z_default_format = "";
-	    snotice.z_message = NULL;
-	    snotice.z_message_len = 0;
-
-#ifdef HAVE_KRB5
-	    if (!ticket_lookup(realm->name))
-		if ((retval = ticket_retrieve(realm)) != ZERR_NONE) {
-		    syslog(LOG_WARNING, "rlm_wakeup failed: %s",
-			   error_message(retval));
-		    continue;
-		}
-#endif
-
-	    if ((retval = ZFormatNotice(&snotice, &pack, &packlen, ZAUTH))
-		!= ZERR_NONE)
-	    {
-		syslog(LOG_WARNING, "rlm_wakeup format: %s",
-		       error_message(retval));
-		return;
-	    }
-	    if ((retval = ZParseNotice(pack, packlen, &snotice))
-		!= ZERR_NONE) {
-		syslog(LOG_WARNING, "rlm_wakeup parse: %s",
-		       error_message(retval));
-		free(pack);
-		return;
-	    }
-
-	    realm_handoff(&snotice, 1, NULL, realm, 0);
-	    free(pack);
-	}
     }
 }
 
@@ -961,7 +967,7 @@ realm_control_dispatch(ZNotice_t *notice,
     } else if (!strcmp(opcode, REALM_BOOT)) {
 	zdbug((LOG_DEBUG, "got a REALM_BOOT from %s",
                inet_ntoa(server->addr.sin_addr)));
-	realm->state = REALM_STARTING;
+	if (realm->state != REALM_UP) realm->state = REALM_STARTING;
 	realm_set_server(who, realm);
 #ifdef REALM_MGMT
 	/* resend subscriptions but only if this was to us */
@@ -1046,7 +1052,7 @@ realm_set_server(struct sockaddr_in *sin,
     idx = realm_get_idx_by_addr(realm, sin);
 
     /* Not exactly */
-    if (!is_usable(realm->srvrs[idx]) || realm->srvrs[idx]->dontsend != 0)
+    if (!is_sendable(realm->srvrs[idx]))
 	return ZSRV_NORLM;
 
     realm->idx = idx;
@@ -1100,6 +1106,12 @@ realm_sendit(ZNotice_t *notice,
     int packlen;
     Code_t retval;
     Unacked *nacked;
+
+    if (realm->count == 0 || realm->state == REALM_NEW) {
+	/* XXX we should have a queue or something */
+	syslog(LOG_WARNING, "rlm_sendit no servers for %s", realm->name);
+	return;
+    }
 
     notice->z_auth = auth;
     notice->z_authent_len = 0;
@@ -1181,7 +1193,7 @@ rlm_rexmit(void *arg)
     zdbug((LOG_DEBUG, "rlm_rexmit: sending to %s:%d (%d)",
 	   realm->name, realm->idx, nackpacket->rexmits));
 
-    if (realm->count == 0)
+    if (realm->count == 0 || realm->state == REALM_NEW)
 	return;
 
     /* Check to see if we've retransmitted as many times as we can */
@@ -1313,6 +1325,12 @@ realm_sendit_auth(ZNotice_t *notice,
     Code_t retval;
     char multi[64];
     ZNotice_t partnotice, newnotice;
+
+    if (realm->count == 0 || realm->state == REALM_NEW) {
+	/* XXX we should have a queue or something */
+	syslog(LOG_WARNING, "rlm_sendit_auth no servers for %s", realm->name);
+	return ZERR_INTERNAL;
+    }
 
     offset = 0;
 

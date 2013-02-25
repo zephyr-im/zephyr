@@ -399,6 +399,7 @@ srv_states[] = {
 };
 static char *
 rlm_states[] = {
+    "REALM_NEW",
     "REALM_UP",
     "REALM_TARDY",
     "REALM_DEAD",
