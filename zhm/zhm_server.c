@@ -38,6 +38,7 @@ send_boot_notice(char *op)
      ZNotice_t notice;
      Code_t ret;
 
+     memset(&notice, 0, sizeof(ZNotice_t));
      /* Set up server notice */
      notice.z_kind = HMCTL;
      notice.z_port = cli_port;
@@ -69,6 +70,7 @@ send_flush_notice(char *op)
      ZNotice_t notice;
      Code_t ret;
 
+     memset(&notice, 0, sizeof(ZNotice_t));
      /* Set up server notice */
      notice.z_kind = HMCTL;
      notice.z_port = cli_port;

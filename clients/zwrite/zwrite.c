@@ -224,8 +224,9 @@ main(int argc, char *argv[])
 	    }
 	    signature = sigbfr;
 	}
-    }	
+    }
 
+    memset(&notice, 0, sizeof(ZNotice_t));
     notice.z_kind = ACKED;
     notice.z_port = 0;
     notice.z_class = class;
