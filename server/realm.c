@@ -193,14 +193,15 @@ rlm_server_address_lookup_cb(void *arg, int status, int timeouts,
 			     struct hostent *hp)
 {
     ZRealm_server *srvr = arg;
+    int delay = 30;
 
     if (status == ARES_SUCCESS) {
 	rlm_set_server_address(srvr, hp);
-	return;
+	delay = 24 * 3600; /* Check again once per day */
+    } else {
+	syslog(LOG_WARNING, "%s: hostname lookup failed: %s",
+	       srvr->name->string, ares_strerror(status));
     }
-
-    syslog(LOG_WARNING, "%s: hostname lookup failed: %s",
-	   srvr->name->string, ares_strerror(status));
 
     /*
      * Set a timer to trigger another lookup.
@@ -214,7 +215,7 @@ rlm_server_address_lookup_cb(void *arg, int status, int timeouts,
      * lookup in progress.
      */
     if (!srvr->timer && !srvr->deleted)
-	srvr->timer = timer_set_rel(30, rlm_server_address_timer_cb, arg);
+	srvr->timer = timer_set_rel(delay, rlm_server_address_timer_cb, arg);
 }
 
 #else
