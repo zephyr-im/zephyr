@@ -68,9 +68,9 @@ static const char rcsid_uloc_c[] =
 static void ulogin_locate(ZNotice_t *notice, struct sockaddr_in *who,
 			  int auth);
 void ulogin_flush_user(ZNotice_t *notice);
-Location *ulogin_find(char *user, struct in_addr *host,
+int ulogin_find(char *user, struct in_addr *host,
                       unsigned int port);
-Location *ulogin_find_user(char *user);
+int ulogin_find_user(char *user);
 static int ulogin_setup(ZNotice_t *notice, Location *locs,
 			Exposure_type exposure, struct sockaddr_in *who);
 int ulogin_add_user(ZNotice_t *notice, Exposure_type exposure,
@@ -86,8 +86,9 @@ static char **ulogin_marshal_locs(ZNotice_t *notice, int *found, int auth);
 static void free_loc(Location *loc);
 static void ulogin_locate_forward(ZNotice_t *notice, struct sockaddr_in *who,
 				  ZRealm *realm);
+static int reallocate_locations(int new_num);
 
-static Location *locations = NULL; /* ptr to first in array */
+Location *locations = NULL; /* ptr to first in array */
 static int num_locs = 0;	/* number in array */
 
 /*
@@ -284,103 +285,70 @@ ulocate_dispatch(ZNotice_t *notice,
 }
 
 /*
+ * reallocate locations
+ */
+static int
+reallocate_locations(int new_num) {
+    Location *new_loc;
+
+    if (new_num) {
+        new_loc = realloc(locations, new_num * sizeof(Location));
+        if (new_loc == NULL) {
+            syslog(LOG_ERR, "failed to resize uloc table: %m");
+            if (new_num < num_locs)
+                num_locs = new_num;
+            return errno;
+        }
+        locations = new_loc;
+    } else {
+	free(locations);
+	locations = NULL;
+    }
+
+    num_locs = new_num;
+
+    return 0;
+}
+
+/*
  * Flush all locations at the address.
  */
 
 void
 uloc_hflush(struct in_addr *addr)
 {
-    Location *loc;
-    int i = 0, new_num = 0;
+    int i, new_num = 0;
 
     if (num_locs == 0)
 	return;			/* none to flush */
 
-    /* slightly inefficient, assume the worst, and allocate enough space */
-    loc = (Location *) malloc(num_locs *sizeof(Location));
-    if (!loc) {
-	syslog(LOG_CRIT, "uloc_flush alloc");
-	abort();
-    }
-
-    /* copy entries which don't match */
-    while (i < num_locs) {
+    for (i = 0; i < num_locs; i++)
 	if (locations[i].addr.sin_addr.s_addr != addr->s_addr)
-	    loc[new_num++] = locations[i];
+	    locations[new_num++] = locations[i];
 	else
 	    free_loc(&locations[i]);
-	i++;
-    }
 
-    free(locations);
-    locations = NULL;
-
-    if (!new_num) {
-	free(loc);
-	loc = NULL;
-	num_locs = new_num;
-
-	return;
-    }
-    locations = loc;
-    num_locs = new_num;
-
-    /* all done */
-    return;
+    reallocate_locations(new_num);
 }
 
 void
 uloc_flush_client(struct sockaddr_in *sin)
 {
-    Location *loc;
-    int i = 0, new_num = 0;
+    int i, new_num = 0;
 
     if (num_locs == 0)
 	return;			/* none to flush */
 
-    /* slightly inefficient, assume the worst, and allocate enough space */
-    loc = (Location *) malloc(num_locs *sizeof(Location));
-    if (!loc) {
-	syslog(LOG_CRIT, "uloc_flush_clt alloc");
-	abort();
-    }
-
-    /* copy entries which don't match */
-    while (i < num_locs) {
+    for (i = 0; i < num_locs; i++)
 	if ((locations[i].addr.sin_addr.s_addr != sin->sin_addr.s_addr)
-	    || (locations[i].addr.sin_port != sin->sin_port)) {
-	    loc[new_num++] = locations[i];
-	} else {
+	    || (locations[i].addr.sin_port != sin->sin_port))
+	    locations[new_num++] = locations[i];
+	else
 	    free_loc(&locations[i]);
-	}
-	i++;
-    }
 
-    free(locations);
-    locations = NULL;
-
-    if (!new_num) {
-	free(loc);
-	loc = NULL;
-	num_locs = new_num;
-
-	return;
-    }
-    locations = loc;
     num_locs = new_num;
 
-#ifdef DEBUG
-    if (zdebug) {
-	int i;
-
-	for (i = 0; i < num_locs; i++) {
-	    syslog(LOG_DEBUG, "%s/%d", locations[i].user->string,
-		   (int) locations[i].exposure);
-	}
-    }
-#endif
-    /* all done */
-    return;
+    reallocate_locations(new_num);
 }
 
 /*
@@ -444,71 +412,43 @@ ulogin_add_user(ZNotice_t *notice,
 		Exposure_type exposure,
 		struct sockaddr_in *who)
 {
-    Location *loc, *oldlocs, newloc;
-    int i;
+    Location newloc;
+    int i, here;
 
-    loc = ulogin_find(notice->z_class_inst, &who->sin_addr, notice->z_port);
-    if (loc) {
+    here = ulogin_find(notice->z_class_inst, &who->sin_addr, notice->z_port);
+    if (here >= 0) {
 	/* Update the time, tty, and exposure on the existing location. */
-	loc->exposure = exposure;
+	locations[here].exposure = exposure;
 	if (ulogin_parse(notice, &newloc) == 0) {
-	    free_string(loc->tty);
-	    loc->tty = dup_string(newloc.tty);
-	    free(loc->time);
-	    loc->time = strsave(newloc.time);
+	    free_string(locations[here].tty);
+	    locations[here].tty = dup_string(newloc.tty);
+	    free(locations[here].time);
+	    locations[here].time = strsave(newloc.time);
 	    free_loc(&newloc);
 	}
 	return 0;
     }
 
-    oldlocs = locations;
+    if (ulogin_setup(notice, &newloc, exposure, who))
+        return 1;
 
-    locations = (Location *) malloc((num_locs + 1) * sizeof(Location));
-    if (!locations) {
-	syslog(LOG_ERR, "zloc mem alloc");
-	locations = oldlocs;
-	return 1;
-    }
+    if(reallocate_locations(num_locs + 1))
+        return 1;
 
-    if (num_locs == 0) {	/* first one */
-	if (ulogin_setup(notice, locations, exposure, who)) {
-	    free(locations);
-	    locations = NULL;
-	    return 1;
-	}
-	num_locs = 1;
-	goto dprnt;
-    }
+    /* skip old locs */
+    for (i = 0;
+         i < num_locs-1 && comp_string(locations[i].user, newloc.user) < 0;
+         i++)
+        ;
 
-    /* not the first one, insert him */
-
-    if (ulogin_setup(notice, &newloc, exposure, who)) {
-	free(locations);
-	locations = oldlocs;
-	return 1;
-    }
-    num_locs++;
-
-    /* copy old locs */
-    i = 0;
-    while ((i < num_locs-1) &&
-	   (comp_string(oldlocs[i].user,newloc.user) < 0)) {
-	locations[i] = oldlocs[i];
-	i++;
-    }
-
-    /* add him in here */
-    locations[i++] = newloc;
+    here = i;
 
     /* copy the rest */
-    while (i < num_locs) {
-	locations[i] = oldlocs[i - 1];
-	i++;
-    }
-    if (oldlocs)
-	free(oldlocs);
+    for(i = num_locs - 1; i > here; i--)
+        locations[i] = locations[i - 1];
 
-  dprnt:
+    locations[here] = newloc;
+
     return 0;
 }
 
@@ -574,41 +514,39 @@ ulogin_parse(ZNotice_t *notice,
     return 0;
 }
 
-
-Location *
+int
 ulogin_find(char *user,
 	    struct in_addr *host,
 	    unsigned int port)
 {
-    Location *loc;
+    int i;
     String *str;
 
     /* Find the first location for this user. */
-    loc = ulogin_find_user(user);
-    if (!loc)
-	return NULL;
+    i = ulogin_find_user(user);
+    if (i == -1)
+	return -1;
 
     /* Look for a location which matches the host and port. */
     str = make_string(user, 0);
-    while (loc < locations + num_locs && loc->user == str) {
-	if (loc->addr.sin_addr.s_addr == host->s_addr
-	    && loc->addr.sin_port == port) {
+    while (i < num_locs && locations[i].user == str) {
+	if (locations[i].addr.sin_addr.s_addr == host->s_addr
+	    && locations[i].addr.sin_port == port) {
 	    free_string(str);
-	    return loc;
+	    return i;
 	}
-	loc++;
+	i++;
     }
 
     free_string(str);
-    return NULL;
+    return -1;
 }
 
 /*
- * Return a pointer to the first instance of this user@realm in the
+ * Return the table index of the first instance of this user@realm in the
  * table.
  */
-
-Location *
+int
 ulogin_find_user(char *user)
 {
     int i, rlo, rhi;
@@ -616,7 +554,7 @@ ulogin_find_user(char *user)
     String *str;
 
     if (!locations)
-	return(NULL);
+	return -1;
 
     str = make_string(user, 0);
 
@@ -634,7 +572,7 @@ ulogin_find_user(char *user)
 	    rhi = i - 1;
 	if (rhi - rlo < 0) {
 	    free_string(str);
-	    return NULL;
+	    return -1;
 	}
 	i = (rhi + rlo) / 2;
     }
@@ -643,7 +581,7 @@ ulogin_find_user(char *user)
     while (i > 0 && locations[i - 1].user == str)
 	i--;
     free_string(str);
-    return &locations[i];
+    return i;
 }
 
 /*
@@ -655,51 +593,25 @@ ulogin_remove_user(ZNotice_t *notice,
 		   struct sockaddr_in *who,
 		   int *err_return)
 {
-    Location *new_locs, *loc;
-    int i = 0;
+    int here, i;
     Exposure_type quiet;
 
     *err_return = 0;
-    loc = ulogin_find(notice->z_class_inst, &who->sin_addr, notice->z_port);
-    if (!loc) {
+    here = ulogin_find(notice->z_class_inst, &who->sin_addr, notice->z_port);
+    if (here == -1) {
 	*err_return = NOLOC;
 	return NONE;
     }
 
-    quiet = loc->exposure;
-
-    if (--num_locs == 0) {	/* last one */
-	free_loc(locations);
-	free(locations);
-	locations = NULL;
-	return quiet;
-    }
-
-    new_locs = (Location *) malloc(num_locs * sizeof(Location));
-    if (!new_locs) {
-	syslog(LOG_CRIT, "ul_rem alloc");
-	abort();
-    }
-
-    /* copy old entries */
-    while (i < num_locs && &locations[i] < loc) {
-	new_locs[i] = locations[i];
-	i++;
-    }
+    quiet = locations[here].exposure;
 
     /* free up this one */
-    free_loc(&locations[i]);
-    i++;			/* skip over this one */
+    free_loc(&locations[here]);
 
-    /* copy the rest */
-    while (i <= num_locs) {
-	new_locs[i - 1] = locations[i];
-	i++;
-    }
+    for(i = here; i < num_locs - 1; i++)
+        locations[i] = locations[i + 1];
 
-    free(locations);
-
-    locations = new_locs;
+    reallocate_locations(num_locs - 1);
 
     /* all done */
     return quiet;
@@ -712,71 +624,32 @@ ulogin_remove_user(ZNotice_t *notice,
 void
 ulogin_flush_user(ZNotice_t *notice)
 {
-    Location *loc, *loc2;
-    int i, j, num_match, num_left;
+    int here, i, j, num_match, num_left;
 
     i = num_match = num_left = 0;
 
-    if (!(loc2 = ulogin_find_user(notice->z_class_inst)))
+    here = ulogin_find_user(notice->z_class_inst);
+    if (here == -1)
 	return;
 
-    /* compute # locations left in the list, after loc2 (inclusive) */
-    num_left = num_locs - (loc2 - locations);
+    num_left = num_locs - here;
 
     while (num_left &&
-	   !strcasecmp(loc2[num_match].user->string,
+	   !strcasecmp(locations[here + num_match].user->string,
 		       notice->z_class_inst)) {
 	/* as long as we keep matching, march up the list */
 	num_match++;
 	num_left--;
     }
-    if (num_locs == num_match) { /* no other locations left */
-	for (j = 0; j < num_match; j++)
-	    free_loc(&locations[j]); /* free storage */
-	free (locations);
-	locations = NULL;
-	num_locs = 0;
-	return;
-    }
 
-    loc = (Location *) malloc((num_locs - num_match) * sizeof(Location));
-    if (!loc) {
-	syslog(LOG_CRIT, "ul_rem alloc");
-	abort();
-    }
-
-    /* copy old entries */
-    while (i < num_locs && &locations[i] < loc2) {
-	loc[i] = locations[i];
-	i++;
-    }
-
-    for(j = 0; j < num_match; j++) {
-	free_loc(&locations[i]);
-	i++;
-    }
+    for (j = 0; j < num_match; j++)
+        free_loc(&locations[here + j]);
 
     /* copy the rest */
-    while (i < num_locs) {
-	loc[i - num_match] = locations[i];
-	i++;
-    }
+    for (i = here; i < num_locs - num_match; i++)
+        locations[i] = locations[i + 1];
 
-    free(locations);
-
-    locations = loc;
-    num_locs -= num_match;
-
-#ifdef DEBUG
-    if (zdebug) {
-	int i;
-
-	for (i = 0; i < num_locs; i++) {
-	    syslog(LOG_DEBUG, "%s/%d", locations[i].user->string,
-		   (int) locations[i].exposure);
-	}
-    }
-#endif
+    reallocate_locations(num_locs - num_match);
 }
 
 
@@ -826,7 +699,6 @@ ulogin_marshal_locs(ZNotice_t *notice,
 		    int auth)
 {
     Location **matches = (Location **) 0;
-    Location *loc;
     char **answer;
     int i = 0;
     String *inst;
@@ -835,11 +707,9 @@ ulogin_marshal_locs(ZNotice_t *notice,
 
     *found = 0;			/* # of matches */
 
-    loc = ulogin_find_user(notice->z_class_inst);
-    if (!loc)
-	return(NULL);
-
-    i = loc - locations;
+    i = ulogin_find_user(notice->z_class_inst);
+    if (i == -1)
+	return NULL;
 
     inst = make_string(notice->z_class_inst,0);
     while (i < num_locs && (inst == locations[i].user)) {

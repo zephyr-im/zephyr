@@ -18,10 +18,11 @@ int ulogin_add_user(ZNotice_t *notice, Exposure_type exposure,
 Exposure_type ulogin_remove_user(ZNotice_t *notice,
                                  struct sockaddr_in *who,
                                  int *err_return);
-Location *ulogin_find(char *user, struct in_addr *host,
+int ulogin_find(char *user, struct in_addr *host,
                       unsigned int port);
-Location *ulogin_find_user(char *user);
+int ulogin_find_user(char *user);
 void ulogin_flush_user(ZNotice_t *notice);
+extern Location *locations;
 
 #define TEST(EXP) \
     do { \
@@ -66,7 +67,7 @@ test_uloc() {
 
     puts("uloc storage routines");
 
-    TEST(ulogin_find_user("nonexistent") == NULL);
+    TEST(ulogin_find_user("nonexistent") == -1);
 
     /* fake up just enough */
     who1.sin_family = AF_INET;
@@ -81,7 +82,7 @@ test_uloc() {
     s1 = make_string(z1.z_class_inst, 0);
 
     TEST(ulogin_add_user(&z1, NET_ANN, &who1) == 0);
-    TEST(ulogin_find_user("user1") != NULL);
+    TEST(ulogin_find_user("user1") != -1);
 
     who2.sin_family = AF_INET;
     who2.sin_port = 2;
@@ -95,18 +96,18 @@ test_uloc() {
     s2 = make_string(z2.z_class_inst, 0);
 
     TEST(ulogin_add_user(&z2, NET_ANN, &who2) == 0);
-    TEST(ulogin_find_user("user2") != NULL);
-    TEST(ulogin_find_user("user1")->user == s1);
-    TEST(ulogin_find_user("user2")->user == s2);
+    TEST(ulogin_find_user("user2") != -1);
+    TEST(locations[ulogin_find_user("user1")].user == s1);
+    TEST(locations[ulogin_find_user("user2")].user == s2);
     TEST(ulogin_add_user(&z1, NET_ANN, &who1) == 0);
-    TEST(ulogin_find_user("user1")->user == s1);
-    TEST(ulogin_find_user("user2")->user == s2);
+    TEST(locations[ulogin_find_user("user1")].user == s1);
+    TEST(locations[ulogin_find_user("user2")].user == s2);
 
     who3.sin_family = AF_INET;
     who3.sin_port = 3;
     who3.sin_addr.s_addr = INADDR_LOOPBACK;
 
-    TEST(ulogin_find("user1", &who3.sin_addr, 3) == NULL);
+    TEST(ulogin_find("user1", &who3.sin_addr, 3) == -1);
 
     who0.sin_family = AF_INET;
     who0.sin_port = 3;
@@ -120,9 +121,9 @@ test_uloc() {
     s0 = make_string(z0.z_class_inst, 0);
 
     TEST(ulogin_add_user(&z0, NET_ANN, &who0) == 0);
-    TEST(ulogin_find_user("user0") != NULL);
-    TEST(ulogin_find_user("user1")->user == s1);
-    TEST(ulogin_find_user("user2")->user == s2);
+    TEST(ulogin_find_user("user0") != -1);
+    TEST(locations[ulogin_find_user("user1")].user == s1);
+    TEST(locations[ulogin_find_user("user2")].user == s2);
 
     TEST(ulogin_remove_user(&z0, &who0, &ret) == NET_ANN && ret == 0);
     /* 1 = NOLOC */
@@ -132,12 +133,12 @@ test_uloc() {
     TEST(ulogin_remove_user(&z1, &who0, &ret) == NET_ANN && ret == 0);
 
     V(ulogin_flush_user(&z0));
-    TEST(ulogin_find_user("user0") == NULL);
+    TEST(ulogin_find_user("user0") == -1);
 
     TEST(ulogin_add_user(&z0, NET_ANN, &who0) == 0);
     TEST(ulogin_add_user(&z1, NET_ANN, &who1) == 0);
     V(ulogin_flush_user(&z1));
-    TEST(ulogin_find_user("user1") == NULL);
+    TEST(ulogin_find_user("user1") == -1);
 
     who4.sin_family = AF_INET;
     who4.sin_port = 4;
@@ -153,14 +154,14 @@ test_uloc() {
     TEST(ulogin_add_user(&z4, NET_ANN, &who4) == 0);
 
     V(uloc_flush_client(&who2));
-    TEST(ulogin_find_user("user0")->user == s0);
-    TEST(ulogin_find_user("user1") == NULL);
-    TEST(ulogin_find_user("user2") == NULL);
-    TEST(ulogin_find_user("user4")->user == s4);
+    TEST(locations[ulogin_find_user("user0")].user == s0);
+    TEST(ulogin_find_user("user1") == -1);
+    TEST(ulogin_find_user("user2") == -1);
+    TEST(locations[ulogin_find_user("user4")].user == s4);
 
     V(uloc_hflush(&who0.sin_addr));
-    TEST(ulogin_find_user("user0") == NULL);
-    TEST(ulogin_find_user("user1") == NULL);
-    TEST(ulogin_find_user("user2") == NULL);
-    TEST(ulogin_find_user("user4")->user == s4);
+    TEST(ulogin_find_user("user0") == -1);
+    TEST(ulogin_find_user("user1") == -1);
+    TEST(ulogin_find_user("user2") == -1);
+    TEST(locations[ulogin_find_user("user4")].user == s4);
 }
