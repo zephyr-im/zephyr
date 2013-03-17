@@ -350,7 +350,7 @@ static int
 acl_check_internal(char *acl, char *princ, struct sockaddr_in *who)
 {
     char *realm;
-    int p, i, r, result = 0;
+    int result = 0;
 
     if (princ) {
         realm = split_name(princ);
