@@ -36,11 +36,6 @@ nacktab_hashval(struct sockaddr_in sa, ZUnique_Id_t uid) {
 
 #define HOSTS_SIZE_INIT			256
 
-#ifdef DEBUG
-const char *ZNoticeKinds[9] = {"UNSAFE", "UNACKED", "ACKED", "HMACK",
-				    "HMCTL", "SERVACK", "SERVNAK", "CLIENTACK",
-				    "STAT"};
-#endif
 /*
  *
  * External Routines:
@@ -239,9 +234,6 @@ dispatch(ZNotice_t *notice,
     int authflag;
     ZRealm *realm;
     char *cp;
-#ifdef DEBUG
-    char dbg_buf[BUFSIZ];
-#endif
 
     authflag = (auth == ZAUTH_YES);
 

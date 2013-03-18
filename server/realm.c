@@ -880,7 +880,8 @@ realm_control_dispatch(ZNotice_t *notice,
 	    ack(notice, who);
 	}
     } else if (!strcmp(opcode, REALM_BOOT)) {
-	zdbug((LOG_DEBUG, "got a REALM_BOOT from %d (me %d)", server, me_server));
+	zdbug((LOG_DEBUG, "got a REALM_BOOT from %s",
+               inet_ntoa(server->addr.sin_addr)));
 	realm->state = REALM_STARTING;
 	realm_set_server(who, realm);
 #ifdef REALM_MGMT

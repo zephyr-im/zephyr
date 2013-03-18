@@ -37,7 +37,7 @@ static void queue_timeout(void *arg);
 int rexmit_times[] = { 2, 2, 4, 4, 8, -1 };
 
 #ifdef DEBUG
-Code_t dump_queue(void);
+static void dump_queue(void);
 #endif
 
 void
@@ -172,11 +172,11 @@ disable_queue_retransmits(void)
 }
 
 #ifdef DEBUG
-static Code_t
+static void
 dump_queue(void)
 {
     Queue *entry;
-    void *mp;
+    char *mp;
     int ml;
 
     DPR("Dumping queue...\n");

@@ -621,7 +621,7 @@ x_get_input(Display *dpy)
 {
     XEvent event;
     
-    dprintf1("Entering x_get_input(%x).\n",dpy);
+    dprintf1("Entering x_get_input(%lx).\n",(unsigned long)dpy);
 
     /*
      * Kludge to get around lossage in XPending:

@@ -127,7 +127,7 @@ xselSetProperties(Display *dpy,
 	    spec (or if this program is buggy), but it could happen */
 #ifdef DEBUG
 	 fprintf(stderr,
-		 "SelectionRequest event received for unowned selection: requestor wid=0x%x", w);
+		 "SelectionRequest event received for unowned selection: requestor wid=0x%lx", (unsigned long)w);
 #endif
 	 ChangeProp(XA_STRING,8,"",0);
       }

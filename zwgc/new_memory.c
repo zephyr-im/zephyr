@@ -61,7 +61,7 @@ int current_line = -1;
  *                 string_Copy("foo").
  */
 
-char *memory__malloc(size)
+void *memory__malloc(size)
      unsigned size;
 {
     char *result;
@@ -84,11 +84,11 @@ char *memory__malloc(size)
     return(result);
 }
 
-char *memory__realloc(ptr, size)
-     char *ptr;
+void *memory__realloc(aptr, size)
+     void *aptr;
      unsigned size;
 {
-    char *result;
+    char *result, *ptr = aptr;
 
     assert(ptr);
 
@@ -108,7 +108,7 @@ char *memory__realloc(ptr, size)
     return(result+memory__size_of_header);
 }
 
-char *memory__calloc(nelem, elsize)
+void *memory__calloc(nelem, elsize)
      unsigned nelem;
      unsigned elsize;
 {
@@ -131,9 +131,10 @@ char *memory__calloc(nelem, elsize)
     return(result);
 }
 
-void memory__free(ptr)
-     char *ptr;
+void memory__free(aptr)
+     void *aptr;
 {
+    char *ptr = aptr;
     assert(ptr);
 
 #ifdef DEBUG_MEMORY

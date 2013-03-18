@@ -210,8 +210,9 @@ mux_loop(void)
 #ifdef DEBUG
 	      if (zwgc_debug)
 		fprintf(stderr,
-			"mux_loop...activity on fd %d, calling %x(%x)\n",
-			i,input_handler[i],input_handler_arg[i]);
+			"mux_loop...activity on fd %d, calling %lx(%lx)\n",
+			i, (unsigned long)input_handler[i],
+			 (unsigned long)input_handler_arg[i]);
 #endif
 	      input_handler[i](input_handler_arg[i]);
 	  }

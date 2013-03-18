@@ -17,10 +17,10 @@
 #ifndef memory_MODULE
 #define memory_MODULE
 
-extern char *memory__malloc();           /* PRIVATE */
-extern char *memory__realloc();          /* PRIVATE */
-extern char *memory__calloc();           /* PRIVATE */
-extern void memory__free();              /* PRIVATE */
+extern void *memory__malloc(unsigned);           /* PRIVATE */
+extern void *memory__realloc(void *, unsigned);  /* PRIVATE */
+extern void *memory__calloc(unsigned, unsigned); /* PRIVATE */
+extern void memory__free(void *);                /* PRIVATE */
 
 #ifdef DEBUG_MEMORY
 

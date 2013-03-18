@@ -46,7 +46,9 @@ static RETSIGTYPE deactivate(int);
 static RETSIGTYPE terminate(int);
 static void choose_server(void);
 static void init_hm(void);
+#ifndef DEBUG
 static void detach(void);
+#endif
 static void send_stats(ZNotice_t *, struct sockaddr_in *);
 static char *strsave(const char *);
 
@@ -361,7 +363,9 @@ init_hm(void)
 {
      struct servent *sp;
      Code_t ret;
+#ifndef DEBUG
      FILE *fp;
+#endif
 #ifdef _POSIX_VERSION
      struct sigaction sa;
 #endif
@@ -458,6 +462,7 @@ init_hm(void)
 #endif
 }
 
+#ifndef DEBUG
 static void
 detach(void)
 {
@@ -497,6 +502,7 @@ detach(void)
      setsid();
 #endif
 }
+#endif
 
 static char version[BUFSIZ];
 
