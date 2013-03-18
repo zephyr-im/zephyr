@@ -66,10 +66,10 @@ add_host(struct host_ace **list,
     if (m) {
 	*(m++) = 0;
 	if (!*m)
-            return;
+            return EINVAL;
 	i = strtol(m, &x, 10);
 	if (*x || i < 0 || i > 32)
-            return;
+            return EINVAL;
 	while (i--)
 	    mask = (mask >> 1) | 0x80000000;
     } else {
@@ -77,7 +77,7 @@ add_host(struct host_ace **list,
     }
 
     if (!inet_aton(buf, &addr))
-	return;
+	return EINVAL;
 
     e = (struct host_ace *)malloc(sizeof(struct host_ace));
     if (e == NULL)
