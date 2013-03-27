@@ -79,10 +79,10 @@ clean:
 	rm -f ${OBJS} zsrv_err.[ch]
 	rm -f zephyrd.8
 
-${OBJS}: zserver.h zsrv_err.h timer.h zsrv_conf.h zstring.h access.h acl.h
-${OBJS}: ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
-${OBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h
-${OBJS}: ${BUILDTOP}/h/zephyr/zephyr_err.h
+${OBJS} ${TESTOBJS}: zserver.h zsrv_err.h timer.h zsrv_conf.h zstring.h access.h acl.h
+${OBJS} ${TESTOBJS}: ${top_srcdir}/h/internal.h ${top_srcdir}/h/sysdep.h
+${OBJS} ${TESTOBJS}: ${BUILDTOP}/h/config.h ${BUILDTOP}/h/zephyr/zephyr.h
+${OBJS} ${TESTOBJS}: ${BUILDTOP}/h/zephyr/zephyr_err.h
 version.o: ${BUILDTOP}/h/zephyr_version.h
 
 .PHONY: all check install clean
