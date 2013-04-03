@@ -47,9 +47,10 @@ extern Location *locations;
 
 int failures = 0;
 
-void test_uloc();
+void test_uloc(void);
 
-main() {
+int main(int argc, char **argv)
+{
     puts("Zephyr server testing");
     puts("");
 
@@ -59,7 +60,8 @@ main() {
 }
 
 void
-test_uloc() {
+test_uloc(void)
+{
     ZNotice_t z1, z2, z0, z4;
     String *s1, *s2, *s0, *s4;
     struct sockaddr_in who1, who2, who3, who0, who4;
