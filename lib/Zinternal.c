@@ -45,7 +45,7 @@ int Z_discarded_packets = 0;
 /* This context is used throughout */
 krb5_context Z_krb5_ctx;
 
-static struct cksum_map_s {
+static const struct cksum_map_s {
   krb5_enctype e;
   krb5_cksumtype c;
 } cksum_map[] = {
