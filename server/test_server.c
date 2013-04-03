@@ -49,7 +49,8 @@ int failures = 0;
 
 void test_uloc(void);
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
     puts("Zephyr server testing");
     puts("");
