@@ -38,8 +38,11 @@ ZSrvSendNotice(ZNotice_t *notice,
 				cert_routine)) != ZERR_NONE)
 	return (retval);
 
-    if ((retval = ZParseNotice(buffer, len, &newnotice)) != ZERR_NONE)
+    if ((retval = ZParseNotice(buffer, len, &newnotice)) != ZERR_NONE) {
+	free(buffer);
 	return (retval);
+    }
+
     
     retval = Z_SendFragmentedNotice(&newnotice, len, cert_routine,
 				    send_routine);
