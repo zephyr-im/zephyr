@@ -285,6 +285,7 @@ Z_ReadWait(void)
     Code_t retval;
     fd_set fds;
     struct timeval tv;
+    ZUnique_Id_t *multiuid;
 
     if (ZGetFD() < 0)
 	return (ZERR_NOPORT);
@@ -377,16 +378,11 @@ Z_ReadWait(void)
     if (notice.z_message_len > partof - part)
 	notice.z_message_len = partof - part;
 
-    /*
-     * If we aren't a server and we can find a notice in the queue
-     * with the same multiuid field, insert the current fragment as
-     * appropriate.
-     */
+    /* Pick the appropriate key to reassemble with. */
     switch (notice.z_kind) {
     case SERVACK:
     case SERVNAK:
-	/* The SERVACK and SERVNAK replies shouldn't be reassembled
-	   (they have no parts).  Instead, we should hold on to the reply
+	/* For SERVACK and SERNACK replies, hold on to the reply
 	   ONLY if it's the first part of a fragmented message, i.e.
 	   multi_uid == uid.  This allows programs to wait for the uid
 	   of the first packet, and get a response when that notice
@@ -398,26 +394,33 @@ Z_ReadWait(void)
 	    !ZCompareUID(&notice.z_multiuid, &notice.z_uid))
 	    /* they're not the same... throw away this packet. */
 	    return(ZERR_NONE);
-	/* fall thru & process it */
+	/* fall thru to general ACK case. */
+    case HMACK:
+	/* The HMACK, SERVACK, and SERVNAK replies shouldn't be
+	   reassembled (they have no parts). */
+	multiuid = &notice.z_uid;
+	break;
     default:
-	/* for HMACK types, we assume no packet loss (local loopback
-	   connections).  The other types can be fragmented and MUST
-	   run through this code. */
-	if (!__Zephyr_server && (qptr = Z_SearchQueue(&notice.z_multiuid,
-						      notice.z_kind))) {
-	    /*
-	     * If this is the first fragment, and we haven't already
-	     * gotten a first fragment, grab the header from it.
-	     */
-	    if (part == 0 && !qptr->header) {
-		qptr->header_len = packet_len-notice.z_message_len;
-		qptr->header = (char *) malloc((unsigned) qptr->header_len);
-		if (!qptr->header)
-		    return (ENOMEM);
-		(void) memcpy(qptr->header, packet, qptr->header_len);
-	    }
-	    return (Z_AddNoticeToEntry(qptr, &notice, part));
+	multiuid = &notice.z_multiuid;
+    }
+    /*
+     * If we aren't a server and we can find a notice in the queue
+     * with the same multiuid field, insert the current fragment as
+     * appropriate.
+     */
+    if (!__Zephyr_server && (qptr = Z_SearchQueue(multiuid, notice.z_kind))) {
+	/*
+	 * If this is the first fragment, and we haven't already
+	 * gotten a first fragment, grab the header from it.
+	 */
+	if (part == 0 && !qptr->header) {
+	    qptr->header_len = packet_len-notice.z_message_len;
+	    qptr->header = (char *) malloc((unsigned) qptr->header_len);
+	    if (!qptr->header)
+		return (ENOMEM);
+	    (void) memcpy(qptr->header, packet, qptr->header_len);
 	}
+	return (Z_AddNoticeToEntry(qptr, &notice, part));
     }
 
     /*
@@ -449,7 +452,7 @@ Z_ReadWait(void)
 
     /* Copy the from field, multiuid, kind, and checked authentication. */
     qptr->from = from;
-    qptr->uid = notice.z_multiuid;
+    qptr->uid = *multiuid;
     qptr->kind = notice.z_kind;
     qptr->auth = notice.z_checked_auth;
 
