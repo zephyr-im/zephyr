@@ -29,7 +29,7 @@ static const char rcsid_zwrite_c[] = "$Id$";
 #define MAXRECIPS 100
 
 int nrecips, msgarg, verbose, quiet, nodot, cc;
-char *whoami, *inst, *class, *opcode, *realm, *recips[MAXRECIPS];
+char *whoami, *inst, *class, *opcode, *realm, *recips[MAXRECIPS], *sender = 0;
 Z_AuthProc auth;
 void un_tabify(char **, int *);
 
@@ -189,6 +189,13 @@ main(int argc, char *argv[])
 	    arg++;
 	    charset = argv[arg];
 	    break;
+	case 'S':
+	    if (arg == argc-1)
+		usage(whoami);
+	    arg++;
+	    sender = argv[arg];
+	    auth = ZNOAUTH;
+	    break;
 	default:
 	    usage(whoami);
 	}
@@ -232,7 +239,7 @@ main(int argc, char *argv[])
     notice.z_class = class;
     notice.z_class_inst = inst;
     notice.z_opcode = "PING";
-    notice.z_sender = 0;
+    notice.z_sender = sender;
     notice.z_message_len = 0;
     notice.z_recipient = "";
     notice.z_charset = ZGetCharset(charset);

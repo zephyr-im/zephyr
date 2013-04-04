@@ -44,6 +44,8 @@ instance ] [
 realm ] [
 .BI \-f
 arg ] [
+.BI \-S
+sender ] [
 .BI user \ ...
 ] [
 .BI \-m
@@ -177,6 +179,9 @@ This argument may not be used in conjunction with the \-f option.
 .B \-r \fIrealm\fR
 Allows a user to specify a different realm for the message, if the
 server supports interrealm Zephyr.
+.TP
+.B \-S \fIsender\fR
+Specify a sender.  The message will be sent unauthenticated.
 .TP
 .B \-F \fIformat\fR
 Allows a user to specify a different default format for the message.
