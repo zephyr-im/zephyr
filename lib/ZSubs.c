@@ -19,9 +19,8 @@ static const char rcsid_ZSubscriptions_c[] = "$Id$";
 
 static Code_t Z_Subscriptions(register ZSubscription_t *sublist,
 			      int nitems, unsigned int port,
-			      char *opcode, int authit);
-static Code_t subscr_sendoff(ZNotice_t *notice, char **lyst, int num,
-			     int authit);
+			      char *opcode);
+static Code_t subscr_sendoff(ZNotice_t *notice, char **lyst, int num);
 
 #ifdef CMU_ZCTL_PUNT
 Code_t
@@ -29,7 +28,7 @@ ZPunt(ZSubscription_t *sublist,
       int nitems,
       unsigned int port)
 {
-    return (Z_Subscriptions(sublist, nitems, port, "SUPPRESS", 1));
+    return (Z_Subscriptions(sublist, nitems, port, "SUPPRESS"));
 }
 #endif
 
@@ -38,7 +37,7 @@ ZSubscribeTo(ZSubscription_t *sublist,
 	     int nitems,
 	     unsigned int port)
 {
-    return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE, 1));
+    return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE));
 }
 
 Code_t
@@ -46,8 +45,7 @@ ZSubscribeToSansDefaults(ZSubscription_t *sublist,
 			 int nitems,
 			 unsigned int port)
 {
-    return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE_NODEFS,
-			    1));
+    return (Z_Subscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE_NODEFS));
 }
 
 Code_t
@@ -55,14 +53,14 @@ ZUnsubscribeTo(ZSubscription_t *sublist,
 	       int nitems,
 	       unsigned int port)
 {
-    return (Z_Subscriptions(sublist, nitems, port, CLIENT_UNSUBSCRIBE, 1));
+    return (Z_Subscriptions(sublist, nitems, port, CLIENT_UNSUBSCRIBE));
 }
 
 Code_t
 ZCancelSubscriptions(unsigned int port)
 {
     return (Z_Subscriptions((ZSubscription_t *)0, 0, port,
-			    CLIENT_CANCELSUB, 0));
+			    CLIENT_CANCELSUB));
 }
 
 /*
@@ -75,8 +73,7 @@ static Code_t
 Z_Subscriptions(register ZSubscription_t *sublist,
 		int nitems,
 		unsigned int port,
-		char *opcode,
-		int authit)
+		char *opcode)
 {
     register int i, j;
     int retval;
@@ -109,9 +106,6 @@ Z_Subscriptions(register ZSubscription_t *sublist,
 
     /* format the header to figure out how long it is */
     retval = Z_FormatHeader(&notice, header, sizeof(header), &hdrlen, ZAUTH);
-    if (retval != ZERR_NONE && !authit)
-	retval = Z_FormatHeader(&notice, header, sizeof(header),
-				&hdrlen, ZNOAUTH);
     if (retval != ZERR_NONE) {
 	free((char *)list);
 	return(retval);
@@ -138,7 +132,7 @@ Z_Subscriptions(register ZSubscription_t *sublist,
     numok = 0;
     if (!nitems) {
 	/* there aren't really any, but we need to xmit anyway */
-	retval = subscr_sendoff(&notice, list, 0, authit);
+	retval = subscr_sendoff(&notice, list, 0);
 	free((char *)list);
 	return(retval);
     }
@@ -162,7 +156,7 @@ Z_Subscriptions(register ZSubscription_t *sublist,
 	    free((char *)list);
 	    return(ZERR_FIELDLEN);
 	}
-	retval = subscr_sendoff(&notice, &list[start*3], numok, authit);
+	retval = subscr_sendoff(&notice, &list[start*3], numok);
 	if (retval) {
 	    free((char *)list);
 	    return(retval);
@@ -170,7 +164,7 @@ Z_Subscriptions(register ZSubscription_t *sublist,
 	start = -1;
     }
     if (numok)
-	retval = subscr_sendoff(&notice, &list[start*3], numok, authit);
+	retval = subscr_sendoff(&notice, &list[start*3], numok);
     free((char *)list);
     return(retval);
 }
@@ -178,16 +172,12 @@ Z_Subscriptions(register ZSubscription_t *sublist,
 static Code_t
 subscr_sendoff(ZNotice_t *notice,
 	       char **lyst,
-	       int num,
-	       int authit)
+	       int num)
 {
     register Code_t retval;
     ZNotice_t retnotice;
 
     retval = ZSendList(notice, lyst, num*3, ZAUTH);
-    if (retval != ZERR_NONE && !authit)
-	retval = ZSendList(notice, lyst, num*3, ZNOAUTH);
-	
     if (retval != ZERR_NONE)
 	return (retval);
     if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *)0, 
