@@ -31,6 +31,7 @@ static const char rcsid_zwrite_c[] = "$Id$";
 int nrecips, msgarg, verbose, quiet, nodot, cc;
 char *whoami, *inst, *class, *opcode, *realm, *recips[MAXRECIPS], *sender = 0;
 Z_AuthProc auth;
+ZNotice_Kind_t kind = ACKED;
 void un_tabify(char **, int *);
 
 char *fix_filsrv_inst(char *);
@@ -196,6 +197,10 @@ main(int argc, char *argv[])
 	    sender = argv[arg];
 	    auth = ZNOAUTH;
 	    break;
+	case 'U':
+	    kind = UNACKED;
+	    nocheck = 1;		/* implied -n (no ping) */
+	    break;
 	default:
 	    usage(whoami);
 	}
@@ -234,7 +239,7 @@ main(int argc, char *argv[])
     }
 
     memset(&notice, 0, sizeof(ZNotice_t));
-    notice.z_kind = ACKED;
+    notice.z_kind = kind;
     notice.z_port = 0;
     notice.z_class = class;
     notice.z_class_inst = inst;
@@ -381,6 +386,8 @@ send_off(ZNotice_t *notice, int real)
 	    com_err(whoami, retval, "while sending notice to %s", dest);
 	    break;
 	}
+	if (kind == UNACKED)
+	    continue;
 	if (real && !quiet) {
 	    if (verbose)
 		printf("Queued... ");

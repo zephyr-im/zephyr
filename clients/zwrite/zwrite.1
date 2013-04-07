@@ -32,6 +32,8 @@ zwrite \- write to another user via Zephyr
 ] [
 .BI \-C
 ] [
+.BI \-U
+] [
 .BI \-O
 opcode ] [
 .BI \-s
@@ -139,6 +141,12 @@ presence of a "CC:" line at the top of a zephyr body does not
 necessarily indicate that this option was used, or that the message
 really was sent to the listed users, and its lack doesn't indicate
 that the message was not sent to multiple users.
+.TP
+.B \-U
+Send an unacked message.
+.I zwrite
+will not wait for acknowledgement that the message was sent, nor will
+it issue a PING before sending.
 .TP
 .B \-s \fIsignature\fR
 sets the signature to be included in the message.  This overrides both
