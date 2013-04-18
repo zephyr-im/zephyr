@@ -111,14 +111,36 @@ ZMakeZcodeAuthentication(register ZNotice_t *notice,
 
 Code_t
 ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
-			       char *buffer,
-			       int buffer_len,
-			       int *phdr_len,
-			       char *realm)
+			      char *buffer,
+			      int buffer_len,
+			      int *phdr_len,
+			      char *realm)
 {
 #ifdef HAVE_KRB5
-    krb5_error_code result;
-    krb5_creds *creds = 0;
+    Code_t result;
+    krb5_creds *creds = NULL;
+
+    result = ZGetCredsRealm(&creds, realm);
+    if (!result)
+	result = Z_MakeZcodeAuthentication(notice, buffer, buffer_len, phdr_len,
+					   creds);
+    if (creds != NULL)
+	krb5_free_creds(Z_krb5_ctx, creds);
+    return result;
+#else /* HAVE_KRB5 */
+    return ZERR_INTERNAL;
+#endif
+}
+
+#ifdef HAVE_KRB5
+Code_t
+Z_MakeZcodeAuthentication(register ZNotice_t *notice,
+			  char *buffer,
+			  int buffer_len,
+			  int *phdr_len,
+			  krb5_creds *creds)
+{
+    krb5_error_code result = 0;
     krb5_keyblock *keyblock;
     krb5_auth_context authctx;
     krb5_data *authent;
@@ -126,8 +148,6 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
     int cksum_len, zcode_len = 0, phdr_adj = 0;
 
     notice->z_ascii_authent = NULL;
-
-    result = ZGetCredsRealm(&creds, realm);
 
     keyblock = Z_credskey(creds);
 
@@ -167,7 +187,7 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
 	result = Z_NewFormatRawHeader(notice, buffer, buffer_len, phdr_len,
 				      &cksum_start, &cksum_len, &cstart, &cend);
     notice->z_authent_len = 0;
-    if (!result && creds != NULL)
+    if (!result)
 	result = Z_InsertZcodeChecksum(keyblock, notice, buffer, cksum_start,
 				       cksum_len, cstart, cend, buffer_len,
 				       &phdr_adj, 0);
@@ -179,15 +199,9 @@ ZMakeZcodeRealmAuthentication(register ZNotice_t *notice,
     krb5_free_data_contents(Z_krb5_ctx, authent);
     if (authent != NULL)
 	free(authent);
-    if (creds != NULL)
-	krb5_free_creds(Z_krb5_ctx, creds);
     return result;
-#else /* HAVE_KRB5 */
-    return ZERR_INTERNAL;
-#endif
 }
 
-#ifdef HAVE_KRB5
 int
 ZGetCreds(krb5_creds **creds_out)
 {

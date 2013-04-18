@@ -144,6 +144,10 @@ Code_t Z_ExtractEncCksum(krb5_keyblock *keyblock, krb5_enctype *enctype,
 int Z_krb5_verify_cksum(krb5_keyblock *keyblock, krb5_data *cksumbuf,
 			krb5_cksumtype cksumtype, krb5_keyusage cksumusage,
 			unsigned char *asn1_data, int asn1_len);
+Code_t Z_MakeZcodeAuthentication(register ZNotice_t *notice,
+				 char *buffer, int buffer_len,
+				 int *phdr_len,
+				 krb5_creds *creds);
 Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice,
                              char *buffer,
                              char *cksum_start, int cksum_len,
