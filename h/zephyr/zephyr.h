@@ -236,6 +236,10 @@ Code_t ZIfNotice(ZNotice_t *notice, struct sockaddr_in *from,
 		 int (*predicate)(ZNotice_t *, void *), void *args);
 Code_t ZPeekIfNotice(ZNotice_t *notice, struct sockaddr_in *from,
 		 int (*predicate)(ZNotice_t *, char *), char *args);
+Code_t ZSubscriptions(ZSubscription_t *sublist, int nitems,
+		      unsigned int port,
+		      char *opcode,
+		      Code_t (*send_routine)(ZNotice_t *, char *, int, int));
 Code_t ZPunt(ZSubscription_t *sublist, int nitems, unsigned int port);
 Code_t ZSubscribeTo(ZSubscription_t *sublist, int nitems,
 		    unsigned int port);
