@@ -398,4 +398,5 @@ AC_OUTPUT(Makefile clients/Makefile clients/zaway/Makefile
           clients/zshutdown_notify/Makefile clients/zstat/Makefile
           clients/zwrite/Makefile lib/Makefile
           server/Makefile zhm/Makefile zwgc/Makefile
+          zephyr.pc
           )

@@ -39,6 +39,7 @@ install:
 	${INSTALL} -d ${DESTDIR}${exec_prefix}
 	${INSTALL} -d ${DESTDIR}${bindir}
 	${INSTALL} -d ${DESTDIR}${libdir}
+	${INSTALL} -d ${DESTDIR}${libdir}/pkgconfig
 	${INSTALL} -d ${DESTDIR}${datadir}
 	${INSTALL} -d ${DESTDIR}${datadir}/zephyr
 	${INSTALL} -d ${DESTDIR}${sysconfdir}
@@ -54,6 +55,7 @@ install:
 		${DESTDIR}${includedir}/zephyr
 	${INSTALL} -m 644 ${srcdir}/h/zephyr/zephyr.h \
 		${DESTDIR}${includedir}/zephyr
+	${INSTALL} -m 644 zephyr.pc ${DESTDIR}${libdir}/pkgconfig
 	${INSTALL} -m 644 h/zephyr/zephyr_err.h ${DESTDIR}${includedir}/zephyr
 	for i in ${SUBDIRS}; do (cd $$i; ${MAKE} $@) || exit 1; done
 
