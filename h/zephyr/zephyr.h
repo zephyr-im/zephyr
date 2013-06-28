@@ -259,6 +259,8 @@ Code_t ZTransliterate(char *in, int inlen, char *inset, char *outset, char **out
 void Z_debug(const char *, ...);
 #endif
 char *ZExpandRealm(char *realm);
+Code_t ZDumpSession(char **buffer, int *ret_len);
+Code_t ZLoadSession(char *buffer, int len);
 
 /* Compatibility */
 #define	ZNewLocateUser ZLocateUser
