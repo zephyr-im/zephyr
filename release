@@ -13,7 +13,8 @@ fi
 dch -b -v 1:${VERSION}-trunk release $VERSION
 git add debian/changelog
 git commit -m "release $VERSION"
-git tag $VERSION -m "release $VERSION"
+TAGNAME=$(echo $VERSION | sed -e 's/~/%7E/') # sigh
+git tag $TAGNAME -m "release $VERSION"
 git checkout --detach
 git clean -fxd
 git rm .gitignore
@@ -30,7 +31,7 @@ git add -A
 #git commit -m "release $VERSION"
 TREE=$(git write-tree)
 COMMIT=$(echo release artifact for $VERSION | git commit-tree $TREE -p HEAD -p remotes/origin/release/artifact)
-git tag release/$VERSION -m "release $VERSION processed for git archive" $COMMIT
+git tag release/$TAGNAME -m "release $VERSION processed for git archive" $COMMIT
 git push origin $COMMIT:release/artifact
 git reset --hard master
 git checkout master
