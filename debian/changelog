@@ -1,9 +1,10 @@
-zephyr (1:3.1-beta0-trunk) UNRELEASED; urgency=low
+zephyr (1:3.1~beta0-trunk) UNRELEASED; urgency=low
 
   * Any further revisions to 3.0.x go on the 3.0.x branch; the mainline is for 3.1 stuff
   * release 3.1-beta0
+  * release 3.1~beta0
 
- -- Karl Ramm <kcr@1ts.org>  Sun, 07 Jul 2013 22:08:01 -0400
+ -- Karl Ramm <kcr@1ts.org>  Mon, 08 Jul 2013 12:00:48 -0400
 
 zephyr (1:3.0.2-trunk) unstable; urgency=low
 
