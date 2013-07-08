@@ -29,8 +29,8 @@ rm -rf autom4te.cache
 git add -A
 #git commit -m "release $VERSION"
 TREE=$(git write-tree)
-COMMIT=$(echo release artifact for $VERSION | git commit-tree $TREE -p HEAD -p release/artifact)
+COMMIT=$(echo release artifact for $VERSION | git commit-tree $TREE -p HEAD -p remotes/origin/release/artifact)
 git tag release/$VERSION -m "release $VERSION processed for git archive" $COMMIT
-git push . $COMMIT:release/artifact
+git push origin $COMMIT:release/artifact
 git reset --hard master
 git checkout master
