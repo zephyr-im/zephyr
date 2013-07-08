@@ -32,6 +32,6 @@ git add -A
 TREE=$(git write-tree)
 COMMIT=$(echo release artifact for $VERSION | git commit-tree $TREE -p HEAD -p remotes/origin/release/artifact)
 git tag release/$TAGNAME -m "release $VERSION processed for git archive" $COMMIT
-git push origin $COMMIT:release/artifact
+git push origin $TAGNAME release/$TAGNAME $COMMIT:release/artifact
 git reset --hard master
 git checkout master
