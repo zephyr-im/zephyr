@@ -46,6 +46,7 @@ ZGetSender(void)
       if (!result) {
 	krb5_unparse_name(Z_krb5_ctx, principal, &prname);
 	sender = strdup(prname);
+	krb5_free_unparsed_name(Z_krb5_ctx, prname);
 	krb5_free_principal(Z_krb5_ctx, principal);
 	return sender;
       }
