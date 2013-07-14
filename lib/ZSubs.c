@@ -85,8 +85,11 @@ ZSubscriptions(register ZSubscription_t *sublist,
     char **list;
     char *recip;
     int hdrlen;
-    int size_avail = Z_MAXPKTLEN-Z_FRAGFUDGE; /* space avail for data,
-						 adjusted below */
+    /* Space available for data, adjusted below. Take off Z_FRAGFUDGE twice.
+       The first is to account for Z_SendFragmentedNotice's space. The second
+       to account for hdrlen not being constant. Zcode escapes bytes 0x00 and
+       0xFF, so some bytes are encoded as two bytes. */
+    int size_avail = Z_MAXPKTLEN-Z_FRAGFUDGE-Z_FRAGFUDGE;
     int size, start, numok;
 
     /* nitems = 0 means cancel all subscriptions; still need to allocate a */
