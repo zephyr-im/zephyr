@@ -188,6 +188,11 @@ Z_SendAndWaitForServer(ZNotice_t *notice,
     retval = ZSendPacket(buf, len, waitforack);
     if (retval != ZERR_NONE)
 	return (retval);
+    /* Z_ReadWait drops non-initial SERVACKs and SERVNAKs on the floor. We
+       should never see a non-initial one here, but be defensive about bugs in the
+       sharding code above. */
+    if (!ZCompareUID(&notice->z_multiuid, &notice->z_uid))
+	return (retval);
     if ((retval = ZIfNotice(&retnotice, (struct sockaddr_in *)0, 
 				ZCompareUIDPred, (char *)&notice->z_uid)) !=
 	ZERR_NONE)
