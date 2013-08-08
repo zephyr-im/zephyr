@@ -11,6 +11,7 @@ if test -n "$(git status --porcelain)"; then
    exit 2
 fi
 dch -b -v 1:${VERSION}-trunk release $VERSION
+dch -r ''
 git add debian/changelog
 git commit -m "release $VERSION"
 TAGNAME=$(echo $VERSION | sed -e 's/~/%7E/') # sigh
