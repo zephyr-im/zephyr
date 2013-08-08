@@ -413,11 +413,19 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         syslog(LOG_WARNING, "ZCheckSrvAuthentication: name mismatch: '%s' vs '%s'",
                name, sender);
         krb5_auth_con_free(Z_krb5_ctx, authctx);
+#ifdef HAVE_KRB5_FREE_UNPARSED_NAME
         krb5_free_unparsed_name(Z_krb5_ctx, name);
+#else
+        free(name);
+#endif
         free(authbuf);
         return ZAUTH_FAILED;
     }
+#ifdef HAVE_KRB5_FREE_UNPARSED_NAME
     krb5_free_unparsed_name(Z_krb5_ctx, name);
+#else
+    free(name);
+#endif
     free(authbuf);
 
     /* HOLDING: authctx */

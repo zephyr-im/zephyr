@@ -273,7 +273,7 @@ AC_CHECK_FUNCS(putenv strchr memcpy memmove waitpid getlogin strerror random)
 AC_CHECK_FUNCS(lrand48 gethostid getsid getpgid etext)
 AC_CHECK_FUNCS(krb_get_err_text krb_log)
 AC_CHECK_FUNCS(krb5_free_data krb5_c_make_checksum krb5_cc_set_default_name)
-AC_CHECK_FUNCS(krb5_crypto_init krb5_c_decrypt)
+AC_CHECK_FUNCS(krb5_crypto_init krb5_c_decrypt krb5_free_unparsed_name)
 
 AC_MSG_CHECKING(krb5_auth_con_getauthenticator out argument type)
 AC_CACHE_VAL(ac_cv_krb5_auth_con_getauthenticator_takes_double_pointer, [
