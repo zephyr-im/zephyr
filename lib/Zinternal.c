@@ -134,8 +134,8 @@ find_or_insert_uid(ZUnique_Id_t *uid,
 
     time_t now;
     struct _filter *new;
-    long i, new_size;
-    int result;
+    long i, j, new_size;
+    int result, found = 0;
 
     /* Initialize the uid buffer if it hasn't been done already. */
     if (!buffer) {
@@ -168,18 +168,25 @@ find_or_insert_uid(ZUnique_Id_t *uid,
     /* Search for this uid in the buffer, starting from the end. */
     for (i = start + num - 1; i >= start; i--) {
 	result = memcmp(uid, &buffer[i % size].uid, sizeof(*uid));
-	if (result == 0 && buffer[i % size].kind == kind)
-	    return 1;
+	if (result == 0 && buffer[i % size].kind == kind) {
+	    /* Remove it from the buffer. We'll re-add it at the end. */
+	    for (j = i; j < start + num - 1; j++) {
+		buffer[j % size] = buffer[(j + 1) % size];
+	    }
+	    num--;
+	    found = 1;
+	    break;
+        }
     }
 
-    /* We didn't find it; stick it on the end */
+    /* Whether or not we found it, stick it at the end. */
     i = start + num;
     buffer[i % size].uid = *uid;
     buffer[i % size].kind = kind;
     buffer[i % size].t = now;
     num++;
 
-    return 0;
+    return found;
 }
 
 
