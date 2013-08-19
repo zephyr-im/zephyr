@@ -374,9 +374,12 @@ Z_ReadWait(void)
     if (partof > Z_MAXNOTICESIZE)
 	return (ZERR_NONE);
 
-    /* Ignore garbage at the end */
+    /* The packet has garbage at the end. This likely came from a cross-realm
+     * zephyrd without f276622ace757977fec43633e43577350e0cf6fe, which means
+     * it's retransmitting blindly anyway. Drop it on the floor.
+     */
     if (notice.z_message_len > partof - part)
-	notice.z_message_len = partof - part;
+	return (ZERR_NONE);
 
     /* Pick the appropriate key to reassemble with. */
     switch (notice.z_kind) {
