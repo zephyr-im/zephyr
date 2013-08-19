@@ -145,9 +145,9 @@ find_or_insert_uid(ZUnique_Id_t *uid,
 	    return 0;
     }
 
-    /* Age the uid buffer, discarding any uids older than the clock skew. */
+    /* Age the uid buffer, discarding any uids older than the time limit. */
     time(&now);
-    while (num && (now - buffer[start % size].t) > CLOCK_SKEW)
+    while (num && (now - buffer[start % size].t) > Z_FILTERTIMELIMIT)
 	start++, num--;
     start %= size;
 

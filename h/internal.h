@@ -19,10 +19,6 @@
 #include <hesiod.h>
 #endif
 
-#ifndef HAVE_KRB4
-#define CLOCK_SKEW	300		/* max time to cache packet ids */
-#endif
-
 #include <arpa/nameser.h>
 #ifdef HAVE_ARPA_NAMESER_COMPAT_H
 #include <arpa/nameser_compat.h>
@@ -43,6 +39,7 @@
 #define Z_FRAGFUDGE		13	/* Room to for multinotice field */
 #define Z_NOTICETIMELIMIT	30	/* Time to wait for fragments */
 #define Z_INITFILTERSIZE	30	/* Starting size of uid filter */
+#define Z_FILTERTIMELIMIT	900	/* Max time to cache packet ids */
 
 #define Z_AUTHMODE_NONE          0      /* no authentication */
 #define Z_AUTHMODE_KRB4          1      /* authenticate using Kerberos V4 */
