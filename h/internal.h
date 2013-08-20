@@ -93,6 +93,16 @@ struct _Z_SessionKey {
 };
 
 extern struct _Z_SessionKey *Z_keys_head, *Z_keys_tail;
+
+/*
+ * The maximum time we allow for a notice to get delivered. This is used for
+ * two timeouts in key expirey. First, we assume that any subscription notice
+ * was reached the server within that time; this allows us to assume old keys
+ * sent sufficiently long before a newer, verified key are stale. Second, we
+ * assume notices authenticated with an old key reach us in that time; this
+ * allows us to prune stale keys after a timeout.
+*/
+#define KEY_TIMEOUT 60
 #endif
 
 extern ZLocations_t *__locate_list;

@@ -31,13 +31,13 @@ static const char rcsid_ZCheckAuthentication_c[] =
    When not using Kerberos, return true if the notice claims to be authentic.
    Only used by clients; the server uses its own routine.
  */
-Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
-				 struct sockaddr_in *from)
-{
 #ifdef HAVE_KRB5
+static Code_t Z_CheckZcodeAuthentication(ZNotice_t *notice,
+					 struct sockaddr_in *from,
+					 krb5_keyblock *keyblock)
+{
     krb5_error_code result;
-    krb5_creds *creds;
-    krb5_keyblock *keyblock;
+    krb5_creds *creds = NULL;
     krb5_enctype enctype;
     krb5_cksumtype cksumtype;
     krb5_data cksumbuf;
@@ -46,36 +46,14 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
     char *x;
     unsigned char *asn1_data, *key_data, *cksum_data;
     int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0;
-#endif
-
-    /* If the value is already known, return it. */
-    if (notice->z_checked_auth != ZAUTH_UNSET)
-        return (notice->z_checked_auth);
-
-    if (!notice->z_auth)
-        return (ZAUTH_NO);
-
-    if (!notice->z_ascii_checksum)
-        return (ZAUTH_NO);
-
-
-#ifdef HAVE_KRB5
-    result = ZGetCreds(&creds);
-
-    if (result)
-	return (ZAUTH_NO);
-    /* HOLDING: creds */
 
     /* Figure out what checksum type to use */
-    keyblock = Z_credskey(creds);
     key_data = Z_keydata(keyblock);
     key_len = Z_keylen(keyblock);
     result = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
     if (result) {
-	krb5_free_creds(Z_krb5_ctx, creds);
 	return (ZAUTH_FAILED);
     }
-    /* HOLDING: creds */
 
     /* Assemble the things to be checksummed */
     /* first part is from start of packet through z_default_format:
@@ -139,19 +117,16 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
 	our_checksum = z_quad_cksum((unsigned char *)cksum0_base, NULL, cksum0_len, 0,
 				    key_data);
 	if (our_checksum == notice->z_checksum) {
-	    krb5_free_creds(Z_krb5_ctx, creds);
 	    return ZAUTH_YES;
 	}
     }
-    /* HOLDING: creds */
 
     cksumbuf.length = cksum0_len + cksum1_len + cksum2_len;
     cksumbuf.data = malloc(cksumbuf.length);
     if (!cksumbuf.data) {
-	krb5_free_creds(Z_krb5_ctx, creds);
 	return ZAUTH_NO;
     }
-    /* HOLDING: creds, cksumbuf.data */
+    /* HOLDING: cksumbuf.data */
 
     cksum_data = (unsigned char *)cksumbuf.data;
     memcpy(cksum_data, cksum0_base, cksum0_len);
@@ -165,33 +140,94 @@ Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
     asn1_len = strlen(notice->z_ascii_checksum) + 1;
     asn1_data = malloc(asn1_len);
     if (!asn1_data) {
-	krb5_free_creds(Z_krb5_ctx, creds);
 	free(cksumbuf.data);
 	return ZAUTH_FAILED;
     }
-    /* HOLDING: creds, asn1_data, cksumbuf.data */
+    /* HOLDING: asn1_data, cksumbuf.data */
     result = ZReadZcode((unsigned char *)notice->z_ascii_checksum,
 			asn1_data, asn1_len, &asn1_len);
     if (result != ZERR_NONE) {
-	krb5_free_creds(Z_krb5_ctx, creds);
 	free(asn1_data);
 	free(cksumbuf.data);
 	return ZAUTH_FAILED;
     }
-    /* HOLDING: creds, asn1_data, cksumbuf.data */
+    /* HOLDING: asn1_data, cksumbuf.data */
 
     valid = Z_krb5_verify_cksum(keyblock, &cksumbuf, cksumtype,
 				Z_KEYUSAGE_SRV_CKSUM, asn1_data, asn1_len);
 
     free(asn1_data);
-    krb5_free_creds(Z_krb5_ctx, creds);
     free(cksumbuf.data);
 
     if (valid)
 	return ZAUTH_YES;
     else
 	return ZAUTH_FAILED;
-#else /* HAVE_KRB5 */
+}
+#endif
+
+Code_t ZCheckZcodeAuthentication(ZNotice_t *notice,
+				 struct sockaddr_in *from)
+{
+#ifdef HAVE_KRB5
+    Code_t answer;
+    krb5_creds *creds;
+    struct _Z_SessionKey *savedkey, *todelete;
+#endif
+
+    /* If the value is already known, return it. */
+    if (notice->z_checked_auth != ZAUTH_UNSET)
+        return (notice->z_checked_auth);
+
+    if (!notice->z_auth)
+        return (ZAUTH_NO);
+
+    if (!notice->z_ascii_checksum)
+        return (ZAUTH_NO);
+
+#ifdef HAVE_KRB5
+    /* Try each of the saved session keys. */
+    for (savedkey = Z_keys_head; savedkey != NULL; savedkey = savedkey->next) {
+	answer = Z_CheckZcodeAuthentication(notice, from, savedkey->keyblock);
+	if (answer == ZAUTH_YES) {
+	    /* Save the time of the first use of each key. */
+	    if (!savedkey->first_use) {
+		savedkey->first_use = time(NULL);
+	    } else {
+		/*
+		 * Any keys sent sufficiently long before this one is stale. If
+		 * we know it has been long enough since the server learned of
+		 * this key, we can prune keys made stale by this one.
+		 */
+		if (time(NULL) > savedkey->first_use + KEY_TIMEOUT) {
+		    while (Z_keys_tail &&
+			   Z_keys_tail->send_time + KEY_TIMEOUT < savedkey->send_time) {
+			todelete = Z_keys_tail;
+			Z_keys_tail = Z_keys_tail->prev;
+			Z_keys_tail->next = NULL;
+
+			krb5_free_keyblock(Z_krb5_ctx, todelete->keyblock);
+			free(todelete);
+		    }
+		}
+	    }
+	    return answer;
+	}
+    }
+
+    /*
+     * If each of those fails, pull from the ccache. This is to preserve the
+     * behavior of things like zwgc/zctl where another program actually
+     * generates the subscription notices.
+     */
+    if (ZGetCreds(&creds))
+	return ZAUTH_NO;
+
+    answer = Z_CheckZcodeAuthentication(notice, from, Z_credskey(creds));
+
+    krb5_free_creds(Z_krb5_ctx, creds);
+    return answer;
+#else
     return (notice->z_auth ? ZAUTH_YES : ZAUTH_NO);
 #endif
 }
