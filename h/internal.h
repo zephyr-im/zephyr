@@ -32,6 +32,8 @@
 #define HM_SVC_FALLBACK		htons((unsigned short) 2104)
 #define HM_SRV_SVC_FALLBACK	htons((unsigned short) 2105)
 
+#define ZSUBAUTH (Z_MakeAuthenticationSaveKey)
+
 #define ZAUTH_UNSET		(-3) /* Internal to client library. */
 #define Z_MAXFRAGS		500	/* Max number of packet fragments */
 #define Z_MAXNOTICESIZE		400000	/* Max size of incoming notice */
@@ -81,6 +83,16 @@ extern int __Zephyr_server;	/* 0 if normal client, 1 if server or zhm */
 #ifdef HAVE_KRB5
 extern krb5_context Z_krb5_ctx;
 Code_t Z_krb5_lookup_cksumtype(krb5_enctype, krb5_cksumtype *);
+
+struct _Z_SessionKey {
+    struct _Z_SessionKey    *next;
+    struct _Z_SessionKey    *prev;
+    krb5_keyblock	    *keyblock;
+    time_t		    send_time;
+    time_t		    first_use;
+};
+
+extern struct _Z_SessionKey *Z_keys_head, *Z_keys_tail;
 #endif
 
 extern ZLocations_t *__locate_list;
@@ -132,6 +144,8 @@ Code_t Z_AsciiFormatRawHeader (ZNotice_t *, char *, int, int *, char **,
                                  int *, char **, char **);
 
 void Z_gettimeofday(struct _ZTimeval *ztv, struct timezone *tz);
+
+Code_t Z_MakeAuthenticationSaveKey(ZNotice_t*, char *,int, int*);
 
 #ifdef HAVE_KRB5
 int ZGetCreds(krb5_creds **creds_out);

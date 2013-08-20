@@ -91,6 +91,7 @@ ZSubscriptions(register ZSubscription_t *sublist,
        0xFF, so some bytes are encoded as two bytes. */
     int size_avail = Z_MAXPKTLEN-Z_FRAGFUDGE-Z_FRAGFUDGE;
     int size, start, numok;
+    Z_AuthProc cert_routine;
 
     /* nitems = 0 means cancel all subscriptions; still need to allocate a */
     /* array for one item so we can cancel, however. */
@@ -117,6 +118,14 @@ ZSubscriptions(register ZSubscription_t *sublist,
 	return(retval);
     }
 
+    /* if a subscription request, we save the key */
+    if (strcmp(opcode, CLIENT_SUBSCRIBE) == 0 ||
+	strcmp(opcode, CLIENT_SUBSCRIBE_NODEFS) == 0) {
+	cert_routine = ZSUBAUTH;
+    } else {
+	cert_routine = ZAUTH;
+    }
+
     /* compute amount of room left */
     size_avail -= hdrlen;
     size = size_avail;
@@ -138,7 +147,7 @@ ZSubscriptions(register ZSubscription_t *sublist,
     numok = 0;
     if (!nitems) {
 	/* there aren't really any, but we need to xmit anyway */
-	retval = ZSrvSendList(&notice, list, 0, ZAUTH, send_routine);
+	retval = ZSrvSendList(&notice, list, 0, cert_routine, send_routine);
 	free((char *)list);
 	return(retval);
     }
@@ -163,7 +172,7 @@ ZSubscriptions(register ZSubscription_t *sublist,
 	    return(ZERR_FIELDLEN);
 	}
 	retval = ZSrvSendList(&notice, &list[start*3], numok * 3,
-			      ZAUTH, send_routine);
+			      cert_routine, send_routine);
 	if (retval) {
 	    free((char *)list);
 	    return(retval);
@@ -172,7 +181,7 @@ ZSubscriptions(register ZSubscription_t *sublist,
     }
     if (numok)
 	retval = ZSrvSendList(&notice, &list[start*3], numok * 3,
-			      ZAUTH, send_routine);
+			      cert_routine, send_routine);
     free((char *)list);
     return(retval);
 }

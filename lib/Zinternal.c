@@ -44,6 +44,8 @@ int Z_discarded_packets = 0;
 #ifdef HAVE_KRB5
 /* This context is used throughout */
 krb5_context Z_krb5_ctx;
+/* A queue of all the currently active session keys. */
+struct _Z_SessionKey *Z_keys_head, *Z_keys_tail;
 
 static const struct cksum_map_s {
   krb5_enctype e;

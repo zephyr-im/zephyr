@@ -98,6 +98,73 @@ ZMakeAuthentication(register ZNotice_t *notice,
 #endif
 }
 
+Code_t
+Z_MakeAuthenticationSaveKey(register ZNotice_t *notice,
+			    char *buffer,
+			    int buffer_len,
+			    int *len)
+{
+#ifdef HAVE_KRB4
+    /* Key management not implemented for krb4. */
+    return ZMakeAuthentication(notice, buffer, buffer_len, len);
+#else
+    Code_t result;
+    krb5_creds *creds = NULL;
+    krb5_keyblock *keyblock;
+    struct _Z_SessionKey *savedkey;
+
+    /* Look up creds and checksum the notice. */
+    if ((result = ZGetCreds(&creds)))
+	return result;
+    if ((result = Z_MakeZcodeAuthentication(notice, buffer, buffer_len, len,
+					    creds))) {
+	krb5_free_creds(Z_krb5_ctx, creds);
+	return result;
+    }
+
+    /* Save the key. */
+    keyblock = Z_credskey(creds);
+
+    if (Z_keys_head &&
+	Z_keys_head->keyblock->enctype == keyblock->enctype &&
+	Z_keys_head->keyblock->length == keyblock->length &&
+	memcmp(Z_keys_head->keyblock->contents, keyblock->contents,
+	       keyblock->length) == 0) {
+	/*
+	 * Optimization: if the key hasn't changed, replace the current entry,
+	 * rather than make a new one.
+	 */
+	Z_keys_head->send_time = time(NULL);
+	Z_keys_head->first_use = 0;
+    } else {
+	savedkey = (struct _Z_SessionKey *)malloc(sizeof(struct _Z_SessionKey));
+	if (!savedkey) {
+	    krb5_free_creds(Z_krb5_ctx, creds);
+	    return ENOMEM;
+	}
+
+	if ((result = krb5_copy_keyblock(Z_krb5_ctx, keyblock, &savedkey->keyblock))) {
+	    free(savedkey);
+	    krb5_free_creds(Z_krb5_ctx, creds);
+	    return result;
+	}
+	savedkey->send_time = time(NULL);
+	savedkey->first_use = 0;
+
+	savedkey->prev = NULL;
+	savedkey->next = Z_keys_head;
+	if (Z_keys_head)
+	    Z_keys_head->prev = savedkey;
+	Z_keys_head = savedkey;
+	if (!Z_keys_tail)
+	    Z_keys_tail = savedkey;
+    }
+
+    krb5_free_creds(Z_krb5_ctx, creds);
+    return result;
+#endif
+}
+
 /* only used by server? */
 Code_t
 ZMakeZcodeAuthentication(register ZNotice_t *notice,
