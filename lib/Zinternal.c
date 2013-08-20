@@ -575,54 +575,28 @@ Z_AddNoticeToEntry(struct _Z_InputQ *qptr,
 	    qptr->holelist = hole->next;
 	free((char *)hole);
 	/*
-	 * Now create a new hole that is the original hole without the
-	 * current fragment.
+	 * Now create new hole(s) that are the original hole without
+	 * the current fragment.
 	 */
 	if (part > oldfirst) {
-	    /* Search for the end of the hole list */
-	    hole = qptr->holelist;
-	    lasthole = (struct _Z_Hole *) 0;
-	    while (hole) {
-		lasthole = hole;
-		hole = hole->next;
-	    }
-	    if (lasthole) {
-		lasthole->next = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
-		if (lasthole->next == NULL)
-		    return ENOMEM;
-		hole = lasthole->next;
-	    } else {
-		qptr->holelist = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
-		if (qptr->holelist == NULL)
-		    return ENOMEM;
-		hole = qptr->holelist;
-	    }
-	    hole->next = NULL;
+	    hole = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
+	    if (hole == NULL)
+		return ENOMEM;
 	    hole->first = oldfirst;
 	    hole->last = part-1;
+	    /* Prepend to the list; holelist is unordered. */
+	    hole->next = qptr->holelist;
+	    qptr->holelist = hole;
 	}
 	if (last < oldlast) {
-	    /* Search for the end of the hole list */
-	    hole = qptr->holelist;
-	    lasthole = (struct _Z_Hole *) 0;
-	    while (hole) {
-		lasthole = hole;
-		hole = hole->next;
-	    }
-	    if (lasthole) {
-		lasthole->next = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
-		if (lasthole->next == NULL)
-		    return ENOMEM;
-		hole = lasthole->next;
-	    } else {
-		qptr->holelist = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
-		if (qptr->holelist == NULL)
-		    return ENOMEM;
-		hole = qptr->holelist;
-	    }
-	    hole->next = (struct _Z_Hole *) 0;
+	    hole = (struct _Z_Hole *)malloc(sizeof(struct _Z_Hole));
+	    if (hole == NULL)
+		return ENOMEM;
 	    hole->first = last+1;
 	    hole->last = oldlast;
+	    /* Prepend to the list; holelist is unordered. */
+	    hole->next = qptr->holelist;
+	    qptr->holelist = hole;
 	}
     }
 
