@@ -23,7 +23,7 @@ CONFIGURE_krb45=--with-krb4=/usr --with-krb5=/usr
 CONFIGURE_krb=--with-krb4=/usr
 CONFIGURE_no-krb=
 CFLAGS=-g -O
-CHECK=check
+CHECK=
 
 # see /usr/share/doc/autotools-dev/README.Debian.gz
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
