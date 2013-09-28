@@ -58,8 +58,8 @@ autotools:
 	   echo WARNING: GNU config scripts updated from master copies 1>&2 ;\
 	fi
 
-configure: configure-stamp autotools
-configure-stamp:
+configure: configure-stamp
+configure-stamp: autotools
 	dh_testdir
 	# Add here commands to configure the package.
 	libtoolize
@@ -72,8 +72,8 @@ configure-stamp:
 
 build-arch: build-stamp
 build-indep: build-stamp
-build: configure-stamp build-stamp
-build-stamp:
+build: build-stamp
+build-stamp: configure-stamp
 	dh_testdir
 
 	# Add here commands to compile the package.
