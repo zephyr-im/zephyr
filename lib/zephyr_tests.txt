@@ -189,7 +189,7 @@ Trivial test of ZOpenPort and ZClosePort:
 
    >>> assert port != 0
    >>> print type(_z.ZGetDestAddr())
-   <class 'zephyr.sockaddr_in'>
+   <class 'zephyr_ctypes.sockaddr_in'>
    >>> print _z.ZGetDestAddr().sin_family.pformat()
    ['AF_INET(2)']
    >>> print _z.ZGetDestAddr().sin_addr.pformat()

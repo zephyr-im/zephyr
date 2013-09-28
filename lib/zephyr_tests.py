@@ -16,7 +16,7 @@ import ctypes.util
 import time
 from ctypes import c_int, c_char, POINTER, c_char_p, sizeof
 
-from zephyr import *
+from zephyr_ctypes import *
 
 __revision__ = "$Id$"
 try:

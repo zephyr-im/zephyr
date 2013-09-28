@@ -130,7 +130,7 @@ install: build
 		cp -rp debian/tmp/etc/zephyr/acl debian/tmp-$$dir/etc/zephyr; \
 	done
 	mkdir -p debian/tmp/usr/lib/python2.5/site-packages
-	install -c -m 644 python/zephyr.py debian/tmp/usr/lib/python2.5/site-packages
+	install -c -m 644 python/zephyr_ctypes.py debian/tmp/usr/lib/python2.5/site-packages
 
 # Build architecture-independent files here.
 # Pass -i to all debhelper commands in this target to reduce clutter.
