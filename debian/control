@@ -10,8 +10,8 @@ Build-Depends: debhelper (>= 5), libc-ares-dev, libkrb5-dev (>= 1.2.2-4),
 Build-Conflicts: autoconf2.13
 Standards-Version: 3.9.2.0
 Homepage: http://zephyr.1ts.org/
-Vcs-Svn: svn://zephyr.1ts.org/trunk/zephyr
-Vcs-Browser: http://zephyr.1ts.org/browser/trunk/zephyr
+Vcs-Svn: git://zephyr.1ts.org/zephyr.git
+Vcs-Browser: http://zephyr.1ts.org/browser/zephyr
 XS-Python-Version: 2.5
 
 Package: libzephyr4
