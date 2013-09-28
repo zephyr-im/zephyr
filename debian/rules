@@ -38,28 +38,8 @@ endif
 
 BUILD_VARIETALS=$(VARIETALS) no-krb
 
-# The autotools target adds forced build-time dependencies on
-# autotools-dev (for /usr/share/misc/config.*) and devscripts (for dch)
-# It's also a .PHONY make target.
-autotools:
-	chmod u+x config.sub
-	chmod u+x config.guess
-	OLDDATESUB=`./config.sub -t | tr -d -` ;\
-	OLDDATEGUESS=`./config.guess -t | tr -d -` ;\
-	NEWDATESUB=`/usr/share/misc/config.sub -t | tr -d -` ;\
-	NEWDATEGUESS=`/usr/share/misc/config.guess -t | tr -d -` ;\
-	if [ $$OLDDATESUB -lt $$NEWDATESUB -o \
-	     $$OLDDATEGUESS -lt $$NEWDATEGUESS ]; then \
-	   dch -a -p "GNU config automated update: config.sub\
-	     ($$OLDDATESUB to $$NEWDATESUB), config.guess\
-	     ($$OLDDATEGUESS to $$NEWDATEGUESS)" ;\
-	   cp -f /usr/share/misc/config.sub config.sub ;\
-	   cp -f /usr/share/misc/config.guess config.guess ;\
-	   echo WARNING: GNU config scripts updated from master copies 1>&2 ;\
-	fi
-
 configure: configure-stamp
-configure-stamp: autotools
+configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
 	libtoolize
@@ -194,4 +174,4 @@ binary-arch: build install
 
 binary: binary-indep binary-arch
 
-.PHONY: autotools build clean binary-indep binary-arch binary install 
+.PHONY: build clean binary-indep binary-arch binary install
