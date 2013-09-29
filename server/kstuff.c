@@ -441,28 +441,26 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 
     /* HOLDING: authctx, authenticator */
     result = krb5_auth_con_getkey(Z_krb5_ctx, authctx, &keyblock);
+    krb5_auth_con_free(Z_krb5_ctx, authctx);
+    krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
     if (result) {
-        krb5_auth_con_free(Z_krb5_ctx, authctx);
-        krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
         syslog(LOG_WARNING, "ZCheckSrvAuthentication: krb5_auth_con_getkey failed: %s",
                error_message(result));
         return (ZAUTH_FAILED);
     }
 
-    /* HOLDING: authctx, authenticator, keyblock */
+    /* HOLDING: keyblock */
     /* Figure out what checksum type to use */
     key_data = Z_keydata(keyblock);
     key_len = Z_keylen(keyblock);
     result = Z_ExtractEncCksum(keyblock, &enctype, &cksumtype);
     if (result) {
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
-        krb5_auth_con_free(Z_krb5_ctx, authctx);
-        krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
         syslog(LOG_WARNING, "ZCheckSrvAuthentication: Z_ExtractEncCksum failed: %s",
                error_message(result));
         return (ZAUTH_FAILED);
     }
-    /* HOLDING: authctx, authenticator, keyblock */
+    /* HOLDING: keyblock */
 
     if (realm == NULL)
 	ZSetSession(keyblock);
@@ -531,8 +529,6 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 	  our_checksum = compute_rlm_checksum(notice, key_data);
 
       krb5_free_keyblock(Z_krb5_ctx, keyblock);
-      krb5_auth_con_free(Z_krb5_ctx, authctx);
-      krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
 
       if (our_checksum == notice->z_checksum) {
           return ZAUTH_YES;
@@ -542,18 +538,16 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
       }
     }
 
-    /* HOLDING: authctx, authenticator */
+    /* HOLDING: keyblock */
 
     cksumbuf.length = cksum0_len + cksum1_len + cksum2_len;
     cksumbuf.data = malloc(cksumbuf.length);
     if (!cksumbuf.data) {
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
-        krb5_auth_con_free(Z_krb5_ctx, authctx);
-        krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
         syslog(LOG_ERR, "ZCheckSrvAuthentication: malloc(cksumbuf.data): %m");
         return ZAUTH_FAILED;
     }
-    /* HOLDING: authctx, authenticator, cksumbuf.data */
+    /* HOLDING: keyblock, cksumbuf.data */
 
     cksum_data = (unsigned char *)cksumbuf.data;
     memcpy(cksum_data, cksum0_base, cksum0_len);
@@ -568,26 +562,22 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     asn1_data = malloc(asn1_len);
     if (!asn1_data) {
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
-        krb5_auth_con_free(Z_krb5_ctx, authctx);
-        krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
         free(cksumbuf.data);
         syslog(LOG_ERR, "ZCheckSrvAuthentication: malloc(asn1_data): %m");
         return ZAUTH_FAILED;
     }
-    /* HOLDING: authctx, authenticator, cksumbuf.data, asn1_data */
+    /* HOLDING: keyblock, cksumbuf.data, asn1_data */
     result = ZReadZcode((unsigned char *)notice->z_ascii_checksum,
                         asn1_data, asn1_len, &asn1_len);
     if (result != ZERR_NONE) {
         krb5_free_keyblock(Z_krb5_ctx, keyblock);
-        krb5_auth_con_free(Z_krb5_ctx, authctx);
-        krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
         free(asn1_data);
         free(cksumbuf.data);
         syslog(LOG_WARNING, "ZCheckSrvAuthentication: ZReadZcode: %s",
                error_message(result));
         return ZAUTH_FAILED;
     }
-    /* HOLDING: asn1_data, cksumbuf.data, authctx, authenticator */
+    /* HOLDING: asn1_data, cksumbuf.data */
 
     valid = Z_krb5_verify_cksum(keyblock, &cksumbuf, cksumtype,
 				Z_KEYUSAGE_CLT_CKSUM,
@@ -600,8 +590,6 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 				    asn1_data, asn1_len);
 
     free(asn1_data);
-    krb5_auth_con_free(Z_krb5_ctx, authctx);
-    krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
     krb5_free_keyblock(Z_krb5_ctx, keyblock);
     free(cksumbuf.data);
 
