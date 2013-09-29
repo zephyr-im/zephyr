@@ -342,6 +342,7 @@ Code_t SendKerberosData (int, KTEXT, char *, char *);
 Code_t SendKrb5Data(int, krb5_data *);
 Code_t GetKrb5Data(int, krb5_data *);
 #endif
+Code_t authenticate_client(ZNotice_t *notice);
 
 /* found in server.c */
 void server_timo(void *which);

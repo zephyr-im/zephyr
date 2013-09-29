@@ -991,6 +991,46 @@ control_dispatch(ZNotice_t *notice,
 	ack(notice, who);
 	subscr_sendlist(notice, auth, who);
 	return ZERR_NONE;
+    } else if (strcmp(opcode, CLIENT_AUTHENTICATE) == 0) {
+        /* this special case is before the auth check because,
+           well... */
+        retval = authenticate_client(notice);
+        if (retval == 0) {
+            retval = client_register(notice, &who->sin_addr, &client, 0);
+            if (retval != ZERR_NONE) {
+                syslog(LOG_NOTICE,
+                       "authenticate->register failed %s/%s/%d failed: %s",
+                       notice->z_sender, inet_ntoa(who->sin_addr),
+                       ntohs(notice->z_port), error_message(retval));
+                if (server == me_server)
+                    clt_ack(notice, who, AUTH_FAILED);
+                return ZERR_NONE;
+            }
+#ifdef HAVE_KRB5
+            if (client->session_keyblock) {
+                krb5_free_keyblock_contents(Z_krb5_ctx, client->session_keyblock);
+                retval = krb5_copy_keyblock_contents(Z_krb5_ctx, ZGetSession(),
+                                                     client->session_keyblock);
+            } else {
+                retval = krb5_copy_keyblock(Z_krb5_ctx, ZGetSession(),
+                                            &client->session_keyblock);
+            }
+            if (retval) {
+                syslog(LOG_WARNING, "keyblock copy failed in authenticate: %s",
+                       error_message(retval));
+                if (server == me_server)
+                    nack(notice, who);
+                return ZERR_NONE;
+            }
+#endif
+        } else {
+            syslog(LOG_NOTICE, "authenticate %s/%s/%d failed: %s",
+                   notice->z_sender, inet_ntoa(who->sin_addr),
+                   ntohs(notice->z_port), error_message(retval));
+            if (server == me_server)
+                clt_ack(notice, who, AUTH_FAILED);
+            return ZERR_NONE;
+        }
     } else if (!auth) {
         syslog(LOG_INFO, "unauthenticated %s message purportedly from %s",
                opcode, notice->z_sender);
