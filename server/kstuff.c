@@ -499,8 +499,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 	if (notice->z_num_other_fields)
 	    x = notice->z_other_fields[notice->z_num_other_fields - 1];
 	else {
-	    /* see also ZCheckRealmAuthentication
-	       and lib/ZCkZaut.c:ZCheckZcodeAuthentication  */
+	    /* see lib/ZCkZaut.c:ZCheckZcodeAuthentication  */
 	    /* XXXXXXXXXXXXXXXXXXXXXXX */
 	    if (notice->z_num_hdr_fields > 16)
 		x = cksum1_base + strlen(cksum1_base) + 1; /* multinotice */
