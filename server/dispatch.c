@@ -1152,6 +1152,8 @@ control_dispatch(ZNotice_t *notice,
 	    }
 	}
 	client_flush_princ(target);
+    } else if (strcmp(opcode, CLIENT_AUTHENTICATE) == 0) {
+        /* already handled */
     } else {
 	syslog(LOG_WARNING, "unknown ctl opcode %s", opcode);
 	if (server == me_server) {

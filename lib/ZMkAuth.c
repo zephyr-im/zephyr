@@ -215,6 +215,7 @@ Z_MakeZcodeAuthentication(register ZNotice_t *notice,
     krb5_data *authent;
     char *cksum_start, *cstart, *cend;
     int cksum_len, zcode_len = 0, phdr_adj = 0;
+    char *ascii_authent = NULL;
 
     notice->z_ascii_authent = NULL;
 
@@ -240,7 +241,8 @@ Z_MakeZcodeAuthentication(register ZNotice_t *notice,
 	    notice->z_authent_len = authent->length;
             zcode_len = notice->z_authent_len * 2 + 2;
             /* 2x growth plus Z and null */
-            notice->z_ascii_authent = (char *)malloc(zcode_len);
+            ascii_authent = (char *)malloc(zcode_len);
+            notice->z_ascii_authent = ascii_authent;
             if (notice->z_ascii_authent == NULL)
                 result = ENOMEM;
             if (!result)
@@ -266,8 +268,8 @@ Z_MakeZcodeAuthentication(register ZNotice_t *notice,
     if (!result)
 	*phdr_len += phdr_adj;
 
-    if (notice->z_ascii_authent != NULL)
-	free(notice->z_ascii_authent);
+    if (ascii_authent != NULL)
+	free(ascii_authent);
     krb5_free_data_contents(Z_krb5_ctx, authent);
     if (authent != NULL)
 	free(authent);
@@ -344,10 +346,11 @@ ZSendAuthentication(unsigned int port,
 #ifdef HAVE_KRB5
     ZNotice_t notice;
     krb5_data *authent = NULL;
-    Code_t result;
+    Code_t result = 0;
     krb5_auth_context authctx;
     krb5_creds *creds = NULL;
 
+    (void)memset((char *)&notice, 0, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = port;
     notice.z_class = ZEPHYR_CTL_CLASS;
