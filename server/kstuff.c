@@ -250,14 +250,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 {
 #ifdef HAVE_KRB5
     unsigned char *authbuf;
-    krb5_principal princ; /**/
-    krb5_data packet; /**/
-    krb5_ticket *tkt; /**/
-    char *name; /**/
     krb5_error_code result;
-    krb5_principal server; /**/
-    krb5_keytab keytabid = 0; /**/
-    krb5_auth_context authctx; /**/
     krb5_keyblock *keyblock;
     krb5_enctype enctype;
     krb5_cksumtype cksumtype;
@@ -267,14 +260,6 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     char *x;
     unsigned char *asn1_data, *key_data, *cksum_data;
     int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0;
-    KRB5_AUTH_CON_FLAGS_TYPE acflags; /**/
-#ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
-    krb5_authenticator *authenticator; /**/
-#define KRB5AUTHENT authenticator
-#else
-    krb5_authenticator authenticator; /**/
-#define KRB5AUTHENT &authenticator
-#endif
     int len;
     char *sender;
     char rlmprincipal[MAX_PRINCIPAL_SIZE];
@@ -338,147 +323,13 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
             return ZAUTH_FAILED;
         }
 
-        /* result = handle_authenticator((char *)authbuf, len, sender); */
-
-        packet.length = len;
-        packet.data = (char *)authbuf;
-
-        result = krb5_kt_resolve(Z_krb5_ctx,
-                                 keytab_file, &keytabid);
-        if (result) {
-            free(authbuf);
-            syslog(LOG_DEBUG,"ZCheckSrvAuthentication: krb5_kt_resolve: %s",
-                   error_message(result));
-            return ZAUTH_FAILED;
-        }
-
-        /* HOLDING: authbuf, keytabid */
-        /* Create the auth context */
-        result = krb5_auth_con_init(Z_krb5_ctx, &authctx);
-        if (result) {
-            krb5_kt_close(Z_krb5_ctx, keytabid);
-            free(authbuf);
-            syslog(LOG_DEBUG, "ZCheckSrvAuthentication: krb5_auth_con_init: %s", error_message(result));
-            return ZAUTH_FAILED;
-        }
-
-        /* HOLDING: authbuf, keytabid, authctx */
-        result = krb5_auth_con_getflags(Z_krb5_ctx, authctx, &acflags);
-        if (result) {
-            krb5_auth_con_free(Z_krb5_ctx, authctx);
-            krb5_kt_close(Z_krb5_ctx, keytabid);
-            free(authbuf);
-            syslog(LOG_DEBUG, "ZCheckSrvAuthentication: krb5_auth_con_getflags: %s", error_message(result));
-            return ZAUTH_FAILED;
-        }
-
-        acflags &= ~KRB5_AUTH_CONTEXT_DO_TIME;
-
-        result = krb5_auth_con_setflags(Z_krb5_ctx, authctx, acflags);
-        if (result) {
-            krb5_auth_con_free(Z_krb5_ctx, authctx);
-            krb5_kt_close(Z_krb5_ctx, keytabid);
-            free(authbuf);
-            syslog(LOG_DEBUG, "ZCheckSrvAuthentication: krb5_auth_con_setflags: %s", error_message(result));
-            return ZAUTH_FAILED;
-        }
-
-        result = krb5_build_principal(Z_krb5_ctx, &server, strlen(__Zephyr_realm),
-                                      __Zephyr_realm, SERVER_SERVICE,
-                                      SERVER_INSTANCE, NULL);
-        if (!result) {
-            result = krb5_rd_req(Z_krb5_ctx, &authctx, &packet, server,
-                                 keytabid, NULL, &tkt);
-            krb5_free_principal(Z_krb5_ctx, server);
-        }
-        krb5_kt_close(Z_krb5_ctx, keytabid);
-
-        /* HOLDING: authbuf, authctx, tkt */
-        if (result) {
-            if (result == KRB5KRB_AP_ERR_REPEAT)
-                syslog(LOG_DEBUG, "ZCheckSrvAuthentication: k5 auth failed: %s",
-                       error_message(result));
-            else
-                syslog(LOG_WARNING,"ZCheckSrvAuthentication: k5 auth failed: %s",
-                       error_message(result));
-            free(authbuf);
-            krb5_auth_con_free(Z_krb5_ctx, authctx);
-            return ZAUTH_FAILED;
-        }
-
-        /* HOLDING: authbuf, authctx, tkt */
-
-        if (tkt == 0 || !Z_tktprincp(tkt)) {
-            if (tkt)
-                krb5_free_ticket(Z_krb5_ctx, tkt);
-            free(authbuf);
-            krb5_auth_con_free(Z_krb5_ctx, authctx);
-            syslog(LOG_WARNING, "ZCheckSrvAuthentication: No Ticket");
-            return ZAUTH_FAILED;
-        }
-
-        princ = Z_tktprinc(tkt);
-
-        if (princ == 0) {
-            krb5_free_ticket(Z_krb5_ctx, tkt);
-            free(authbuf);
-            krb5_auth_con_free(Z_krb5_ctx, authctx);
-            syslog(LOG_WARNING, "ZCheckSrvAuthentication: No... Ticket?");
-            return ZAUTH_FAILED;
-        }
-
-        /* HOLDING: authbuf, authctx, tkt */
-        result = krb5_unparse_name(Z_krb5_ctx, princ, &name);
-        if (result) {
-            syslog(LOG_WARNING, "ZCheckSrvAuthentication: krb5_unparse_name failed: %s",
-                   error_message(result));
-            free(authbuf);
-            krb5_auth_con_free(Z_krb5_ctx, authctx);
-            krb5_free_ticket(Z_krb5_ctx, tkt);
-            return ZAUTH_FAILED;
-        }
-
-        krb5_free_ticket(Z_krb5_ctx, tkt);
-
-        /* HOLDING: authbuf, authctx, name */
-        if (strcmp(name, sender)) {
-            syslog(LOG_WARNING, "ZCheckSrvAuthentication: name mismatch: '%s' vs '%s'",
-                   name, sender);
-            krb5_auth_con_free(Z_krb5_ctx, authctx);
-#ifdef HAVE_KRB5_FREE_UNPARSED_NAME
-            krb5_free_unparsed_name(Z_krb5_ctx, name);
-#else
-            free(name);
-#endif
-            free(authbuf);
-            return ZAUTH_FAILED;
-        }
-#ifdef HAVE_KRB5_FREE_UNPARSED_NAME
-        krb5_free_unparsed_name(Z_krb5_ctx, name);
-#else
-        free(name);
-#endif
+        result = handle_authenticator((char *)authbuf, len, sender, &keyblock);
         free(authbuf);
-
-        /* HOLDING: authctx */
-        /* Get an authenticator so we can get the keyblock */
-        result = krb5_auth_con_getauthenticator (Z_krb5_ctx, authctx,
-    					     &authenticator);
         if (result) {
-            krb5_auth_con_free(Z_krb5_ctx, authctx);
-            syslog(LOG_WARNING, "ZCheckSrvAuthentication: krb5_auth_con_getauthenticator failed: %s",
+            syslog(LOG_DEBUG,
+                   "ZCheckSrvAuthentication: handle_authenticator: %s",
                    error_message(result));
             return ZAUTH_FAILED;
-        }
-
-        /* HOLDING: authctx, authenticator */
-        result = krb5_auth_con_getkey(Z_krb5_ctx, authctx, &keyblock);
-        krb5_auth_con_free(Z_krb5_ctx, authctx);
-        krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
-        if (result) {
-            syslog(LOG_WARNING, "ZCheckSrvAuthentication: krb5_auth_con_getkey failed: %s",
-                   error_message(result));
-            return (ZAUTH_FAILED);
         }
     }
 
@@ -826,6 +677,9 @@ handle_authenticator(char *authbuf, int len, char *sender,
     krb5_ticket *tkt;
     krb5_principal princ;
     char *name;
+
+    packet.length = len;
+    packet.data = authbuf;
 
     result = krb5_kt_resolve(Z_krb5_ctx, keytab_file, &keytabid);
     if (result) {
