@@ -25,7 +25,6 @@ ZDumpSession(char **buffer,
 #ifdef HAVE_KRB5
     struct _Z_SessionKey *key;
     uint32_t num_keys = 0;
-    int i;
 #endif
     char *ptr;
     int len;
@@ -74,8 +73,8 @@ ZLoadSession(char *buffer, int len)
     struct _Z_SessionKey *key;
     uint32_t num_keys, keylength;
     krb5_enctype enctype;
-#endif
     int i;
+#endif
     Code_t ret;
     uint16_t version, port;
 
