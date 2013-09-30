@@ -26,6 +26,9 @@ static Code_t ZCheckAuthentication4(ZNotice_t *notice, struct sockaddr_in *from)
 #ifdef HAVE_KRB5
 static ZChecksum_t compute_checksum(ZNotice_t *, unsigned char *);
 static ZChecksum_t compute_rlm_checksum(ZNotice_t *, unsigned char *);
+static krb5_error_code handle_authenticator(char *authbuf, int len,
+                                            char *sender,
+                                            krb5_keyblock **keyblock);
 #endif
 
 #ifdef HAVE_KRB4
@@ -247,14 +250,14 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 {
 #ifdef HAVE_KRB5
     unsigned char *authbuf;
-    krb5_principal princ;
-    krb5_data packet;
-    krb5_ticket *tkt;
-    char *name;
+    krb5_principal princ; /**/
+    krb5_data packet; /**/
+    krb5_ticket *tkt; /**/
+    char *name; /**/
     krb5_error_code result;
-    krb5_principal server;
-    krb5_keytab keytabid = 0;
-    krb5_auth_context authctx;
+    krb5_principal server; /**/
+    krb5_keytab keytabid = 0; /**/
+    krb5_auth_context authctx; /**/
     krb5_keyblock *keyblock;
     krb5_enctype enctype;
     krb5_cksumtype cksumtype;
@@ -264,12 +267,12 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     char *x;
     unsigned char *asn1_data, *key_data, *cksum_data;
     int asn1_len, key_len, cksum0_len = 0, cksum1_len = 0, cksum2_len = 0;
-    KRB5_AUTH_CON_FLAGS_TYPE acflags;
+    KRB5_AUTH_CON_FLAGS_TYPE acflags; /**/
 #ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
-    krb5_authenticator *authenticator;
+    krb5_authenticator *authenticator; /**/
 #define KRB5AUTHENT authenticator
 #else
-    krb5_authenticator authenticator;
+    krb5_authenticator authenticator; /**/
 #define KRB5AUTHENT &authenticator
 #endif
     int len;
@@ -335,6 +338,8 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
             return ZAUTH_FAILED;
         }
 
+        /* result = handle_authenticator((char *)authbuf, len, sender); */
+
         packet.length = len;
         packet.data = (char *)authbuf;
 
@@ -388,7 +393,7 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         }
         krb5_kt_close(Z_krb5_ctx, keytabid);
 
-        /* HOLDING: authbuf, authctx */
+        /* HOLDING: authbuf, authctx, tkt */
         if (result) {
             if (result == KRB5KRB_AP_ERR_REPEAT)
                 syslog(LOG_DEBUG, "ZCheckSrvAuthentication: k5 auth failed: %s",
@@ -631,7 +636,6 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
     return (notice->z_auth) ? ZAUTH_YES : ZAUTH_NO;
 #endif
 }
-
 #undef KRB5AUTHENT
 
 #if defined(HAVE_KRB4) && defined(HAVE_KRB5)
@@ -783,7 +787,177 @@ ZSetSessionDES(C_Block *key) {
 #endif
 
 Code_t
-authenticate_client(ZNotice_t *notice) {
+authenticate_client(ZNotice_t *notice)
+{
 #ifdef HAVE_KRB5
+    krb5_keyblock *keyblock;
+    krb5_error_code result;
+
+    result = handle_authenticator(notice->z_message,
+                                  notice->z_message_len,
+                                  notice->z_sender,
+                                  &keyblock);
+    ZSetSession(keyblock);
+
+    krb5_free_keyblock(Z_krb5_ctx, keyblock);
+
+    return result;
 #endif
 }
+
+#ifdef HAVE_KRB5
+static krb5_error_code
+handle_authenticator(char *authbuf, int len, char *sender,
+                     krb5_keyblock **keyblock)
+{
+    krb5_error_code result;
+    krb5_data packet;
+    krb5_keytab keytabid = 0;
+    krb5_auth_context authctx;
+    krb5_principal server;
+    KRB5_AUTH_CON_FLAGS_TYPE acflags;
+#ifdef KRB5_AUTH_CON_GETAUTHENTICATOR_TAKES_DOUBLE_POINTER
+    krb5_authenticator *authenticator;
+#define KRB5AUTHENT authenticator
+#else
+    krb5_authenticator authenticator;
+#define KRB5AUTHENT &authenticator
+#endif
+    krb5_ticket *tkt;
+    krb5_principal princ;
+    char *name;
+
+    result = krb5_kt_resolve(Z_krb5_ctx, keytab_file, &keytabid);
+    if (result) {
+        syslog(LOG_DEBUG, "handle_authenticator: krb5_kt_resolve: %s",
+               error_message(result));
+        return result;
+    }
+
+    /* holding: keytabid */
+
+    /* Create the auth context */
+    result = krb5_auth_con_init(Z_krb5_ctx, &authctx);
+    if (result) {
+        krb5_kt_close(Z_krb5_ctx, keytabid);
+        syslog(LOG_DEBUG, "handle_authenticator: krb5_auth_con_init: %s",
+               error_message(result));
+        return result;
+    }
+
+    /* HOLDING: keytabid, authctx */
+    result = krb5_auth_con_getflags(Z_krb5_ctx, authctx, &acflags);
+    if (result) {
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
+        krb5_kt_close(Z_krb5_ctx, keytabid);
+        syslog(LOG_DEBUG, "handle_authenticator: krb5_auth_con_getflags: %s",
+               error_message(result));
+        return result;
+    }
+
+    acflags &= ~KRB5_AUTH_CONTEXT_DO_TIME;
+
+    result = krb5_auth_con_setflags(Z_krb5_ctx, authctx, acflags);
+    if (result) {
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
+        krb5_kt_close(Z_krb5_ctx, keytabid);
+        syslog(LOG_DEBUG, "handle_authenticator: krb5_auth_con_setflags: %s",
+               error_message(result));
+        return result;
+    }
+
+    result = krb5_build_principal(Z_krb5_ctx, &server, strlen(__Zephyr_realm),
+                                  __Zephyr_realm, SERVER_SERVICE,
+                                  SERVER_INSTANCE, NULL);
+    if (!result) {
+        result = krb5_rd_req(Z_krb5_ctx, &authctx, &packet, server,
+                             keytabid, NULL, &tkt);
+        krb5_free_principal(Z_krb5_ctx, server);
+    }
+    krb5_kt_close(Z_krb5_ctx, keytabid);
+
+    /* HOLDING: authctx, tkt */
+    if (result) {
+        if (result == KRB5KRB_AP_ERR_REPEAT)
+            syslog(LOG_DEBUG, "handle_authenticator: k5 auth failed: %s",
+                   error_message(result));
+        else
+            syslog(LOG_WARNING, "handle_authenticator: k5 auth failed: %s",
+                   error_message(result));
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
+        return result;
+    }
+
+    if (tkt == 0 || !Z_tktprincp(tkt)) {
+        if (tkt)
+            krb5_free_ticket(Z_krb5_ctx, tkt);
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
+        syslog(LOG_WARNING, "handle_authenticator: No Ticket");
+        return ZERR_INTERNAL;
+    }
+
+    princ = Z_tktprinc(tkt);
+    if (princ == 0) {
+        krb5_free_ticket(Z_krb5_ctx, tkt);
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
+        syslog(LOG_WARNING, "handle_authenticator: No... Ticket?");
+        return ZERR_INTERNAL;
+    }
+
+    result = krb5_unparse_name(Z_krb5_ctx, princ, &name);
+    if (result) {
+        syslog(LOG_WARNING, "handle_authenticator: krb5_unparse_name failed: %s",
+               error_message(result));
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
+        krb5_free_ticket(Z_krb5_ctx, tkt);
+        return result;
+    }
+
+    krb5_free_ticket(Z_krb5_ctx, tkt);
+
+    /* HOLDING: authctx, name */
+
+    if (strcmp(name, sender)) {
+        syslog(LOG_WARNING, "handle_authenticator: name mismatch: '%s' vs '%s'",
+               name, sender);
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
+#ifdef HAVE_KRB5_FREE_UNPARSED_NAME
+        krb5_free_unparsed_name(Z_krb5_ctx, name);
+#else
+        free(name);
+#endif
+        return ZERR_AUTHFAIL;
+    }
+
+#ifdef HAVE_KRB5_FREE_UNPARSED_NAME
+    krb5_free_unparsed_name(Z_krb5_ctx, name);
+#else
+    free(name);
+#endif
+
+    /* HOLDING: authctx */
+    /* Get an authenticator so we can get the keyblock */
+    result = krb5_auth_con_getauthenticator(Z_krb5_ctx, authctx, &authenticator);
+    if (result) {
+        krb5_auth_con_free(Z_krb5_ctx, authctx);
+        syslog(LOG_WARNING,
+               "handle_authenticator: krb5_auth_con_getauthenticator failed: %s",
+               error_message(result));
+        return result;
+    }
+
+    /* HOLDING: authctx, authenticator */
+    result = krb5_auth_con_getkey(Z_krb5_ctx, authctx, keyblock);
+    krb5_auth_con_free(Z_krb5_ctx, authctx);
+    krb5_free_authenticator(Z_krb5_ctx, KRB5AUTHENT);
+    if (result) {
+        syslog(LOG_WARNING,
+               "handle_authenticator: krb5_auth_con_getkey failed: %s",
+               error_message(result));
+        return result;
+    }
+
+    return 0;
+}
+#undef KRB5AUTHENT
+#endif
