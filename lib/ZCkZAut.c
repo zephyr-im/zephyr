@@ -37,7 +37,6 @@ static Code_t Z_CheckZcodeAuthentication(ZNotice_t *notice,
 					 krb5_keyblock *keyblock)
 {
     krb5_error_code result;
-    krb5_creds *creds = NULL;
     krb5_enctype enctype;
     krb5_cksumtype cksumtype;
     krb5_data cksumbuf;
