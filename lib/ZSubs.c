@@ -26,6 +26,7 @@ ZPunt(ZSubscription_t *sublist,
       int nitems,
       unsigned int port)
 {
+    ZAuthenticate(port);
     return (ZSubscriptions(sublist, nitems, port, "SUPPRESS",
 			   Z_SendAndWaitForServer));
 }
@@ -36,6 +37,7 @@ ZSubscribeTo(ZSubscription_t *sublist,
 	     int nitems,
 	     unsigned int port)
 {
+    ZAuthenticate(port);
     return (ZSubscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE,
 			   Z_SendAndWaitForServer));
 }
@@ -45,6 +47,7 @@ ZSubscribeToSansDefaults(ZSubscription_t *sublist,
 			 int nitems,
 			 unsigned int port)
 {
+    ZAuthenticate(port);
     return (ZSubscriptions(sublist, nitems, port, CLIENT_SUBSCRIBE_NODEFS,
 			   Z_SendAndWaitForServer));
 }
@@ -54,6 +57,7 @@ ZUnsubscribeTo(ZSubscription_t *sublist,
 	       int nitems,
 	       unsigned int port)
 {
+    ZAuthenticate(port);
     return (ZSubscriptions(sublist, nitems, port, CLIENT_UNSUBSCRIBE,
 			   Z_SendAndWaitForServer));
 }
@@ -61,6 +65,7 @@ ZUnsubscribeTo(ZSubscription_t *sublist,
 Code_t
 ZCancelSubscriptions(unsigned int port)
 {
+    ZAuthenticate(port);
     return (ZSubscriptions((ZSubscription_t *)0, 0, port, CLIENT_CANCELSUB,
 			   Z_SendAndWaitForServer));
 }
@@ -255,4 +260,10 @@ ZFlushUserSubscriptions(char *recip)
     }
     ZFreeNotice(&retnotice);
     return (ZERR_NONE);
+}
+
+Code_t
+ZAuthenticate(unsigned int port)
+{
+    return ZSendAuthentication(port, Z_SendAndWaitForServer);
 }

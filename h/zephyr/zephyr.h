@@ -149,14 +149,14 @@ void *__Z_debug_print_closure;
 
 int ZCompareUIDPred(ZNotice_t *, void *);
 int ZCompareMultiUIDPred(ZNotice_t *, void *);
-
-/* Defines for ZFormatNotice, et al. */
 typedef Code_t (*Z_AuthProc)(ZNotice_t*, char *, int, int *);
 Code_t ZMakeAuthentication(ZNotice_t*, char *,int, int*);
 Code_t ZMakeZcodeAuthentication(ZNotice_t*, char *,int, int*);
 Code_t ZMakeZcodeRealmAuthentication(ZNotice_t*, char *,int, int*, char*);
 Code_t ZResetAuthentication(void);
-
+Code_t ZSendAuthentication(unsigned int port,
+                           Code_t (*send_routine)(ZNotice_t *, char *, int, int));
+void ZSetNewStyleAuthentication(int flag);
 char *ZGetSender(void);
 char *ZGetVariable(char *);
 Code_t ZSetVariable(char *var, char *value);
@@ -240,6 +240,7 @@ Code_t ZSubscriptions(ZSubscription_t *sublist, int nitems,
 		      unsigned int port,
 		      char *opcode,
 		      Code_t (*send_routine)(ZNotice_t *, char *, int, int));
+Code_t ZAuthenticate(unsigned int port);
 Code_t ZPunt(ZSubscription_t *sublist, int nitems, unsigned int port);
 Code_t ZSubscribeTo(ZSubscription_t *sublist, int nitems,
 		    unsigned int port);
