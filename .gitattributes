@@ -1,0 +1,14 @@
+*.c ident
+*.h ident
+*.y ident
+*.et ident
+*.ct ident
+*.py ident
+*.1.in ident
+*.1 ident
+*.8.in ident
+*.8 ident
+debian export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+release export-ignore
