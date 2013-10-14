@@ -150,7 +150,7 @@ if test "$krb5" != no; then
    AC_SEARCH_LIBS(socket, socket)
    AC_CHECK_LIB(gen, compile)
    if test "$krb5" != yes; then
-      PATH="$PATH:$krb5/bin"
+      PATH="$krb5/bin:$PATH"
    fi
    AC_CHECK_PROG(krb5config, krb5-config,yes)
    if test "$krb5config" = yes; then
