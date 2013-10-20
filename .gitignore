@@ -1,6 +1,7 @@
 *~
 .\#*
 \#*#
+__pycache__
 autom4te.cache
 TAGS
 *.pyc
