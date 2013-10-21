@@ -16,6 +16,7 @@ Zephyr interface for python
 
 import errno
 import cffi
+import socket
 
 _ffi = cffi.FFI()
 
@@ -201,10 +202,25 @@ class Notice(object):
             field.tv_sec = int(value)
             field.tv_usec = int((value - int(value)) * 1000000)
 
+    class NoticeAddressField(NoticeField):
+        def __get__(self, notice, type=None):
+            field = getattr(notice.ZNotice, self.field)
+            if field.sa.sa_family == socket.AF_INET:
+                val = field.ip4.sin_addr
+                return socket.inet_ntop(
+                    socket.AF_INET,
+                    _ffi.buffer(_ffi.addressof(val), _ffi.sizeof(val))[:])
+            else:
+                val = field.ip6.sun6_addr
+                return socket.inet_ntop(
+                    socket.AF_INET6,
+                    _ffi.buffer(_ffi.addressof(val), _ffi.sizeof(val))[:])
+        # setting this nicely was too annoying
+
     version = NoticeStringField('z_version')
     kind = NoticeIntField('z_kind') #XXX
     uid = NoticeBlobField('z_uid')
-    origin = NoticeBlobField('z_sender_sockaddr') #XXX deopaque this
+    origin = NoticeAddressField('z_sender_sockaddr')
     time = NoticeTimevalField('z_time')
     port = NoticeIntField('z_port')
     charset = NoticeIntField('z_charset')

@@ -17,6 +17,7 @@ import time
 import logging
 import optparse
 import select
+import socket
 
 import zephyr
 
@@ -78,7 +79,10 @@ def main():
                         -1: 'failed',
                         0: 'no',
                         1: 'yes'}.get(notice.checked_auth, 'unknown')),
-                    ('fromhost', '"SPACE"'), #XXX
+                    ('fromhost', quoted(
+                        socket.getnameinfo(
+                            (notice.origin, 0),
+                            socket.AI_CANONNAME)[0])),
                     ('time', quoted(time.ctime(notice.time))),
                     ('time-secs', llista(
                         str(int(now) >> 16),
