@@ -65,6 +65,12 @@ def main():
                     notice.ZNotice.z_time.tv_usec)
                 recipient = trim(notice.recipient, '@' + z.realm)
                 sender = trim(notice.sender, '@' + z.realm)
+                try:
+                    hostname = socket.getnameinfo(
+                        (notice.origin, 0),
+                        socket.AI_CANONNAME)[0]
+                except socket.gaierror:
+                    hostname = notice.origin
                 output(
                     ('tzcspew', 'message'),
 #                   ('kind', notice.kind.lower()),#XXX
@@ -79,10 +85,7 @@ def main():
                         -1: 'failed',
                         0: 'no',
                         1: 'yes'}.get(notice.checked_auth, 'unknown')),
-                    ('fromhost', quoted(
-                        socket.getnameinfo(
-                            (notice.origin, 0),
-                            socket.AI_CANONNAME)[0])),
+                    ('fromhost', quoted(hostname)),
                     ('time', quoted(time.ctime(notice.time))),
                     ('time-secs', llista(
                         str(int(now) >> 16),
