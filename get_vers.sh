@@ -12,7 +12,7 @@ elif test -d ${top_srcdir}/.git; then
 	if test "$REF" = "fatal: ref HEAD is not a symbolic ref"; then
             VERSION="$VERSION: detached head"
 	else
-	    VERSION="$VERSION $(echo $REF | tr 'a-z-' 'A-Z ')"
+	    VERSION="$VERSION $(echo $REF | awk -F/ '{print $NF}' | tr 'a-z-' 'A-Z ')"
         fi
     fi
 fi
