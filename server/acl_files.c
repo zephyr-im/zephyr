@@ -372,7 +372,7 @@ acl_check_internal(char *acl, char *princ, struct sockaddr_in *who)
 }
 
 int acl_check(char *acl, char *name, struct sockaddr_in *who) {
-    char *pname = strdup(name);
+    char *pname = strdup(name != NULL ? name : "");
     int result;
 
     if (pname == NULL)
