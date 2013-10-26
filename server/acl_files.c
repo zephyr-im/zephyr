@@ -346,19 +346,24 @@ acl_host_match(char *acl,
 /* Returns nonzero if it can be determined that acl contains principal */
 /* Recognizes wildcards in acl. */
 /* Also checks for IP address entries and applies negative ACL's */
-static int
-acl_check_internal(char *acl, char *princ, struct sockaddr_in *who)
+int
+acl_check(char *acl, char *princ, struct sockaddr_in *who)
 {
     char *realm;
+    char *name;
     int result = 0;
 
-    if (princ) {
-        realm = split_name(princ);
+    syslog(LOG_DEBUG, "acl_check(%s, %s, ?) = %d", acl, name, result);
 
-        if (acl_match(acl, princ, realm, 1))
+    if (princ) {
+        name = strdup(princ);
+        realm = split_name(name);
+
+        if (acl_match(acl, name, realm, 1))
             return 0;
-        if (acl_match(acl, princ, realm, 0))
+        if (acl_match(acl, name, realm, 0))
             result = 1;
+        free(name);
     }
 
     if (who) {
@@ -367,21 +372,6 @@ acl_check_internal(char *acl, char *princ, struct sockaddr_in *who)
 	if (acl_host_match(acl, who->sin_addr.s_addr, 0))
             result = 1;
     }
-
-    return result;
-}
-
-int acl_check(char *acl, char *name, struct sockaddr_in *who) {
-    char *pname = strdup(name != NULL ? name : "");
-    int result;
-
-    if (pname == NULL)
-        return 0; /* oops */
-
-    result = acl_check_internal(acl, pname, who);
-    syslog(LOG_DEBUG, "acl_check(%s, %s, ?) = %d", acl, name, result);
-
-    free(pname);
 
     return result;
 }
