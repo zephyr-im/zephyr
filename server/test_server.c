@@ -8,8 +8,11 @@
  *	"mit-copyright.h".
  */
 
+#include <sys/types.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <syslog.h>
 
 #include "zserver.h"
 
@@ -37,13 +40,34 @@ extern Location *locations;
         fflush(stdout); \
     } while (0)
 
-#define V(EXP)                                  \
+#define V(EXP) \
     do { \
         printf("%s:%d: %s\n", __FILE__, __LINE__, #EXP); \
         fflush(stdout); \
         EXP; \
     } while (0)
 
+#define VI(EXP) \
+    do { \
+        int result; \
+        printf("%s:%d: %s ->", __FILE__, __LINE__, #EXP); \
+        fflush(stdout); \
+        result=EXP; \
+        printf(" %d\n", result); \
+        fflush(stdout); \
+    } while (0)
+
+#define PP(s) \
+    do { \
+        printf("%s:%d: %s\n", __FILE__, __LINE__, s); \
+        fflush(stdout); \
+    } while (0)
+
+#define P1(fmt, x)                               \
+    do { \
+        printf("%s:%d: " fmt "\n", __FILE__, __LINE__, x); \
+        fflush(stdout); \
+    } while (0)
 
 int failures = 0;
 
@@ -52,10 +76,16 @@ void test_uloc(void);
 int
 main(int argc, char **argv)
 {
+    int logopt = 0;
+#ifdef LOG_PERROR
+    logopt = LOG_PERROR;
+#endif
+    openlog("test_server", logopt, LOG_USER);
     puts("Zephyr server testing");
     puts("");
 
     test_uloc();
+    test_acl_files();
 
     exit(!(failures == 0));
 }
@@ -167,4 +197,84 @@ test_uloc(void)
     TEST(ulogin_find_user("user1") == -1);
     TEST(ulogin_find_user("user2") == -1);
     TEST(locations[ulogin_find_user("user4")].user == s4);
+    puts("");
+}
+
+void
+test_acl_files(){
+    char filename[]="/tmp/test_server_acl.XXXXXX";
+    int fd;
+    int result;
+
+    puts("low-level acl routines");
+    puts("");
+
+    fd = mkstemp(filename);
+    P1("acl file is %s", filename);
+
+    PP("empty acl");
+
+    TEST(acl_check(filename, NULL, NULL) == 0);
+    TEST(acl_check(filename, "foo", NULL) == 0);
+
+    acl_cache_reset();
+
+    write(fd, "*\n", 2);
+    PP("acl of *");
+
+    TEST(acl_check(filename, NULL, NULL) == 0);
+    TEST(acl_check(filename, "foo", NULL) == 1);
+    TEST(acl_check(filename, "bar", NULL) == 1);
+
+    lseek(fd, 0, SEEK_SET);
+    write(fd, "foo\n", 4);
+    PP("acl of just foo");
+
+    acl_cache_reset();
+
+    TEST(acl_check(filename, NULL, NULL) == 0);
+    TEST(acl_check(filename, "foo", NULL) == 1);
+    TEST(acl_check(filename, "bar", NULL) == 0);
+
+    lseek(fd, 0, SEEK_SET);
+    write(fd, "*@TIM.EDU\n", 10);
+    PP("acl of *@TIM.EDU");
+
+    acl_cache_reset();
+
+    TEST(acl_check(filename, NULL, NULL) == 0);
+    TEST(acl_check(filename, "foo", NULL) == 0);
+    TEST(acl_check(filename, "bar", NULL) == 0);
+    TEST(acl_check(filename, "foo@TIM.EDU", NULL) == 1);
+    TEST(acl_check(filename, "bar@TIM.EDU", NULL) == 1);
+
+    lseek(fd, 0, SEEK_SET);
+    write(fd, "*.*@TIM.EDU\n", 12);
+    PP("acl of *.*@TIM.EDU");
+
+    acl_cache_reset();
+
+    TEST(acl_check(filename, NULL, NULL) == 0);
+    TEST(acl_check(filename, "foo", NULL) == 0);
+    TEST(acl_check(filename, "bar", NULL) == 0);
+    TEST(acl_check(filename, "foo@TIM.EDU", NULL) == 1);
+    TEST(acl_check(filename, "bar@TIM.EDU", NULL) == 1);
+
+    lseek(fd, 0, SEEK_SET);
+    write(fd, "foo@TIM.EDU\n", 12);
+    PP("acl of foo@TIM.EDU");
+
+    acl_cache_reset();
+
+    TEST(acl_check(filename, NULL, NULL) == 0);
+    TEST(acl_check(filename, "foo", NULL) == 0);
+    TEST(acl_check(filename, "bar", NULL) == 0);
+    TEST(acl_check(filename, "foo@TIM.EDU", NULL) == 1);
+    TEST(acl_check(filename, "f\\oo@TIM.EDU", NULL) == 1);
+    TEST(acl_check(filename, "bar@TIM.EDU", NULL) == 0);
+
+    unlink(filename);
+
+    VI(acl_check("/nonexistent", "foo", NULL));
+    puts("");
 }
