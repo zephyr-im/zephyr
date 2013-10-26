@@ -353,7 +353,7 @@ acl_check(char *acl, char *princ, struct sockaddr_in *who)
     char *name;
     int result = 0;
 
-    syslog(LOG_DEBUG, "acl_check(%s, %s, ?) = %d", acl, name, result);
+    syslog(LOG_DEBUG, "acl_check(%s, %s, ?) = %d", acl, princ, result);
 
     if (princ) {
         name = strdup(princ);
