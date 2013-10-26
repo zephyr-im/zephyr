@@ -104,11 +104,7 @@ main(int argc,
 	srv_port = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
 
 	if (optind == argc) {
-	        if (gethostname(hostname, sizeof(hostname)) < 0) {
-			com_err("zstat",errno,"while finding hostname");
-			exit(-1);
-		}
-		do_stat(hostname);
+		do_stat("127.0.0.1");
 		exit(0);
 	}
 
