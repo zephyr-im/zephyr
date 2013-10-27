@@ -351,27 +351,32 @@ acl_check(char *acl, char *princ, struct sockaddr_in *who)
 {
     char *realm;
     char *name;
-    int result = 0;
-
-    syslog(LOG_DEBUG, "acl_check(%s, %s, ?) = %d", acl, princ, result);
+    int result = -1;
 
     if (princ) {
         name = strdup(princ);
         realm = split_name(name);
 
         if (acl_match(acl, name, realm, 1))
-            return 0;
-        if (acl_match(acl, name, realm, 0))
+            result = 0;
+        else if (acl_match(acl, name, realm, 0))
             result = 1;
         free(name);
     }
 
-    if (who) {
+    if (who && result != 0) {
 	if (acl_host_match(acl, who->sin_addr.s_addr, 1))
-            return 0;
-	if (acl_host_match(acl, who->sin_addr.s_addr, 0))
+            result = 0;
+	else if (acl_host_match(acl, who->sin_addr.s_addr, 0))
             result = 1;
     }
+
+    if (result == -1)
+        result = 0;
+
+    syslog(LOG_DEBUG, "acl_check(%s, %s, %s) = %d", acl,
+           princ ? princ : "NONE", who ? inet_ntoa(who->sin_addr) : "NONE",
+           result);
 
     return result;
 }
