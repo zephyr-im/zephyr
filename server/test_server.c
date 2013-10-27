@@ -8,7 +8,9 @@
  *	"mit-copyright.h".
  */
 
+#include <sys/socket.h>
 #include <sys/types.h>
+#include <netinet/in.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -72,6 +74,7 @@ extern Location *locations;
 int failures = 0;
 
 void test_uloc(void);
+void test_acl_files(void);
 
 int
 main(int argc, char **argv)
@@ -86,6 +89,9 @@ main(int argc, char **argv)
 
     test_uloc();
     test_acl_files();
+
+    if(failures)
+        printf("\n%d FAILURES\n", failures);
 
     exit(!(failures == 0));
 }
@@ -105,7 +111,7 @@ test_uloc(void)
     /* fake up just enough */
     who1.sin_family = AF_INET;
     who1.sin_port = 1;
-    who1.sin_addr.s_addr = INADDR_LOOPBACK;
+    who1.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     z1.z_class_inst = "user1";
     z1.z_port = 1;
@@ -119,7 +125,7 @@ test_uloc(void)
 
     who2.sin_family = AF_INET;
     who2.sin_port = 2;
-    who2.sin_addr.s_addr = INADDR_LOOPBACK;
+    who2.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     z2.z_class_inst = "user2";
     z2.z_port = 2;
@@ -138,13 +144,13 @@ test_uloc(void)
 
     who3.sin_family = AF_INET;
     who3.sin_port = 3;
-    who3.sin_addr.s_addr = INADDR_LOOPBACK;
+    who3.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     TEST(ulogin_find("user1", &who3.sin_addr, 3) == -1);
 
     who0.sin_family = AF_INET;
     who0.sin_port = 3;
-    who0.sin_addr.s_addr = INADDR_LOOPBACK;
+    who0.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     z0.z_class_inst = "user0";
     z0.z_port = 3;
@@ -175,7 +181,7 @@ test_uloc(void)
 
     who4.sin_family = AF_INET;
     who4.sin_port = 4;
-    who4.sin_addr.s_addr = INADDR_ANY;
+    who4.sin_addr.s_addr = htonl(INADDR_ANY);
 
     z4.z_class_inst = "user4";
     z4.z_port = 4;
@@ -205,6 +211,16 @@ test_acl_files(){
     char filename[]="/tmp/test_server_acl.XXXXXX";
     int fd;
     int result;
+    struct sockaddr_in who_zero;
+    struct sockaddr_in who_localhost;
+    struct sockaddr_in who_broadcast;
+
+    memset(&who_zero, 0, sizeof(who_zero));
+    memset(&who_localhost, 0, sizeof(who_localhost));
+    memset(&who_broadcast, 0, sizeof(who_broadcast));
+
+    who_localhost.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    who_broadcast.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
     puts("low-level acl routines");
     puts("");
@@ -217,9 +233,8 @@ test_acl_files(){
     TEST(acl_check(filename, NULL, NULL) == 0);
     TEST(acl_check(filename, "foo", NULL) == 0);
 
-    acl_cache_reset();
-
     write(fd, "*\n", 2);
+    acl_cache_reset();
     PP("acl of *");
 
     TEST(acl_check(filename, NULL, NULL) == 0);
@@ -228,9 +243,8 @@ test_acl_files(){
 
     lseek(fd, 0, SEEK_SET);
     write(fd, "foo\n", 4);
-    PP("acl of just foo");
-
     acl_cache_reset();
+    PP("acl of just foo");
 
     TEST(acl_check(filename, NULL, NULL) == 0);
     TEST(acl_check(filename, "foo", NULL) == 1);
@@ -238,9 +252,8 @@ test_acl_files(){
 
     lseek(fd, 0, SEEK_SET);
     write(fd, "*@TIM.EDU\n", 10);
-    PP("acl of *@TIM.EDU");
-
     acl_cache_reset();
+    PP("acl of *@TIM.EDU");
 
     TEST(acl_check(filename, NULL, NULL) == 0);
     TEST(acl_check(filename, "foo", NULL) == 0);
@@ -250,9 +263,8 @@ test_acl_files(){
 
     lseek(fd, 0, SEEK_SET);
     write(fd, "*.*@TIM.EDU\n", 12);
-    PP("acl of *.*@TIM.EDU");
-
     acl_cache_reset();
+    PP("acl of *.*@TIM.EDU");
 
     TEST(acl_check(filename, NULL, NULL) == 0);
     TEST(acl_check(filename, "foo", NULL) == 0);
@@ -262,19 +274,52 @@ test_acl_files(){
 
     lseek(fd, 0, SEEK_SET);
     write(fd, "foo@TIM.EDU\n", 12);
+    acl_cache_reset();
     PP("acl of foo@TIM.EDU");
 
-    acl_cache_reset();
 
     TEST(acl_check(filename, NULL, NULL) == 0);
     TEST(acl_check(filename, "foo", NULL) == 0);
     TEST(acl_check(filename, "bar", NULL) == 0);
     TEST(acl_check(filename, "foo@TIM.EDU", NULL) == 1);
+    TEST(acl_check(filename, "f\\oo@TIM.EDU", NULL) == 0);
+    TEST(acl_check(filename, "bar@TIM.EDU", NULL) == 0);
+
+    lseek(fd, 0, SEEK_SET);
+    write(fd, "!bar@TIM.EDU\n*@*\n", 17);
+    acl_cache_reset();
+    PP("acl of !bar@TIM.EDU, *@*");
+
+    TEST(acl_check(filename, NULL, NULL) == 0);
+    TEST(acl_check(filename, "foo", NULL) == 1);
+    TEST(acl_check(filename, "bar", NULL) == 1);
+    TEST(acl_check(filename, "foo@TIM.EDU", NULL) == 1);
     TEST(acl_check(filename, "f\\oo@TIM.EDU", NULL) == 1);
     TEST(acl_check(filename, "bar@TIM.EDU", NULL) == 0);
 
-    unlink(filename);
+    TEST(acl_check(filename, NULL, &who_zero) == 0);
+    TEST(acl_check(filename, NULL, &who_localhost) == 0);
 
-    VI(acl_check("/nonexistent", "foo", NULL));
+    write(fd, "@0.0.0.0\n", 9);
+    acl_cache_reset();
+    PP("acl +@0.0.0.0");
+
+    TEST(acl_check(filename, NULL, &who_zero) == 1);
+    TEST(acl_check(filename, NULL, &who_localhost) == 0);
+    TEST(acl_check(filename, "bar@TIM.EDU", &who_zero) == 0);
+
+    lseek(fd, 0, SEEK_SET);
+    ftruncate(fd, 0);
+    write(fd, "*@*\n@0.0.0.0\n!@127.0.0.0/8\n", 27);
+    acl_cache_reset();
+    PP("acl *@*, @0.0.0.0, !@127/8");
+
+    TEST(acl_check(filename, NULL, &who_zero) == 1);
+    TEST(acl_check(filename, "bar@TIM.EDU", &who_zero) == 1);
+    TEST(acl_check(filename, "bar@TIM.EDU", &who_localhost) == 0);
+
+    PP("check vs. nonexistent acl");
+    TEST(acl_check("/nonexistent", "foo", NULL) == 0);
+    unlink(filename);
     puts("");
 }
