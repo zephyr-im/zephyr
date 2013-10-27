@@ -318,6 +318,29 @@ test_acl_files(){
     TEST(acl_check(filename, "bar@TIM.EDU", &who_zero) == 1);
     TEST(acl_check(filename, "bar@TIM.EDU", &who_localhost) == 0);
 
+    lseek(fd, 0, SEEK_SET);
+    ftruncate(fd, 0);
+    write(fd, "*/root@TIM.EDU\n", 15);
+    acl_cache_reset();
+    PP("acl */root@TIM.EDU");
+    TEST(acl_check(filename, NULL, NULL) == 0);
+    TEST(acl_check(filename, "foo", NULL) == 0);
+    TEST(acl_check(filename, "bar", NULL) == 0);
+    TEST(acl_check(filename, "bar@TIM.EDU", NULL) == 0);
+    TEST(acl_check(filename, "bar@TIM.EDU", NULL) == 0);
+    TEST(acl_check(filename, "foo/root@TIM.EDU", NULL) == 1);
+    TEST(acl_check(filename, "bar/root@TIM.EDU", NULL) == 1);
+
+    lseek(fd, 0, SEEK_SET);
+    ftruncate(fd, 0);
+    write(fd, "foo/*@TIM.EDU\n", 14);
+    acl_cache_reset();
+    PP("acl foo/*@TIM.EDU");
+    TEST(acl_check(filename, "foo@TIM.EDU", NULL) == 0);
+    TEST(acl_check(filename, "bar@TIM.EDU", NULL) == 0);
+    TEST(acl_check(filename, "foo/root@TIM.EDU", NULL) == 1);
+    TEST(acl_check(filename, "bar/root@TIM.EDU", NULL) == 0);
+
     PP("check vs. nonexistent acl");
     TEST(acl_check("/nonexistent", "foo", NULL) == 0);
     unlink(filename);
