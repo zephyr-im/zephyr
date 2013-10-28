@@ -1,3 +1,9 @@
+zephyr (1:3.1.999-trunk) unstable; urgency=low
+
+  * The next actual release on this branch will be 3.2... someday
+
+ -- Karl Ramm <kcr@1ts.org>  Mon, 28 Oct 2013 00:32:21 -0400
+
 zephyr (1:3.1.1-trunk) unstable; urgency=low
 
   * release 3.1.1
