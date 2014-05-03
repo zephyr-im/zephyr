@@ -80,7 +80,7 @@ int
 main(int argc, char **argv)
 {
     int logopt = 0;
-#ifd 0 && defined(LOG_PERROR)
+#if 0 && defined(LOG_PERROR)
     logopt = LOG_PERROR;
 #endif
     openlog("test_server", logopt, LOG_USER);
