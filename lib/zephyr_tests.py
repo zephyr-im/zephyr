@@ -133,7 +133,7 @@ class ZephyrTestSuite(TestSuite):
 
     def test_zauthtype(self):
         """Make sure Zauthtype is an acceptable value"""
-        assert self._libzephyr.Zauthtype in (0, 4, 5)
+        assert self._libzephyr.Zauthtype in (0, 5)
 
     def test_z_expand_realm(self):
         """test ZExpandRealm"""

@@ -8,5 +8,5 @@ Description: Project Athena's notification service
 Version: @PACKAGE_VERSION@
 Requires:
 Libs: -L${libdir} -l@PACKAGE_NAME@
-Libs.private: @HESIOD_LIBS@ @KRB4_LIBS@ @KRB5_LIBS@ @REGEX_LIBS@ 
+Libs.private: @HESIOD_LIBS@ @KRB5_LIBS@ @REGEX_LIBS@
 Cflags: -I${includedir}

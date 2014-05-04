@@ -25,7 +25,7 @@ actually got set up:
 
    >>> assert _z.ZGetFD() == -1
    >>> Zauthtype = _z.Zauthtype
-   >>> assert Zauthtype in (0, 4, 5)
+   >>> assert Zauthtype in (0, 5)
    >>> realm = _z.ZGetRealm()
    >>> assert realm
    >>> if Zauthtype: assert realm != 'local-realm'
