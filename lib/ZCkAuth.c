@@ -33,35 +33,5 @@ Code_t
 ZCheckAuthentication(ZNotice_t *notice,
 		     struct sockaddr_in *from)
 {
-#if defined(HAVE_KRB4) && !defined(HAVE_KRB5)
-    int result;
-    ZChecksum_t our_checksum;
-    C_Block *session;
-    CREDENTIALS cred;
-
-    /* If the value is already known, return it. */
-    if (notice->z_checked_auth != ZAUTH_UNSET)
-	return (notice->z_checked_auth);
-
-    if (!notice->z_auth)
-	return (ZAUTH_NO);
-
-    if ((result = krb_get_cred(SERVER_SERVICE, SERVER_INSTANCE, 
-			       __Zephyr_realm, &cred)) != 0)
-	return (ZAUTH_NO);
-
-    session = (C_Block *)cred.session;
-
-    our_checksum = des_quad_cksum((unsigned char *)notice->z_packet,
-				  NULL, 
-				  notice->z_default_format+
-				  strlen(notice->z_default_format) + 1
-				  - notice->z_packet,
-				  0, session);
-
-    /* if mismatched checksum, then the packet was corrupted */
-    return ((our_checksum == notice->z_checksum) ? ZAUTH_YES : ZAUTH_FAILED);
-#else
     return ZCheckZcodeAuthentication(notice, from);
-#endif
 } 

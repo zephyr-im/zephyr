@@ -159,17 +159,6 @@ ZEPHYR_INT32 gethostid();
 #include <termios.h>
 
 /* Kerberos compatibility. */
-#ifdef HAVE_KRB4
-# include <krb.h>
-# include <krb_err.h>
-# include <des.h>
-# ifndef HAVE_KRB_GET_ERR_TEXT
-#  define krb_get_err_text(n)	krb_err_txt[n]
-# endif
-# ifndef HAVE_KRB_LOG
-#  define krb_log		log
-# endif
-#endif
 
 #ifdef HAVE_SYS_UTSNAME_H
 # include <sys/utsname.h>

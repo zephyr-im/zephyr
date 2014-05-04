@@ -545,13 +545,10 @@ xmit(ZNotice_t *notice,
 #if defined(HAVE_KRB5)
 	retval = ZFormatAuthenticNoticeV5(notice, noticepack, packlen,
 					  &packlen, client->session_keyblock);
-#elif defined(HAVE_KRB4)
-	retval = ZFormatAuthenticNotice(notice, noticepack, packlen,
-					&packlen, client->session_key);
-#else /* !HAVE_KRB4 */
+#else /* !HAVE_KRB5 */
 	notice->z_auth = 1;
 	retval = ZFormatSmallRawNotice(notice, noticepack, &packlen);
-#endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB5 */
 	if (retval != ZERR_NONE)
 	    syslog(LOG_ERR, "xmit auth/raw format: %s", error_message(retval));
     } else {
@@ -1041,11 +1038,6 @@ control_dispatch(ZNotice_t *notice,
                   nack(notice, who);
              return ZERR_NONE;
         }
-#else
-#ifdef HAVE_KRB4
-	/* in case it's changed */
-	memcpy(client->session_key, ZGetSession(), sizeof(C_Block));
-#endif
 #endif
 	retval = subscr_subscribe(client, notice, server);
 	if (retval != ZERR_NONE) {
