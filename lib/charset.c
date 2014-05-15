@@ -60,7 +60,7 @@ ZGetCharset(char *charset)
     if (!strcmp(charset, "NONE") || !strcmp(charset, "UNKNOWN"))
 	retval = ZCHARSET_UNKNOWN;
     else if (!strcmp(charset, "ANSI_X3.4-1968"))
-	retval = ZCHARSET_ISO_8859_1; /* A hack. */
+	retval = ZCHARSET_UTF_8; /* A hack. */
     else if (!strcmp(charset, "ISO-8859-1"))
 	retval = ZCHARSET_ISO_8859_1;
     else if (!strcmp(charset, "UTF-8"))
