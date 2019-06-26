@@ -414,12 +414,13 @@ init_hm(void)
 #ifndef DEBUG
      if (!inetd && !nofork)
 	 detach();
-
-     /* Write pid to file */
-     fp = fopen(PidFile, "w");
-     if (fp != NULL) {
+     else {
+       /* Write pid to file */
+       fp = fopen(PidFile, "w");
+       if (fp != NULL) {
 	 fprintf(fp, "%d\n", getpid());
 	 fclose(fp);
+       }
      }
 #endif /* DEBUG */
 
@@ -469,11 +470,18 @@ detach(void)
      /* detach from terminal and fork. */
      register int i, x = ZGetFD();
      register long size;
+     FILE *fp;
 
      i = fork();
      if (i) {
 	  if (i < 0)
-	       perror("fork");
+	    perror("fork");
+	  /* Write pid to file */
+	  fp = fopen(PidFile, "w");
+	  if (fp != NULL) {
+	    fprintf(fp, "%d\n", i);
+	    fclose(fp);
+	  }
 	  exit(0);
      }
 #ifdef _POSIX_VERSION
