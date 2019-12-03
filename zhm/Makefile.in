@@ -33,13 +33,14 @@ CFLAGS=@CFLAGS@
 ALL_CFLAGS=${CFLAGS} -I${top_srcdir}/h -I${BUILDTOP}/h ${CPPFLAGS}
 LDFLAGS=@LDFLAGS@
 HESIOD_LIBS=@HESIOD_LIBS@
+SECCOMP_LIBS=@SECCOMP_LIBS@
 
 OBJS=	timer.o queue.o zhm.o zhm_client.o zhm_server.o
 
 all: zhm zhm.8
 
 zhm: ${OBJS} ${LIBZEPHYR}
-	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBZEPHYR} ${HESIOD_LIBS} -lcom_err
+	${LIBTOOL} --mode=link ${CC} ${LDFLAGS} -o $@ ${OBJS} ${LIBZEPHYR} ${HESIOD_LIBS} -lcom_err ${SECCOMP_LIBS}
 
 zhm.8: ${srcdir}/zhm.8.in Makefile
 	${editman} ${srcdir}/$@.in > $@.tmp
