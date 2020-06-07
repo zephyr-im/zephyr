@@ -110,25 +110,7 @@ ZLoadSession(char *buffer, int len)
 	    free(key);
 	    return (EINVAL);
 	}
-#ifdef HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE
-	ret = krb5_init_keyblock(Z_krb5_ctx, enctype, keylength, &key->keyblock);
-#else
-	{
-	    krb5_keyblock *tmp, tmp_ss;
-	    tmp = &tmp_ss;
-
-	    key->keyblock = NULL;
-	    Z_enctype(tmp) = enctype;
-	    Z_keylen(tmp) = keylength;
-	    Z_keydata(tmp) = malloc(keylength);
-	    if (!Z_keydata(tmp)) {
-		ret = ENOMEM;
-	    } else {
-		ret =  krb5_copy_keyblock(Z_krb5_ctx, tmp, &key->keyblock);
-		free(Z_keydata(tmp));
-	    }
-	}
-#endif
+	ret = Z_krb5_init_keyblock(Z_krb5_ctx, enctype, keylength, &key->keyblock);
 	if (ret) {
 	    free(key);
 	    return ret;
