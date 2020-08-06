@@ -24,6 +24,9 @@ static const char rcsid_ZInitialize_c[] =
 #ifdef HAVE_KRB5
 #include <krb5.h>
 #endif
+#if defined(__APPLE__) && defined(__MACH__)
+#include "nwi/network_state_information_priv.h"
+#endif
 
 #ifndef INADDR_NONE
 #define INADDR_NONE 0xffffffff
@@ -196,6 +199,20 @@ ZInitialize(void)
 	    close(s);
 	}
     }
+#if defined(__APPLE__) && defined(__MACH__)
+    if (__My_addr.s_addr == INADDR_NONE) {
+      nwi_state_t state;
+      state = nwi_state_copy();
+      nwi_ifstate_t ifstate;
+      ifstate = nwi_state_get_first_ifstate(state, AF_INET);
+      if (ifstate != NULL) {
+	memcpy(&__My_addr, &ifstate->iaddr, sizeof(__My_addr));
+      }
+      if (state != NULL) {
+	nwi_state_release(state);
+      }
+    }
+#endif
     if (__My_addr.s_addr == INADDR_NONE) {
 	/* We couldn't figure out the local interface address by the
 	 * above method.  Try by resolving the local hostname.  (This
