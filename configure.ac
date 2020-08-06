@@ -171,24 +171,36 @@ if test "$krb5" != no; then
    LIBS="$local_save_LIBS"
    AC_DEFINE(HAVE_KRB5, 1, [Define to compile with Kerberos 5 support.])
    LIBZEPHYR_LIBS="$LIBZEPHYR_LIBS $KRB5_LIBS"
-   # the zephyr library needs -lresolv if it's built with krb5
-   AC_CHECK_FUNC(res_send, :,
-                 AC_CHECK_LIB(resolv, res_send, LIBZEPHYR_LIBS="-lresolv $LIBZEPHYR_LIBS",
-                              AC_CHECK_LIB(resolv, __res_send, LIBZEPHYR_LIBS="-lresolv $LIBZEPHYR_LIBS",
-                                           AC_MSG_ERROR(Zephyr requires libresolv along with Kerberos V.))))
    case "$target_os" in 
       darwin*) KRB5_LIBS="$KRB5_LIBS -framework Kerberos" ;;
    esac 
 fi
-AC_SUBST(KRB5_LIBS)
-
-AC_SUBST(LIBZEPHYR_LIBS)
 
 AC_ARG_WITH(hesiod,
 	[  --with-hesiod=PREFIX    Use Hesiod],
 	[hesiod="$withval"], [hesiod=no])
+
+if test "$krb5" != no || test "$hesiod" != no; then
+   # the zephyr library needs -lresolv if it's built with krb5 or hesiod
+   AC_CHECK_LIB([resolv], [res_mkquery], [], [
+       AC_MSG_CHECKING([if res_mkquery is provided by libresolv with mangled symbols])
+       save_LIBS="$LIBS"
+       LIBS="-lresolv $LIBS"
+       AC_TRY_LINK([#include <resolv.h>],
+           [res_mkquery(0,NULL,0,0,NULL,0,NULL,NULL,0);], [
+               AC_DEFINE(HAVE_LIBRESOLV, [1], [Define if your libresolv provides res_mkquery.])
+               LIBZEPHYR_LIBS="-lresolv $LIBZEPHYR_LIBS"
+               AC_MSG_RESULT(yes)], [
+               LIBS="$save_LIBS"
+               AC_MSG_RESULT(no)
+               AC_MSG_ERROR(Zephyr requires libresolv along with Kerberos V or Hesiod.)
+               ])])
+fi
+
+AC_SUBST(KRB5_LIBS)
+
+AC_SUBST(LIBZEPHYR_LIBS)
 if test "$hesiod" != no; then
-	AC_CHECK_FUNC(res_send, :, AC_CHECK_LIB(resolv, res_send))
         if test "$hesiod" != yes; then
         	CPPFLAGS="$CPPFLAGS -I$hesiod/include"
         	LDFLAGS="$LDFLAGS -L$hesiod/lib"
