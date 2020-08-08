@@ -78,6 +78,8 @@ Z_RetSubs(register ZNotice_t *notice,
 		if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE)
 			return (retval);
 
+	Z_InitUPnP();
+
 	notice->z_kind = ACKED;
 	notice->z_port = __Zephyr_port;
 	notice->z_class = ZEPHYR_CTL_CLASS;

@@ -264,7 +264,12 @@ if test "x$with_ares" != "xno"; then
 			     AC_MSG_ERROR(libcares not found)))
 fi
 AC_SUBST(ARES_LIBS)
-		    
+
+PKG_CHECK_MODULES([UPNP], [miniupnpc], [AC_DEFINE([HAVE_UPNP], [1], [Use UPnP])], [])
+CFLAGS="$UPNP_CFLAGS $CFLAGS"
+LIBS="$UPNP_LIBS $LIBS"
+LIBZEPHYR_LIBS="$LIBZEPHYR_LIBS $UPNP_LIBS"
+
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_VPRINTF
 AC_FUNC_GETPGRP
