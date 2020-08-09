@@ -112,9 +112,6 @@ long timo_up = TIMO_UP;
 long timo_tardy = TIMO_TARDY;
 long timo_dead = TIMO_DEAD;
 
-#ifdef DEBUG
-int zalone;
-#endif /* DEBUG */
 /*
  * Initialize the array of servers.  The `limbo' server goes in the first
  * slot (otherservers[0]).
