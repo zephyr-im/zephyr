@@ -436,6 +436,9 @@ extern fd_set interesting;		/* the file descrips we are listening
 					 to right now */
 extern int nfds;			/* number to look at in select() */
 extern int zdebug;
+#ifdef DEBUG
+extern int zalone;
+#endif
 extern char myname[];			/* domain name of this host */
 extern char list_file[];
 #ifdef HAVE_KRB5
