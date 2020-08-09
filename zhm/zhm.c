@@ -527,7 +527,7 @@ send_stats(ZNotice_t *notice,
      Code_t ret;
      char *bfr;
      char *list[20];
-     int len, i, nitems = 10;
+     int len, i, nitems = 11;
      unsigned long size;
      extern int Zauthtype; /* XXX this may be changing in the future */
 
@@ -579,6 +579,10 @@ send_stats(ZNotice_t *notice,
      list[9] = stats_malloc(32);
      strncpy(list[9], MACHINE_TYPE, 32);
      list[9][31] = '\0';
+
+     list[10] = stats_malloc(32);
+     strncpy(list[10], inet_ntoa(__My_addr), 32);
+     list[10][31] = '\0';
 
      /* Since ZFormatRaw* won't change the version number on notices,
 	we need to set the version number explicitly.  This code is taken
