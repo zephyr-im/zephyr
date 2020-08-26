@@ -34,7 +34,9 @@ const char *hm_head[] = {
     "Looking for a new server:",
     "Time running:",
     "Size:",
-    "Machine type:"
+    "Machine type:",
+    "External IP:",
+    "UPnP IGD Root URL:",
 };
 #define	HM_SIZE	(sizeof(hm_head) / sizeof (char *))
 const char *srv_head[] = {

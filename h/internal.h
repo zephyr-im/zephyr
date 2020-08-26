@@ -115,6 +115,9 @@ extern int __subscriptions_next;
 
 extern int __Zephyr_port;		/* Port number */
 extern struct in_addr __My_addr;
+extern struct in_addr __My_addr_internal;
+extern int __UPnP_active;
+extern char* __UPnP_rooturl;
 extern int __Zephyr_fd;
 extern int __Q_CompleteLength;
 extern struct sockaddr_in __HM_addr;
@@ -204,5 +207,9 @@ Code_t ZFormatAuthenticNotice(ZNotice_t*, char*, int, int*, C_Block);
 #define	Z_tktprincp(tkt)	((tkt)->client != 0)
 #define Z_tktprinc(tkt)		((tkt)->client)
 #endif
+
+void Z_InitUPnP_ZHM();
+void Z_InitUPnP();
+void Z_CloseUPnP();
 
 #endif /* __INTERNAL_H__ */

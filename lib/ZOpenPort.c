@@ -66,8 +66,12 @@ ZOpenPort(u_short *port)
     __Zephyr_port = bindin.sin_port;
     __Zephyr_open = 1;
 
+#ifdef Z_DEBUG
+    Z_debug_stderr("ZOpenPort() opened port %d", ntohs(__Zephyr_port));
+#endif
+
     if (port)
-	*port = bindin.sin_port;
+	*port = __Zephyr_port;
 
     return ZERR_NONE;
 }

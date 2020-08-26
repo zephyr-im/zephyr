@@ -19,11 +19,16 @@ static const char rcsid_ZClosePort_c[] = "$Id$";
 Code_t
 ZClosePort(void)
 {
-    if (__Zephyr_fd >= 0 && __Zephyr_open)
-	(void) close(__Zephyr_fd);
+  if (__Zephyr_fd >= 0 && __Zephyr_open) {
+    (void) close(__Zephyr_fd);
 
-    __Zephyr_fd = -1;
-    __Zephyr_open = 0;
+#ifdef Z_DEBUG
+    Z_debug_stderr("ZClosePort() closed port %d", ntohs(__Zephyr_port));
+#endif
+  }
+  Z_CloseUPnP();
+  __Zephyr_fd = -1;
+  __Zephyr_open = 0;
 	
-    return (ZERR_NONE);
+  return (ZERR_NONE);
 }

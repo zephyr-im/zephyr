@@ -183,6 +183,7 @@ main(int argc,
 		if (code)
 		    fprintf (stderr, "%s: %s: %s\n",
 			     argv[0], error_message (code), ssline);
+		ZClosePort();
 		exit((code != 0));
 	}
 
@@ -194,6 +195,7 @@ main(int argc,
 #else
 	run_command(argc-1, argv+1);
 #endif
+	ZClosePort();
 	exit(0);
 }
 

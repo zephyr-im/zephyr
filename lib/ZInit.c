@@ -17,12 +17,16 @@ static const char rcsid_ZInitialize_c[] =
 
 #include <internal.h>
 
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #ifdef HAVE_KRB4
 #include <krb_err.h>
 #endif
 #ifdef HAVE_KRB5
 #include <krb5.h>
+#endif
+#if defined(__APPLE__) && defined(__MACH__)
+#include "nwi/network_state_information_priv.h"
 #endif
 
 #ifndef INADDR_NONE
@@ -55,6 +59,8 @@ ZInitialize(void)
     int s;
     Code_t code;
     ZNotice_t notice;
+    int nf;
+    char* mp;
 #ifdef HAVE_KRB5
     char **krealms = NULL;
 #else
@@ -112,6 +118,8 @@ ZInitialize(void)
        code will fall back to something which might not be "right",
        but this is is ok, since none of the servers call krb_rd_req. */
 
+    __My_addr_internal.s_addr = INADDR_NONE;
+    __My_addr.s_addr = INADDR_NONE;
     servaddr.s_addr = INADDR_NONE;
     if (! __Zephyr_server) {
        if ((code = ZOpenPort(NULL)) != ZERR_NONE)
@@ -142,6 +150,21 @@ ZInitialize(void)
        hostent = gethostbyname(notice.z_message);
        if (hostent && hostent->h_addrtype == AF_INET)
 	   memcpy(&servaddr, hostent->h_addr, sizeof(servaddr));
+
+       // Field 10 contains our external IP.
+       mp = notice.z_message;
+       *(notice.z_message+notice.z_message_len-1) = 0;
+       for (nf=0; mp<notice.z_message+notice.z_message_len && nf<10; nf++) {
+	 mp += strlen(mp)+1;
+       }
+       if (nf==10 && mp<notice.z_message+notice.z_message_len) {
+	 inet_aton(mp, &__My_addr);
+       }
+       // Field 11 contains the IGD root URL (if UPnP is enabled)
+       mp += strlen(mp)+1;
+       if (mp<notice.z_message+notice.z_message_len) {
+	 __UPnP_rooturl = strdup(mp);
+       }
 
        ZFreeNotice(&notice);
     }
@@ -177,7 +200,6 @@ ZInitialize(void)
 #endif
 #endif
 
-    __My_addr.s_addr = INADDR_NONE;
     if (servaddr.s_addr != INADDR_NONE) {
 	/* Try to get the local interface address by connecting a UDP
 	 * socket to the server address and getting the local address.
@@ -192,11 +214,23 @@ ZInitialize(void)
 	    if (connect(s, (struct sockaddr *) &sin, sizeof(sin)) == 0
 		&& getsockname(s, (struct sockaddr *) &sin, &sinsize) == 0
 		&& sin.sin_addr.s_addr != 0)
-		memcpy(&__My_addr, &sin.sin_addr, sizeof(__My_addr));
+		memcpy(&__My_addr_internal, &sin.sin_addr, sizeof(__My_addr_internal));
 	    close(s);
 	}
     }
-    if (__My_addr.s_addr == INADDR_NONE) {
+#if defined(__APPLE__) && defined(__MACH__)
+    if (__My_addr_internal.s_addr == INADDR_NONE) {
+      nwi_state_t state = nwi_state_copy();
+      nwi_ifstate_t ifstate = nwi_state_get_first_ifstate(state, AF_INET);
+      if (ifstate != NULL) {
+	memcpy(&__My_addr_internal, &ifstate->iaddr, sizeof(__My_addr_internal));
+      }
+      if (state != NULL) {
+	nwi_state_release(state);
+      }
+    }
+#endif
+    if (__My_addr_internal.s_addr == INADDR_NONE) {
 	/* We couldn't figure out the local interface address by the
 	 * above method.  Try by resolving the local hostname.  (This
 	 * is a pretty broken thing to do, and unfortunately what we
@@ -204,13 +238,17 @@ ZInitialize(void)
 	if (gethostname(hostname, sizeof(hostname)) == 0) {
 	    hostent = gethostbyname(hostname);
 	    if (hostent && hostent->h_addrtype == AF_INET)
-		memcpy(&__My_addr, hostent->h_addr, sizeof(__My_addr));
+		memcpy(&__My_addr_internal, hostent->h_addr, sizeof(__My_addr_internal));
 	}
     }
     /* If the above methods failed, zero out __My_addr so things will
      * sort of kind of work. */
+    if (__My_addr_internal.s_addr == INADDR_NONE)
+	__My_addr_internal.s_addr = 0;
+
+    /* If ZHM didn't give us an external address, use the internal one */
     if (__My_addr.s_addr == INADDR_NONE)
-	__My_addr.s_addr = 0;
+      __My_addr = __My_addr_internal;
 
     /* Get the sender so we can cache it */
     (void) ZGetSender();
