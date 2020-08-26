@@ -8,7 +8,7 @@
 static struct UPNPUrls __UPnP_urls = {.controlURL = NULL};
 static struct IGDdatas __UPnP_data;
 static int __UPnP_attempted = 0;
-static char* __UPnP_name = "Zephyr Client";
+static const char* __UPnP_name = "Zephyr Client";
 
 void Z_InitUPnP_ZHM() {
   struct UPNPDev * devlist;

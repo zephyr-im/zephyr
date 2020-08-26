@@ -152,9 +152,9 @@ ZInitialize(void)
 	   memcpy(&servaddr, hostent->h_addr, sizeof(servaddr));
 
        // Field 10 contains our external IP.
-       mp=notice.z_message;
+       mp = notice.z_message;
        *(notice.z_message+notice.z_message_len-1) = 0;
-       for (nf=0;mp<notice.z_message+notice.z_message_len && nf<10; nf++) {
+       for (nf=0; mp<notice.z_message+notice.z_message_len && nf<10; nf++) {
 	 mp += strlen(mp)+1;
        }
        if (nf==10 && mp<notice.z_message+notice.z_message_len) {
@@ -220,10 +220,8 @@ ZInitialize(void)
     }
 #if defined(__APPLE__) && defined(__MACH__)
     if (__My_addr_internal.s_addr == INADDR_NONE) {
-      nwi_state_t state;
-      state = nwi_state_copy();
-      nwi_ifstate_t ifstate;
-      ifstate = nwi_state_get_first_ifstate(state, AF_INET);
+      nwi_state_t state = nwi_state_copy();
+      nwi_ifstate_t ifstate = nwi_state_get_first_ifstate(state, AF_INET);
       if (ifstate != NULL) {
 	memcpy(&__My_addr_internal, &ifstate->iaddr, sizeof(__My_addr_internal));
       }
