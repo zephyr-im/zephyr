@@ -138,7 +138,7 @@ hm_stat(char *host,
 	struct in_addr inaddr;
 	Code_t code;
 
-	char *line[20],*mp;
+	char *line[HM_SIZE],*mp;
 	unsigned int i,nf;
 	struct hostent *hp;
 	time_t runtime;
@@ -163,7 +163,7 @@ hm_stat(char *host,
 	}
 
 	mp = notice.z_message;
-	for (nf=0;mp<notice.z_message+notice.z_message_len;nf++) {
+	for (nf=0;mp<notice.z_message+notice.z_message_len && nf<HM_SIZE;nf++) {
 		line[nf] = mp;
 		mp += strlen(mp)+1;
 	}
@@ -195,7 +195,7 @@ hm_stat(char *host,
 int
 srv_stat(char *host)
 {
-	char *line[20],*mp;
+	char *line[SRV_SIZE],*mp;
 	int sock,i,nf,ret;
 	struct hostent *hp;
 	struct sockaddr_in sin;
@@ -273,14 +273,14 @@ srv_stat(char *host)
 	}
 
 	mp = notice.z_message;
-	for (nf=0;mp<notice.z_message+notice.z_message_len;nf++) {
+	for (nf=0;mp<notice.z_message+notice.z_message_len && nf<SRV_SIZE;nf++) {
 		line[nf] = mp;
 		mp += strlen(mp)+1;
 	}
 
 	printf("Server protocol version = %s\n",notice.z_version);
 
-	for (i=0; i < nf; i++) {
+	for (i=0; i < nf && i < SRV_SIZE; i++) {
 		if (i < 2)
 			printf("%s %s\n",srv_head[i],line[i]);
 		else if (i == 2) { /* uptime field */
