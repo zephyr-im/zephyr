@@ -23,10 +23,6 @@
 #define ZEPHYR_KEYTAB		"krb5.keytab"
 #define ZEPHYR_TK5FILE		"/var/run/zephyrd.tkt"
 #endif
-#ifdef HAVE_KRB4
-#define ZEPHYR_SRVTAB		"srvtab"
-#define ZEPHYR_TKFILE		"/var/run/zephyrd.tkt4"
-#endif
 #define	ZEPHYR_ACL_DIR		"acl/"
 #define	ZEPHYR_CLASS_REGISTRY	"class-registry.acl"
 #define	DEFAULT_SUBS_FILE	"default.subscriptions"

@@ -36,9 +36,6 @@ char list_file[128];
 #ifdef HAVE_KRB5
 char keytab_file[128];
 #endif
-#ifdef HAVE_KRB4
-char srvtab_file[128];
-#endif
 char acl_dir[128];
 char subs_file[128];
 
@@ -58,18 +55,10 @@ char *bdump_version = "1.2";
 #ifdef HAVE_KRB5
 int bdump_auth_proto = 5;
 #else /* HAVE_KRB5 */
-#ifdef HAVE_KRB4
-int bdump_auth_proto = 4;
-#else /* HAVE_KRB4 */
 int bdump_auth_proto = 0;
-#endif /* HAVE_KRB4 */
 #endif /* HAVE_KRB5 */
 
 #ifdef HAVE_KRB5
 krb5_ccache Z_krb5_ccache;
 krb5_keyblock *__Zephyr_keyblock;
-#else
-#ifdef HAVE_KRB4
-C_Block __Zephyr_session;
-#endif
 #endif

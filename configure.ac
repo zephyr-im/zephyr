@@ -114,34 +114,6 @@ AC_SUBST(LIBICONV)
 AC_CHECK_LIB(curses, tgetstr, [TLIB=-lcurses], [TLIB=-ltermcap])
 AC_SUBST(TLIB)
 
-AC_ARG_WITH(krb4,
-	[  --with-krb4=PREFIX      Use Kerberos 4],
-	[krb4="$withval"], [krb4=no])
-if test "$krb4" != no; then
-	AC_CHECK_FUNC(gethostbyname, :, AC_CHECK_LIB(nsl, gethostbyname))
-	AC_CHECK_FUNC(socket, :, AC_CHECK_LIB(socket, socket))
-	AC_CHECK_LIB(gen, compile)
-	if test "$krb4" != yes; then
-	   CPPFLAGS="$CPPFLAGS -I$krb4/include"
-	   if test -d "$krb4/include/kerberosIV"; then
-	      CPPFLAGS="$CPPFLAGS -I$krb4/include/kerberosIV"
-	   fi
-	   LDFLAGS="$LDFLAGS -L$krb4/lib"
-	fi
-	AC_CHECK_LIB(krb4, krb_rd_req,
-	     [KRB4_LIBS="-lkrb4 -ldes425 -lkrb5 -lk5crypto -lcom_err"],
-	     [AC_CHECK_LIB(des, des_quad_cksum,
-			   [KRB4_DES_LIBS="-ldes"],,,)
-	     AC_CHECK_LIB(krb, krb_rd_req,
-			   [KRB4_LIBS="-lkrb $KRB4_DES_LIBS"],
-			   [AC_MSG_ERROR(Kerberos 4 libraries not found)],
-			   $KRB4_DES_LIBS)],
-	     -ldes425 -lkrb5 -lk5crypto -lcom_err)
-	AC_DEFINE(HAVE_KRB4, 1, [Define to compile with Kerberos support.])
-	LIBZEPHYR_LIBS="$LIBZEPHYR_LIBS $KRB4_LIBS"
-fi
-AC_SUBST(KRB4_LIBS)
-
 AC_ARG_WITH(krb5,
 	    [  --with-krb5=PREFIX      Use Kerberos 5],
 	    [krb5="$withval"], [krb5=no])
@@ -261,7 +233,7 @@ fi
 AC_SUBST(SS_LIBS)
 AC_SUBST(SS_OBJS)
 
-LIBS="$KRB5_LIBS $KRB4_LIBS $LIBS"
+LIBS="$KRB5_LIBS $LIBS"
 
 dnl Checks for library functions.
 #XXX more looking for res_send

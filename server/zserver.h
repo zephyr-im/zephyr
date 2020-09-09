@@ -41,17 +41,6 @@ krb5_error_code Z_krb5_init_keyblock(krb5_context, krb5_enctype, size_t,
         krb5_keyblock **);
 #endif
 
-#ifdef HAVE_KRB4
-void ZSetSessionDES(C_Block *key);
-
-Code_t ZFormatAuthenticNotice(ZNotice_t*, char*, int, int*, C_Block);
-
-#ifndef HAVE_KRB5
-extern C_Block __Zephyr_session;
-#define ZGetSession() (__Zephyr_session)
-#endif
-#endif
-
 /* For krb_rd_req prototype and definition. */
 #ifndef KRB_INT32
 #define KRB_INT32 ZEPHYR_INT32
@@ -59,13 +48,6 @@ extern C_Block __Zephyr_session;
 
 /* Current time as cached by main(); use instead of time(). */
 #define NOW t_local.tv_sec
-
-#ifdef HAVE_KRB4
-/* Kerberos shouldn't stick us with array types... */
-typedef struct {
-    des_key_schedule s;
-} Sched;
-#endif
 
 enum _ZRealm_state {
     REALM_NEW,				/* New realm; no servers yet */
@@ -151,10 +133,6 @@ struct _Client {
     Destlist		*subs	;	/* subscriptions */
 #ifdef HAVE_KRB5
     krb5_keyblock       *session_keyblock;
-#else
-#ifdef HAVE_KRB4
-    C_Block		session_key;	/* session key for this client */
-#endif /* HAVE_KRB4 */
 #endif
     String		*principal;	/* krb principal of user */
     int			last_send;	/* Counter for last sent packet. */
@@ -330,13 +308,9 @@ void hostm_shutdown(void);
 
 /* found in kstuff.c */
 Code_t ZCheckSrvAuthentication(ZNotice_t *notice, struct sockaddr_in *from, char *realm);
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB5
 Code_t ReadKerberosData(int, int *, char **, int *);
 void sweep_ticket_hash_table(void *);
-#endif
-#ifdef HAVE_KRB4
-int GetKerberosData (int, struct in_addr, AUTH_DAT *, char *, char *);
-Code_t SendKerberosData (int, KTEXT, char *, char *);
 #endif
 #ifdef HAVE_KRB5
 Code_t SendKrb5Data(int, krb5_data *);
@@ -444,9 +418,6 @@ extern char list_file[];
 #ifdef HAVE_KRB5
 extern char keytab_file[];
 extern krb5_ccache Z_krb5_ccache;
-#endif
-#ifdef HAVE_KRB4
-extern char srvtab_file[];
 #endif
 extern char acl_dir[];
 extern char subs_file[];

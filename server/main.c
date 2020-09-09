@@ -76,16 +76,13 @@ static char *programname;               /* set to the basename of argv[0] */
 #ifdef HAVE_KRB5
 static char tkt5_file[256];
 #endif
-#ifdef HAVE_KRB4
-static char tkt_file[128];
-#endif
 
 static int dump_db_flag = 0;
 static int dump_strings_flag = 0;
 
 static int nofork;
 
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB5
 static char my_realm[REALM_SZ];
 #endif
 
@@ -105,10 +102,6 @@ main(int argc,
     int optchar;			/* option processing */
 
     sprintf(list_file, "%s/zephyr/%s", SYSCONFDIR, SERVER_LIST_FILE);
-#ifdef HAVE_KRB4
-    sprintf(srvtab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_SRVTAB);
-    strcpy(tkt_file, ZEPHYR_TKFILE);
-#endif
 #ifdef HAVE_KRB5
     sprintf(keytab_file, "%s/zephyr/%s", SYSCONFDIR, ZEPHYR_KEYTAB);
     strcpy(tkt5_file, ZEPHYR_TK5FILE);
@@ -135,7 +128,7 @@ main(int argc,
 	    nofork = 1;
 	    break;
 	  case 'k':
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB5
 	    strncpy(my_realm, optarg, REALM_SZ);
 #endif
 	    break;
@@ -155,28 +148,6 @@ main(int argc,
 	    /*NOTREACHED*/
 	}
     }
-
-#ifdef HAVE_KRB4
-    /* if there is no readable srvtab and we are not standalone, there
-       is no possible way we can succeed, so we exit */
-
-    if (access(srvtab_file, R_OK)
-#ifdef DEBUG
-	&& !zalone
-#endif /* DEBUG */
-	) {
-	fprintf(stderr, "NO ZEPHYR SRVTAB (%s) available; exiting\n",
-		srvtab_file);
-	exit(1);
-    }
-    /* Use local realm if not specified on command line. */
-    if (!*my_realm) {
-	if (krb_get_lrealm(my_realm, 1) != KSUCCESS) {
-	    fputs("Couldn't get local Kerberos realm; exiting.\n", stderr);
-	    exit(1);
-	}
-    }
-#endif /* HAVE_KRB4 */
 
 #ifndef DEBUG
     if (!nofork)
@@ -334,9 +305,6 @@ initialize(void)
 
     server_init();
 
-#ifdef HAVE_KRB4
-    krb_set_tkt_string(tkt_file);
-#endif
     realm_init();
 
     ZSetServerState(1);
@@ -355,7 +323,7 @@ initialize(void)
     }
 #endif
 #endif
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB5
     /* Override what Zinitialize set for ZGetRealm() */
     if (*my_realm)
       strcpy(__Zephyr_realm, my_realm);
@@ -485,9 +453,6 @@ bye(int sig)
 #endif
     hostm_shutdown();		/* tell our hosts */
     kill_realm_pids();
-#ifdef HAVE_KRB4
-    dest_tkt();
-#endif
     syslog(LOG_NOTICE, "goodbye (sig %d)", sig);
     exit(0);
 }

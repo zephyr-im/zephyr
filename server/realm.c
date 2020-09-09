@@ -283,7 +283,7 @@ realm_expand_realm(char *realmname)
     int a;
 
     /* First, look for an exact match (case insensitive) */
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB5
     if (!strcasecmp(ZGetRealm(), realmname))
 	return(ZGetRealm());
 #endif
@@ -293,7 +293,7 @@ realm_expand_realm(char *realmname)
 	return(otherrealms[a]->name);
 
     /* No exact match. See if there's a partial match */
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB5
     if (!strncasecmp(ZGetRealm(), realmname, strlen(realmname)))
 	return(ZGetRealm());
 #endif
@@ -800,10 +800,6 @@ realm_init(void)
 	memset(&client->addr, 0, sizeof(struct sockaddr_in));
 #ifdef HAVE_KRB5
         client->session_keyblock = NULL;
-#else
-#ifdef HAVE_KRB4
-	memset(&client->session_key, 0, sizeof(client->session_key));
-#endif
 #endif
 	snprintf(rlmprinc, MAX_PRINCIPAL_SIZE, "%s.%s@%s", SERVER_SERVICE, SERVER_INSTANCE,
 		rlm->name);
@@ -1091,9 +1087,9 @@ realm_handoff(ZNotice_t *notice,
     zdbug((LOG_DEBUG, "realm_sendit to realm %s auth %d", realm->name, auth));
     /* valid ticket available now, send the message */
     retval = realm_sendit_auth(notice, who, auth, realm, ack_to_sender);
-#else /* HAVE_KRB4 */
+#else /* HAVE_KRB5 */
     realm_sendit(notice, who, auth, realm, ack_to_sender);
-#endif /* HAVE_KRB4 */
+#endif /* HAVE_KRB5 */
 }
 
 static void

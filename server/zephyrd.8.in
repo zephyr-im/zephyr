@@ -94,14 +94,8 @@ Access Control Lists for subscribing
 .I @sysconfdir@/zephyr/acl/xmt-*.acl:
 Access Control Lists for transmitting
 .TP
-.I @sysconfdir@/zephyr/srvtab:
-Kerberos 4 Service keys
-.TP
 .I @sysconfdir@/zephyr/krb5.keytab:
 Kerberos V Service keys
-.TP
-.I /var/run/zephyrd.tkt4:
-Current Kerberos 4 tickets for exchange with other servers 
 .TP
 .I /var/run/zephyrd.tkt:
 Current Kerberos 5 tickets for exchange with other servers 

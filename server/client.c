@@ -82,10 +82,6 @@ client_register(ZNotice_t *notice,
 	memset(&client->addr, 0, sizeof(struct sockaddr_in));
 #ifdef HAVE_KRB5
         client->session_keyblock = NULL;
-#else
-#ifdef HAVE_KRB4
-	memset(&client->session_key, 0, sizeof(client->session_key));
-#endif
 #endif
 	client->last_send = 0;
 	client->last_ack = NOW;

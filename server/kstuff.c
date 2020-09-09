@@ -20,112 +20,12 @@ static const char rcsid_kstuff_c[] = "$Id$";
 #endif
 #endif
 
-#if defined(HAVE_KRB4) && defined(HAVE_KRB5)
-static Code_t ZCheckAuthentication4(ZNotice_t *notice, struct sockaddr_in *from);
-#endif
 #ifdef HAVE_KRB5
 static ZChecksum_t compute_checksum(ZNotice_t *, unsigned char *);
 static ZChecksum_t compute_rlm_checksum(ZNotice_t *, unsigned char *);
 #endif
 
-#ifdef HAVE_KRB4
-/*
- * GetKerberosData
- *
- * get ticket from file descriptor and decode it.
- * Return KFAILURE if we barf on reading the ticket, else return
- * the value of rd_ap_req() applied to the ticket.
- */
-int
-GetKerberosData(int fd, /* file descr. to read from */
-		struct in_addr haddr, /* address of foreign host on fd */
-		AUTH_DAT *kdata,	/* kerberos data (returned) */
-		char *service, /* service principal desired */
-		char *srvtab) /* file to get keys from */
-{
-    char p[20];
-    KTEXT_ST ticket;		/* will get Kerberos ticket from client */
-    unsigned int i;
-    char instance[INST_SZ];
-
-    /*
-     * Get the Kerberos ticket.  The first few characters, terminated
-     * by a blank, should give us a length; then get than many chars
-     * which will be the ticket proper.
-     */
-    for (i=0; i<20; i++) {
-	if (read(fd, &p[i], 1) != 1) {
-	    syslog(LOG_WARNING,"bad read tkt len");
-	    return(KFAILURE);
-	}
-	if (p[i] == ' ') {
-	    p[i] = '\0';
-	    break;
-	}
-    }
-    ticket.length = atoi(p);
-    if ((i==20) || (ticket.length<=0) || (ticket.length>MAX_KTXT_LEN)) {
-	syslog(LOG_WARNING,"bad tkt len %d",ticket.length);
-	return(KFAILURE);
-    }
-    for (i=0; i<ticket.length; i++) {
-	if (read(fd, &ticket.dat[i], 1) != 1) {
-	    syslog(LOG_WARNING,"bad tkt read");
-	    return(KFAILURE);
-	}
-    }
-    /*
-     * now have the ticket.  use it to get the authenticated
-     * data from Kerberos.
-     */
-    (void) strcpy(instance,"*");		/* let Kerberos fill it in */
-
-    return(krb_rd_req(&ticket, service, instance, haddr.s_addr,
-		      kdata, srvtab ? srvtab : ""));
-}
-
-/*
- * SendKerberosData
- *
- * create and transmit a ticket over the file descriptor for service.host
- * return failure codes if appropriate, or 0 if we
- * get the ticket and write it to the file descriptor
- */
-
-#if !defined(krb_err_base) && defined(ERROR_TABLE_BASE_krb)
-#define krb_err_base ERROR_TABLE_BASE_krb
-#endif
-
-Code_t
-SendKerberosData(int fd,	/* file descriptor to write onto */
-		 KTEXT ticket,	/* where to put ticket (return) */
-		 char *service,	/* service name, foreign host */
-		 char *host)
-
-{
-    int rem;
-    char p[32];
-    size_t written;
-    size_t size_to_write;
-
-    rem = krb_mk_req(ticket, service, host, (char *)ZGetRealm(), (u_long) 0);
-    if (rem != KSUCCESS)
-	return rem + krb_err_base;
-
-    (void) sprintf(p,"%d ",ticket->length);
-    size_to_write = strlen (p);
-    if ((written = write(fd, p, size_to_write)) != size_to_write)
-	return ((ssize_t)written < 0) ? errno : ZSRV_PKSHORT;
-    if ((written = write(fd, ticket->dat, ticket->length))
-	!= ticket->length)
-	return ((ssize_t)written < 0) ? errno : ZSRV_PKSHORT;
-
-    return 0;
-}
-
-#endif /* HAVE_KRB4 */
-
-#if defined(HAVE_KRB5) || defined(HAVE_KRB4)
+#ifdef HAVE_KRB5
 Code_t
 ReadKerberosData(int fd, int *size, char **data, int *proto) {
     char p[20];
@@ -284,11 +184,6 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
         syslog(LOG_DEBUG, "ZCheckSrvAuthentication: bogus authenticator length");
         return ZAUTH_FAILED;
     }
-
-#ifdef HAVE_KRB4
-    if (notice->z_ascii_authent[0] != 'Z' && realm == NULL)
-      return ZCheckAuthentication4(notice, from);
-#endif
 
     len = strlen(notice->z_ascii_authent)+1;
     authbuf = malloc(len);
@@ -606,59 +501,6 @@ ZCheckSrvAuthentication(ZNotice_t *notice,
 
 #undef KRB5AUTHENT
 
-#if defined(HAVE_KRB4) && defined(HAVE_KRB5)
-static Code_t
-ZCheckAuthentication4(ZNotice_t *notice,
-		      struct sockaddr_in *from)
-{
-    int result;
-    char srcprincipal[ANAME_SZ+INST_SZ+REALM_SZ+4];
-    KTEXT_ST authent;
-    AUTH_DAT dat;
-    ZChecksum_t checksum;
-    char instance[INST_SZ+1];
-
-    if (!notice->z_auth)
-	return ZAUTH_NO;
-
-    /* Check for bogus authentication data length. */
-    if (notice->z_authent_len <= 0)
-	return ZAUTH_FAILED;
-
-    /* Read in the authentication data. */
-    if (ZReadAscii(notice->z_ascii_authent,
-		   strlen(notice->z_ascii_authent)+1,
-		   (unsigned char *)authent.dat,
-		   notice->z_authent_len) == ZERR_BADFIELD) {
-	return ZAUTH_FAILED;
-    }
-    authent.length = notice->z_authent_len;
-
-    strcpy(instance, SERVER_INSTANCE);
-
-    /* We don't have the session key cached; do it the long way. */
-    result = krb_rd_req(&authent, SERVER_SERVICE, instance,
-			from->sin_addr.s_addr, &dat, srvtab_file);
-    if (result == RD_AP_OK) {
-	ZSetSessionDES(&dat.session);
-	sprintf(srcprincipal, "%s%s%s@%s", dat.pname, dat.pinst[0] ? "." : "",
-		dat.pinst, dat.prealm);
-	if (strcmp(srcprincipal, notice->z_sender))
-	    return ZAUTH_FAILED;
-    } else {
-	return ZAUTH_FAILED;	/* didn't decode correctly */
-    }
-
-    /* Check the cryptographic checksum. */
-    checksum = compute_checksum(notice, dat.session);
-
-    if (checksum != notice->z_checksum)
-	return ZAUTH_FAILED;
-
-    return ZAUTH_YES;
-}
-#endif
-
 
 #ifdef HAVE_KRB5
 static ZChecksum_t
@@ -730,26 +572,5 @@ ZSetSession(krb5_keyblock *keyblock) {
 
     if (result) /*XXX we're out of memory? */
 	return;
-}
-#endif
-#ifdef HAVE_KRB4
-void
-ZSetSessionDES(C_Block *key) {
-#ifdef HAVE_KRB5
-     Code_t result;
-     if (__Zephyr_keyblock) {
-          krb5_free_keyblock(Z_krb5_ctx, __Zephyr_keyblock);
-          __Zephyr_keyblock=NULL;
-     }
-     result = Z_krb5_init_keyblock(Z_krb5_ctx, ENCTYPE_DES_CBC_CRC,
-                                 sizeof(C_Block),
-                                 &__Zephyr_keyblock);
-     if (result) /*XXX we're out of memory? */
-	return;
-
-     memcpy(Z_keydata(__Zephyr_keyblock), key, sizeof(C_Block));
-#else
-    memcpy(__Zephyr_session, key, sizeof(C_Block));
-#endif
 }
 #endif

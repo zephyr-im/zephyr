@@ -6,11 +6,6 @@
 #include <zephyr/zephyr.h>
 #include <netdb.h>
 
-#ifdef HAVE_KRB4
-#include <krb.h>
-#include <krb_err.h>
-#endif
-
 #ifdef HAVE_KRB5
 #include <krb5.h>
 #endif
@@ -180,9 +175,6 @@ Code_t Z_InsertZcodeChecksum(krb5_keyblock *keyblock, ZNotice_t *notice,
 unsigned long z_quad_cksum(const unsigned char *, uint32_t *, long,
 			   int, unsigned char *);
 Code_t ZFormatAuthenticNoticeV5(ZNotice_t*, char*, int, int*, krb5_keyblock *);
-#endif
-#ifdef HAVE_KRB4
-Code_t ZFormatAuthenticNotice(ZNotice_t*, char*, int, int*, C_Block);
 #endif
 
 #ifdef HAVE_KRB5_CREDS_KEYBLOCK_ENCTYPE

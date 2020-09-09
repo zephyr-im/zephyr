@@ -18,9 +18,6 @@ static const char rcsid_ZInitialize_c[] =
 #include <internal.h>
 
 #include <sys/socket.h>
-#ifdef HAVE_KRB4
-#include <krb_err.h>
-#endif
 #ifdef HAVE_KRB5
 #include <krb5.h>
 #endif
@@ -37,8 +34,6 @@ static int z_get_host_realm_replacement(char *, char ***);
 
 #if defined(HAVE_KRB5)
 int Zauthtype = 5;
-#elif defined(HAVE_KRB4)
-int Zauthtype = 4;
 #else
 int Zauthtype = 0;
 #endif
@@ -57,20 +52,11 @@ ZInitialize(void)
     ZNotice_t notice;
 #ifdef HAVE_KRB5
     char **krealms = NULL;
-#else
-#ifdef HAVE_KRB4
-    char *krealm = NULL;
-    int krbval;
-    char d1[ANAME_SZ], d2[INST_SZ];
-#endif
 #endif
 
     /* On OS X you don't need to initialize the Kerberos error tables
        as long as you link with -framework Kerberos */
 #if !(defined(__APPLE__) && defined(__MACH__))
-#ifdef HAVE_KRB4
-    initialize_krb_error_table();
-#endif
 #ifdef HAVE_KRB5
     initialize_krb5_error_table();
 #endif
@@ -134,10 +120,6 @@ ZInitialize(void)
 #else
        code = z_get_host_realm_replacement(notice.z_message, &krealms);
 #endif
-#else
-#ifdef HAVE_KRB4
-       krealm = krb_realmofhost(notice.z_message);
-#endif
 #endif
        hostent = gethostbyname(notice.z_message);
        if (hostent && hostent->h_addrtype == AF_INET)
@@ -164,17 +146,7 @@ ZInitialize(void)
 #endif
     }
 #else
-#ifdef HAVE_KRB4
-    if (krealm) {
-	strcpy(__Zephyr_realm, krealm);
-    } else if ((krb_get_tf_fullname(TKT_FILE, d1, d2, __Zephyr_realm)
-		!= KSUCCESS) &&
-	       ((krbval = krb_get_lrealm(__Zephyr_realm, 1)) != KSUCCESS)) {
-	return (krbval);
-    }
-#else
     strcpy(__Zephyr_realm, "local-realm");
-#endif
 #endif
 
     __My_addr.s_addr = INADDR_NONE;

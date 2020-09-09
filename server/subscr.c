@@ -65,11 +65,6 @@ static const char rcsid_subscr_c[] = "$Id$";
  *
  */
 
-#if defined(HAVE_KRB4)
-C_Block	serv_key;
-Sched	serv_ksched;
-#endif
-
 static Code_t add_subscriptions(Client *who, Destlist *subs_queue,
 				ZNotice_t *notice, Server *server);
 static Destlist *extract_subscriptions(ZNotice_t *notice);
@@ -599,11 +594,6 @@ subscr_send_subs(Client *client)
 #ifdef HAVE_KRB5
     char buf[512];
     unsigned char *bufp;
-#else
-#ifdef HAVE_KRB4
-    char buf[512];
-    C_Block cblock;
-#endif /* HAVE_KRB4 */
 #endif
     char buf2[512];
     char *list[7 * NUM_FIELDS];
@@ -615,17 +605,6 @@ subscr_send_subs(Client *client)
     list[num++] = buf2;
 
 #ifdef HAVE_KRB5
-#ifdef HAVE_KRB4 /* XXX make this optional for server transition time */
-    if (Z_enctype(client->session_keyblock) == ENCTYPE_DES_CBC_CRC) {
-	bufp = malloc(Z_keylen(client->session_keyblock));
-	if (bufp == NULL) {
-	    syslog(LOG_WARNING, "subscr_send_subs: cannot allocate memory for DES keyblock: %m");
-	    return errno;
-	}
-	des_ecb_encrypt((C_Block *)Z_keydata(client->session_keyblock), (C_Block *)bufp, serv_ksched.s, DES_ENCRYPT);
-	retval = ZMakeAscii(buf, sizeof(buf), bufp, Z_keylen(client->session_keyblock));
-    } else {
-#endif
 	bufp = malloc(Z_keylen(client->session_keyblock) + 8); /* + enctype
 								+ length */
 	if (bufp == NULL) {
@@ -637,24 +616,14 @@ subscr_send_subs(Client *client)
 	memcpy(&bufp[8], Z_keydata(client->session_keyblock), Z_keylen(client->session_keyblock));
 
 	retval = ZMakeZcode(buf, sizeof(buf), bufp, Z_keylen(client->session_keyblock) + 8);
-#ifdef HAVE_KRB4
-    }
-#endif /* HAVE_KRB4 */
-#else /* HAVE_KRB5 */
-#ifdef HAVE_KRB4
-    des_ecb_encrypt((des_cblock *)client->session_key, (des_cblock *)cblock,
-		    serv_ksched.s, DES_ENCRYPT);
-
-    retval = ZMakeAscii(buf, sizeof(buf), cblock, sizeof(C_Block));
-#endif /* HAVE_KRB4 */
 #endif /* HAVE_KRB5 */
 
-#if defined(HAVE_KRB4) || defined(HAVE_KRB5)
+#ifdef HAVE_KRB5
     if (retval != ZERR_NONE) {
     } else {
 	list[num++] = buf;
     }
-#endif /* HAVE_KRB4 || HAVE_KRB5*/
+#endif /* HAVE_KRB5 */
     retval = bdump_send_list_tcp(SERVACK, &client->addr, ZEPHYR_ADMIN_CLASS,
 				 num > 1 ? "CBLOCK" : "", ADMIN_NEWCLT,
 				 client->principal->string, "", list, num);
