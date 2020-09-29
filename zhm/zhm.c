@@ -6,12 +6,17 @@
  *      $Id$
  *
  *      Copyright (c) 1987,1991 by the Massachusetts Institute of Technology.
+ *      Copyright 2019 Google LLC.
  *      For copying and distribution information, see the file
  *      "mit-copyright.h".
  */
 
 #include "zhm.h"
 #include <zephyr_version.h>
+
+#ifdef HAVE_SECCOMP
+#include <seccomp.h>
+#endif
 
 static const char rcsid_hm_c[] = "$Id$";
 
@@ -48,6 +53,9 @@ static void choose_server(void);
 static void init_hm(void);
 #ifndef DEBUG
 static void detach(void);
+#endif
+#ifdef HAVE_SECCOMP
+static int set_seccomp_enforcing(void);
 #endif
 static void send_stats(ZNotice_t *, struct sockaddr_in *);
 static char *strsave(const char *);
@@ -163,6 +171,14 @@ main(int argc,
 
     DPR2("zephyr server port: %u\n", ntohs(serv_sin.sin_port));
     DPR2("zephyr client port: %u\n", ntohs(cli_port));
+
+#ifdef HAVE_SECCOMP
+    if (set_seccomp_enforcing()) {
+	printf("Unable to enable seccomp; exiting.\n");
+	exit(ZERR_INTERNAL);
+    }
+    DPR("Seccomp enabled.\n");
+#endif
 
     /* Main loop */
     for (;;) {
@@ -518,6 +534,103 @@ stats_malloc(size_t size)
 
     return p;
 }
+
+#ifdef HAVE_SECCOMP
+static int
+set_seccomp_enforcing(void)
+{
+    scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL);
+    if (ctx == NULL) {
+        DPR("seccomp_init failed.");
+        return 1;
+    }
+    int r = 0;
+
+#define ALLOW_SYSCALL(syscall)                                            \
+    do {                                                                  \
+	if ((r = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(syscall), \
+				  0)) < 0) {                              \
+	    Zperr(-r);                                                    \
+	    goto out;                                                     \
+	}                                                                 \
+    } while (0)
+
+    /* The main ZHM loop fundamentally consists of a select(2), a ZReceivePacket
+     * (a recvfrom(2)), and a ZSendPacket (a sendto(2)). */
+    ALLOW_SYSCALL(select);
+    ALLOW_SYSCALL(recvfrom);
+    ALLOW_SYSCALL(sendto);
+
+    /* If stuff breaks, we need to log with syslog(3). */
+    ALLOW_SYSCALL(openat);
+    ALLOW_SYSCALL(fstat);
+    ALLOW_SYSCALL(read);
+    ALLOW_SYSCALL(lseek);
+    ALLOW_SYSCALL(close);
+    ALLOW_SYSCALL(getpid);
+    ALLOW_SYSCALL(socket);
+    ALLOW_SYSCALL(connect);
+    ALLOW_SYSCALL(sendto);
+
+    /* We might also use com_err, which manipulates the terminal during its
+     * writes. */
+    ALLOW_SYSCALL(write);
+    ALLOW_SYSCALL(ioctl);
+
+    /* Exiting the process is okay. */
+    ALLOW_SYSCALL(exit_group);
+    ALLOW_SYSCALL(exit);
+
+    /* We might exit in response to a signal. */
+    ALLOW_SYSCALL(rt_sigreturn);
+#ifdef __NR_sigreturn
+    ALLOW_SYSCALL(sigreturn);
+#endif
+
+    /* When it's time to exit, we need to remove the PID file. */
+    ALLOW_SYSCALL(unlink);
+
+#ifdef DEBUG
+    /* Logging stuff to stderr (with DPR and DPR2) is okay. write(2) has already
+     * been allowed above, so don't add it again. */
+    /* ALLOW_SYSCALL(write); */
+#endif
+
+#ifdef HAVE_HESIOD
+    /* If a Zephyr server goes offline; we need to query Hesiod for a new
+     * server. Some of these syscalls have already been allowed above, so don't
+     * add them again. */
+    ALLOW_SYSCALL(brk);
+    ALLOW_SYSCALL(getuid);
+    ALLOW_SYSCALL(geteuid);
+    ALLOW_SYSCALL(getgid);
+    ALLOW_SYSCALL(getegid);
+    /* ALLOW_SYSCALL(openat); */
+    /* ALLOW_SYSCALL(fstat); */
+    ALLOW_SYSCALL(mmap);
+    /* ALLOW_SYSCALL(close); */
+    /* ALLOW_SYSCALL(getpid); */
+    ALLOW_SYSCALL(stat);
+    /* ALLOW_SYSCALL(read); */
+    /* ALLOW_SYSCALL(socket); */
+    /* ALLOW_SYSCALL(connect); */
+    ALLOW_SYSCALL(poll);
+    /* ALLOW_SYSCALL(sendto); */
+    /* ALLOW_SYSCALL(recvfrom); */
+#endif
+
+#undef ALLOW_SYSCALL
+
+    if ((r = seccomp_load(ctx)) < 0) {
+      Zperr(-r);
+      goto out;
+    }
+
+out:
+    seccomp_release(ctx);
+    return r;
+}
+#endif
 
 static void
 send_stats(ZNotice_t *notice,

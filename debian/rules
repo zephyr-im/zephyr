@@ -17,7 +17,8 @@ PACKAGES:=-plibzephyr4 -pzephyr-clients -pzephyr-server -plibzephyr-dev -plibzep
 export DH_OPTIONS
 CONFIGURE_ROOT=--prefix=/usr --mandir=\$${prefix}/share/man \
 	--infodir=\$${prefix}/share/info --sysconfdir=/etc --datadir=/etc \
-	--with-cares=/usr --with-hesiod=/usr --enable-cmu-zwgcplus
+	--with-cares=/usr --with-hesiod=/usr --with-seccomp=/usr \
+	--enable-cmu-zwgcplus
 CONFIGURE_krb5=--with-krb5=/usr
 CONFIGURE_krb45=--with-krb4=/usr --with-krb5=/usr
 CONFIGURE_krb=--with-krb4=/usr
