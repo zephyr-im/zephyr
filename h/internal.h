@@ -83,6 +83,8 @@ extern int __Zephyr_server;	/* 0 if normal client, 1 if server or zhm */
 #ifdef HAVE_KRB5
 extern krb5_context Z_krb5_ctx;
 Code_t Z_krb5_lookup_cksumtype(krb5_enctype, krb5_cksumtype *);
+krb5_error_code Z_krb5_init_keyblock(krb5_context, krb5_enctype, size_t,
+        krb5_keyblock **);
 
 struct _Z_SessionKey {
     struct _Z_SessionKey    *next;

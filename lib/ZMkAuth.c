@@ -126,10 +126,10 @@ Z_MakeAuthenticationSaveKey(register ZNotice_t *notice,
     keyblock = Z_credskey(creds);
 
     if (Z_keys_head &&
-	Z_keys_head->keyblock->enctype == keyblock->enctype &&
-	Z_keys_head->keyblock->length == keyblock->length &&
-	memcmp(Z_keys_head->keyblock->contents, keyblock->contents,
-	       keyblock->length) == 0) {
+	Z_enctype(Z_keys_head->keyblock) == Z_enctype(keyblock) &&
+	Z_keylen(Z_keys_head->keyblock) == Z_keylen(keyblock) &&
+	memcmp(Z_keydata(Z_keys_head->keyblock), Z_keydata(keyblock),
+	       Z_keylen(keyblock)) == 0) {
 	/*
 	 * Optimization: if the key hasn't changed, replace the current entry,
 	 * rather than make a new one.

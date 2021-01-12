@@ -42,7 +42,7 @@ ZDumpSession(char **buffer,
     for (key = Z_keys_head; key != NULL; key = key->next) {
 	num_keys++;
 	len += 4 + 4;  /* enctype, length */
-	len += key->keyblock->length;  /* contents */
+	len += Z_keylen(key->keyblock);  /* contents */
     }
 #endif
 
@@ -56,10 +56,10 @@ ZDumpSession(char **buffer,
 #ifdef HAVE_KRB5
     *((uint32_t *)ptr) = htonl(num_keys); ptr += 4;
     for (key = Z_keys_tail; key != NULL; key = key->prev) {
-	*((uint32_t*) ptr) = htonl(key->keyblock->enctype); ptr += 4;
-	*((uint32_t*) ptr) = htonl(key->keyblock->length); ptr += 4;
-	memcpy(ptr, key->keyblock->contents, key->keyblock->length);
-	ptr += key->keyblock->length;
+	*((uint32_t*) ptr) = htonl(Z_enctype(key->keyblock)); ptr += 4;
+	*((uint32_t*) ptr) = htonl(Z_keylen(key->keyblock)); ptr += 4;
+	memcpy(ptr, Z_keydata(key->keyblock), Z_keylen(key->keyblock));
+	ptr += Z_keylen(key->keyblock);
     }
 #endif
 
@@ -110,12 +110,12 @@ ZLoadSession(char *buffer, int len)
 	    free(key);
 	    return (EINVAL);
 	}
-	ret = krb5_init_keyblock(Z_krb5_ctx, enctype, keylength, &key->keyblock);
+	ret = Z_krb5_init_keyblock(Z_krb5_ctx, enctype, keylength, &key->keyblock);
 	if (ret) {
 	    free(key);
 	    return ret;
 	}
-	memcpy((char *)key->keyblock->contents, buffer, keylength);
+	memcpy((char *)Z_keydata(key->keyblock), buffer, keylength);
 	buffer += keylength; len -= keylength;
 	/* Just set recent times. It means we might not be able to
 	   retire the keys, but that's fine. */

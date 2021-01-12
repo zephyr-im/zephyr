@@ -253,10 +253,10 @@ if test "$ss" != no; then
 	fi
 	AC_CHECK_LIB(ss, ss_perror, 
                      [SS_LIBS="-lss"
+                     SS_OBJS='${SS_OBJS}'
                      AC_DEFINE(HAVE_SS, 1, [Define if we are building with the ss library])],
 		     AS_IF([test "x$ss" != "xmaybe"], AC_MSG_ERROR(ss library not found)),
                      -lcom_err)
-        SS_OBJS='${SS_OBJS}'
 fi
 AC_SUBST(SS_LIBS)
 AC_SUBST(SS_OBJS)
