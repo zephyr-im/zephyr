@@ -23,6 +23,7 @@ ZOpenPort(u_short *port)
     struct sockaddr_in bindin;
     unsigned int len;
     int val = 1;
+    int ret;
     
     (void) ZClosePort();
 
@@ -38,28 +39,25 @@ ZOpenPort(u_short *port)
 	if (setsockopt(__Zephyr_fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof val) < 0)
 	    return errno;
     } else {
-	bindin.sin_port = 0;
+	bindin.sin_port = htons(60000);
     }
 
     bindin.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(__Zephyr_fd, (struct sockaddr *)&bindin, sizeof(bindin)) < 0) {
-	if (errno == EADDRINUSE && port && *port)
-	    return ZERR_PORTINUSE;
-	else
-	    return errno;
-    }
+    do {
+	ret = bind(__Zephyr_fd, (struct sockaddr *)&bindin, sizeof(bindin));
+	if (ret < 0 && !(port && *port))
+	    bindin.sin_port++;
+    } while (ret < 0 && errno == EADDRINUSE && !(port && *port));
+    if (ret < 0 && errno == EADDRINUSE)
+	return ZERR_PORTINUSE;
+    else if (ret < 0)
+	return errno;
 
     if (port && *port) {
          /* turn SO_REUSEADDR back off so no one else can steal it */
         val = 0;
 	if (setsockopt(__Zephyr_fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof val) < 0)
-	    return errno;
-    }
-    
-    if (!bindin.sin_port) {
-	len = sizeof(bindin);
-	if (getsockname(__Zephyr_fd, (struct sockaddr *)&bindin, &len))
 	    return errno;
     }
     
