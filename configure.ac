@@ -276,7 +276,27 @@ if test "x$with_ares" != "xno"; then
 			     AC_MSG_ERROR(libcares not found)))
 fi
 AC_SUBST(ARES_LIBS)
-		    
+
+AC_ARG_WITH(seccomp,
+	[AS_HELP_STRING([--without-seccomp], [Disable seccomp])
+AS_HELP_STRING([--with-seccomp=PREFIX], [Specify location of libseccomp])],
+	[seccomp="$withval"], [seccomp=maybe])
+AS_IF([test "x$seccomp" != "xno"], [
+	AS_IF([test "x$seccomp" != "xyes" && test "x$seccomp" != "xmaybe"], [
+		CPPFLAGS="$CPPFLAGS -I$seccomp/include"
+		LDFLAGS="$LDFLAGS -I$seccomp/lib"
+	])
+	AC_CHECK_LIB(seccomp, seccomp_init, [
+		SECCOMP_LIBS="-lseccomp"
+		AC_DEFINE(HAVE_SECCOMP, 1,
+			[Define to compile with libseccomp support.])
+	], [
+		AS_IF([test "x$seccomp" != "xmaybe"],
+			AC_MSG_ERROR([libseccomp not found]))
+	])
+])
+AC_SUBST(SECCOMP_LIBS)
+
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_VPRINTF
 AC_FUNC_GETPGRP
