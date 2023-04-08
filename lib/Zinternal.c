@@ -25,7 +25,10 @@ static const char copyright[] =
 int __Zephyr_fd = -1;
 int __Zephyr_open;
 int __Zephyr_port = -1;
-struct in_addr __My_addr;
+struct in_addr __My_addr = {.s_addr = INADDR_NONE};
+struct in_addr __My_addr_internal = {.s_addr = INADDR_NONE};
+int __UPnP_active = 0;
+char* __UPnP_rooturl = NULL;
 int __Q_CompleteLength;
 int __Q_Size;
 struct _Z_InputQ *__Q_Head, *__Q_Tail;
@@ -651,12 +654,12 @@ Z_FormatHeader(ZNotice_t *notice,
     if (!notice->z_sender)
 	notice->z_sender = ZGetSender();
 
+    if (ZGetFD() < 0) {
+      retval = ZOpenPort((u_short *)0);
+      if (retval != ZERR_NONE)
+	return (retval);
+    }
     if (notice->z_port == 0) {
-	if (ZGetFD() < 0) {
-	    retval = ZOpenPort((u_short *)0);
-	    if (retval != ZERR_NONE)
-		return (retval);
-	}
 	notice->z_port = __Zephyr_port;
     }
 

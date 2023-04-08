@@ -93,6 +93,14 @@ ZSubscriptions(register ZSubscription_t *sublist,
     int size, start, numok;
     Z_AuthProc cert_routine;
 
+    if (ZGetFD() < 0) {
+      if ((retval = ZOpenPort((u_short *)0)) != ZERR_NONE) {
+	return (retval);
+      }
+    }
+
+    Z_InitUPnP();
+
     /* nitems = 0 means cancel all subscriptions; still need to allocate a */
     /* array for one item so we can cancel, however. */
   

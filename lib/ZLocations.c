@@ -128,6 +128,8 @@ Z_SendLocation(char *class,
     if (!location_info_set)
 	ZInitLocationInfo(NULL, NULL);
 
+    Z_InitUPnP();
+
     memset((char *)&notice, 0, sizeof(notice));
     notice.z_kind = ACKED;
     notice.z_port = (u_short) ((wg_port == -1) ? 0 : wg_port);

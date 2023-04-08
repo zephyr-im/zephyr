@@ -407,6 +407,8 @@ init_hm(void)
      }
      cli_sin = ZGetDestAddr();
 
+     Z_InitUPnP_ZHM();
+
      sp = getservbyname(SERVER_SVCNAME, "udp");
      memset(&serv_sin, 0, sizeof(struct sockaddr_in));
      serv_sin.sin_port = (sp) ? sp->s_port : SERVER_SVC_FALLBACK;
@@ -527,7 +529,7 @@ send_stats(ZNotice_t *notice,
      Code_t ret;
      char *bfr;
      char *list[20];
-     int len, i, nitems = 10;
+     int len, i, nitems = 11;
      unsigned long size;
      extern int Zauthtype; /* XXX this may be changing in the future */
 
@@ -579,6 +581,16 @@ send_stats(ZNotice_t *notice,
      list[9] = stats_malloc(32);
      strncpy(list[9], MACHINE_TYPE, 32);
      list[9][31] = '\0';
+
+     list[10] = stats_malloc(32);
+     strncpy(list[10], inet_ntoa(__My_addr), 32);
+     list[10][31] = '\0';
+
+     if (__UPnP_rooturl) {
+       list[11] = stats_malloc(strlen(__UPnP_rooturl));
+       strcpy(list[11], __UPnP_rooturl);
+       nitems++;
+     }
 
      /* Since ZFormatRaw* won't change the version number on notices,
 	we need to set the version number explicitly.  This code is taken
